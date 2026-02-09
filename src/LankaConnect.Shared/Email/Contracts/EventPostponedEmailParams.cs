@@ -76,7 +76,7 @@ public class EventPostponedEmailParams : IEmailParameters
     /// <summary>
     /// Support email address.
     /// </summary>
-    public string SupportEmail { get; set; } = "support@lankaconnect.com";
+    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
     #endregion
 
@@ -165,7 +165,7 @@ public class EventPostponedEmailParams : IEmailParameters
             TimeZoneId = timeZoneId,
             Reason = reason,
             PostponedAt = postponedAt,
-            SupportEmail = supportEmail ?? "support@lankaconnect.com"
+            SupportEmail = supportEmail ?? "lankaconnect.app@gmail.com"
         };
     }
 

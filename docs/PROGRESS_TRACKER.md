@@ -1,9 +1,60 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-07 - Phase 6A.100: Email System Unification Complete ✅ BRIDGE PATTERN REMOVED*
+*Last Updated: 2026-02-08 - Phase 6A.101: Duplicate Registration Prevention ✅ DEPLOYED & VERIFIED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.100: Email System Unification ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.101: Duplicate Registration Prevention ✅ COMPLETE
+
+### PHASE 6A.101: CROSS-PATH DUPLICATE REGISTRATION PREVENTION - 2026-02-08
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED**
+
+**Priority**: 🔴 **DATA INTEGRITY BUG FIX**
+
+**Problem**: Two event registrations existed for the same event with the same email (`niroshhh@gmail.com`) but different names, both in `Confirmed` status. This was a data integrity violation.
+
+**Root Cause**: Cross-Path Registration Gap - The system has two independent registration paths (authenticated RSVP vs anonymous registration) with **no cross-path duplicate detection** and **no database-level uniqueness constraint**. The anonymous handler's duplicate check filtered on `UserId == null`, completely missing authenticated registrations with the same email.
+
+**Fix Applied (5-Step Defense-in-Depth)**:
+
+| Step | Layer | Fix | File |
+|------|-------|-----|------|
+| 1 | Application | Remove `UserId == null` filter in anonymous handler duplicate check | `RegisterAnonymousAttendeeCommandHandler.cs` |
+| 2 | Domain | Add email cross-check in `RegisterWithAttendees()` authenticated branch | `Event.cs` |
+| 3A | Domain | Fix `IsUserRegistered()` to use exclusion-based pattern (not just Confirmed) | `Event.cs` |
+| 3B | Domain | Add duplicate email check to `RegisterAnonymous()` (previously had zero protection) | `Event.cs` |
+| 4 | Infrastructure | Add conditional unique indexes: `uix_registrations_event_user_active` + `uix_registrations_event_email_active` (JSONB) | EF Core Migration |
+| 5 | Data | Create cleanup SQL script for existing duplicates | `scripts/cleanup_duplicate_registrations.sql` |
+
+**Files Changed/Created**:
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `Event.cs` | MODIFIED | 3 fixes: email cross-check, IsUserRegistered, RegisterAnonymous |
+| `RegisterAnonymousAttendeeCommandHandler.cs` | MODIFIED | Remove `UserId == null` filter, case-insensitive email |
+| `RegistrationConfiguration.cs` | MODIFIED | Add conditional unique index on (EventId, UserId) |
+| `AddRegistrationUniquenessConstraints_DuplicatePrevention.cs` | CREATED | EF Core migration with 2 unique indexes |
+| `EventDuplicateRegistrationCrossPathTests.cs` | CREATED | 10 unit tests (TDD) |
+| `cleanup_duplicate_registrations.sql` | CREATED | Data cleanup SQL script |
+| `RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md` | CREATED | Full RCA document |
+
+**Test Status**:
+- ✅ 1,408 Application tests passing (0 failures)
+- ✅ 10 new cross-path duplicate prevention tests
+- ✅ Build succeeds with zero errors
+
+**API Verification on Azure Staging**:
+- ✅ Guard 1: Member email blocked from anonymous path → "This email is already registered as a member"
+- ✅ Guard 2: Same-email anonymous duplicate blocked → "This email is already registered for this event"
+- ✅ Guard 3: Case-insensitive email check works (UPPERCASE blocked)
+
+**Commit**: `0f3368e7` - fix(registration): Phase 6A.101 - Cross-path duplicate registration prevention with defense-in-depth
+
+**Documentation**: [RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md](./RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md)
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.100: Email System Unification ✅ COMPLETE
 
 ### PHASE 6A.100: EMAIL SYSTEM UNIFICATION & BRIDGE PATTERN REMOVAL - 2026-02-07
 

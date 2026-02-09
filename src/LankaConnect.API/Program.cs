@@ -85,7 +85,7 @@ try
             Contact = new OpenApiContact
             {
                 Name = "LankaConnect Team",
-                Email = "support@lankaconnect.com"
+                Email = "lankaconnect.app@gmail.com"
             }
         });
 

@@ -111,7 +111,7 @@ public class SupportTicketEmailParams : IEmailParameters
     /// <summary>
     /// Support email address.
     /// </summary>
-    public string SupportEmail { get; set; } = "support@lankaconnect.com";
+    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
 
     /// <summary>
     /// Company name for branding.

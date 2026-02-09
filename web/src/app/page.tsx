@@ -5,7 +5,7 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { Sparkles, ArrowRight, Calendar, MapPin, Users, Clock, Store, MessageSquare, Newspaper, Star, ThumbsUp, Flame, ShoppingBag } from 'lucide-react';
+import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag } from 'lucide-react';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -358,106 +358,10 @@ export default function Home() {
                   </CardHeader>
 
                   <CardContent className="p-6 space-y-4">
-                    {/* Post 1 */}
-                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-rose-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
-                          SP
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start gap-2 mb-1">
-                            <h3 className="font-semibold text-neutral-900 text-sm group-hover:text-rose-600 transition-colors flex-1">
-                              Best places to buy Sri Lankan groceries?
-                            </h3>
-                            <Badge variant="hot" className="flex items-center gap-1 flex-shrink-0">
-                              <Flame className="h-3 w-3" />
-                              Hot
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-neutral-500 mb-2">
-                            <span>Saman P.</span>
-                            <span>•</span>
-                            <span>2h ago</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                            <Badge variant="food">Food</Badge>
-                            <div className="flex items-center gap-3 text-xs text-neutral-600">
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                24
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <ThumbsUp className="h-3 w-3" />
-                                67
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Post 2 */}
-                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-rose-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
-                          NR
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-neutral-900 text-sm mb-1 group-hover:text-rose-600 transition-colors">
-                            Teaching Sinhala to kids abroad
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-neutral-500 mb-2">
-                            <span>Nisha R.</span>
-                            <span>•</span>
-                            <span>5h ago</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                            <Badge variant="community">Parenting</Badge>
-                            <div className="flex items-center gap-3 text-xs text-neutral-600">
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                18
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <ThumbsUp className="h-3 w-3" />
-                                45
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Post 3 */}
-                    <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-rose-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm">
-                          AP
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-neutral-900 text-sm mb-1 group-hover:text-rose-600 transition-colors">
-                            Sri Lankan recipes to try this weekend
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-neutral-500 mb-2">
-                            <span>Amara P.</span>
-                            <span>•</span>
-                            <span>8h ago</span>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                            <Badge variant="food">Food</Badge>
-                            <div className="flex items-center gap-3 text-xs text-neutral-600">
-                              <span className="flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3" />
-                                32
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <ThumbsUp className="h-3 w-3" />
-                                89
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="text-center py-6 text-neutral-500">
+                      <MessageSquare className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
+                      <p className="text-sm">No forum discussions yet</p>
+                      <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -535,90 +439,10 @@ export default function Home() {
                 </CardHeader>
 
                 <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Business 1 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-6 cursor-pointer">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        🍜
-                      </div>
-                      <Badge variant="food">Restaurant</Badge>
-                    </div>
-                    <h3 className="text-base font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-2">
-                      Lanka Kitchen Restaurant
-                    </h3>
-                    <p className="text-xs text-neutral-600 mb-4 line-clamp-2">
-                      Authentic Sri Lankan cuisine with traditional recipes passed down through generations
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-neutral-600 mb-2">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
-                      <span>Downtown Toronto, ON</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-neutral-600 mb-4">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 flex-shrink-0" />
-                      <span className="font-semibold">4.8</span>
-                      <span>• 156 reviews</span>
-                    </div>
-                    <button className="w-full px-5 py-2 border border-neutral-200 hover:border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold text-sm transition-all">
-                      View Details
-                    </button>
-                  </div>
-
-                  {/* Business 2 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-6 cursor-pointer">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        💇
-                      </div>
-                      <Badge variant="arts">Beauty</Badge>
-                    </div>
-                    <h3 className="text-base font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-2">
-                      Ceylon Salon & Spa
-                    </h3>
-                    <p className="text-xs text-neutral-600 mb-4 line-clamp-2">
-                      Professional hair care and beauty services with Ayurvedic treatments
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-neutral-600 mb-2">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
-                      <span>Scarborough, ON</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-neutral-600 mb-4">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 flex-shrink-0" />
-                      <span className="font-semibold">4.9</span>
-                      <span>• 203 reviews</span>
-                    </div>
-                    <button className="w-full px-5 py-2 border border-neutral-200 hover:border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold text-sm transition-all">
-                      View Details
-                    </button>
-                  </div>
-
-                  {/* Business 3 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-6 cursor-pointer">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        📚
-                      </div>
-                      <Badge variant="business">Education</Badge>
-                    </div>
-                    <h3 className="text-base font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-2">
-                      Sinhala Learning Center
-                    </h3>
-                    <p className="text-xs text-neutral-600 mb-4 line-clamp-2">
-                      Language classes for children and adults, preserving our cultural heritage
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-neutral-600 mb-2">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
-                      <span>Mississauga, ON</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-neutral-600 mb-4">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 flex-shrink-0" />
-                      <span className="font-semibold">4.7</span>
-                      <span>• 89 reviews</span>
-                    </div>
-                    <button className="w-full px-5 py-2 border border-neutral-200 hover:border-emerald-200 hover:bg-emerald-50 rounded-lg font-semibold text-sm transition-all">
-                      View Details
-                    </button>
-                  </div>
+                  <div className="text-center py-6 text-neutral-500">
+                    <Store className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
+                    <p className="text-sm">No businesses listed yet</p>
+                    <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
                   </div>
                 </CardContent>
               </Card>
@@ -638,136 +462,10 @@ export default function Home() {
                 </CardHeader>
 
                 <CardContent className="p-6 space-y-4">
-                  {/* Product 1 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-emerald-100 to-green-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        🌿
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Ceylon Cinnamon Sticks
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">4.9</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Toronto</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$24.99</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product 2 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        👗
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Batik Saree
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">4.8</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Scarborough</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$89.99</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product 3 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        🌶️
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Curry Powder Set
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">4.7</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Mississauga</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$19.99</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product 4 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        🎭
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Traditional Masks
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">5.0</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Brampton</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$45.00</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product 5 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-rose-100 to-red-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        🍵
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Ceylon Tea Collection
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">4.9</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Markham</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$34.99</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Product 6 */}
-                  <div className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                        📿
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-emerald-600 transition-colors mb-1">
-                          Handcrafted Jewelry
-                        </h3>
-                        <div className="flex items-center gap-1 text-xs text-neutral-600 mb-2">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400 flex-shrink-0" />
-                          <span className="font-semibold">4.8</span>
-                          <span className="text-neutral-400">•</span>
-                          <MapPin className="h-3 w-3 flex-shrink-0 text-emerald-600" />
-                          <span>Richmond Hill</span>
-                        </div>
-                        <div className="text-lg font-bold text-emerald-600">$65.00</div>
-                      </div>
-                    </div>
+                  <div className="text-center py-6 text-neutral-500">
+                    <ShoppingBag className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
+                    <p className="text-sm">No marketplace listings yet</p>
+                    <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
                   </div>
                 </CardContent>
               </Card>

@@ -72,6 +72,9 @@
 | 6A.96 | Sales Tax Feature Flag | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
 | 6A.97 | Timezone-Consistent Date/Time Display | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-02 |
 | 6A.98 | Email Template Header/Footer Standardization | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-03 |
+| 6A.99 | Email Template Parameter Contracts | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-05 |
+| 6A.100 | Email System Unification & Bridge Removal | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-07 |
+| 6A.101 | Cross-Path Duplicate Registration Prevention | ✅ Complete | [RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md](./RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md) | 2026-02-08 |
 
 ---
 

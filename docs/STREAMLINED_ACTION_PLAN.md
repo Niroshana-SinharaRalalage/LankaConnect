@@ -7,7 +7,35 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.100: COMPLETE EMAIL SYSTEM UNIFICATION (2026-02-07)
+## 🔄 CURRENT STATUS - PHASE 6A.101: CROSS-PATH DUPLICATE REGISTRATION PREVENTION (2026-02-08)
+**Date**: 2026-02-08
+**Session**: Phase 6A.101 - Fix Duplicate Event Registrations with Same Email
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
+**Deployment**: ✅ Deployed via GitHub Actions, all 3 guards verified on staging
+**Priority**: 🔴 DATA INTEGRITY - Cross-path duplicate registration prevention
+
+**Changes Implemented**:
+1. ✅ `RegisterAnonymousAttendeeCommandHandler.cs` - Remove `UserId == null` filter, add comprehensive status exclusions
+2. ✅ `Event.cs` - Add email cross-check in authenticated `RegisterWithAttendees()` branch
+3. ✅ `Event.cs` - Fix `IsUserRegistered()` to use exclusion-based pattern (all active statuses)
+4. ✅ `Event.cs` - Add duplicate email check to `RegisterAnonymous()` (zero protection before)
+5. ✅ `RegistrationConfiguration.cs` - Add conditional unique index on (EventId, UserId)
+6. ✅ EF Core migration with JSONB expression index on (EventId, contact->>'email')
+7. ✅ 10 new unit tests (TDD Red-Green-Refactor)
+8. ✅ Data cleanup SQL script for existing duplicates
+
+**API Testing Results (Azure Staging)**:
+- ✅ Guard 1: Member email blocked from anonymous registration path
+- ✅ Guard 2: Same-email duplicate anonymous registration blocked
+- ✅ Guard 3: Case-insensitive email check (UPPERCASE → blocked)
+
+**Commit**: `0f3368e7`
+**Tests**: 1,408 passing (0 failures), 10 new tests
+**Documentation**: [RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md](./RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md)
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.100: COMPLETE EMAIL SYSTEM UNIFICATION (2026-02-07)
 **Date**: 2026-02-07
 **Session**: Phase 6A.100 - Complete IEmailService Removal & Email System Unification
 **Status**: ✅ COMPLETE - PUSHED TO DEVELOP (DEPLOYING TO STAGING)

@@ -115,6 +115,10 @@ public class EventApprovalEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventUrl, EventUrl },
             { "EventManageUrl", EventManageUrl },  // Template-specific param for manage link
             { EmailTemplateContract.Common.SupportEmail, SupportEmail },
+            // Template alias: template uses EventDateTime (combined date+time)
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },
+            // Template alias: template uses EventDetailsUrl instead of EventUrl
+            { "EventDetailsUrl", EventUrl },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
     }

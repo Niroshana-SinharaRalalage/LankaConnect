@@ -209,6 +209,22 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     ticketCode: ticketCode
                 );
 
+                // Phase 6A.100 Fix: Add organizer contact if available
+                if (@event.HasOrganizerContact())
+                {
+                    emailParams.WithOrganizerContact(
+                        @event.OrganizerContactName,
+                        @event.OrganizerContactEmail,
+                        @event.OrganizerContactPhone);
+                }
+
+                // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
+                if (@event.HasSignUpLists())
+                {
+                    emailParams.WithSignUpLists(
+                        _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+                }
+
                 _logger.LogInformation(
                     "[Phase 6A.100] AttendeesAdded: Sending via ITypedEmailService - CorrelationId={CorrelationId}, Template={Template}",
                     correlationId, emailParams.TemplateName);

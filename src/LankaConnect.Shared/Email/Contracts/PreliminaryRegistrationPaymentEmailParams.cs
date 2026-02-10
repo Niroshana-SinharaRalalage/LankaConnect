@@ -103,6 +103,11 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
     public DateTime ExpiresAt { get; set; }
 
     /// <summary>
+    /// URL to view event details page.
+    /// </summary>
+    public string EventDetailsUrl { get; set; } = string.Empty;
+
+    /// <summary>
     /// Support email address.
     /// </summary>
     public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
@@ -141,6 +146,14 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
             { "HoursRemaining", hoursRemaining },
             { "RegistrationId", RegistrationId.ToString() },
             { EmailTemplateContract.Common.SupportEmail, SupportEmail },
+            // Template alias: template uses EventDateTime (combined date+time)
+            { "EventDateTime", $"{formattedDate} at {formattedTime}" },
+            // Template alias: template uses EventDetailsUrl for event page link
+            { "EventDetailsUrl", EventDetailsUrl },
+            // Template alias: template uses ExpirationTime instead of ExpiresAt
+            { "ExpirationTime", ExpiresAt.ToString("MMMM dd, yyyy h:mm tt UTC") },
+            // Template alias: template uses PaymentUrl instead of PaymentLink
+            { "PaymentUrl", PaymentLink },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
     }

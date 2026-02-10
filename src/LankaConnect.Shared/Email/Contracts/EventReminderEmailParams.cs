@@ -131,6 +131,20 @@ public class EventReminderEmailParams : IEmailParameters
 
     #endregion
 
+    #region Optional Properties - Signup Lists
+
+    /// <summary>
+    /// Whether signup lists are available for this event (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to the signup lists page.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Optional Properties - Ticket Info
 
     /// <summary>
@@ -185,6 +199,11 @@ public class EventReminderEmailParams : IEmailParameters
             { "OrganizerContactName", OrganizerContactName },
             { "OrganizerContactEmail", OrganizerContactEmail },
             { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Signup lists params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
 
             // Ticket parameters (always include, even if empty)
             // HasTicket controls {{#HasTicket}} conditional in Handlebars template
@@ -301,6 +320,16 @@ public class EventReminderEmailParams : IEmailParameters
         HasTicket = true;
         TicketCode = ticketCode ?? string.Empty;
         TicketExpiryDate = expiryDate ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL.
+    /// </summary>
+    public EventReminderEmailParams WithSignUpLists(string url)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(url);
+        SignUpListsUrl = url ?? string.Empty;
         return this;
     }
 

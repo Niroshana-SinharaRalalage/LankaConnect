@@ -101,6 +101,16 @@ public class SignupCommitmentEmailParams : IEmailParameters
     /// </summary>
     public string PickupInstructions { get; set; } = "Please coordinate pickup/delivery details with the event organizer.";
 
+    /// <summary>
+    /// New quantity (for update template).
+    /// </summary>
+    public int NewQuantity { get; set; }
+
+    /// <summary>
+    /// Old/previous quantity (for update template).
+    /// </summary>
+    public int OldQuantity { get; set; }
+
     #endregion
 
     #region Signup Lists Properties
@@ -200,6 +210,12 @@ public class SignupCommitmentEmailParams : IEmailParameters
             // Signup list params (for {{#HasSignUpLists}} conditional)
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+
+            // Update template params
+            { "EventDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
+            { "NewQuantity", NewQuantity },
+            { "OldQuantity", OldQuantity },
 
             // Organizer contact params (for {{#HasOrganizerContact}} conditional)
             { "HasOrganizerContact", HasOrganizerContact },

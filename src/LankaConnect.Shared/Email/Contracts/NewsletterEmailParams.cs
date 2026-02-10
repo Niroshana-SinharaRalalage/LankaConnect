@@ -97,6 +97,11 @@ public class NewsletterEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// URL for unsubscribing from newsletter.
+    /// </summary>
+    public string UnsubscribeLink { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -120,7 +125,9 @@ public class NewsletterEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventLocation, EventLocation },
             { EmailTemplateContract.Event.EventDetailsUrl, EventDetailsUrl },
             { "HasSignUpLists", HasSignUpLists },
-            { EmailTemplateContract.Event.SignUpListsUrl, SignUpListsUrl }
+            { EmailTemplateContract.Event.SignUpListsUrl, SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+            { "UnsubscribeLink", UnsubscribeLink }
         };
     }
 

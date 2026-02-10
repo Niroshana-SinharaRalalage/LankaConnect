@@ -365,7 +365,10 @@ public class EventNotificationEmailJob
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional
-            { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US")) ?? "TBA" },
+            // Phase 6A.100 Fix: Fall back to Pricing.AdultPrice for events using dual/group pricing
+            { "TicketPrice", isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                ?? @event.Pricing?.AdultPrice.Amount.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+                ?? "See Event Details" },
             { "Year", DateTime.UtcNow.Year },  // Phase 6A.87+ Fix: Footer param
             { "SubjectPrefix", subjectPrefix }  // Phase 6A.98: Dynamic subject prefix
         };

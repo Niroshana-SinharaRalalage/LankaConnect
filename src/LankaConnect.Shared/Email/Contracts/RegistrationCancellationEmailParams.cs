@@ -142,6 +142,20 @@ public class RegistrationCancellationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Signup Lists Properties
+
+    /// <summary>
+    /// Whether signup lists are available for this event (controls {{#HasSignUpLists}} conditional).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to the signup lists page.
+    /// </summary>
+    public string SignUpListsUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -174,7 +188,12 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "HasOrganizerContact", HasOrganizerContact },
             { "OrganizerContactName", OrganizerContactName },
             { "OrganizerContactEmail", OrganizerContactEmail },
-            { "OrganizerContactPhone", OrganizerContactPhone }
+            { "OrganizerContactPhone", OrganizerContactPhone },
+
+            // Signup lists params (for {{#HasSignUpLists}} conditional)
+            { "HasSignUpLists", HasSignUpLists },
+            { "SignUpListsUrl", SignUpListsUrl },
+            { "SignupListUrl", SignUpListsUrl }  // Template alias (singular form)
         };
 
         if (RefundAmount.HasValue)
@@ -241,6 +260,16 @@ public class RegistrationCancellationEmailParams : IEmailParameters
         OrganizerContactName = name ?? string.Empty;
         OrganizerContactEmail = email ?? string.Empty;
         OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL.
+    /// </summary>
+    public RegistrationCancellationEmailParams WithSignUpLists(string url)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(url);
+        SignUpListsUrl = url ?? string.Empty;
         return this;
     }
 

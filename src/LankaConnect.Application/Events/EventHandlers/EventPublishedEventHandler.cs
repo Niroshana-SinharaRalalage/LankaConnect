@@ -108,7 +108,12 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 // Prepare common template data
                 var isFree = @event.IsFree();
                 // Use en-US culture to ensure $ symbol instead of generic ¤
-                var ticketPriceText = isFree ? "Free" : @event.TicketPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US")) ?? "TBA";
+                // Phase 6A.100 Fix: Fall back to Pricing.AdultPrice for events using dual/group pricing
+                var ticketPriceText = isFree
+                    ? "Free"
+                    : @event.TicketPrice?.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US"))
+                      ?? @event.Pricing?.AdultPrice.Amount.ToString("C", CultureInfo.GetCultureInfo("en-US"))
+                      ?? "See Event Details";
                 var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
                 var eventLocation = GetEventLocationString(@event);
                 var eventCity = @event.Location?.Address.City ?? "TBA";
@@ -140,6 +145,13 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         organizerContactName: hasOrganizerContact ? @event.OrganizerContactName ?? "Event Organizer" : null,
                         organizerContactEmail: hasOrganizerContact ? @event.OrganizerContactEmail : null,
                         organizerContactPhone: hasOrganizerContact ? @event.OrganizerContactPhone : null);
+
+                    // Phase 6A.100 Fix: Add signup lists if event has them
+                    if (@event.HasSignUpLists())
+                    {
+                        emailParams.HasSignUpLists = true;
+                        emailParams.SignUpListsUrl = eventUrl + "#sign-ups";
+                    }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 

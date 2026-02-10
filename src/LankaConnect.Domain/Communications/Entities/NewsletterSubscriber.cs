@@ -29,14 +29,6 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
     public string? UnsubscribeToken { get; private set; }
     public DateTime? UnsubscribedAt { get; private set; }
 
-    // IAggregateRoot implementation
-    public byte[] Version { get; private set; } = Array.Empty<byte>();
-
-    public void SetVersion(byte[] version)
-    {
-        Version = version;
-    }
-
     // EF Core constructor
     private NewsletterSubscriber() { }
 

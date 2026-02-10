@@ -76,6 +76,10 @@ public class SupportTicketReplyEmailParams : IEmailParameters
             { "ReplyContent", ReplyContent },
             { EmailTemplateContract.AdminUser.AdminName, AdminName },
             { EmailTemplateContract.Common.SupportEmail, SupportEmail },
+            // Template alias: template uses ReplyMessage instead of ReplyContent
+            { "ReplyMessage", ReplyContent },
+            // Template alias: template uses UserName instead of Name
+            { EmailTemplateContract.Common.UserName, RecipientName },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year.ToString() },
             { "RepliedAt", RepliedAt.ToString("MMMM dd, yyyy h:mm tt") + " UTC" }
         };

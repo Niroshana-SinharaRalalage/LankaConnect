@@ -84,10 +84,10 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
             .HasColumnName("updated_at")
             .IsRequired(false);
 
-        // Configure concurrency token
-        builder.Property(ns => ns.Version)
-            .HasColumnName("version")
-            .IsRowVersion();
+        // Configure concurrency token using PostgreSQL's built-in xmin system column
+#pragma warning disable CS0618 // UseXminAsConcurrencyToken is the correct PostgreSQL approach
+        builder.UseXminAsConcurrencyToken();
+#pragma warning restore CS0618
 
         // Indexes for performance
         // Note: Unique index on email will be added in migration manually

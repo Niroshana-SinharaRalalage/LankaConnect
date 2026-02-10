@@ -104,10 +104,10 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
-        // Concurrency token (rowversion for optimistic concurrency)
-        builder.Property<byte[]>("Version")
-            .HasColumnName("version")
-            .IsRowVersion();
+        // Concurrency token using PostgreSQL's built-in xmin system column
+#pragma warning disable CS0618 // UseXminAsConcurrencyToken is the correct PostgreSQL approach
+        builder.UseXminAsConcurrencyToken();
+#pragma warning restore CS0618
 
         // Ignore domain list properties (not persisted directly)
         builder.Ignore(n => n.EmailGroupIds);

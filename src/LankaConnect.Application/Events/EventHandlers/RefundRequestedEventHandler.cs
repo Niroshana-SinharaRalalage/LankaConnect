@@ -114,6 +114,13 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                         @event.OrganizerContactPhone);
                 }
 
+                // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
+                if (@event.HasSignUpLists())
+                {
+                    emailParams.WithSignUpLists(
+                        _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+                }
+
                 // Phase 6A.100: Send via typed email service
                 var typedResult = await _typedEmailService.SendEmailAsync(
                     emailParams,

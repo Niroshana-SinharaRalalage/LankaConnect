@@ -115,6 +115,13 @@ public class RegistrationEmailService : IRegistrationEmailService
                     @event.OrganizerContactPhone);
             }
 
+            // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
+            if (@event.HasSignUpLists())
+            {
+                emailParams.WithSignUpLists(
+                    _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+            }
+
             // Send email via typed email service
             var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 
@@ -235,6 +242,13 @@ public class RegistrationEmailService : IRegistrationEmailService
                     @event.OrganizerContactName,
                     @event.OrganizerContactEmail,
                     @event.OrganizerContactPhone);
+            }
+
+            // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
+            if (@event.HasSignUpLists())
+            {
+                emailParams.WithSignUpLists(
+                    _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
             }
 
             // Create PDF attachment

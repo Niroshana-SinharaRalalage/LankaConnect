@@ -271,6 +271,22 @@ public class EventCancellationEmailJob
                         refundsWillBeProcessed: !isFreeEvent && refundResults.SuccessCount > 0,
                         refundMessage: refundMessage);
 
+                    // Phase 6A.100 Fix: Add organizer contact if available
+                    if (@event.HasOrganizerContact())
+                    {
+                        emailParams.WithOrganizerContact(
+                            @event.OrganizerContactName,
+                            @event.OrganizerContactEmail,
+                            @event.OrganizerContactPhone);
+                    }
+
+                    // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
+                    if (@event.HasSignUpLists())
+                    {
+                        emailParams.WithSignUpLists(
+                            _urlsService.GetEventDetailsUrl(eventId) + "#sign-ups");
+                    }
+
                     var result = await _typedEmailService.SendEmailAsync(emailParams, CancellationToken.None);
 
                     singleEmailStopwatch.Stop();

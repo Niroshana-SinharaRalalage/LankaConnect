@@ -136,6 +136,10 @@ public class EventReminderJob
             {
                 var registrations = @event.Registrations;
 
+                // Phase 6A.103: Get event's primary image URL
+                var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+                var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
                 _logger.LogInformation(
                     "[Phase 6A.71] [{CorrelationId}] Sending {Timeframe} reminders for event {EventId} ({Title}) to {Count} attendees",
                     correlationId, reminderTimeframe, @event.Id, @event.Title?.Value ?? "Untitled Event", registrations.Count);
@@ -224,6 +228,9 @@ public class EventReminderJob
 
                         // Phase 6A.97: Set event's timezone for consistent date/time display
                         emailParams.TimeZoneId = @event.TimeZoneId;
+
+                        // Phase 6A.103: Add event image if available
+                        emailParams.WithEventImage(eventImageUrl);
 
                         // Phase 6A.87: Add organizer contact if available
                         if (@event.HasOrganizerContact())
@@ -332,6 +339,10 @@ public class EventReminderJob
                 return;
             }
 
+            // Phase 6A.103: Get event's primary image URL
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
             // Determine reminder message based on type
             var (reminderTimeframe, reminderMessage) = reminderType switch
             {
@@ -430,6 +441,9 @@ public class EventReminderJob
 
                     // Phase 6A.97: Set event's timezone for consistent date/time display
                     emailParams.TimeZoneId = @event.TimeZoneId;
+
+                    // Phase 6A.103: Add event image if available
+                    emailParams.WithEventImage(eventImageUrl);
 
                     // Phase 6A.87: Add organizer contact if available
                     if (@event.HasOrganizerContact())

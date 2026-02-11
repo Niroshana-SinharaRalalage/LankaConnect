@@ -85,6 +85,10 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                 var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
                 var eventManageUrl = _emailUrlHelper.BuildEventManageUrl(@event.Id);
 
+                // Phase 6A.103: Get event's primary image URL
+                var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+                var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
                 // Phase 6A.100: Create typed email parameters
                 var emailParams = EventApprovalEmailParams.Create(
                     organizerId: organizer.Id,
@@ -98,6 +102,9 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     approvedAt: domainEvent.ApprovedAt,
                     eventUrl: eventUrl,
                     eventManageUrl: eventManageUrl);
+
+                // Phase 6A.103: Add event image if available
+                emailParams.WithEventImage(eventImageUrl);
 
                 _logger.LogInformation(
                     "EventApproved: Sending approval email - To={Email}, EventId={EventId}, EventTitle={EventTitle}",

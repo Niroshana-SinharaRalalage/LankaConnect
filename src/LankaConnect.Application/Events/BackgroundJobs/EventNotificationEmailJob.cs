@@ -148,6 +148,10 @@ public class EventNotificationEmailJob
             // Phase 6A.83 Part 3: Build base template data (UserName will be added per-recipient in loop)
             var baseTemplateData = BuildTemplateData(@event);
 
+            // Phase 6A.103: Get event's primary image URL (once, outside the loop)
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
             // Phase 6A.61+ RCA: Diagnostic logging using LogError to bypass log filtering
             _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] STARTING EMAIL SEND - Template: event-details, RecipientCount: {RecipientCount}, EventTitle: {EventTitle}",
                 correlationId, recipients.Count, @event.Title.Value);
@@ -202,6 +206,9 @@ public class EventNotificationEmailJob
                         organizerContactEmail: baseTemplateData.TryGetValue("OrganizerContactEmail", out var orgEmail) ? (string?)orgEmail : null,
                         organizerContactPhone: baseTemplateData.TryGetValue("OrganizerContactPhone", out var orgPhone) ? (string?)orgPhone : null,
                         subjectPrefix: (string)baseTemplateData["SubjectPrefix"]);
+
+                    // Phase 6A.103: Add event image if available
+                    emailParams.WithEventImage(eventImageUrl);
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 

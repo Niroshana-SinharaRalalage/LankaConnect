@@ -140,6 +140,20 @@ public class EventCancellationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Event Image Properties
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Signup Lists Properties
 
     /// <summary>
@@ -196,6 +210,10 @@ public class EventCancellationEmailParams : IEmailParameters
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
 
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
+
             { "Year", DateTime.UtcNow.Year }
         };
     }
@@ -247,6 +265,16 @@ public class EventCancellationEmailParams : IEmailParameters
         OrganizerContactName = name ?? string.Empty;
         OrganizerContactEmail = email ?? string.Empty;
         OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public EventCancellationEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
         return this;
     }
 

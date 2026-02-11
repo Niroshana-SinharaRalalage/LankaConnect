@@ -145,6 +145,20 @@ public class EventReminderEmailParams : IEmailParameters
 
     #endregion
 
+    #region Optional Properties - Event Image
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Optional Properties - Ticket Info
 
     /// <summary>
@@ -210,6 +224,10 @@ public class EventReminderEmailParams : IEmailParameters
             { "HasTicket", HasTicket },
             { "TicketCode", TicketCode },
             { "TicketExpiryDate", TicketExpiryDate },
+
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
 
             // Footer
             { "Year", DateTime.UtcNow.Year }
@@ -320,6 +338,16 @@ public class EventReminderEmailParams : IEmailParameters
         HasTicket = true;
         TicketCode = ticketCode ?? string.Empty;
         TicketExpiryDate = expiryDate ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public EventReminderEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
         return this;
     }
 

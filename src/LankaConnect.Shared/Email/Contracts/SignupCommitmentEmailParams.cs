@@ -127,6 +127,20 @@ public class SignupCommitmentEmailParams : IEmailParameters
 
     #endregion
 
+    #region Event Image Properties
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Organizer Contact Properties
 
     /// <summary>
@@ -223,6 +237,10 @@ public class SignupCommitmentEmailParams : IEmailParameters
             { "OrganizerContactEmail", OrganizerContactEmail },
             { "OrganizerContactPhone", OrganizerContactPhone },
 
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
+
             // Footer params
             { "Year", DateTime.UtcNow.Year }
         };
@@ -265,6 +283,16 @@ public class SignupCommitmentEmailParams : IEmailParameters
     #endregion
 
     #region Fluent Setters
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public SignupCommitmentEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
+        return this;
+    }
 
     /// <summary>
     /// Sets organizer contact information.

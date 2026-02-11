@@ -166,6 +166,20 @@ public class EventDetailsEmailParams : IEmailParameters
 
     #endregion
 
+    #region Event Image Properties
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Common Properties
 
     /// <summary>
@@ -215,7 +229,11 @@ public class EventDetailsEmailParams : IEmailParameters
             { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail },
             { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone },
             { "SubjectPrefix", SubjectPrefix },
-            { EmailTemplateContract.Common.Year, Year }
+            { EmailTemplateContract.Common.Year, Year },
+
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl }
         };
 
         return dict;
@@ -238,6 +256,20 @@ public class EventDetailsEmailParams : IEmailParameters
             errors.Add("EventDetailsUrl is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Methods
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public EventDetailsEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
+        return this;
     }
 
     #endregion

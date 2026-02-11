@@ -96,6 +96,10 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     eventDetailsUrl: $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups"
                 );
 
+                // Phase 6A.103: Add event image if available
+                var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+                emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");
+
                 // Phase 6A.87+ Fix: Populate organizer contact if available
                 if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))
                 {

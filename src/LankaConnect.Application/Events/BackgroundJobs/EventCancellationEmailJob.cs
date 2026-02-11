@@ -242,6 +242,10 @@ public class EventCancellationEmailJob
             var organizerName = @event.OrganizerContactName ?? "LankaConnect Support";
             var isFreeEvent = @event.IsFree();
 
+            // Phase 6A.103: Get event's primary image URL
+            var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+            var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
             foreach (var email in allRecipients)
             {
                 try
@@ -270,6 +274,9 @@ public class EventCancellationEmailJob
                         organizerName: organizerName,
                         refundsWillBeProcessed: !isFreeEvent && refundResults.SuccessCount > 0,
                         refundMessage: refundMessage);
+
+                    // Phase 6A.103: Add event image if available
+                    emailParams.WithEventImage(eventImageUrl);
 
                     // Phase 6A.100 Fix: Add organizer contact if available
                     if (@event.HasOrganizerContact())

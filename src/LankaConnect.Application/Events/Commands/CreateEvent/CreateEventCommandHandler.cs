@@ -329,6 +329,19 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             }
         }
 
+        // IsFreeEvent fix: Explicitly mark as free event when frontend sends IsFree=true
+        // This is needed because Event.Create() defaults IsFreeEvent=false when ticketPrice is null
+        if (request.IsFree == true && pricing == null)
+        {
+            var setFreeResult = eventResult.Value.SetAsFreeEvent();
+            if (setFreeResult.IsFailure)
+                return Result<Guid>.Failure(setFreeResult.Error);
+
+            _logger.LogInformation(
+                "CreateEvent: Event marked as free - EventId={EventId}",
+                eventResult.Value.Id);
+        }
+
         // Phase 6A.32/33: Validate and assign email groups
         if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
         {

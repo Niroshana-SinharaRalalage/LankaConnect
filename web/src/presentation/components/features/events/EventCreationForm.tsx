@@ -196,6 +196,8 @@ export function EventCreationForm() {
         category: data.category,
         // Phase 6A.32: Email Groups Integration
         emailGroupIds: data.emailGroupIds || [],
+        // IsFreeEvent fix: Send explicit free event flag to backend
+        isFree: data.isFree ?? false,
         // Phase 6A.X: Event Organizer Contact Details
         publishOrganizerContact: data.publishOrganizerContact || false,
         organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,

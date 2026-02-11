@@ -581,6 +581,9 @@ export interface CreateEventRequest {
 
   // Phase 6A.32: Email Groups Integration
   emailGroupIds?: string[];
+
+  // IsFreeEvent fix: Explicit free event flag
+  isFree?: boolean;
 }
 
 /**
@@ -634,7 +637,8 @@ export interface UpdateEventRequest {
   // Phase 6A.32: Email Groups Integration
   emailGroupIds?: string[];
 
-  // Note: isFree is NOT in backend UpdateEventCommand - backend infers it from ticketPriceAmount
+  // IsFreeEvent fix: Explicit free event flag
+  isFree?: boolean;
 }
 
 /**

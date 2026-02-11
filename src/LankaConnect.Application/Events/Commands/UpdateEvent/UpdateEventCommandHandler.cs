@@ -406,6 +406,23 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         var ticketPriceProperty = typeof(Event).GetProperty(nameof(Event.TicketPrice));
         ticketPriceProperty?.SetValue(@event, ticketPrice);
 
+        // IsFreeEvent fix: Explicitly mark as free event when frontend sends IsFree=true
+        if (request.IsFree == true && pricing == null)
+        {
+            var setFreeResult = @event.SetAsFreeEvent();
+            if (setFreeResult.IsFailure)
+                return setFreeResult;
+
+            _logger.LogInformation(
+                "UpdateEvent: Event marked as free - EventId={EventId}",
+                request.EventId);
+        }
+        else if (request.IsFree == false && pricing != null)
+        {
+            // Paid event with pricing - IsFreeEvent is already set by SetDualPricing/SetGroupPricing
+            // via the domain methods that manage the flag
+        }
+
         // Phase 6A.32/33: Validate and update email groups (Fix #3: Batch query to prevent N+1)
         if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
         {

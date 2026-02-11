@@ -40,5 +40,7 @@ public record UpdateEventCommand(
     bool? PublishOrganizerContact = null,
     string? OrganizerContactName = null,
     string? OrganizerContactPhone = null,
-    string? OrganizerContactEmail = null
+    string? OrganizerContactEmail = null,
+    // IsFreeEvent fix: Explicit free event flag from frontend
+    bool? IsFree = null
 ) : ICommand;

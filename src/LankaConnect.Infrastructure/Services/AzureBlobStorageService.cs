@@ -1,8 +1,11 @@
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
 using LankaConnect.Application.Common.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace LankaConnect.Infrastructure.Services;
 
@@ -10,15 +13,24 @@ namespace LankaConnect.Infrastructure.Services;
 /// Phase 6A.9: Azure Blob Storage Service Implementation
 /// Handles file uploads/downloads/deletions using Azure Blob Storage
 ///
+/// Phase 6A.103: Updated to support private containers (no public blob access).
+/// When a storage account has allowBlobPublicAccess=false, containers are created
+/// with PublicAccessType.None and SAS URLs are generated for blob access.
+///
 /// Configuration Requirements:
 /// - AzureStorage:ConnectionString: Azure Storage connection string
 /// - AzureStorage:DefaultContainer: Default container name (default: "event-media")
+/// - AzureStorage:SasTokenExpiryDays: SAS token expiry in days (default: 365)
 /// </summary>
 public class AzureBlobStorageService : IAzureBlobStorageService
 {
     private readonly BlobServiceClient _blobServiceClient;
     private readonly ILogger<AzureBlobStorageService> _logger;
     private readonly string _defaultContainerName;
+    private readonly int _sasTokenExpiryDays;
+
+    // Cache whether each container has public access to avoid repeated checks
+    private readonly ConcurrentDictionary<string, bool> _containerPublicAccessCache = new();
 
     public AzureBlobStorageService(
         IConfiguration configuration,
@@ -35,8 +47,12 @@ public class AzureBlobStorageService : IAzureBlobStorageService
         // Get default container name (defaults to "event-media")
         _defaultContainerName = configuration["AzureStorage:DefaultContainer"] ?? "event-media";
 
-        _logger.LogInformation("Azure Blob Storage Service initialized with default container: {ContainerName}",
-            _defaultContainerName);
+        // Get SAS token expiry (defaults to 365 days)
+        _sasTokenExpiryDays = int.TryParse(configuration["AzureStorage:SasTokenExpiryDays"], out var days) ? days : 365;
+
+        _logger.LogInformation(
+            "Azure Blob Storage Service initialized. Container: {ContainerName}, SasExpiryDays: {SasExpiryDays}",
+            _defaultContainerName, _sasTokenExpiryDays);
     }
 
     /// <inheritdoc />
@@ -52,10 +68,9 @@ public class AzureBlobStorageService : IAzureBlobStorageService
             var container = containerName ?? _defaultContainerName;
             var containerClient = _blobServiceClient.GetBlobContainerClient(container);
 
-            // Ensure container exists (creates if doesn't exist)
-            await containerClient.CreateIfNotExistsAsync(
-                PublicAccessType.Blob, // Allows public read access to blobs
-                cancellationToken: cancellationToken);
+            // Phase 6A.103: Resilient container creation
+            // Try public access first, fall back to private if storage account disallows public access
+            var isPrivate = await EnsureContainerExistsAsync(containerClient, container, cancellationToken);
 
             // Generate unique blob name to avoid conflicts
             var blobName = $"{Guid.NewGuid()}_{SanitizeFileName(fileName)}";
@@ -75,11 +90,22 @@ public class AzureBlobStorageService : IAzureBlobStorageService
                 },
                 cancellationToken);
 
-            var blobUrl = blobClient.Uri.ToString();
-
-            _logger.LogInformation(
-                "File uploaded successfully. BlobName: {BlobName}, URL: {BlobUrl}, Container: {Container}",
-                blobName, blobUrl, container);
+            // Phase 6A.103: Generate SAS URL for private containers, direct URL for public
+            string blobUrl;
+            if (isPrivate)
+            {
+                blobUrl = GetBlobSasUrl(blobName, container);
+                _logger.LogInformation(
+                    "File uploaded to private container. BlobName: {BlobName}, Container: {Container}, SasExpiryDays: {SasExpiryDays}",
+                    blobName, container, _sasTokenExpiryDays);
+            }
+            else
+            {
+                blobUrl = blobClient.Uri.ToString();
+                _logger.LogInformation(
+                    "File uploaded to public container. BlobName: {BlobName}, URL: {BlobUrl}, Container: {Container}",
+                    blobName, blobUrl, container);
+            }
 
             return (blobName, blobUrl);
         }
@@ -165,10 +191,149 @@ public class AzureBlobStorageService : IAzureBlobStorageService
         return blobClient.Uri.ToString();
     }
 
+    /// <inheritdoc />
+    public string GetBlobSasUrl(string blobName, string? containerName = null, TimeSpan? expiresIn = null)
+    {
+        try
+        {
+            var container = containerName ?? _defaultContainerName;
+            var containerClient = _blobServiceClient.GetBlobContainerClient(container);
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            // If the client can't generate SAS (e.g., using managed identity without delegation key),
+            // fall back to the direct URL
+            if (!blobClient.CanGenerateSasUri)
+            {
+                _logger.LogWarning(
+                    "Cannot generate SAS URI for blob {BlobName} in container {Container}. " +
+                    "Ensure the BlobServiceClient is initialized with a connection string containing the account key.",
+                    blobName, container);
+                return blobClient.Uri.ToString();
+            }
+
+            var expiry = expiresIn ?? TimeSpan.FromDays(_sasTokenExpiryDays);
+            var sasBuilder = new BlobSasBuilder
+            {
+                BlobContainerName = container,
+                BlobName = blobName,
+                Resource = "b", // Blob-level SAS
+                ExpiresOn = DateTimeOffset.UtcNow.Add(expiry)
+            };
+            sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+            var sasUri = blobClient.GenerateSasUri(sasBuilder);
+
+            _logger.LogDebug(
+                "Generated SAS URL for blob {BlobName} in container {Container}, expires: {ExpiresOn}",
+                blobName, container, sasBuilder.ExpiresOn);
+
+            return sasUri.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error generating SAS URL for blob {BlobName} in container {Container}. Falling back to direct URL.",
+                blobName, containerName ?? _defaultContainerName);
+
+            // Fall back to direct URL rather than failing the entire operation
+            return GetBlobUrl(blobName, containerName);
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.103: Ensures a blob container exists, handling both public and private storage accounts.
+    /// Tries to create with public blob access first. If the storage account disallows public access
+    /// (allowBlobPublicAccess=false), falls back to private access (PublicAccessType.None).
+    /// </summary>
+    /// <returns>True if the container is private (no public access), false if public</returns>
+    private async Task<bool> EnsureContainerExistsAsync(
+        BlobContainerClient containerClient,
+        string containerName,
+        CancellationToken cancellationToken)
+    {
+        // Check cache first
+        if (_containerPublicAccessCache.TryGetValue(containerName, out var cachedIsPrivate))
+        {
+            return cachedIsPrivate;
+        }
+
+        try
+        {
+            // First, check if the container already exists and what its access level is
+            if (await containerClient.ExistsAsync(cancellationToken))
+            {
+                var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+                var isPrivate = properties.Value.PublicAccess == PublicAccessType.None;
+
+                _containerPublicAccessCache[containerName] = isPrivate;
+                _logger.LogInformation(
+                    "Container {ContainerName} exists with access level: {AccessLevel}",
+                    containerName, isPrivate ? "Private" : "Public");
+
+                return isPrivate;
+            }
+
+            // Container doesn't exist - try creating with public access
+            try
+            {
+                await containerClient.CreateAsync(
+                    PublicAccessType.Blob,
+                    cancellationToken: cancellationToken);
+
+                _containerPublicAccessCache[containerName] = false;
+                _logger.LogInformation(
+                    "Created container {ContainerName} with public blob access",
+                    containerName);
+
+                return false; // Not private
+            }
+            catch (RequestFailedException ex) when (ex.ErrorCode == "PublicAccessNotPermitted" || ex.Status == 409 || ex.Status == 403)
+            {
+                _logger.LogWarning(
+                    "Storage account does not allow public blob access (ErrorCode: {ErrorCode}). " +
+                    "Creating container {ContainerName} with private access. " +
+                    "SAS URLs will be used for blob access.",
+                    ex.ErrorCode, containerName);
+
+                // Fall back to private access
+                await containerClient.CreateIfNotExistsAsync(
+                    PublicAccessType.None,
+                    cancellationToken: cancellationToken);
+
+                _containerPublicAccessCache[containerName] = true;
+                return true; // Private
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error ensuring container {ContainerName} exists. Attempting private access as fallback.",
+                containerName);
+
+            // Last resort: try private access
+            try
+            {
+                await containerClient.CreateIfNotExistsAsync(
+                    PublicAccessType.None,
+                    cancellationToken: cancellationToken);
+
+                _containerPublicAccessCache[containerName] = true;
+                return true;
+            }
+            catch (Exception innerEx)
+            {
+                _logger.LogError(innerEx,
+                    "Failed to create container {ContainerName} even with private access",
+                    containerName);
+                throw;
+            }
+        }
+    }
+
     /// <summary>
     /// Sanitizes file name to remove invalid characters
     /// </summary>
-    private string SanitizeFileName(string fileName)
+    private static string SanitizeFileName(string fileName)
     {
         // Remove invalid characters and spaces
         var invalidChars = Path.GetInvalidFileNameChars();

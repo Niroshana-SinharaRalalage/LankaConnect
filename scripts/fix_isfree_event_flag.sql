@@ -6,7 +6,8 @@
 -- These are free events that were incorrectly marked as paid.
 
 -- Preview: See which events will be affected
-SELECT "Id", "Title", "IsFreeEvent", ticket_price, pricing, "CreatedAt", "Status"
+-- Note: Column names use mixed casing (PascalCase for EF-generated, snake_case for some)
+SELECT "Id", title, "IsFreeEvent", ticket_price, pricing, "CreatedAt", "Status"
 FROM events.events
 WHERE "IsFreeEvent" = false
   AND ticket_price IS NULL
@@ -20,3 +21,6 @@ SET
 WHERE "IsFreeEvent" = false
   AND ticket_price IS NULL
   AND pricing IS NULL;
+
+-- EXECUTED ON STAGING: 2026-02-11
+-- Result: 3 events fixed (2 Draft test events + 1 Published event)

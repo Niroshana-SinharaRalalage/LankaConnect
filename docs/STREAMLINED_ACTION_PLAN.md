@@ -7,7 +7,35 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.101: CROSS-PATH DUPLICATE REGISTRATION PREVENTION (2026-02-08)
+## 🔄 CURRENT STATUS - PHASE 6A.102: FREE EVENT IsFreeEvent FLAG FIX (2026-02-11)
+**Date**: 2026-02-11
+**Session**: Phase 6A.102 - Fix Free Events Showing as "Paid Event"
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
+**Deployment**: ✅ Backend + Frontend deployed via GitHub Actions, SQL backfill executed
+**Priority**: 🔴 DATA DISPLAY BUG - Free events incorrectly marked as paid
+
+**Changes Implemented**:
+1. ✅ `CreateEventCommand.cs` - Add `bool? IsFree` parameter
+2. ✅ `CreateEventCommandHandler.cs` - Call `SetAsFreeEvent()` when `IsFree==true && pricing==null`
+3. ✅ `UpdateEventCommand.cs` - Add `bool? IsFree` parameter
+4. ✅ `UpdateEventCommandHandler.cs` - Call `SetAsFreeEvent()` for free events
+5. ✅ `events.types.ts` - Add `isFree` to Create/Update request types
+6. ✅ `EventCreationForm.tsx` - Pass `isFree` to API
+7. ✅ `EventEditForm.tsx` - Pass `isFree` to API
+8. ✅ 8 new TDD unit tests (4 Create, 4 Update)
+9. ✅ SQL backfill: 3 events corrected on staging
+10. ✅ Fixed `IncreaseEventDescriptionMaxLength` migration (PostgreSQL generated column issue)
+
+**API Verification (Azure Staging)**:
+- ✅ 18 events with `isFree=true`, 24 with `isFree=false`
+- ✅ 0 events remaining with `IsFreeEvent=false AND no pricing`
+
+**Commits**: `a6d58a14`, `b08e0740`
+**Tests**: 1,416 passing (0 failures), 8 new tests
+
+---
+
+## ⏸️ PREVIOUS STATUS - PHASE 6A.101: CROSS-PATH DUPLICATE REGISTRATION PREVENTION (2026-02-08)
 **Date**: 2026-02-08
 **Session**: Phase 6A.101 - Fix Duplicate Event Registrations with Same Email
 **Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED

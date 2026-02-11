@@ -1,9 +1,48 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-08 - Phase 6A.101: Duplicate Registration Prevention ✅ DEPLOYED & VERIFIED*
+*Last Updated: 2026-02-11 - Phase 6A.102: Free Event IsFreeEvent Flag Fix ✅ DEPLOYED & VERIFIED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.101: Duplicate Registration Prevention ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.102: Free Event IsFreeEvent Flag Fix ✅ COMPLETE
+
+### PHASE 6A.102: FREE EVENT SHOWS AS "PAID EVENT" BUG FIX - 2026-02-11
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED**
+
+**Priority**: 🔴 **DATA DISPLAY BUG FIX**
+
+**Problem**: Creating a free event (checkbox checked) resulted in `IsFreeEvent=false` in the database, causing the frontend to display "Paid Event" badge. The edit view also didn't reflect the free event state.
+
+**Root Cause**: `CreateEventCommand` and `UpdateEventCommand` had NO `IsFree` parameter. The domain constructor `Event.Create()` defaults `IsFreeEvent = ticketPrice != null && ticketPrice.IsZero` - when `ticketPrice` is null (free event), this evaluates to `false`.
+
+**Fix Applied (3-Layer End-to-End)**:
+
+| Layer | Fix | Files |
+|-------|-----|-------|
+| Backend Commands | Add `bool? IsFree` parameter to Create/Update commands | `CreateEventCommand.cs`, `UpdateEventCommand.cs` |
+| Backend Handlers | Call `SetAsFreeEvent()` when `IsFree==true && pricing==null` | `CreateEventCommandHandler.cs`, `UpdateEventCommandHandler.cs` |
+| Frontend Types | Add `isFree` to API request types | `events.types.ts` |
+| Frontend Forms | Pass `isFree` from form data to API | `EventCreationForm.tsx`, `EventEditForm.tsx` |
+| Data Fix | SQL backfill for existing miscategorized events | `scripts/fix_isfree_event_flag.sql` |
+
+**Test Status**:
+- ✅ 1,416 Application tests passing (0 failures, 4 skipped)
+- ✅ 8 new TDD unit tests (4 Create, 4 Update)
+- ✅ Build succeeds with zero errors
+
+**Deployment Verification**:
+- ✅ Backend deployed via GitHub Actions (Run 21892845050)
+- ✅ Frontend deployed via GitHub Actions (Run 21892576208)
+- ✅ SQL fix executed on staging: 3 events corrected (0 remaining)
+- ✅ API verified: 18 events with `isFree=true`, 24 with `isFree=false`
+
+**Migration Fix** (bonus): Fixed pre-existing `IncreaseEventDescriptionMaxLength` migration that failed on staging due to PostgreSQL generated column (`search_vector` tsvector) dependency. Replaced `AlterColumn` with raw SQL DROP/ALTER/RECREATE pattern.
+
+**Commits**: `a6d58a14`, `b08e0740`
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.101: Duplicate Registration Prevention ✅ COMPLETE
 
 ### PHASE 6A.101: CROSS-PATH DUPLICATE REGISTRATION PREVENTION - 2026-02-08
 

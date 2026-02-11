@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Shared.Email.Helpers;
 using Microsoft.Extensions.Logging;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -104,16 +105,17 @@ public class PdfTicketService : IPdfTicketService
                     .Bold()
                     .FontColor(Colors.Grey.Darken2);
 
+                // Issue #68: Use EmailDateTimeHelper for timezone-aware formatting (same logic as email templates)
                 column.Item().Row(r =>
                 {
                     r.ConstantItem(80).Text("Date:").Bold();
-                    r.RelativeItem().Text(data.EventStartDate.ToString("dddd, MMMM dd, yyyy"));
+                    r.RelativeItem().Text(EmailDateTimeHelper.Format(data.EventStartDate, data.TimeZoneId, "dddd, MMMM dd, yyyy"));
                 });
 
                 column.Item().Row(r =>
                 {
                     r.ConstantItem(80).Text("Time:").Bold();
-                    r.RelativeItem().Text($"{data.EventStartDate:h:mm tt} - {data.EventEndDate:h:mm tt}");
+                    r.RelativeItem().Text($"{EmailDateTimeHelper.FormatEventTime(data.EventStartDate, data.TimeZoneId)} - {EmailDateTimeHelper.FormatEventTime(data.EventEndDate, data.TimeZoneId)}");
                 });
 
                 column.Item().Row(r =>
@@ -170,7 +172,7 @@ public class PdfTicketService : IPdfTicketService
                 column.Item().Row(r =>
                 {
                     r.ConstantItem(80).Text("Paid on:").Bold();
-                    r.RelativeItem().Text(data.PaymentDate.ToString("MMMM dd, yyyy"));
+                    r.RelativeItem().Text(EmailDateTimeHelper.FormatEventDate(data.PaymentDate, data.TimeZoneId));
                 });
             });
 

@@ -53,4 +53,14 @@ public interface IAzureBlobStorageService
     /// <param name="containerName">Container name (defaults to "event-media" if not specified)</param>
     /// <returns>Full URL to the blob</returns>
     string GetBlobUrl(string blobName, string? containerName = null);
+
+    /// <summary>
+    /// Generates a SAS (Shared Access Signature) URL for a blob, providing time-limited read access.
+    /// Used when containers have private access (no public blob read).
+    /// </summary>
+    /// <param name="blobName">Name of the blob</param>
+    /// <param name="containerName">Container name (defaults to configured default if not specified)</param>
+    /// <param name="expiresIn">How long the SAS URL should be valid (defaults to 365 days)</param>
+    /// <returns>SAS URL with read permission, or the direct URL if SAS generation is not possible</returns>
+    string GetBlobSasUrl(string blobName, string? containerName = null, TimeSpan? expiresIn = null);
 }

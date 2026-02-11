@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -19,6 +19,7 @@ import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { eventKeys } from '@/presentation/hooks/useEvents';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 
 interface EventEditFormProps {
@@ -334,6 +335,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         category: data.category,
         // Phase 6A.32: Email Groups Integration
         emailGroupIds: data.emailGroupIds || [],
+        // IsFreeEvent fix: Send explicit free event flag to backend
+        isFree: data.isFree ?? false,
         // Phase 6A.X: Event Organizer Contact Details
         publishOrganizerContact: data.publishOrganizerContact || false,
         organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
@@ -454,21 +457,24 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
           {/* Event Description */}
           <div className="border-b pb-4">
-            <label htmlFor="description" className="block text-sm font-semibold text-neutral-700 mb-2">
+            <label className="block text-sm font-semibold text-neutral-700 mb-2">
               Event Description *
             </label>
-            <textarea
-              id="description"
-              rows={6}
-              placeholder="Provide a detailed description of your event, including what attendees can expect..."
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none ${
-                errors.description ? 'border-destructive' : 'border-neutral-300'
-              }`}
-              {...register('description')}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <RichTextEditor
+                  content={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Provide a detailed description of your event, including what attendees can expect..."
+                  error={!!errors.description}
+                  errorMessage={errors.description?.message}
+                  maxLength={5000}
+                  minHeight={200}
+                />
+              )}
             />
-            {errors.description && (
-              <p className="mt-1 text-sm text-destructive">{errors.description.message}</p>
-            )}
           </div>
 
           {/* Event Category */}

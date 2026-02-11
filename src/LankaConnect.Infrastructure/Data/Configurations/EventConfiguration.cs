@@ -30,7 +30,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         {
             description.Property(d => d.Value)
                 .HasColumnName("description")
-                .HasMaxLength(2000)
+                .HasMaxLength(10000)
                 .IsRequired();
         });
 

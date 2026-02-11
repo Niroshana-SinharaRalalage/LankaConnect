@@ -4,7 +4,7 @@ namespace LankaConnect.Domain.Events.ValueObjects;
 
 public class EventDescription : ValueObject
 {
-    public const int MaxLength = 2000;
+    public const int MaxLength = 10000;
     
     public string Value { get; }
 

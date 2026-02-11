@@ -119,6 +119,20 @@ public class EventPublishedEmailParams : IEmailParameters
 
     #endregion
 
+    #region Event Image Properties
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Signup Lists Properties
 
     /// <summary>
@@ -168,6 +182,10 @@ public class EventPublishedEmailParams : IEmailParameters
             { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail ?? string.Empty },
             { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone ?? string.Empty },
 
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
+
             // Signup lists params (for {{#HasSignUpLists}} conditional)
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
@@ -200,6 +218,20 @@ public class EventPublishedEmailParams : IEmailParameters
             errors.Add("EventUrl is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Methods
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public EventPublishedEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
+        return this;
     }
 
     #endregion

@@ -122,6 +122,10 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                 // Organizer contact info
                 var hasOrganizerContact = @event.HasOrganizerContact();
 
+                // Phase 6A.103: Get event's primary image URL for email template
+                var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
+                var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
+
                 // Phase 6A.100: Send email to each recipient using typed email parameters
                 var successCount = 0;
                 var failCount = 0;
@@ -145,6 +149,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         organizerContactName: hasOrganizerContact ? @event.OrganizerContactName ?? "Event Organizer" : null,
                         organizerContactEmail: hasOrganizerContact ? @event.OrganizerContactEmail : null,
                         organizerContactPhone: hasOrganizerContact ? @event.OrganizerContactPhone : null);
+
+                    // Phase 6A.103: Add event image if available
+                    emailParams.WithEventImage(eventImageUrl);
 
                     // Phase 6A.100 Fix: Add signup lists if event has them
                     if (@event.HasSignUpLists())

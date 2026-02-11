@@ -11,16 +11,34 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "description",
-                schema: "events",
-                table: "events",
-                type: "character varying(10000)",
-                maxLength: 10000,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(2000)",
-                oldMaxLength: 2000);
+            // PostgreSQL cannot ALTER COLUMN TYPE when the column is used by a generated column.
+            // The search_vector column depends on description, so we must drop and recreate it.
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    -- Drop the generated search_vector column if it exists
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'events' AND table_name = 'events' AND column_name = 'search_vector'
+                    ) THEN
+                        ALTER TABLE events.events DROP COLUMN search_vector;
+                    END IF;
+
+                    -- Now safely alter the description column
+                    ALTER TABLE events.events ALTER COLUMN description TYPE character varying(10000);
+
+                    -- Recreate the search_vector generated column
+                    ALTER TABLE events.events
+                        ADD COLUMN search_vector tsvector
+                        GENERATED ALWAYS AS (
+                            setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+                            setweight(to_tsvector('english', coalesce(description, '')), 'B')
+                        ) STORED;
+
+                    -- Recreate the GIN index for full-text search
+                    CREATE INDEX IF NOT EXISTS ix_events_search_vector ON events.events USING gin(search_vector);
+                END $$;
+            ");
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -122,16 +140,29 @@ namespace LankaConnect.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "description",
-                schema: "events",
-                table: "events",
-                type: "character varying(2000)",
-                maxLength: 2000,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(10000)",
-                oldMaxLength: 10000);
+            // Reverse: drop search_vector, alter column back, recreate search_vector
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_schema = 'events' AND table_name = 'events' AND column_name = 'search_vector'
+                    ) THEN
+                        ALTER TABLE events.events DROP COLUMN search_vector;
+                    END IF;
+
+                    ALTER TABLE events.events ALTER COLUMN description TYPE character varying(2000);
+
+                    ALTER TABLE events.events
+                        ADD COLUMN search_vector tsvector
+                        GENERATED ALWAYS AS (
+                            setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+                            setweight(to_tsvector('english', coalesce(description, '')), 'B')
+                        ) STORED;
+
+                    CREATE INDEX IF NOT EXISTS ix_events_search_vector ON events.events USING gin(search_vector);
+                END $$;
+            ");
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",

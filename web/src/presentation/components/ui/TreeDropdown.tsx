@@ -119,7 +119,13 @@ export function TreeDropdown({
 
     const hasChildren = node.children && node.children.length > 0;
 
-    if (newSelected.has(nodeId)) {
+    // For parent nodes, determine "effectively selected" by checking if all children are selected.
+    // Parent IDs are never stored in selectedIds - only child (leaf) IDs are.
+    const isEffectivelySelected = hasChildren
+      ? getAllChildIds(node).every((id) => newSelected.has(id))
+      : newSelected.has(nodeId);
+
+    if (isEffectivelySelected) {
       // Unchecking: remove node and all children
       newSelected.delete(nodeId);
       if (hasChildren) {
@@ -139,8 +145,9 @@ export function TreeDropdown({
         idsToAdd.push(nodeId);
       }
 
-      // Check max selections
-      if (maxSelections && newSelected.size + idsToAdd.length > maxSelections) {
+      // Check max selections - only count IDs that aren't already selected
+      const newIdsToAdd = idsToAdd.filter((id) => !newSelected.has(id));
+      if (maxSelections && newSelected.size + newIdsToAdd.length > maxSelections) {
         return; // Don't add if max would be exceeded
       }
 

@@ -75,6 +75,7 @@
 | 6A.99 | Email Template Parameter Contracts | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-05 |
 | 6A.100 | Email System Unification & Bridge Removal | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-07 |
 | 6A.101 | Cross-Path Duplicate Registration Prevention | ✅ Complete | [RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md](./RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md) | 2026-02-08 |
+| 6A.102 | Free Event IsFreeEvent Flag Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-11 |
 
 ---
 

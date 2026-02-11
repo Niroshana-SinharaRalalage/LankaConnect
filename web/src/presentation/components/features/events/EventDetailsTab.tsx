@@ -9,7 +9,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { sanitizeHtml, isHtmlContent, plainTextToHtml } from '@/lib/html-utils';
 import { useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -133,7 +134,16 @@ export function EventDetailsTab({
             {/* Description */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700">Description:</span>
-              <span className="text-sm text-neutral-600">{event.description}</span>
+              <div
+                className="prose prose-sm max-w-none text-neutral-600 prose-a:text-orange-600 prose-a:underline hover:prose-a:text-orange-700"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(
+                    isHtmlContent(event.description)
+                      ? event.description
+                      : plainTextToHtml(event.description)
+                  )
+                }}
+              />
             </div>
 
             {/* Start Date - Phase 6A.97: Uses event's timezone for consistent display */}

@@ -62,8 +62,7 @@ export const createEventSchema = z.object({
   description: z
     .string()
     .min(1, 'Event description is required')
-    .min(20, 'Description must be at least 20 characters')
-    .max(5000, 'Description must be less than 5000 characters'),
+    .max(10000, 'Description must be less than 10000 characters'),
 
   category: z.nativeEnum(EventCategory),
 
@@ -450,8 +449,7 @@ const baseEditEventSchema = z.object({
   description: z
     .string()
     .min(1, 'Event description is required')
-    .min(20, 'Description must be at least 20 characters')
-    .max(5000, 'Description must be less than 5000 characters'),
+    .max(10000, 'Description must be less than 10000 characters'),
 
   category: z.nativeEnum(EventCategory),
 

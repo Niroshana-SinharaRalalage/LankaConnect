@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
@@ -16,6 +16,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
+import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
@@ -50,6 +51,7 @@ export function EventCreationForm() {
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(createEventSchema),
@@ -341,21 +343,24 @@ export function EventCreationForm() {
 
           {/* Event Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-neutral-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Event Description *
             </label>
-            <textarea
-              id="description"
-              rows={6}
-              placeholder="Provide a detailed description of your event, including what attendees can expect..."
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none ${
-                errors.description ? 'border-destructive' : 'border-neutral-300'
-              }`}
-              {...register('description')}
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <RichTextEditor
+                  content={field.value || ''}
+                  onChange={field.onChange}
+                  placeholder="Provide a detailed description of your event, including what attendees can expect..."
+                  error={!!errors.description}
+                  errorMessage={errors.description?.message}
+                  maxLength={5000}
+                  minHeight={200}
+                />
+              )}
             />
-            {errors.description && (
-              <p className="mt-1 text-sm text-destructive">{errors.description.message}</p>
-            )}
           </div>
 
           {/* Event Category */}

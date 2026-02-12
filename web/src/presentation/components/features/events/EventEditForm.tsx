@@ -18,6 +18,7 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { eventKeys } from '@/presentation/hooks/useEvents';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
+import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
@@ -48,6 +49,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
+
+  // Phase 6A.106 Part 3: Azure image upload for rich text editor
+  const { mutateAsync: uploadImage } = useContentImageUpload();
 
   // Phase 6A.47: Fetch EventCategory and Currency reference data from API
   const { data: categories } = useEventCategories();
@@ -467,6 +471,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 <RichTextEditor
                   content={field.value || ''}
                   onChange={field.onChange}
+                  onImageUpload={uploadImage}
                   placeholder="Provide a detailed description of your event, including what attendees can expect..."
                   error={!!errors.description}
                   errorMessage={errors.description?.message}

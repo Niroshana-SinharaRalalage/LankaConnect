@@ -34,6 +34,9 @@ import { DeleteEventModal } from '@/presentation/components/features/events/Dele
 // Phase 6A.74: Import EventNewslettersTab
 import { EventNewslettersTab } from '@/presentation/components/features/newsletters/EventNewslettersTab';
 
+// Custom Forms Feature - Phase 6A: Import EventFormsTab
+import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
+
 /**
  * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
  * Organizer-only page with tabbed interface for managing events
@@ -274,6 +277,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Signup Lists',
       icon: ListChecks,
       content: <SignUpListsTab eventId={id} signUpLists={signUpLists || []} />,
+    },
+    {
+      id: 'forms',
+      label: 'Signup Forms',
+      icon: FileText,
+      content: <EventFormsTab eventId={id} />,
     },
     {
       id: 'communications',

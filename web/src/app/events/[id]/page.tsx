@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
+import { useEventForms } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -20,7 +21,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -194,6 +195,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       paymentPending: registrationDetails?.paymentStatus === 'Pending',
     }
   });
+
+  // Phase 7.3: Fetch custom forms for this event
+  const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
+
+  // Filter to show only Active forms to attendees
+  const activeForms = eventForms?.filter(form => form.status === EventFormStatus.Active) || [];
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
@@ -1566,6 +1573,95 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             isOrganizer={false}
           />
         </div>
+
+        {/* Phase 7.3: Custom Forms Section - Show Active forms to attendees */}
+        {!isLoadingForms && activeForms.length > 0 && (
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <svg
+                    className="h-5 w-5 text-orange-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Custom Forms
+                </CardTitle>
+                <CardDescription>
+                  Fill out forms to provide additional information for this event
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {activeForms.map((form) => (
+                  <Card key={form.id} className="border border-gray-200">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {form.title}
+                          </h3>
+                          {form.description && (
+                            <p className="text-sm text-gray-600 mb-3">
+                              {form.description}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                            {form.responseCount > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Users className="h-4 w-4" />
+                                {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {form.responseDeadline && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                Due: {new Date(form.responseDeadline).toLocaleDateString()}
+                              </span>
+                            )}
+                            {form.maxResponses != null && form.maxResponses > 0 && (
+                              <span className="flex items-center gap-1 text-orange-600">
+                                <AlertCircle className="h-4 w-4" />
+                                {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Button
+                            onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
+                            disabled={
+                              (form.maxResponses != null && form.maxResponses > 0 &&
+                               form.responseCount >= form.maxResponses) ||
+                              (form.responseDeadline != null &&
+                               new Date(form.responseDeadline) < new Date())
+                            }
+                            className="w-full sm:w-auto"
+                          >
+                            {(form.maxResponses != null && form.maxResponses > 0 &&
+                              form.responseCount >= form.maxResponses)
+                              ? 'Form Full'
+                              : (form.responseDeadline != null &&
+                                 new Date(form.responseDeadline) < new Date())
+                              ? 'Deadline Passed'
+                              : 'Fill Out Form'}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
       <Footer />

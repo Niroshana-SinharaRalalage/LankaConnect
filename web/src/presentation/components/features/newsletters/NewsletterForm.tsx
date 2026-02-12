@@ -18,6 +18,7 @@ import { useEvents, useEventById } from '@/presentation/hooks/useEvents';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
+import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
 
 /**
  * Newsletter Form Component - Phase 6A.74 Part 5A (Restructured)
@@ -57,6 +58,9 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
   const { data: events = [], isLoading: isLoadingEvents } = useEvents({});
   const { metroAreas, metroAreasByState, stateLevelMetros, isLoading: isLoadingMetroAreas } = useMetroAreas();
+
+  // Phase 6A.106 Part 3: Azure image upload for rich text editor
+  const { mutateAsync: uploadImage } = useContentImageUpload();
 
   const {
     register,
@@ -458,6 +462,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
                 <RichTextEditor
                   content={field.value}
                   onChange={field.onChange}
+                  onImageUpload={uploadImage}
                   placeholder="Write your newsletter content here....."
                   error={!!errors.description}
                   errorMessage={errors.description?.message}

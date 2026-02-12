@@ -290,7 +290,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1140));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6490));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -298,7 +298,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1256));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6725));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -306,7 +306,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1058));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6382));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -314,7 +314,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1190));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6638));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -322,7 +322,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1216));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6678));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -330,7 +330,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1384));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6877));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -338,7 +338,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1165));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6519));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -346,7 +346,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1114));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6454));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -354,7 +354,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1337));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6821));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -362,7 +362,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1313));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6790));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -370,7 +370,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1283));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6754));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -378,67 +378,19 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 12, 0, 7, 11, 247, DateTimeKind.Utc).AddTicks(1360));
+                value: new DateTime(2026, 2, 12, 4, 10, 22, 911, DateTimeKind.Utc).AddTicks(6848));
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Phase 6A.104: Remove seeded metro areas and badges
-            migrationBuilder.Sql(@"
-                -- Delete state-level metro areas
-                DELETE FROM events.metro_areas
-                WHERE id IN (
-                    '01000000-0000-0000-0000-000000000001', '02000000-0000-0000-0000-000000000001',
-                    '04000000-0000-0000-0000-000000000001', '05000000-0000-0000-0000-000000000001',
-                    '06000000-0000-0000-0000-000000000001', '08000000-0000-0000-0000-000000000001',
-                    '09000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001',
-                    '12000000-0000-0000-0000-000000000001', '13000000-0000-0000-0000-000000000001',
-                    '15000000-0000-0000-0000-000000000001', '16000000-0000-0000-0000-000000000001',
-                    '17000000-0000-0000-0000-000000000001', '18000000-0000-0000-0000-000000000001',
-                    '19000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001',
-                    '21000000-0000-0000-0000-000000000001', '22000000-0000-0000-0000-000000000001',
-                    '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001',
-                    '25000000-0000-0000-0000-000000000001', '26000000-0000-0000-0000-000000000001',
-                    '27000000-0000-0000-0000-000000000001', '28000000-0000-0000-0000-000000000001',
-                    '29000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001',
-                    '31000000-0000-0000-0000-000000000001', '32000000-0000-0000-0000-000000000001',
-                    '33000000-0000-0000-0000-000000000001', '34000000-0000-0000-0000-000000000001',
-                    '35000000-0000-0000-0000-000000000001', '36000000-0000-0000-0000-000000000001',
-                    '37000000-0000-0000-0000-000000000001', '38000000-0000-0000-0000-000000000001',
-                    '39000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001',
-                    '41000000-0000-0000-0000-000000000001', '42000000-0000-0000-0000-000000000001',
-                    '44000000-0000-0000-0000-000000000001', '45000000-0000-0000-0000-000000000001',
-                    '46000000-0000-0000-0000-000000000001', '47000000-0000-0000-0000-000000000001',
-                    '48000000-0000-0000-0000-000000000001', '49000000-0000-0000-0000-000000000001',
-                    '50000000-0000-0000-0000-000000000001', '51000000-0000-0000-0000-000000000001',
-                    '53000000-0000-0000-0000-000000000001', '54000000-0000-0000-0000-000000000001',
-                    '55000000-0000-0000-0000-000000000001', '56000000-0000-0000-0000-000000000001'
-                );
-
-                -- Delete city-level metro areas (using LIKE pattern for efficiency)
-                DELETE FROM events.metro_areas
-                WHERE id::text LIKE '%111111-1111-1111-1111-111111111%';
-
-                -- Delete system badges
-                DELETE FROM badges.badges
-                WHERE ""Id"" IN (
-                    '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002',
-                    '00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000004',
-                    '00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000006',
-                    '00000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000008',
-                    '00000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000010',
-                    '00000000-0000-0000-0000-000000000011'
-                );
-            ");
-
             migrationBuilder.UpdateData(
                 schema: "reference_data",
                 table: "reference_values",
                 keyColumn: "id",
                 keyValue: new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4640));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8729));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -446,7 +398,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4981));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8828));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -454,7 +406,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4554));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8659));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -462,7 +414,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4696));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8776));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -470,7 +422,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4908));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8796));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -478,7 +430,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(5116));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(9005));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -486,7 +438,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4666));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8752));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -494,7 +446,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(4610));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8705));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -502,7 +454,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(5069));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8897));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -510,7 +462,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(5044));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8877));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -518,7 +470,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(5009));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8848));
 
             migrationBuilder.UpdateData(
                 schema: "reference_data",
@@ -526,7 +478,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 keyColumn: "id",
                 keyValue: new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                 column: "created_at",
-                value: new DateTime(2026, 2, 11, 20, 8, 24, 135, DateTimeKind.Utc).AddTicks(5092));
+                value: new DateTime(2026, 2, 12, 0, 9, 35, 182, DateTimeKind.Utc).AddTicks(8917));
         }
     }
 }

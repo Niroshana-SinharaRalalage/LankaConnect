@@ -49,6 +49,19 @@ import type {
   InitiateAddAttendeesResult,
   PendingAdditionDto,
   CancelPendingAdditionResult,
+  // Custom Forms (Survey/Form Sign-Up Type)
+  EventFormDto,
+  EventFormDetailDto,
+  FormResponseDto,
+  FormResponsesPagedDto,
+  CreateEventFormRequest,
+  UpdateEventFormRequest,
+  AddFormQuestionRequest,
+  UpdateFormQuestionRequest,
+  ReorderFormQuestionsRequest,
+  SubmitFormResponseRequest,
+  SubmitFormResponseResult,
+  UpdateFormResponseRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1114,6 +1127,271 @@ export class EventsRepository {
   async cancelPendingAddition(registrationId: string): Promise<CancelPendingAdditionResult> {
     return await apiClient.delete<CancelPendingAdditionResult>(
       `${this.basePath}/registrations/${registrationId}/pending-addition`
+    );
+  }
+
+  // ==================== CUSTOM FORMS (SURVEY/FORM SIGN-UP TYPE) ====================
+
+  /**
+   * Get all forms for an event (organizer view)
+   * Custom Forms Feature: List all forms with response counts
+   * Maps to backend GET /api/events/{id}/forms
+   *
+   * @param eventId - Event ID (GUID)
+   * @returns Array of event form summaries
+   */
+  async getEventForms(eventId: string): Promise<EventFormDto[]> {
+    return await apiClient.get<EventFormDto[]>(`${this.basePath}/${eventId}/forms`);
+  }
+
+  /**
+   * Get form detail with questions (public endpoint - AllowAnonymous)
+   * Custom Forms Feature: Retrieve form for filling out
+   * Maps to backend GET /api/events/{id}/forms/{formId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @returns Event form detail with questions
+   */
+  async getEventFormDetail(eventId: string, formId: string): Promise<EventFormDetailDto> {
+    return await apiClient.get<EventFormDetailDto>(`${this.basePath}/${eventId}/forms/${formId}`);
+  }
+
+  /**
+   * Create a new event form with questions (organizer)
+   * Custom Forms Feature: Create form
+   * Maps to backend POST /api/events/{id}/forms
+   *
+   * @param eventId - Event ID (GUID)
+   * @param request - Form creation request
+   * @returns Created form ID (GUID)
+   */
+  async createEventForm(eventId: string, request: CreateEventFormRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/forms`, request);
+  }
+
+  /**
+   * Update form metadata (title, description, settings)
+   * Custom Forms Feature: Edit form details
+   * Maps to backend PUT /api/events/{id}/forms/{formId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param request - Form update request
+   */
+  async updateEventForm(
+    eventId: string,
+    formId: string,
+    request: UpdateEventFormRequest
+  ): Promise<void> {
+    await apiClient.put(`${this.basePath}/${eventId}/forms/${formId}`, request);
+  }
+
+  /**
+   * Delete a form (only if no responses)
+   * Custom Forms Feature: Delete form
+   * Maps to backend DELETE /api/events/{id}/forms/{formId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   */
+  async deleteEventForm(eventId: string, formId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/forms/${formId}`);
+  }
+
+  /**
+   * Publish a form (Draft -> Active)
+   * Custom Forms Feature: Make form available for responses
+   * Maps to backend POST /api/events/{id}/forms/{formId}/publish
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   */
+  async publishEventForm(eventId: string, formId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/forms/${formId}/publish`, {});
+  }
+
+  /**
+   * Close a form (Active -> Closed)
+   * Custom Forms Feature: Stop accepting new responses
+   * Maps to backend POST /api/events/{id}/forms/{formId}/close
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   */
+  async closeEventForm(eventId: string, formId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/forms/${formId}/close`, {});
+  }
+
+  /**
+   * Reopen a form (Closed -> Active)
+   * Custom Forms Feature: Resume accepting responses
+   * Maps to backend POST /api/events/{id}/forms/{formId}/reopen
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   */
+  async reopenEventForm(eventId: string, formId: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${eventId}/forms/${formId}/reopen`, {});
+  }
+
+  /**
+   * Add a question to a form
+   * Custom Forms Feature: Add question
+   * Maps to backend POST /api/events/{id}/forms/{formId}/questions
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param request - Question request
+   * @returns Created question ID (GUID)
+   */
+  async addFormQuestion(
+    eventId: string,
+    formId: string,
+    request: AddFormQuestionRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/forms/${formId}/questions`,
+      request
+    );
+  }
+
+  /**
+   * Update a question
+   * Custom Forms Feature: Edit question
+   * Maps to backend PUT /api/events/{id}/forms/{formId}/questions/{questionId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param questionId - Question ID (GUID)
+   * @param request - Question update request
+   */
+  async updateFormQuestion(
+    eventId: string,
+    formId: string,
+    questionId: string,
+    request: UpdateFormQuestionRequest
+  ): Promise<void> {
+    await apiClient.put(
+      `${this.basePath}/${eventId}/forms/${formId}/questions/${questionId}`,
+      request
+    );
+  }
+
+  /**
+   * Delete a question (blocked if responses exist)
+   * Custom Forms Feature: Remove question
+   * Maps to backend DELETE /api/events/{id}/forms/{formId}/questions/{questionId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param questionId - Question ID (GUID)
+   */
+  async deleteFormQuestion(eventId: string, formId: string, questionId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/forms/${formId}/questions/${questionId}`);
+  }
+
+  /**
+   * Reorder questions
+   * Custom Forms Feature: Change question order
+   * Maps to backend PUT /api/events/{id}/forms/{formId}/questions/reorder
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param request - Reorder request
+   */
+  async reorderFormQuestions(
+    eventId: string,
+    formId: string,
+    request: ReorderFormQuestionsRequest
+  ): Promise<void> {
+    await apiClient.put(`${this.basePath}/${eventId}/forms/${formId}/questions/reorder`, request);
+  }
+
+  /**
+   * Submit a form response (public endpoint - AllowAnonymous)
+   * Custom Forms Feature: Submit response
+   * Maps to backend POST /api/events/{id}/forms/{formId}/responses
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param request - Response submission request
+   * @returns Response ID and access token for editing
+   */
+  async submitFormResponse(
+    eventId: string,
+    formId: string,
+    request: SubmitFormResponseRequest
+  ): Promise<SubmitFormResponseResult> {
+    return await apiClient.post<SubmitFormResponseResult>(
+      `${this.basePath}/${eventId}/forms/${formId}/responses`,
+      request
+    );
+  }
+
+  /**
+   * Update a form response using access token (public endpoint - AllowAnonymous)
+   * Custom Forms Feature: Edit response before deadline
+   * Maps to backend PUT /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param responseId - Response ID (GUID)
+   * @param accessToken - Access token from submission
+   * @param request - Response update request
+   */
+  async updateFormResponse(
+    eventId: string,
+    formId: string,
+    responseId: string,
+    accessToken: string,
+    request: UpdateFormResponseRequest
+  ): Promise<void> {
+    await apiClient.put(
+      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`,
+      request
+    );
+  }
+
+  /**
+   * Get own response using access token (public endpoint - AllowAnonymous)
+   * Custom Forms Feature: Retrieve response for editing
+   * Maps to backend GET /api/events/{id}/forms/{formId}/responses/mine?token={token}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param accessToken - Access token from submission
+   * @returns Form response with answers
+   */
+  async getMyFormResponse(
+    eventId: string,
+    formId: string,
+    accessToken: string
+  ): Promise<FormResponseDto> {
+    return await apiClient.get<FormResponseDto>(
+      `${this.basePath}/${eventId}/forms/${formId}/responses/mine?token=${accessToken}`
+    );
+  }
+
+  /**
+   * Get paginated responses for a form (organizer view)
+   * Custom Forms Feature: View all responses
+   * Maps to backend GET /api/events/{id}/forms/{formId}/responses?page=1&pageSize=20
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param page - Page number (default 1)
+   * @param pageSize - Items per page (default 20)
+   * @returns Paginated responses
+   */
+  async getFormResponses(
+    eventId: string,
+    formId: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<FormResponsesPagedDto> {
+    return await apiClient.get<FormResponsesPagedDto>(
+      `${this.basePath}/${eventId}/forms/${formId}/responses?page=${page}&pageSize=${pageSize}`
     );
   }
 }

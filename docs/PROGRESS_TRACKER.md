@@ -1,9 +1,9 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-12 - EventCategory Enum Sync + Migration Fix ✅ DEPLOYED*
+*Last Updated: 2026-02-12 - Custom Forms Feature: Phase 5 Frontend In Progress*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.105: EventCategory Enum Sync + Migration Fix ✅ DEPLOYED
+## 🎯 Current Session Status - Custom Forms Feature: Phase 5 Frontend (Types, Repository, Hooks)
 
 ### PHASE 6A.105: EVENTCATEGORY ENUM SYNCHRONIZATION - 2026-02-12
 
@@ -130,7 +130,7 @@
 - ✅ EF Migration applied successfully on staging
 - ✅ API smoke test passed (health check + Entra endpoint)
 - ✅ Form creation endpoint verified: Created form `b58825b1-4da3-45f7-b002-41f8ab2ae216` with 3 questions (YesNo, MultipleChoice with 5 options, LongText)
-- ⚠️  PublishEventForm endpoint has 500 error - requires investigation (likely repository method signature mismatch or missing domain method)
+- ✅ PublishEventForm endpoint verified (2026-02-12): Created test form `ac31cd23-7032-43f6-8eaa-e80bd0cd6bac`, successfully published (Draft→Active transition confirmed)
 
 **Architecture Decisions** (Architect-Approved):
 1. **EventForm = independent aggregate root** (NOT child of Event) - Event entity is 2059 lines with 10 collections, forms have no cross-invariants

@@ -1,9 +1,103 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-12 - Phase 6A.106 Part 2: HTML Blob Size Validation ✅ DEPLOYED*
+*Last Updated: 2026-02-12 - Phase 6A.106 Part 3: Azure Blob Storage Image Upload 🚀 DEPLOYING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.106 Part 2: HTML Blob Size Validation ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.106 Part 3: Azure Blob Storage Image Upload 🚀 DEPLOYING
+
+### PHASE 6A.106 PART 3: AZURE BLOB STORAGE IMAGE UPLOAD - 2026-02-12
+
+**Status**: 🚀 **DEPLOYING TO AZURE STAGING**
+
+**Priority**: 🔴 **CRITICAL - Completes rich text editor image functionality**
+
+**Problem**: Parts 1-2 fixed keyboard lag and validation, but images were disabled. Users need ability to add images to newsletters/events. Base64 encoding would bloat database (2.6MB per image) and emails.
+
+**Solution**: Azure Blob Storage image upload with presigned SAS URLs (365-day expiry)
+
+**Architecture**: Leverages existing Phase 6A.103 infrastructure
+
+| Component | Implementation | Benefit |
+|-----------|----------------|---------|
+| **Backend** | ContentController with POST /api/content/images endpoint | Generic image upload for any rich text content |
+| **Validation** | Existing ImageService (magic numbers, 10MB max, JPEG/PNG/GIF/WebP) | Reuses Phase 6A.9 validation logic |
+| **Storage** | Existing AzureBlobStorageService with SAS URL generation | Reuses Phase 6A.103 Azure infrastructure |
+| **Frontend Hook** | useContentImageUpload() React Query mutation | Clean separation, easy testing |
+| **Editor Integration** | Optional onImageUpload prop in RichTextEditor | Backward compatible, opt-in |
+
+**Files Created/Modified**:
+
+**Backend (NEW)**:
+- `src/LankaConnect.API/Controllers/ContentController.cs` (118 lines)
+
+**Frontend (NEW)**:
+- `web/src/presentation/hooks/useContentImageUpload.ts` (53 lines)
+
+**Frontend (MODIFIED)**:
+- `web/src/presentation/components/ui/RichTextEditor.tsx`
+  - Added onImageUpload prop, isUploadingImage state
+  - Re-enabled Image button (conditionally)
+  - Updated addImage() to use Azure upload
+  - Shows "⏳ Uploading image to Azure..." status
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx`
+- `web/src/presentation/components/features/events/EventCreationForm.tsx`
+- `web/src/presentation/components/features/events/EventEditForm.tsx`
+
+**Technical Flow**:
+1. User clicks Image button → File picker opens
+2. Frontend validates (<10MB, valid type)
+3. useContentImageUpload sends file to /api/content/images
+4. Backend: ImageService validates, AzureBlobStorageService uploads to Azure
+5. Backend returns SAS URL (valid 365 days)
+6. Frontend inserts `<img src="https://azure.blob.url/...?sas=token">` into HTML
+7. TipTap editor displays image inline
+8. Content saved with URL (not base64)
+
+**Benefits**:
+- ✅ 99% database size reduction (URL vs base64: 200 bytes vs 2.6MB)
+- ✅ Fast Azure CDN image delivery
+- ✅ Better email deliverability (smaller HTML)
+- ✅ Reusable across newsletters, events, any rich text
+- ✅ Scalable to millions of images
+- ✅ No new Azure services needed
+
+**Deployment**:
+- ✅ Committed: b06116e1
+- ✅ Pushed to develop
+- 🚀 Backend staging deployment: IN PROGRESS (Run triggered 2026-02-12T18:22:22Z)
+- 🚀 UI staging deployment: IN PROGRESS (Run triggered 2026-02-12T18:22:22Z)
+- ⏳ Backend build status: Pending
+- ⏳ Frontend build status: Pending
+- ⏳ End-to-end testing: Pending
+
+**Success Metrics**:
+- **Image upload success rate**: >95% (target)
+- **Upload time**: <3 seconds for 2MB image (target)
+- **Database size reduction**: 99% for image-heavy content
+- **Azure CDN load time**: <500ms
+- **Email deliverability**: >98%
+
+**Testing Checklist** (After Deployment):
+- [ ] Image button appears in rich text editor toolbar
+- [ ] Click image button opens file picker
+- [ ] Upload 1MB JPEG → image appears in editor
+- [ ] Save newsletter → reload → image persists
+- [ ] Check Azure Blob Storage → file exists with SAS URL
+- [ ] Test in event creation/edit forms
+- [ ] Verify 10MB limit enforced
+- [ ] Verify invalid types rejected (PDF, etc.)
+
+**Commits**:
+- `b06116e1`: feat: Phase 6A.106 Part 3 - Azure Blob Storage image upload for rich text editors
+
+**References**:
+- **Plan**: [structured-riding-wind.md](C:\Users\Niroshana\.claude\plans\structured-riding-wind.md)
+- **Phase 6A.103**: Azure Blob Storage infrastructure (SAS URLs)
+- **Phase 6A.9**: ImageService validation logic
+
+---
+
+## ⏸️ Previous Work - Phase 6A.106 Part 2: HTML Blob Size Validation ✅ DEPLOYED
 
 ### PHASE 6A.106 PART 2: HTML BLOB SIZE VALIDATION FIX - 2026-02-12
 

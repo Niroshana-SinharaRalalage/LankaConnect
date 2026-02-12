@@ -19,7 +19,7 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 
 /**
@@ -64,6 +64,8 @@ export interface RichTextEditorProps {
   maxLength?: number;
   /** Minimum height in pixels */
   minHeight?: number;
+  /** Phase 6A.106 Part 3: Callback for Azure Blob Storage image upload */
+  onImageUpload?: (file: File) => Promise<string>;
 }
 
 export function RichTextEditor({
@@ -75,11 +77,15 @@ export function RichTextEditor({
   readonly = false,
   maxLength = 50000,
   minHeight = 300,
+  onImageUpload,
 }: RichTextEditorProps) {
   // Phase 6A.106 Fix 1A: Debounce onChange to reduce re-renders
   const debouncedOnChange = useDebouncedCallback((html: string) => {
     onChange(html);
   }, 300);
+
+  // Phase 6A.106 Part 3: Track image upload state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -90,7 +96,7 @@ export function RichTextEditor({
       }),
       Image.configure({
         inline: true,
-        allowBase64: false, // Phase 6A.106 Fix 1C: Disabled until Azure upload
+        allowBase64: false, // Phase 6A.106 Part 3: Base64 disabled, use Azure upload
       }),
       Link.configure({
         openOnClick: false,
@@ -148,31 +154,43 @@ export function RichTextEditor({
     return (new Blob([html]).size / 1024).toFixed(1); // Convert to KB
   }, [editor?.getHTML()]);
 
-  // Handle image upload
+  // Phase 6A.106 Part 3: Handle Azure image upload
   const addImage = useCallback(() => {
+    if (!onImageUpload) {
+      alert('Image upload is not configured for this editor');
+      return;
+    }
+
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/jpeg,image/png,image/gif,image/webp';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
-      // Validate file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Image size must be less than 2MB');
+      // Validate file size (10MB max - matches backend)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image size must be less than 10MB');
         return;
       }
 
-      // Convert to base64
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
-        editor?.chain().focus().setImage({ src: base64 }).run();
-      };
-      reader.readAsDataURL(file);
+      try {
+        setIsUploadingImage(true);
+
+        // Upload to Azure via callback
+        const azureUrl = await onImageUpload(file);
+
+        // Insert image into editor
+        editor?.chain().focus().setImage({ src: azureUrl }).run();
+      } catch (error) {
+        console.error('[RichTextEditor] Image upload failed:', error);
+        alert(error instanceof Error ? error.message : 'Image upload failed. Please try again.');
+      } finally {
+        setIsUploadingImage(false);
+      }
     };
     input.click();
-  }, [editor]);
+  }, [editor, onImageUpload]);
 
   // Handle link insertion
   const setLink = useCallback(() => {
@@ -297,15 +315,20 @@ export function RichTextEditor({
           >
             <LinkIcon className="h-4 w-4" />
           </button>
-          {/* Phase 6A.106 Fix 1C: Image button disabled until Azure upload */}
-          {/* <button
-            type="button"
-            onClick={addImage}
-            className="p-2 rounded hover:bg-neutral-200 transition-colors"
-            title="Insert Image"
-          >
-            <ImageIcon className="h-4 w-4" />
-          </button> */}
+          {/* Phase 6A.106 Part 3: Image button (enabled when onImageUpload provided) */}
+          {onImageUpload && (
+            <button
+              type="button"
+              onClick={addImage}
+              disabled={isUploadingImage}
+              className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
+                isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              title={isUploadingImage ? 'Uploading image...' : 'Insert Image'}
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+          )}
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
 
@@ -363,10 +386,15 @@ export function RichTextEditor({
         )}
       </div>
 
-      {/* Image upload note - Phase 6A.106 */}
-      {!readonly && (
+      {/* Phase 6A.106 Part 3: Dynamic image upload status */}
+      {!readonly && !onImageUpload && (
         <p className="text-xs text-neutral-500 mt-1">
-          Note: Image upload temporarily disabled. Azure-powered upload coming soon.
+          Note: Image upload not available for this editor.
+        </p>
+      )}
+      {!readonly && isUploadingImage && (
+        <p className="text-xs text-orange-600 mt-1">
+          ⏳ Uploading image to Azure...
         </p>
       )}
 

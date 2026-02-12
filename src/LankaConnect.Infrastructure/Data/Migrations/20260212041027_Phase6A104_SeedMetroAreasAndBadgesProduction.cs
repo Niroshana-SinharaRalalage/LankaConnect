@@ -281,7 +281,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     ('00000000-0000-0000-0000-000000000009', 'Easter', '', '', '1', 9, true, true, CURRENT_TIMESTAMP, NULL, NULL),
                     ('00000000-0000-0000-0000-000000000010', 'Sinhala Tamil New Year', '', '', '1', 10, true, true, CURRENT_TIMESTAMP, NULL, NULL),
                     ('00000000-0000-0000-0000-000000000011', 'Vesak', '', '', '1', 11, true, true, CURRENT_TIMESTAMP, NULL, NULL)
-                ON CONFLICT ON CONSTRAINT ""IX_Badges_Name"" DO NOTHING;
+                ON CONFLICT (name) DO NOTHING;
             ");
 
             migrationBuilder.UpdateData(

@@ -596,6 +596,15 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     {
         var filteredEvents = events.AsEnumerable();
 
+        // Issue #66: Apply status filter for ALL code paths (search + traditional).
+        // When SearchAsync is used, the status filter was previously skipped entirely.
+        // null = no filter (EventStatusFilter.All), empty array = match nothing (unauthorized Unpublished).
+        var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
+        if (resolvedStatuses != null)
+        {
+            filteredEvents = filteredEvents.Where(e => resolvedStatuses.Contains(e.Status));
+        }
+
         if (request.Category.HasValue)
         {
             filteredEvents = filteredEvents.Where(e => e.Category == request.Category.Value);

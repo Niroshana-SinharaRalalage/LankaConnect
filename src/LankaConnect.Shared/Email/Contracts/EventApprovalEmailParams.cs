@@ -92,6 +92,20 @@ public class EventApprovalEmailParams : IEmailParameters
 
     #endregion
 
+    #region Event Image Properties
+
+    /// <summary>
+    /// Whether the event has an image (controls {{#HasEventImage}} conditional).
+    /// </summary>
+    public bool HasEventImage { get; set; } = false;
+
+    /// <summary>
+    /// URL to the event's primary image.
+    /// </summary>
+    public string EventImageUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -119,6 +133,11 @@ public class EventApprovalEmailParams : IEmailParameters
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },
             // Template alias: template uses EventDetailsUrl instead of EventUrl
             { "EventDetailsUrl", EventUrl },
+
+            // Event image params (for {{#HasEventImage}} conditional)
+            { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
+            { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
+
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
     }
@@ -152,6 +171,20 @@ public class EventApprovalEmailParams : IEmailParameters
             errors.Add("ApprovedAt is required");
 
         return errors.Count == 0;
+    }
+
+    #endregion
+
+    #region Fluent Methods
+
+    /// <summary>
+    /// Sets the event image URL. If a non-empty URL is provided, HasEventImage is set to true.
+    /// </summary>
+    public EventApprovalEmailParams WithEventImage(string imageUrl)
+    {
+        HasEventImage = !string.IsNullOrEmpty(imageUrl);
+        EventImageUrl = imageUrl ?? string.Empty;
+        return this;
     }
 
     #endregion

@@ -42,6 +42,12 @@ public interface IApplicationDbContext
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
 
+    // Custom Form/Survey Sign-Up Feature
+    DbSet<EventForm> EventForms { get; }
+    DbSet<FormQuestion> FormQuestions { get; }
+    DbSet<FormResponse> FormResponses { get; }
+    DbSet<FormAnswer> FormAnswers { get; }
+
     // Reference Data Domain - Phase 6A.47 (Unified)
     DbSet<ReferenceValue> ReferenceValues { get; } // Phase 6A.47: Unified Reference Data
 

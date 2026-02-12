@@ -110,6 +110,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Tax Reference Data - Phase 6A.X
     public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
 
+    // Custom Form Entity Sets (Custom Form/Survey Sign-Up Feature)
+    public DbSet<EventForm> EventForms => Set<EventForm>();
+    public DbSet<FormQuestion> FormQuestions => Set<FormQuestion>();
+    public DbSet<FormResponse> FormResponses => Set<FormResponse>();
+    public DbSet<FormAnswer> FormAnswers => Set<FormAnswer>();
+
     // Support Entity Sets - Phase 6A.89
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>(); // Phase 6A.89: Support/Feedback System
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>(); // Phase 6A.89: Admin Audit Logging
@@ -188,6 +194,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tax entity configurations (Phase 6A.X)
         modelBuilder.ApplyConfiguration(new StateTaxRateConfiguration()); // Phase 6A.X: US State Sales Tax Rates
 
+        // Custom Form entity configurations (Custom Form/Survey Sign-Up Feature)
+        modelBuilder.ApplyConfiguration(new EventFormConfiguration());
+        modelBuilder.ApplyConfiguration(new FormQuestionConfiguration());
+        modelBuilder.ApplyConfiguration(new FormResponseConfiguration());
+        modelBuilder.ApplyConfiguration(new FormAnswerConfiguration());
+
         // Support entity configurations (Phase 6A.89)
         modelBuilder.ApplyConfiguration(new SupportTicketConfiguration()); // Phase 6A.89: Support/Feedback System
         modelBuilder.ApplyConfiguration(new AdminAuditLogConfiguration()); // Phase 6A.89: Admin Audit Logging
@@ -259,6 +271,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
 
+        // Custom Form tables (events schema)
+        modelBuilder.Entity<EventForm>().ToTable("event_forms", "events");
+        modelBuilder.Entity<FormQuestion>().ToTable("form_questions", "events");
+        modelBuilder.Entity<FormResponse>().ToTable("form_responses", "events");
+        modelBuilder.Entity<FormAnswer>().ToTable("form_answers", "events");
+
         // Tax schema (Phase 6A.X)
         // Migration 20260114170149 created in public schema, will be moved to reference_data schema
         modelBuilder.Entity<LankaConnect.Domain.Tax.StateTaxRate>().ToTable("state_tax_rates", "reference_data");
@@ -309,7 +327,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(ReferenceValue), // Phase 6A.47: Unified Reference Data
             typeof(LankaConnect.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
             typeof(SupportTicket), // Phase 6A.89: Support/Feedback System
-            typeof(AdminAuditLog) // Phase 6A.89: Admin Audit Logging
+            typeof(AdminAuditLog), // Phase 6A.89: Admin Audit Logging
+            typeof(EventForm), // Custom Form/Survey Sign-Up Feature
+            typeof(FormQuestion), // Custom Form/Survey Sign-Up Feature
+            typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
+            typeof(FormAnswer) // Custom Form/Survey Sign-Up Feature
         };
 
         // Get all types from Domain assembly that aren't in our configured list

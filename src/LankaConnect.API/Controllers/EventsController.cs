@@ -78,6 +78,22 @@ using LankaConnect.Application.Events.Queries.GetTicket;
 using LankaConnect.Application.Events.Queries.GetTicketPdf;
 using LankaConnect.Application.Events.Queries.CalculateAdditionPrice;
 using LankaConnect.Application.Events.Queries.GetPendingAddition;
+using LankaConnect.Application.Events.Commands.CreateEventForm;
+using LankaConnect.Application.Events.Commands.UpdateEventForm;
+using LankaConnect.Application.Events.Commands.DeleteEventForm;
+using LankaConnect.Application.Events.Commands.PublishEventForm;
+using LankaConnect.Application.Events.Commands.CloseEventForm;
+using LankaConnect.Application.Events.Commands.ReopenEventForm;
+using LankaConnect.Application.Events.Commands.AddFormQuestion;
+using LankaConnect.Application.Events.Commands.UpdateFormQuestion;
+using LankaConnect.Application.Events.Commands.DeleteFormQuestion;
+using LankaConnect.Application.Events.Commands.ReorderFormQuestions;
+using LankaConnect.Application.Events.Commands.SubmitFormResponse;
+using LankaConnect.Application.Events.Commands.UpdateFormResponse;
+using LankaConnect.Application.Events.Queries.GetEventForms;
+using LankaConnect.Application.Events.Queries.GetEventFormDetail;
+using LankaConnect.Application.Events.Queries.GetFormResponses;
+using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
 using LankaConnect.Application.Events.Commands.CancelPendingAddition;
 using LankaConnect.API.Extensions;
@@ -1932,6 +1948,370 @@ public class EventsController : BaseController<EventsController>
 
     #endregion
 
+    #region Custom Forms (Survey/Form Sign-Up Type)
+
+    // ==================== FORM MANAGEMENT (ORGANIZER) ====================
+
+    /// <summary>
+    /// Get all custom forms for an event (summary view)
+    /// </summary>
+    [HttpGet("{id:guid}/forms")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<EventFormDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventForms(Guid id)
+    {
+        Logger.LogInformation("Getting custom forms for event {EventId}", id);
+
+        var query = new GetEventFormsQuery(id);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get form detail with questions (needed by attendees to fill out the form)
+    /// </summary>
+    [HttpGet("{id:guid}/forms/{formId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(EventFormDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetEventFormDetail(Guid id, Guid formId)
+    {
+        Logger.LogInformation("Getting form detail {FormId} for event {EventId}", formId, id);
+
+        var query = new GetEventFormDetailQuery(id, formId);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Create a new custom form with initial questions (Organizer only)
+    /// </summary>
+    [HttpPost("{id:guid}/forms")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CreateEventForm(Guid id, [FromBody] CreateEventFormRequest request)
+    {
+        Logger.LogInformation("Creating custom form '{Title}' with {QuestionCount} questions for event {EventId}",
+            request.Title, request.Questions?.Count ?? 0, id);
+
+        var questions = request.Questions?.Select(q => new CreateFormQuestionItem(
+            q.QuestionText,
+            q.QuestionType,
+            q.IsRequired,
+            q.SortOrder,
+            q.HelpText,
+            q.Options?.Select(o => new CreateQuestionOptionItem(o.Text, o.SortOrder)).ToList()
+        )).ToList() ?? new List<CreateFormQuestionItem>();
+
+        var command = new CreateEventFormCommand(
+            id,
+            request.Title,
+            request.Description,
+            request.AllowMultipleResponses,
+            request.ResponseDeadline,
+            request.MaxResponses,
+            questions);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update form title, description, settings (Organizer only)
+    /// </summary>
+    [HttpPut("{id:guid}/forms/{formId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateEventForm(Guid id, Guid formId, [FromBody] UpdateEventFormRequest request)
+    {
+        Logger.LogInformation("Updating form {FormId} for event {EventId}", formId, id);
+
+        var command = new UpdateEventFormCommand(
+            id, formId,
+            request.Title,
+            request.Description,
+            request.AllowMultipleResponses,
+            request.ResponseDeadline,
+            request.MaxResponses);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Delete a form (only if no responses exist) (Organizer only)
+    /// </summary>
+    [HttpDelete("{id:guid}/forms/{formId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteEventForm(Guid id, Guid formId)
+    {
+        Logger.LogInformation("Deleting form {FormId} for event {EventId}", formId, id);
+
+        var command = new DeleteEventFormCommand(id, formId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Publish form (Draft -> Active) (Organizer only)
+    /// </summary>
+    [HttpPost("{id:guid}/forms/{formId:guid}/publish")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> PublishEventForm(Guid id, Guid formId)
+    {
+        Logger.LogInformation("Publishing form {FormId} for event {EventId}", formId, id);
+
+        var command = new PublishEventFormCommand(id, formId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Close form (Active -> Closed) (Organizer only)
+    /// </summary>
+    [HttpPost("{id:guid}/forms/{formId:guid}/close")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> CloseEventForm(Guid id, Guid formId)
+    {
+        Logger.LogInformation("Closing form {FormId} for event {EventId}", formId, id);
+
+        var command = new CloseEventFormCommand(id, formId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Reopen form (Closed -> Active) (Organizer only)
+    /// </summary>
+    [HttpPost("{id:guid}/forms/{formId:guid}/reopen")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReopenEventForm(Guid id, Guid formId)
+    {
+        Logger.LogInformation("Reopening form {FormId} for event {EventId}", formId, id);
+
+        var command = new ReopenEventFormCommand(id, formId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    // ==================== QUESTION MANAGEMENT (ORGANIZER) ====================
+
+    /// <summary>
+    /// Add a question to a form (Organizer only)
+    /// </summary>
+    [HttpPost("{id:guid}/forms/{formId:guid}/questions")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddFormQuestion(Guid id, Guid formId, [FromBody] AddFormQuestionRequest request)
+    {
+        Logger.LogInformation("Adding question to form {FormId} for event {EventId}", formId, id);
+
+        var command = new AddFormQuestionCommand(
+            id, formId,
+            request.QuestionText,
+            request.QuestionType,
+            request.IsRequired,
+            request.SortOrder,
+            request.HelpText,
+            request.Options?.Select(o => new AddQuestionOptionItem(o.Text, o.SortOrder)).ToList());
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update a question (Organizer only)
+    /// </summary>
+    [HttpPut("{id:guid}/forms/{formId:guid}/questions/{questionId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateFormQuestion(Guid id, Guid formId, Guid questionId, [FromBody] UpdateFormQuestionRequest request)
+    {
+        Logger.LogInformation("Updating question {QuestionId} on form {FormId} for event {EventId}", questionId, formId, id);
+
+        var command = new UpdateFormQuestionCommand(
+            id, formId, questionId,
+            request.QuestionText,
+            request.QuestionType,
+            request.IsRequired,
+            request.SortOrder,
+            request.HelpText,
+            request.Options?.Select(o => new UpdateQuestionOptionItem(o.Id, o.Text, o.SortOrder)).ToList());
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Delete a question (blocked if form has responses) (Organizer only)
+    /// </summary>
+    [HttpDelete("{id:guid}/forms/{formId:guid}/questions/{questionId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteFormQuestion(Guid id, Guid formId, Guid questionId)
+    {
+        Logger.LogInformation("Deleting question {QuestionId} from form {FormId} for event {EventId}", questionId, formId, id);
+
+        var command = new DeleteFormQuestionCommand(id, formId, questionId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Reorder questions within a form (Organizer only)
+    /// </summary>
+    [HttpPut("{id:guid}/forms/{formId:guid}/questions/reorder")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReorderFormQuestions(Guid id, Guid formId, [FromBody] ReorderFormQuestionsRequest request)
+    {
+        Logger.LogInformation("Reordering questions on form {FormId} for event {EventId}", formId, id);
+
+        var command = new ReorderFormQuestionsCommand(id, formId, request.QuestionIdsInOrder);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    // ==================== RESPONSE SUBMISSION (ATTENDEE - ANONYMOUS) ====================
+
+    /// <summary>
+    /// Submit a response to a form (AllowAnonymous - anyone with the link)
+    /// Returns responseId and access token for editing
+    /// </summary>
+    [HttpPost("{id:guid}/forms/{formId:guid}/responses")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(SubmitFormResponseResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SubmitFormResponse(Guid id, Guid formId, [FromBody] SubmitFormResponseRequest request)
+    {
+        Logger.LogInformation("Submitting response to form {FormId} for event {EventId}", formId, id);
+
+        var answers = request.Answers.Select(a => new SubmitFormAnswerItem(
+            a.QuestionId,
+            a.TextValue,
+            a.SelectedOptionIds,
+            a.BooleanValue
+        )).ToList();
+
+        Guid? userId = null;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+        {
+            userId = parsedUserId;
+        }
+
+        var command = new SubmitFormResponseCommand(
+            id, formId,
+            request.RespondentEmail,
+            request.RespondentName,
+            userId,
+            answers);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update own response (requires access token, blocked after deadline)
+    /// </summary>
+    [HttpPut("{id:guid}/forms/{formId:guid}/responses/{responseId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string token, [FromBody] UpdateFormResponseRequest request)
+    {
+        Logger.LogInformation("Updating response {ResponseId} on form {FormId} for event {EventId}", responseId, formId, id);
+
+        var answers = request.Answers.Select(a => new UpdateFormAnswerItem(
+            a.QuestionId,
+            a.TextValue,
+            a.SelectedOptionIds,
+            a.BooleanValue
+        )).ToList();
+
+        var command = new UpdateFormResponseCommand(id, formId, responseId, token, answers);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Get own response by access token (for edit page)
+    /// </summary>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/mine")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(FormResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetMyFormResponse(Guid id, Guid formId, [FromQuery] string token)
+    {
+        Logger.LogInformation("Getting own response for form {FormId} by token", formId);
+
+        var query = new GetMyFormResponseQuery(formId, token);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    // ==================== RESPONSE VIEWING (ORGANIZER) ====================
+
+    /// <summary>
+    /// Get paginated responses for a form (Organizer only)
+    /// </summary>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses")]
+    [Authorize]
+    [ProducesResponseType(typeof(FormResponsesPagedDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetFormResponses(Guid id, Guid formId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        Logger.LogInformation("Getting responses for form {FormId} event {EventId}, page {Page}", formId, id, page);
+
+        var query = new GetFormResponsesQuery(id, formId, page, pageSize);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
     #region Attendee Management & Export (Phase 6A.45)
 
     /// <summary>
@@ -2629,3 +3009,91 @@ public record AddAttendeeDto(
     string Name,
     LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
     LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+
+// ==================== CUSTOM FORMS REQUEST DTOS ====================
+
+/// <summary>
+/// Request to create a new custom form with initial questions
+/// </summary>
+public record CreateEventFormRequest(
+    string Title,
+    string? Description,
+    bool AllowMultipleResponses,
+    DateTime? ResponseDeadline,
+    int? MaxResponses,
+    List<CreateFormQuestionRequest>? Questions);
+
+public record CreateFormQuestionRequest(
+    string QuestionText,
+    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    bool IsRequired,
+    int SortOrder,
+    string? HelpText,
+    List<QuestionOptionRequest>? Options);
+
+public record QuestionOptionRequest(string Text, int SortOrder);
+
+/// <summary>
+/// Request to update form details
+/// </summary>
+public record UpdateEventFormRequest(
+    string Title,
+    string? Description,
+    bool AllowMultipleResponses,
+    DateTime? ResponseDeadline,
+    int? MaxResponses);
+
+/// <summary>
+/// Request to add a question to a form
+/// </summary>
+public record AddFormQuestionRequest(
+    string QuestionText,
+    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    bool IsRequired,
+    int SortOrder,
+    string? HelpText,
+    List<QuestionOptionRequest>? Options);
+
+/// <summary>
+/// Request to update a question
+/// </summary>
+public record UpdateFormQuestionRequest(
+    string QuestionText,
+    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    bool IsRequired,
+    int SortOrder,
+    string? HelpText,
+    List<UpdateQuestionOptionRequest>? Options);
+
+public record UpdateQuestionOptionRequest(Guid? Id, string Text, int SortOrder);
+
+/// <summary>
+/// Request to reorder questions
+/// </summary>
+public record ReorderFormQuestionsRequest(List<Guid> QuestionIdsInOrder);
+
+/// <summary>
+/// Request to submit a form response
+/// </summary>
+public record SubmitFormResponseRequest(
+    string? RespondentEmail,
+    string? RespondentName,
+    List<SubmitFormAnswerRequest> Answers);
+
+public record SubmitFormAnswerRequest(
+    Guid QuestionId,
+    string? TextValue,
+    List<Guid>? SelectedOptionIds,
+    bool? BooleanValue);
+
+/// <summary>
+/// Request to update a form response
+/// </summary>
+public record UpdateFormResponseRequest(
+    List<UpdateFormAnswerRequest> Answers);
+
+public record UpdateFormAnswerRequest(
+    Guid QuestionId,
+    string? TextValue,
+    List<Guid>? SelectedOptionIds,
+    bool? BooleanValue);

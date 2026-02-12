@@ -147,7 +147,8 @@ public class TicketService : ITicketService
                 AttendeeCount = registration.GetAttendeeCount(),
                 Attendees = attendees,
                 AmountPaid = registration.TotalPrice?.Amount ?? 0m,
-                PaymentDate = DateTime.UtcNow
+                PaymentDate = DateTime.UtcNow,
+                TimeZoneId = @event.TimeZoneId
             };
 
             var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);
@@ -320,7 +321,8 @@ public class TicketService : ITicketService
             AttendeeCount = registration.GetAttendeeCount(),
             Attendees = attendees,
             AmountPaid = registration.TotalPrice?.Amount ?? 0m,
-            PaymentDate = DateTime.UtcNow
+            PaymentDate = DateTime.UtcNow,
+            TimeZoneId = @event.TimeZoneId
         };
 
         var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);
@@ -426,7 +428,8 @@ public class TicketService : ITicketService
                 AttendeeCount = registration.GetAttendeeCount(),
                 Attendees = attendees,
                 AmountPaid = registration.TotalPrice?.Amount ?? 0m,
-                PaymentDate = DateTime.UtcNow
+                PaymentDate = DateTime.UtcNow,
+                TimeZoneId = @event.TimeZoneId
             };
 
             var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);

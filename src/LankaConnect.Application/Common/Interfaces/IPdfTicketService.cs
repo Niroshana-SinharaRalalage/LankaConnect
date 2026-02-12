@@ -76,6 +76,12 @@ public record TicketPdfData
     public required DateTime PaymentDate { get; init; }
 
     /// <summary>
+    /// IANA timezone identifier for converting UTC dates to event's local time display.
+    /// Null defaults to "America/New_York" (Eastern Time).
+    /// </summary>
+    public string? TimeZoneId { get; init; }
+
+    /// <summary>
     /// Attendee information for the ticket
     /// Phase 6A.43: Updated to use AgeCategory string instead of numeric Age
     /// </summary>

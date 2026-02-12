@@ -181,6 +181,10 @@ public static class DependencyInjection
         services.AddScoped<ISupportTicketRepository, SupportTicketRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
 
+        // Custom Form/Survey Sign-Up Feature Repositories
+        services.AddScoped<IEventFormRepository, EventFormRepository>();
+        services.AddScoped<IFormResponseRepository, FormResponseRepository>();
+
         // Phase 6A.95: Configure Sales Tax Settings (feature flag)
         services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));
 

@@ -1394,6 +1394,48 @@ export class EventsRepository {
       `${this.basePath}/${eventId}/forms/${formId}/responses?page=${page}&pageSize=${pageSize}`
     );
   }
+
+  /**
+   * Delete a form response (organizer only)
+   * Custom Forms Feature: Remove spam or test responses
+   * Maps to backend DELETE /api/events/{id}/forms/{formId}/responses/{responseId}
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param responseId - Response ID (GUID)
+   */
+  async deleteFormResponse(
+    eventId: string,
+    formId: string,
+    responseId: string
+  ): Promise<void> {
+    await apiClient.delete(
+      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`
+    );
+  }
+
+  /**
+   * Export form responses as CSV (organizer only)
+   * Custom Forms Feature: Download responses for analysis
+   * Maps to backend GET /api/events/{id}/forms/{formId}/responses/export?format=csv
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @param format - Export format ('csv' or 'excel')
+   * @returns Blob containing the file data
+   */
+  async exportFormResponses(
+    eventId: string,
+    formId: string,
+    format: 'csv' | 'excel' = 'csv'
+  ): Promise<Blob> {
+    // Use apiClient.get with responseType: 'blob' for file downloads
+    const blob = await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/forms/${formId}/responses/export?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+    return blob;
+  }
 }
 
 /**

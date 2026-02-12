@@ -702,3 +702,44 @@ export function useUpdateFormResponse(
     ...options,
   });
 }
+
+/**
+ * useDeleteFormResponse Hook
+ *
+ * Mutation for deleting a form response (organizer only)
+ * Used to remove spam or test responses
+ *
+ * @example
+ * ```tsx
+ * const deleteResponse = useDeleteFormResponse({
+ *   onSuccess: () => toast.success('Response deleted'),
+ * });
+ *
+ * await deleteResponse.mutateAsync({
+ *   eventId,
+ *   formId,
+ *   responseId: 'resp-123'
+ * });
+ * ```
+ */
+export function useDeleteFormResponse(
+  options?: UseMutationOptions<
+    void,
+    ApiError,
+    { eventId: string; formId: string; responseId: string }
+  >
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, formId, responseId }) =>
+      eventsRepository.deleteFormResponse(eventId, formId, responseId),
+    onSuccess: (_, { eventId, formId }) => {
+      // Invalidate responses list to update counts
+      queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
+      // Invalidate form list to update response counts
+      queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
+    },
+    ...options,
+  });
+}

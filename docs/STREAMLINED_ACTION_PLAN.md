@@ -7,7 +7,32 @@
 
 ---
 
-## 🔄 CURRENT STATUS - CUSTOM FORMS FEATURE: PHASE 5 FRONTEND COMPLETE (2026-02-12)
+## 🔄 CURRENT STATUS - PRODUCTION HOTFIX: WEBHOOK 404 + BADGE FIX (2026-02-12)
+**Date**: 2026-02-12
+**Session**: Production Hotfix - Critical payment failure issue + misleading badge
+**Status**: ✅ COMPLETE - PR #73 READY FOR PRODUCTION DEPLOYMENT
+**Deployment**: ✅ Committed (`de3a5a08`), Backend + Frontend build successfully
+**Priority**: 🔴 CRITICAL - Production payment failure affecting real users ($2.00 charge stuck)
+
+**Issues Resolved**:
+1. **Stripe Webhook 404**: Fixed URL mismatch (Stripe had `/api/webhooks/stripe`, code expects `/api/payments/webhook`)
+2. **Badge Accuracy (Issue #2)**: Badge now only shows for Confirmed registrations, not Preliminary/Cancelled
+
+**PR #73 Includes**:
+- ✅ Webhook 404 fix (configuration change + verification)
+- ✅ Registration badge logic fix (backend + frontend)
+- ✅ Comprehensive RCA documentation
+- ✅ Previous commits: Image domain fix, EventCategory sync, migration fix
+
+**Post-Merge Actions**:
+1. ⚠️ **CRITICAL**: Resend Stripe webhook `evt_3SzmrdRqh3VBExQm2sIXKAnuz` to complete stuck $2.00 registration
+2. Verify registration Preliminary → Confirmed transition
+3. Test end-to-end payment flow in production
+4. Monitor Azure logs for webhook processing
+
+---
+
+## ⏸️ PREVIOUS STATUS - CUSTOM FORMS FEATURE: PHASE 5 FRONTEND COMPLETE (2026-02-12)
 **Date**: 2026-02-12
 **Session**: Custom Forms Feature - Phase 5: Frontend Types, Repository & React Query Hooks
 **Status**: ✅ PHASE 5 COMPLETE - COMMITTED & PUSHED TO DEVELOP

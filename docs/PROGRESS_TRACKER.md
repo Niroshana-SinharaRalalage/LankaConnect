@@ -1,9 +1,64 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-12 - Custom Forms Feature: Phase 5 Frontend In Progress*
+*Last Updated: 2026-02-12 - Production Hotfix: Webhook 404 + Registration Badge*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Custom Forms Feature: Phase 5 Frontend Complete ✅
+## 🎯 Current Session Status - Production Hotfix Complete ✅
+
+### PRODUCTION HOTFIX: STRIPE WEBHOOK 404 + REGISTRATION BADGE (Issue #2) - 2026-02-12
+
+**Status**: ✅ **COMPLETE - PR #73 READY FOR PRODUCTION**
+
+**Priority**: 🔴 **CRITICAL PRODUCTION ISSUE - Payment failure affecting real users**
+
+**Problem Summary**:
+1. **Issue #1**: Stripe webhooks returned HTTP 404, causing all paid registrations to remain Preliminary (users charged but no tickets)
+2. **Issue #2**: "You are registered" badge showed for ANY registration status, misleading users about registration state
+
+**Resolution**:
+
+| Issue | Root Cause | Solution | Status |
+|-------|------------|----------|--------|
+| Webhook 404 | URL mismatch: Stripe had `/api/webhooks/stripe`, code expects `/api/payments/webhook` | Updated Stripe Dashboard webhook URL | ✅ Fixed (verified: returns 400) |
+| Badge Accuracy | Component used boolean instead of checking RegistrationStatus.Confirmed | Added `UserRegistrationStatus` field to EventDto, updated badge logic | ✅ Fixed (builds successfully) |
+
+**Implementation Details**:
+
+**Backend Changes** (2 files):
+- ✅ `EventDto.cs`: Added `UserRegistrationStatus?` field (line 133+)
+- ✅ `GetMyRegisteredEventsQueryHandler.cs`: Populate status from Registration entities (lines 113, 166)
+
+**Frontend Changes** (6 files):
+- ✅ `events.types.ts`: Added `userRegistrationStatus?: RegistrationStatus | null` to EventDto
+- ✅ `RegistrationBadge.tsx`: Changed from `isRegistered: boolean` to `registrationStatus: RegistrationStatus | null`, only shows when `Confirmed`
+- ✅ `events/page.tsx`: Removed `isRegistered` prop (uses `event.userRegistrationStatus`)
+- ✅ `events/[id]/page.tsx`: Pass `registrationDetails.status` to badge
+- ✅ `search/page.tsx`: Removed `isRegistered` prop
+- ✅ `EventsList.tsx`: Use `event.userRegistrationStatus` instead of Set lookup
+
+**Documentation**:
+- ✅ `docs/RCA_PRODUCTION_STRIPE_WEBHOOK_404_ERROR.md`: Comprehensive incident analysis (200+ lines)
+
+**Testing**:
+- ✅ Backend build: 0 errors, 0 warnings
+- ✅ Frontend build: Success
+- ✅ Webhook endpoint verified: Returns HTTP 400 "Invalid signature" (correct behavior)
+
+**Commits**:
+- `de3a5a08` - fix(ui): Only show 'You are registered' badge for Confirmed registrations (Issue #2)
+- Previous commits included in PR #73
+
+**PR Status**: **#73 Ready for Production** - https://github.com/Niroshana-SinharaRalalage/LankaConnect/pull/73
+
+**Post-Deployment Actions Required**:
+1. ⚠️ **Resend failed webhook** from Stripe Dashboard for stuck $2.00 registration (Event: `evt_3SzmrdRqh3VBExQm2sIXKAnuz`)
+2. ✅ Verify registration transitions Preliminary → Confirmed
+3. ✅ Test end-to-end payment flow with new registration
+4. ✅ Verify badge only shows for Confirmed status in production
+
+---
+
+## 🎯 Previous Session Status - Custom Forms Feature: Phase 5 Frontend Complete ✅
 
 ### CUSTOM FORMS - PHASE 5: FRONTEND TYPES, REPOSITORY & HOOKS - 2026-02-12
 

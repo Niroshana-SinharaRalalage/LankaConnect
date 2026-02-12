@@ -19,7 +19,7 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 
 /**
@@ -140,6 +140,13 @@ export function RichTextEditor({
 
   // Get character count
   const characterCount = editor?.storage.characterCount?.characters() || 0;
+
+  // Phase 6A.106 Fix 2B: Calculate HTML blob size
+  const htmlSize = useMemo(() => {
+    if (!editor) return '0.0';
+    const html = editor.getHTML();
+    return (new Blob([html]).size / 1024).toFixed(1); // Convert to KB
+  }, [editor?.getHTML()]);
 
   // Handle image upload
   const addImage = useCallback(() => {
@@ -345,11 +352,14 @@ export function RichTextEditor({
           )}
         </div>
         {!readonly && (
-          <p className={`text-xs ${
-            characterCount > maxLength ? 'text-red-600 font-medium' : 'text-neutral-500'
-          }`}>
-            {characterCount.toLocaleString()} / {maxLength.toLocaleString()} characters
-          </p>
+          <div className="text-xs text-neutral-500 space-y-1">
+            <p className={characterCount > maxLength ? 'text-red-600 font-medium' : ''}>
+              Text: {characterCount.toLocaleString()} / {maxLength.toLocaleString()} characters
+            </p>
+            <p className={parseFloat(htmlSize) > 5120 ? 'text-red-600 font-medium' : ''}>
+              Size: {htmlSize} KB / 5,000 KB
+            </p>
+          </div>
         )}
       </div>
 

@@ -18,7 +18,10 @@ const newsletterBaseSchema = z.object({
     .string()
     .min(1, 'Newsletter description is required')
     .min(20, 'Description must be at least 20 characters')
-    .max(50000, 'Description must be less than 50000 characters'),
+    .refine(
+      (val) => new Blob([val]).size <= 5 * 1024 * 1024,
+      'Content size must be less than 5MB (including images and formatting)'
+    ),
 
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))

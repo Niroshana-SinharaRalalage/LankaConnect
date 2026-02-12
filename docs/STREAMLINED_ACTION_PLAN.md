@@ -7,7 +7,52 @@
 
 ---
 
-## 🔄 CURRENT STATUS - CUSTOM FORMS FEATURE: PHASE 7 ATTENDEE UI COMPLETE (2026-02-12)
+## 🔄 CURRENT STATUS - PHASE 6A.106: RICH TEXT EDITOR FIXES (PARTS 1-2 COMPLETE) (2026-02-12)
+**Date**: 2026-02-12
+**Session**: Phase 6A.106 - Rich Text Editor Keyboard Lag + Image Validation Fixes
+**Status**: ✅ PARTS 1-2 COMPLETE - DEPLOYED TO AZURE STAGING
+**Deployment**: ✅ UI Staging deployed successfully (Run completed 2026-02-12T17:40:29Z)
+**Priority**: 🔴 CRITICAL - Production UX blocker affecting newsletter/event creation
+
+**Problem**:
+- **Part 1**: Keyboard typing unusable (space/enter double-press, 500ms lag)
+- **Part 2**: False validation errors when adding images ("Description must be less than 50000 characters" despite counter showing "78 / 50,000")
+
+**Root Causes**:
+- React 19 incompatibility with TipTap keyboard handlers
+- Excessive re-renders (10/sec) causing editor focus loss
+- Base64 images inflate HTML to 2.6MB but UI only shows text character count
+- Metric mismatch: TipTap counts text (78), Zod validates full HTML (2.6M chars)
+
+**Solutions Deployed**:
+
+**Part 1 (Emergency Hotfix)**:
+- ✅ Fix 1A: Debounce onChange (300ms) - Reduces re-renders to 3/sec, lag from 500ms to <50ms
+- ✅ Fix 1B: Remove content dependency - Eliminates editor reset race condition
+- ✅ Fix 1C: Disable base64 images - Prevents validation errors until Azure upload (Phase 3)
+
+**Part 2 (Validation Fix)**:
+- ✅ Fix 2A: Validate blob size instead of character count - `new Blob([val]).size <= 5MB`
+- ✅ Fix 2B: Show dual metrics in UI - "Text: 78 / 50,000 characters" + "Size: 650.5 KB / 5,000 KB"
+
+**Files Modified**:
+- `web/package.json` - Added use-debounce dependency
+- `web/src/presentation/components/ui/RichTextEditor.tsx` - All fixes applied
+- `web/src/presentation/lib/validators/newsletter.schemas.ts` - Blob size validation
+- `web/src/presentation/lib/validators/event.schemas.ts` - Blob size validation (create + edit)
+
+**Commits**:
+- `f4eb437d`: hotfix(ui): Phase 6A.106 - Fix RTB keyboard lag
+- `4fcec088`: fix(deps): Add use-debounce dependency
+- `bee5c604`: feat(validation): Phase 6A.106 Part 2 - Fix HTML blob size validation
+- `f8c8a2cd`: docs: Phase 6A.106 Part 2 - Update progress tracker
+
+**Next Steps**:
+- **Phase 3** (Next Sprint - 16 hours): Implement Azure Blob Storage image upload to replace base64 with presigned URLs
+
+---
+
+## ⏸️ PREVIOUS STATUS - CUSTOM FORMS FEATURE: PHASE 7 ATTENDEE UI COMPLETE (2026-02-12)
 **Date**: 2026-02-12
 **Session**: Custom Forms Feature - Phase 7: Public Form View & Response Submission
 **Status**: ✅ PHASE 7 COMPLETE - COMMITTED & READY FOR DEPLOYMENT

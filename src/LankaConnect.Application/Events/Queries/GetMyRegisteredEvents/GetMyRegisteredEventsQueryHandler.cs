@@ -109,9 +109,11 @@ public class GetMyRegisteredEventsQueryHandler : IQueryHandler<GetMyRegisteredEv
                         return Result<IReadOnlyList<EventDto>>.Failure(eventsResult.Error);
                     }
 
-                    // Filter to only registered events
+                    // Filter to only registered events and populate registration status
+                    var regStatusMap = registrations.ToDictionary(r => r.EventId, r => r.Status);
                     var filteredEvents = eventsResult.Value
                         .Where(e => registeredEventIds.Contains(e.Id))
+                        .Select(e => e with { UserRegistrationStatus = regStatusMap.GetValueOrDefault(e.Id) })
                         .ToList();
 
                     stopwatch.Stop();
@@ -162,9 +164,11 @@ public class GetMyRegisteredEventsQueryHandler : IQueryHandler<GetMyRegisteredEv
                     return Result<IReadOnlyList<EventDto>>.Failure(allEventsResult.Error);
                 }
 
-                // Filter to registered events
+                // Filter to registered events and populate registration status
+                var registrationMap = allRegistrations.ToDictionary(r => r.EventId, r => r.Status);
                 var registeredEvents = allEventsResult.Value
                     .Where(e => eventIds.Contains(e.Id))
+                    .Select(e => e with { UserRegistrationStatus = registrationMap.GetValueOrDefault(e.Id) })
                     .ToList();
 
                 stopwatch.Stop();

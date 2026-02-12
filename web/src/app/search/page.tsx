@@ -201,7 +201,6 @@ function SearchPageContent() {
                     key={event.id}
                     event={event}
                     categoryLabels={categoryLabels}
-                    isRegistered={user ? registeredEventIds.has(event.id) : false}
                   />
                 ))
               )}
@@ -423,15 +422,14 @@ function Pagination({
  * Event Card Component (from events page)
  * Phase 6A.46: Displays registration badge and lifecycle label
  * Phase 6A.59: Accepts EventSearchResultDto for search results
+ * Issue #2: Fixed to use registration status instead of boolean flag
  */
 function EventCard({
   event,
   categoryLabels,
-  isRegistered,
 }: {
   event: EventDto | EventSearchResultDto;
   categoryLabels: Record<EventCategory, string>;
-  isRegistered: boolean;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {
@@ -499,7 +497,7 @@ function EventCard({
           >
             {event.displayLabel}
           </Badge>
-          <RegistrationBadge isRegistered={isRegistered} compact={false} />
+          <RegistrationBadge registrationStatus={event.userRegistrationStatus} compact={false} />
         </div>
 
         {/* Date & Time */}

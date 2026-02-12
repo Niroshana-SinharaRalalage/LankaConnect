@@ -96,14 +96,8 @@ export default function EventsPage() {
   // Fetch events with location-based sorting and filters
   const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
 
-  // Phase 6A.46: Bulk fetch user RSVPs (1 API call) for registration badges
-  const { data: userRsvps } = useUserRsvps({ enabled: !!user });
-
-  // Phase 6A.46: Create Set of registered event IDs for O(1) lookups
-  const registeredEventIds = useMemo(
-    () => new Set(userRsvps?.map(e => e.id) || []),
-    [userRsvps]
-  );
+  // Phase 6A.46: Bulk fetch user RSVPs for registration status (Issue #2: Not needed anymore - status is on EventDto)
+  // Removed: registeredEventIds Set logic - now using event.userRegistrationStatus
 
   // Convert metro areas to tree structure for TreeDropdown
   const locationTreeNodes = useMemo<TreeNode[]>(() => {
@@ -404,7 +398,6 @@ export default function EventsPage() {
                 key={event.id}
                 event={event}
                 categoryLabels={categoryLabels}
-                isRegistered={user ? registeredEventIds.has(event.id) : false}
               />
             ))}
           </div>
@@ -450,15 +443,14 @@ function getStatusBadgeColor(label: string): string {
  * Event Card Component
  * Displays individual event with image, title, date, location, category, and pricing
  * Phase 6A.46: Displays registration badge and lifecycle label
+ * Issue #2: Fixed to use registration status instead of boolean flag
  */
 function EventCard({
   event,
   categoryLabels,
-  isRegistered,
 }: {
   event: EventDto;
   categoryLabels: Record<EventCategory, string>;
-  isRegistered: boolean;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {
@@ -528,8 +520,8 @@ function EventCard({
             {event.displayLabel}
           </Badge>
 
-          {/* Registration Badge */}
-          <RegistrationBadge isRegistered={isRegistered} compact={false} />
+          {/* Registration Badge - Issue #2: Only shows for Confirmed status */}
+          <RegistrationBadge registrationStatus={event.userRegistrationStatus} compact={false} />
         </div>
 
         {/* Date & Time */}

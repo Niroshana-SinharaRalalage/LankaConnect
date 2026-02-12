@@ -1,17 +1,21 @@
 'use client';
 
+import { RegistrationStatus } from '@/infrastructure/api/types/events.types';
+
 /**
  * Phase 6A.46: Registration Status Badge Component
- * Displays "You are registered" badge on event cards for registered events
+ * Displays "You are registered" badge on event cards for CONFIRMED registrations only
+ * Issue #2: Fixed to check registration status instead of boolean flag
  */
 
 interface RegistrationBadgeProps {
-  isRegistered: boolean;
+  registrationStatus?: RegistrationStatus | null;
   compact?: boolean; // For different layouts (default: false)
 }
 
-export function RegistrationBadge({ isRegistered, compact = false }: RegistrationBadgeProps) {
-  if (!isRegistered) return null;
+export function RegistrationBadge({ registrationStatus, compact = false }: RegistrationBadgeProps) {
+  // Issue #2: Only show badge for Confirmed registrations, not Preliminary
+  if (registrationStatus !== RegistrationStatus.Confirmed) return null;
 
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-md">

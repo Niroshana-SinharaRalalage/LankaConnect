@@ -130,6 +130,14 @@ public record EventDto
     /// Null for free events
     /// </summary>
     public RevenueBreakdownDto? RevenueBreakdown { get; init; }
+
+    /// <summary>
+    /// Issue #2: User's registration status for this event (if user is registered)
+    /// Only populated for authenticated queries like /my-rsvps
+    /// Null if user is not registered or for public event listings
+    /// Used to show accurate "You are registered" badge (only for Confirmed status)
+    /// </summary>
+    public RegistrationStatus? UserRegistrationStatus { get; init; }
 }
 
 /// <summary>

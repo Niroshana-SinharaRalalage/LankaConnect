@@ -268,19 +268,19 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                 -- PART B: SYSTEM BADGES (11)
                 -- ========================================
 
-                INSERT INTO badges.badges (""Id"", ""Name"", ""ImageUrl"", ""BlobName"", ""Position"", ""DisplayOrder"", ""IsSystem"", ""IsActive"", ""CreatedAt"", ""UpdatedAt"", ""ExpiryDuration"", ""LocationConfigs"")
+                INSERT INTO badges.badges (""Id"", ""Name"", ""ImageUrl"", ""BlobName"", ""Position"", ""DisplayOrder"", ""IsSystem"", ""IsActive"", ""CreatedAt"", ""UpdatedAt"", ""DefaultDurationDays"")
                 VALUES
-                    ('00000000-0000-0000-0000-000000000001', 'New Event', '', '', 1, 1, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000002', 'New', '', '', 1, 2, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000003', 'Canceled', '', '', 0, 3, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000004', 'New Year', '', '', 1, 4, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000005', 'Valentines', '', '', 1, 5, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000006', 'Christmas', '', '', 1, 6, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000007', 'Thanksgiving', '', '', 1, 7, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000008', 'Halloween', '', '', 1, 8, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000009', 'Easter', '', '', 1, 9, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000010', 'Sinhala Tamil New Year', '', '', 1, 10, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb),
-                    ('00000000-0000-0000-0000-000000000011', 'Vesak', '', '', 1, 11, true, true, CURRENT_TIMESTAMP, NULL, NULL, '[]'::jsonb)
+                    ('00000000-0000-0000-0000-000000000001', 'New Event', '', '', '1', 1, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000002', 'New', '', '', '1', 2, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000003', 'Canceled', '', '', '0', 3, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000004', 'New Year', '', '', '1', 4, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000005', 'Valentines', '', '', '1', 5, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000006', 'Christmas', '', '', '1', 6, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000007', 'Thanksgiving', '', '', '1', 7, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000008', 'Halloween', '', '', '1', 8, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000009', 'Easter', '', '', '1', 9, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000010', 'Sinhala Tamil New Year', '', '', '1', 10, true, true, CURRENT_TIMESTAMP, NULL, NULL),
+                    ('00000000-0000-0000-0000-000000000011', 'Vesak', '', '', '1', 11, true, true, CURRENT_TIMESTAMP, NULL, NULL)
                 ON CONFLICT (""Id"") DO NOTHING;
             ");
 

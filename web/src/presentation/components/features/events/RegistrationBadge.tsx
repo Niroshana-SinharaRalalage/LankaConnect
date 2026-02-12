@@ -15,7 +15,10 @@ interface RegistrationBadgeProps {
 
 export function RegistrationBadge({ registrationStatus, compact = false }: RegistrationBadgeProps) {
   // Issue #2: Only show badge for Confirmed registrations, not Preliminary
-  if (registrationStatus !== RegistrationStatus.Confirmed) return null;
+  // Phase 6A.X: Backend uses JsonStringEnumConverter, so enum values come as strings
+  // Check both string value and numeric enum value for compatibility
+  const isConfirmed = registrationStatus === ('Confirmed' as any) || registrationStatus === RegistrationStatus.Confirmed;
+  if (!isConfirmed) return null;
 
   return (
     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 border border-green-200 rounded-md">

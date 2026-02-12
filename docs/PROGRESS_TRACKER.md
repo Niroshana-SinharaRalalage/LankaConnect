@@ -3,7 +3,60 @@
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Custom Forms Feature: Phase 5 Frontend (Types, Repository, Hooks)
+## 🎯 Current Session Status - Custom Forms Feature: Phase 5 Frontend Complete ✅
+
+### CUSTOM FORMS - PHASE 5: FRONTEND TYPES, REPOSITORY & HOOKS - 2026-02-12
+
+**Status**: ✅ **COMPLETE - COMMITTED & PUSHED TO DEVELOP**
+
+**Priority**: 🟢 **NEW FEATURE - Frontend infrastructure for custom forms**
+
+**Implementation**:
+
+| Component | Changes | Files |
+|-----------|---------|-------|
+| Types | Added 2 enums (EventFormStatus, FormQuestionType), 9 DTOs, 9 request types | `events.types.ts` (line 1311+) |
+| Repository | Added 16 form API methods with JSDoc examples | `events.repository.ts` (line 1119+) |
+| Hooks | Created 16 React Query hooks (4 queries + 12 mutations) | `useEventForms.ts` (new file, 736 lines) |
+
+**Type Definitions** (events.types.ts):
+- ✅ **EventFormStatus enum**: Draft=0, Active=1, Closed=2, Archived=3
+- ✅ **FormQuestionType enum**: ShortText=0, LongText=1, SingleChoice=2, MultipleChoice=3, Dropdown=4, Number=5, Date=6, YesNo=7
+- ✅ **FormQuestionTypeLabels**: Display labels for all 8 question types
+- ✅ **9 DTOs**: EventFormDto, EventFormDetailDto, FormQuestionDto, QuestionOptionDto, FormResponseDto, FormAnswerDto, FormResponsesPagedDto, SubmitFormResponseResult, UpdateFormResponseRequest
+- ✅ **9 Request types**: CreateEventFormRequest, UpdateEventFormRequest, AddFormQuestionRequest, UpdateFormQuestionRequest, ReorderFormQuestionsRequest, SubmitFormResponseRequest, UpdateFormResponseRequest, CreateFormQuestionItem, SubmitFormAnswerItem
+
+**Repository Methods** (events.repository.ts):
+1. ✅ **Form CRUD** (5): getEventForms, getEventFormDetail, createEventForm, updateEventForm, deleteEventForm
+2. ✅ **Lifecycle** (3): publishEventForm, closeEventForm, reopenEventForm
+3. ✅ **Questions** (4): addFormQuestion, updateFormQuestion, deleteFormQuestion, reorderFormQuestions
+4. ✅ **Responses** (4): submitFormResponse, updateFormResponse, getMyFormResponse, getFormResponses
+
+**React Query Hooks** (useEventForms.ts):
+- ✅ **Query Hooks** (4):
+  - `useEventForms(eventId)` - Get all forms for event (organizer)
+  - `useEventFormDetail(eventId, formId)` - Get form with questions (public)
+  - `useFormResponses(eventId, formId, page, pageSize)` - Get paginated responses (organizer)
+  - `useMyFormResponse(eventId, formId, accessToken)` - Get own response by token (public)
+- ✅ **Mutation Hooks** (12):
+  - Form CRUD: useCreateEventForm, useUpdateEventForm, useDeleteEventForm
+  - Lifecycle: usePublishEventForm, useCloseEventForm, useReopenEventForm
+  - Questions: useAddFormQuestion, useUpdateFormQuestion, useDeleteFormQuestion, useReorderFormQuestions
+  - Responses: useSubmitFormResponse, useUpdateFormResponse
+- ✅ **Query Key Management**: Centralized `formKeys` object for cache invalidation
+- ✅ **Cache Optimization**: Stale times: 1min (own response), 2min (responses list), 3min (form detail), 5min (forms list)
+
+**Verification**:
+- ✅ TypeScript compiles successfully (`npx tsc --noEmit` - 0 errors)
+- ✅ All imports resolve correctly
+- ✅ Types match backend DTOs exactly
+- ✅ Repository methods match backend API endpoints (17 endpoints)
+- ✅ Hooks follow existing patterns (useEventSignUps.ts structure)
+- ✅ Comprehensive JSDoc examples for all hooks
+
+**Commits**: `41f36448`
+
+**Next Steps** (Frontend UI - Phases 6-8):
 
 ### PHASE 6A.105: EVENTCATEGORY ENUM SYNCHRONIZATION - 2026-02-12
 

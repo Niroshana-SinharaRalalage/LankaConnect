@@ -7,34 +7,51 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.105: EVENTCATEGORY ENUM SYNC + MIGRATION FIX (2026-02-12)
+## 🔄 CURRENT STATUS - CUSTOM FORMS FEATURE: PHASE 5 FRONTEND COMPLETE (2026-02-12)
 **Date**: 2026-02-12
-**Session**: Phase 6A.105 - EventCategory Enum Synchronization + Migration Fix
-**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
-**Deployment**: ✅ Backend deployed (Run 21931960639), UI deployed (Run 21931621986), Migration passed
-**Priority**: 🔴 CRITICAL PRODUCTION BUG FIX - Validation error blocking event creation
+**Session**: Custom Forms Feature - Phase 5: Frontend Types, Repository & React Query Hooks
+**Status**: ✅ PHASE 5 COMPLETE - COMMITTED & PUSHED TO DEVELOP
+**Deployment**: ✅ Committed (`41f36448`), TypeScript compiles cleanly
+**Priority**: 🟢 NEW FEATURE - Frontend infrastructure for Google Forms-like custom forms
 
-**Problem**: Production database had 12 EventCategory values (0-11), frontend enum only had 8 (0-7). Users selecting new categories like "Festival" (intValue=9) got validation error "Invalid option: expected one of 0|1|2|3|4|5|6|7".
+**Context**: Phases 1-4 (backend) completed 2026-02-11. Phase 5 adds frontend foundation.
 
-**Root Cause**: 4 categories (Workshop=8, Festival=9, Ceremony=10, Celebration=11) added to database but never synced to frontend TypeScript enum.
+**Changes Implemented (Phase 5 - Frontend Infrastructure)**:
 
-**Changes Implemented**:
-1. ✅ Added 4 missing enum values to `events.types.ts` (Workshop, Festival, Ceremony, Celebration)
-2. ✅ Updated categoryLabels Records in `page.tsx` and `page_old_backup.tsx` (TypeScript exhaustiveness)
-3. ✅ Fixed Phase 6A.104 migration: Changed badges ON CONFLICT from ("Id") to ("Name")
+1. ✅ **Frontend Types** (`events.types.ts`):
+   - EventFormStatus enum (Draft/Active/Closed/Archived)
+   - FormQuestionType enum (8 types: ShortText, LongText, SingleChoice, MultipleChoice, Dropdown, Number, Date, YesNo)
+   - 9 DTOs: EventFormDto, EventFormDetailDto, FormQuestionDto, QuestionOptionDto, FormResponseDto, FormAnswerDto, FormResponsesPagedDto, SubmitFormResponseResult, UpdateFormResponseRequest
+   - 9 request types for all mutations
+   - Display labels for enums
 
-**Migration Fix**:
-- **Error**: `23505: duplicate key value violates unique constraint "IX_Badges_Name"`
-- **Root Cause**: Staging already had badges with same names, ON CONFLICT ("Id") didn't handle it
-- **Fix**: Changed to `ON CONFLICT ("Name") DO NOTHING`
-- **Result**: Failed workflow 21931621991 → Fixed workflow 21931960639 succeeded
+2. ✅ **Repository Methods** (`events.repository.ts`):
+   - 16 form-related API methods with comprehensive JSDoc
+   - Form CRUD (5): getEventForms, getEventFormDetail, createEventForm, updateEventForm, deleteEventForm
+   - Lifecycle (3): publishEventForm, closeEventForm, reopenEventForm
+   - Questions (4): addFormQuestion, updateFormQuestion, deleteFormQuestion, reorderFormQuestions
+   - Responses (4): submitFormResponse, updateFormResponse, getMyFormResponse, getFormResponses
+
+3. ✅ **React Query Hooks** (`useEventForms.ts` - new file):
+   - 4 query hooks with optimized caching (stale times: 1-5min)
+   - 12 mutation hooks with proper cache invalidation
+   - Centralized query key management
+   - Comprehensive JSDoc examples for all hooks
+   - Follows existing patterns from useEventSignUps.ts
 
 **Verification**:
-- ✅ TypeScript compiles cleanly (`npx tsc --noEmit`)
-- ✅ Migration "Run EF Migrations" step passed
-- ✅ Event creation form accepts all 12 categories
+- ✅ TypeScript compiles successfully (0 errors)
+- ✅ All types match backend DTOs
+- ✅ Repository methods match 17 backend API endpoints
+- ✅ Hooks follow established patterns
+- ✅ Query cache invalidation properly configured
 
-**Commits**: `0dbf0281`, `90f55532`
+**Commits**: `41f36448`
+
+**Next Steps** (Phases 6-8 - UI Components):
+- Phase 6: Organizer UI (Form Builder, "Sign-Ups & Forms" tab integration)
+- Phase 7: Attendee UI (Form Renderer, public fill-out page)
+- Phase 8: Response Viewer + Export (organizer dashboard, CSV export)
 
 ---
 

@@ -21,6 +21,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 {
     private readonly IEventRepository _eventRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IRegistrationRepository _registrationRepository;
     private readonly IApplicationDbContext _dbContext;
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventsQueryHandler> _logger;
@@ -28,12 +29,14 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     public GetEventsQueryHandler(
         IEventRepository eventRepository,
         IUserRepository userRepository,
+        IRegistrationRepository registrationRepository,
         IApplicationDbContext dbContext,
         IMapper mapper,
         ILogger<GetEventsQueryHandler> logger)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
+        _registrationRepository = registrationRepository;
         _dbContext = dbContext;
         _mapper = mapper;
         _logger = logger;
@@ -119,6 +122,49 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                     .OrderBy(e => e.StartDate)
                     .Select(e => _mapper.Map<EventDto>(e))
                     .ToList();
+
+                // Step 5: Populate UserRegistrationStatus when userId provided (Phase 6A.X - Fix registration badge)
+                if (request.UserId.HasValue && request.UserId.Value != Guid.Empty)
+                {
+                    _logger.LogInformation(
+                        "GetEvents: Populating UserRegistrationStatus for UserId={UserId}, EventCount={EventCount}",
+                        request.UserId.Value, result.Count);
+
+                    try
+                    {
+                        // Fetch user's registrations for these events
+                        var userRegistrations = await _registrationRepository.GetByUserAsync(
+                            request.UserId.Value,
+                            cancellationToken);
+
+                        // Create lookup: EventId -> RegistrationStatus
+                        var registrationStatusMap = userRegistrations
+                            .ToDictionary(r => r.EventId, r => r.Status);
+
+                        _logger.LogInformation(
+                            "GetEvents: User has {RegistrationCount} registrations",
+                            userRegistrations.Count);
+
+                        // Populate UserRegistrationStatus for each event
+                        result = result
+                            .Select(e => e with
+                            {
+                                UserRegistrationStatus = registrationStatusMap.GetValueOrDefault(e.Id)
+                            })
+                            .ToList();
+
+                        _logger.LogInformation(
+                            "GetEvents: UserRegistrationStatus populated for {EventsWithStatus} events",
+                            result.Count(e => e.UserRegistrationStatus.HasValue));
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't fail the request - registration status is supplementary data
+                        _logger.LogWarning(ex,
+                            "GetEvents: Failed to populate UserRegistrationStatus for UserId={UserId}. Continuing without status. Error={ErrorMessage}",
+                            request.UserId.Value, ex.Message);
+                    }
+                }
 
                 stopwatch.Stop();
 

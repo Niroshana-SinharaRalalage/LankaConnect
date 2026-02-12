@@ -7,7 +7,38 @@
 
 ---
 
-## 🔄 CURRENT STATUS - CUSTOM FORMS FEATURE (PHASES 1-4): BACKEND COMPLETE (2026-02-11)
+## 🔄 CURRENT STATUS - PHASE 6A.105: EVENTCATEGORY ENUM SYNC + MIGRATION FIX (2026-02-12)
+**Date**: 2026-02-12
+**Session**: Phase 6A.105 - EventCategory Enum Synchronization + Migration Fix
+**Status**: ✅ COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED
+**Deployment**: ✅ Backend deployed (Run 21931960639), UI deployed (Run 21931621986), Migration passed
+**Priority**: 🔴 CRITICAL PRODUCTION BUG FIX - Validation error blocking event creation
+
+**Problem**: Production database had 12 EventCategory values (0-11), frontend enum only had 8 (0-7). Users selecting new categories like "Festival" (intValue=9) got validation error "Invalid option: expected one of 0|1|2|3|4|5|6|7".
+
+**Root Cause**: 4 categories (Workshop=8, Festival=9, Ceremony=10, Celebration=11) added to database but never synced to frontend TypeScript enum.
+
+**Changes Implemented**:
+1. ✅ Added 4 missing enum values to `events.types.ts` (Workshop, Festival, Ceremony, Celebration)
+2. ✅ Updated categoryLabels Records in `page.tsx` and `page_old_backup.tsx` (TypeScript exhaustiveness)
+3. ✅ Fixed Phase 6A.104 migration: Changed badges ON CONFLICT from ("Id") to ("Name")
+
+**Migration Fix**:
+- **Error**: `23505: duplicate key value violates unique constraint "IX_Badges_Name"`
+- **Root Cause**: Staging already had badges with same names, ON CONFLICT ("Id") didn't handle it
+- **Fix**: Changed to `ON CONFLICT ("Name") DO NOTHING`
+- **Result**: Failed workflow 21931621991 → Fixed workflow 21931960639 succeeded
+
+**Verification**:
+- ✅ TypeScript compiles cleanly (`npx tsc --noEmit`)
+- ✅ Migration "Run EF Migrations" step passed
+- ✅ Event creation form accepts all 12 categories
+
+**Commits**: `0dbf0281`, `90f55532`
+
+---
+
+## ⏸️ PREVIOUS STATUS - CUSTOM FORMS FEATURE (PHASES 1-4): BACKEND COMPLETE (2026-02-11)
 **Date**: 2026-02-11
 **Session**: Custom Forms Feature - Google Forms-like Form/Survey Sign-Up Type (Backend)
 **Status**: ✅ PHASES 1-4 COMPLETE - DEPLOYED TO AZURE STAGING & VERIFIED

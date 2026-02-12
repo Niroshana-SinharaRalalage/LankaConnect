@@ -75,6 +75,10 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
     [EventCategory.Business]: 'Business',
     [EventCategory.Charity]: 'Charity',
     [EventCategory.Entertainment]: 'Entertainment',
+    [EventCategory.Workshop]: 'Workshop',
+    [EventCategory.Festival]: 'Festival',
+    [EventCategory.Ceremony]: 'Ceremony',
+    [EventCategory.Celebration]: 'Celebration',
   };
 
   // Status labels

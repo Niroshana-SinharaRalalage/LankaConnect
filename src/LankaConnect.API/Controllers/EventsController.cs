@@ -135,9 +135,16 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] string? searchTerm = null,
         [FromQuery] bool includeAllStatuses = false)
     {
+        // Phase 6A.X: Get authenticated user's ID from JWT token to populate UserRegistrationStatus
+        // This allows registration badge to display correctly on events listing page
+        var authenticatedUserId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+
+        // Use authenticated userId if available, otherwise fall back to query parameter (for location sorting)
+        var effectiveUserId = authenticatedUserId ?? userId;
+
         Logger.LogInformation(
-            "Getting events with filters: status={Status}, statusFilter={StatusFilter}, category={Category}, city={City}, state={State}, userId={UserId}, searchTerm={SearchTerm}, includeAllStatuses={IncludeAllStatuses}",
-            status, statusFilter, category, city, state, userId, searchTerm, includeAllStatuses);
+            "Getting events with filters: status={Status}, statusFilter={StatusFilter}, category={Category}, city={City}, state={State}, userId={UserId}, authenticatedUserId={AuthenticatedUserId}, searchTerm={SearchTerm}, includeAllStatuses={IncludeAllStatuses}",
+            status, statusFilter, category, city, state, effectiveUserId, authenticatedUserId, searchTerm, includeAllStatuses);
 
         var query = new GetEventsQuery(
             status,
@@ -148,7 +155,7 @@ public class EventsController : BaseController<EventsController>
             isFreeOnly,
             city,
             state,
-            userId,
+            effectiveUserId,
             latitude,
             longitude,
             metroAreaIds,

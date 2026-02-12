@@ -22,6 +22,7 @@ public class GetEventsQueryHandlerTests
 {
     private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<ILogger<GetEventsQueryHandler>> _mockLogger;
@@ -31,6 +32,7 @@ public class GetEventsQueryHandlerTests
     {
         _mockEventRepository = new Mock<IEventRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
+        _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockDbContext = new Mock<IApplicationDbContext>();
         _mockMapper = new Mock<IMapper>();
         _mockLogger = new Mock<ILogger<GetEventsQueryHandler>>();
@@ -38,6 +40,7 @@ public class GetEventsQueryHandlerTests
         _handler = new GetEventsQueryHandler(
             _mockEventRepository.Object,
             _mockUserRepository.Object,
+            _mockRegistrationRepository.Object,
             _mockDbContext.Object,
             _mockMapper.Object,
             _mockLogger.Object);

@@ -78,6 +78,7 @@ public class EventFormRepository : Repository<EventForm>, IEventFormRepository
             {
                 var result = await _dbSet
                     .AsNoTracking()
+                    .Include(f => f.Questions.OrderBy(q => q.SortOrder))
                     .Where(f => f.EventId == eventId)
                     .OrderBy(f => f.CreatedAt)
                     .ToListAsync(cancellationToken);
@@ -85,9 +86,10 @@ public class EventFormRepository : Repository<EventForm>, IEventFormRepository
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "GetByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    "GetByEventIdAsync COMPLETE: EventId={EventId}, Count={Count}, TotalQuestions={TotalQuestions}, Duration={ElapsedMs}ms",
                     eventId,
                     result.Count,
+                    result.Sum(f => f.Questions.Count),
                     stopwatch.ElapsedMilliseconds);
 
                 return result;

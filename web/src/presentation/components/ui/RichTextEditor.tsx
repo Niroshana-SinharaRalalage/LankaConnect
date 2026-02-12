@@ -20,6 +20,7 @@ import {
   Redo,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 
 /**
  * Rich Text Editor Component using TipTap
@@ -75,6 +76,11 @@ export function RichTextEditor({
   maxLength = 50000,
   minHeight = 300,
 }: RichTextEditorProps) {
+  // Phase 6A.106 Fix 1A: Debounce onChange to reduce re-renders
+  const debouncedOnChange = useDebouncedCallback((html: string) => {
+    onChange(html);
+  }, 300);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -84,7 +90,7 @@ export function RichTextEditor({
       }),
       Image.configure({
         inline: true,
-        allowBase64: true,
+        allowBase64: false, // Phase 6A.106 Fix 1C: Disabled until Azure upload
       }),
       Link.configure({
         openOnClick: false,
@@ -104,7 +110,7 @@ export function RichTextEditor({
     editable: !readonly,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      onChange(html);
+      debouncedOnChange(html); // Use debounced version
     },
   });
 
@@ -130,7 +136,7 @@ export function RichTextEditor({
       lastContentRef.current = content;
       isInitializedRef.current = true;
     }
-  }, [content, editor]);
+  }, [editor]); // Phase 6A.106 Fix 1B: Removed 'content' to prevent race condition
 
   // Get character count
   const characterCount = editor?.storage.characterCount?.characters() || 0;
@@ -284,14 +290,15 @@ export function RichTextEditor({
           >
             <LinkIcon className="h-4 w-4" />
           </button>
-          <button
+          {/* Phase 6A.106 Fix 1C: Image button disabled until Azure upload */}
+          {/* <button
             type="button"
             onClick={addImage}
             className="p-2 rounded hover:bg-neutral-200 transition-colors"
             title="Insert Image"
           >
             <ImageIcon className="h-4 w-4" />
-          </button>
+          </button> */}
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
 
@@ -346,10 +353,10 @@ export function RichTextEditor({
         )}
       </div>
 
-      {/* Image upload note */}
+      {/* Image upload note - Phase 6A.106 */}
       {!readonly && (
         <p className="text-xs text-neutral-500 mt-1">
-          Tip: Images are embedded as base64. Keep images under 2MB for optimal email delivery.
+          Note: Image upload temporarily disabled. Azure-powered upload coming soon.
         </p>
       )}
 

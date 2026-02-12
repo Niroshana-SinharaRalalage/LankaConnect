@@ -1,5 +1,5 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-11 - Phase 6A.102: Free Event IsFreeEvent Flag Fix ✅ DEPLOYED & VERIFIED*
+*Last Updated: 2026-02-11 - Phase 6A.104: Metro Areas and Badges Production Sync ✅ COMMITTED*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
@@ -21804,3 +21804,76 @@ internal static EmailSubject FromDatabase(string value)
 **Status**: ✅ QA READY - Fix verified on Azure staging
 
 ---
+
+---
+
+## 🎯 CURRENT SESSION - Phase 6A.104: Metro Areas and Badges Production Sync - 2026-02-11
+
+### PHASE 6A.104: SEED MISSING METRO AREAS AND BADGES TO PRODUCTION
+
+**Status**: ✅ **COMMITTED - AWAITING STAGING DEPLOYMENT**
+
+**Priority**: 🔴 **CRITICAL DATA GAP FIX**
+
+**Problem Discovery**: Comprehensive database comparison revealed TWO critical reference data gaps:
+
+**Issue 1: Metro Areas Missing (62 rows)**
+- Production: 22 rows (only 7 states: AK, AL, AZ, CA, IL, NY, TX)
+- Staging: 84 rows (all 50 states)
+- Impact: Location dropdowns showed only 7 states, blocking 43 states from registration
+
+**Issue 2: Badges Missing (11 rows - NEW FINDING)**
+- Production: 0 rows
+- Staging: 13 rows (11 system badges + 2 custom test badges)
+- Impact: No badge functionality in production
+
+**Root Cause**: `DbInitializer.SeedAsync()` gated behind `app.Environment.IsDevelopment()` (Program.cs:206). Runtime seeders (MetroAreaSeeder, BadgeSeeder) never ran on production/staging.
+
+**Why Phase 6A.102 Missed This**:
+1. Comparison script `compare_staging_production.ps1` had bug on line 122
+2. Metro areas query used wrong columns: `country`, `latitude`, `longitude` (don't exist - should be `center_latitude`, `center_longitude`)
+3. Query failed silently, produced no comparison data
+4. Script only checked 6 categories, did NOT check badges or other seeder tables
+
+**Solution**: Phase 6A.104 EF Core Migration
+
+**Migration**: `20260212000714_Phase6A104_SeedMetroAreasAndBadgesProduction.cs`
+
+**Part A: Metro Areas (134 total rows)**
+- 50 state-level "All [State]" rows (FIPS-based GUIDs: `{FIPS}000000...001`)
+- 84 city-level metros from MetroAreaSeeder.cs
+- INSERT...ON CONFLICT (id) DO NOTHING (idempotent)
+
+**Part B: Badges (11 system badges)**
+- Deterministic GUIDs: `00000000-0000-0000-0000-0000000000{01-11}`
+- New Event, New, Canceled, New Year, Valentines, Christmas, Thanksgiving, Halloween, Easter, Sinhala Tamil New Year, Vesak
+- Empty ImageUrl/BlobName (admin uploads via UI)
+
+**Post-Migration State**:
+- Staging: 84→134 metros, 13→13 badges
+- Production: 22→127+ metros, 0→11 badges
+
+**Files Modified**:
+- Migration (6700+ lines SQL): `20260212000714_Phase6A104_SeedMetroAreasAndBadgesProduction.cs`
+- Designer: `20260212000714_Phase6A104_SeedMetroAreasAndBadgesProduction.Designer.cs`
+- RCA: `docs/RCA_METRO_AREAS_AND_TREEDROPDOWN_ISSUES.md`
+
+**Build Status**: ✅ 0 errors, 0 warnings
+
+**Commit**: `385c1117` - "fix(data): Phase 6A.104 - Seed missing metro areas and badges to production"
+
+**Deployment Verification (Pending)**:
+- [ ] Push to develop
+- [ ] Staging deployment succeeds
+- [ ] Metro areas count ~134 in staging
+- [ ] Badges count ~13 in staging
+- [ ] Location dropdowns show all 50 states
+- [ ] Create PR to main
+- [ ] Production deployment succeeds
+- [ ] Metro areas count ~127+ in production
+- [ ] Badges count 11 in production
+
+**Architectural Lesson**: Reference data MUST use EF Core migrations, not runtime seeders alone. Runtime seeders are development-only convenience.
+
+**Related**: RCA_METRO_AREAS_AND_TREEDROPDOWN_ISSUES.md, Phase 6A.102 (email templates), Phase 6A.101 (EventCategories)
+

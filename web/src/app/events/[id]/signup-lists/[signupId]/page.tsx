@@ -874,24 +874,24 @@ export default function EditSignUpListPage() {
                 <p className="text-sm text-red-600">{submitError}</p>
               </div>
             )}
+
+            {/* Save Button - Only show when changes are made */}
+            {hasChanges && (
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={handleSaveListDetails}
+                  disabled={updateSignUpListMutation.isPending}
+                  style={{ background: '#FF7900' }}
+                  className="px-8 py-3"
+                >
+                  <Save className="h-5 w-5 mr-2" />
+                  {updateSignUpListMutation.isPending ? 'Saving...' : 'Save List Details'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Save Button - Only show when changes are made */}
-      {hasChanges && (
-        <div className="flex justify-end mt-6 mb-8">
-          <Button
-            onClick={handleSaveListDetails}
-            disabled={updateSignUpListMutation.isPending}
-            style={{ background: '#FF7900' }}
-            className="px-8 py-3"
-          >
-            <Save className="h-5 w-5 mr-2" />
-            {updateSignUpListMutation.isPending ? 'Saving...' : 'Save List Details'}
-          </Button>
-        </div>
-      )}
 
       <Footer />
     </div>

@@ -457,19 +457,6 @@ export default function EditSignUpListPage() {
             </div>
 
             {/* Save Button - Only show when changes are made */}
-            {hasChanges && (
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={handleSaveListDetails}
-                  disabled={updateSignUpListMutation.isPending}
-                  style={{ background: '#FF7900' }}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {updateSignUpListMutation.isPending ? 'Saving...' : 'Save List Details'}
-                </Button>
-              </div>
-            )}
-
             {/* Category-Based Items */}
             <div className="space-y-4">
               <label className="block text-sm font-medium text-neutral-700 mb-3">
@@ -890,6 +877,21 @@ export default function EditSignUpListPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Save Button - Only show when changes are made */}
+      {hasChanges && (
+        <div className="flex justify-end mt-6 mb-8">
+          <Button
+            onClick={handleSaveListDetails}
+            disabled={updateSignUpListMutation.isPending}
+            style={{ background: '#FF7900' }}
+            className="px-8 py-3"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            {updateSignUpListMutation.isPending ? 'Saving...' : 'Save List Details'}
+          </Button>
+        </div>
+      )}
 
       <Footer />
     </div>

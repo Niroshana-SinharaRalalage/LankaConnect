@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Domain.Events.ValueObjects;
@@ -28,6 +29,7 @@ public class QuestionOption : ValueObject
     public int SortOrder { get; init; }
 
     // Private constructor for EF Core / JSON deserialization
+    [JsonConstructor]
     private QuestionOption() { }
 
     private QuestionOption(Guid id, string text, int sortOrder)

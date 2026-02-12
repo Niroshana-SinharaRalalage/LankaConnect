@@ -349,6 +349,14 @@ export interface EventDto {
   // Phase 6A.X: Revenue Breakdown for paid events
   /** Detailed fee breakdown (null for free events) */
   revenueBreakdown?: RevenueBreakdownDto | null;
+
+  /**
+   * Issue #2: User's registration status for this event (if user is registered)
+   * Only populated for authenticated queries like /my-rsvps
+   * Null if user is not registered or for public event listings
+   * Used to show accurate "You are registered" badge (only for Confirmed status)
+   */
+  userRegistrationStatus?: RegistrationStatus | null;
 }
 
 /**
@@ -1307,4 +1315,249 @@ export interface CancelPendingAdditionResult {
   success: boolean;
   errorMessage?: string | null;
   cancelledAdditionId?: string | null;
+}
+
+// ==================== Custom Forms (Survey/Form Sign-Up Type) ====================
+
+/**
+ * Event form status enum matching backend LankaConnect.Domain.Events.Enums.EventFormStatus
+ * Lifecycle: Draft -> Active -> Closed -> Archived
+ */
+export enum EventFormStatus {
+  Draft = 0,
+  Active = 1,
+  Closed = 2,
+  Archived = 3,
+}
+
+/**
+ * Display labels for EventFormStatus
+ */
+export const EventFormStatusLabels: Record<EventFormStatus, string> = {
+  [EventFormStatus.Draft]: 'Draft',
+  [EventFormStatus.Active]: 'Active',
+  [EventFormStatus.Closed]: 'Closed',
+  [EventFormStatus.Archived]: 'Archived',
+};
+
+/**
+ * Form question type enum matching backend LankaConnect.Domain.Events.Enums.FormQuestionType
+ */
+export enum FormQuestionType {
+  ShortText = 0,
+  LongText = 1,
+  SingleChoice = 2,
+  MultipleChoice = 3,
+  Dropdown = 4,
+  Number = 5,
+  Date = 6,
+  YesNo = 7,
+}
+
+/**
+ * Display labels for FormQuestionType
+ */
+export const FormQuestionTypeLabels: Record<FormQuestionType, string> = {
+  [FormQuestionType.ShortText]: 'Short Text',
+  [FormQuestionType.LongText]: 'Long Text',
+  [FormQuestionType.SingleChoice]: 'Single Choice',
+  [FormQuestionType.MultipleChoice]: 'Multiple Choice',
+  [FormQuestionType.Dropdown]: 'Dropdown',
+  [FormQuestionType.Number]: 'Number',
+  [FormQuestionType.Date]: 'Date',
+  [FormQuestionType.YesNo]: 'Yes/No',
+};
+
+/**
+ * Question option DTO matching backend QuestionOptionDto
+ */
+export interface QuestionOptionDto {
+  id: string;
+  text: string;
+  sortOrder: number;
+}
+
+/**
+ * Form question DTO matching backend FormQuestionDto
+ */
+export interface FormQuestionDto {
+  id: string;
+  questionText: string;
+  questionType: FormQuestionType | string;
+  isRequired: boolean;
+  sortOrder: number;
+  helpText?: string | null;
+  options: QuestionOptionDto[];
+}
+
+/**
+ * Event form summary DTO matching backend EventFormDto
+ * Used in list views
+ */
+export interface EventFormDto {
+  id: string;
+  eventId: string;
+  title: string;
+  description?: string | null;
+  status: EventFormStatus | string;
+  allowMultipleResponses: boolean;
+  responseDeadline?: string | null;
+  maxResponses?: number | null;
+  hasResponses: boolean;
+  responseCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Event form detail DTO matching backend EventFormDetailDto
+ * Includes questions
+ */
+export interface EventFormDetailDto extends EventFormDto {
+  questions: FormQuestionDto[];
+}
+
+/**
+ * Form answer DTO matching backend FormAnswerDto
+ */
+export interface FormAnswerDto {
+  id: string;
+  formQuestionId: string;
+  questionTextSnapshot: string;
+  textValue?: string | null;
+  selectedOptionIds: string[];
+  selectedOptionTextSnapshots: string[];
+  booleanValue?: boolean | null;
+}
+
+/**
+ * Form response DTO matching backend FormResponseDto
+ */
+export interface FormResponseDto {
+  id: string;
+  eventFormId: string;
+  respondentName?: string | null;
+  respondentEmail?: string | null;
+  respondentUserId?: string | null;
+  submittedAt: string;
+  answers: FormAnswerDto[];
+}
+
+/**
+ * Paginated form responses DTO matching backend FormResponsesPagedDto
+ */
+export interface FormResponsesPagedDto {
+  responses: FormResponseDto[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+// ==================== Custom Forms - Request DTOs ====================
+
+/**
+ * Create form question item (used in CreateEventFormRequest)
+ */
+export interface CreateFormQuestionItem {
+  questionText: string;
+  questionType: FormQuestionType;
+  isRequired: boolean;
+  sortOrder: number;
+  helpText?: string | null;
+  options?: { text: string; sortOrder: number }[] | null;
+}
+
+/**
+ * Create event form request
+ * POST /api/events/{id}/forms
+ */
+export interface CreateEventFormRequest {
+  title: string;
+  description?: string | null;
+  allowMultipleResponses: boolean;
+  responseDeadline?: string | null;
+  maxResponses?: number | null;
+  questions: CreateFormQuestionItem[];
+}
+
+/**
+ * Update event form request
+ * PUT /api/events/{id}/forms/{formId}
+ */
+export interface UpdateEventFormRequest {
+  title: string;
+  description?: string | null;
+  allowMultipleResponses: boolean;
+  responseDeadline?: string | null;
+  maxResponses?: number | null;
+}
+
+/**
+ * Add form question request
+ * POST /api/events/{id}/forms/{formId}/questions
+ */
+export interface AddFormQuestionRequest {
+  questionText: string;
+  questionType: FormQuestionType;
+  isRequired: boolean;
+  sortOrder: number;
+  helpText?: string | null;
+  options?: { text: string; sortOrder: number }[] | null;
+}
+
+/**
+ * Update form question request
+ * PUT /api/events/{id}/forms/{formId}/questions/{questionId}
+ */
+export interface UpdateFormQuestionRequest {
+  questionText: string;
+  questionType: FormQuestionType;
+  isRequired: boolean;
+  sortOrder: number;
+  helpText?: string | null;
+  options?: { id?: string | null; text: string; sortOrder: number }[] | null;
+}
+
+/**
+ * Reorder form questions request
+ * PUT /api/events/{id}/forms/{formId}/questions/reorder
+ */
+export interface ReorderFormQuestionsRequest {
+  questionIdsInOrder: string[];
+}
+
+/**
+ * Submit form response answer item
+ */
+export interface SubmitFormAnswerItem {
+  questionId: string;
+  textValue?: string | null;
+  selectedOptionIds?: string[] | null;
+  booleanValue?: boolean | null;
+}
+
+/**
+ * Submit form response request
+ * POST /api/events/{id}/forms/{formId}/responses
+ */
+export interface SubmitFormResponseRequest {
+  respondentName?: string | null;
+  respondentEmail?: string | null;
+  answers: SubmitFormAnswerItem[];
+}
+
+/**
+ * Submit form response result
+ */
+export interface SubmitFormResponseResult {
+  responseId: string;
+  accessToken: string;
+}
+
+/**
+ * Update form response request
+ * PUT /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
+ */
+export interface UpdateFormResponseRequest {
+  answers: SubmitFormAnswerItem[];
 }

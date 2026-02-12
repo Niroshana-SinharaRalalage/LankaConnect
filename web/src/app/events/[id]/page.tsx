@@ -533,8 +533,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {event.displayLabel}
                 </Badge>
 
-                {/* Registration Badge */}
-                <RegistrationBadge isRegistered={isUserRegistered} compact={false} />
+                {/* Registration Badge - Issue #2: Use registration status directly */}
+                <RegistrationBadge registrationStatus={registrationDetails?.status as any} compact={false} />
               </div>
 
               <div

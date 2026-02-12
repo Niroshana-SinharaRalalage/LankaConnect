@@ -214,9 +214,9 @@ export function EventsList({
                     {event.displayLabel}
                   </span>
 
-                  {/* Phase 6A.46: Registration Badge */}
+                  {/* Phase 6A.46: Registration Badge - Issue #2: Use event status */}
                   <RegistrationBadge
-                    isRegistered={registeredEventIds?.has(event.id) ?? false}
+                    registrationStatus={event.userRegistrationStatus}
                     compact={false}
                   />
                 </div>

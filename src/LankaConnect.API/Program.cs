@@ -156,7 +156,11 @@ try
 
         options.AddPolicy("Production", policy =>
         {
-            policy.WithOrigins("https://lankaconnect.com", "https://www.lankaconnect.com")
+            policy.WithOrigins(
+                      "https://lankaconnect.com",
+                      "https://www.lankaconnect.com",
+                      "https://lankaconnect.app",
+                      "https://www.lankaconnect.app")
                   .AllowAnyMethod()
                   .AllowAnyHeader()
                   .AllowCredentials();
@@ -267,7 +271,7 @@ try
             ? new[] { "http://localhost:3000", "https://localhost:3001" }
             : app.Environment.IsStaging()
                 ? new[] { "http://localhost:3000", "https://localhost:3001", "https://lankaconnect-staging.azurestaticapps.net" }
-                : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com" };
+                : new[] { "https://lankaconnect.com", "https://www.lankaconnect.com", "https://lankaconnect.app", "https://www.lankaconnect.app" };
 
         try
         {

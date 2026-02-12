@@ -659,7 +659,7 @@ public class AuthController : ControllerBase
             Expires = DateTime.UtcNow.AddDays(expirationDays),
             Path = "/",
             // Domain only in production for subdomain sharing
-            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
+            Domain = _env.IsProduction() ? ".lankaconnect.app" : null
         };
 
         _logger.LogInformation(
@@ -683,7 +683,7 @@ public class AuthController : ControllerBase
             SameSite = isHttpOnly ? SameSiteMode.Lax : SameSiteMode.None,
             Expires = DateTime.UtcNow.AddDays(-1),
             Path = "/",
-            Domain = _env.IsProduction() ? ".lankaconnect.com" : null
+            Domain = _env.IsProduction() ? ".lankaconnect.app" : null
         };
 
         _logger.LogInformation(

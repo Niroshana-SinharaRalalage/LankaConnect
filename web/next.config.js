@@ -19,6 +19,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'lankaconnectstrgaccount.blob.core.windows.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'lankaconnectprodstorage.blob.core.windows.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lankaconnect-api-prod.graystone-d581eaeb.eastus2.azurecontainerapps.io',
+      },
     ],
   },
   env: {

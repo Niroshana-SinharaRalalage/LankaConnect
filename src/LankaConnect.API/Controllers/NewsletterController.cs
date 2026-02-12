@@ -129,7 +129,7 @@ public class NewsletterController : ControllerBase
     {
         try
         {
-            var frontendBaseUrl = _configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.com";
+            var frontendBaseUrl = _configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.app";
 
             if (string.IsNullOrWhiteSpace(token))
             {
@@ -156,7 +156,7 @@ public class NewsletterController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error confirming newsletter subscription with token: {Token}", token);
-            return Redirect($"{_configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.com"}/newsletter/confirm?status=error&message=An+error+occurred");
+            return Redirect($"{_configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.app"}/newsletter/confirm?status=error&message=An+error+occurred");
         }
     }
 
@@ -173,7 +173,7 @@ public class NewsletterController : ControllerBase
     {
         try
         {
-            var frontendBaseUrl = _configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.com";
+            var frontendBaseUrl = _configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.app";
 
             if (string.IsNullOrWhiteSpace(token))
             {
@@ -200,7 +200,7 @@ public class NewsletterController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error unsubscribing from newsletter with token: {Token}", token);
-            return Redirect($"{_configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.com"}/newsletter/unsubscribe?status=error&message=An+error+occurred");
+            return Redirect($"{_configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.app"}/newsletter/unsubscribe?status=error&message=An+error+occurred");
         }
     }
 }

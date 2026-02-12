@@ -53,6 +53,7 @@ export const EventStatusFilterLabels: Record<EventStatusFilter, string> = {
 
 /**
  * Event category enum matching backend LankaConnect.Domain.Events.Enums.EventCategory
+ * Updated to match production database reference data (12 categories)
  */
 export enum EventCategory {
   Religious = 0,
@@ -63,6 +64,10 @@ export enum EventCategory {
   Business = 5,
   Charity = 6,
   Entertainment = 7,
+  Workshop = 8,
+  Festival = 9,
+  Ceremony = 10,
+  Celebration = 11,
 }
 
 /**

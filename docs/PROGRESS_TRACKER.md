@@ -1,9 +1,55 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-12 - Phase 6A.106 Part 3: Azure Blob Storage Image Upload 🚀 DEPLOYING*
+*Last Updated: 2026-02-12 - Phase 6A.X: Registration Badge Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.106 Part 3: Azure Blob Storage Image Upload 🚀 DEPLOYING
+## 🎯 Current Session Status - Phase 6A.X: Registration Badge Fix ✅ COMPLETE
+
+### PHASE 6A.X: REGISTRATION BADGE FIX - 2026-02-12
+
+**Status**: ✅ **COMPLETE - READY FOR PRODUCTION**
+
+**Priority**: 🔴 **CRITICAL - Production UX Issue**
+
+**Problem**: "You are registered" badges not displaying on event cards for registered users, despite Stripe webhooks working correctly (HTTP 200).
+
+**Root Causes Identified**:
+1. **Backend**: GetEventsQuery had userId parameter but never populated UserRegistrationStatus field
+2. **Migration**: Phase 6A.104 failed due to PostgreSQL column name case-sensitivity
+3. **Frontend**: Enum serialization mismatch - backend sends strings, frontend expected numbers
+
+**Solutions Implemented**:
+
+| Layer | Issue | Fix | Commit |
+|-------|-------|-----|--------|
+| **Backend API** | UserRegistrationStatus never populated | Added IRegistrationRepository, populated field via dictionary lookup | 1ad0e0f9 |
+| **Backend API** | userId not extracted from JWT | EventsController uses User.GetUserId() automatically | 1ad0e0f9 |
+| **Migration** | Column "name" case mismatch | Changed to `ON CONFLICT ("Name")` with quotes | 9546865a |
+| **Frontend** | String vs Number enum comparison | Check both 'Confirmed' string and numeric 1 | 89e74a43 |
+
+**Files Changed**:
+- Backend: GetEventsQueryHandler.cs, EventsController.cs, GetEventsQueryHandlerTests.cs
+- Migration: 20260212041027_Phase6A104_SeedMetroAreasAndBadgesProduction.cs
+- Frontend: RegistrationBadge.tsx
+
+**Testing**:
+- ✅ Backend API returns `"userRegistrationStatus": "Confirmed"`
+- ✅ Authorization header (Bearer token) sent correctly
+- ✅ Frontend enum comparison fixed
+- ✅ **User confirmed**: "OK, I can see the 'You are registered' in staging"
+
+**Deployment**:
+- ✅ Backend deployed to staging (Run 21959415583)
+- ✅ Frontend deployed to staging (Run 21961494933)
+- 🚀 **PR #74 ready for production merge**
+
+**Documentation**:
+- RCA documents created in docs/ folder
+- PR #74 updated with comprehensive fix summary
+
+---
+
+## 🎯 Previous Session - Phase 6A.106 Part 3: Azure Blob Storage Image Upload 🚀 DEPLOYING
 
 ### PHASE 6A.106 PART 3: AZURE BLOB STORAGE IMAGE UPLOAD - 2026-02-12
 

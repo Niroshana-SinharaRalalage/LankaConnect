@@ -102,42 +102,40 @@ export function FormRenderer({
           return;
         }
 
+        // Backend sends enum as string, frontend enum is numeric
+        // Helper to check if questionType matches (handles both string and numeric)
+        const questionType = question.questionType;
+        const isType = (stringValue: string, numericValue: FormQuestionType): boolean => {
+          return questionType === stringValue || questionType === numericValue;
+        };
+
         // Validate based on question type
-        switch (question.questionType) {
-          case FormQuestionType.ShortText:
-          case FormQuestionType.LongText:
-            if (!answer.textValue || answer.textValue.trim() === '') {
-              errors[question.id] = 'This field is required';
-            }
-            break;
-          case FormQuestionType.SingleChoice:
-          case FormQuestionType.Dropdown:
-            if (!answer.selectedOptionIds || answer.selectedOptionIds.length === 0) {
-              errors[question.id] = 'Please select an option';
-            }
-            break;
-          case FormQuestionType.MultipleChoice:
-            if (!answer.selectedOptionIds || answer.selectedOptionIds.length === 0) {
-              errors[question.id] = 'Please select at least one option';
-            }
-            break;
-          case FormQuestionType.Number:
-            if (!answer.textValue || answer.textValue.trim() === '') {
-              errors[question.id] = 'This field is required';
-            } else if (isNaN(Number(answer.textValue))) {
-              errors[question.id] = 'Please enter a valid number';
-            }
-            break;
-          case FormQuestionType.Date:
-            if (!answer.textValue || answer.textValue.trim() === '') {
-              errors[question.id] = 'This field is required';
-            }
-            break;
-          case FormQuestionType.YesNo:
-            if (answer.booleanValue === undefined || answer.booleanValue === null) {
-              errors[question.id] = 'Please select Yes or No';
-            }
-            break;
+        if (isType('ShortText', FormQuestionType.ShortText) || isType('LongText', FormQuestionType.LongText)) {
+          if (!answer.textValue || answer.textValue.trim() === '') {
+            errors[question.id] = 'This field is required';
+          }
+        } else if (isType('SingleChoice', FormQuestionType.SingleChoice) || isType('Dropdown', FormQuestionType.Dropdown)) {
+          if (!answer.selectedOptionIds || answer.selectedOptionIds.length === 0) {
+            errors[question.id] = 'Please select an option';
+          }
+        } else if (isType('MultipleChoice', FormQuestionType.MultipleChoice)) {
+          if (!answer.selectedOptionIds || answer.selectedOptionIds.length === 0) {
+            errors[question.id] = 'Please select at least one option';
+          }
+        } else if (isType('Number', FormQuestionType.Number)) {
+          if (!answer.textValue || answer.textValue.trim() === '') {
+            errors[question.id] = 'This field is required';
+          } else if (isNaN(Number(answer.textValue))) {
+            errors[question.id] = 'Please enter a valid number';
+          }
+        } else if (isType('Date', FormQuestionType.Date)) {
+          if (!answer.textValue || answer.textValue.trim() === '') {
+            errors[question.id] = 'This field is required';
+          }
+        } else if (isType('YesNo', FormQuestionType.YesNo)) {
+          if (answer.booleanValue === undefined || answer.booleanValue === null) {
+            errors[question.id] = 'Please select Yes or No';
+          }
         }
       }
     });
@@ -179,26 +177,41 @@ export function FormRenderer({
       error,
     };
 
-    switch (question.questionType) {
-      case FormQuestionType.ShortText:
-        return <ShortTextQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.LongText:
-        return <LongTextQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.SingleChoice:
-        return <SingleChoiceQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.MultipleChoice:
-        return <MultipleChoiceQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.Dropdown:
-        return <DropdownQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.Number:
-        return <NumberQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.Date:
-        return <DateQuestion key={question.id} {...commonProps} />;
-      case FormQuestionType.YesNo:
-        return <YesNoQuestion key={question.id} {...commonProps} />;
-      default:
-        return null;
+    // Backend sends enum as string (e.g., "ShortText"), frontend enum is numeric (0)
+    // Need to check both string and numeric values (same pattern as EventFormStatus fix)
+    const questionType = question.questionType;
+
+    // Helper to check if questionType matches (handles both string and numeric)
+    const isType = (stringValue: string, numericValue: FormQuestionType): boolean => {
+      return questionType === stringValue || questionType === numericValue;
+    };
+
+    if (isType('ShortText', FormQuestionType.ShortText)) {
+      return <ShortTextQuestion key={question.id} {...commonProps} />;
     }
+    if (isType('LongText', FormQuestionType.LongText)) {
+      return <LongTextQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('SingleChoice', FormQuestionType.SingleChoice)) {
+      return <SingleChoiceQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('MultipleChoice', FormQuestionType.MultipleChoice)) {
+      return <MultipleChoiceQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('Dropdown', FormQuestionType.Dropdown)) {
+      return <DropdownQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('Number', FormQuestionType.Number)) {
+      return <NumberQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('Date', FormQuestionType.Date)) {
+      return <DateQuestion key={question.id} {...commonProps} />;
+    }
+    if (isType('YesNo', FormQuestionType.YesNo)) {
+      return <YesNoQuestion key={question.id} {...commonProps} />;
+    }
+
+    return null;
   };
 
   return (

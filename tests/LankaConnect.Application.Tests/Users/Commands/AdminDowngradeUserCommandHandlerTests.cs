@@ -24,7 +24,8 @@ public class AdminDowngradeUserCommandHandlerTests
     private readonly Mock<ICurrentUserService> _currentUserService;
     private readonly Mock<IUnitOfWork> _unitOfWork;
     private readonly Mock<IEventRepository> _eventRepository;
-    private readonly Mock<IBillingRepository> _billingRepository;
+    // TODO Phase 6A.106 Hotfix: Re-add when IBillingRepository implementation exists
+    // private readonly Mock<IBillingRepository> _billingRepository;
     private readonly AdminDowngradeUserCommandHandler _handler;
 
     public AdminDowngradeUserCommandHandlerTests()
@@ -34,7 +35,8 @@ public class AdminDowngradeUserCommandHandlerTests
         _currentUserService = new Mock<ICurrentUserService>();
         _unitOfWork = TestHelpers.MockRepository.CreateUnitOfWork();
         _eventRepository = new Mock<IEventRepository>();
-        _billingRepository = new Mock<IBillingRepository>();
+        // TODO Phase 6A.106 Hotfix: Re-add when IBillingRepository implementation exists
+        // _billingRepository = new Mock<IBillingRepository>();
 
         _handler = new AdminDowngradeUserCommandHandler(
             _userRepository.Object,
@@ -42,7 +44,8 @@ public class AdminDowngradeUserCommandHandlerTests
             _currentUserService.Object,
             _unitOfWork.Object,
             _eventRepository.Object,
-            _billingRepository.Object,
+            // TODO Phase 6A.106 Hotfix: Re-add when IBillingRepository implementation exists
+            // _billingRepository.Object,
             NullLogger<AdminDowngradeUserCommandHandler>.Instance);
     }
 

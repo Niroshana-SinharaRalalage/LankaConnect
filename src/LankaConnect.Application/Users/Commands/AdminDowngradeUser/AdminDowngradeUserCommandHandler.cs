@@ -25,7 +25,8 @@ public class AdminDowngradeUserCommandHandler : ICommandHandler<AdminDowngradeUs
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEventRepository _eventRepository;
-    private readonly IBillingRepository _billingRepository;
+    // TODO Phase 6A.106 Hotfix: Re-add IBillingRepository when implementation exists
+    // private readonly IBillingRepository _billingRepository;
     private readonly ILogger<AdminDowngradeUserCommandHandler> _logger;
 
     public AdminDowngradeUserCommandHandler(
@@ -34,7 +35,8 @@ public class AdminDowngradeUserCommandHandler : ICommandHandler<AdminDowngradeUs
         ICurrentUserService currentUserService,
         IUnitOfWork unitOfWork,
         IEventRepository eventRepository,
-        IBillingRepository billingRepository,
+        // TODO Phase 6A.106 Hotfix: Re-add IBillingRepository when implementation exists
+        // IBillingRepository billingRepository,
         ILogger<AdminDowngradeUserCommandHandler> logger)
     {
         _userRepository = userRepository;
@@ -42,7 +44,8 @@ public class AdminDowngradeUserCommandHandler : ICommandHandler<AdminDowngradeUs
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
         _eventRepository = eventRepository;
-        _billingRepository = billingRepository;
+        // TODO Phase 6A.106 Hotfix: Re-add when implementation exists
+        // _billingRepository = billingRepository;
         _logger = logger;
     }
 
@@ -153,7 +156,8 @@ public class AdminDowngradeUserCommandHandler : ICommandHandler<AdminDowngradeUs
 
                 // Fail-silent operations after role downgrade succeeds
                 await UnpublishUserEventsAsync(targetUser.Id, cancellationToken);
-                await CancelUserSubscriptionAsync(targetUser.Id, oldRole, cancellationToken);
+                // TODO Phase 6A.106 Hotfix: Re-enable when IBillingRepository implementation exists
+                // await CancelUserSubscriptionAsync(targetUser.Id, oldRole, cancellationToken);
 
                 stopwatch.Stop();
 
@@ -216,48 +220,49 @@ public class AdminDowngradeUserCommandHandler : ICommandHandler<AdminDowngradeUs
         }
     }
 
-    private async Task CancelUserSubscriptionAsync(Guid userId, UserRole oldRole, CancellationToken cancellationToken)
-    {
-        if (!oldRole.RequiresSubscription())
-        {
-            _logger.LogInformation("User {UserId} with role {Role} does not require subscription, skipping cancellation", userId, oldRole);
-            return;
-        }
-
-        try
-        {
-            var userIdResult = UserId.Create(userId);
-            if (userIdResult.IsFailure)
-            {
-                _logger.LogWarning("Invalid user ID {UserId}: {Error}", userId, userIdResult.Error);
-                return;
-            }
-
-            var subscription = await _billingRepository.GetSubscriptionByUserIdAsync(userIdResult.Value, cancellationToken);
-
-            if (subscription == null)
-            {
-                _logger.LogInformation("No subscription found for user {UserId}", userId);
-                return;
-            }
-
-            if (!subscription.IsActive)
-            {
-                _logger.LogInformation("Subscription for user {UserId} is already inactive", userId);
-                return;
-            }
-
-            subscription.Cancel();
-            await _billingRepository.SaveSubscriptionAsync(subscription, cancellationToken);
-
-            _logger.LogWarning("Stripe subscription {SubscriptionId} for user {UserId} cancelled locally. " +
-                              "Stripe API cancellation not yet implemented - manual cancellation required via Stripe dashboard.",
-                              subscription.StripeSubscriptionId, userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to cancel subscription for downgraded user {UserId}", userId);
-            // Fail-silent: role change already committed
-        }
-    }
+    // TODO Phase 6A.106 Hotfix: Re-enable when IBillingRepository implementation exists and is registered in DI
+    // private async Task CancelUserSubscriptionAsync(Guid userId, UserRole oldRole, CancellationToken cancellationToken)
+    // {
+    //     if (!oldRole.RequiresSubscription())
+    //     {
+    //         _logger.LogInformation("User {UserId} with role {Role} does not require subscription, skipping cancellation", userId, oldRole);
+    //         return;
+    //     }
+    //
+    //     try
+    //     {
+    //         var userIdResult = UserId.Create(userId);
+    //         if (userIdResult.IsFailure)
+    //         {
+    //             _logger.LogWarning("Invalid user ID {UserId}: {Error}", userId, userIdResult.Error);
+    //             return;
+    //         }
+    //
+    //         var subscription = await _billingRepository.GetSubscriptionByUserIdAsync(userIdResult.Value, cancellationToken);
+    //
+    //         if (subscription == null)
+    //         {
+    //             _logger.LogInformation("No subscription found for user {UserId}", userId);
+    //             return;
+    //         }
+    //
+    //         if (!subscription.IsActive)
+    //         {
+    //             _logger.LogInformation("Subscription for user {UserId} is already inactive", userId);
+    //             return;
+    //         }
+    //
+    //         subscription.Cancel();
+    //         await _billingRepository.SaveSubscriptionAsync(subscription, cancellationToken);
+    //
+    //         _logger.LogWarning("Stripe subscription {SubscriptionId} for user {UserId} cancelled locally. " +
+    //                           "Stripe API cancellation not yet implemented - manual cancellation required via Stripe dashboard.",
+    //                           subscription.StripeSubscriptionId, userId);
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         _logger.LogError(ex, "Failed to cancel subscription for downgraded user {UserId}", userId);
+    //         // Fail-silent: role change already committed
+    //     }
+    // }
 }

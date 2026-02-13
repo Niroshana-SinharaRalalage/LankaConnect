@@ -1396,21 +1396,27 @@ export class EventsRepository {
   }
 
   /**
-   * Delete a form response (organizer only)
-   * Custom Forms Feature: Remove spam or test responses
-   * Maps to backend DELETE /api/events/{id}/forms/{formId}/responses/{responseId}
+   * Delete a form response
+   * Phase 6A.106: Supports both organizer and user deletion
+   * - Organizer: Authenticated, no token required
+   * - Anonymous user: Access token required
+   * - Logged-in user: Authenticated, no token required (verified by userId)
+   * Maps to backend DELETE /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
    *
    * @param eventId - Event ID (GUID)
    * @param formId - Form ID (GUID)
    * @param responseId - Response ID (GUID)
+   * @param accessToken - Optional access token for anonymous users
    */
   async deleteFormResponse(
     eventId: string,
     formId: string,
-    responseId: string
+    responseId: string,
+    accessToken?: string
   ): Promise<void> {
+    const params = accessToken ? `?token=${accessToken}` : '';
     await apiClient.delete(
-      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`
+      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}${params}`
     );
   }
 

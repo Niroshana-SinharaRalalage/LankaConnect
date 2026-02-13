@@ -90,6 +90,7 @@ using LankaConnect.Application.Events.Commands.DeleteFormQuestion;
 using LankaConnect.Application.Events.Commands.ReorderFormQuestions;
 using LankaConnect.Application.Events.Commands.SubmitFormResponse;
 using LankaConnect.Application.Events.Commands.UpdateFormResponse;
+using LankaConnect.Application.Events.Commands.DeleteFormResponse;
 using LankaConnect.Application.Events.Queries.GetEventForms;
 using LankaConnect.Application.Events.Queries.GetEventFormDetail;
 using LankaConnect.Application.Events.Queries.GetFormResponses;
@@ -2278,6 +2279,27 @@ public class EventsController : BaseController<EventsController>
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Delete/cancel a form response (Phase 6A.106)
+    /// Anonymous users: Requires access token
+    /// Logged-in users: Uses userId from auth token
+    /// </summary>
+    [HttpDelete("{id:guid}/forms/{formId:guid}/responses/{responseId:guid}")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string? token = null)
+    {
+        Logger.LogInformation("Deleting response {ResponseId} on form {FormId} for event {EventId}", responseId, formId, id);
+
+        var userId = User.GetUserId();  // null if anonymous
+        var command = new DeleteFormResponseCommand(id, formId, responseId, token, userId);
+        var result = await Mediator.Send(command);
+
+        return result.IsSuccess ? NoContent() : BadRequest(result.Error);
     }
 
     /// <summary>

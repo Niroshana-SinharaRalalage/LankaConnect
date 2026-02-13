@@ -152,6 +152,7 @@ public class SubmitFormResponseCommandHandler : ICommandHandler<SubmitFormRespon
                     form.Id,
                     form.EventId,
                     tokenHash,
+                    accessToken,  // Pass plaintext token for email edit link (before hashing)
                     request.RespondentEmail?.Trim(),
                     request.RespondentName?.Trim(),
                     request.RespondentUserId);

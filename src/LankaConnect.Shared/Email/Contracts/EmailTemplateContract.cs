@@ -75,6 +75,11 @@ public static class EmailTemplateContract
         // Newsletter Templates
         public const string NewsletterSubscriptionConfirmation = "template-newsletter-subscription-confirmation";
         public const string NewsletterNotification = "template-newsletter-notification";
+
+        // Form Response Templates (Phase 6A.107)
+        public const string FormResponseConfirmation = "template-form-response-confirmation";
+        public const string FormResponseUpdate = "template-form-response-update";
+        public const string FormResponseCancellation = "template-form-response-cancellation";
     }
 
     #endregion
@@ -733,6 +738,63 @@ public static class EmailTemplateContract
         /// Whether this newsletter is event-specific.
         /// </summary>
         public const string IsEventNewsletter = "IsEventNewsletter";
+    }
+
+    /// <summary>
+    /// Phase 6A.107: Parameters for form response emails.
+    /// Architect Review: Approved - includes all required parameters with timestamp and deadline support.
+    /// </summary>
+    public static class FormResponse
+    {
+        /// <summary>
+        /// Form title/name.
+        /// </summary>
+        public const string FormTitle = "FormTitle";
+
+        /// <summary>
+        /// Form description (optional).
+        /// </summary>
+        public const string FormDescription = "FormDescription";
+
+        /// <summary>
+        /// Summary of user's responses (e.g., "Vegetarian preference, Arriving Friday").
+        /// </summary>
+        public const string ResponseSummary = "ResponseSummary";
+
+        /// <summary>
+        /// URL to edit the form response (includes access token for anonymous users).
+        /// </summary>
+        public const string EditFormUrl = "EditFormUrl";
+
+        /// <summary>
+        /// When the response was submitted.
+        /// </summary>
+        public const string SubmittedAt = "SubmittedAt";
+
+        /// <summary>
+        /// When the response was last updated (for update emails).
+        /// </summary>
+        public const string UpdatedAt = "UpdatedAt";
+
+        /// <summary>
+        /// When the response was cancelled (for cancellation emails).
+        /// </summary>
+        public const string CancelledAt = "CancelledAt";
+
+        /// <summary>
+        /// Response deadline (if set by organizer).
+        /// </summary>
+        public const string ResponseDeadline = "ResponseDeadline";
+
+        /// <summary>
+        /// Whether the form has a description.
+        /// </summary>
+        public const string HasFormDescription = "HasFormDescription";
+
+        /// <summary>
+        /// Whether the form has a response deadline.
+        /// </summary>
+        public const string HasResponseDeadline = "HasResponseDeadline";
     }
 
     #endregion

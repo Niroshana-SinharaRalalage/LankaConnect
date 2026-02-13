@@ -706,19 +706,33 @@ export function useUpdateFormResponse(
 /**
  * useDeleteFormResponse Hook
  *
- * Mutation for deleting a form response (organizer only)
- * Used to remove spam or test responses
+ * Phase 6A.106: Mutation for deleting a form response
+ * Supports both organizer and user deletion:
+ * - Organizer: Authenticated, no token required (removes spam/test responses)
+ * - Anonymous user: Requires access token from submission
+ * - Logged-in user: Authenticated, no token required (verified by userId)
+ *
+ * Features:
+ * - Clears localStorage token after successful deletion
+ * - Invalidates response list and form counts
+ * - Cancellation email sent by backend handler
  *
  * @example
  * ```tsx
- * const deleteResponse = useDeleteFormResponse({
- *   onSuccess: () => toast.success('Response deleted'),
- * });
- *
+ * // Anonymous user deletion
+ * const deleteResponse = useDeleteFormResponse();
  * await deleteResponse.mutateAsync({
  *   eventId,
  *   formId,
- *   responseId: 'resp-123'
+ *   responseId,
+ *   accessToken: tokenFromUrl
+ * });
+ *
+ * // Organizer deletion
+ * await deleteResponse.mutateAsync({
+ *   eventId,
+ *   formId,
+ *   responseId
  * });
  * ```
  */
@@ -726,15 +740,24 @@ export function useDeleteFormResponse(
   options?: UseMutationOptions<
     void,
     ApiError,
-    { eventId: string; formId: string; responseId: string }
+    { eventId: string; formId: string; responseId: string; accessToken?: string }
   >
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId, formId, responseId }) =>
-      eventsRepository.deleteFormResponse(eventId, formId, responseId),
-    onSuccess: (_, { eventId, formId }) => {
+    mutationFn: ({ eventId, formId, responseId, accessToken }) =>
+      eventsRepository.deleteFormResponse(eventId, formId, responseId, accessToken),
+    onSuccess: (_, { eventId, formId, accessToken }) => {
+      // Clear localStorage token if present (cross-browser cleanup)
+      const storageKey = `form_response_token_${eventId}_${formId}`;
+      localStorage.removeItem(storageKey);
+
+      // Invalidate response cache if access token was used
+      if (accessToken) {
+        queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
+      }
+
       // Invalidate responses list to update counts
       queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
       // Invalidate form list to update response counts

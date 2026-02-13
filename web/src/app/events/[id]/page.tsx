@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -10,7 +10,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
-import { useEventForms } from '@/presentation/hooks/useEventForms';
+import { useEventForms, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -98,6 +98,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
   // Phase 6A.93 Fix: Track when user wants to re-register while refund is in progress
   const [retryAfterRefund, setRetryAfterRefund] = useState(false);
+  // Phase 6A.109: Track form response deletion
+  const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
+  const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -212,6 +215,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.14: Update registration mutation
   const updateRegistrationMutation = useUpdateRegistrationDetails();
+
+  // Phase 6A.109: Delete form response mutation
+  const deleteFormResponseMutation = useDeleteFormResponse();
 
   // Phase 6A.74 Part 12 Issue #4 Fix: Handle hash navigation for anchor links
   // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
@@ -424,6 +430,47 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch (err) {
       setIsUpdatingRegistration(false);
       throw err; // Re-throw to let the modal handle the error display
+    }
+  };
+
+  // Phase 6A.109: Handle form response deletion
+  const handleDeleteFormResponse = async () => {
+    if (!deletingFormId) return;
+
+    setShowFormDeleteConfirm(false);
+
+    try {
+      const storageKey = `form_response_token_${id}_${deletingFormId}`;
+      const accessToken = localStorage.getItem(storageKey);
+
+      if (!accessToken) {
+        setError('No access token found. Unable to delete response.');
+        setDeletingFormId(null);
+        return;
+      }
+
+      // Fetch the response first to get the responseId
+      const response = await eventsRepository.getMyFormResponse(id, deletingFormId, accessToken);
+
+      if (!response) {
+        setError('Response not found.');
+        setDeletingFormId(null);
+        return;
+      }
+
+      // Now delete the response
+      await deleteFormResponseMutation.mutateAsync({
+        eventId: id,
+        formId: deletingFormId,
+        responseId: response.id,
+        accessToken,
+      });
+
+      setDeletingFormId(null);
+      // Success toast is handled by the mutation's onSuccess callback
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete response');
+      setDeletingFormId(null);
     }
   };
 
@@ -1608,64 +1655,88 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-sm text-gray-600">
                       Fill out forms to provide additional information for this event
                     </p>
-                    {activeForms.map((form) => (
-                      <Card key={form.id} className="border border-gray-200">
-                        <CardContent className="pt-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {form.title}
-                              </h3>
-                              {form.description && (
-                                <p className="text-sm text-gray-600 mb-3">
-                                  {form.description}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                                {form.responseCount > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <Users className="h-4 w-4" />
-                                    {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
-                                  </span>
+                    {activeForms.map((form) => {
+                      // Phase 7.X: Check if user already has a response saved in localStorage
+                      const storageKey = `form_response_token_${id}_${form.id}`;
+                      const hasStoredResponse = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+                      const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
+                      const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+
+                      return (
+                        <Card key={form.id} className="border border-gray-200">
+                          <CardContent className="pt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                  {form.title}
+                                </h3>
+                                {form.description && (
+                                  <p className="text-sm text-gray-600 mb-3">
+                                    {form.description}
+                                  </p>
                                 )}
-                                {form.responseDeadline && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-4 w-4" />
-                                    Due: {new Date(form.responseDeadline).toLocaleDateString()}
-                                  </span>
-                                )}
-                                {form.maxResponses != null && form.maxResponses > 0 && (
-                                  <span className="flex items-center gap-1 text-orange-600">
-                                    <AlertCircle className="h-4 w-4" />
-                                    {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
-                                  </span>
+                                <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                                  {hasStoredResponse && (
+                                    <span className="flex items-center gap-1 text-green-600 font-medium">
+                                      <CheckCircle className="h-4 w-4" />
+                                      You already responded
+                                    </span>
+                                  )}
+                                  {form.responseCount > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <Users className="h-4 w-4" />
+                                      {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                  {form.responseDeadline && (
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-4 w-4" />
+                                      Due: {new Date(form.responseDeadline).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                  {form.maxResponses != null && form.maxResponses > 0 && (
+                                    <span className="flex items-center gap-1 text-orange-600">
+                                      <AlertCircle className="h-4 w-4" />
+                                      {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0 flex gap-2">
+                                <Button
+                                  onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
+                                  disabled={isFormFull || isDeadlinePassed}
+                                  variant={hasStoredResponse ? 'outline' : 'default'}
+                                  className="w-full sm:w-auto"
+                                >
+                                  {isFormFull
+                                    ? 'Form Full'
+                                    : isDeadlinePassed
+                                    ? 'Deadline Passed'
+                                    : hasStoredResponse
+                                    ? 'Edit Your Response'
+                                    : 'Fill Out Form'}
+                                </Button>
+                                {/* Phase 6A.109: Delete button for users who have responded */}
+                                {hasStoredResponse && !isFormFull && !isDeadlinePassed && (
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setDeletingFormId(form.id);
+                                      setShowFormDeleteConfirm(true);
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete response</span>
+                                  </Button>
                                 )}
                               </div>
                             </div>
-                            <div className="flex-shrink-0">
-                              <Button
-                                onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
-                                disabled={
-                                  (form.maxResponses != null && form.maxResponses > 0 &&
-                                   form.responseCount >= form.maxResponses) ||
-                                  (form.responseDeadline != null &&
-                                   new Date(form.responseDeadline) < new Date())
-                                }
-                                className="w-full sm:w-auto"
-                              >
-                                {(form.maxResponses != null && form.maxResponses > 0 &&
-                                  form.responseCount >= form.maxResponses)
-                                  ? 'Form Full'
-                                  : (form.responseDeadline != null &&
-                                     new Date(form.responseDeadline) < new Date())
-                                  ? 'Deadline Passed'
-                                  : 'Fill Out Form'}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
@@ -1814,6 +1885,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             setShowCancelPendingDialog(false);
           }
         }}
+      />
+
+      {/* Phase 6A.109: Form response deletion confirmation */}
+      <ConfirmDialog
+        open={showFormDeleteConfirm}
+        onOpenChange={setShowFormDeleteConfirm}
+        title="Cancel Form Response"
+        description="Are you sure you want to cancel your form response? This action cannot be undone. You will receive a confirmation email."
+        confirmLabel="Yes, Cancel Response"
+        cancelLabel="Keep Response"
+        variant="danger"
+        onConfirm={handleDeleteFormResponse}
       />
     </div>
   );

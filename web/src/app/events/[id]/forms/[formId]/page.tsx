@@ -11,10 +11,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { useEventFormDetail, useSubmitFormResponse, useMyFormResponse } from '@/presentation/hooks/useEventForms';
+import { useEventFormDetail, useSubmitFormResponse, useMyFormResponse, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { FormRenderer } from '@/presentation/components/features/events/FormRenderer';
@@ -32,7 +32,26 @@ export default function FormViewPage({ params }: FormViewPageProps) {
   const [eventId, setEventId] = useState<string>('');
   const [formId, setFormId] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(token);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Phase 7.X: Auto-restore access token from localStorage for better UX
+  // User shouldn't need to manually copy/paste edit links
+  useEffect(() => {
+    if (eventId && formId) {
+      const storageKey = `form_response_token_${eventId}_${formId}`;
+      const storedToken = localStorage.getItem(storageKey);
+
+      // Priority: URL token > stored token
+      if (token) {
+        setAccessToken(token);
+        // Also save URL token to localStorage for future visits
+        localStorage.setItem(storageKey, token);
+      } else if (storedToken) {
+        setAccessToken(storedToken);
+      }
+    }
+  }, [eventId, formId, token]);
 
   // Unwrap params
   useEffect(() => {
@@ -57,10 +76,30 @@ export default function FormViewPage({ params }: FormViewPageProps) {
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
       setIsSubmitted(true);
+
+      // Phase 7.X: Save token to localStorage so user can edit later without copy/paste
+      if (eventId && formId) {
+        const storageKey = `form_response_token_${eventId}_${formId}`;
+        localStorage.setItem(storageKey, data.accessToken);
+      }
+
       toast.success('Response submitted successfully!');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to submit response');
+    },
+  });
+
+  // Phase 6A.106: Delete mutation for canceling response
+  const deleteMutation = useDeleteFormResponse({
+    onSuccess: () => {
+      toast.success('Response cancelled successfully');
+      // Clear access token and redirect to event page
+      setAccessToken(null);
+      router.push(`/events/${eventId}`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to cancel response');
     },
   });
 
@@ -77,6 +116,20 @@ export default function FormViewPage({ params }: FormViewPageProps) {
       eventId,
       formId,
       request,
+    });
+  };
+
+  // Phase 6A.106: Handle response deletion with confirmation
+  const handleDelete = async () => {
+    if (!eventId || !formId || !existingResponse || !accessToken) return;
+
+    setShowDeleteConfirm(false);
+
+    await deleteMutation.mutateAsync({
+      eventId,
+      formId,
+      responseId: existingResponse.id,
+      accessToken,
     });
   };
 
@@ -241,12 +294,24 @@ export default function FormViewPage({ params }: FormViewPageProps) {
 
             {existingResponse && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Editing your response</strong>
-                  {form.responseDeadline && !isDeadlinePassed && (
-                    <span> - You can make changes until {new Date(form.responseDeadline).toLocaleString()}</span>
-                  )}
-                </p>
+                <div className="flex items-start justify-between">
+                  <p className="text-sm text-blue-800">
+                    <strong>Editing your response</strong>
+                    {form.responseDeadline && !isDeadlinePassed && (
+                      <span> - You can make changes until {new Date(form.responseDeadline).toLocaleString()}</span>
+                    )}
+                  </p>
+                  {/* Phase 6A.106: Cancel/Delete Response Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 -mt-1"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Cancel Response
+                  </Button>
+                </div>
               </div>
             )}
           </CardHeader>
@@ -268,6 +333,52 @@ export default function FormViewPage({ params }: FormViewPageProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Phase 6A.106: Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center text-red-600">
+                  <Trash2 className="w-5 h-5 mr-2" />
+                  Cancel Response?
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to cancel your response? This action cannot be undone.
+                  You will receive a confirmation email.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    Keep Response
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? (
+                      <span className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Canceling...
+                      </span>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Cancel Response
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

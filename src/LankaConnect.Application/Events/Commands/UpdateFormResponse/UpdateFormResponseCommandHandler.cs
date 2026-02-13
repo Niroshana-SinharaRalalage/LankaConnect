@@ -43,8 +43,7 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
 
             try
             {
-                // Authenticate via access token
-                var tokenHash = ComputeSha256Hash(request.AccessToken);
+                // Load response
                 var response = await _formResponseRepository.GetByIdWithAnswersAsync(request.ResponseId, cancellationToken);
 
                 if (response == null)
@@ -56,13 +55,50 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                     return Result.Failure($"Response with ID {request.ResponseId} not found");
                 }
 
-                if (response.AccessTokenHash != tokenHash)
+                // Phase 6A.106-110 Fix: PRIORITY-BASED AUTHENTICATION
+                // Priority 1: If response has RespondentUserId (logged-in user) → ONLY userId can update (ignore token)
+                // Priority 2: If response is anonymous (no userId) → ONLY token can update
+                if (response.RespondentUserId.HasValue)
                 {
-                    stopwatch.Stop();
-                    _logger.LogWarning(
-                        "UpdateFormResponse FAILED: Invalid access token - ResponseId={ResponseId}, Duration={ElapsedMs}ms",
-                        request.ResponseId, stopwatch.ElapsedMilliseconds);
-                    return Result.Failure("Invalid access token");
+                    // This response was submitted by a logged-in user
+                    // ONLY that user can update it (token auth doesn't apply)
+                    if (request.RequestingUserId == null || request.RequestingUserId != response.RespondentUserId)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "UpdateFormResponse FAILED: Unauthorized update attempt - Response belongs to user {OwnerId}, requester {RequesterId}, Duration={ElapsedMs}ms",
+                            response.RespondentUserId, request.RequestingUserId ?? Guid.Empty, stopwatch.ElapsedMilliseconds);
+                        return Result.Failure("You are not authorized to update this response");
+                    }
+
+                    _logger.LogInformation(
+                        "UpdateFormResponse: Authenticated as logged-in user {UserId}",
+                        request.RequestingUserId);
+                }
+                else
+                {
+                    // This response was submitted anonymously
+                    // ONLY valid access token can update it
+                    if (string.IsNullOrEmpty(request.AccessToken))
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "UpdateFormResponse FAILED: Unauthorized update attempt - Anonymous response requires access token, Duration={ElapsedMs}ms",
+                            stopwatch.ElapsedMilliseconds);
+                        return Result.Failure("Access token is required to update this response");
+                    }
+
+                    var tokenHash = ComputeSha256Hash(request.AccessToken);
+                    if (response.AccessTokenHash != tokenHash)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "UpdateFormResponse FAILED: Invalid access token - ResponseId={ResponseId}, Duration={ElapsedMs}ms",
+                            request.ResponseId, stopwatch.ElapsedMilliseconds);
+                        return Result.Failure("Invalid access token");
+                    }
+
+                    _logger.LogInformation("UpdateFormResponse: Authenticated via access token");
                 }
 
                 if (response.EventFormId != request.FormId)

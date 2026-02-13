@@ -1330,27 +1330,29 @@ export class EventsRepository {
   }
 
   /**
-   * Update a form response using access token (public endpoint - AllowAnonymous)
-   * Custom Forms Feature: Edit response before deadline
+   * Update a form response (Phase 6A.106-110 Fix: Supports both token and userId auth)
+   * Anonymous users: Requires access token
+   * Logged-in users: Uses JWT token (no access token needed)
    * Maps to backend PUT /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
    *
    * @param eventId - Event ID (GUID)
    * @param formId - Form ID (GUID)
    * @param responseId - Response ID (GUID)
-   * @param accessToken - Access token from submission
+   * @param accessToken - Access token (optional for logged-in users)
    * @param request - Response update request
    */
   async updateFormResponse(
     eventId: string,
     formId: string,
     responseId: string,
-    accessToken: string,
+    accessToken: string | undefined,
     request: UpdateFormResponseRequest
   ): Promise<void> {
-    await apiClient.put(
-      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`,
-      request
-    );
+    const url = accessToken
+      ? `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`
+      : `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`;
+
+    await apiClient.put(url, request);
   }
 
   /**

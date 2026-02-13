@@ -11,14 +11,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { ArrowLeft, CheckCircle, Trash2, AlertCircle } from 'lucide-react';
 
-import { useEventFormDetail, useSubmitFormResponse, useMyFormResponse, useMyFormResponseByUserId, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
+import { useEventFormDetail, useSubmitFormResponse, useUpdateFormResponse, useMyFormResponse, useMyFormResponseByUserId, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { FormRenderer } from '@/presentation/components/features/events/FormRenderer';
-import type { SubmitFormAnswerItem, SubmitFormResponseRequest } from '@/infrastructure/api/types/events.types';
+import type { SubmitFormAnswerItem, SubmitFormResponseRequest, UpdateFormResponseRequest } from '@/infrastructure/api/types/events.types';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 interface FormViewPageProps {
@@ -36,6 +35,11 @@ export default function FormViewPage({ params }: FormViewPageProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Phase 6A.106-110: Inline message state (replaces toast messages)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Phase 7.X: Auto-restore access token from localStorage for better UX
   // User shouldn't need to manually copy/paste edit links
@@ -82,7 +86,7 @@ export default function FormViewPage({ params }: FormViewPageProps) {
   // Merge responses: prioritize user-based (logged-in) over token-based (anonymous)
   const existingResponse = userBasedResponse || tokenBasedResponse;
 
-  // Submit mutation
+  // Submit mutation (for new responses)
   const submitMutation = useSubmitFormResponse({
     onSuccess: (data) => {
       setAccessToken(data.accessToken);
@@ -94,40 +98,90 @@ export default function FormViewPage({ params }: FormViewPageProps) {
         localStorage.setItem(storageKey, data.accessToken);
       }
 
-      toast.success('Response submitted successfully!');
+      setSuccessMessage('Response submitted successfully! You can edit your response until the deadline.');
+      setErrorMessage(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to submit response');
+      setErrorMessage(error.message || 'Failed to submit response');
+      setSuccessMessage(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+  });
+
+  // Update mutation (for editing existing responses)
+  const updateMutation = useUpdateFormResponse({
+    onSuccess: () => {
+      setSuccessMessage('Response updated successfully!');
+      setErrorMessage(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    onError: (error) => {
+      setErrorMessage(error.message || 'Failed to update response');
+      setSuccessMessage(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
   });
 
   // Phase 6A.106: Delete mutation for canceling response
   const deleteMutation = useDeleteFormResponse({
     onSuccess: () => {
-      toast.success('Response cancelled successfully');
-      // Clear access token and redirect to event page
-      setAccessToken(null);
-      router.push(`/events/${eventId}`);
+      setSuccessMessage('Response cancelled successfully');
+      setErrorMessage(null);
+      // Wait a moment to show success message before redirecting
+      setTimeout(() => {
+        setAccessToken(null);
+        router.push(`/events/${eventId}`);
+      }, 1500);
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to cancel response');
+      setErrorMessage(error.message || 'Failed to cancel response');
+      setSuccessMessage(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
   });
 
+  // Phase 6A.106-110 Fix: Handle both NEW submission and UPDATE
   const handleSubmit = async (answers: SubmitFormAnswerItem[], respondentName?: string, respondentEmail?: string) => {
     if (!eventId || !formId) return;
 
-    const request: SubmitFormResponseRequest = {
-      respondentName: respondentName || null,
-      respondentEmail: respondentEmail || null,
-      answers,
-    };
+    // Clear any previous messages
+    setSuccessMessage(null);
+    setErrorMessage(null);
 
-    await submitMutation.mutateAsync({
-      eventId,
-      formId,
-      request,
-    });
+    // Check if this is an UPDATE (existing response) or NEW submission
+    if (existingResponse) {
+      // UPDATE existing response
+      const updateRequest: UpdateFormResponseRequest = {
+        answers: answers.map(a => ({
+          questionId: a.questionId,
+          textValue: a.textValue,
+          selectedOptionIds: a.selectedOptionIds,
+          booleanValue: a.booleanValue,
+        })),
+      };
+
+      await updateMutation.mutateAsync({
+        eventId,
+        formId,
+        responseId: existingResponse.id,
+        accessToken: accessToken || undefined,  // Optional for logged-in users
+        request: updateRequest,
+      });
+    } else {
+      // NEW submission
+      const submitRequest: SubmitFormResponseRequest = {
+        respondentName: respondentName || null,
+        respondentEmail: respondentEmail || null,
+        answers,
+      };
+
+      await submitMutation.mutateAsync({
+        eventId,
+        formId,
+        request: submitRequest,
+      });
+    }
   };
 
   // Phase 6A.106: Handle response deletion with confirmation
@@ -137,7 +191,10 @@ export default function FormViewPage({ params }: FormViewPageProps) {
 
     // Logged-in users don't need token, anonymous users do
     if (!isAuthenticated && !accessToken) {
-      toast.error('Unable to delete response. Please use the edit link from your email.');
+      setErrorMessage('Unable to delete response. Please use the edit link from your email.');
+      setSuccessMessage(null);
+      setShowDeleteConfirm(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -239,10 +296,11 @@ export default function FormViewPage({ params }: FormViewPageProps) {
                       size="sm"
                       onClick={() => {
                         navigator.clipboard.writeText(editUrl);
-                        toast.success('Edit link copied to clipboard!');
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2000);
                       }}
                     >
-                      Copy Edit Link
+                      {copySuccess ? '✓ Copied!' : 'Copy Edit Link'}
                     </Button>
                   </div>
                 )}
@@ -281,6 +339,26 @@ export default function FormViewPage({ params }: FormViewPageProps) {
               <CardDescription className="text-base mt-2">
                 {form.description}
               </CardDescription>
+            )}
+
+            {/* Phase 6A.106-110: Inline Success/Error Messages */}
+            {successMessage && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-900">{successMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {errorMessage && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-900">Error</p>
+                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+                </div>
+              </div>
             )}
 
             {/* Form Metadata */}

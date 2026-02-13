@@ -717,7 +717,7 @@ export function useUpdateFormResponse(
       eventId: string;
       formId: string;
       responseId: string;
-      accessToken: string;
+      accessToken?: string;  // Optional for logged-in users
       request: UpdateFormResponseRequest;
     }
   >
@@ -729,7 +729,11 @@ export function useUpdateFormResponse(
       eventsRepository.updateFormResponse(eventId, formId, responseId, accessToken, request),
     onSuccess: (_, { eventId, formId, accessToken }) => {
       // Invalidate the specific response being edited
-      queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
+      if (accessToken) {
+        queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
+      }
+      // Invalidate user-based response query (for logged-in users)
+      queryClient.invalidateQueries({ queryKey: ['formResponse', 'my', eventId, formId] });
       // Invalidate responses list if organizer is viewing
       queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
     },

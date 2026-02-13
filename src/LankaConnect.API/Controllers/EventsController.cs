@@ -2260,24 +2260,28 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
-    /// Update own response (requires access token, blocked after deadline)
+    /// Update own response (Phase 6A.106-110 Fix: Supports both token and userId auth)
+    /// Anonymous users: Requires access token from query string
+    /// Logged-in users: Uses userId from JWT token (no access token needed)
     /// </summary>
     [HttpPut("{id:guid}/forms/{formId:guid}/responses/{responseId:guid}")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string token, [FromBody] UpdateFormResponseRequest request)
+    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string? token = null, [FromBody] UpdateFormResponseRequest? request = null)
     {
-        Logger.LogInformation("Updating response {ResponseId} on form {FormId} for event {EventId}", responseId, formId, id);
+        var userId = User.GetUserId();
+        Logger.LogInformation("Updating response {ResponseId} on form {FormId} for event {EventId}, UserId={UserId}, HasToken={HasToken}",
+            responseId, formId, id, userId, !string.IsNullOrEmpty(token));
 
-        var answers = request.Answers.Select(a => new UpdateFormAnswerItem(
+        var answers = request?.Answers.Select(a => new UpdateFormAnswerItem(
             a.QuestionId,
             a.TextValue,
             a.SelectedOptionIds,
             a.BooleanValue
-        )).ToList();
+        )).ToList() ?? new List<UpdateFormAnswerItem>();
 
-        var command = new UpdateFormResponseCommand(id, formId, responseId, token, answers);
+        var command = new UpdateFormResponseCommand(id, formId, responseId, token, userId, answers);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);

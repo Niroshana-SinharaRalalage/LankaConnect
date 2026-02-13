@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle, Briefcase, Calendar, Star, Shield, Crown } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import {
   useAdminUsers,
@@ -251,32 +251,69 @@ export function UserManagementTab() {
     <div className="space-y-6">
       {/* Statistics Cards */}
       {statistics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Users}
-            label="Total Users"
-            value={statistics.totalUsers}
-            color="blue"
-          />
-          <StatCard
-            icon={UserCheck}
-            label="Active Users"
-            value={statistics.activeUsers}
-            color="green"
-          />
-          <StatCard
-            icon={Lock}
-            label="Locked Accounts"
-            value={statistics.lockedAccounts}
-            color="amber"
-          />
-          <StatCard
-            icon={Users}
-            label="Admins"
-            value={(statistics.usersByRole?.['Admin'] || 0) + (statistics.usersByRole?.['AdminManager'] || 0)}
-            color="purple"
-          />
-        </div>
+        <>
+          {/* General Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Users}
+              label="Total Users"
+              value={statistics.totalUsers}
+              color="blue"
+            />
+            <StatCard
+              icon={UserCheck}
+              label="Active Users"
+              value={statistics.activeUsers}
+              color="green"
+            />
+            <StatCard
+              icon={Lock}
+              label="Locked Accounts"
+              value={statistics.lockedAccounts}
+              color="amber"
+            />
+            <StatCard
+              icon={Users}
+              label="General Users"
+              value={statistics.usersByRole?.['GeneralUser'] || 0}
+              color="gray"
+            />
+          </div>
+
+          {/* Role-Based Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              icon={Calendar}
+              label="Event Organizers"
+              value={statistics.usersByRole?.['EventOrganizer'] || 0}
+              color="blue"
+            />
+            <StatCard
+              icon={Briefcase}
+              label="Business Owners"
+              value={statistics.usersByRole?.['BusinessOwner'] || 0}
+              color="emerald"
+            />
+            <StatCard
+              icon={Star}
+              label="Dual Role"
+              value={statistics.usersByRole?.['EventOrganizerAndBusinessOwner'] || 0}
+              color="indigo"
+            />
+            <StatCard
+              icon={Shield}
+              label="Admins"
+              value={statistics.usersByRole?.['Admin'] || 0}
+              color="red"
+            />
+            <StatCard
+              icon={Crown}
+              label="Admin Managers"
+              value={statistics.usersByRole?.['AdminManager'] || 0}
+              color="purple"
+            />
+          </div>
+        </>
       )}
 
       {/* Filters */}
@@ -501,13 +538,17 @@ function StatCard({
   icon: typeof Users;
   label: string;
   value: number;
-  color: 'blue' | 'green' | 'amber' | 'purple';
+  color: 'blue' | 'green' | 'amber' | 'purple' | 'gray' | 'emerald' | 'indigo' | 'red';
 }) {
   const colorStyles = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     purple: 'bg-purple-50 text-purple-600',
+    gray: 'bg-gray-50 text-gray-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    indigo: 'bg-indigo-50 text-indigo-600',
+    red: 'bg-red-50 text-red-600',
   };
 
   return (

@@ -203,6 +203,40 @@ export function useMyFormResponse(
   });
 }
 
+/**
+ * useMyFormResponseByUserId Hook
+ *
+ * Phase 6A.106-110 Fix: Fetches logged-in user's response by userId (not token).
+ * Enables Edit/Delete buttons in Signup Forms tab for logged-in users.
+ * Returns null if user has no response (not an error - UI shows "Fill Out Form").
+ *
+ * @param eventId - Event ID (GUID)
+ * @param formId - Form ID (GUID)
+ * @param enabled - Whether to fetch (default: true if eventId and formId present)
+ * @returns FormResponseDto if user has responded, null otherwise
+ *
+ * @example
+ * ```tsx
+ * const { data: userResponse } = useMyFormResponseByUserId(eventId, formId);
+ * const hasResponded = userResponse !== null;
+ * ```
+ */
+export function useMyFormResponseByUserId(
+  eventId: string | undefined,
+  formId: string | undefined,
+  options?: Omit<UseQueryOptions<FormResponseDto | null, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['formResponse', 'my', eventId, formId],
+    queryFn: () => eventsRepository.getMyFormResponseByUserId(eventId!, formId!),
+    enabled: !!eventId && !!formId,
+    staleTime: 60 * 1000, // 1 minute
+    refetchOnWindowFocus: false,
+    retry: 1,
+    ...options,
+  });
+}
+
 // ==================== MUTATIONS - FORM CRUD ====================
 
 /**

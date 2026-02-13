@@ -11,6 +11,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
+import type { FormResponseDto } from '@/infrastructure/api/types/events.types';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -68,7 +69,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated, isAuthenticated } = useAuthStore();
 
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
@@ -101,6 +102,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Phase 6A.109: Track form response deletion
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
   const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
+
+  // Phase 6A.106-110 Fix: Track logged-in user's form responses
+  const [userFormResponses, setUserFormResponses] = useState<Record<string, FormResponseDto | null>>({});
+  const [isFetchingResponses, setIsFetchingResponses] = useState(false);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -218,6 +223,45 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.109: Delete form response mutation
   const deleteFormResponseMutation = useDeleteFormResponse();
+
+  // Phase 6A.106-110 Fix: Fetch logged-in user's responses for all active forms
+  useEffect(() => {
+    async function fetchUserFormResponses() {
+      if (!isAuthenticated || activeForms.length === 0) {
+        setUserFormResponses({});
+        return;
+      }
+
+      setIsFetchingResponses(true);
+      try {
+        const responses = await Promise.all(
+          activeForms.map(async (form) => {
+            try {
+              const response = await eventsRepository.getMyFormResponseByUserId(id, form.id);
+              return { formId: form.id, response };
+            } catch (error) {
+              // User has no response for this form - not an error
+              return { formId: form.id, response: null };
+            }
+          })
+        );
+
+        const responsesMap: Record<string, FormResponseDto | null> = {};
+        responses.forEach(({ formId, response }) => {
+          responsesMap[formId] = response;
+        });
+
+        setUserFormResponses(responsesMap);
+      } catch (error) {
+        console.error('Failed to fetch user form responses:', error);
+        setUserFormResponses({});
+      } finally {
+        setIsFetchingResponses(false);
+      }
+    }
+
+    fetchUserFormResponses();
+  }, [id, isAuthenticated, activeForms.length]); // Only re-fetch if forms count changes
 
   // Phase 6A.74 Part 12 Issue #4 Fix: Handle hash navigation for anchor links
   // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
@@ -433,38 +477,56 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   };
 
-  // Phase 6A.109: Handle form response deletion
+  // Phase 6A.106-110 Fix: Handle form response deletion for BOTH anonymous and logged-in users
   const handleDeleteFormResponse = async () => {
     if (!deletingFormId) return;
 
     setShowFormDeleteConfirm(false);
 
     try {
+      // Check if user is logged in and has a response in userFormResponses
+      const userResponse = userFormResponses[deletingFormId];
       const storageKey = `form_response_token_${id}_${deletingFormId}`;
       const accessToken = localStorage.getItem(storageKey);
 
-      if (!accessToken) {
-        setError('No access token found. Unable to delete response.');
+      if (userResponse) {
+        // Logged-in user - delete using userId (no token needed)
+        await deleteFormResponseMutation.mutateAsync({
+          eventId: id,
+          formId: deletingFormId,
+          responseId: userResponse.id,
+          // No accessToken - backend will use userId from JWT
+        });
+
+        // Clear from local state
+        setUserFormResponses(prev => {
+          const updated = { ...prev };
+          delete updated[deletingFormId];
+          return updated;
+        });
+      } else if (accessToken) {
+        // Anonymous user - delete using access token
+        // Fetch the response first to get the responseId
+        const response = await eventsRepository.getMyFormResponse(id, deletingFormId, accessToken);
+
+        if (!response) {
+          setError('Response not found.');
+          setDeletingFormId(null);
+          return;
+        }
+
+        // Now delete the response
+        await deleteFormResponseMutation.mutateAsync({
+          eventId: id,
+          formId: deletingFormId,
+          responseId: response.id,
+          accessToken,
+        });
+      } else {
+        setError('Unable to delete response. Please try again or use the edit link from your email.');
         setDeletingFormId(null);
         return;
       }
-
-      // Fetch the response first to get the responseId
-      const response = await eventsRepository.getMyFormResponse(id, deletingFormId, accessToken);
-
-      if (!response) {
-        setError('Response not found.');
-        setDeletingFormId(null);
-        return;
-      }
-
-      // Now delete the response
-      await deleteFormResponseMutation.mutateAsync({
-        eventId: id,
-        formId: deletingFormId,
-        responseId: response.id,
-        accessToken,
-      });
 
       setDeletingFormId(null);
       // Success toast is handled by the mutation's onSuccess callback
@@ -1656,9 +1718,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       Fill out forms to provide additional information for this event
                     </p>
                     {activeForms.map((form) => {
-                      // Phase 7.X: Check if user already has a response saved in localStorage
+                      // Phase 6A.106-110 Fix: Check BOTH localStorage (anonymous) AND user response (logged-in)
                       const storageKey = `form_response_token_${id}_${form.id}`;
-                      const hasStoredResponse = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+                      const hasStoredToken = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+                      const userResponse = userFormResponses[form.id];
+                      const hasUserResponse = userResponse !== null && userResponse !== undefined;
+                      const hasResponded = hasStoredToken || hasUserResponse;
+
                       const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
                       const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
 
@@ -1676,7 +1742,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   </p>
                                 )}
                                 <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                                  {hasStoredResponse && (
+                                  {hasResponded && (
                                     <span className="flex items-center gap-1 text-green-600 font-medium">
                                       <CheckCircle className="h-4 w-4" />
                                       You already responded
@@ -1706,19 +1772,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 <Button
                                   onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
                                   disabled={isFormFull || isDeadlinePassed}
-                                  variant={hasStoredResponse ? 'outline' : 'default'}
+                                  variant={hasResponded ? 'outline' : 'default'}
                                   className="w-full sm:w-auto"
                                 >
                                   {isFormFull
                                     ? 'Form Full'
                                     : isDeadlinePassed
                                     ? 'Deadline Passed'
-                                    : hasStoredResponse
+                                    : hasResponded
                                     ? 'Edit Your Response'
                                     : 'Fill Out Form'}
                                 </Button>
-                                {/* Phase 6A.109: Delete button for users who have responded */}
-                                {hasStoredResponse && !isFormFull && !isDeadlinePassed && (
+                                {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
+                                {hasResponded && !isFormFull && !isDeadlinePassed && (
                                   <Button
                                     variant="ghost"
                                     onClick={() => {

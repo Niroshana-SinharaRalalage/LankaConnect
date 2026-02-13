@@ -1374,6 +1374,32 @@ export class EventsRepository {
   }
 
   /**
+   * Get own response using userId (authenticated endpoint - Requires login)
+   * Phase 6A.106-110 Fix: Enables Edit/Delete buttons for logged-in users in Signup Forms tab
+   * Maps to backend GET /api/events/{id}/forms/{formId}/responses/my
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @returns Form response with answers, or null if no response exists (HTTP 204)
+   */
+  async getMyFormResponseByUserId(
+    eventId: string,
+    formId: string
+  ): Promise<FormResponseDto | null> {
+    try {
+      return await apiClient.get<FormResponseDto>(
+        `${this.basePath}/${eventId}/forms/${formId}/responses/my`
+      );
+    } catch (error: any) {
+      // HTTP 204 No Content means user has no response (not an error)
+      if (error.response?.status === 204) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get paginated responses for a form (organizer view)
    * Custom Forms Feature: View all responses
    * Maps to backend GET /api/events/{id}/forms/{formId}/responses?page=1&pageSize=20

@@ -200,7 +200,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
 
   // Filter to show only Active forms to attendees
-  const activeForms = eventForms?.filter(form => form.status === EventFormStatus.Active) || [];
+  // Note: Backend sends enum as string ('Active'), frontend enum is numeric (1)
+  // Check both to handle serialization difference (same pattern as RegistrationBadge.tsx)
+  const activeForms = eventForms?.filter(form =>
+    form.status === ('Active' as any) || form.status === EventFormStatus.Active
+  ) || [];
 
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();

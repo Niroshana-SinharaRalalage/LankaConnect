@@ -17,12 +17,14 @@ import {
   useUnlockUser,
   useResendVerification,
   useForcePasswordReset,
+  useDowngradeUser,
 } from '@/presentation/hooks/useAdminUsers';
 import type { AdminUserDto, GetAdminUsersRequest } from '@/infrastructure/api/types/admin-users.types';
 import { USER_ROLES } from '@/infrastructure/api/types/admin-users.types';
 import { UsersTable } from './UsersTable';
 import { UserDetailsModal } from './UserDetailsModal';
 import { LockUserModal } from './LockUserModal';
+import { DowngradeUserModal } from './DowngradeUserModal';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 
 export function UserManagementTab() {
@@ -41,6 +43,8 @@ export function UserManagementTab() {
   const [selectedUser, setSelectedUser] = useState<AdminUserDto | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
+  const [downgradeTargetUser, setDowngradeTargetUser] = useState<AdminUserDto | null>(null);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
 
   // GitHub Issue #31: Replace native confirm()/alert() with styled components
@@ -70,6 +74,7 @@ export function UserManagementTab() {
   const unlockMutation = useUnlockUser();
   const resendVerificationMutation = useResendVerification();
   const forcePasswordResetMutation = useForcePasswordReset();
+  const downgradeUserMutation = useDowngradeUser();
 
   // Phase 6A.89: Cleanup search timeout on unmount
   useEffect(() => {
@@ -217,6 +222,28 @@ export function UserManagementTab() {
     }
   };
 
+  const handleOpenDowngradeModal = (user: AdminUserDto) => {
+    setDowngradeTargetUser(user);
+    setShowDowngradeDialog(true);
+  };
+
+  const confirmDowngrade = async (reason: string) => {
+    if (!downgradeTargetUser) return;
+
+    try {
+      await downgradeUserMutation.mutateAsync({
+        userId: downgradeTargetUser.userId,
+        reason,
+      });
+      showNotification('success', 'User downgraded to Member successfully');
+      setShowDowngradeDialog(false);
+      setDowngradeTargetUser(null);
+    } catch (error: any) {
+      console.error('Failed to downgrade user:', error);
+      showNotification('error', error?.response?.data?.error || 'Failed to downgrade user');
+    }
+  };
+
   // Computed values
   const totalPages = usersData ? Math.ceil(usersData.totalCount / (filters.pageSize || 10)) : 0;
 
@@ -338,6 +365,7 @@ export function UserManagementTab() {
               onUnlock={handleUnlock}
               onResendVerification={handleResendVerification}
               onForcePasswordReset={handleForcePasswordReset}
+              onDowngrade={handleOpenDowngradeModal}
               loadingUserId={loadingUserId}
               currentUserId={currentUser?.userId || ''}
               currentUserRole={currentUser?.role || ''}
@@ -396,6 +424,20 @@ export function UserManagementTab() {
         onConfirm={handleLock}
         isLoading={!!loadingUserId}
       />
+
+      {downgradeTargetUser && (
+        <DowngradeUserModal
+          isOpen={showDowngradeDialog}
+          onClose={() => {
+            setShowDowngradeDialog(false);
+            setDowngradeTargetUser(null);
+          }}
+          userName={downgradeTargetUser.fullName}
+          currentRole={downgradeTargetUser.role}
+          onConfirm={confirmDowngrade}
+          isLoading={downgradeUserMutation.isPending}
+        />
+      )}
 
       {/* GitHub Issue #31: Styled notification display instead of alert() */}
       {notification && (

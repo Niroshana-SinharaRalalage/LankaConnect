@@ -136,3 +136,19 @@ export function useForcePasswordReset() {
     mutationFn: (userId: string) => adminUsersRepository.forcePasswordReset(userId),
   });
 }
+
+/**
+ * Hook to downgrade a user's role to GeneralUser
+ */
+export function useDowngradeUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      adminUsersRepository.downgradeUser(userId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.statistics() });
+    },
+  });
+}

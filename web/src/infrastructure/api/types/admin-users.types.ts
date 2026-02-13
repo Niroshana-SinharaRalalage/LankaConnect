@@ -68,6 +68,10 @@ export interface LockUserRequest {
   reason?: string;
 }
 
+export interface DowngradeUserRequest {
+  reason: string;
+}
+
 export type UserRole =
   | 'Member'
   | 'EventOrganizer'

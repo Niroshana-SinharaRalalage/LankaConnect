@@ -16,6 +16,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  ArrowDownCircle,
 } from 'lucide-react';
 import type { AdminUserDto } from '@/infrastructure/api/types/admin-users.types';
 import { ROLE_BADGE_COLORS } from '@/infrastructure/api/types/admin-users.types';
@@ -29,6 +30,7 @@ interface UsersTableProps {
   onUnlock: (userId: string) => void;
   onResendVerification: (userId: string) => void;
   onForcePasswordReset: (userId: string) => void;
+  onDowngrade: (user: AdminUserDto) => void;
   loadingUserId: string | null;
   currentUserId: string;
   currentUserRole: string;
@@ -43,6 +45,7 @@ export function UsersTable({
   onUnlock,
   onResendVerification,
   onForcePasswordReset,
+  onDowngrade,
   loadingUserId,
   currentUserId,
   currentUserRole,
@@ -86,6 +89,11 @@ export function UsersTable({
     if (currentUserRole === 'Admin' && user.role === 'Admin') return false;
 
     return true;
+  };
+
+  const canDowngrade = (user: AdminUserDto) => {
+    if (user.role === 'Member' || user.role === 'GeneralUser') return false;
+    return canManageUser(user); // Already handles self-check, AdminManager protection
   };
 
   const getRoleBadgeStyle = (role: string) => {
@@ -299,6 +307,20 @@ export function UsersTable({
                                 >
                                   <Lock className="w-4 h-4 text-amber-500" />
                                   Lock Account
+                                </button>
+                              )}
+
+                              {/* Downgrade User */}
+                              {canDowngrade(user) && (
+                                <button
+                                  onClick={() => {
+                                    onDowngrade(user);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <ArrowDownCircle className="w-4 h-4 text-orange-500" />
+                                  Downgrade to Member
                                 </button>
                               )}
 

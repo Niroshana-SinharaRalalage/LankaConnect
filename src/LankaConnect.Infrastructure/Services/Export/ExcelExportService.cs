@@ -675,4 +675,99 @@ public class ExcelExportService : IExcelExportService
         // Freeze header row
         sheet.SheetView.FreezeRows(1);
     }
+
+    /// <summary>
+    /// Exports custom form responses to Excel format.
+    /// Single sheet with responses in rows, questions as columns.
+    /// Phase 6A.110: Form response export functionality
+    /// </summary>
+    public byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Form Responses");
+
+        // 1. Build header columns
+        var headers = new List<string>
+        {
+            "Respondent Name",
+            "Respondent Email",
+            "Submitted Date"
+        };
+
+        var sortedQuestions = form.Questions.OrderBy(q => q.SortOrder).ToList();
+        foreach (var question in sortedQuestions)
+        {
+            headers.Add($"Q{question.SortOrder + 1}: {question.QuestionText}");
+        }
+
+        // 2. Write header row
+        for (int i = 0; i < headers.Count; i++)
+        {
+            var cell = sheet.Cell(1, i + 1);
+            cell.Value = headers[i];
+        }
+
+        // 3. Style header row (bold, light blue, centered, frozen)
+        var headerRange = sheet.Range(1, 1, 1, headers.Count);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        // 4. Write data rows
+        int rowIndex = 2;
+        foreach (var response in responses.Responses)
+        {
+            int colIndex = 1;
+
+            // Respondent info
+            sheet.Cell(rowIndex, colIndex++).Value = response.RespondentName ?? "Anonymous";
+            sheet.Cell(rowIndex, colIndex++).Value = response.RespondentEmail ?? "—";
+
+            // Submitted date with Excel date format
+            var dateCell = sheet.Cell(rowIndex, colIndex++);
+            dateCell.Value = response.SubmittedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+
+            // Answers for each question
+            foreach (var question in sortedQuestions)
+            {
+                var answer = response.Answers.FirstOrDefault(a => a.FormQuestionId == question.Id);
+                sheet.Cell(rowIndex, colIndex++).Value = FormatAnswerForExcelExport(answer);
+            }
+
+            rowIndex++;
+        }
+
+        // 5. Auto-fit columns for readability
+        sheet.Columns().AdjustToContents();
+
+        // 6. Freeze header row (allows scrolling data while keeping headers visible)
+        sheet.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Formats a form answer for Excel export.
+    /// Same logic as CSV but optimized for Excel cells.
+    /// </summary>
+    private static string FormatAnswerForExcelExport(FormAnswerDto? answer)
+    {
+        if (answer == null)
+            return "—";
+
+        if (answer.BooleanValue.HasValue)
+            return answer.BooleanValue.Value ? "Yes" : "No";
+
+        if (answer.SelectedOptionTextSnapshots?.Any() == true)
+            return string.Join(", ", answer.SelectedOptionTextSnapshots);
+
+        if (!string.IsNullOrWhiteSpace(answer.TextValue))
+            return answer.TextValue;
+
+        return "—";
+    }
 }

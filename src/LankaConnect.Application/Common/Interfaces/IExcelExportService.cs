@@ -27,4 +27,14 @@ public interface IExcelExportService
     /// <param name="eventId">Event ID for filename generation</param>
     /// <returns>ZIP archive content as byte array</returns>
     byte[] ExportSignUpListsToExcelZip(List<SignUpListDto> signUpLists, Guid eventId);
+
+    /// <summary>
+    /// Exports custom form responses to Excel format.
+    /// Single sheet with responses in rows, questions as columns.
+    /// Phase 6A.110: Form response export functionality
+    /// </summary>
+    /// <param name="form">Form detail with questions (sorted by SortOrder)</param>
+    /// <param name="responses">All responses with answers</param>
+    /// <returns>Excel file content as byte array</returns>
+    byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses);
 }

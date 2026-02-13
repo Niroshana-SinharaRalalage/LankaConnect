@@ -23,4 +23,14 @@ public interface ICsvExportService
     /// <param name="eventId">Event ID for filename generation</param>
     /// <returns>ZIP file content as byte array</returns>
     byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId);
+
+    /// <summary>
+    /// Exports custom form responses to CSV format.
+    /// One row per response, questions as columns (horizontal layout).
+    /// Phase 6A.110: Form response export functionality
+    /// </summary>
+    /// <param name="form">Form detail with questions (sorted by SortOrder)</param>
+    /// <param name="responses">All responses with answers</param>
+    /// <returns>CSV file content as byte array</returns>
+    byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses);
 }

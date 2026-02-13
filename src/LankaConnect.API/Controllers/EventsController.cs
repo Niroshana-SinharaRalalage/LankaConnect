@@ -59,6 +59,7 @@ using LankaConnect.Application.Events.Commands.AddPassToEvent;
 using LankaConnect.Application.Events.Commands.RemovePassFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
+using LankaConnect.Application.Events.Queries.ExportFormResponses;
 using LankaConnect.Application.Events.Queries.GetEventPasses;
 using LankaConnect.Application.Events.Commands.RemoveSignUpListFromEvent;
 using LankaConnect.Application.Events.Queries.GetEventSignUpLists;
@@ -95,6 +96,7 @@ using LankaConnect.Application.Events.Queries.GetEventForms;
 using LankaConnect.Application.Events.Queries.GetEventFormDetail;
 using LankaConnect.Application.Events.Queries.GetFormResponses;
 using LankaConnect.Application.Events.Queries.GetMyFormResponse;
+using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
 using LankaConnect.Application.Events.Commands.CancelPendingAddition;
 using LankaConnect.API.Extensions;
@@ -2303,6 +2305,39 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Get own response by userId (for logged-in users in Signup Forms tab)
+    /// Phase 6A.106-110 Fix: Enables Edit/Delete buttons for logged-in users
+    /// </summary>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/my")]
+    [Authorize]
+    [ProducesResponseType(typeof(FormResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyFormResponseByUserId(Guid id, Guid formId)
+    {
+        var userId = User.GetUserId(); // Returns Guid (not nullable)
+
+        Logger.LogInformation("Getting own response for form {FormId} by userId {UserId}", formId, userId);
+
+        var query = new GetMyFormResponseByUserIdQuery(formId, userId);
+        var result = await Mediator.Send(query);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(result.Error);
+        }
+
+        // Return 204 No Content if user has no response (not an error)
+        if (result.Value == null)
+        {
+            return NoContent();
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
     /// Get own response by access token (for edit page)
     /// </summary>
     [HttpGet("{id:guid}/forms/{formId:guid}/responses/mine")]
@@ -2337,6 +2372,62 @@ public class EventsController : BaseController<EventsController>
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Export custom form responses to CSV or Excel (organizer only)
+    /// Phase 6A.110: Form response export functionality
+    /// </summary>
+    /// <param name="id">Event ID (GUID)</param>
+    /// <param name="formId">Form ID (GUID)</param>
+    /// <param name="format">Export format: 'csv' or 'excel' (default: csv)</param>
+    /// <returns>File download with form responses</returns>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportFormResponses(
+        Guid id,
+        Guid formId,
+        [FromQuery] string format = "csv")
+    {
+        var userId = User.GetUserId();
+
+        // 1. Verify event ownership (organizer only)
+        var eventQuery = new GetEventByIdQuery(id);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+            return HandleResult(eventResult);
+
+        if (eventResult.Value!.OrganizerId != userId)
+        {
+            Logger.LogWarning(
+                "User {UserId} attempted unauthorized form export for Event {EventId}",
+                userId, id);
+            return Forbid();
+        }
+
+        // 2. Parse format (default to CSV if invalid)
+        var exportFormat = format.ToLower() switch
+        {
+            "excel" => ExportFormat.Excel,
+            _ => ExportFormat.Csv
+        };
+
+        // 3. Export form responses
+        var query = new ExportFormResponsesQuery(id, formId, exportFormat);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure)
+            return HandleResult(result);
+
+        Logger.LogInformation(
+            "Exported form responses: EventId={EventId}, FormId={FormId}, FileName={FileName}",
+            id, formId, result.Value!.FileName);
+
+        return File(result.Value.FileContent, result.Value.ContentType, result.Value.FileName);
     }
 
     #endregion

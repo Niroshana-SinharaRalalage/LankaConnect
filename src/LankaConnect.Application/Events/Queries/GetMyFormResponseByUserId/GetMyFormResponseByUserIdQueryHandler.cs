@@ -1,0 +1,72 @@
+using LankaConnect.Application.Common;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
+using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Repositories;
+using Microsoft.Extensions.Logging;
+
+namespace LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
+
+/// <summary>
+/// Handler for GetMyFormResponseByUserIdQuery.
+/// Phase 6A.106-110 Fix: Enables logged-in users to see their form responses in Signup Forms tab.
+/// Returns null if user has no response (not an error - used for conditional UI display).
+/// </summary>
+public class GetMyFormResponseByUserIdQueryHandler : IQueryHandler<GetMyFormResponseByUserIdQuery, FormResponseDto?>
+{
+    private readonly IFormResponseRepository _formResponseRepository;
+    private readonly ILogger<GetMyFormResponseByUserIdQueryHandler> _logger;
+
+    public GetMyFormResponseByUserIdQueryHandler(
+        IFormResponseRepository formResponseRepository,
+        ILogger<GetMyFormResponseByUserIdQueryHandler> logger)
+    {
+        _formResponseRepository = formResponseRepository;
+        _logger = logger;
+    }
+
+    public async Task<Result<FormResponseDto?>> Handle(GetMyFormResponseByUserIdQuery request, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "GetMyFormResponseByUserId START: FormId={FormId}, UserId={UserId}",
+            request.FormId, request.UserId);
+
+        // Get response for this form by this user (should be only one per form)
+        var response = await _formResponseRepository.GetByFormAndUserAsync(request.FormId, request.UserId, cancellationToken);
+
+        if (response == null)
+        {
+            _logger.LogInformation(
+                "GetMyFormResponseByUserId COMPLETE: No response found - FormId={FormId}, UserId={UserId}",
+                request.FormId, request.UserId);
+
+            // Return Success with null (not an error - UI will show "Fill Out Form" button)
+            return Result<FormResponseDto?>.Success(null);
+        }
+
+        _logger.LogInformation(
+            "GetMyFormResponseByUserId COMPLETE: Found response - FormId={FormId}, UserId={UserId}, ResponseId={ResponseId}",
+            request.FormId, request.UserId, response.Id);
+
+        var dto = new FormResponseDto
+        {
+            Id = response.Id,
+            EventFormId = response.EventFormId,
+            RespondentName = response.RespondentName,
+            RespondentEmail = response.RespondentEmail,
+            SubmittedAt = response.SubmittedAt,
+            Answers = response.Answers.Select(a => new FormAnswerDto
+            {
+                Id = a.Id,
+                FormQuestionId = a.FormQuestionId,
+                QuestionTextSnapshot = "", // Not loaded in this query
+                TextValue = a.TextValue,
+                BooleanValue = a.BooleanValue,
+                SelectedOptionIds = a.SelectedOptionIds?.ToList() ?? new List<Guid>(),
+                SelectedOptionTextSnapshots = a.SelectedOptionTextSnapshots?.ToList() ?? new List<string>()
+            }).ToList()
+        };
+
+        return Result<FormResponseDto?>.Success(dto);
+    }
+}

@@ -27,18 +27,21 @@ export function OfficialLogo({
       logoSize: 'sm' as const,
       titleSize: 'text-lg',
       subtitleSize: 'text-[10px]',
+      subtitleLetterSpacing: 'tracking-[0.08em]',
       gap: 'ml-2',
     },
     md: {
       logoSize: 'md' as const,
       titleSize: 'text-2xl',
       subtitleSize: 'text-xs',
+      subtitleLetterSpacing: 'tracking-[0.15em]',
       gap: 'ml-3',
     },
     lg: {
       logoSize: 'lg' as const,
       titleSize: 'text-3xl',
       subtitleSize: 'text-sm',
+      subtitleLetterSpacing: 'tracking-[0.12em]',
       gap: 'ml-4',
     },
   };
@@ -50,7 +53,7 @@ export function OfficialLogo({
       <Logo size={config.logoSize} showText={false} />
       <div className={config.gap}>
         <div className={cn(config.titleSize, textColor)}>LankaConnect</div>
-        <div className={cn(config.subtitleSize, subtitleColor, '-mt-1')}>
+        <div className={cn(config.subtitleSize, config.subtitleLetterSpacing, subtitleColor, '-mt-1')}>
           Sri Lankan Community Hub
         </div>
       </div>

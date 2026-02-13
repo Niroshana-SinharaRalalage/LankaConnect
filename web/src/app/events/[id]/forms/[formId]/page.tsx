@@ -14,11 +14,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-import { useEventFormDetail, useSubmitFormResponse, useMyFormResponse, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
+import { useEventFormDetail, useSubmitFormResponse, useMyFormResponse, useMyFormResponseByUserId, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { FormRenderer } from '@/presentation/components/features/events/FormRenderer';
 import type { SubmitFormAnswerItem, SubmitFormResponseRequest } from '@/infrastructure/api/types/events.types';
+import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 interface FormViewPageProps {
   params: Promise<{ id: string; formId: string }>;
@@ -28,6 +29,7 @@ export default function FormViewPage({ params }: FormViewPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const { isAuthenticated } = useAuthStore();
 
   const [eventId, setEventId] = useState<string>('');
   const [formId, setFormId] = useState<string>('');
@@ -66,10 +68,19 @@ export default function FormViewPage({ params }: FormViewPageProps) {
     enabled: !!eventId && !!formId,
   });
 
-  // Fetch existing response if token provided
-  const { data: existingResponse } = useMyFormResponse(eventId, formId, accessToken || '', {
-    enabled: !!eventId && !!formId && !!accessToken,
+  // Phase 6A.106-110: Fetch existing response using TWO strategies:
+  // 1. For anonymous users: Use access token (from URL or localStorage)
+  // 2. For logged-in users: Use userId (no token needed)
+  const { data: tokenBasedResponse } = useMyFormResponse(eventId, formId, accessToken || '', {
+    enabled: !!eventId && !!formId && !!accessToken && !isAuthenticated, // Only for anonymous users with token
   });
+
+  const { data: userBasedResponse } = useMyFormResponseByUserId(eventId, formId, {
+    enabled: !!eventId && !!formId && isAuthenticated, // Only for logged-in users
+  });
+
+  // Merge responses: prioritize user-based (logged-in) over token-based (anonymous)
+  const existingResponse = userBasedResponse || tokenBasedResponse;
 
   // Submit mutation
   const submitMutation = useSubmitFormResponse({
@@ -120,8 +131,15 @@ export default function FormViewPage({ params }: FormViewPageProps) {
   };
 
   // Phase 6A.106: Handle response deletion with confirmation
+  // Supports both logged-in users (no token) and anonymous users (with token)
   const handleDelete = async () => {
-    if (!eventId || !formId || !existingResponse || !accessToken) return;
+    if (!eventId || !formId || !existingResponse) return;
+
+    // Logged-in users don't need token, anonymous users do
+    if (!isAuthenticated && !accessToken) {
+      toast.error('Unable to delete response. Please use the edit link from your email.');
+      return;
+    }
 
     setShowDeleteConfirm(false);
 
@@ -129,7 +147,7 @@ export default function FormViewPage({ params }: FormViewPageProps) {
       eventId,
       formId,
       responseId: existingResponse.id,
-      accessToken,
+      accessToken: accessToken || undefined, // Only pass token for anonymous users
     });
   };
 

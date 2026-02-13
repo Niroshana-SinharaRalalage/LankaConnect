@@ -179,11 +179,19 @@ export default function EventsPage() {
   const categoryOptions = useMemo(() => toDropdownOptions(categories), [categories]);
 
   // Create category labels map from reference data
+  // Phase 6A.X: Support BOTH numeric and string category keys for API compatibility
+  // Backend serializes enums as strings (JsonStringEnumConverter), but we future-proof
+  // by supporting numeric keys (0-11) AND string keys ("Religious", "Festival", etc.)
   const categoryLabels = useMemo(() => {
-    if (!categories) return {} as Record<EventCategory, string>;
-    const labels: Record<EventCategory, string> = {} as Record<EventCategory, string>;
+    if (!categories) return {} as Record<string, string>;
+    const labels: Record<string, string> = {};
     categories.forEach(cat => {
-      labels[cat.intValue as EventCategory] = cat.name;
+      if (cat.intValue !== null && cat.intValue !== undefined) {
+        // Add numeric string key (e.g., "9" → "Festival") for numeric category values
+        labels[cat.intValue.toString()] = cat.name;
+      }
+      // Add name string key (e.g., "Festival" → "Festival") for string category values from API
+      labels[cat.code] = cat.name;
     });
     return labels;
   }, [categories]);
@@ -450,7 +458,7 @@ function EventCard({
   categoryLabels,
 }: {
   event: EventDto;
-  categoryLabels: Record<EventCategory, string>;
+  categoryLabels: Record<string, string>;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {

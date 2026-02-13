@@ -240,7 +240,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }, [event, isLoading, _hasHydrated]);
 
   // Category labels
-  const categoryLabels: Record<EventCategory, string> = {
+  // Phase 6A.X: Support BOTH numeric and string category keys for API compatibility
+  const categoryLabels: Record<string, string> = {
+    // Numeric keys
     [EventCategory.Religious]: 'Religious',
     [EventCategory.Cultural]: 'Cultural',
     [EventCategory.Community]: 'Community',
@@ -253,6 +255,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     [EventCategory.Festival]: 'Festival',
     [EventCategory.Ceremony]: 'Ceremony',
     [EventCategory.Celebration]: 'Celebration',
+    // String name keys (for JsonStringEnumConverter)
+    'Religious': 'Religious',
+    'Cultural': 'Cultural',
+    'Community': 'Community',
+    'Educational': 'Educational',
+    'Social': 'Social',
+    'Business': 'Business',
+    'Charity': 'Charity',
+    'Entertainment': 'Entertainment',
+    'Workshop': 'Workshop',
+    'Festival': 'Festival',
+    'Ceremony': 'Ceremony',
+    'Celebration': 'Celebration',
   };
 
   // Handle Registration (both anonymous and authenticated)

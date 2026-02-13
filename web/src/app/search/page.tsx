@@ -58,14 +58,18 @@ function SearchPageContent() {
 
   // Fetch event categories for labels
   const { data: categories } = useEventCategories();
+  // Phase 6A.X: Support BOTH numeric and string category keys for API compatibility
   const categoryLabels = useMemo(() => {
-    if (!categories) return {} as Record<EventCategory, string>;
+    if (!categories) return {} as Record<string, string>;
     return categories.reduce((acc, cat) => {
-      if (cat.intValue !== null) {
-        acc[cat.intValue as EventCategory] = cat.name;
+      if (cat.intValue !== null && cat.intValue !== undefined) {
+        // Add numeric string key (e.g., "9" → "Festival")
+        acc[cat.intValue.toString()] = cat.name;
       }
+      // Add name string key (e.g., "Festival" → "Festival")
+      acc[cat.code] = cat.name;
       return acc;
-    }, {} as Record<EventCategory, string>);
+    }, {} as Record<string, string>);
   }, [categories]);
 
   // Handle tab change
@@ -429,7 +433,7 @@ function EventCard({
   categoryLabels,
 }: {
   event: EventDto | EventSearchResultDto;
-  categoryLabels: Record<EventCategory, string>;
+  categoryLabels: Record<string, string>;
 }) {
   const startDate = new Date(event.startDate);
   const formattedDate = startDate.toLocaleDateString('en-US', {

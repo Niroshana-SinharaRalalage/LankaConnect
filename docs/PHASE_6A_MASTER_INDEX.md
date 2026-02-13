@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2026-02-02
+**Last Updated**: 2026-02-12
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -76,6 +76,9 @@
 | 6A.100 | Email System Unification & Bridge Removal | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-07 |
 | 6A.101 | Cross-Path Duplicate Registration Prevention | ✅ Complete | [RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md](./RCA_DUPLICATE_EVENT_REGISTRATIONS_SAME_EMAIL.md) | 2026-02-08 |
 | 6A.102 | Free Event IsFreeEvent Flag Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-11 |
+| 6A.103 | Event Image in Email Templates | ✅ Complete | [RCA_PHASE6A103_EVENT_IMAGE_EMAIL_TEMPLATES.md](./RCA_PHASE6A103_EVENT_IMAGE_EMAIL_TEMPLATES.md) | 2026-02-11 |
+| 6A.104 | Metro Areas and Badges Production Seeding | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-12 |
+| 6A.106 | Newsletter Template Content Placeholder Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-12 |
 
 ---
 

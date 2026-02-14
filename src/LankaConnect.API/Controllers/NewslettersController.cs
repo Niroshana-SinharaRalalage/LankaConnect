@@ -152,6 +152,7 @@ public class NewslettersController : BaseController<NewslettersController>
     }
 
     [HttpGet("{id:guid}")]
+    [AllowAnonymous] // Public endpoint - anyone can view published newsletters
     [ProducesResponseType(typeof(NewsletterDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetNewsletterById(Guid id)

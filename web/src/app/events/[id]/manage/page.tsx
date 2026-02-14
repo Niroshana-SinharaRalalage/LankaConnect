@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   Edit,
@@ -53,6 +53,8 @@ import { EventFormsTab } from '@/presentation/components/features/events/EventFo
 export default function EventManagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
   const { user } = useAuthStore();
   const [isPublishing, setIsPublishing] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
@@ -477,7 +479,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
       {/* Main Content - Tabbed Interface */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <TabPanel tabs={tabs} defaultTab="details" />
+        <TabPanel tabs={tabs} defaultTab={tabFromUrl || 'details'} />
       </div>
 
       {/* Unpublish Event Modal */}

@@ -153,7 +153,7 @@ export default function FormViewPage({ params }: FormViewPageProps) {
     if (existingResponse) {
       // UPDATE existing response
       const updateRequest: UpdateFormResponseRequest = {
-        answers: answers.map(a => ({
+        Answers: answers.map(a => ({  // Capital 'A' to match backend
           questionId: a.questionId,
           textValue: a.textValue,
           selectedOptionIds: a.selectedOptionIds,

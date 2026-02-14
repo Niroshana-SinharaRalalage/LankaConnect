@@ -2268,21 +2268,32 @@ public class EventsController : BaseController<EventsController>
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string? token = null, [FromBody] UpdateFormResponseRequest? request = null)
+    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromBody] UpdateFormResponseRequest request, [FromQuery] string? token = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("Updating response {ResponseId} on form {FormId} for event {EventId}, UserId={UserId}, HasToken={HasToken}",
-            responseId, formId, id, userId, !string.IsNullOrEmpty(token));
+        Logger.LogInformation("UpdateFormResponse START: ResponseId={ResponseId}, FormId={FormId}, EventId={EventId}, UserId={UserId}, HasToken={HasToken}, AnswerCount={AnswerCount}",
+            responseId, formId, id, userId, !string.IsNullOrEmpty(token), request?.Answers?.Count ?? 0);
 
-        var answers = request?.Answers.Select(a => new UpdateFormAnswerItem(
+        // Validate request body
+        if (request == null || request.Answers == null || request.Answers.Count == 0)
+        {
+            Logger.LogWarning("UpdateFormResponse FAILED: Invalid request body - ResponseId={ResponseId}, RequestNull={RequestNull}, AnswersNull={AnswersNull}",
+                responseId, request == null, request?.Answers == null);
+            return BadRequest("Request body is required with at least one answer");
+        }
+
+        var answers = request.Answers.Select(a => new UpdateFormAnswerItem(
             a.QuestionId,
             a.TextValue,
             a.SelectedOptionIds,
             a.BooleanValue
-        )).ToList() ?? new List<UpdateFormAnswerItem>();
+        )).ToList();
 
         var command = new UpdateFormResponseCommand(id, formId, responseId, token, userId, answers);
         var result = await Mediator.Send(command);
+
+        Logger.LogInformation("UpdateFormResponse COMPLETE: ResponseId={ResponseId}, Success={Success}",
+            responseId, result.IsSuccess);
 
         return HandleResult(result);
     }

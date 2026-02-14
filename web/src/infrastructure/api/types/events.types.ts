@@ -1557,7 +1557,8 @@ export interface SubmitFormResponseResult {
 /**
  * Update form response request
  * PUT /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
+ * Phase 6A.106-110 Fix: Changed 'answers' to 'Answers' to match backend C# casing
  */
 export interface UpdateFormResponseRequest {
-  answers: SubmitFormAnswerItem[];
+  Answers: SubmitFormAnswerItem[];  // Capital 'A' to match backend
 }

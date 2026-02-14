@@ -17,13 +17,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Replace with appropriate support contact information
 
             migrationBuilder.Sql(@"
-                -- Update text_body: Replace 'reply to this email' with support contact
+                -- Update text_template: Replace 'reply to this email' with support contact
                 UPDATE communications.email_templates
-                SET text_body = REPLACE(
+                SET text_template = REPLACE(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                text_body,
+                                text_template,
                                 'Questions? Reply to this email or visit our support page.',
                                 'Questions? Contact us at support@lankaconnect.app or visit our support page.'
                             ),
@@ -37,16 +37,16 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Contact us at support@lankaconnect.app'
                 ),
                 updated_at = NOW()
-                WHERE text_body LIKE '%reply to this email%'
-                   OR text_body LIKE '%Reply to this email%';
+                WHERE text_template LIKE '%reply to this email%'
+                   OR text_template LIKE '%Reply to this email%';
 
-                -- Update html_body: Replace 'reply to this email' with support contact
+                -- Update html_template: Replace 'reply to this email' with support contact
                 UPDATE communications.email_templates
-                SET html_body = REPLACE(
+                SET html_template = REPLACE(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                html_body,
+                                html_template,
                                 'Questions? Reply to this email or visit our support page.',
                                 'Questions? Contact us at <a href=""mailto:support@lankaconnect.app"" style=""color: #FF7900;"">support@lankaconnect.app</a> or visit our support page.'
                             ),
@@ -60,8 +60,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Contact us at <a href=""mailto:support@lankaconnect.app"" style=""color: #FF7900;"">support@lankaconnect.app</a>'
                 ),
                 updated_at = NOW()
-                WHERE html_body LIKE '%reply to this email%'
-                   OR html_body LIKE '%Reply to this email%';
+                WHERE html_template LIKE '%reply to this email%'
+                   OR html_template LIKE '%Reply to this email%';
             ");
 
             migrationBuilder.UpdateData(
@@ -169,13 +169,13 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // since the original text was incorrect (DoNotReply sender)
 
             migrationBuilder.Sql(@"
-                -- Rollback text_body changes
+                -- Rollback text_template changes
                 UPDATE communications.email_templates
-                SET text_body = REPLACE(
+                SET text_template = REPLACE(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                text_body,
+                                text_template,
                                 'Questions? Contact us at support@lankaconnect.app or visit our support page.',
                                 'Questions? Reply to this email or visit our support page.'
                             ),
@@ -189,16 +189,16 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Reply to this email'
                 ),
                 updated_at = NOW()
-                WHERE text_body LIKE '%contact us at support@lankaconnect.app%'
-                   OR text_body LIKE '%Contact us at support@lankaconnect.app%';
+                WHERE text_template LIKE '%contact us at support@lankaconnect.app%'
+                   OR text_template LIKE '%Contact us at support@lankaconnect.app%';
 
-                -- Rollback html_body changes
+                -- Rollback html_template changes
                 UPDATE communications.email_templates
-                SET html_body = REPLACE(
+                SET html_template = REPLACE(
                     REPLACE(
                         REPLACE(
                             REPLACE(
-                                html_body,
+                                html_template,
                                 'Questions? Contact us at <a href=""mailto:support@lankaconnect.app"" style=""color: #FF7900;"">support@lankaconnect.app</a> or visit our support page.',
                                 'Questions? Reply to this email or visit our support page.'
                             ),
@@ -212,8 +212,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Reply to this email'
                 ),
                 updated_at = NOW()
-                WHERE html_body LIKE '%contact us at support@lankaconnect.app%'
-                   OR html_body LIKE '%Contact us at support@lankaconnect.app%';
+                WHERE html_template LIKE '%contact us at support@lankaconnect.app%'
+                   OR html_template LIKE '%Contact us at support@lankaconnect.app%';
             ");
 
             migrationBuilder.UpdateData(

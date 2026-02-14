@@ -1352,7 +1352,8 @@ export class EventsRepository {
       ? `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`
       : `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`;
 
-    await apiClient.put(url, request);
+    // Phase 6A.111: Increase timeout for form updates (complex operations can take time)
+    await apiClient.put(url, request, { timeout: 120000 }); // 2 minutes (was 30 seconds)
   }
 
   /**

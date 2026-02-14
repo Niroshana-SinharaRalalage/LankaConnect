@@ -728,14 +728,33 @@ export function useUpdateFormResponse(
     mutationFn: ({ eventId, formId, responseId, accessToken, request }) =>
       eventsRepository.updateFormResponse(eventId, formId, responseId, accessToken, request),
     onSuccess: (_, { eventId, formId, accessToken }) => {
-      // Invalidate the specific response being edited
+      // Phase 6A.111: Comprehensive cache invalidation to ensure UI updates immediately
+
+      // 1. Invalidate specific response (token-based for anonymous users)
       if (accessToken) {
         queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
       }
-      // Invalidate user-based response query (for logged-in users)
+
+      // 2. Invalidate user-based response query (for logged-in users)
       queryClient.invalidateQueries({ queryKey: ['formResponse', 'my', eventId, formId] });
-      // Invalidate responses list if organizer is viewing
-      queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
+
+      // 3. Invalidate form detail (shows updated questions/answers in UI)
+      queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+
+      // 4. Invalidate ALL paginated responses (not just base key)
+      queryClient.invalidateQueries({
+        queryKey: formKeys.responsesList(eventId, formId),
+        exact: false  // Invalidates all pages (page=1, page=2, etc.)
+      });
+
+      // 5. Invalidate form list (updates response counts in form summary)
+      queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
+
+      // 6. Invalidate ALL form queries (wildcard pattern like useUpdateEvent)
+      queryClient.invalidateQueries({ queryKey: formKeys.all });
+
+      // 7. Immediate refetch (don't wait for staleTime)
+      queryClient.refetchQueries({ queryKey: formKeys.detail(eventId, formId) });
     },
     ...options,
   });

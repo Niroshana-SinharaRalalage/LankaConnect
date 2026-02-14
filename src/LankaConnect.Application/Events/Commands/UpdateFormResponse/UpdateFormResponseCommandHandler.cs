@@ -134,6 +134,12 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                 // Update answers
                 var questionMap = form.Questions.ToDictionary(q => q.Id);
 
+                // Phase 6A.111: Add performance logging for answer updates
+                var answerUpdateStopwatch = Stopwatch.StartNew();
+                _logger.LogInformation(
+                    "UpdateFormResponse: Starting answer updates - ResponseId={ResponseId}, AnswerCount={AnswerCount}",
+                    request.ResponseId, request.Answers.Count);
+
                 foreach (var answerItem in request.Answers)
                 {
                     if (!questionMap.TryGetValue(answerItem.QuestionId, out var question))
@@ -199,6 +205,12 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                         }
                     }
                 }
+
+                // Phase 6A.111: Log answer update performance
+                answerUpdateStopwatch.Stop();
+                _logger.LogInformation(
+                    "UpdateFormResponse: Answer updates complete - ResponseId={ResponseId}, AnswerCount={AnswerCount}, Duration={ElapsedMs}ms",
+                    request.ResponseId, request.Answers.Count, answerUpdateStopwatch.ElapsedMilliseconds);
 
                 _formResponseRepository.Update(response);
                 await _unitOfWork.CommitAsync(cancellationToken);

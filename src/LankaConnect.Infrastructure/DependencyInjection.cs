@@ -413,6 +413,9 @@ public static class DependencyInjection
         services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
         services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();
 
+        // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
+        services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();
+
         return services;
     }
 }

@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -9,17 +10,18 @@ namespace LankaConnect.Infrastructure.Services.Validation;
 /// <summary>
 /// Validates that backend enums are synchronized with database reference_values table
 /// Phase 6A.109: Prevents enum drift issues like Issue #78
+/// Phase 6A.110: Fixed DI lifetime issue - use IServiceProvider to create scope for scoped IApplicationDbContext
 /// </summary>
 public class EnumSyncValidator : IHostedService
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EnumSyncValidator> _logger;
 
     public EnumSyncValidator(
-        IApplicationDbContext dbContext,
+        IServiceProvider serviceProvider,
         ILogger<EnumSyncValidator> logger)
     {
-        _dbContext = dbContext;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -29,8 +31,12 @@ public class EnumSyncValidator : IHostedService
 
         try
         {
+            // Create a scope to resolve scoped IApplicationDbContext
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+
             // Validate EventCategory enum
-            await ValidateEventCategoryAsync(cancellationToken);
+            await ValidateEventCategoryAsync(dbContext, cancellationToken);
 
             _logger.LogInformation("EnumSyncValidator: All enum validations passed ✓");
         }
@@ -47,9 +53,9 @@ public class EnumSyncValidator : IHostedService
         return Task.CompletedTask;
     }
 
-    private async Task ValidateEventCategoryAsync(CancellationToken cancellationToken)
+    private async Task ValidateEventCategoryAsync(IApplicationDbContext applicationDbContext, CancellationToken cancellationToken)
     {
-        var dbContext = _dbContext as DbContext;
+        var dbContext = applicationDbContext as DbContext;
         if (dbContext == null)
         {
             _logger.LogWarning("EnumSyncValidator: Cannot validate - DbContext is not available");

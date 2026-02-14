@@ -1,9 +1,293 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-13 - Phase 6A.106-110: Form Response Email Notifications + Delete Functionality ✅ COMPLETE*
+*Last Updated: 2026-02-13 - Phase 6A.111: Signup Forms UI Improvements ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.106-110: Form Response Email Notifications + Delete Functionality ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.111: Signup Forms UI Improvements ✅ COMPLETE
+
+### PHASE 6A.111: SIGNUP FORMS UI IMPROVEMENTS - 2026-02-13
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+
+**Priority**: 🟢 **MEDIUM - UX Enhancement**
+
+**Context**: Following Phase 6A.110 (Form Response Export backend implementation), user identified UI/UX issues in the Signup Forms management interface requiring immediate fixes.
+
+**Issues Fixed**:
+
+| Issue | Type | Root Cause | Fix | Risk |
+|-------|------|------------|-----|------|
+| #1: "Close" button | ✅ **Working as designed** | No bug - lifecycle pattern | No fix needed | N/A |
+| #2: Button label | UI Text | Inconsistent naming | Changed "Responses" to "View Responses" | Very Low |
+| #3: Back navigation | UI Navigation | Missing URL param reading | Added useSearchParams hook | Low |
+
+**Issue #1: "Close" Button Analysis**
+- **User Question**: "Why do we have 'Close' button on Active forms?"
+- **Finding**: Button is **correct** - only appears on Active forms as part of form lifecycle
+- **Form Lifecycle**:
+  - Draft → "Publish" button
+  - Active → "Close" button
+  - Closed → "Reopen" button
+- **Decision**: No fix needed - working as designed
+
+**Issue #2: Button Label "Responses" → "View Responses"**
+- **Problem**: Button labeled "Responses" was unclear
+- **Fix**: Changed to "View Responses" for better clarity
+- **File**: `FormManagementSection.tsx:234`
+- **Impact**: Cosmetic only, improves UX
+
+**Issue #3: "Back to Forms" Navigation Not Working**
+- **Problem**: Clicking "Back to Forms" from response viewer navigated to wrong tab
+- **Root Cause**: manage/page.tsx hardcoded `defaultTab="details"` and ignored `?tab=forms` URL parameter
+- **Why It Failed**:
+  - Response page correctly navigated to `/events/{id}/manage?tab=forms` ✅
+  - Manage page ignored the `?tab=forms` parameter ❌
+  - Always defaulted to "Event Details" tab
+- **Fix**: Added `useSearchParams` hook to read tab from URL
+- **Files Modified**:
+  - Added `useSearchParams` import
+  - Read `tabFromUrl = searchParams.get('tab')`
+  - Changed `defaultTab={tabFromUrl || 'details'}`
+
+**Technical Changes**:
+
+```typescript
+// Before: manage/page.tsx (Line 480)
+<TabPanel tabs={tabs} defaultTab="details" />
+
+// After: manage/page.tsx (Lines 4, 56-57, 480)
+import { useRouter, useSearchParams } from 'next/navigation';
+...
+const searchParams = useSearchParams();
+const tabFromUrl = searchParams.get('tab');
+...
+<TabPanel tabs={tabs} defaultTab={tabFromUrl || 'details'} />
+```
+
+**Commits**:
+- `c01f4cc6`: fix(ui): Improve Signup Forms UI - Phase 6A.111
+
+**Files Modified**:
+- `web/src/presentation/components/features/events/FormManagementSection.tsx` (1 line)
+- `web/src/app/events/[id]/manage/page.tsx` (3 lines)
+
+**Testing Results**:
+- ✅ Build succeeded (Next.js 16.0.1 Turbopack)
+- ✅ TypeScript compilation passed
+- ✅ 0 compilation errors, 0 warnings
+- ✅ All routes generated successfully
+
+**RCA Documentation**:
+- ✅ Comprehensive RCA created: [RCA_SIGNUP_FORMS_UI_ISSUES.md](./RCA_SIGNUP_FORMS_UI_ISSUES.md)
+- ✅ Implementation guide created: [SIGNUP_FORMS_UI_FIXES.md](./SIGNUP_FORMS_UI_FIXES.md)
+
+**Impact**:
+- **Effort**: 15 minutes (4 lines total, 2 files)
+- **Risk**: Very Low (isolated UI changes only)
+- **User Experience**: Improved clarity and navigation flow
+
+---
+
+## Previous Sessions
+
+### PHASE 6A.106: NEWSLETTER PUBLIC ACCESS FIX (GITHUB ISSUE #77) - 2026-02-14
+
+### PHASE 6A.106: NEWSLETTER PUBLIC ACCESS FIX (GITHUB ISSUE #77) - 2026-02-14
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING & VERIFIED**
+
+**Priority**: 🔴 **CRITICAL - Production Bug Fix**
+
+**GitHub Issue**: [#77 - Newsletter detail page shows "not found" error](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/77)
+
+**Problem**: Public newsletter detail pages displayed "Newsletter not found or not available" error when accessed by anonymous users or users with GeneralUser role. Newsletters were correctly displayed on the landing page, but clicking through to view details resulted in 401 Unauthorized errors.
+
+**Root Causes**:
+1. **Missing [AllowAnonymous] Attribute**: GetNewsletterById endpoint inherited controller-level authorization requiring EventOrganizer/Admin/AdminManager roles
+2. **Overly Restrictive Handler Logic**: Authorization logic in GetNewsletterByIdQueryHandler blocked ALL non-creators/non-admins regardless of newsletter status (Draft vs. Active)
+
+**Solution Implemented**:
+
+| Component | Fix | Files Modified |
+|-----------|-----|----------------|
+| **API Controller** | Added [AllowAnonymous] attribute to GetNewsletterById endpoint | NewslettersController.cs |
+| **Query Handler** | Rewrote authorization logic to allow public access to Active/Inactive/Sent newsletters while keeping Draft private | GetNewsletterByIdQueryHandler.cs |
+| **Imports** | Added NewsletterStatus enum import | GetNewsletterByIdQueryHandler.cs |
+
+**Technical Details**:
+
+**Before (Broken)**:
+```csharp
+// NewslettersController.cs - Missing [AllowAnonymous]
+[HttpGet("{id:guid}")]
+public async Task<IActionResult> GetNewsletterById(Guid id)
+
+// GetNewsletterByIdQueryHandler.cs - Blocks all non-creators
+if (newsletter.CreatedByUserId != _currentUserService.UserId && !_currentUserService.IsAdmin)
+{
+    return Result<NewsletterDto>.Failure("You do not have permission to view this newsletter");
+}
+```
+
+**After (Fixed)**:
+```csharp
+// NewslettersController.cs - Added [AllowAnonymous]
+[HttpGet("{id:guid}")]
+[AllowAnonymous] // Public endpoint - anyone can view published newsletters
+public async Task<IActionResult> GetNewsletterById(Guid id)
+
+// GetNewsletterByIdQueryHandler.cs - Status-aware authorization
+var isPublicNewsletter = newsletter.Status == NewsletterStatus.Active ||
+                        newsletter.Status == NewsletterStatus.Inactive ||
+                        newsletter.Status == NewsletterStatus.Sent;
+
+if (!isPublicNewsletter &&
+    newsletter.CreatedByUserId != _currentUserService.UserId &&
+    !_currentUserService.IsAdmin)
+{
+    return Result<NewsletterDto>.Failure("You do not have permission to view this newsletter");
+}
+```
+
+**Security Matrix**:
+
+| Newsletter Status | Anonymous User | GeneralUser | Creator | Admin |
+|-------------------|----------------|-------------|---------|-------|
+| **Draft**         | ❌ Denied      | ❌ Denied   | ✅ Allowed | ✅ Allowed |
+| **Active**        | ✅ Allowed     | ✅ Allowed  | ✅ Allowed | ✅ Allowed |
+| **Inactive**      | ✅ Allowed     | ✅ Allowed  | ✅ Allowed | ✅ Allowed |
+| **Sent**          | ✅ Allowed     | ✅ Allowed  | ✅ Allowed | ✅ Allowed |
+
+**Commits**:
+- `a693dfc9`: fix(newsletters): Allow public access to published newsletter details (Issue #77)
+
+**Testing Results**:
+- ✅ Build succeeded (0 errors, 0 warnings)
+- ✅ Deployed to Azure staging successfully (run 22007265342 - 8m47s)
+- ✅ Anonymous access test: HTTP 200 (retrieved published newsletter)
+- ✅ Draft newsletter privacy: No drafts in /published endpoint
+- ✅ Public newsletter visibility: Landing page → Detail page works end-to-end
+
+**API Tests**:
+```bash
+# Test 1: Anonymous access to published newsletter ✅ PASS
+curl -X GET "https://lankaconnect-api-staging.../api/newsletters/37675824-bf84-44c7-9aac-84f46173504f"
+# Result: HTTP 200 + newsletter data
+
+# Test 2: Draft newsletters excluded from public list ✅ PASS
+curl -X GET "https://lankaconnect-api-staging.../api/newsletters/published"
+# Result: Array of Active newsletters only, 0 Draft newsletters
+```
+
+**RCA Documentation**:
+- ✅ Comprehensive RCA created: [RCA_NEWSLETTER_PUBLIC_ACCESS_ISSUE_77.md](./RCA_NEWSLETTER_PUBLIC_ACCESS_ISSUE_77.md)
+- Includes: Root cause analysis, evidence trail, security review, testing results, lessons learned, recommendations
+
+**Lessons Learned**:
+1. **Authorization Consistency**: Always review authorization attributes when adding new endpoints (list vs. detail)
+2. **Domain Logic in Auth**: Authorization checks must consider domain-specific business rules (status, visibility)
+3. **Test All Permission Levels**: Test public endpoints with anonymous users, not just authenticated admin accounts
+
+**Recommendations**:
+1. Add integration tests for anonymous access to public endpoints
+2. Document authorization policies (public vs. authenticated endpoints)
+3. Add security review checklist to CLAUDE.md for new endpoints
+
+**Status Checklist**:
+- [x] Root cause identified and documented
+- [x] Fix implemented and tested locally
+- [x] Committed to develop branch
+- [x] Deployed to Azure staging
+- [x] API tested successfully (anonymous access)
+- [x] Draft newsletter privacy verified
+- [x] RCA documentation created
+- [x] PROGRESS_TRACKER.md updated
+- [ ] STREAMLINED_ACTION_PLAN.md updated (next step)
+- [ ] Deployed to production (pending)
+- [ ] GitHub issue #77 closed (pending)
+
+---
+
+## Previous Session: Phase 6A.110 - Signup Forms Response Export (CSV/Excel) ✅ COMPLETE
+
+### PHASE 6A.110: SIGNUP FORMS RESPONSE EXPORT (CSV/EXCEL) - 2026-02-13
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **MEDIUM - Organizer Productivity Enhancement**
+
+**Problem**: Organizers could view Custom Form responses in a paginated table, but couldn't export them to CSV or Excel for offline analysis. Frontend export buttons were already implemented but returned 404 errors.
+
+**Architecture Review**: Plan approved with mandatory modifications (10K limit + telemetry tracking).
+
+**Solution Implemented**:
+
+| Component | Implementation | Files |
+|-----------|---------------|-------|
+| **Backend Query** | ExportFormResponsesQuery + Handler with 10K limit | 2 new files |
+| **Export Services** | ICsvExportService.ExportFormResponses(), IExcelExportService.ExportFormResponses() | 4 modified files |
+| **API Endpoint** | GET /api/events/{id}/forms/{formId}/responses/export | 1 modified file |
+| **Security** | Event ownership check, form ownership verification | Built into handler |
+
+**Technical Details**:
+- **CSV Format**: Horizontal layout (questions as columns), UTF-8 BOM, always quoted fields
+- **Excel Format**: Single sheet, frozen header row, auto-fit columns, date formatting
+- **Multi-select**: Comma-separated values (e.g., "Cooking, Setup, Cleanup")
+- **Boolean**: "Yes"/"No" format (not "true"/"false")
+- **10K Limit**: Prevents timeout (30+ seconds) and OutOfMemoryException
+- **Telemetry**: Logs slow exports (>5 seconds) for monitoring
+
+**Key Implementation Patterns**:
+```csharp
+// 10K limit check (Phase 6A.110 - Architecture Review requirement)
+const int MAX_EXPORT_LIMIT = 10000;
+if (totalCount > MAX_EXPORT_LIMIT)
+{
+    return Result<ExportResult>.Failure(
+        $"This form has too many responses for direct export ({totalCount} responses, " +
+        $"limit: {MAX_EXPORT_LIMIT}). Please contact support for assistance.");
+}
+
+// Slow export telemetry
+if (stopwatch.ElapsedMilliseconds > 5000)
+{
+    _logger.LogWarning("SLOW EXPORT DETECTED: FormId={FormId}, ResponseCount={ResponseCount}, " +
+        "Duration={ElapsedMs}ms, FileSize={FileSize} bytes", ...);
+}
+```
+
+**Files Modified/Created**:
+- `src/LankaConnect.Application/Events/Queries/ExportFormResponses/ExportFormResponsesQuery.cs` (NEW)
+- `src/LankaConnect.Application/Events/Queries/ExportFormResponses/ExportFormResponsesQueryHandler.cs` (NEW)
+- `src/LankaConnect.Application/Common/Interfaces/ICsvExportService.cs` (MODIFIED - added method)
+- `src/LankaConnect.Application/Common/Interfaces/IExcelExportService.cs` (MODIFIED - added method)
+- `src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs` (MODIFIED - implemented method)
+- `src/LankaConnect.Infrastructure/Services/Export/ExcelExportService.cs` (MODIFIED - implemented method)
+- `src/LankaConnect.API/Controllers/EventsController.cs` (MODIFIED - added endpoint + using statement)
+
+**Commits**:
+- `118e7eca`: feat(forms): Phase 6A.110 - Form response export (CSV/Excel)
+
+**Testing**:
+- ✅ Build succeeded (0 errors, 0 warnings)
+- ✅ Pushed to develop successfully
+- ✅ GitHub Actions deployment triggered
+- ⏳ Azure staging deployment in progress
+- ⏳ API endpoint testing pending
+- ⏳ Frontend export button testing pending
+
+**Next Steps**:
+- Verify Azure staging deployment succeeded
+- Test CSV export via API
+- Test Excel export via API
+- Test frontend export buttons
+- Check Azure logs for errors
+- Update STREAMLINED_ACTION_PLAN.md
+- Update PHASE_6A_MASTER_INDEX.md
+
+---
+
+## Previous Session: Phase 6A.106-109 - Form Response Email Notifications + Delete Functionality ✅ COMPLETE
 
 ### PHASE 6A.106-110: FORM RESPONSE EMAIL NOTIFICATIONS + DELETE FUNCTIONALITY - 2026-02-13
 

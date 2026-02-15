@@ -1,9 +1,140 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-15 - Phase 6A.114 Issue #81: Newsletter Event Dropdown Security Fix ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-02-15 - Phase 6A.115: Post-Phase-6A.114 Issue Fixes (4 Issues) ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.114 Issue #81: Newsletter Event Dropdown Security Fix ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.115: Post-Phase-6A.114 Issue Fixes ✅ DEPLOYED TO STAGING
+
+### PHASE 6A.115: 4 POST-DEPLOYMENT ISSUES FIXED - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR USER TESTING**
+
+**Context**: User tested form update after Phase 6A.114 deployment. Update no longer times out (✅ fixed), but discovered 4 new UX/email issues.
+
+**Issues Fixed**:
+
+| # | Issue | Type | Priority | Status |
+|---|-------|------|----------|--------|
+| **1** | Email Old Format | 🗄️ Database/Migration | 🔴 P0 | ✅ **FIXED** |
+| **2** | Number Field Not Updating | 🖥️ Frontend/Backend | 🟡 P1 | 🔍 **INVESTIGATION** |
+| **3** | Success Message at Top | 🎨 Frontend/UX | 🟢 P2 | ✅ **FIXED** |
+| **4** | Response Data Unreadable | 📧 Backend/Email | 🟢 P2 | ✅ **FIXED** |
+
+---
+
+#### Issue 1: Email Template Format (P0 - CRITICAL) ✅ FIXED
+
+**Problem**: Form update emails have basic HTML styling instead of professional format matching signup list emails.
+
+**Root Cause**: Phase 6A.112 migration created locally but **NEVER committed to Git** or deployed to staging.
+
+**Fix**:
+- ✅ Committed Phase6A112 migration files (5 files, 9265 insertions)
+- ✅ Pushed to develop branch
+- ✅ Azure deployment triggered automatically
+
+**Files**:
+- `20260214211455_Phase6A112_UpdateFormResponseEmailTemplatesWithProfessionalStyling.cs`
+- 3 HTML template files (confirmation, update, cancellation)
+
+**Expected Result**: Emails now have gradient header, colored borders, mobile-responsive design.
+
+---
+
+#### Issue 2: Number Field Not Updating (P1 - HIGH) 🔍 INVESTIGATION
+
+**Problem**: "Number of lamps you are sponsoring" field doesn't update (user changed 3 → 4, still shows 3 after update). All other fields update correctly.
+
+**Root Cause Hypothesis**: HTML `type="number"` input returns STRING "4" instead of number 4. Backend may reject string values.
+
+**Investigation Steps**:
+1. ✅ Added comprehensive debug logging to `UpdateFormResponseCommandHandler`
+   - Logs question type, text value, boolean value for each answer
+   - Logs old vs new value for updates
+   - Logs success/failure for each field
+2. ✅ Committed and deployed debug logging (Phase6A115 commit b671fe85)
+3. 🔜 **USER ACTION REQUIRED**: Test number field update on staging
+4. 🔜 Check Azure logs to identify exact failure point
+5. 🔜 Apply fix based on findings (frontend or backend)
+
+**Files Changed**:
+- `UpdateFormResponseCommandHandler.cs` (22 insertions - debug logs)
+
+**Next**: User tests → Analyze logs → Apply fix
+
+---
+
+#### Issue 3: Success Message Position (P2 - LOW) ✅ FIXED
+
+**Problem**: Success/error messages appear at TOP of page after form update, requiring users to scroll up to see feedback.
+
+**Root Cause**:
+- Messages rendered in `CardHeader` (top of form)
+- `window.scrollTo({ top: 0 })` scrolls to top
+
+**Fix**:
+1. ✅ Moved success/error messages from `CardHeader` to after `Card` (bottom, near submit button)
+2. ✅ Changed scroll behavior from `top: 0` to `top: document.body.scrollHeight` (scroll to bottom)
+3. ✅ Added `setTimeout(100ms)` to ensure DOM updates before scrolling
+
+**Files Changed**:
+- `web/src/app/events/[id]/forms/[formId]/page.tsx`
+
+**User Impact**: Messages now appear exactly where user expects (bottom, near submit button).
+
+---
+
+#### Issue 4: Response Data Display (P2 - LOW) ✅ FIXED
+
+**Problem**: Email shows response summary in hard-to-read pipe-separated format:
+```
+Everyone1 | 8609780124 | 4 | Your name: Niroshana Ralalage1 | Email: niroshhh@gmail.com
+```
+
+**Root Cause**: `BuildResponseSummary()` uses `string.Join(" | ", ...)` for email display.
+
+**Fix**: Changed to HTML-formatted display with line breaks and bold question text.
+
+**Before**:
+```
+Everyone1 | 8609780124 | 4 | Your name: Niroshana | Email: niroshhh@gmail.com
+```
+
+**After**:
+```
+<strong>Name of departed persons:</strong> Everyone1
+<strong>Phone Number:</strong> 8609780124
+<strong>Number of lamps:</strong> 4
+<strong>Your name:</strong> Niroshana Ralalage1
+<strong>Email:</strong> niroshhh@gmail.com
+```
+
+**Files Changed**:
+- `FormResponseUpdatedEmailHandler.cs` (BuildResponseSummary method)
+
+**User Impact**: Email response summaries are now easy to scan and read.
+
+---
+
+**Deployment Summary**:
+
+| Commit | Description | Files | Status |
+|--------|-------------|-------|--------|
+| `34a0ca70` | Phase 6A.112 migration (Issue #1) | 5 files | ✅ Deployed |
+| `b671fe85` | Debug logging (Issue #2) | 1 file | ✅ Deployed |
+| `d2bc4bcb` | Issues #3 & #4 fixes | 2 files | ✅ Deployed |
+
+**Total**: 3 commits, 8 files changed, ~9300 insertions
+
+**Testing Checklist**:
+- [ ] **Issue #1**: Test form update → Check email has professional styling (gradient header, colored borders)
+- [ ] **Issue #2**: Update number field (3 → 4) → Check Azure logs → Report findings
+- [ ] **Issue #3**: Submit/update form → Verify message appears at bottom + page scrolls to bottom
+- [ ] **Issue #4**: Check email → Verify response summary uses line breaks (not pipes)
+
+---
+
+## Previous Session - Phase 6A.114 Issue #81: Newsletter Event Dropdown Security Fix ✅ DEPLOYED TO STAGING
 
 ### PHASE 6A.114 ISSUE #81: NEWSLETTER EVENT DROPDOWN SECURITY FIX - 2026-02-15
 

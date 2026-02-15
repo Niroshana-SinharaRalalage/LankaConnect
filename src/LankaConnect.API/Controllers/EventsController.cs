@@ -1742,6 +1742,12 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CommitToSignUpItem(Guid eventId, Guid signupId, Guid itemId, [FromBody] CommitToSignUpItemRequest request)
     {
+        // Phase 6A.116: Prevent Azure Container Apps ingress from caching POST responses
+        // Root cause: Ingress layer was caching HTTP 200 responses, causing requests to never reach application
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
         // Phase 6A.114 DEBUG: Add WARNING level log at method entry to ensure visibility
         Logger.LogWarning("[DEBUG-CONTROLLER-ENTRY] CommitToSignUpItem endpoint HIT - EventId: {EventId}, SignUpId: {SignUpId}, ItemId: {ItemId}, UserId: {UserId}, Quantity: {Quantity}",
             eventId, signupId, itemId, request.UserId, request.Quantity);
@@ -1807,6 +1813,11 @@ public class EventsController : BaseController<EventsController>
         Guid itemId,
         [FromBody] CommitToSignUpItemAnonymousRequest request)
     {
+        // Phase 6A.116: Prevent Azure Container Apps ingress from caching POST responses
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
         Logger.LogInformation("Anonymous user with email {Email} committing to item {ItemId} in sign-up list {SignUpId} for event {EventId}",
             request.ContactEmail, itemId, signupId, eventId);
 

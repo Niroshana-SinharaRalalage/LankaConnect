@@ -171,6 +171,13 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                         return Result.Failure($"Question with ID {answerItem.QuestionId} not found in this form");
                     }
 
+                    // Phase 6A.115: Debug logging for Issue #2 (Number field not updating)
+                    _logger.LogInformation(
+                        "UpdateFormResponse: Processing answer - QuestionId={QuestionId}, QuestionText={QuestionText}, QuestionType={QuestionType}, TextValue={TextValue}, BooleanValue={BooleanValue}, OptionCount={OptionCount}",
+                        answerItem.QuestionId, question.QuestionText, question.QuestionType,
+                        answerItem.TextValue ?? "null", answerItem.BooleanValue?.ToString() ?? "null",
+                        answerItem.SelectedOptionIds?.Count ?? 0);
+
                     // Snapshot option texts for choice-type answers
                     List<string>? selectedOptionTextSnapshots = null;
                     if (answerItem.SelectedOptionIds != null && answerItem.SelectedOptionIds.Count > 0)
@@ -194,6 +201,11 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                     var existingAnswer = response.GetAnswer(answerItem.QuestionId);
                     if (existingAnswer != null)
                     {
+                        // Phase 6A.115: Log existing value before update
+                        _logger.LogInformation(
+                            "UpdateFormResponse: Updating existing answer - QuestionId={QuestionId}, OldTextValue={OldTextValue}, NewTextValue={NewTextValue}",
+                            answerItem.QuestionId, existingAnswer.TextValue ?? "null", answerItem.TextValue ?? "null");
+
                         var updateResult = response.UpdateAnswer(
                             answerItem.QuestionId,
                             answerItem.TextValue,
@@ -204,7 +216,17 @@ public class UpdateFormResponseCommandHandler : ICommandHandler<UpdateFormRespon
                         if (updateResult.IsFailure)
                         {
                             stopwatch.Stop();
+                            _logger.LogError(
+                                "UpdateFormResponse: Answer update FAILED - QuestionId={QuestionId}, QuestionText={QuestionText}, Error={Error}",
+                                answerItem.QuestionId, question.QuestionText, updateResult.Error);
                             return Result.Failure(updateResult.Error);
+                        }
+                        else
+                        {
+                            // Phase 6A.115: Log successful update
+                            _logger.LogInformation(
+                                "UpdateFormResponse: Answer updated successfully - QuestionId={QuestionId}, QuestionText={QuestionText}",
+                                answerItem.QuestionId, question.QuestionText);
                         }
                     }
                     else

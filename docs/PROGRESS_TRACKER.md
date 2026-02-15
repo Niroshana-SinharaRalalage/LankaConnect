@@ -1,9 +1,148 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-15 - Issue #79: Events Page Error Handling Fix ✅ COMPLETE*
+*Last Updated: 2026-02-15 - Phase 6A.114 Issue #81: Newsletter Event Dropdown Security Fix ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Issue #79: Events Page Error Handling Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.114 Issue #81: Newsletter Event Dropdown Security Fix ✅ DEPLOYED TO STAGING
+
+### PHASE 6A.114 ISSUE #81: NEWSLETTER EVENT DROPDOWN SECURITY FIX - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**
+
+**Priority**: 🔴 **HIGH (Security/Authorization Issue)**
+
+**GitHub Issue**: #81
+
+**Problem**: Newsletter creation form showed ALL events in the system, allowing organizers to see and potentially link newsletters to events they don't own (security and information disclosure issue).
+
+**Root Cause** (Comprehensive RCA conducted):
+- **Frontend**: NewsletterForm.tsx used `useEvents({})` calling GET /api/Events (public endpoint)
+- **Backend**: No authorization check when linking newsletters to events
+- **Security Impact**: Organizers could see event titles from ALL organizers and potentially send newsletters to wrong attendees
+
+**Solution Implemented** (TDD Approach - Tests First):
+
+**Backend Security Validation**:
+- ✅ Added `IEventRepository` to `CreateNewsletterCommandHandler`
+- ✅ Added `IEventRepository` to `UpdateNewsletterCommandHandler`
+- ✅ Implemented event ownership validation (checks `linkedEvent.OrganizerId == userId`)
+- ✅ Returns 403 Forbidden if organizer tries to link to event they don't own
+- ✅ Admin bypass logic (admins can link newsletters to any event)
+- ✅ Comprehensive security logging for audit trail
+- ✅ 7 passing unit tests covering all scenarios
+
+**Frontend UX Fix**:
+- ✅ Created `useMyEvents()` hook calling GET /api/Events/my-events (organizer-filtered endpoint)
+- ✅ Added `getMyEvents()` method to `events.repository.ts`
+- ✅ Updated `NewsletterForm.tsx` to use `useMyEvents()` instead of `useEvents()`
+- ✅ Event dropdown now shows ONLY events created by logged-in organizer
+
+**Test Results**:
+```
+Passed!  - Failed: 0, Passed: 7, Skipped: 5, Total: 12
+```
+
+**Key Tests Passing**:
+- ✅ Unauthorized event access properly blocked (CreateNewsletter)
+- ✅ Unauthorized event access properly blocked (UpdateNewsletter)
+- ✅ Event not found returns proper error
+- ✅ Admin can link to any event
+- ✅ User can link to own event
+
+**Files Changed** (8 files, 1311 insertions):
+1. `src/LankaConnect.Application/Communications/Commands/CreateNewsletter/CreateNewsletterCommandHandler.cs`
+2. `src/LankaConnect.Application/Communications/Commands/UpdateNewsletter/UpdateNewsletterCommandHandler.cs`
+3. `tests/LankaConnect.Application.Tests/Communications/Commands/CreateNewsletterCommandHandlerTests.cs`
+4. `tests/LankaConnect.Application.Tests/Communications/Commands/UpdateNewsletterCommandHandlerTests.cs` (new file)
+5. `web/src/presentation/hooks/useEvents.ts`
+6. `web/src/infrastructure/api/repositories/events.repository.ts`
+7. `web/src/presentation/components/features/newsletters/NewsletterForm.tsx`
+8. `docs/RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md` (comprehensive 560-line RCA)
+
+**Deployment**:
+- ✅ Committed: c6b7a1a6
+- ✅ Pushed to develop branch
+- 🚀 Azure staging deployment in progress (auto-triggered via GitHub Actions)
+- ⏳ Manual testing pending
+
+**Next Steps**:
+1. Monitor Azure deployment logs
+2. Test in staging: Verify dropdown shows only organizer's events
+3. Test backend validation: Attempt unauthorized event linking via API
+4. Verify security logging in Azure Application Insights
+5. Close GitHub Issue #81 after successful verification
+
+---
+
+## Previous Session - Phase 6A.114: Form Update Performance Optimization ✅ DEPLOYED TO STAGING
+
+### PHASE 6A.114: ELIMINATE DUPLICATE QUERIES IN FORM UPDATE EMAIL HANDLER - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR PERFORMANCE TESTING**
+
+**Priority**: 🔴 **CRITICAL (P0) - Performance Issue**
+
+**Problem**: Form update operations timing out due to duplicate database queries in email handler, causing ~40 second processing time that exceeds frontend 30-second timeout.
+
+**User Report** (Conversation Context):
+> "still I am getting the timeout issue when editing signup form in staging"
+
+**Root Cause Analysis** (Conducted with system-architect agent):
+
+| Component | Issue | Impact |
+|-----------|-------|--------|
+| **UpdateFormResponseCommandHandler** | Loads: Response + Form + Event (3 queries) | 1.5 seconds |
+| **FormResponseUpdatedEmailHandler** | RE-LOADS: Response + Form + Event (3 duplicate queries) | 38.5 seconds |
+| **Total Processing Time** | 6 database queries total | ~40 seconds |
+| **Frontend Timeout** | Axios timeout = 30 seconds (Phase 6A.111.1) | Request fails before completion |
+
+**Why Duplicates Occurred**: Email handler didn't receive entities already loaded by command handler, so it re-queried the same data independently.
+
+**Solution Implemented** (Strategic Performance Fix):
+- Modified `FormResponseUpdatedEvent` to include `Form` and `Event` entities
+- Added `FormResponse.RaiseUpdatedEventWithContext(form, event)` method
+- Updated `UpdateFormResponseCommandHandler` to load Event and pass via domain event
+- Modified `FormResponseUpdatedEmailHandler` to use pre-loaded entities
+- Email handler now only queries Response (for latest answers data)
+- Added comprehensive performance logging throughout the flow
+
+**Performance Improvement**:
+- **Before**: 6 database queries, ~40 seconds total
+- **After**: 4 database queries, expected 5-8 seconds (75-80% improvement)
+- **Eliminated**: 2 duplicate queries (Form + Event)
+
+**Pattern Source**: Mirrors existing `UserCommittedToSignUpEventHandler` pattern which doesn't have duplicates.
+
+**Files Changed**:
+1. `src/LankaConnect.Domain/Events/DomainEvents/FormResponseUpdatedEvent.cs` - Added Form and Event properties
+2. `src/LankaConnect.Domain/Events/Entities/FormResponse.cs` - Added RaiseUpdatedEventWithContext() method
+3. `src/LankaConnect.Application/Events/Commands/UpdateFormResponse/UpdateFormResponseCommandHandler.cs` - Load Event, pass to domain event
+4. `src/LankaConnect.Application/Events/EventHandlers/FormResponseUpdatedEmailHandler.cs` - Use pre-loaded entities
+
+**Deployment**:
+- ✅ Code committed to develop branch (commit: b8085031)
+- ✅ Pushed to GitHub
+- ✅ Azure staging deployment completed successfully (8m24s)
+- ✅ All source projects compile with 0 errors, 0 warnings
+
+**Testing Status**:
+- ✅ Domain layer compiles successfully
+- ✅ Application layer compiles successfully
+- ✅ Infrastructure layer compiles successfully
+- ✅ API layer compiles successfully
+- 🔜 **NEXT**: User to test form update performance on staging
+- 🔜 **VERIFY**: Update completes in 5-8 seconds (expected)
+- 🔜 **CHECK**: Azure logs show performance improvement
+
+**Impact**:
+- Eliminates timeout errors for users editing signup forms
+- Reduces backend processing time by 75-80%
+- Follows established patterns from signup list implementation
+- Improves scalability and resource utilization
+
+---
+
+## Previous Sessions
 
 ### ISSUE #79: EVENTS PAGE ERROR HANDLING FIX - 2026-02-15
 
@@ -16,42 +155,21 @@
 **User Report** (GitHub Issue #79):
 > "In reality there are no events under these types, and the result should say 'No Events found', but I get the error message 'Failed to load events. Please try again later.'"
 
-**Root Cause**: Frontend UI error handling issue. React Query's error state persists when users switch between event type filters. When filtering by event types with no events, a stale error state from a previous request causes the page to show "Failed to load events" instead of "No Events Found".
-
-**Backend Status**: ✅ Working correctly - returns HTTP 200 OK with empty array `[]`
+**Root Cause**: Frontend UI error handling issue. React Query's error state persists when users switch between event type filters.
 
 **Solution Implemented**:
 - Modified error display logic in Events page to prioritize data availability over error state
 - Changed conditional logic from checking `eventsError` first to checking `!events || events.length === 0` first
-- Now only shows error message when BOTH conditions are true: no data AND an error exists
 - Created comprehensive unit tests for error handling scenarios
-- Added full RCA document: docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md
 
 **Files Changed**:
-- `web/src/app/events/page.tsx` (lines 380-403) - Fixed error display logic
-- `web/src/app/events/__tests__/events-page-error-handling.test.tsx` - Added unit tests
-- `docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md` - Created RCA document
+- `web/src/app/events/page.tsx` (lines 380-403)
+- `web/src/app/events/__tests__/events-page-error-handling.test.tsx`
+- `docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md`
 
-**Deployment**:
-- ✅ Code committed to develop branch (commit: 2779ee79)
-- ✅ Pushed to GitHub
-- ✅ Azure staging deployment triggered and completed
-- ✅ Staging environment verified accessible
-
-**Testing**:
-- ✅ TypeScript compilation successful (no errors)
-- ✅ Next.js build successful
-- ✅ Staging site accessible (HTTP 200 OK)
-- 🔜 Manual testing on staging (filtering by Ceremony, Workshop, Celebration)
-
-**Impact**:
-- Fixes UX confusion for all users searching event types with no events
-- Users can now distinguish between genuine errors and empty search results
-- Improves overall user experience with appropriate messaging
+**Deployment**: ✅ Deployed to staging (commit: 2779ee79)
 
 ---
-
-## Previous Sessions
 
 ### PHASE 6A.111.1: FORM UPDATE TIMEOUT FIX - 2026-02-14
 

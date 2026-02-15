@@ -1742,6 +1742,10 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CommitToSignUpItem(Guid eventId, Guid signupId, Guid itemId, [FromBody] CommitToSignUpItemRequest request)
     {
+        // Phase 6A.114 DEBUG: Add WARNING level log at method entry to ensure visibility
+        Logger.LogWarning("[DEBUG-CONTROLLER-ENTRY] CommitToSignUpItem endpoint HIT - EventId: {EventId}, SignUpId: {SignUpId}, ItemId: {ItemId}, UserId: {UserId}, Quantity: {Quantity}",
+            eventId, signupId, itemId, request?.UserId, request?.Quantity);
+
         Logger.LogInformation("User {UserId} committing to item {ItemId} in sign-up list {SignUpId} for event {EventId}",
             request.UserId, itemId, signupId, eventId);
 
@@ -1756,7 +1760,14 @@ public class EventsController : BaseController<EventsController>
             request.ContactEmail,
             request.ContactPhone);
 
+        // Phase 6A.114 DEBUG: Log before MediatR call
+        Logger.LogWarning("[DEBUG-CONTROLLER-MEDIATOR] About to send CommitToSignUpItemCommand to MediatR");
+
         var result = await Mediator.Send(command);
+
+        // Phase 6A.114 DEBUG: Log after MediatR call
+        Logger.LogWarning("[DEBUG-CONTROLLER-RESULT] MediatR returned - IsSuccess: {IsSuccess}, Error: {Error}",
+            result.IsSuccess, result.Error ?? "none");
 
         return HandleResult(result);
     }

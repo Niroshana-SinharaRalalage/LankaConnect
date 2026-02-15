@@ -102,4 +102,36 @@ public class DiagnosticsController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Test endpoint to trigger a diagnostic log entry for signup commitment
+    /// </summary>
+    [HttpPost("test-signup-commitment-logging")]
+    public IActionResult TestSignupCommitmentLogging([FromBody] TestSignupRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("=== DIAGNOSTIC TEST: Signup Commitment Logging ===");
+            _logger.LogInformation("[DIAG-TEST] Event ID: {EventId}", request.EventId);
+            _logger.LogInformation("[DIAG-TEST] User Email: {UserEmail}", request.UserEmail);
+            _logger.LogInformation("[DIAG-TEST] This log entry confirms logging is working");
+            _logger.LogInformation("[DIAG-TEST] If you don't see UserCommittedToSignUp logs, domain events aren't being raised");
+            _logger.LogInformation("=== END DIAGNOSTIC TEST ===");
+
+            return Ok(new
+            {
+                success = true,
+                message = "Diagnostic log written. Check Azure logs for '[DIAG-TEST]' entries.",
+                eventId = request.EventId,
+                userEmail = request.UserEmail
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[DIAGNOSTICS] Test logging failed");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
+
+public record TestSignupRequest(string EventId, string UserEmail);

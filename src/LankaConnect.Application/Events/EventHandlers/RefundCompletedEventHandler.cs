@@ -3,6 +3,8 @@ using LankaConnect.Application.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -22,6 +24,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundCompletedEventHandler> _logger;
 
@@ -31,12 +34,14 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RefundCompletedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -120,6 +125,15 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                 {
                     emailParams.WithSignUpLists(
                         _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+                }
+
+                // Phase 6A.112: Check if event has active signup forms
+                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+
+                if (hasActiveForms)
+                {
+                    emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
                 }
 
                 // Phase 6A.100: Send via typed email service

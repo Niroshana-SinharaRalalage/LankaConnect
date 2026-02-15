@@ -6,6 +6,8 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -26,6 +28,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 {
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IEventRepository _eventRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly EmailNotificationSettings _emailNotificationSettings;
@@ -34,6 +37,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     public EventPublishedEventHandler(
         IEventNotificationRecipientService recipientService,
         IEventRepository eventRepository,
+        IEventFormRepository eventFormRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IOptions<EmailNotificationSettings> emailNotificationSettings,
@@ -41,6 +45,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     {
         _recipientService = recipientService;
         _eventRepository = eventRepository;
+        _eventFormRepository = eventFormRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _emailNotificationSettings = emailNotificationSettings.Value;
@@ -158,6 +163,15 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                     {
                         emailParams.HasSignUpLists = true;
                         emailParams.SignUpListsUrl = eventUrl + "#sign-ups";
+                    }
+
+                    // Phase 6A.112: Check if event has active signup forms
+                    var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+                    var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+
+                    if (hasActiveForms)
+                    {
+                        emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
                     }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);

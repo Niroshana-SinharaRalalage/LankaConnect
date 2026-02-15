@@ -386,7 +386,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public async Task<int> CommitAsync(CancellationToken cancellationToken = default)
     {
+        // Phase 6A.114 DEBUG: Add stack trace to identify caller
+        var stackTrace = new System.Diagnostics.StackTrace(true);
+        var callerInfo = string.Join(" <- ", stackTrace.GetFrames()
+            .Take(5)
+            .Select(f => $"{f.GetMethod()?.DeclaringType?.Name}.{f.GetMethod()?.Name}"));
+
         _logger.LogInformation("[DIAG-10] AppDbContext.CommitAsync START");
+        _logger.LogWarning("[DEBUG-STACK] CommitAsync called from: {CallerStack}", callerInfo);
 
         // DIAGNOSTIC: Log all tracked entities BEFORE DetectChanges
         var trackedEntitiesBeforeDetect = ChangeTracker.Entries<BaseEntity>().ToList();
@@ -522,5 +529,34 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         _logger.LogInformation("[DIAG-20] AppDbContext.CommitAsync COMPLETE");
         return result;
+    }
+
+    /// <summary>
+    /// Phase 6A.114 DEBUG: Override SaveChangesAsync to detect direct calls that bypass CommitAsync
+    /// This should ONLY be called from CommitAsync - any other caller indicates a bug
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var stackTrace = new System.Diagnostics.StackTrace(true);
+        var callerFrames = stackTrace.GetFrames().Take(10).ToList();
+        var callerInfo = string.Join(" <- ", callerFrames
+            .Select(f => $"{f.GetMethod()?.DeclaringType?.Name}.{f.GetMethod()?.Name}"));
+
+        // Check if called from CommitAsync
+        var isFromCommitAsync = callerFrames.Any(f => f.GetMethod()?.Name == "CommitAsync");
+
+        if (!isFromCommitAsync)
+        {
+            _logger.LogError(
+                "[DEBUG-BYPASS] ⚠️ SaveChangesAsync called DIRECTLY (not from CommitAsync)! " +
+                "This bypasses domain event dispatch! Call stack: {CallerStack}",
+                callerInfo);
+        }
+        else
+        {
+            _logger.LogInformation("[DEBUG-SAVECHANGES] SaveChangesAsync called from CommitAsync (correct flow)");
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }

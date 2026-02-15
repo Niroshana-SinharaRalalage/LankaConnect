@@ -90,6 +90,51 @@ export function useEvents(
 }
 
 /**
+ * useMyEvents Hook
+ *
+ * Phase 6A.114 Issue #81: Fetches events created by the authenticated organizer
+ * Used for newsletter creation, event management dashboard, etc.
+ *
+ * Features:
+ * - Automatic caching with 5-minute stale time
+ * - Requires authentication
+ * - Filters by organizer ID (from JWT token) on the backend
+ * - Security: Only returns events owned by current user
+ *
+ * @param filters - Optional filters (category, date range, search term)
+ * @param options - Additional React Query options
+ *
+ * @example
+ * ```tsx
+ * const { data: myEvents } = useMyEvents({ category: 'Cultural' });
+ * ```
+ */
+export function useMyEvents(
+  filters?: {
+    searchTerm?: string;
+    category?: number;
+    startDateFrom?: string;
+    startDateTo?: string;
+    state?: string;
+    metroAreaIds?: string[];
+    statusFilter?: number;
+  },
+  options?: Omit<UseQueryOptions<EventDto[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['my-events', filters || {}] as const,
+    queryFn: async () => {
+      const result = await eventsRepository.getMyEvents(filters);
+      return result;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
  * useEventById Hook
  *
  * Fetches a single event by ID
@@ -879,6 +924,7 @@ export function useResendAttendeeConfirmation() {
  */
 export default {
   useEvents,
+  useMyEvents,
   useEventById,
   useSearchEvents,
   useFeaturedEvents,

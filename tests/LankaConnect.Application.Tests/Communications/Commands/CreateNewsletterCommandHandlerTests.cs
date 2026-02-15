@@ -6,6 +6,8 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Infrastructure.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,7 @@ public class CreateNewsletterCommandHandlerTests
 {
     private readonly Mock<INewsletterRepository> _mockNewsletterRepository;
     private readonly Mock<IEmailGroupRepository> _mockEmailGroupRepository;
+    private readonly Mock<IEventRepository> _mockEventRepository;
     private readonly Mock<ICurrentUserService> _mockCurrentUserService;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
@@ -38,6 +41,7 @@ public class CreateNewsletterCommandHandlerTests
     {
         _mockNewsletterRepository = new Mock<INewsletterRepository>();
         _mockEmailGroupRepository = new Mock<IEmailGroupRepository>();
+        _mockEventRepository = new Mock<IEventRepository>();
         _mockCurrentUserService = new Mock<ICurrentUserService>();
         _mockDbContext = new Mock<IApplicationDbContext>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
@@ -53,6 +57,7 @@ public class CreateNewsletterCommandHandlerTests
         _handler = new CreateNewsletterCommandHandler(
             _mockNewsletterRepository.Object,
             _mockEmailGroupRepository.Object,
+            _mockEventRepository.Object,
             _mockCurrentUserService.Object,
             _mockDbContext.Object,
             _mockUnitOfWork.Object,
@@ -279,6 +284,230 @@ public class CreateNewsletterCommandHandlerTests
             capturedNewsletter.MetroAreaIds.Should().NotContain(inactiveId,
                 "inactive metros should be excluded");
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.114 Issue #81 - Test #1: Security Test - Event Ownership Validation
+    /// When a user tries to link a newsletter to an event they don't own, it should fail
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenEventNotOwnedByUser_ShouldReturnFailure()
+    {
+        // Arrange
+        var organizerId = Guid.NewGuid();
+        var otherOrganizerId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        // Setup current user as organizerId
+        _mockCurrentUserService.Setup(x => x.UserId).Returns(organizerId);
+        _mockCurrentUserService.Setup(x => x.IsAuthenticated).Returns(true);
+        _mockCurrentUserService.Setup(x => x.IsAdmin).Returns(false);
+
+        // Create an event owned by a DIFFERENT organizer
+        var otherOrganizerEvent = Event.Create(
+            EventTitle.Create("Other Organizer's Event").Value,
+            EventDescription.Create("This event belongs to someone else").Value,
+            DateTime.UtcNow.AddDays(30),
+            DateTime.UtcNow.AddDays(31),
+            otherOrganizerId, // Different organizer!
+            100); // capacity
+
+        // Mock repository to return the other organizer's event
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(otherOrganizerEvent.Value);
+
+        var command = new CreateNewsletterCommand(
+            Title: "Test Newsletter",
+            Description: "Trying to link to someone else's event",
+            EmailGroupIds: new List<Guid>(),
+            IncludeNewsletterSubscribers: true,
+            EventId: eventId, // ⚠️ Trying to link to someone else's event
+            MetroAreaIds: null,
+            TargetAllLocations: true,
+            IsAnnouncementOnly: false);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue("user should not be able to link newsletter to event they don't own");
+        result.Error.Should().Contain("You can only link newsletters to events you created");
+
+        // Verify newsletter was NOT created
+        _mockNewsletterRepository.Verify(
+            x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "newsletter should not be created when event ownership validation fails");
+
+        _mockUnitOfWork.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Never,
+            "changes should not be committed when event ownership validation fails");
+    }
+
+    /// <summary>
+    /// Phase 6A.114 Issue #81 - Test #2: Security Test - Admin Can Link to Any Event
+    /// Admins should be allowed to link newsletters to any event (even if they don't own it)
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenAdminLinksToAnyEvent_ShouldSucceed()
+    {
+        // Arrange
+        var adminId = Guid.NewGuid();
+        var otherOrganizerId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        // Setup current user as ADMIN
+        _mockCurrentUserService.Setup(x => x.UserId).Returns(adminId);
+        _mockCurrentUserService.Setup(x => x.IsAuthenticated).Returns(true);
+        _mockCurrentUserService.Setup(x => x.IsAdmin).Returns(true); // Admin flag
+
+        // Create an event owned by another organizer
+        var otherOrganizerEvent = Event.Create(
+            EventTitle.Create("Other Organizer's Event").Value,
+            EventDescription.Create("This event belongs to someone else").Value,
+            DateTime.UtcNow.AddDays(30),
+            DateTime.UtcNow.AddDays(31),
+            otherOrganizerId,
+            100);
+
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(otherOrganizerEvent.Value);
+
+        var metroId = Guid.NewGuid();
+        var command = new CreateNewsletterCommand(
+            Title: "Admin Newsletter",
+            Description: "Admin creating newsletter for any event",
+            EmailGroupIds: new List<Guid>(),
+            IncludeNewsletterSubscribers: true,
+            EventId: eventId,
+            MetroAreaIds: new List<Guid> { metroId }, // Use specific metros to avoid mocking DbContext metro query
+            TargetAllLocations: false,
+            IsAnnouncementOnly: false);
+
+        _mockNewsletterRepository
+            .Setup(x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue("admin should be able to link newsletter to any event");
+
+        _mockNewsletterRepository.Verify(
+            x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()),
+            Times.Once,
+            "newsletter should be created successfully for admin");
+    }
+
+    /// <summary>
+    /// Phase 6A.114 Issue #81 - Test #3: Event Not Found
+    /// When linking to a non-existent event, should return appropriate error
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenEventNotFound_ShouldReturnFailure()
+    {
+        // Arrange
+        var organizerId = Guid.NewGuid();
+        var nonExistentEventId = Guid.NewGuid();
+
+        _mockCurrentUserService.Setup(x => x.UserId).Returns(organizerId);
+        _mockCurrentUserService.Setup(x => x.IsAuthenticated).Returns(true);
+
+        // Mock repository to return null (event not found)
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(nonExistentEventId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+
+        var command = new CreateNewsletterCommand(
+            Title: "Test Newsletter",
+            Description: "Trying to link to non-existent event",
+            EmailGroupIds: new List<Guid>(),
+            IncludeNewsletterSubscribers: true,
+            EventId: nonExistentEventId,
+            MetroAreaIds: null,
+            TargetAllLocations: true,
+            IsAnnouncementOnly: false);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue("should fail when event doesn't exist");
+        result.Error.Should().Contain("The selected event does not exist");
+
+        _mockNewsletterRepository.Verify(
+            x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    /// <summary>
+    /// Phase 6A.114 Issue #81 - Test #4: Happy Path - User Links to Own Event
+    /// When user links newsletter to their own event, it should succeed
+    /// </summary>
+    [Fact]
+    public async Task Handle_WhenUserLinksToOwnEvent_ShouldSucceed()
+    {
+        // Arrange
+        var organizerId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockCurrentUserService.Setup(x => x.UserId).Returns(organizerId);
+        _mockCurrentUserService.Setup(x => x.IsAuthenticated).Returns(true);
+        _mockCurrentUserService.Setup(x => x.IsAdmin).Returns(false);
+
+        // Create an event owned by the SAME organizer
+        var ownedEvent = Event.Create(
+            EventTitle.Create("My Event").Value,
+            EventDescription.Create("This is my event").Value,
+            DateTime.UtcNow.AddDays(30),
+            DateTime.UtcNow.AddDays(31),
+            organizerId, // Same as current user!
+            100);
+
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(eventId, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ownedEvent.Value);
+
+        var metroId = Guid.NewGuid();
+        var command = new CreateNewsletterCommand(
+            Title: "My Newsletter",
+            Description: "Linking to my own event",
+            EmailGroupIds: new List<Guid>(),
+            IncludeNewsletterSubscribers: true,
+            EventId: eventId,
+            MetroAreaIds: new List<Guid> { metroId }, // Use specific metros to avoid mocking DbContext metro query
+            TargetAllLocations: false,
+            IsAnnouncementOnly: false);
+
+        _mockNewsletterRepository
+            .Setup(x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _mockUnitOfWork
+            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue($"user should be able to link newsletter to their own event. Error: {result.Error}");
+
+        _mockNewsletterRepository.Verify(
+            x => x.AddAsync(It.IsAny<Newsletter>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _mockUnitOfWork.Verify(
+            x => x.CommitAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     #region Test Helpers

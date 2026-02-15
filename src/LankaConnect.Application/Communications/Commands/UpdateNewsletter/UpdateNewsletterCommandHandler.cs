@@ -4,6 +4,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.Domain.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -19,6 +20,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
 {
     private readonly INewsletterRepository _newsletterRepository;
     private readonly IEmailGroupRepository _emailGroupRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IApplicationDbContext _dbContext;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,6 +29,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
     public UpdateNewsletterCommandHandler(
         INewsletterRepository newsletterRepository,
         IEmailGroupRepository emailGroupRepository,
+        IEventRepository eventRepository,
         ICurrentUserService currentUserService,
         IApplicationDbContext dbContext,
         IUnitOfWork unitOfWork,
@@ -34,6 +37,7 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
     {
         _newsletterRepository = newsletterRepository;
         _emailGroupRepository = emailGroupRepository;
+        _eventRepository = eventRepository;
         _currentUserService = currentUserService;
         _dbContext = dbContext;
         _unitOfWork = unitOfWork;
@@ -99,6 +103,51 @@ public class UpdateNewsletterCommandHandler : ICommandHandler<UpdateNewsletterCo
                         _currentUserService.IsAdmin,
                         stopwatch.ElapsedMilliseconds);
                     return Result<bool>.Failure("You do not have permission to update this newsletter");
+                }
+
+                // Phase 6A.114 Issue #81 FIX: Validate event ownership
+                if (request.EventId.HasValue)
+                {
+                    _logger.LogInformation(
+                        "[Phase 6A.114 Issue #81] Validating event ownership - EventId={EventId}, UserId={UserId}",
+                        request.EventId.Value,
+                        _currentUserService.UserId);
+
+                    var linkedEvent = await _eventRepository.GetByIdAsync(
+                        request.EventId.Value,
+                        trackChanges: false,
+                        cancellationToken);
+
+                    if (linkedEvent == null)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "[Phase 6A.114 Issue #81] UpdateNewsletter FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
+                            request.EventId.Value,
+                            stopwatch.ElapsedMilliseconds);
+                        return Result<bool>.Failure("The selected event does not exist.");
+                    }
+
+                    // ✅ CRITICAL SECURITY CHECK: Verify organizer owns the event
+                    // Admins can link newsletters to any event
+                    if (linkedEvent.OrganizerId != _currentUserService.UserId && !_currentUserService.IsAdmin)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "[Phase 6A.114 Issue #81] SECURITY: User {UserId} attempted to link newsletter to event {EventId} owned by {OwnerId} - Duration={ElapsedMs}ms",
+                            _currentUserService.UserId,
+                            linkedEvent.Id,
+                            linkedEvent.OrganizerId,
+                            stopwatch.ElapsedMilliseconds);
+
+                        return Result<bool>.Failure("You can only link newsletters to events you created.");
+                    }
+
+                    _logger.LogInformation(
+                        "[Phase 6A.114 Issue #81] Event ownership validated successfully - EventId={EventId}, OwnerId={OwnerId}, IsAdmin={IsAdmin}",
+                        linkedEvent.Id,
+                        linkedEvent.OrganizerId,
+                        _currentUserService.IsAdmin);
                 }
 
                 // Create value objects

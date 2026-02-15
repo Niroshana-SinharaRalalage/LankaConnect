@@ -145,6 +145,44 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.114 Issue #81: Get events created by the authenticated organizer
+   * Maps to backend GET /api/Events/my-events
+   * Requires authentication - returns only events owned by current user
+   *
+   * Security: Filtered by OrganizerId from JWT token on the backend
+   * Used for newsletter creation, event management dashboard, etc.
+   *
+   * @param filters - Optional filters (category, date range, search term, status)
+   * @returns EventDto[] - Array of events created by the authenticated organizer
+   */
+  async getMyEvents(filters?: {
+    searchTerm?: string;
+    category?: number;
+    startDateFrom?: string;
+    startDateTo?: string;
+    state?: string;
+    metroAreaIds?: string[];
+    statusFilter?: number;
+  }): Promise<EventDto[]> {
+    const params = new URLSearchParams();
+
+    if (filters?.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters?.category !== undefined) params.append('category', String(filters.category));
+    if (filters?.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters?.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters?.state) params.append('state', filters.state);
+    if (filters?.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+    if (filters?.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.basePath}/my-events?${queryString}` : `${this.basePath}/my-events`;
+
+    return await apiClient.get<EventDto[]>(url);
+  }
+
+  /**
    * Search events using full-text search (PostgreSQL FTS)
    * Returns paginated results with relevance scores
    * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events

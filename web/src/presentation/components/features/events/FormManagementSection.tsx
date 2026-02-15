@@ -11,7 +11,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Edit, Trash2, Play, StopCircle, RotateCcw, Users, Plus } from 'lucide-react';
+import { FileText, Edit, Trash2, Play, StopCircle, RotateCcw, Users, Plus, CheckCircle, X } from 'lucide-react';
 
 import type { EventFormDto } from '@/infrastructure/api/types/events.types';
 import { EventFormStatus, EventFormStatusLabels } from '@/infrastructure/api/types/events.types';
@@ -37,26 +37,26 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successFormTitle, setSuccessFormTitle] = useState<string>('');
 
   // Mutations
   const publishForm = usePublishEventForm({
-    onSuccess: () => toast.success('Form published successfully'),
     onError: (error) => toast.error(error.message || 'Failed to publish form'),
   });
 
   const closeForm = useCloseEventForm({
-    onSuccess: () => toast.success('Form closed successfully'),
     onError: (error) => toast.error(error.message || 'Failed to close form'),
   });
 
   const reopenForm = useReopenEventForm({
-    onSuccess: () => toast.success('Form reopened successfully'),
     onError: (error) => toast.error(error.message || 'Failed to reopen form'),
   });
 
   const deleteForm = useDeleteEventForm({
     onSuccess: () => {
-      toast.success('Form deleted successfully');
+      setSuccessMessage('deleted');
+      setTimeout(() => setSuccessMessage(null), 5000); // Auto-dismiss after 5 seconds
       setDeleteConfirmOpen(false);
       setFormToDelete(null);
     },
@@ -67,15 +67,27 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
 
   // Handlers
   const handlePublish = async (formId: string) => {
+    const form = forms.find(f => f.id === formId);
     await publishForm.mutateAsync({ eventId, formId });
+    setSuccessFormTitle(form?.title || 'Form');
+    setSuccessMessage('published');
+    setTimeout(() => setSuccessMessage(null), 5000); // Auto-dismiss after 5 seconds
   };
 
   const handleClose = async (formId: string) => {
+    const form = forms.find(f => f.id === formId);
     await closeForm.mutateAsync({ eventId, formId });
+    setSuccessFormTitle(form?.title || 'Form');
+    setSuccessMessage('closed');
+    setTimeout(() => setSuccessMessage(null), 5000); // Auto-dismiss after 5 seconds
   };
 
   const handleReopen = async (formId: string) => {
+    const form = forms.find(f => f.id === formId);
     await reopenForm.mutateAsync({ eventId, formId });
+    setSuccessFormTitle(form?.title || 'Form');
+    setSuccessMessage('reopened');
+    setTimeout(() => setSuccessMessage(null), 5000); // Auto-dismiss after 5 seconds
   };
 
   const handleDeleteClick = (formId: string) => {
@@ -128,6 +140,27 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
 
   return (
     <div className="space-y-6">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-900">
+              {successMessage === 'published' && `"${successFormTitle}" published successfully`}
+              {successMessage === 'closed' && `"${successFormTitle}" closed successfully`}
+              {successMessage === 'reopened' && `"${successFormTitle}" reopened successfully`}
+              {successMessage === 'deleted' && 'Form deleted successfully'}
+            </p>
+          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-green-600 hover:text-green-800 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Forms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {forms.map((form) => (

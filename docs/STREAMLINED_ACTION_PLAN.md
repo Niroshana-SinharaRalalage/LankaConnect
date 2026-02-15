@@ -7,7 +7,64 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ISSUE #79: EVENTS PAGE ERROR HANDLING FIX ✅ COMPLETE (2026-02-15)
+## 🔄 CURRENT STATUS - SIGNUP FORMS UI/UX FIXES ✅ COMPLETE (2026-02-15)
+**Date**: 2026-02-15
+**Session**: Signup Forms UI/UX Improvements (4 Issues)
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+**Deployment**: ✅ Frontend deployed to Azure staging successfully
+**Priority**: 🟡 MEDIUM (P2) - UX Enhancement
+
+**Problem**: 4 UX issues with Signup Forms management:
+1. Create form shows toast instead of inline message (user preference)
+2. New form doesn't appear until browser refresh
+3. Publish/close/reopen show toast instead of inline messages
+4. Status badges don't update immediately
+
+**Root Causes**:
+- Toast vs inline notification pattern inconsistency
+- Navigation-based refresh instead of reactive cache
+- Async cache invalidation without immediate refetch
+
+**Solution**: 3-part fix implemented:
+
+**Part 1 - Immediate Badge Updates** (useEventForms.ts):
+```typescript
+// Added to publish/close/reopen mutations
+queryClient.refetchQueries({ queryKey: formKeys.list(eventId) });
+// Forces immediate UI update, bypassing staleTime
+```
+
+**Part 2 - Inline Success Messages** (FormManagementSection.tsx):
+```typescript
+// Replaced toast with inline green banner
+<CheckCircle /> "Oil Lamp RSVP" published successfully
+// Auto-dismiss after 5s, manual dismiss with X button
+```
+
+**Part 3 - Create Form UX** (create-form/page.tsx):
+```typescript
+// Removed automatic navigation, added success message with actions
+<Button onClick={() => router.push(`/manage?tab=forms`)}>
+  Go to Signup Forms
+</Button>
+<Button onClick={resetForm}>Create Another Form</Button>
+```
+
+**Files Modified**: 4 files (cd3624d2)
+- web/src/presentation/hooks/useEventForms.ts
+- web/src/presentation/components/features/events/FormManagementSection.tsx
+- web/src/app/events/[id]/manage/create-form/page.tsx
+- docs/RCA_SIGNUP_FORMS_UI_UX_ISSUES.md (900+ line RCA)
+
+**Build**: ✅ Next.js 16.0.1 successful (0 TypeScript errors)
+**Deployment**: ✅ Frontend deployed to staging (success)
+**Testing**: Ready for manual testing on staging
+
+**Impact**: Better UX, immediate feedback, consistent notification pattern
+
+---
+
+## Previous Session: Issue #79 - Events Page Error Handling Fix ✅ COMPLETE (2026-02-15)
 **Date**: 2026-02-15
 **Session**: Issue #79 - Events Page Error Handling Fix (UX Improvement)
 **Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**

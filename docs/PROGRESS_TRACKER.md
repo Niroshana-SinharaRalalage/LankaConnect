@@ -1,9 +1,86 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-15 - Phase 6A.115: Post-Phase-6A.114 Issue Fixes (4 Issues) ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-02-15 - Signup Forms UI/UX Fixes (4 Issues) ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.115: Post-Phase-6A.114 Issue Fixes ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Signup Forms UI/UX Fixes ✅ DEPLOYED TO STAGING
+
+### SIGNUP FORMS UI/UX FIXES - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**
+
+**Priority**: 🟡 **MEDIUM (P2) - UX Enhancement**
+
+**Problem**: User reported 4 UX issues with Signup Forms management:
+1. ❌ Create form shows toast message instead of inline message (user preference)
+2. ❌ New form doesn't appear in UI until browser refresh
+3. ❌ Publish/close/reopen show toast instead of inline messages (user preference)
+4. ❌ Status badges don't update immediately after mutations
+
+**Root Causes**:
+- **Issues 1 & 3**: Inconsistent notification pattern (toast vs inline)
+- **Issue 2**: Navigation-based refresh instead of reactive cache updates
+- **Issue 4**: Async cache invalidation without immediate refetch
+
+**Solutions Implemented**:
+
+**Fix 4** - Immediate Badge Updates (useEventForms.ts):
+- Added `refetchQueries()` to `usePublishEventForm`, `useCloseEventForm`, `useReopenEventForm`
+- Forces immediate UI update without waiting for staleTime (5 minutes)
+- Status badges now change instantly: Draft → Active, Active → Closed, Closed → Active
+
+**Fix 3** - Inline Success Messages (FormManagementSection.tsx):
+- Replaced toast success notifications with inline green banners
+- Green banner with CheckCircle icon appears above forms grid
+- Shows form title in message: `"Oil Lamp RSVP" published successfully`
+- Auto-dismisses after 5 seconds with manual dismiss option (X button)
+
+**Fix 1 & 2** - Create Form UX (create-form/page.tsx):
+- Removed automatic navigation after form creation
+- Added inline success message with two action buttons:
+  - **"Go to Signup Forms"**: Navigate to manage page
+  - **"Create Another Form"**: Reset form to create more forms
+- User stays on page, sees success, decides next action
+
+**Files Modified**:
+- `web/src/presentation/hooks/useEventForms.ts` (3 mutations + refetchQueries)
+- `web/src/presentation/components/features/events/FormManagementSection.tsx` (inline messages)
+- `web/src/app/events/[id]/manage/create-form/page.tsx` (success message + actions)
+- `docs/RCA_SIGNUP_FORMS_UI_UX_ISSUES.md` (900+ line comprehensive RCA)
+
+**Deployment**:
+- ✅ Build: Next.js 16.0.1 successful (0 TypeScript errors)
+- ✅ Commit: cd3624d2
+- ✅ Pushed to develop branch
+- ✅ Azure staging deployment successful
+- ✅ Staging URL: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Testing Checklist** (on staging):
+- [ ] Create form → See inline success message
+- [ ] Click "Create Another Form" → Form resets
+- [ ] Click "Go to Signup Forms" → New form appears immediately
+- [ ] Publish form → Badge changes Draft → Active instantly
+- [ ] See inline success: `"FormName" published successfully`
+- [ ] Message auto-dismisses after 5 seconds
+- [ ] Close form → Badge changes Active → Closed instantly
+- [ ] Reopen form → Badge changes Closed → Active instantly
+- [ ] Manual dismiss with X button works
+
+**Impact**:
+- ✅ Better UX with persistent, contextual feedback
+- ✅ Immediate UI updates without manual refresh
+- ✅ Consistent notification pattern across application
+- ✅ Reduced user confusion (know what happened, what to do next)
+
+**Pattern Established**: Reactive React Query cache management with inline messages (consistent with Phase 6A.111.1 form update fix)
+
+---
+
+## Previous Session: Phase 6A.115 - Post-Phase-6A.114 Issue Fixes ✅ DEPLOYED TO STAGING
+
+### PHASE 6A.115: 4 POST-DEPLOYMENT ISSUES FIXED - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR USER TESTING**
 
 ### PHASE 6A.115: 4 POST-DEPLOYMENT ISSUES FIXED - 2026-02-15
 

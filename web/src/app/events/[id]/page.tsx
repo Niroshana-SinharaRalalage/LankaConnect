@@ -107,6 +107,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [userFormResponses, setUserFormResponses] = useState<Record<string, FormResponseDto | null>>({});
   const [isFetchingResponses, setIsFetchingResponses] = useState(false);
 
+  // Phase 6A.113: Detect URL hash for tab navigation (e.g., #signup-forms from email links)
+  const [activeTab, setActiveTab] = useState<string>('signup-lists');
+
+  useEffect(() => {
+    // Check URL hash on mount (e.g., /events/123#signup-forms)
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1); // Remove #
+      if (hash === 'signup-forms' || hash === 'signup-lists') {
+        setActiveTab(hash);
+      }
+    }
+  }, []);
+
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
@@ -1811,7 +1824,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 ),
               },
             ]}
-            defaultTab="signup-lists"
+            defaultTab={activeTab}
           />
         </div>
       </div>

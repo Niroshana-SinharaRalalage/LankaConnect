@@ -14,8 +14,9 @@ public class PasswordChangedEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for password change confirmation.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-password-change-confirmation";
+    public string TemplateName => EmailTemplateContract.TemplateNames.PasswordChangeConfirmation;
 
     /// <summary>
     /// Recipient email address.

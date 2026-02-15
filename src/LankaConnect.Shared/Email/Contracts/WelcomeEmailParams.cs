@@ -20,15 +20,9 @@ public class WelcomeEmailParams : IEmailParameters
 
     /// <summary>
     /// The template name based on trigger type.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => TriggerType switch
-    {
-        WelcomeEmailTriggerType.Registration => "welcome-registration",
-        WelcomeEmailTriggerType.EmailVerification => "welcome-verification",
-        WelcomeEmailTriggerType.AccountActivation => "welcome-activation",
-        WelcomeEmailTriggerType.Manual => "welcome-manual",
-        _ => "welcome-default"
-    };
+    public string TemplateName => EmailTemplateContract.TemplateNames.WelcomeEmail;
 
     /// <summary>
     /// Recipient email address.

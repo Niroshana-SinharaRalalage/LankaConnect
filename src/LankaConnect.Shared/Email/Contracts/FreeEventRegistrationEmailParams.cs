@@ -22,8 +22,9 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for free event registration confirmation.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-free-event-registration-confirmation";
+    public string TemplateName => EmailTemplateContract.TemplateNames.FreeEventRegistration;
 
     /// <summary>
     /// Recipient email address.
@@ -96,6 +97,18 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     /// URL to signup lists section of event (if event has signup lists).
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
 
     #endregion
 
@@ -206,6 +219,8 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
 
             // Registration parameters
             { "RegistrationDate", EmailDateTimeHelper.FormatDateTimeWithTz(RegistrationDate, TimeZoneId) },  // Phase 6A.97: Uses event's timezone
@@ -362,6 +377,17 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(url);
         SignUpListsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public FreeEventRegistrationEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

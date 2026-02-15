@@ -20,8 +20,9 @@ public class RegistrationCancellationEmailParams : IEmailParameters
     /// <summary>
     /// The template name for registration cancellation.
     /// Phase 6A.87 Fix: Corrected from "template-registration-cancellation" to include "event-" prefix.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-event-registration-cancellation";
+    public string TemplateName => EmailTemplateContract.TemplateNames.EventRegistrationCancellation;
 
     /// <summary>
     /// Recipient email address.
@@ -154,6 +155,18 @@ public class RegistrationCancellationEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -193,7 +206,9 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             // Signup lists params (for {{#HasSignUpLists}} conditional)
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
-            { "SignupListUrl", SignUpListsUrl }  // Template alias (singular form)
+            { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
         };
 
         if (RefundAmount.HasValue)
@@ -270,6 +285,18 @@ public class RegistrationCancellationEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(url);
         SignUpListsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public RegistrationCancellationEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

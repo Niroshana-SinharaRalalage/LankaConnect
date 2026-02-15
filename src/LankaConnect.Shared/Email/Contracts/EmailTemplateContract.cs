@@ -23,38 +23,40 @@ public static class EmailTemplateContract
 
     /// <summary>
     /// All email template names in the system.
+    /// Phase 6A.113: Updated all constants to match EXACT database template names.
     /// These must match the 'name' column in communications.email_templates table.
+    ///
+    /// CRITICAL: These values are NOW synchronized with database. Do NOT change without migration!
     /// </summary>
     public static class TemplateNames
     {
         // Authentication Templates
         public const string PasswordReset = "template-password-reset";
         public const string PasswordChangeConfirmation = "template-password-change-confirmation";
-        public const string EmailVerification = "template-email-verification";
-        public const string WelcomeEmail = "template-welcome-email";
+        public const string EmailVerification = "template-membership-email-verification"; // Phase 6A.113: Corrected
+        public const string WelcomeEmail = "template-welcome"; // Phase 6A.113: Corrected (removed -email suffix)
 
         // Event Publication Templates
         public const string NewEventPublication = "template-new-event-publication";
         public const string EventDetailsPublication = "template-event-details-publication";
 
         // Registration Templates
-        public const string PaidEventRegistration = "template-paid-event-registration";
-        public const string FreeEventRegistration = "template-free-event-registration";
+        public const string PaidEventRegistration = "template-paid-event-registration-confirmation-with-ticket"; // Phase 6A.113: Corrected
+        public const string FreeEventRegistration = "template-free-event-registration-confirmation"; // Phase 6A.113: Corrected
         public const string EventRegistrationCancellation = "template-event-registration-cancellation";
-        public const string TicketConfirmation = "template-ticket-confirmation";
+        public const string PreliminaryRegistrationPayment = "template-preliminary-registration-payment-pending"; // Phase 6A.113: Added missing constant
 
         // Refund Templates
         public const string RefundRequested = "template-refund-requested";
         public const string RefundCompleted = "template-refund-completed";
 
         // Event Management Templates
-        public const string EventApproved = "template-event-approved";
+        public const string EventApproval = "template-event-approval"; // Phase 6A.113: Renamed from EventApproved, corrected value
         public const string EventRejected = "template-event-rejected";
         public const string EventPostponed = "template-event-postponed";
-        public const string EventCancellation = "template-event-cancellation";
+        public const string EventCancellation = "template-event-cancellation-notifications"; // Phase 6A.113: Corrected
         public const string EventReminder = "template-event-reminder";
-        public const string EventReminder24Hr = "template-event-reminder-24hr";
-        public const string AttendeesAdded = "template-attendees-added";
+        public const string AttendeesAdded = "template-attendees-added-confirmation"; // Phase 6A.113: Corrected
 
         // Sign-up List Templates
         public const string SignupCommitmentConfirmation = "template-signup-list-commitment-confirmation";
@@ -62,12 +64,12 @@ public static class EmailTemplateContract
         public const string SignupCommitmentCancellation = "template-signup-list-commitment-cancellation";
 
         // Support Templates
-        public const string SupportTicketReceived = "template-support-ticket-received";
+        public const string SupportTicketConfirmation = "template-support-ticket-confirmation"; // Phase 6A.113: Renamed from SupportTicketReceived, corrected value
         public const string SupportTicketReply = "template-support-ticket-reply";
 
         // Admin Templates
-        public const string AdminUserActivation = "template-admin-user-activation";
-        public const string AdminUserDeactivation = "template-admin-user-deactivation";
+        public const string AccountActivatedByAdmin = "template-account-activated-by-admin"; // Phase 6A.113: Renamed from AdminUserActivation, corrected value
+        public const string AccountDeactivatedByAdmin = "template-account-deactivated-by-admin"; // Phase 6A.113: Renamed from AdminUserDeactivation, corrected value
 
         // Organizer Templates
         public const string OrganizerRoleApproval = "template-organizer-role-approval";
@@ -187,6 +189,18 @@ public static class EmailTemplateContract
         /// Boolean flag for {{#HasSignUpLists}} conditional blocks in templates.
         /// </summary>
         public const string HasSignUpLists = "HasSignUpLists";
+
+        /// <summary>
+        /// URL to the signup forms section of event page.
+        /// Phase 6A.112: Added for "View Signup Forms" button in event emails.
+        /// </summary>
+        public const string SignupFormsUrl = "SignupFormsUrl";
+
+        /// <summary>
+        /// Boolean flag for {{#HasSignupForms}} conditional blocks in templates.
+        /// Phase 6A.112: Added for "View Signup Forms" button in event emails.
+        /// </summary>
+        public const string HasSignupForms = "HasSignupForms";
 
         /// <summary>
         /// Alias for EventStartDate - some templates use {{EventDate}}.

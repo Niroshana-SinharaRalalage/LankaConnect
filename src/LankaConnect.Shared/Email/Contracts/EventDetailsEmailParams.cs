@@ -140,6 +140,18 @@ public class EventDetailsEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region Organizer Contact Properties
@@ -224,6 +236,8 @@ public class EventDetailsEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { EmailTemplateContract.Event.SignUpListsUrl, SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
             { EmailTemplateContract.OrganizerContact.HasOrganizerContact, HasOrganizerContact },
             { EmailTemplateContract.OrganizerContact.OrganizerContactName, OrganizerContactName },
             { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail },

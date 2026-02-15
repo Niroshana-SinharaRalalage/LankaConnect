@@ -46,6 +46,12 @@ public class FormResponseEmailParams : IEmailParameters
     public string UserEmail { get; set; } = string.Empty;
 
     /// <summary>
+    /// User identifier (may be null for anonymous form responses).
+    /// Phase 6A.111: Added for alignment with SignupCommitmentEmailParams.
+    /// </summary>
+    public Guid? UserId { get; set; }
+
+    /// <summary>
     /// Event identifier.
     /// </summary>
     public Guid EventId { get; set; }

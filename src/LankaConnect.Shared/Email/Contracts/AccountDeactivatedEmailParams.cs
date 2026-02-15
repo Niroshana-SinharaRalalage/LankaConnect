@@ -13,8 +13,9 @@ public class AccountDeactivatedEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for account deactivation email.
+    /// Phase 6A.113: Updated to use corrected constant name.
     /// </summary>
-    public string TemplateName => EmailTemplateContract.TemplateNames.AdminUserDeactivation;
+    public string TemplateName => EmailTemplateContract.TemplateNames.AccountDeactivatedByAdmin;
 
     /// <summary>
     /// Recipient email address.

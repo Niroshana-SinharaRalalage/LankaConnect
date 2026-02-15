@@ -23,8 +23,9 @@ public class TicketConfirmationEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for paid event registration confirmation with ticket.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-paid-event-registration-confirmation-with-ticket";
+    public string TemplateName => EmailTemplateContract.TemplateNames.PaidEventRegistration;
 
     /// <summary>
     /// Recipient email address.
@@ -97,6 +98,18 @@ public class TicketConfirmationEmailParams : IEmailParameters
     /// URL to signup lists section of event (if event has signup lists).
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
 
     /// <summary>
     /// Ticket type description (e.g., "General Admission").
@@ -256,6 +269,8 @@ public class TicketConfirmationEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
             { "TicketType", TicketType },
 
             // Payment parameters
@@ -456,6 +471,18 @@ public class TicketConfirmationEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(url);
         SignUpListsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public TicketConfirmationEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

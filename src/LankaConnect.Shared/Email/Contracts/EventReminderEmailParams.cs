@@ -20,8 +20,9 @@ public class EventReminderEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name used for event reminders.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-event-reminder";
+    public string TemplateName => EmailTemplateContract.TemplateNames.EventReminder;
 
     /// <summary>
     /// Recipient email address (attendee's email).
@@ -143,6 +144,18 @@ public class EventReminderEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region Optional Properties - Event Image
@@ -218,6 +231,8 @@ public class EventReminderEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
 
             // Ticket parameters (always include, even if empty)
             // HasTicket controls {{#HasTicket}} conditional in Handlebars template
@@ -358,6 +373,18 @@ public class EventReminderEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(url);
         SignUpListsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public EventReminderEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

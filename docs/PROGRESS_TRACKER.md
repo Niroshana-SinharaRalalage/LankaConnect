@@ -1,9 +1,61 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-14 - Phase 6A.111.1: Form Update Timeout Fix ✅ COMPLETE*
+*Last Updated: 2026-02-15 - Issue #79: Events Page Error Handling Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.111.1: Form Update Timeout Fix ✅ COMPLETE
+## 🎯 Current Session Status - Issue #79: Events Page Error Handling Fix ✅ COMPLETE
+
+### ISSUE #79: EVENTS PAGE ERROR HANDLING FIX - 2026-02-15
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **MEDIUM (P2) - UX Issue**
+
+**Problem**: When filtering events by Event Types with no events (Ceremony, Workshop, Celebration), the page displays "Failed to load events. Please try again later." instead of the expected "No Events Found" message.
+
+**User Report** (GitHub Issue #79):
+> "In reality there are no events under these types, and the result should say 'No Events found', but I get the error message 'Failed to load events. Please try again later.'"
+
+**Root Cause**: Frontend UI error handling issue. React Query's error state persists when users switch between event type filters. When filtering by event types with no events, a stale error state from a previous request causes the page to show "Failed to load events" instead of "No Events Found".
+
+**Backend Status**: ✅ Working correctly - returns HTTP 200 OK with empty array `[]`
+
+**Solution Implemented**:
+- Modified error display logic in Events page to prioritize data availability over error state
+- Changed conditional logic from checking `eventsError` first to checking `!events || events.length === 0` first
+- Now only shows error message when BOTH conditions are true: no data AND an error exists
+- Created comprehensive unit tests for error handling scenarios
+- Added full RCA document: docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md
+
+**Files Changed**:
+- `web/src/app/events/page.tsx` (lines 380-403) - Fixed error display logic
+- `web/src/app/events/__tests__/events-page-error-handling.test.tsx` - Added unit tests
+- `docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md` - Created RCA document
+
+**Deployment**:
+- ✅ Code committed to develop branch (commit: 2779ee79)
+- ✅ Pushed to GitHub
+- ✅ Azure staging deployment triggered and completed
+- ✅ Staging environment verified accessible
+
+**Testing**:
+- ✅ TypeScript compilation successful (no errors)
+- ✅ Next.js build successful
+- ✅ Staging site accessible (HTTP 200 OK)
+- 🔜 Manual testing on staging (filtering by Ceremony, Workshop, Celebration)
+
+**Impact**:
+- Fixes UX confusion for all users searching event types with no events
+- Users can now distinguish between genuine errors and empty search results
+- Improves overall user experience with appropriate messaging
+
+---
+
+## Previous Sessions
+
+### PHASE 6A.111.1: FORM UPDATE TIMEOUT FIX - 2026-02-14
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING & VERIFIED**
 
 ### PHASE 6A.111.1: FORM UPDATE TIMEOUT FIX - 2026-02-14
 

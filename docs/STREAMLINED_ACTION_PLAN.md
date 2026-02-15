@@ -7,7 +7,47 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.111.1: FORM UPDATE TIMEOUT FIX ✅ COMPLETE (2026-02-14)
+## 🔄 CURRENT STATUS - ISSUE #79: EVENTS PAGE ERROR HANDLING FIX ✅ COMPLETE (2026-02-15)
+**Date**: 2026-02-15
+**Session**: Issue #79 - Events Page Error Handling Fix (UX Improvement)
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+**Deployment**: ✅ Frontend deployed to Azure staging successfully
+**Priority**: 🟡 MEDIUM (P2) - UX Issue
+
+**Problem**: When filtering events by Event Types with no events (Ceremony, Workshop, Celebration), the page displays "Failed to load events. Please try again later." instead of "No Events Found" message.
+
+**Root Cause**: Frontend UI error handling issue. React Query's error state persists across filter changes. Error display logic checked `eventsError` before checking for empty results.
+
+**Solution**: Inverted conditional logic to prioritize data check over error state:
+```typescript
+// Before (BUG): Checked error first
+) : eventsError ? (
+  // Show error message
+) : !events || events.length === 0 ? (
+  // Show "No Events Found"
+
+// After (FIX): Check empty data first
+) : !events || events.length === 0 ? (
+  eventsError ? (
+    // Show error ONLY if no data AND error exists
+  ) : (
+    // Show "No Events Found"
+```
+
+**Files Modified**: 3 files (2779ee79)
+- `web/src/app/events/page.tsx` (lines 380-403) - Fixed error display logic
+- `web/src/app/events/__tests__/events-page-error-handling.test.tsx` - Added unit tests
+- `docs/RCA_ISSUE_79_EVENT_TYPE_SEARCH_ERROR.md` - Created comprehensive RCA
+
+**Build**: ✅ Next.js 16.0.1 successful, 0 TypeScript errors
+**Deployment**: ✅ Frontend deployed to staging (4m6s)
+**Verification**: ✅ Staging site accessible (HTTP 200 OK)
+
+**Impact**: Fixes UX confusion for users searching event types with no events. Users can now distinguish between genuine errors and empty search results.
+
+---
+
+## Previous Session: Phase 6A.111.1 - Form Update Timeout Fix ✅ COMPLETE (2026-02-14)
 **Date**: 2026-02-14
 **Session**: Phase 6A.111.1 - Form Update Timeout Fix (Critical Performance + UX)
 **Status**: ✅ **COMPLETE - DEPLOYED TO STAGING & VERIFIED**

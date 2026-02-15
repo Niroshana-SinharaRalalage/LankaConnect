@@ -1,9 +1,95 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-15 - Signup Forms UI/UX Fixes (4 Issues) ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-02-15 - Phase 6A.114 Issue #81 (Newsletter Event Dropdown Security Fix) ✅ DEPLOYED TO STAGING*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Signup Forms UI/UX Fixes ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.114 Issue #81 ✅ DEPLOYED TO STAGING
+
+### PHASE 6A.114: ISSUE #81 - NEWSLETTER EVENT DROPDOWN SECURITY FIX - 2026-02-15
+
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR VERIFICATION**
+
+**Priority**: 🔴 **HIGH (P0) - Security & Authorization Issue**
+
+**GitHub Issue**: [#81 - Newsletter Event Dropdown Shows All Events](https://github.com/Niroshana-SinharaRalalage/LankaConnect/issues/81)
+
+**Problem**: Security vulnerability where newsletter creation/update dropdown showed **ALL events in the system** instead of only events created by the logged-in organizer. This allowed:
+- Information disclosure: Organizers could see event titles from other organizers
+- Potential unauthorized linking: Organizers could attempt to link newsletters to events they don't own
+
+**Root Causes**:
+- **Frontend**: NewsletterForm.tsx used `useEvents()` hook (returns all public events) instead of `useMyEvents()` (returns only organizer's events)
+- **Backend**: No authorization check in CreateNewsletterCommandHandler and UpdateNewsletterCommandHandler to verify event ownership
+
+**Solutions Implemented** (TDD Approach):
+
+**Backend Security Enhancements**:
+- ✅ Added IEventRepository to CreateNewsletterCommandHandler and UpdateNewsletterCommandHandler
+- ✅ Implemented event ownership validation before newsletter creation/update
+- ✅ Returns 403 if organizer tries to link newsletter to event they don't own
+- ✅ Admin bypass logic (admins can link newsletters to any event)
+- ✅ Comprehensive security audit logging with [Phase 6A.114 Issue #81] tags
+- ✅ 7 passing unit tests: unauthorized access, event not found, admin bypass, happy paths
+
+**Frontend UX Improvements**:
+- ✅ Created `useMyEvents()` hook in useEvents.ts
+- ✅ Added `getMyEvents()` method to events.repository.ts calling GET /api/Events/my-events
+- ✅ Updated NewsletterForm.tsx to use `useMyEvents()` instead of `useEvents()`
+- ✅ Dropdown now shows ONLY events created by logged-in organizer
+
+**Files Modified** (8 files, 1,311 insertions):
+- Backend:
+  - `src/LankaConnect.Application/Communications/Commands/CreateNewsletter/CreateNewsletterCommandHandler.cs` (48 lines)
+  - `src/LankaConnect.Application/Communications/Commands/UpdateNewsletter/UpdateNewsletterCommandHandler.cs` (49 lines)
+  - `tests/LankaConnect.Application.Tests/Communications/Commands/CreateNewsletterCommandHandlerTests.cs` (229 lines)
+  - `tests/LankaConnect.Application.Tests/Communications/Commands/UpdateNewsletterCommandHandlerTests.cs` (336 lines - NEW FILE)
+- Frontend:
+  - `web/src/infrastructure/api/repositories/events.repository.ts` (38 lines)
+  - `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` (5 lines)
+  - `web/src/presentation/hooks/useEvents.ts` (46 lines)
+- Documentation:
+  - `docs/RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md` (562 lines - comprehensive RCA)
+
+**Test Results**:
+- ✅ Unit Tests: 7/7 passing (0 failures)
+  - Test #1: Unauthorized event access → BLOCKED ✅
+  - Test #2: Admin can link to any event → ALLOWED ✅
+  - Test #3: Event not found → ERROR ✅
+  - Test #4: User links to own event → SUCCESS ✅
+- ✅ Build: Zero compilation errors
+- ✅ Solution: `dotnet build LankaConnect.sln` successful
+
+**Deployment**:
+- ✅ Commit: c6b7a1a6 - "fix(newsletters): Phase 6A.114 - Event dropdown shows only organizer's events (Issue #81)"
+- ✅ Commit: b8c01c87 - "docs: Update Phase 6A.114 Issue #81 implementation status"
+- ✅ Pushed to develop branch
+- ✅ GitHub Actions: Deploy to Azure Staging completed successfully (15:22:44 - 15:31:31 UTC)
+- ✅ Backend API: https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- ✅ Frontend UI: https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+
+**Verification Checklist** (see [PHASE_6A114_DEPLOYMENT_VERIFICATION.md](./PHASE_6A114_DEPLOYMENT_VERIFICATION.md)):
+- [ ] Frontend: Login as organizer → Verify newsletter dropdown shows only their events
+- [ ] Frontend: Test with multiple organizer accounts
+- [ ] Backend: Attempt unauthorized event linking → Should return 403
+- [ ] Backend: Verify security logs in Application Insights
+- [ ] Admin: Verify admin can link to any event
+- [ ] Close GitHub Issue #81
+
+**Security Impact**:
+- 🔒 Fixed information disclosure vulnerability
+- 🔒 Backend validation prevents unauthorized event linking (defense-in-depth)
+- 🔒 Comprehensive audit logging for security monitoring
+- 🔒 Admin capabilities preserved with bypass logic
+
+**Pattern Established**: Defense-in-depth security (backend validation + frontend filtering) with comprehensive security audit logging
+
+**Reference Documents**:
+- [RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md](./RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md) - 560-line comprehensive root cause analysis
+- [PHASE_6A114_DEPLOYMENT_VERIFICATION.md](./PHASE_6A114_DEPLOYMENT_VERIFICATION.md) - Deployment status and manual testing guide
+
+---
+
+## Previous Session: Signup Forms UI/UX Fixes ✅ DEPLOYED TO STAGING
 
 ### SIGNUP FORMS UI/UX FIXES - 2026-02-15
 

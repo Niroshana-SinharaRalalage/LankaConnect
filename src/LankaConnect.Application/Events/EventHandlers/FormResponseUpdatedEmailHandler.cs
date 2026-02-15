@@ -201,14 +201,15 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
             if (answerText.Length > maxAnswerLength)
                 answerText = $"{answerText.Substring(0, maxAnswerLength)}...";
 
-            return $"{questionText}: {answerText}";
+            return $"<strong>{questionText}:</strong> {answerText}";
         });
 
-        var summary = string.Join(" | ", summaryParts);
+        // Phase 6A.115 Issue #4: Use HTML line breaks instead of pipes for better email readability
+        var summary = string.Join("<br/>", summaryParts);
 
         var remainingCount = answers.Count - maxQuestions;
         if (remainingCount > 0)
-            summary += $" | ... and {remainingCount} more response{(remainingCount > 1 ? "s" : "")}";
+            summary += $"<br/><em>... and {remainingCount} more response{(remainingCount > 1 ? "s" : "")}</em>";
 
         return summary;
     }

@@ -100,12 +100,14 @@ export default function FormViewPage({ params }: FormViewPageProps) {
 
       setSuccessMessage('Response submitted successfully! You can edit your response until the deadline.');
       setErrorMessage(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Phase 6A.115 Issue #3: Scroll to bottom to show message near submit button
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     },
     onError: (error) => {
       setErrorMessage(error.message || 'Failed to submit response');
       setSuccessMessage(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Phase 6A.115 Issue #3: Scroll to bottom to show error near submit button
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     },
   });
 
@@ -114,12 +116,14 @@ export default function FormViewPage({ params }: FormViewPageProps) {
     onSuccess: () => {
       setSuccessMessage('Response updated successfully!');
       setErrorMessage(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Phase 6A.115 Issue #3: Scroll to bottom to show message near submit button
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     },
     onError: (error) => {
       setErrorMessage(error.message || 'Failed to update response');
       setSuccessMessage(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Phase 6A.115 Issue #3: Scroll to bottom to show error near submit button
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     },
   });
 
@@ -137,7 +141,8 @@ export default function FormViewPage({ params }: FormViewPageProps) {
     onError: (error) => {
       setErrorMessage(error.message || 'Failed to cancel response');
       setSuccessMessage(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Phase 6A.115 Issue #3: Scroll to bottom to show error near submit button
+      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100);
     },
   });
 
@@ -341,26 +346,6 @@ export default function FormViewPage({ params }: FormViewPageProps) {
               </CardDescription>
             )}
 
-            {/* Phase 6A.106-110: Inline Success/Error Messages */}
-            {successMessage && (
-              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-green-900">{successMessage}</p>
-                </div>
-              </div>
-            )}
-
-            {errorMessage && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-900">Error</p>
-                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
-                </div>
-              </div>
-            )}
-
             {/* Form Metadata */}
             <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t text-sm text-gray-600">
               {form.responseDeadline && (
@@ -429,6 +414,26 @@ export default function FormViewPage({ params }: FormViewPageProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Phase 6A.115 Issue #3: Success/Error Messages at Bottom (near submit button) */}
+        {successMessage && (
+          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-green-900">{successMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-red-900">Error</p>
+              <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* Phase 6A.106: Delete Confirmation Dialog */}
         {showDeleteConfirm && (

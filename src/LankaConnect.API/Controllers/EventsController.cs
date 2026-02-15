@@ -1744,7 +1744,7 @@ public class EventsController : BaseController<EventsController>
     {
         // Phase 6A.114 DEBUG: Add WARNING level log at method entry to ensure visibility
         Logger.LogWarning("[DEBUG-CONTROLLER-ENTRY] CommitToSignUpItem endpoint HIT - EventId: {EventId}, SignUpId: {SignUpId}, ItemId: {ItemId}, UserId: {UserId}, Quantity: {Quantity}",
-            eventId, signupId, itemId, request?.UserId, request?.Quantity);
+            eventId, signupId, itemId, request.UserId, request.Quantity);
 
         Logger.LogInformation("User {UserId} committing to item {ItemId} in sign-up list {SignUpId} for event {EventId}",
             request.UserId, itemId, signupId, eventId);

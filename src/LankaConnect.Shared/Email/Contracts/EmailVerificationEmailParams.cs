@@ -14,8 +14,9 @@ public class EmailVerificationEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for member email verification.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-membership-email-verification";
+    public string TemplateName => EmailTemplateContract.TemplateNames.EmailVerification;
 
     /// <summary>
     /// Recipient email address.

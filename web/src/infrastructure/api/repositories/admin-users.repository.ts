@@ -11,6 +11,7 @@ import type {
   PagedResultDto,
   GetAdminUsersRequest,
   LockUserRequest,
+  DowngradeUserRequest,
 } from '../types/admin-users.types';
 
 export class AdminUsersRepository {
@@ -93,6 +94,13 @@ export class AdminUsersRepository {
    */
   async forcePasswordReset(userId: string): Promise<void> {
     await apiClient.post(`${this.basePath}/${userId}/force-password-reset`, {});
+  }
+
+  /**
+   * Downgrade a user to GeneralUser role
+   */
+  async downgradeUser(userId: string, reason: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${userId}/downgrade`, { reason });
   }
 }
 

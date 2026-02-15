@@ -137,10 +137,11 @@ public static class EmailTemplateNames
 
     /// <summary>
     /// Custom organizer email to event attendees/signups.
+    /// Phase 6A.113: Renamed to follow template-* naming convention.
     /// Variables: {UserName}, {EventTitle}, {EventDateTime}, {EventLocation}, {EventDetailsUrl},
     ///           {CustomSubject}, {CustomBody}, {OrganizerName}, {OrganizerEmail}
     /// </summary>
-    public const string OrganizerCustomEmail = "OrganizerCustomEmail";
+    public const string OrganizerCustomEmail = "template-organizer-custom-email";
 
     /// <summary>
     /// Password reset email with reset link.

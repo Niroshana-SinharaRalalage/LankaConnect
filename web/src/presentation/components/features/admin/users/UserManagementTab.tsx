@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Users, UserCheck, Lock, RefreshCw, ChevronLeft, ChevronRight, CheckCircle, XCircle, Briefcase, Calendar, Star, Shield, Crown } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import {
   useAdminUsers,
@@ -17,12 +17,14 @@ import {
   useUnlockUser,
   useResendVerification,
   useForcePasswordReset,
+  useDowngradeUser,
 } from '@/presentation/hooks/useAdminUsers';
 import type { AdminUserDto, GetAdminUsersRequest } from '@/infrastructure/api/types/admin-users.types';
 import { USER_ROLES } from '@/infrastructure/api/types/admin-users.types';
 import { UsersTable } from './UsersTable';
 import { UserDetailsModal } from './UserDetailsModal';
 import { LockUserModal } from './LockUserModal';
+import { DowngradeUserModal } from './DowngradeUserModal';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 
 export function UserManagementTab() {
@@ -41,6 +43,8 @@ export function UserManagementTab() {
   const [selectedUser, setSelectedUser] = useState<AdminUserDto | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
+  const [downgradeTargetUser, setDowngradeTargetUser] = useState<AdminUserDto | null>(null);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
 
   // GitHub Issue #31: Replace native confirm()/alert() with styled components
@@ -70,6 +74,7 @@ export function UserManagementTab() {
   const unlockMutation = useUnlockUser();
   const resendVerificationMutation = useResendVerification();
   const forcePasswordResetMutation = useForcePasswordReset();
+  const downgradeUserMutation = useDowngradeUser();
 
   // Phase 6A.89: Cleanup search timeout on unmount
   useEffect(() => {
@@ -217,6 +222,28 @@ export function UserManagementTab() {
     }
   };
 
+  const handleOpenDowngradeModal = (user: AdminUserDto) => {
+    setDowngradeTargetUser(user);
+    setShowDowngradeDialog(true);
+  };
+
+  const confirmDowngrade = async (reason: string) => {
+    if (!downgradeTargetUser) return;
+
+    try {
+      await downgradeUserMutation.mutateAsync({
+        userId: downgradeTargetUser.userId,
+        reason,
+      });
+      showNotification('success', 'User downgraded to Member successfully');
+      setShowDowngradeDialog(false);
+      setDowngradeTargetUser(null);
+    } catch (error: any) {
+      console.error('Failed to downgrade user:', error);
+      showNotification('error', error?.response?.data?.error || 'Failed to downgrade user');
+    }
+  };
+
   // Computed values
   const totalPages = usersData ? Math.ceil(usersData.totalCount / (filters.pageSize || 10)) : 0;
 
@@ -224,32 +251,69 @@ export function UserManagementTab() {
     <div className="space-y-6">
       {/* Statistics Cards */}
       {statistics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Users}
-            label="Total Users"
-            value={statistics.totalUsers}
-            color="blue"
-          />
-          <StatCard
-            icon={UserCheck}
-            label="Active Users"
-            value={statistics.activeUsers}
-            color="green"
-          />
-          <StatCard
-            icon={Lock}
-            label="Locked Accounts"
-            value={statistics.lockedAccounts}
-            color="amber"
-          />
-          <StatCard
-            icon={Users}
-            label="Admins"
-            value={(statistics.usersByRole?.['Admin'] || 0) + (statistics.usersByRole?.['AdminManager'] || 0)}
-            color="purple"
-          />
-        </div>
+        <>
+          {/* General Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Users}
+              label="Total Users"
+              value={statistics.totalUsers}
+              color="blue"
+            />
+            <StatCard
+              icon={UserCheck}
+              label="Active Users"
+              value={statistics.activeUsers}
+              color="green"
+            />
+            <StatCard
+              icon={Lock}
+              label="Locked Accounts"
+              value={statistics.lockedAccounts}
+              color="amber"
+            />
+            <StatCard
+              icon={Users}
+              label="General Users"
+              value={statistics.usersByRole?.['GeneralUser'] || 0}
+              color="gray"
+            />
+          </div>
+
+          {/* Role-Based Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              icon={Calendar}
+              label="Event Organizers"
+              value={statistics.usersByRole?.['EventOrganizer'] || 0}
+              color="blue"
+            />
+            <StatCard
+              icon={Briefcase}
+              label="Business Owners"
+              value={statistics.usersByRole?.['BusinessOwner'] || 0}
+              color="emerald"
+            />
+            <StatCard
+              icon={Star}
+              label="Dual Role"
+              value={statistics.usersByRole?.['EventOrganizerAndBusinessOwner'] || 0}
+              color="indigo"
+            />
+            <StatCard
+              icon={Shield}
+              label="Admins"
+              value={statistics.usersByRole?.['Admin'] || 0}
+              color="red"
+            />
+            <StatCard
+              icon={Crown}
+              label="Admin Managers"
+              value={statistics.usersByRole?.['AdminManager'] || 0}
+              color="purple"
+            />
+          </div>
+        </>
       )}
 
       {/* Filters */}
@@ -338,6 +402,7 @@ export function UserManagementTab() {
               onUnlock={handleUnlock}
               onResendVerification={handleResendVerification}
               onForcePasswordReset={handleForcePasswordReset}
+              onDowngrade={handleOpenDowngradeModal}
               loadingUserId={loadingUserId}
               currentUserId={currentUser?.userId || ''}
               currentUserRole={currentUser?.role || ''}
@@ -396,6 +461,20 @@ export function UserManagementTab() {
         onConfirm={handleLock}
         isLoading={!!loadingUserId}
       />
+
+      {downgradeTargetUser && (
+        <DowngradeUserModal
+          isOpen={showDowngradeDialog}
+          onClose={() => {
+            setShowDowngradeDialog(false);
+            setDowngradeTargetUser(null);
+          }}
+          userName={downgradeTargetUser.fullName}
+          currentRole={downgradeTargetUser.role}
+          onConfirm={confirmDowngrade}
+          isLoading={downgradeUserMutation.isPending}
+        />
+      )}
 
       {/* GitHub Issue #31: Styled notification display instead of alert() */}
       {notification && (
@@ -459,13 +538,17 @@ function StatCard({
   icon: typeof Users;
   label: string;
   value: number;
-  color: 'blue' | 'green' | 'amber' | 'purple';
+  color: 'blue' | 'green' | 'amber' | 'purple' | 'gray' | 'emerald' | 'indigo' | 'red';
 }) {
   const colorStyles = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     purple: 'bg-purple-50 text-purple-600',
+    gray: 'bg-gray-50 text-gray-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    indigo: 'bg-indigo-50 text-indigo-600',
+    red: 'bg-red-50 text-red-600',
   };
 
   return (

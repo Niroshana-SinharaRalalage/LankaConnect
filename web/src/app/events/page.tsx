@@ -377,28 +377,30 @@ export default function EventsPage() {
               </Card>
             ))}
           </div>
-        ) : eventsError ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-destructive text-lg">
-                Failed to load events. Please try again later.
-              </p>
-            </CardContent>
-          </Card>
         ) : !events || events.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Calendar className="h-16 w-16 mx-auto mb-4 text-neutral-400" />
-              <h3 className="text-xl font-semibold text-neutral-900 mb-2">
-                No Events Found
-              </h3>
-              <p className="text-neutral-500">
-                {hasActiveFilters
-                  ? 'Try adjusting your filters to see more events.'
-                  : 'Check back soon for new events!'}
-              </p>
-            </CardContent>
-          </Card>
+          eventsError ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <p className="text-destructive text-lg">
+                  Failed to load events. Please try again later.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Calendar className="h-16 w-16 mx-auto mb-4 text-neutral-400" />
+                <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                  No Events Found
+                </h3>
+                <p className="text-neutral-500">
+                  {hasActiveFilters
+                    ? 'Try adjusting your filters to see more events.'
+                    : 'Check back soon for new events!'}
+                </p>
+              </CardContent>
+            </Card>
+          )
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (

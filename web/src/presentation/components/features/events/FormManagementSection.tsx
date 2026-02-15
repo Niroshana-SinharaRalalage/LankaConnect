@@ -231,7 +231,7 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
                   onClick={() => handleViewResponses(form.id)}
                 >
                   <Users className="w-4 h-4 mr-1" />
-                  Responses
+                  View Responses
                 </Button>
               )}
 

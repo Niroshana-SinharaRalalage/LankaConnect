@@ -367,4 +367,79 @@ public class CsvExportService : ICsvExportService
 
         return genderCounts.Any() ? string.Join(", ", genderCounts) : "";
     }
+
+    /// <summary>
+    /// Exports custom form responses to CSV format.
+    /// One row per response, questions as columns (horizontal layout).
+    /// Phase 6A.110: Form response export functionality
+    /// </summary>
+    public byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            NewLine = "\n",  // LF for cross-platform compatibility
+            ShouldQuote = args => true,  // Always quote fields (handles special chars)
+            TrimOptions = TrimOptions.Trim
+        });
+
+        // 1. Write header row
+        csv.WriteField("Respondent Name");
+        csv.WriteField("Respondent Email");
+        csv.WriteField("Submitted Date");
+
+        // Sort questions by SortOrder to match form display order
+        var sortedQuestions = form.Questions.OrderBy(q => q.SortOrder).ToList();
+        foreach (var question in sortedQuestions)
+        {
+            // Include question number for clarity (Q1, Q2, etc.)
+            csv.WriteField($"Q{question.SortOrder + 1}: {question.QuestionText}");
+        }
+        csv.NextRecord();
+
+        // 2. Write data rows
+        foreach (var response in responses.Responses)
+        {
+            // Respondent info
+            csv.WriteField(response.RespondentName ?? "Anonymous");
+            csv.WriteField(response.RespondentEmail ?? "—");
+            csv.WriteField(response.SubmittedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+
+            // Answers for each question
+            foreach (var question in sortedQuestions)
+            {
+                var answer = response.Answers.FirstOrDefault(a => a.FormQuestionId == question.Id);
+                csv.WriteField(FormatAnswerForCsvExport(answer));
+            }
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Formats a form answer for CSV export.
+    /// Handles text, boolean, single choice, multiple choice answers.
+    /// </summary>
+    private static string FormatAnswerForCsvExport(FormAnswerDto? answer)
+    {
+        if (answer == null)
+            return "—";  // Em dash for unanswered questions
+
+        // Boolean: "Yes" or "No" (user-friendly)
+        if (answer.BooleanValue.HasValue)
+            return answer.BooleanValue.Value ? "Yes" : "No";
+
+        // Multiple choice: "Option 1, Option 2" (comma-separated, uses snapshots)
+        if (answer.SelectedOptionTextSnapshots?.Any() == true)
+            return string.Join(", ", answer.SelectedOptionTextSnapshots);
+
+        // Text/Number/Date (single text value)
+        if (!string.IsNullOrWhiteSpace(answer.TextValue))
+            return answer.TextValue;
+
+        return "—";
+    }
 }

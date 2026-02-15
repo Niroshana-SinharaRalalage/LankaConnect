@@ -6,6 +6,7 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -28,6 +29,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationConfirmedEventHandler> _logger;
 
@@ -36,6 +38,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationConfirmedEventHandler> logger)
     {
@@ -43,6 +46,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -145,6 +149,15 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             if (@event.HasSignUpLists())
             {
                 typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+            }
+
+            // Phase 6A.112: Check if event has active signup forms
+            var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+
+            if (hasActiveForms)
+            {
+                typedParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
             }
 
             // Set attendee details

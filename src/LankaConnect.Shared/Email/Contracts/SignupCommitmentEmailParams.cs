@@ -125,6 +125,18 @@ public class SignupCommitmentEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region Event Image Properties
@@ -225,6 +237,8 @@ public class SignupCommitmentEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Alias: template uses {{SignupListUrl}} singular
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
 
             // Update template params
             { "EventDate", EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId) },
@@ -316,6 +330,18 @@ public class SignupCommitmentEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(signUpListsUrl);
         SignUpListsUrl = signUpListsUrl ?? string.Empty;
+        return this;
+    }
+
+    
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public SignupCommitmentEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

@@ -84,5 +84,10 @@ public class FormResponseConfiguration : IEntityTypeConfiguration<FormResponse>
 
         builder.HasIndex(r => r.SubmittedAt)
             .HasDatabaseName("ix_form_responses_submitted_at");
+
+        // Phase 6A.111: Composite index for faster logged-in user response lookups
+        // Used by GetByFormAndUserAsync query (frequent operation during edit/update)
+        builder.HasIndex(r => new { r.EventFormId, r.RespondentUserId })
+            .HasDatabaseName("ix_form_responses_event_form_id_respondent_user_id");
     }
 }

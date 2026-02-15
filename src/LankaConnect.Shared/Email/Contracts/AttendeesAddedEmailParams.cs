@@ -15,8 +15,9 @@ public class AttendeesAddedEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for attendees added confirmation.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-attendees-added-confirmation";
+    public string TemplateName => EmailTemplateContract.TemplateNames.AttendeesAdded;
 
     /// <summary>
     /// Recipient email address.
@@ -178,6 +179,18 @@ public class AttendeesAddedEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -231,6 +244,8 @@ public class AttendeesAddedEmailParams : IEmailParameters
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
             { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
 
             { "Year", DateTime.UtcNow.Year }
         };
@@ -304,6 +319,18 @@ public class AttendeesAddedEmailParams : IEmailParameters
     {
         HasSignUpLists = !string.IsNullOrWhiteSpace(url);
         SignUpListsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag together.
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public AttendeesAddedEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

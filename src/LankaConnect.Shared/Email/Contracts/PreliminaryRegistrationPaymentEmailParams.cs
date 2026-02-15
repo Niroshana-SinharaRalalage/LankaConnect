@@ -15,8 +15,9 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for preliminary registration payment email.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-preliminary-registration-payment-pending";
+    public string TemplateName => EmailTemplateContract.TemplateNames.PreliminaryRegistrationPayment;
 
     /// <summary>
     /// Recipient email address.

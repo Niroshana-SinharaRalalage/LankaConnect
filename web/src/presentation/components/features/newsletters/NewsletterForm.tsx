@@ -14,7 +14,7 @@ import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { createNewsletterSchema, cleanNewsletterDataForApi, type CreateNewsletterFormData } from '@/presentation/lib/validators/newsletter.schemas';
 import { useCreateNewsletter, useUpdateNewsletter, useNewsletterById } from '@/presentation/hooks/useNewsletters';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { useEvents, useEventById } from '@/presentation/hooks/useEvents';
+import { useEvents, useMyEvents, useEventById } from '@/presentation/hooks/useEvents';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
@@ -56,7 +56,8 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     enabled: isEditMode,
   });
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
-  const { data: events = [], isLoading: isLoadingEvents } = useEvents({});
+  // Phase 6A.114 Issue #81 FIX: Use useMyEvents() instead of useEvents() to show only organizer's events
+  const { data: events = [], isLoading: isLoadingEvents } = useMyEvents();
   const { metroAreas, metroAreasByState, stateLevelMetros, isLoading: isLoadingMetroAreas } = useMetroAreas();
 
   // Phase 6A.106 Part 3: Azure image upload for rich text editor

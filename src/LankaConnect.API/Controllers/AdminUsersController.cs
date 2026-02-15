@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
 using LankaConnect.Application.Users.Commands.AdminActivateUser;
 using LankaConnect.Application.Users.Commands.AdminDeactivateUser;
+using LankaConnect.Application.Users.Commands.AdminDowngradeUser;
 using LankaConnect.Application.Users.Commands.AdminLockUser;
 using LankaConnect.Application.Users.Commands.AdminUnlockUser;
 using LankaConnect.Application.Users.DTOs;
@@ -264,6 +265,31 @@ public class AdminUsersController : BaseController<AdminUsersController>
         }
     }
 
+    /// <summary>
+    /// Downgrade a user's role to GeneralUser
+    /// Phase 6A.106: Admin/AdminManager can downgrade users following role hierarchy rules
+    /// </summary>
+    /// <param name="userId">User ID to downgrade</param>
+    /// <param name="request">Downgrade request with reason</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/downgrade")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DowngradeUser(Guid userId, [FromBody] DowngradeUserRequest request)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} downgrading user - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminDowngradeUserCommand(userId, request.Reason, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
     #region Private Helpers
 
     private (string? IpAddress, string? UserAgent) GetClientInfo()
@@ -303,4 +329,16 @@ public record LockUserRequest
     /// Optional reason for the lock (for audit trail)
     /// </summary>
     public string? Reason { get; init; }
+}
+
+/// <summary>
+/// Request body for downgrading a user's role
+/// Phase 6A.106: Admin User Role Downgrade
+/// </summary>
+public record DowngradeUserRequest
+{
+    /// <summary>
+    /// Required reason for the downgrade (for audit trail)
+    /// </summary>
+    public string Reason { get; init; } = string.Empty;
 }

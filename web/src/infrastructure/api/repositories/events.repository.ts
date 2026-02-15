@@ -145,6 +145,44 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.114 Issue #81: Get events created by the authenticated organizer
+   * Maps to backend GET /api/Events/my-events
+   * Requires authentication - returns only events owned by current user
+   *
+   * Security: Filtered by OrganizerId from JWT token on the backend
+   * Used for newsletter creation, event management dashboard, etc.
+   *
+   * @param filters - Optional filters (category, date range, search term, status)
+   * @returns EventDto[] - Array of events created by the authenticated organizer
+   */
+  async getMyEvents(filters?: {
+    searchTerm?: string;
+    category?: number;
+    startDateFrom?: string;
+    startDateTo?: string;
+    state?: string;
+    metroAreaIds?: string[];
+    statusFilter?: number;
+  }): Promise<EventDto[]> {
+    const params = new URLSearchParams();
+
+    if (filters?.searchTerm) params.append('searchTerm', filters.searchTerm);
+    if (filters?.category !== undefined) params.append('category', String(filters.category));
+    if (filters?.startDateFrom) params.append('startDateFrom', filters.startDateFrom);
+    if (filters?.startDateTo) params.append('startDateTo', filters.startDateTo);
+    if (filters?.state) params.append('state', filters.state);
+    if (filters?.metroAreaIds && filters.metroAreaIds.length > 0) {
+      filters.metroAreaIds.forEach(id => params.append('metroAreaIds', id));
+    }
+    if (filters?.statusFilter !== undefined) params.append('statusFilter', String(filters.statusFilter));
+
+    const queryString = params.toString();
+    const url = queryString ? `${this.basePath}/my-events?${queryString}` : `${this.basePath}/my-events`;
+
+    return await apiClient.get<EventDto[]>(url);
+  }
+
+  /**
    * Search events using full-text search (PostgreSQL FTS)
    * Returns paginated results with relevance scores
    * Phase 6A.X Issue #36: Added excludeCancelled parameter to filter out cancelled events
@@ -1330,27 +1368,30 @@ export class EventsRepository {
   }
 
   /**
-   * Update a form response using access token (public endpoint - AllowAnonymous)
-   * Custom Forms Feature: Edit response before deadline
+   * Update a form response (Phase 6A.106-110 Fix: Supports both token and userId auth)
+   * Anonymous users: Requires access token
+   * Logged-in users: Uses JWT token (no access token needed)
    * Maps to backend PUT /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
    *
    * @param eventId - Event ID (GUID)
    * @param formId - Form ID (GUID)
    * @param responseId - Response ID (GUID)
-   * @param accessToken - Access token from submission
+   * @param accessToken - Access token (optional for logged-in users)
    * @param request - Response update request
    */
   async updateFormResponse(
     eventId: string,
     formId: string,
     responseId: string,
-    accessToken: string,
+    accessToken: string | undefined,
     request: UpdateFormResponseRequest
   ): Promise<void> {
-    await apiClient.put(
-      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`,
-      request
-    );
+    const url = accessToken
+      ? `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}?token=${accessToken}`
+      : `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`;
+
+    // Phase 6A.111: Increase timeout for form updates (complex operations can take time)
+    await apiClient.put(url, request, { timeout: 120000 }); // 2 minutes (was 30 seconds)
   }
 
   /**
@@ -1371,6 +1412,32 @@ export class EventsRepository {
     return await apiClient.get<FormResponseDto>(
       `${this.basePath}/${eventId}/forms/${formId}/responses/mine?token=${accessToken}`
     );
+  }
+
+  /**
+   * Get own response using userId (authenticated endpoint - Requires login)
+   * Phase 6A.106-110 Fix: Enables Edit/Delete buttons for logged-in users in Signup Forms tab
+   * Maps to backend GET /api/events/{id}/forms/{formId}/responses/my
+   *
+   * @param eventId - Event ID (GUID)
+   * @param formId - Form ID (GUID)
+   * @returns Form response with answers, or null if no response exists (HTTP 204)
+   */
+  async getMyFormResponseByUserId(
+    eventId: string,
+    formId: string
+  ): Promise<FormResponseDto | null> {
+    try {
+      return await apiClient.get<FormResponseDto>(
+        `${this.basePath}/${eventId}/forms/${formId}/responses/my`
+      );
+    } catch (error: any) {
+      // HTTP 204 No Content means user has no response (not an error)
+      if (error.response?.status === 204) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -1396,21 +1463,27 @@ export class EventsRepository {
   }
 
   /**
-   * Delete a form response (organizer only)
-   * Custom Forms Feature: Remove spam or test responses
-   * Maps to backend DELETE /api/events/{id}/forms/{formId}/responses/{responseId}
+   * Delete a form response
+   * Phase 6A.106: Supports both organizer and user deletion
+   * - Organizer: Authenticated, no token required
+   * - Anonymous user: Access token required
+   * - Logged-in user: Authenticated, no token required (verified by userId)
+   * Maps to backend DELETE /api/events/{id}/forms/{formId}/responses/{responseId}?token={token}
    *
    * @param eventId - Event ID (GUID)
    * @param formId - Form ID (GUID)
    * @param responseId - Response ID (GUID)
+   * @param accessToken - Optional access token for anonymous users
    */
   async deleteFormResponse(
     eventId: string,
     formId: string,
-    responseId: string
+    responseId: string,
+    accessToken?: string
   ): Promise<void> {
+    const params = accessToken ? `?token=${accessToken}` : '';
     await apiClient.delete(
-      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}`
+      `${this.basePath}/${eventId}/forms/${formId}/responses/${responseId}${params}`
     );
   }
 

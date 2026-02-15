@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -10,7 +10,8 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
-import { useEventForms } from '@/presentation/hooks/useEventForms';
+import { useEventForms, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
+import type { FormResponseDto } from '@/infrastructure/api/types/events.types';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -68,7 +69,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated, isAuthenticated } = useAuthStore();
 
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
@@ -98,6 +99,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
   // Phase 6A.93 Fix: Track when user wants to re-register while refund is in progress
   const [retryAfterRefund, setRetryAfterRefund] = useState(false);
+  // Phase 6A.109: Track form response deletion
+  const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
+  const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
+
+  // Phase 6A.106-110 Fix: Track logged-in user's form responses
+  const [userFormResponses, setUserFormResponses] = useState<Record<string, FormResponseDto | null>>({});
+  const [isFetchingResponses, setIsFetchingResponses] = useState(false);
+
+  // Phase 6A.113: Detect URL hash for tab navigation (e.g., #signup-forms from email links)
+  const [activeTab, setActiveTab] = useState<string>('signup-lists');
+
+  useEffect(() => {
+    // Check URL hash on mount (e.g., /events/123#signup-forms)
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.substring(1); // Remove #
+      if (hash === 'signup-forms' || hash === 'signup-lists') {
+        setActiveTab(hash);
+      }
+    }
+  }, []);
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -212,6 +233,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.14: Update registration mutation
   const updateRegistrationMutation = useUpdateRegistrationDetails();
+
+  // Phase 6A.109: Delete form response mutation
+  const deleteFormResponseMutation = useDeleteFormResponse();
+
+  // Phase 6A.106-110 Fix: Fetch logged-in user's responses for all active forms
+  useEffect(() => {
+    async function fetchUserFormResponses() {
+      if (!isAuthenticated || activeForms.length === 0) {
+        setUserFormResponses({});
+        return;
+      }
+
+      setIsFetchingResponses(true);
+      try {
+        const responses = await Promise.all(
+          activeForms.map(async (form) => {
+            try {
+              const response = await eventsRepository.getMyFormResponseByUserId(id, form.id);
+              return { formId: form.id, response };
+            } catch (error) {
+              // User has no response for this form - not an error
+              return { formId: form.id, response: null };
+            }
+          })
+        );
+
+        const responsesMap: Record<string, FormResponseDto | null> = {};
+        responses.forEach(({ formId, response }) => {
+          responsesMap[formId] = response;
+        });
+
+        setUserFormResponses(responsesMap);
+      } catch (error) {
+        console.error('Failed to fetch user form responses:', error);
+        setUserFormResponses({});
+      } finally {
+        setIsFetchingResponses(false);
+      }
+    }
+
+    fetchUserFormResponses();
+  }, [id, isAuthenticated, activeForms.length]); // Only re-fetch if forms count changes
 
   // Phase 6A.74 Part 12 Issue #4 Fix: Handle hash navigation for anchor links
   // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
@@ -424,6 +487,65 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch (err) {
       setIsUpdatingRegistration(false);
       throw err; // Re-throw to let the modal handle the error display
+    }
+  };
+
+  // Phase 6A.106-110 Fix: Handle form response deletion for BOTH anonymous and logged-in users
+  const handleDeleteFormResponse = async () => {
+    if (!deletingFormId) return;
+
+    setShowFormDeleteConfirm(false);
+
+    try {
+      // Check if user is logged in and has a response in userFormResponses
+      const userResponse = userFormResponses[deletingFormId];
+      const storageKey = `form_response_token_${id}_${deletingFormId}`;
+      const accessToken = localStorage.getItem(storageKey);
+
+      if (userResponse) {
+        // Logged-in user - delete using userId (no token needed)
+        await deleteFormResponseMutation.mutateAsync({
+          eventId: id,
+          formId: deletingFormId,
+          responseId: userResponse.id,
+          // No accessToken - backend will use userId from JWT
+        });
+
+        // Clear from local state
+        setUserFormResponses(prev => {
+          const updated = { ...prev };
+          delete updated[deletingFormId];
+          return updated;
+        });
+      } else if (accessToken) {
+        // Anonymous user - delete using access token
+        // Fetch the response first to get the responseId
+        const response = await eventsRepository.getMyFormResponse(id, deletingFormId, accessToken);
+
+        if (!response) {
+          setError('Response not found.');
+          setDeletingFormId(null);
+          return;
+        }
+
+        // Now delete the response
+        await deleteFormResponseMutation.mutateAsync({
+          eventId: id,
+          formId: deletingFormId,
+          responseId: response.id,
+          accessToken,
+        });
+      } else {
+        setError('Unable to delete response. Please try again or use the edit link from your email.');
+        setDeletingFormId(null);
+        return;
+      }
+
+      setDeletingFormId(null);
+      // Success toast is handled by the mutation's onSuccess callback
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete response');
+      setDeletingFormId(null);
     }
   };
 
@@ -1608,64 +1730,92 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-sm text-gray-600">
                       Fill out forms to provide additional information for this event
                     </p>
-                    {activeForms.map((form) => (
-                      <Card key={form.id} className="border border-gray-200">
-                        <CardContent className="pt-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {form.title}
-                              </h3>
-                              {form.description && (
-                                <p className="text-sm text-gray-600 mb-3">
-                                  {form.description}
-                                </p>
-                              )}
-                              <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                                {form.responseCount > 0 && (
-                                  <span className="flex items-center gap-1">
-                                    <Users className="h-4 w-4" />
-                                    {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
-                                  </span>
+                    {activeForms.map((form) => {
+                      // Phase 6A.106-110 Fix: Check BOTH localStorage (anonymous) AND user response (logged-in)
+                      const storageKey = `form_response_token_${id}_${form.id}`;
+                      const hasStoredToken = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+                      const userResponse = userFormResponses[form.id];
+                      const hasUserResponse = userResponse !== null && userResponse !== undefined;
+                      const hasResponded = hasStoredToken || hasUserResponse;
+
+                      const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
+                      const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+
+                      return (
+                        <Card key={form.id} className="border border-gray-200">
+                          <CardContent className="pt-6">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                  {form.title}
+                                </h3>
+                                {form.description && (
+                                  <p className="text-sm text-gray-600 mb-3">
+                                    {form.description}
+                                  </p>
                                 )}
-                                {form.responseDeadline && (
-                                  <span className="flex items-center gap-1">
-                                    <Clock className="h-4 w-4" />
-                                    Due: {new Date(form.responseDeadline).toLocaleDateString()}
-                                  </span>
-                                )}
-                                {form.maxResponses != null && form.maxResponses > 0 && (
-                                  <span className="flex items-center gap-1 text-orange-600">
-                                    <AlertCircle className="h-4 w-4" />
-                                    {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
-                                  </span>
+                                <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                                  {hasResponded && (
+                                    <span className="flex items-center gap-1 text-green-600 font-medium">
+                                      <CheckCircle className="h-4 w-4" />
+                                      You already responded
+                                    </span>
+                                  )}
+                                  {form.responseCount > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <Users className="h-4 w-4" />
+                                      {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                  {form.responseDeadline && (
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-4 w-4" />
+                                      Due: {new Date(form.responseDeadline).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                  {form.maxResponses != null && form.maxResponses > 0 && (
+                                    <span className="flex items-center gap-1 text-orange-600">
+                                      <AlertCircle className="h-4 w-4" />
+                                      {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0 flex gap-2">
+                                <Button
+                                  onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
+                                  disabled={isFormFull || isDeadlinePassed}
+                                  variant={hasResponded ? 'outline' : 'default'}
+                                  className="w-full sm:w-auto"
+                                >
+                                  {isFormFull
+                                    ? 'Form Full'
+                                    : isDeadlinePassed
+                                    ? 'Deadline Passed'
+                                    : hasResponded
+                                    ? 'Edit Your Response'
+                                    : 'Fill Out Form'}
+                                </Button>
+                                {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
+                                {hasResponded && !isFormFull && !isDeadlinePassed && (
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setDeletingFormId(form.id);
+                                      setShowFormDeleteConfirm(true);
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete response</span>
+                                  </Button>
                                 )}
                               </div>
                             </div>
-                            <div className="flex-shrink-0">
-                              <Button
-                                onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
-                                disabled={
-                                  (form.maxResponses != null && form.maxResponses > 0 &&
-                                   form.responseCount >= form.maxResponses) ||
-                                  (form.responseDeadline != null &&
-                                   new Date(form.responseDeadline) < new Date())
-                                }
-                                className="w-full sm:w-auto"
-                              >
-                                {(form.maxResponses != null && form.maxResponses > 0 &&
-                                  form.responseCount >= form.maxResponses)
-                                  ? 'Form Full'
-                                  : (form.responseDeadline != null &&
-                                     new Date(form.responseDeadline) < new Date())
-                                  ? 'Deadline Passed'
-                                  : 'Fill Out Form'}
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
@@ -1674,7 +1824,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 ),
               },
             ]}
-            defaultTab="signup-lists"
+            defaultTab={activeTab}
           />
         </div>
       </div>
@@ -1814,6 +1964,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             setShowCancelPendingDialog(false);
           }
         }}
+      />
+
+      {/* Phase 6A.109: Form response deletion confirmation */}
+      <ConfirmDialog
+        open={showFormDeleteConfirm}
+        onOpenChange={setShowFormDeleteConfirm}
+        title="Cancel Form Response"
+        description="Are you sure you want to cancel your form response? This action cannot be undone. You will receive a confirmation email."
+        confirmLabel="Yes, Cancel Response"
+        cancelLabel="Keep Response"
+        variant="danger"
+        onConfirm={handleDeleteFormResponse}
       />
     </div>
   );

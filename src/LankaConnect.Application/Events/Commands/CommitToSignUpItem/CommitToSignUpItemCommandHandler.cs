@@ -40,8 +40,16 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
 
             try
             {
+                // Phase 6A.114 DEBUG: Log handler execution
+                _logger.LogWarning("[DEBUG-HANDLER] CommitToSignUpItemCommandHandler executing - about to load event");
+
                 // Get the event with sign-up lists
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+
+                // Phase 6A.114 DEBUG: Log event loaded status
+                _logger.LogWarning("[DEBUG-HANDLER] Event loaded: {EventLoaded}, SignUpLists: {SignUpListsCount}",
+                    @event != null, @event?.SignUpLists?.Count ?? 0);
+
                 if (@event == null)
                 {
                     stopwatch.Stop();

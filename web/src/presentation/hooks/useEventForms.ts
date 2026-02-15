@@ -203,6 +203,40 @@ export function useMyFormResponse(
   });
 }
 
+/**
+ * useMyFormResponseByUserId Hook
+ *
+ * Phase 6A.106-110 Fix: Fetches logged-in user's response by userId (not token).
+ * Enables Edit/Delete buttons in Signup Forms tab for logged-in users.
+ * Returns null if user has no response (not an error - UI shows "Fill Out Form").
+ *
+ * @param eventId - Event ID (GUID)
+ * @param formId - Form ID (GUID)
+ * @param enabled - Whether to fetch (default: true if eventId and formId present)
+ * @returns FormResponseDto if user has responded, null otherwise
+ *
+ * @example
+ * ```tsx
+ * const { data: userResponse } = useMyFormResponseByUserId(eventId, formId);
+ * const hasResponded = userResponse !== null;
+ * ```
+ */
+export function useMyFormResponseByUserId(
+  eventId: string | undefined,
+  formId: string | undefined,
+  options?: Omit<UseQueryOptions<FormResponseDto | null, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: ['formResponse', 'my', eventId, formId],
+    queryFn: () => eventsRepository.getMyFormResponseByUserId(eventId!, formId!),
+    enabled: !!eventId && !!formId,
+    staleTime: 60 * 1000, // 1 minute
+    refetchOnWindowFocus: false,
+    retry: 1,
+    ...options,
+  });
+}
+
 // ==================== MUTATIONS - FORM CRUD ====================
 
 /**
@@ -683,7 +717,7 @@ export function useUpdateFormResponse(
       eventId: string;
       formId: string;
       responseId: string;
-      accessToken: string;
+      accessToken?: string;  // Optional for logged-in users
       request: UpdateFormResponseRequest;
     }
   >
@@ -694,10 +728,33 @@ export function useUpdateFormResponse(
     mutationFn: ({ eventId, formId, responseId, accessToken, request }) =>
       eventsRepository.updateFormResponse(eventId, formId, responseId, accessToken, request),
     onSuccess: (_, { eventId, formId, accessToken }) => {
-      // Invalidate the specific response being edited
-      queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
-      // Invalidate responses list if organizer is viewing
-      queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
+      // Phase 6A.111: Comprehensive cache invalidation to ensure UI updates immediately
+
+      // 1. Invalidate specific response (token-based for anonymous users)
+      if (accessToken) {
+        queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
+      }
+
+      // 2. Invalidate user-based response query (for logged-in users)
+      queryClient.invalidateQueries({ queryKey: ['formResponse', 'my', eventId, formId] });
+
+      // 3. Invalidate form detail (shows updated questions/answers in UI)
+      queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+
+      // 4. Invalidate ALL paginated responses (not just base key)
+      queryClient.invalidateQueries({
+        queryKey: formKeys.responsesList(eventId, formId),
+        exact: false  // Invalidates all pages (page=1, page=2, etc.)
+      });
+
+      // 5. Invalidate form list (updates response counts in form summary)
+      queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
+
+      // 6. Invalidate ALL form queries (wildcard pattern like useUpdateEvent)
+      queryClient.invalidateQueries({ queryKey: formKeys.all });
+
+      // 7. Immediate refetch (don't wait for staleTime)
+      queryClient.refetchQueries({ queryKey: formKeys.detail(eventId, formId) });
     },
     ...options,
   });
@@ -706,19 +763,33 @@ export function useUpdateFormResponse(
 /**
  * useDeleteFormResponse Hook
  *
- * Mutation for deleting a form response (organizer only)
- * Used to remove spam or test responses
+ * Phase 6A.106: Mutation for deleting a form response
+ * Supports both organizer and user deletion:
+ * - Organizer: Authenticated, no token required (removes spam/test responses)
+ * - Anonymous user: Requires access token from submission
+ * - Logged-in user: Authenticated, no token required (verified by userId)
+ *
+ * Features:
+ * - Clears localStorage token after successful deletion
+ * - Invalidates response list and form counts
+ * - Cancellation email sent by backend handler
  *
  * @example
  * ```tsx
- * const deleteResponse = useDeleteFormResponse({
- *   onSuccess: () => toast.success('Response deleted'),
- * });
- *
+ * // Anonymous user deletion
+ * const deleteResponse = useDeleteFormResponse();
  * await deleteResponse.mutateAsync({
  *   eventId,
  *   formId,
- *   responseId: 'resp-123'
+ *   responseId,
+ *   accessToken: tokenFromUrl
+ * });
+ *
+ * // Organizer deletion
+ * await deleteResponse.mutateAsync({
+ *   eventId,
+ *   formId,
+ *   responseId
  * });
  * ```
  */
@@ -726,15 +797,24 @@ export function useDeleteFormResponse(
   options?: UseMutationOptions<
     void,
     ApiError,
-    { eventId: string; formId: string; responseId: string }
+    { eventId: string; formId: string; responseId: string; accessToken?: string }
   >
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId, formId, responseId }) =>
-      eventsRepository.deleteFormResponse(eventId, formId, responseId),
-    onSuccess: (_, { eventId, formId }) => {
+    mutationFn: ({ eventId, formId, responseId, accessToken }) =>
+      eventsRepository.deleteFormResponse(eventId, formId, responseId, accessToken),
+    onSuccess: (_, { eventId, formId, accessToken }) => {
+      // Clear localStorage token if present (cross-browser cleanup)
+      const storageKey = `form_response_token_${eventId}_${formId}`;
+      localStorage.removeItem(storageKey);
+
+      // Invalidate response cache if access token was used
+      if (accessToken) {
+        queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
+      }
+
       // Invalidate responses list to update counts
       queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
       // Invalidate form list to update response counts

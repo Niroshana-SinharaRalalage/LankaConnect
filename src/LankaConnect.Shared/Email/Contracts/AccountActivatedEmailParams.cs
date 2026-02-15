@@ -13,8 +13,9 @@ public class AccountActivatedEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for account activation email.
+    /// Phase 6A.113: Updated to use corrected constant name.
     /// </summary>
-    public string TemplateName => EmailTemplateContract.TemplateNames.AdminUserActivation;
+    public string TemplateName => EmailTemplateContract.TemplateNames.AccountActivatedByAdmin;
 
     /// <summary>
     /// Recipient email address.

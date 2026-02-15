@@ -916,4 +916,33 @@ public class User : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.106: Downgrades user role to GeneralUser by admin.
+    /// Enforces domain invariants: AdminManager cannot be downgraded, already GeneralUser check.
+    /// Clears pending upgrade request if any.
+    /// </summary>
+    public Result DowngradeToGeneralUserByAdmin()
+    {
+        if (Role == UserRole.AdminManager)
+            return Result.Failure("AdminManager role cannot be downgraded");
+
+        if (Role == UserRole.GeneralUser)
+            return Result.Failure("User is already a General User");
+
+        var oldRole = Role;
+        Role = UserRole.GeneralUser;
+
+        // Clear pending upgrade request if any
+        if (PendingUpgradeRole.HasValue)
+        {
+            PendingUpgradeRole = null;
+            UpgradeRequestedAt = null;
+        }
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, UserRole.GeneralUser));
+
+        return Result.Success();
+    }
+
 }

@@ -15,8 +15,9 @@ public class EventApprovalEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for event approval email.
+    /// Phase 6A.113: Updated to use corrected constant name.
     /// </summary>
-    public string TemplateName => EmailTemplateContract.TemplateNames.EventApproved;
+    public string TemplateName => EmailTemplateContract.TemplateNames.EventApproval;
 
     /// <summary>
     /// Recipient email address.

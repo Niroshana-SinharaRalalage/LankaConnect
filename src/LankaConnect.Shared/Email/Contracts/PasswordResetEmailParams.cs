@@ -14,8 +14,9 @@ public class PasswordResetEmailParams : IEmailParameters
 {
     /// <summary>
     /// The template name for password reset.
+    /// Phase 6A.113: Using contract constant instead of hardcoded string.
     /// </summary>
-    public string TemplateName => "template-password-reset";
+    public string TemplateName => EmailTemplateContract.TemplateNames.PasswordReset;
 
     /// <summary>
     /// Recipient email address.

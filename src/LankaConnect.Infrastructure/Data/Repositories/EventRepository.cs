@@ -162,11 +162,29 @@ public class EventRepository : Repository<Event>, IEventRepository
                     return null;
                 }
 
+                // Phase 6A.114 DEBUG: Enhanced tracking diagnostics
+                var entityEntry = _context.Entry(eventEntity);
+                var actuallyTracked = entityEntry.State != EntityState.Detached;
+                var signUpListsCount = eventEntity.SignUpLists?.Count ?? 0;
+                var totalItemsCount = eventEntity.SignUpLists?.Sum(sl => sl.Items?.Count ?? 0) ?? 0;
+
                 _repoLogger.LogInformation(
-                    "[DIAG-R4] Event loaded - Id: {EventId}, Status: {Status}, Tracked: {Tracked}",
+                    "[DIAG-R4] Event loaded - Id: {EventId}, Status: {Status}, TrackChangesParam: {TrackChangesParam}, " +
+                    "ActuallyTracked: {ActuallyTracked}, EntityState: {EntityState}, SignUpLists: {SignUpListsCount}, TotalItems: {TotalItemsCount}",
                     eventEntity.Id,
                     eventEntity.Status,
-                    trackChanges);
+                    trackChanges,
+                    actuallyTracked,
+                    entityEntry.State,
+                    signUpListsCount,
+                    totalItemsCount);
+
+                if (trackChanges && !actuallyTracked)
+                {
+                    _repoLogger.LogError(
+                        "[DIAG-R4-ERROR] ⚠️ Entity requested WITH tracking but loaded as DETACHED! " +
+                        "This will prevent domain events from being dispatched!");
+                }
 
                 // Phase 6A.33 FIX: Sync email group IDs from shadow navigation to domain
                 var emailGroupsCollection = _context.Entry(eventEntity).Collection("_emailGroupEntities");

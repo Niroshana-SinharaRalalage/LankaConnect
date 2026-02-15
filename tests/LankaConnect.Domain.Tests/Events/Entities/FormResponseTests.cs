@@ -20,7 +20,7 @@ public class FormResponseTests
     [Fact]
     public void Create_WithValidData_Should_Return_Success()
     {
-        var result = FormResponse.Create(_formId, _eventId, _tokenHash, "test@example.com", "John Doe");
+        var result = FormResponse.Create(_formId, _eventId, _tokenHash, null, "test@example.com", "John Doe");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.EventFormId.Should().Be(_formId);
@@ -35,7 +35,7 @@ public class FormResponseTests
     [Fact]
     public void Create_Should_Raise_FormResponseSubmittedEvent()
     {
-        var result = FormResponse.Create(_formId, _eventId, _tokenHash, "test@example.com");
+        var result = FormResponse.Create(_formId, _eventId, _tokenHash, null, "test@example.com");
 
         result.IsSuccess.Should().BeTrue();
         result.Value.DomainEvents.Should().ContainSingle()
@@ -49,7 +49,7 @@ public class FormResponseTests
     public void Create_WithAuthenticatedUser_Should_Set_UserId()
     {
         var userId = Guid.NewGuid();
-        var result = FormResponse.Create(_formId, _eventId, _tokenHash, "test@example.com", "John", userId);
+        var result = FormResponse.Create(_formId, _eventId, _tokenHash, null, "test@example.com", "John", userId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.RespondentUserId.Should().Be(userId);
@@ -58,7 +58,7 @@ public class FormResponseTests
     [Fact]
     public void Create_WithEmptyFormId_Should_Fail()
     {
-        var result = FormResponse.Create(Guid.Empty, _eventId, _tokenHash);
+        var result = FormResponse.Create(Guid.Empty, _eventId, _tokenHash, null);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Event form ID cannot be empty");
     }
@@ -66,7 +66,7 @@ public class FormResponseTests
     [Fact]
     public void Create_WithEmptyEventId_Should_Fail()
     {
-        var result = FormResponse.Create(_formId, Guid.Empty, _tokenHash);
+        var result = FormResponse.Create(_formId, Guid.Empty, _tokenHash, null);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Event ID cannot be empty");
     }
@@ -74,7 +74,7 @@ public class FormResponseTests
     [Fact]
     public void Create_WithEmptyTokenHash_Should_Fail()
     {
-        var result = FormResponse.Create(_formId, _eventId, "");
+        var result = FormResponse.Create(_formId, _eventId, "", null);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Access token hash cannot be empty");
     }
@@ -82,7 +82,7 @@ public class FormResponseTests
     [Fact]
     public void Create_WithInvalidEmail_Should_Fail()
     {
-        var result = FormResponse.Create(_formId, _eventId, _tokenHash, "notanemail");
+        var result = FormResponse.Create(_formId, _eventId, _tokenHash, null, "notanemail");
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain("Invalid email format");
     }
@@ -91,7 +91,7 @@ public class FormResponseTests
     public void Create_WithLongEmail_Should_Fail()
     {
         var longEmail = new string('a', 250) + "@b.com";
-        var result = FormResponse.Create(_formId, _eventId, _tokenHash, longEmail);
+        var result = FormResponse.Create(_formId, _eventId, _tokenHash, null, longEmail);
         result.IsFailure.Should().BeTrue();
         result.Error.Should().Contain($"exceed {FormResponse.MaxEmailLength}");
     }
@@ -103,7 +103,7 @@ public class FormResponseTests
     [Fact]
     public void AddAnswer_Should_Succeed()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var questionId = Guid.NewGuid();
 
         var result = response.AddAnswer(questionId, "What is your name?", textValue: "John");
@@ -117,7 +117,7 @@ public class FormResponseTests
     [Fact]
     public void AddAnswer_WithChoiceOptions_Should_Succeed()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var questionId = Guid.NewGuid();
         var optionId = Guid.NewGuid();
 
@@ -134,7 +134,7 @@ public class FormResponseTests
     [Fact]
     public void AddAnswer_WithBooleanValue_Should_Succeed()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var questionId = Guid.NewGuid();
 
         var result = response.AddAnswer(questionId, "Do you need parking?", booleanValue: true);
@@ -146,7 +146,7 @@ public class FormResponseTests
     [Fact]
     public void AddAnswer_DuplicateQuestion_Should_Fail()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var questionId = Guid.NewGuid();
         response.AddAnswer(questionId, "Q1", textValue: "A1");
 
@@ -159,7 +159,7 @@ public class FormResponseTests
     [Fact]
     public void UpdateAnswer_Should_Succeed()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var questionId = Guid.NewGuid();
         response.AddAnswer(questionId, "Q1", textValue: "Original");
         response.ClearDomainEvents();
@@ -175,7 +175,7 @@ public class FormResponseTests
     [Fact]
     public void UpdateAnswer_NonExistentQuestion_Should_Fail()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
 
         var result = response.UpdateAnswer(Guid.NewGuid(), textValue: "Test");
 
@@ -190,7 +190,7 @@ public class FormResponseTests
     [Fact]
     public void CanEdit_WithNoDeadline_Should_Return_True()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
 
         response.CanEdit(null).Should().BeTrue();
     }
@@ -198,7 +198,7 @@ public class FormResponseTests
     [Fact]
     public void CanEdit_BeforeDeadline_Should_Return_True()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var futureDeadline = DateTime.UtcNow.AddDays(7);
 
         response.CanEdit(futureDeadline).Should().BeTrue();
@@ -207,10 +207,64 @@ public class FormResponseTests
     [Fact]
     public void CanEdit_AfterDeadline_Should_Return_False()
     {
-        var response = FormResponse.Create(_formId, _eventId, _tokenHash).Value;
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
         var pastDeadline = DateTime.UtcNow.AddDays(-1);
 
         response.CanEdit(pastDeadline).Should().BeFalse();
+    }
+
+    #endregion
+
+    #region RaiseDeletedEvent Tests (Phase 6A.106)
+
+    [Fact]
+    public void RaiseDeletedEvent_Should_Succeed()
+    {
+        // Arrange
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null, "test@example.com").Value;
+        response.ClearDomainEvents();
+
+        // Act
+        var result = response.RaiseDeletedEvent();
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        response.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<FormResponseDeletedEvent>();
+    }
+
+    [Fact]
+    public void RaiseDeletedEvent_Should_Include_ResponseData()
+    {
+        // Arrange
+        var email = "test@example.com";
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null, email).Value;
+        response.ClearDomainEvents();
+
+        // Act
+        response.RaiseDeletedEvent();
+        var domainEvent = (FormResponseDeletedEvent)response.DomainEvents.First();
+
+        // Assert
+        domainEvent.FormId.Should().Be(_formId);
+        domainEvent.ResponseId.Should().Be(response.Id);
+        domainEvent.RespondentEmail.Should().Be(email);
+        domainEvent.OccurredAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void RaiseDeletedEvent_AnonymousResponse_Should_Include_NullEmail()
+    {
+        // Arrange
+        var response = FormResponse.Create(_formId, _eventId, _tokenHash, null).Value;
+        response.ClearDomainEvents();
+
+        // Act
+        response.RaiseDeletedEvent();
+        var domainEvent = (FormResponseDeletedEvent)response.DomainEvents.First();
+
+        // Assert
+        domainEvent.RespondentEmail.Should().BeNull();
     }
 
     #endregion

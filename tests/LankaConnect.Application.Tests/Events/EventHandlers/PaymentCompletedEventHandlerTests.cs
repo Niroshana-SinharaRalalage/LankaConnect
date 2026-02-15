@@ -5,6 +5,7 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
@@ -30,6 +31,7 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IRegistrationRepository> _registrationRepository;
+    private readonly Mock<IEventFormRepository> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
     private readonly PaymentCompletedEventHandler _handler;
@@ -41,8 +43,13 @@ public class PaymentCompletedEventHandlerTests
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
         _registrationRepository = new Mock<IRegistrationRepository>();
+        _eventFormRepository = new Mock<IEventFormRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
+
+        // Phase 6A.112: Setup event form repository to return empty list by default
+        _eventFormRepository.Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LankaConnect.Domain.Events.Entities.EventForm>());
 
         // Setup default URL helper behavior
         _emailUrlHelper.Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))
@@ -85,6 +92,7 @@ public class PaymentCompletedEventHandlerTests
             _userRepository.Object,
             _eventRepository.Object,
             _registrationRepository.Object,
+            _eventFormRepository.Object,
             _emailUrlHelper.Object,
             _logger.Object);
     }

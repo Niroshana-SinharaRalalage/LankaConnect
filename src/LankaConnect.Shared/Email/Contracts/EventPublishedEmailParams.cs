@@ -145,6 +145,18 @@ public class EventPublishedEmailParams : IEmailParameters
     /// </summary>
     public string SignUpListsUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to signup forms section of event (if event has signup forms).
+    /// Phase 6A.112: Added for "View Signup Forms" button.
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -189,7 +201,9 @@ public class EventPublishedEmailParams : IEmailParameters
             // Signup lists params (for {{#HasSignUpLists}} conditional)
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
-            { "SignupListUrl", SignUpListsUrl }  // Template alias (singular form)
+            { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
+            { "HasSignupForms", HasSignupForms },  // Phase 6A.112
+            { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
         };
 
         return dict;
@@ -231,6 +245,16 @@ public class EventPublishedEmailParams : IEmailParameters
     {
         HasEventImage = !string.IsNullOrEmpty(imageUrl);
         EventImageUrl = imageUrl ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.112: Sets the signup forms URL for "View Signup Forms" button.
+    /// </summary>
+    public EventPublishedEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
         return this;
     }
 

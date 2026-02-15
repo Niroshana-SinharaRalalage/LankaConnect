@@ -4,6 +4,7 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Communications.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -72,14 +73,22 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                     return Result<NewsletterDto>.Failure("Newsletter not found");
                 }
 
-                // Authorization: Only creator or admin can view
-                if (newsletter.CreatedByUserId != _currentUserService.UserId && !_currentUserService.IsAdmin)
+                // Authorization:
+                // - Public newsletters (Active, Inactive, Sent): Anyone can view
+                // - Draft newsletters: Only creator or admin can view
+                var isPublicNewsletter = newsletter.Status == NewsletterStatus.Active ||
+                                        newsletter.Status == NewsletterStatus.Inactive ||
+                                        newsletter.Status == NewsletterStatus.Sent;
+
+                if (!isPublicNewsletter &&
+                    newsletter.CreatedByUserId != _currentUserService.UserId &&
+                    !_currentUserService.IsAdmin)
                 {
                     stopwatch.Stop();
 
                     _logger.LogWarning(
-                        "GetNewsletterById FAILED: Access denied - NewsletterId={NewsletterId}, RequestingUserId={UserId}, CreatorId={CreatorId}, IsAdmin={IsAdmin}, Duration={ElapsedMs}ms",
-                        request.Id, _currentUserService.UserId, newsletter.CreatedByUserId, _currentUserService.IsAdmin, stopwatch.ElapsedMilliseconds);
+                        "GetNewsletterById FAILED: Access denied to draft newsletter - NewsletterId={NewsletterId}, RequestingUserId={UserId}, CreatorId={CreatorId}, IsAdmin={IsAdmin}, Status={Status}, Duration={ElapsedMs}ms",
+                        request.Id, _currentUserService.UserId, newsletter.CreatedByUserId, _currentUserService.IsAdmin, newsletter.Status, stopwatch.ElapsedMilliseconds);
 
                     return Result<NewsletterDto>.Failure("You do not have permission to view this newsletter");
                 }

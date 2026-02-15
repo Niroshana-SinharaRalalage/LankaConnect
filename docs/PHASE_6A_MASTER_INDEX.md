@@ -79,6 +79,8 @@
 | 6A.103 | Event Image in Email Templates | ✅ Complete | [RCA_PHASE6A103_EVENT_IMAGE_EMAIL_TEMPLATES.md](./RCA_PHASE6A103_EVENT_IMAGE_EMAIL_TEMPLATES.md) | 2026-02-11 |
 | 6A.104 | Metro Areas and Badges Production Seeding | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-12 |
 | 6A.106 | Newsletter Template Content Placeholder Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-12 |
+| 6A.110 | Signup Forms Response Export (CSV/Excel) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-13 |
+| 6A.111 | Signup Forms UI Improvements (Button Labels & Navigation) | ✅ Complete | [RCA_SIGNUP_FORMS_UI_ISSUES.md](./RCA_SIGNUP_FORMS_UI_ISSUES.md) | 2026-02-13 |
 
 ---
 

@@ -5,6 +5,7 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
@@ -24,6 +25,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<AnonymousRegistrationConfirmedEventHandler> _logger;
 
@@ -31,12 +33,14 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
         ITypedEmailService typedEmailService,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<AnonymousRegistrationConfirmedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -135,6 +139,15 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 if (@event.HasSignUpLists())
                 {
                     emailParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                }
+
+                // Phase 6A.112: Check if event has active signup forms
+                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+
+                if (hasActiveForms)
+                {
+                    emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
                 }
 
                 // Set attendee details

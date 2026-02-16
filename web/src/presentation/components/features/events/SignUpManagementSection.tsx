@@ -923,7 +923,8 @@ export function SignUpManagementSection({
                       );
                     }
 
-                    return <TabPanel tabs={categoryTabs} defaultTab={categoryTabs[0].id} />;
+                    // Phase 6A.118 Fix: Remove defaultTab to prevent tab reset on state changes
+                    return <TabPanel tabs={categoryTabs} />;
                   })()}
                 </div>
               ) : (

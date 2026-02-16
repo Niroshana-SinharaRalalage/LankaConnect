@@ -48,7 +48,8 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, AlertCircle, Lightbulb } from 'lucide-react';
+import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -636,37 +637,21 @@ export function SignUpManagementSection({
               {/* CATEGORY-BASED SIGN-UPS (NEW) */}
               {isCategoryBased ? (
                 <div className="space-y-6">
-                  {/* Group items by category - Phase 6A.28: Preferred is DEPRECATED and hidden from UI */}
-                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category, index) => {
-                    // For predefined categories, filter out Open items
-                    // Phase 6A.28: Also skip Preferred items - they are deprecated
-                    const categoryItems = signUpList.items.filter(item =>
-                      item.itemCategory === category &&
-                      !item.isOpenItem &&
-                      item.itemCategory !== SignUpItemCategory.Preferred
+                  {/* Phase 6A.119: Tab-based Category Navigation */}
+                  {(() => {
+                    // Filter items by category
+                    const mandatoryItems = signUpList.items.filter(
+                      item => item.itemCategory === SignUpItemCategory.Mandatory && !item.isOpenItem
                     );
-
-                    if (categoryItems.length === 0) return null;
-
-                    // Check if there are items in previous categories (for separator)
-                    const hasPreviousCategoryItems = index > 0 && signUpList.items.some(item =>
-                      item.itemCategory === SignUpItemCategory.Mandatory &&
-                      !item.isOpenItem
+                    const suggestedItems = signUpList.items.filter(
+                      item => item.itemCategory === SignUpItemCategory.Suggested && !item.isOpenItem
                     );
+                    const openItems = signUpList.items.filter(item => item.isOpenItem);
 
-                    return (
-                      <div key={category} className={`space-y-3 ${hasPreviousCategoryItems ? 'border-t pt-4 mt-4' : ''}`}>
-                        <h4 className="font-semibold flex items-center gap-2">
-                          <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(category)}`}>
-                            {getCategoryLabel(category)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            ({categoryItems.length})
-                          </span>
-                        </h4>
-
-                        <div className="space-y-3">
-                          {categoryItems.map((item) => {
+                    // Helper function to render items for a category
+                    const renderCategoryItems = (items: SignUpItemDto[], category: SignUpItemCategory) => (
+                      <div className="space-y-3">
+                        {items.map((item) => {
                             const userItemCommitment = item.commitments.find(c => c.userId === userId);
                             const remainingQty = item.remainingQuantity;
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
@@ -803,13 +788,37 @@ export function SignUpManagementSection({
                               </div>
                             );
                           })}
-                        </div>
                       </div>
                     );
-                  })}
 
-                  {/* Phase 6A.27: Open Items Section */}
-                  {signUpList.hasOpenItems && (
+                    // Build tabs array (only non-empty categories)
+                    const categoryTabs: Tab[] = [];
+
+                    if (mandatoryItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'mandatory',
+                        label: `Mandatory Items (${mandatoryItems.length})`,
+                        icon: AlertCircle,
+                        content: renderCategoryItems(mandatoryItems, SignUpItemCategory.Mandatory)
+                      });
+                    }
+
+                    if (suggestedItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'suggested',
+                        label: `Suggested Items (${suggestedItems.length})`,
+                        icon: Lightbulb,
+                        content: renderCategoryItems(suggestedItems, SignUpItemCategory.Suggested)
+                      });
+                    }
+
+                    // Phase 6A.27: Open Items as Tab
+                    if (signUpList.hasOpenItems && openItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'open',
+                        label: `Open Items (${openItems.length})`,
+                        icon: Plus,
+                        content: (
                     <div className="space-y-3 border-t pt-4 mt-4">
                       <h4 className="font-semibold flex items-center gap-2">
                         <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
@@ -901,7 +910,21 @@ export function SignUpManagementSection({
                         </Button>
                       )}
                     </div>
-                  )}
+                        )
+                      });
+                    }
+
+                    // Return TabPanel if there are tabs, otherwise show empty state
+                    if (categoryTabs.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No items in this signup list yet
+                        </div>
+                      );
+                    }
+
+                    return <TabPanel tabs={categoryTabs} defaultTab={categoryTabs[0].id} />;
+                  })()}
                 </div>
               ) : (
                 /* LEGACY OPEN/PREDEFINED SIGN-UPS */

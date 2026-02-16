@@ -10,7 +10,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { sanitizeHtml, isHtmlContent, plainTextToHtml } from '@/lib/html-utils';
+import { sanitizeHtml } from '@/lib/html-utils';
 import { useRouter } from 'next/navigation';
 import {
   Calendar,
@@ -137,11 +137,7 @@ export function EventDetailsTab({
               <div
                 className="prose prose-sm max-w-none text-neutral-600 prose-a:text-orange-600 prose-a:underline hover:prose-a:text-orange-700"
                 dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(
-                    isHtmlContent(event.description)
-                      ? event.description
-                      : plainTextToHtml(event.description)
-                  )
+                  __html: sanitizeHtml(event.description)
                 }}
               />
             </div>

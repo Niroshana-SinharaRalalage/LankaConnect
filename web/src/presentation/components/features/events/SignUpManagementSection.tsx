@@ -48,7 +48,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -87,6 +87,22 @@ export function SignUpManagementSection({
 
   // Tab state for multiple sign-up lists
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  // Phase 6A.118: Track expanded/collapsed state for signup items (default: collapsed)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  // Phase 6A.118: Toggle function for expand/collapse
+  const toggleItemExpanded = (itemId: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
   // GitHub Issue #31: Unified cancel dialog state (replaces ugly browser confirm())
   type CancelDialogType = 'commitment' | 'signUpItem' | 'openItem';
@@ -654,15 +670,31 @@ export function SignUpManagementSection({
                             const userItemCommitment = item.commitments.find(c => c.userId === userId);
                             const remainingQty = item.remainingQuantity;
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
+                            const isExpanded = expandedItems.has(item.id);
 
                             return (
                               <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
-                                <div className="flex justify-between items-start">
+                                {/* Phase 6A.118: Item Header - Always Visible */}
+                                <div className="flex items-start gap-2">
+                                  {/* Phase 6A.118: Expand/Collapse Button */}
+                                  <button
+                                    onClick={() => toggleItemExpanded(item.id)}
+                                    aria-label={isExpanded ? 'Collapse item details' : 'Expand item details'}
+                                    aria-expanded={isExpanded}
+                                    className="flex-shrink-0 mt-1 hover:bg-gray-100 rounded p-1 transition-colors"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4" style={{ color: '#FF7900' }} />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" style={{ color: '#FF7900' }} />
+                                    )}
+                                  </button>
+
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Required: {item.quantity}
+                                        Suggested Quantities: {item.quantity}
                                       </span>
                                     </div>
                                     {item.notes && (
@@ -671,7 +703,10 @@ export function SignUpManagementSection({
                                   </div>
                                 </div>
 
-                                {/* Progress bar with counts */}
+                                {/* Phase 6A.118: Details - Conditionally Visible (Collapsible) */}
+                                {isExpanded && (
+                                  <>
+                                    {/* Progress bar with counts */}
                                 <div className="space-y-1">
                                   <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div
@@ -748,13 +783,15 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {/* All slots filled message */}
-                                {remainingQty === 0 && (
-                                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                                    <p className="text-sm font-medium text-green-800">
-                                      ✓ All {item.quantity} slots filled - Thank you everyone!
-                                    </p>
-                                  </div>
+                                    {/* All slots filled message */}
+                                    {remainingQty === 0 && (
+                                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                        <p className="text-sm font-medium text-green-800">
+                                          ✓ All {item.quantity} slots filled - Thank you everyone!
+                                        </p>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             );

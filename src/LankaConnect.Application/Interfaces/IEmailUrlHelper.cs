@@ -75,4 +75,29 @@ public interface IEmailUrlHelper
     /// <param name="token">The password reset token.</param>
     /// <returns>The complete password reset URL.</returns>
     string BuildPasswordResetUrl(string token);
+
+    /// <summary>
+    /// Builds the form edit URL for editing a form response.
+    /// Phase 6A.116: Added to fix email edit button 404 error (Issue #8).
+    /// </summary>
+    /// <param name="eventId">The event ID.</param>
+    /// <param name="formId">The form ID.</param>
+    /// <param name="accessToken">Optional access token for anonymous users.</param>
+    /// <returns>The complete form edit URL with optional token parameter.</returns>
+    string BuildFormEditUrl(Guid eventId, Guid formId, string? accessToken = null);
+
+    /// <summary>
+    /// Builds the signup lists URL for viewing event signup lists.
+    /// Phase 6A.116: Added for signup list button in emails (Issue #9).
+    /// </summary>
+    /// <param name="eventId">The event ID.</param>
+    /// <returns>The complete signup lists URL with anchor to signup lists section.</returns>
+    string BuildSignupListsUrl(Guid eventId);
+
+    /// <summary>
+    /// Gets the frontend base URL.
+    /// Phase 6A.116: Exposed for direct URL construction in special cases.
+    /// </summary>
+    /// <returns>The frontend base URL without trailing slash.</returns>
+    string GetFrontendBaseUrl();
 }

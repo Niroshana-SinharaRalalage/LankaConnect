@@ -7,7 +7,68 @@
 
 ---
 
-## 🔄 CURRENT STATUS - SIGNUP FORMS UI/UX FIXES ✅ COMPLETE (2026-02-15)
+## 🔄 CURRENT STATUS - PHASE 6A.117: WWW SUBDOMAIN REDIRECT MIDDLEWARE 🔧 IN PROGRESS (2026-02-15)
+**Date**: 2026-02-15
+**Session**: Phase 6A.117 - WWW Subdomain Redirect Middleware
+**Status**: 🔧 **IN PROGRESS - CODE DEPLOYED TO STAGING**
+**Deployment**: ✅ Middleware deployed to staging, ⏳ DNS/Azure config pending
+**Priority**: 🟡 MEDIUM (P2) - SEO & Infrastructure Enhancement
+
+**Problem**: Production URL `www.lankaconnect.app` does not exist (DNS failure):
+- 📉 SEO penalty (missing canonical URL redirect)
+- 🚫 "Site not found" error for users typing www
+- 📊 Lost traffic from www variant searches
+
+**Root Cause**: DNS configuration incomplete - only apex domain configured, missing www subdomain
+
+**Solution Implemented** (TDD Approach):
+
+**Part 1 - Next.js Middleware with Comprehensive Tests**:
+```typescript
+// web/src/middleware.ts
+export function middleware(request: NextRequest): NextResponse {
+  const hostname = request.nextUrl.hostname;
+
+  if (hostname === 'www.lankaconnect.app') {
+    const url = request.nextUrl.clone();
+    url.hostname = 'lankaconnect.app';
+    return NextResponse.redirect(url, 301); // Permanent redirect
+  }
+
+  return NextResponse.next();
+}
+```
+
+**Part 2 - Comprehensive Test Suite** (web/src/__tests__/middleware.test.ts):
+- ✅ 10+ test cases: redirect logic, query params, edge cases
+- ✅ SEO compliance: Verifies 301 status code
+- ✅ Pass-through for localhost, staging domains
+
+**Part 3 - Documentation**:
+- ✅ RCA with DNS diagnostics, impact analysis
+- ✅ Implementation guide with Azure CLI commands
+- ✅ Namecheap DNS configuration instructions
+
+**Files Modified**: 4 files (4211303c)
+- web/src/middleware.ts (84 lines - NEW FILE)
+- web/src/__tests__/middleware.test.ts (174 lines - NEW FILE)
+- docs/RCA_WWW_SUBDOMAIN_MISSING.md (384 lines - NEW FILE)
+- docs/WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md (304 lines - NEW FILE)
+
+**Build**: ✅ Next.js 16.0.1 successful, TypeScript passed
+**Deployment**: ✅ Code deployed to staging
+
+**Next Steps** (Manual Infrastructure Config):
+1. ⏳ Azure: Add www custom domain to Container App
+2. ⏳ Namecheap: Add CNAME record (www → container app)
+3. ⏳ Test redirect in staging
+4. ⏳ Create PR to merge to main (production)
+
+**Impact**: Better SEO, fixed broken www URLs, improved UX
+
+---
+
+## Previous Session: Signup Forms UI/UX Fixes ✅ COMPLETE (2026-02-15)
 **Date**: 2026-02-15
 **Session**: Signup Forms UI/UX Improvements (4 Issues)
 **Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**

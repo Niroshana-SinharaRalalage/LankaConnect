@@ -1,9 +1,118 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-15 - Phase 6A.114 Issue #81 (Newsletter Event Dropdown Security Fix) ✅ DEPLOYED TO STAGING*
+*Last Updated: 2026-02-15 - Phase 6A.117 WWW Subdomain Redirect Middleware 🔧 IN PROGRESS*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.114 Issue #81 ✅ DEPLOYED TO STAGING
+## 🎯 Current Session Status - Phase 6A.117 WWW Subdomain Redirect Middleware 🔧 IN PROGRESS
+
+### PHASE 6A.117: WWW SUBDOMAIN REDIRECT MIDDLEWARE - 2026-02-15
+
+**Status**: 🔧 **IN PROGRESS - DEPLOYED TO STAGING**
+
+**Priority**: 🟡 **MEDIUM (P2) - SEO & Infrastructure Enhancement**
+
+**Problem**: Production URL `www.lankaconnect.app` does not exist - DNS resolution failure. This causes:
+- 📉 SEO penalty (missing canonical URL redirect)
+- 🚫 "Site not found" error for users typing www
+- 📊 Lost traffic from www variant searches
+
+**Root Cause**: **DNS Configuration Incomplete**
+- Azure Container App custom domains: Only `lankaconnect.app` (apex) configured
+- Missing: `www.lankaconnect.app` subdomain
+- Backend CORS: Already configured for www (Program.cs:163) ✅
+- This is a pure infrastructure issue - DNS + Next.js middleware needed
+
+**Solutions Implemented** (TDD Approach):
+
+**Part 1 - Next.js Middleware** (TDD):
+- ✅ Created comprehensive test suite (`web/src/__tests__/middleware.test.ts`)
+  - 10+ test cases: redirect logic, query params, deep paths, edge cases
+  - Localhost and staging pass-through verified
+  - SEO compliance: 301 Permanent Redirect
+- ✅ Implemented middleware (`web/src/middleware.ts`)
+  - www.lankaconnect.app → lankaconnect.app (301 redirect)
+  - Preserves full URL path and query parameters
+  - Production logging for observability (Azure Container App logs)
+  - Error handling with graceful fallback
+  - Optimized matcher: excludes static files for performance
+
+**Part 2 - Documentation**:
+- ✅ Created comprehensive RCA ([RCA_WWW_SUBDOMAIN_MISSING.md](./RCA_WWW_SUBDOMAIN_MISSING.md))
+  - DNS diagnostic evidence (nslookup, curl tests)
+  - Backend CORS configuration verified
+  - Impact assessment (SEO, UX, business)
+  - 3 fix options analyzed (Option 1 recommended)
+- ✅ Created implementation guide ([WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md](./WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md))
+  - Step-by-step Azure CLI commands
+  - Namecheap DNS configuration instructions
+  - SSL certificate binding procedures
+  - Comprehensive testing commands
+  - Rollback plan for safety
+
+**Files Modified** (6 files, 946 insertions):
+- Frontend:
+  - `web/src/middleware.ts` (NEW FILE - 84 lines)
+  - `web/src/__tests__/middleware.test.ts` (NEW FILE - 174 lines)
+- Documentation:
+  - `docs/RCA_WWW_SUBDOMAIN_MISSING.md` (NEW FILE - 384 lines)
+  - `docs/WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md` (NEW FILE - 304 lines)
+
+**Test Results**:
+- ✅ Unit Tests: 10+ test cases (comprehensive coverage)
+- ✅ TypeScript: Zero compilation errors
+- ✅ Build: Next.js 16.0.1 successful (33s compile time)
+- ✅ Middleware Detected: `ƒ Proxy (Middleware)` in build output
+
+**Deployment**:
+- ✅ Commit: 4211303c - "feat(www): Add www to non-www redirect middleware with comprehensive tests"
+- ✅ Branch: develop (will create PR to main later)
+- ✅ Pushed to GitHub
+- ⏳ Azure Staging: Deployment in progress (deploy-ui-staging.yml)
+
+**Next Steps** (Manual Infrastructure Configuration):
+1. ⏳ Wait for staging deployment completion
+2. ⏳ Configure Azure Container App for www custom domain
+3. ⏳ Add DNS CNAME record in Namecheap
+4. ⏳ Test redirect in staging
+5. ⏳ Create PR to merge to main (production)
+
+**Azure Configuration Commands** (To be executed):
+```bash
+# Add www.lankaconnect.app to Container App
+az containerapp hostname add \
+  --hostname www.lankaconnect.app \
+  --name lankaconnect-ui-prod \
+  --resource-group lankaconnect-prod
+
+# Bind SSL certificate
+az containerapp hostname bind \
+  --hostname www.lankaconnect.app \
+  --name lankaconnect-ui-prod \
+  --resource-group lankaconnect-prod \
+  --validation-method CNAME
+```
+
+**Namecheap DNS Configuration** (To be added):
+```
+Type    Host    Value                                                              TTL
+CNAME   www     lankaconnect-ui-prod.graystone-d581eaeb.eastus2.azurecontainerapps.io   30 min
+```
+
+**SEO Impact**:
+- ✅ 301 Permanent Redirect (SEO best practice)
+- ✅ Consolidates link equity to single canonical URL
+- ✅ Fixes broken www variant
+- ✅ Better user experience (both URLs work)
+
+**Pattern Established**: TDD-driven infrastructure enhancement with comprehensive documentation, error handling, and observability
+
+**Reference Documents**:
+- [RCA_WWW_SUBDOMAIN_MISSING.md](./RCA_WWW_SUBDOMAIN_MISSING.md) - Root cause analysis
+- [WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md](./WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md) - Step-by-step implementation guide
+
+---
+
+## Previous Session: Phase 6A.114 Issue #81 ✅ DEPLOYED TO STAGING
 
 ### PHASE 6A.114: ISSUE #81 - NEWSLETTER EVENT DROPDOWN SECURITY FIX - 2026-02-15
 

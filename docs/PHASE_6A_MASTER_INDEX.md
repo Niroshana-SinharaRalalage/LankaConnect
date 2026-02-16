@@ -81,6 +81,10 @@
 | 6A.106 | Newsletter Template Content Placeholder Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-12 |
 | 6A.110 | Signup Forms Response Export (CSV/Excel) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-13 |
 | 6A.111 | Signup Forms UI Improvements (Button Labels & Navigation) | ✅ Complete | [RCA_SIGNUP_FORMS_UI_ISSUES.md](./RCA_SIGNUP_FORMS_UI_ISSUES.md) | 2026-02-13 |
+| 6A.112 | Form Response Email Enhancement | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-14 |
+| 6A.113 | Signup Commitment Reminder Emails | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-14 |
+| 6A.114 | Newsletter Event Dropdown Security Fix (Issue #81) | ✅ Complete | [RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md](./RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md) | 2026-02-15 |
+| 6A.117 | WWW Subdomain Redirect Middleware | 🔧 In Progress | [RCA_WWW_SUBDOMAIN_MISSING.md](./RCA_WWW_SUBDOMAIN_MISSING.md), [WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md](./WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md) | **IN PROGRESS - Staging** |
 
 ---
 

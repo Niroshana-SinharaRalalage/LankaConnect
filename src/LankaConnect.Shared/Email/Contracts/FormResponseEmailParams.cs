@@ -180,6 +180,22 @@ public class FormResponseEmailParams : IEmailParameters
 
     #endregion
 
+    #region Signup Lists Properties (Phase 6A.116 Issue #9)
+
+    /// <summary>
+    /// Whether the event has signup lists (controls {{#HasSignupLists}} conditional).
+    /// Phase 6A.116: Added for signup list button in emails.
+    /// </summary>
+    public bool HasSignupLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to view event signup lists.
+    /// Phase 6A.116: Added for signup list button in emails.
+    /// </summary>
+    public string SignupListsUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Template Type
 
     /// <summary>
@@ -247,6 +263,10 @@ public class FormResponseEmailParams : IEmailParameters
             // Form description params
             { EmailTemplateContract.FormResponse.HasFormDescription, HasFormDescription },
             { EmailTemplateContract.FormResponse.FormDescription, FormDescription },
+
+            // Signup lists params (Phase 6A.116 Issue #9)
+            { EmailTemplateContract.SignupList.HasSignupLists, HasSignupLists },
+            { EmailTemplateContract.SignupList.SignupListsUrl, SignupListsUrl },
 
             // Footer params
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
@@ -353,6 +373,17 @@ public class FormResponseEmailParams : IEmailParameters
     {
         HasResponseDeadline = deadline.HasValue;
         ResponseDeadline = deadline;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL (if event has signup lists).
+    /// Phase 6A.116: Added for signup list button in emails (Issue #9).
+    /// </summary>
+    public FormResponseEmailParams WithSignupListsUrl(string signupListsUrl)
+    {
+        HasSignupLists = !string.IsNullOrWhiteSpace(signupListsUrl);
+        SignupListsUrl = signupListsUrl ?? string.Empty;
         return this;
     }
 

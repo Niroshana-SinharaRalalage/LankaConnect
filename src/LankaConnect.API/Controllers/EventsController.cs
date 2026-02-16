@@ -2283,18 +2283,32 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Update own response (Phase 6A.106-110 Fix: Supports both token and userId auth)
-    /// Anonymous users: Requires access token from query string
+    /// Phase 6A.116 Issue #3: Added X-Access-Token header support for anonymous users
+    /// Anonymous users: Requires access token (query string ?token= OR X-Access-Token header)
     /// Logged-in users: Uses userId from JWT token (no access token needed)
     /// </summary>
     [HttpPut("{id:guid}/forms/{formId:guid}/responses/{responseId:guid}")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateFormResponse(Guid id, Guid formId, Guid responseId, [FromBody] UpdateFormResponseRequest request, [FromQuery] string? token = null)
+    public async Task<IActionResult> UpdateFormResponse(
+        Guid id,
+        Guid formId,
+        Guid responseId,
+        [FromBody] UpdateFormResponseRequest request,
+        [FromQuery] string? token = null,
+        [FromHeader(Name = "X-Access-Token")] string? headerToken = null)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("UpdateFormResponse START: ResponseId={ResponseId}, FormId={FormId}, EventId={EventId}, UserId={UserId}, HasToken={HasToken}, AnswerCount={AnswerCount}",
-            responseId, formId, id, userId, !string.IsNullOrEmpty(token), request?.Answers?.Count ?? 0);
+
+        // Phase 6A.116 Issue #3: Prefer header token over query string token
+        var accessToken = headerToken ?? token;
+
+        Logger.LogInformation(
+            "UpdateFormResponse START: ResponseId={ResponseId}, FormId={FormId}, EventId={EventId}, UserId={UserId}, HasToken={HasToken}, TokenSource={TokenSource}, AnswerCount={AnswerCount}",
+            responseId, formId, id, userId, !string.IsNullOrEmpty(accessToken),
+            headerToken != null ? "Header" : (token != null ? "QueryString" : "None"),
+            request?.Answers?.Count ?? 0);
 
         // Validate request body
         if (request == null || request.Answers == null || request.Answers.Count == 0)
@@ -2311,7 +2325,7 @@ public class EventsController : BaseController<EventsController>
             a.BooleanValue
         )).ToList();
 
-        var command = new UpdateFormResponseCommand(id, formId, responseId, token, userId, answers);
+        var command = new UpdateFormResponseCommand(id, formId, responseId, accessToken, userId, answers);
         var result = await Mediator.Send(command);
 
         Logger.LogInformation("UpdateFormResponse COMPLETE: ResponseId={ResponseId}, Success={Success}",
@@ -2322,7 +2336,8 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Delete/cancel a form response (Phase 6A.106)
-    /// Anonymous users: Requires access token
+    /// Phase 6A.116 Issue #3: Added X-Access-Token header support
+    /// Anonymous users: Requires access token (query string ?token= OR X-Access-Token header)
     /// Logged-in users: Uses userId from auth token
     /// </summary>
     [HttpDelete("{id:guid}/forms/{formId:guid}/responses/{responseId:guid}")]
@@ -2330,12 +2345,24 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeleteFormResponse(Guid id, Guid formId, Guid responseId, [FromQuery] string? token = null)
+    public async Task<IActionResult> DeleteFormResponse(
+        Guid id,
+        Guid formId,
+        Guid responseId,
+        [FromQuery] string? token = null,
+        [FromHeader(Name = "X-Access-Token")] string? headerToken = null)
     {
-        Logger.LogInformation("Deleting response {ResponseId} on form {FormId} for event {EventId}", responseId, formId, id);
-
         var userId = User.GetUserId();  // null if anonymous
-        var command = new DeleteFormResponseCommand(id, formId, responseId, token, userId);
+
+        // Phase 6A.116 Issue #3: Prefer header token over query string token
+        var accessToken = headerToken ?? token;
+
+        Logger.LogInformation(
+            "DeleteFormResponse START: ResponseId={ResponseId}, FormId={FormId}, EventId={EventId}, UserId={UserId}, TokenSource={TokenSource}",
+            responseId, formId, id, userId,
+            headerToken != null ? "Header" : (token != null ? "QueryString" : "None"));
+
+        var command = new DeleteFormResponseCommand(id, formId, responseId, accessToken, userId);
         var result = await Mediator.Send(command);
 
         return result.IsSuccess ? NoContent() : BadRequest(result.Error);
@@ -2376,16 +2403,33 @@ public class EventsController : BaseController<EventsController>
 
     /// <summary>
     /// Get own response by access token (for edit page)
+    /// Phase 6A.116 Issue #3: Supports token from both query string and X-Access-Token header
     /// </summary>
     [HttpGet("{id:guid}/forms/{formId:guid}/responses/mine")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(FormResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetMyFormResponse(Guid id, Guid formId, [FromQuery] string token)
+    public async Task<IActionResult> GetMyFormResponse(
+        Guid id,
+        Guid formId,
+        [FromQuery] string? token = null,
+        [FromHeader(Name = "X-Access-Token")] string? headerToken = null)
     {
-        Logger.LogInformation("Getting own response for form {FormId} by token", formId);
+        // Phase 6A.116 Issue #3: Prefer header token over query string token
+        var accessToken = headerToken ?? token;
 
-        var query = new GetMyFormResponseQuery(formId, token);
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            Logger.LogWarning("GetMyFormResponse FAILED: No access token provided - FormId={FormId}", formId);
+            return BadRequest("Access token is required (via query string ?token= or X-Access-Token header)");
+        }
+
+        Logger.LogInformation(
+            "GetMyFormResponse START: FormId={FormId}, TokenSource={TokenSource}",
+            formId,
+            headerToken != null ? "Header" : "QueryString");
+
+        var query = new GetMyFormResponseQuery(formId, accessToken);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

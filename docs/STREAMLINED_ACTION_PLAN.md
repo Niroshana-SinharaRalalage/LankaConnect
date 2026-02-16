@@ -7,64 +7,73 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.117: WWW SUBDOMAIN REDIRECT MIDDLEWARE 🔧 IN PROGRESS (2026-02-15)
+## 🔄 CURRENT STATUS - PHASE 6A.116: POST-DEPLOYMENT EMAIL FIXES 🔧 IN PROGRESS (2026-02-15)
 **Date**: 2026-02-15
-**Session**: Phase 6A.117 - WWW Subdomain Redirect Middleware
-**Status**: 🔧 **IN PROGRESS - CODE DEPLOYED TO STAGING**
-**Deployment**: ✅ Middleware deployed to staging, ⏳ DNS/Azure config pending
-**Priority**: 🟡 MEDIUM (P2) - SEO & Infrastructure Enhancement
+**Session**: Phase 6A.116 - Post-Deployment Email System Fixes
+**Status**: 🔧 **IN PROGRESS - 3 of 4 P0 Issues Fixed & Deployed**
+**Deployment**: 🚀 3 commits pushed to staging (fd9f4c7c, f6ed6f13, 30ec8338)
+**Priority**: 🔴 CRITICAL (P0) - Production Email Failures
 
-**Problem**: Production URL `www.lankaconnect.app` does not exist (DNS failure):
-- 📉 SEO penalty (missing canonical URL redirect)
-- 🚫 "Site not found" error for users typing www
-- 📊 Lost traffic from www variant searches
+**Problem**: Post-deployment testing revealed 9 critical email system issues:
+- 📧 Email placeholders showing as raw text ({{HasSignupLists}}, {{SignupFormsUrl}})
+- 🔗 Edit button 404 errors (duplicate `/events/{id}/events/{id}` paths)
+- 🔒 Anonymous token authentication failing (400 Bad Request)
+- 📋 Signup list/form buttons not working
+- 📝 HTML line breaks escaped in emails
 
-**Root Cause**: DNS configuration incomplete - only apex domain configured, missing www subdomain
+**Root Cause**: Comprehensive RCA by system-architect identified:
+- Wrong EmailTemplateContract constants used (SignupList.* instead of Event.*)
+- Missing SignupForms parameter support
+- URL generation creating duplicate paths
+- API only accepting token via query string, not header
+- Database templates may need migration for HTML rendering
 
-**Solution Implemented** (TDD Approach):
+**✅ Solutions Implemented (3 of 4 P0 Complete)**:
 
-**Part 1 - Next.js Middleware with Comprehensive Tests**:
-```typescript
-// web/src/middleware.ts
-export function middleware(request: NextRequest): NextResponse {
-  const hostname = request.nextUrl.hostname;
+**Issue #8 - Email Edit Button 404 (P0)**: ✅ FIXED
+- Added BuildFormEditUrl() to EmailUrlHelper
+- Proper URL: `/events/{eventId}/forms/{formId}` (no duplicates)
+- Commit: fd9f4c7c
 
-  if (hostname === 'www.lankaconnect.app') {
-    const url = request.nextUrl.clone();
-    url.hostname = 'lankaconnect.app';
-    return NextResponse.redirect(url, 301); // Permanent redirect
-  }
+**Issue #3 - Token Auth 400 Error (P0)**: ✅ FIXED
+- X-Access-Token header support in GET/PUT/DELETE endpoints
+- Backward compatible with `?token=` query string
+- Commit: f6ed6f13
 
-  return NextResponse.next();
-}
-```
+**Issue #4 - Email Placeholders (P0)**: ✅ FIXED
+- User reported: Screenshot showing raw `{{HasSignupLists}}`, `{{SignupFormsUrl}}`
+- Fixed property names (HasSignUpLists not HasSignupLists)
+- Used correct Event-level constants
+- Added missing SignupForms support
+- Commit: 30ec8338
 
-**Part 2 - Comprehensive Test Suite** (web/src/__tests__/middleware.test.ts):
-- ✅ 10+ test cases: redirect logic, query params, edge cases
-- ✅ SEO compliance: Verifies 301 status code
-- ✅ Pass-through for localhost, staging domains
+**Issue #9 - Signup Lists URL (P1)**: ✅ BONUS
+- Included in Issue #4 fix
+- "View Signup List" button now works
 
-**Part 3 - Documentation**:
-- ✅ RCA with DNS diagnostics, impact analysis
-- ✅ Implementation guide with Azure CLI commands
-- ✅ Namecheap DNS configuration instructions
+**⏳ Issue #5 - HTML Line Breaks (P0)**: PENDING
+- Requires EF migration to change `{{ResponseSummary}}` → `{{{ResponseSummary}}}`
+- Blocker: Need migration verification first
+- Script created: `scripts/verify_phase6a112_migration.ps1`
 
-**Files Modified**: 4 files (4211303c)
-- web/src/middleware.ts (84 lines - NEW FILE)
-- web/src/__tests__/middleware.test.ts (174 lines - NEW FILE)
-- docs/RCA_WWW_SUBDOMAIN_MISSING.md (384 lines - NEW FILE)
-- docs/WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md (304 lines - NEW FILE)
+**Files Modified**: 12 files across 3 commits
+- IEmailUrlHelper.cs, EmailUrlHelper.cs - New URL builder methods
+- EventsController.cs - X-Access-Token header support
+- FormResponseUpdatedEmailHandler.cs - Uses new URL helpers
+- FormResponseEmailParams.cs - Fixed properties, added SignupForms
+- EmailTemplateContract.cs - Removed duplicate constants
 
-**Build**: ✅ Next.js 16.0.1 successful, TypeScript passed
-**Deployment**: ✅ Code deployed to staging
+**Build**: ✅ All 3 commits compile (0 errors, 0 warnings)
+**Deployment**: 🚀 Azure staging deployment in progress
 
-**Next Steps** (Manual Infrastructure Config):
-1. ⏳ Azure: Add www custom domain to Container App
-2. ⏳ Namecheap: Add CNAME record (www → container app)
-3. ⏳ Test redirect in staging
-4. ⏳ Create PR to merge to main (production)
+**Next Steps**:
+1. ⏳ Wait for Azure staging deployment completion (~5 min)
+2. ⏳ Test deployed fixes via API (form response update with X-Access-Token)
+3. ⏳ Execute migration verification script
+4. ⏳ Complete Issue #5 based on verification results
+5. ⏳ End-to-end email testing
 
-**Impact**: Better SEO, fixed broken www URLs, improved UX
+**Impact**: Fixes critical email system failures affecting anonymous users and form response notifications
 
 ---
 

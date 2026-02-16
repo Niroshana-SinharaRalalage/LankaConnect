@@ -157,7 +157,89 @@ public class EmailUrlHelper : IEmailUrlHelper
         return $"{frontendBaseUrl}{passwordResetPath}?token={Uri.EscapeDataString(token)}";
     }
 
-    private string GetFrontendBaseUrl()
+    /// <summary>
+    /// Builds the form edit URL for editing a form response.
+    /// Phase 6A.116: Added to fix email edit button 404 error (Issue #8).
+    /// Fixes duplicate /events/{id}/events/{id} path bug.
+    /// </summary>
+    public string BuildFormEditUrl(Guid eventId, Guid formId, string? accessToken = null)
+    {
+        if (eventId == Guid.Empty)
+        {
+            throw new ArgumentException("Event ID cannot be empty.", nameof(eventId));
+        }
+
+        if (formId == Guid.Empty)
+        {
+            throw new ArgumentException("Form ID cannot be empty.", nameof(formId));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var formEditPath = _configuration["ApplicationUrls:FormEditPath"] ?? "/events/{eventId}/forms/{formId}";
+
+        // Replace placeholders
+        var path = formEditPath
+            .Replace("{eventId}", eventId.ToString())
+            .Replace("{formId}", formId.ToString());
+
+        var url = $"{frontendBaseUrl}{path}";
+
+        // Add access token for anonymous users
+        if (!string.IsNullOrWhiteSpace(accessToken))
+        {
+            url = $"{url}?token={Uri.EscapeDataString(accessToken)}";
+        }
+
+        return url;
+    }
+
+    /// <summary>
+    /// Builds the signup lists URL for viewing event signup lists.
+    /// Phase 6A.116: Added for signup list button in emails (Issue #9).
+    /// </summary>
+    public string BuildSignupListsUrl(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+        {
+            throw new ArgumentException("Event ID cannot be empty.", nameof(eventId));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var eventDetailsPath = _configuration["ApplicationUrls:EventDetailsPath"] ?? "/events/{eventId}";
+
+        // Replace the {eventId} placeholder
+        var path = eventDetailsPath.Replace("{eventId}", eventId.ToString());
+
+        // Add anchor to signup lists section
+        return $"{frontendBaseUrl}{path}#signup-lists";
+    }
+
+    /// <summary>
+    /// Builds the signup forms URL for viewing event signup forms.
+    /// Phase 6A.116: Added for signup forms button in emails (Issue #4).
+    /// </summary>
+    public string BuildSignupFormsUrl(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+        {
+            throw new ArgumentException("Event ID cannot be empty.", nameof(eventId));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var eventDetailsPath = _configuration["ApplicationUrls:EventDetailsPath"] ?? "/events/{eventId}";
+
+        // Replace the {eventId} placeholder
+        var path = eventDetailsPath.Replace("{eventId}", eventId.ToString());
+
+        // Add anchor to signup forms section (matches frontend tab ID)
+        return $"{frontendBaseUrl}{path}#signup-forms";
+    }
+
+    /// <summary>
+    /// Gets the frontend base URL.
+    /// Phase 6A.116: Made public to support direct URL construction.
+    /// </summary>
+    public string GetFrontendBaseUrl()
     {
         var url = _configuration["ApplicationUrls:FrontendBaseUrl"];
 

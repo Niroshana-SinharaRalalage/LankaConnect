@@ -335,6 +335,28 @@ try
 
     app.UseHttpsRedirection();
 
+    // Phase 6A.116: Prevent Azure Container Apps ingress from caching mutation responses
+    // Root cause: Ingress was caching POST/PUT/DELETE responses, causing requests to never reach application
+    app.Use(async (context, next) =>
+    {
+        // For non-GET requests, add no-cache headers to response
+        if (context.Request.Method != HttpMethod.Get.Method)
+        {
+            context.Response.OnStarting(() =>
+            {
+                if (!context.Response.Headers.ContainsKey("Cache-Control"))
+                {
+                    context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+                    context.Response.Headers["Pragma"] = "no-cache";
+                    context.Response.Headers["Expires"] = "0";
+                }
+                return Task.CompletedTask;
+            });
+        }
+
+        await next();
+    });
+
     // Add correlation ID middleware
     app.Use(async (context, next) =>
     {

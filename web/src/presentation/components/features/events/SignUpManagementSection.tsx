@@ -48,7 +48,8 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronRight, AlertCircle, Lightbulb } from 'lucide-react';
+import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
@@ -87,6 +88,22 @@ export function SignUpManagementSection({
 
   // Tab state for multiple sign-up lists
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+
+  // Phase 6A.118: Track expanded/collapsed state for signup items (default: collapsed)
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  // Phase 6A.118: Toggle function for expand/collapse
+  const toggleItemExpanded = (itemId: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
   // GitHub Issue #31: Unified cancel dialog state (replaces ugly browser confirm())
   type CancelDialogType = 'commitment' | 'signUpItem' | 'openItem';
@@ -620,58 +637,68 @@ export function SignUpManagementSection({
               {/* CATEGORY-BASED SIGN-UPS (NEW) */}
               {isCategoryBased ? (
                 <div className="space-y-6">
-                  {/* Group items by category - Phase 6A.28: Preferred is DEPRECATED and hidden from UI */}
-                  {[SignUpItemCategory.Mandatory, SignUpItemCategory.Suggested].map((category, index) => {
-                    // For predefined categories, filter out Open items
-                    // Phase 6A.28: Also skip Preferred items - they are deprecated
-                    const categoryItems = signUpList.items.filter(item =>
-                      item.itemCategory === category &&
-                      !item.isOpenItem &&
-                      item.itemCategory !== SignUpItemCategory.Preferred
+                  {/* Phase 6A.119: Tab-based Category Navigation */}
+                  {(() => {
+                    // Filter items by category
+                    const mandatoryItems = signUpList.items.filter(
+                      item => item.itemCategory === SignUpItemCategory.Mandatory && !item.isOpenItem
                     );
-
-                    if (categoryItems.length === 0) return null;
-
-                    // Check if there are items in previous categories (for separator)
-                    const hasPreviousCategoryItems = index > 0 && signUpList.items.some(item =>
-                      item.itemCategory === SignUpItemCategory.Mandatory &&
-                      !item.isOpenItem
+                    const suggestedItems = signUpList.items.filter(
+                      item => item.itemCategory === SignUpItemCategory.Suggested && !item.isOpenItem
                     );
+                    const openItems = signUpList.items.filter(item => item.isOpenItem);
 
-                    return (
-                      <div key={category} className={`space-y-3 ${hasPreviousCategoryItems ? 'border-t pt-4 mt-4' : ''}`}>
-                        <h4 className="font-semibold flex items-center gap-2">
-                          <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(category)}`}>
-                            {getCategoryLabel(category)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            ({categoryItems.length})
-                          </span>
-                        </h4>
-
-                        <div className="space-y-3">
-                          {categoryItems.map((item) => {
+                    // Helper function to render items for a category
+                    const renderCategoryItems = (items: SignUpItemDto[], category: SignUpItemCategory) => (
+                      <div className="space-y-3">
+                        {items.map((item) => {
                             const userItemCommitment = item.commitments.find(c => c.userId === userId);
                             const remainingQty = item.remainingQuantity;
                             const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
+                            const isExpanded = expandedItems.has(item.id);
 
                             return (
                               <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
-                                <div className="flex justify-between items-start">
+                                {/* Phase 6A.118: Item Header - Always Visible */}
+                                <div className="flex items-start gap-2">
+                                  {/* Phase 6A.118: Expand/Collapse Button */}
+                                  <button
+                                    onClick={() => toggleItemExpanded(item.id)}
+                                    aria-label={isExpanded ? 'Collapse item details' : 'Expand item details'}
+                                    aria-expanded={isExpanded}
+                                    className="flex-shrink-0 mt-1 hover:bg-gray-100 rounded p-1 transition-colors"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4" style={{ color: '#FF7900' }} />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4" style={{ color: '#FF7900' }} />
+                                    )}
+                                  </button>
+
                                   <div className="flex-1">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Required: {item.quantity}
+                                        Suggested Quantity: {item.quantity}
                                       </span>
                                     </div>
                                     {item.notes && (
                                       <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
                                     )}
+                                    {/* Phase 6A.118: Show commitment status in collapsed view */}
+                                    <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                                      <span>{item.committedQuantity} of {item.quantity} filled</span>
+                                      <span className={remainingQty === 0 ? 'text-green-600 font-medium' : ''}>
+                                        {remainingQty} remaining
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Progress bar with counts */}
+                                {/* Phase 6A.118: Details - Conditionally Visible (Collapsible) */}
+                                {isExpanded && (
+                                  <>
+                                    {/* Progress bar with counts */}
                                 <div className="space-y-1">
                                   <div className="w-full bg-gray-200 rounded-full h-2">
                                     <div
@@ -748,41 +775,96 @@ export function SignUpManagementSection({
                                   </div>
                                 )}
 
-                                {/* All slots filled message */}
-                                {remainingQty === 0 && (
-                                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
-                                    <p className="text-sm font-medium text-green-800">
-                                      ✓ All {item.quantity} slots filled - Thank you everyone!
-                                    </p>
-                                  </div>
+                                    {/* All slots filled message */}
+                                    {remainingQty === 0 && (
+                                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                        <p className="text-sm font-medium text-green-800">
+                                          ✓ All {item.quantity} slots filled - Thank you everyone!
+                                        </p>
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             );
                           })}
-                        </div>
                       </div>
                     );
-                  })}
 
-                  {/* Phase 6A.27: Open Items Section */}
-                  {signUpList.hasOpenItems && (
-                    <div className="space-y-3 border-t pt-4 mt-4">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
-                          {getCategoryLabel(SignUpItemCategory.Open)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          (Bring your own item)
-                        </span>
-                      </h4>
+                    // Build tabs array (only non-empty categories)
+                    const categoryTabs: Tab[] = [];
 
-                      <p className="text-sm text-muted-foreground">
-                        You can add your own item to bring to this sign-up list.
-                      </p>
+                    if (mandatoryItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'mandatory',
+                        label: `Mandatory Items (${mandatoryItems.length})`,
+                        icon: AlertCircle,
+                        content: renderCategoryItems(mandatoryItems, SignUpItemCategory.Mandatory)
+                      });
+                    }
+
+                    if (suggestedItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'suggested',
+                        label: `Suggested Items (${suggestedItems.length})`,
+                        icon: Lightbulb,
+                        content: renderCategoryItems(suggestedItems, SignUpItemCategory.Suggested)
+                      });
+                    }
+
+                    // Phase 6A.27: Open Items as Tab
+                    if (signUpList.hasOpenItems && openItems.length > 0) {
+                      categoryTabs.push({
+                        id: 'open',
+                        label: `Open Items (${openItems.length})`,
+                        icon: Plus,
+                        // Phase 6A.120: Custom purple styling for Open Items tab
+                        className: 'open-items-tab',
+                        style: {
+                          borderColor: '#9333EA',
+                        },
+                        content: (
+                    <div className="space-y-3">
+                      {/* Phase 6A.120: Header with Sign Up button in top right */}
+                      <div className="flex justify-between items-start gap-4 border-b pb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold flex items-center gap-2 mb-2">
+                            <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
+                              {getCategoryLabel(SignUpItemCategory.Open)}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              (Bring your own item)
+                            </span>
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            You can add your own item to bring to this sign-up list.
+                          </p>
+                        </div>
+
+                        {/* Phase 6A.120: Sign Up button moved to top right */}
+                        {/* Phase 6A.44: Allow anonymous sign-ups for Open Items */}
+                        {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                        {!isOrganizer && (
+                          <Button
+                            onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
+                            size="sm"
+                            variant="default"
+                            className="flex-shrink-0"
+                            style={{
+                              background: 'linear-gradient(135deg, #8B2252 0%, #9B4B6F 100%)',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Sign Up
+                          </Button>
+                        )}
+                      </div>
 
                       {/* Display existing Open items */}
                       {openItems.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-3 mt-4">
                           {openItems.map((item) => {
                             const isOwnItem = item.createdByUserId === userId;
                             const commitment = item.commitments?.[0];
@@ -840,24 +922,27 @@ export function SignUpManagementSection({
                           })}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground italic">
+                        <p className="text-sm text-muted-foreground italic mt-4">
                           No one has signed up with their own item yet. Be the first!
                         </p>
                       )}
-
-                      {/* Sign Up button for all users (Phase 6A.44: Allow anonymous sign-ups for Open Items) */}
-                      {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
-                      {!isOrganizer && (
-                        <Button
-                          onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Sign Up
-                        </Button>
-                      )}
                     </div>
-                  )}
+                        )
+                      });
+                    }
+
+                    // Return TabPanel if there are tabs, otherwise show empty state
+                    if (categoryTabs.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No items in this signup list yet
+                        </div>
+                      );
+                    }
+
+                    // Phase 6A.118 Fix: Remove defaultTab to prevent tab reset on state changes
+                    return <TabPanel tabs={categoryTabs} />;
+                  })()}
                 </div>
               ) : (
                 /* LEGACY OPEN/PREDEFINED SIGN-UPS */

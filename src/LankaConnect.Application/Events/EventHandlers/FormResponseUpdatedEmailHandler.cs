@@ -101,8 +101,14 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                 // Build response summary
                 var responseSummary = BuildResponseSummary(response.Answers, form.Questions, maxQuestions: 5, maxAnswerLength: 100);
 
-                // Build edit URL (no token available in update event - user must use original email or be logged in)
-                var editUrl = $"{_emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id).Replace("/details", "")}/events/{response.EventId}/forms/{domainEvent.FormId}";
+                // Phase 6A.116 Issue #8: Build edit URL with proper path (fixes 404 error)
+                // Note: No token available for update emails (plaintext token is only returned on initial submission)
+                // User must use token from original confirmation email or be logged in to edit
+                var editUrl = _emailUrlHelper.BuildFormEditUrl(eventEntity.Id, domainEvent.FormId, accessToken: null);
+
+                _logger.LogInformation(
+                    "FormResponseUpdatedEmail: Generated edit URL: {EditUrl}, EventId: {EventId}, FormId: {FormId}",
+                    editUrl, eventEntity.Id, domainEvent.FormId);
 
                 // Create email parameters
                 var emailParams = FormResponseEmailParams.CreateUpdate(
@@ -146,6 +152,26 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                         eventEntity.OrganizerContactEmail,
                         eventEntity.OrganizerContactPhone);
                 }
+
+                // Phase 6A.116 Issue #4, #9: Add signup lists & forms URLs
+                if (eventEntity.SignUpLists?.Any() == true)
+                {
+                    var signupListsUrl = _emailUrlHelper.BuildSignupListsUrl(eventEntity.Id);
+                    emailParams.WithSignupListsUrl(signupListsUrl);
+
+                    _logger.LogInformation(
+                        "FormResponseUpdatedEmail: Added signup lists URL: {SignupListsUrl}",
+                        signupListsUrl);
+                }
+
+                // Phase 6A.116 Issue #4: Always add signup forms URL since we're in a form response context
+                // The event definitely has forms if we're sending a form response email
+                var signupFormsUrl = _emailUrlHelper.BuildSignupFormsUrl(eventEntity.Id);
+                emailParams.WithSignupFormsUrl(signupFormsUrl);
+
+                _logger.LogInformation(
+                    "FormResponseUpdatedEmail: Added signup forms URL: {SignupFormsUrl}",
+                    signupFormsUrl);
 
                 // Send email (fail-silent)
                 var emailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);

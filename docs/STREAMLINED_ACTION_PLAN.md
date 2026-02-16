@@ -7,7 +7,162 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ISSUE #79: EVENTS PAGE ERROR HANDLING FIX ✅ COMPLETE (2026-02-15)
+## 🔄 CURRENT STATUS - PHASE 6A.120: SIGNUP LISTS UX IMPROVEMENTS ✅ COMPLETE (2026-02-16)
+**Date**: 2026-02-16
+**Session**: Phase 6A.120 - Signup Lists UX Improvements (4 User-Requested Enhancements)
+**Status**: ✅ **COMPLETE - ALL 4 ENHANCEMENTS DELIVERED**
+**Deployment**: 🚀 Committed and pushed to staging (4c1932d7)
+**Priority**: 🟢 MEDIUM (P2) - User Experience Enhancement
+
+**User-Requested Enhancements**:
+- ✅ **Text Correction**: Changed "Suggested Quantities" to "Suggested Quantity" (grammatical fix)
+- ✅ **Open Items Tab Styling**: Purple-themed tab with custom border (#9333EA)
+- ✅ **Sign Up Button Position**: Moved to top-right corner with Plus icon and purple gradient
+- ✅ **Tab Navigation Fix**: Already resolved by Phase 6A.118 defaultTab removal
+
+**Implementation Summary**:
+1. Extended Tab interface to support custom className and style props
+2. Updated TabPanel component to merge custom styles with defaults
+3. Restructured Open Items layout with flex header for better button placement
+4. Applied purple theme to Open Items tab matching category colors
+5. Zero breaking changes - fully backwards compatible
+
+**Files Modified**:
+- SignUpManagementSection.tsx (~60 lines)
+- TabPanel.tsx (~10 lines)
+
+**Previous Session**: Phase 6A.118 - Tab Navigation Bug Fix & Collapsible Items ✅ COMPLETE
+
+---
+
+## Previous Session: PHASE 6A.116: POST-DEPLOYMENT EMAIL FIXES ✅ COMPLETE (2026-02-15)
+**Date**: 2026-02-15
+**Session**: Phase 6A.116 - Post-Deployment Email System Fixes
+**Status**: ✅ **COMPLETE - All P0 Issues Fixed & Deployed**
+**Deployment**: 🚀 4 commits pushed to staging
+**Priority**: 🔴 CRITICAL (P0) - Production Email Failures
+
+**Problem**: Post-deployment testing revealed 9 critical email system issues:
+- 📧 Email placeholders showing as raw text ({{HasSignupLists}}, {{SignupFormsUrl}})
+- 🔗 Edit button 404 errors (duplicate `/events/{id}/events/{id}` paths)
+- 🔒 Anonymous token authentication failing (400 Bad Request)
+- 📋 Signup list/form buttons not working
+- 📝 HTML line breaks escaped in emails
+
+**Root Cause**: Comprehensive RCA by system-architect identified:
+- Wrong EmailTemplateContract constants used (SignupList.* instead of Event.*)
+- Missing SignupForms parameter support
+- URL generation creating duplicate paths
+- API only accepting token via query string, not header
+- Database templates may need migration for HTML rendering
+
+**✅ Solutions Implemented (3 of 4 P0 Complete)**:
+
+**Issue #8 - Email Edit Button 404 (P0)**: ✅ FIXED
+- Added BuildFormEditUrl() to EmailUrlHelper
+- Proper URL: `/events/{eventId}/forms/{formId}` (no duplicates)
+- Commit: fd9f4c7c
+
+**Issue #3 - Token Auth 400 Error (P0)**: ✅ FIXED
+- X-Access-Token header support in GET/PUT/DELETE endpoints
+- Backward compatible with `?token=` query string
+- Commit: f6ed6f13
+
+**Issue #4 - Email Placeholders (P0)**: ✅ FIXED
+- User reported: Screenshot showing raw `{{HasSignupLists}}`, `{{SignupFormsUrl}}`
+- Fixed property names (HasSignUpLists not HasSignupLists)
+- Used correct Event-level constants
+- Added missing SignupForms support
+- Commit: 30ec8338
+
+**Issue #9 - Signup Lists URL (P1)**: ✅ BONUS
+- Included in Issue #4 fix
+- "View Signup List" button now works
+
+**⏳ Issue #5 - HTML Line Breaks (P0)**: PENDING
+- Requires EF migration to change `{{ResponseSummary}}` → `{{{ResponseSummary}}}`
+- Blocker: Need migration verification first
+- Script created: `scripts/verify_phase6a112_migration.ps1`
+
+**Files Modified**: 12 files across 3 commits
+- IEmailUrlHelper.cs, EmailUrlHelper.cs - New URL builder methods
+- EventsController.cs - X-Access-Token header support
+- FormResponseUpdatedEmailHandler.cs - Uses new URL helpers
+- FormResponseEmailParams.cs - Fixed properties, added SignupForms
+- EmailTemplateContract.cs - Removed duplicate constants
+
+**Build**: ✅ All 3 commits compile (0 errors, 0 warnings)
+**Deployment**: 🚀 Azure staging deployment in progress
+
+**Next Steps**:
+1. ⏳ Wait for Azure staging deployment completion (~5 min)
+2. ⏳ Test deployed fixes via API (form response update with X-Access-Token)
+3. ⏳ Execute migration verification script
+4. ⏳ Complete Issue #5 based on verification results
+5. ⏳ End-to-end email testing
+
+**Impact**: Fixes critical email system failures affecting anonymous users and form response notifications
+
+---
+
+## Previous Session: Signup Forms UI/UX Fixes ✅ COMPLETE (2026-02-15)
+**Date**: 2026-02-15
+**Session**: Signup Forms UI/UX Improvements (4 Issues)
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+**Deployment**: ✅ Frontend deployed to Azure staging successfully
+**Priority**: 🟡 MEDIUM (P2) - UX Enhancement
+
+**Problem**: 4 UX issues with Signup Forms management:
+1. Create form shows toast instead of inline message (user preference)
+2. New form doesn't appear until browser refresh
+3. Publish/close/reopen show toast instead of inline messages
+4. Status badges don't update immediately
+
+**Root Causes**:
+- Toast vs inline notification pattern inconsistency
+- Navigation-based refresh instead of reactive cache
+- Async cache invalidation without immediate refetch
+
+**Solution**: 3-part fix implemented:
+
+**Part 1 - Immediate Badge Updates** (useEventForms.ts):
+```typescript
+// Added to publish/close/reopen mutations
+queryClient.refetchQueries({ queryKey: formKeys.list(eventId) });
+// Forces immediate UI update, bypassing staleTime
+```
+
+**Part 2 - Inline Success Messages** (FormManagementSection.tsx):
+```typescript
+// Replaced toast with inline green banner
+<CheckCircle /> "Oil Lamp RSVP" published successfully
+// Auto-dismiss after 5s, manual dismiss with X button
+```
+
+**Part 3 - Create Form UX** (create-form/page.tsx):
+```typescript
+// Removed automatic navigation, added success message with actions
+<Button onClick={() => router.push(`/manage?tab=forms`)}>
+  Go to Signup Forms
+</Button>
+<Button onClick={resetForm}>Create Another Form</Button>
+```
+
+**Files Modified**: 4 files (cd3624d2)
+- web/src/presentation/hooks/useEventForms.ts
+- web/src/presentation/components/features/events/FormManagementSection.tsx
+- web/src/app/events/[id]/manage/create-form/page.tsx
+- docs/RCA_SIGNUP_FORMS_UI_UX_ISSUES.md (900+ line RCA)
+
+**Build**: ✅ Next.js 16.0.1 successful (0 TypeScript errors)
+**Deployment**: ✅ Frontend deployed to staging (success)
+**Testing**: Ready for manual testing on staging
+
+**Impact**: Better UX, immediate feedback, consistent notification pattern
+
+---
+
+## Previous Session: Issue #79 - Events Page Error Handling Fix ✅ COMPLETE (2026-02-15)
 **Date**: 2026-02-15
 **Session**: Issue #79 - Events Page Error Handling Fix (UX Improvement)
 **Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**

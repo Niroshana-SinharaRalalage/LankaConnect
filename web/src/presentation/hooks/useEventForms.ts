@@ -386,6 +386,8 @@ export function usePublishEventForm(
     onSuccess: (_, { eventId, formId }) => {
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
       queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+      // Force immediate refetch to update UI status badge without waiting for staleTime
+      queryClient.refetchQueries({ queryKey: formKeys.list(eventId) });
     },
     ...options,
   });
@@ -414,6 +416,8 @@ export function useCloseEventForm(
     onSuccess: (_, { eventId, formId }) => {
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
       queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+      // Force immediate refetch to update UI status badge without waiting for staleTime
+      queryClient.refetchQueries({ queryKey: formKeys.list(eventId) });
     },
     ...options,
   });
@@ -442,6 +446,8 @@ export function useReopenEventForm(
     onSuccess: (_, { eventId, formId }) => {
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
       queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+      // Force immediate refetch to update UI status badge without waiting for staleTime
+      queryClient.refetchQueries({ queryKey: formKeys.list(eventId) });
     },
     ...options,
   });

@@ -18,7 +18,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, CheckCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   DndContext,
@@ -85,12 +85,16 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
 
   // UI state
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [createdFormTitle, setCreatedFormTitle] = useState('');
 
   // Create form mutation
   const createFormMutation = useCreateEventForm({
-    onSuccess: () => {
-      toast.success('Form created successfully');
-      router.push(`/events/${eventId}/manage?tab=forms`);
+    onSuccess: (formId, { request }) => {
+      setCreatedFormTitle(request.title);
+      setShowSuccessMessage(true);
+      setSubmitError(null);
+      // Don't navigate - let user choose next action
     },
     onError: (error) => {
       setSubmitError(error.message || 'Failed to create form');
@@ -286,6 +290,44 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-900">
+                Form created successfully
+              </p>
+              <p className="text-sm text-green-700 mt-1">
+                "{createdFormTitle}" has been created as a draft. You can now add more forms or go to manage page to publish it.
+              </p>
+              <div className="mt-3 flex gap-3">
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/events/${eventId}/manage?tab=forms`)}
+                >
+                  Go to Signup Forms
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowSuccessMessage(false);
+                    setTitle('');
+                    setDescription('');
+                    setAllowMultipleResponses(false);
+                    setResponseDeadline('');
+                    setMaxResponses('');
+                    setQuestions([]);
+                  }}
+                >
+                  Create Another Form
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error Display */}
         {submitError && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">

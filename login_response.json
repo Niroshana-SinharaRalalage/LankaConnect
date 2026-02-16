@@ -1,1 +1,1 @@
-{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.1","title":"One or more validation errors occurred.","status":400,"errors":{"request":["The request field is required."],"$.password":["'!' is an invalid escapable character within a JSON string. The string should be correctly escaped. Path: $.password | LineNumber: 0 | BytePositionInLine: 45."]},"traceId":"00-f782daa343af6cdb9225e4139b097cf9-9009c41222bbe9d2-00"}
+{"error":"Invalid email or password"}

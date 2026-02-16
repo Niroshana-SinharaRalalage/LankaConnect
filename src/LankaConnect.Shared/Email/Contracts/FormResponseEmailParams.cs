@@ -180,6 +180,35 @@ public class FormResponseEmailParams : IEmailParameters
 
     #endregion
 
+    #region Signup Lists & Forms Properties (Phase 6A.116 Issue #4, #9)
+
+    /// <summary>
+    /// Whether the event has signup lists (controls {{#HasSignUpLists}} conditional).
+    /// Phase 6A.116: Fixed to use Event-level parameter name (Issue #4).
+    /// </summary>
+    public bool HasSignUpLists { get; set; } = false;
+
+    /// <summary>
+    /// URL to view event signup lists.
+    /// Phase 6A.116: Fixed to use Event-level parameter name (Issue #4).
+    /// Templates use singular form: {{SignupListUrl}}
+    /// </summary>
+    public string SignupListUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has signup forms (controls {{#HasSignupForms}} conditional).
+    /// Phase 6A.116: Added to fix missing placeholder (Issue #4).
+    /// </summary>
+    public bool HasSignupForms { get; set; } = false;
+
+    /// <summary>
+    /// URL to view event signup forms.
+    /// Phase 6A.116: Added to fix missing placeholder (Issue #4).
+    /// </summary>
+    public string SignupFormsUrl { get; set; } = string.Empty;
+
+    #endregion
+
     #region Template Type
 
     /// <summary>
@@ -247,6 +276,13 @@ public class FormResponseEmailParams : IEmailParameters
             // Form description params
             { EmailTemplateContract.FormResponse.HasFormDescription, HasFormDescription },
             { EmailTemplateContract.FormResponse.FormDescription, FormDescription },
+
+            // Signup lists & forms params (Phase 6A.116 Issue #4, #9)
+            // CRITICAL: Use Event-level constants, not SignupList-level constants!
+            { EmailTemplateContract.Event.HasSignUpLists, HasSignUpLists },
+            { EmailTemplateContract.Event.SignupListUrl, SignupListUrl },
+            { EmailTemplateContract.Event.HasSignupForms, HasSignupForms },
+            { EmailTemplateContract.Event.SignupFormsUrl, SignupFormsUrl },
 
             // Footer params
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
@@ -353,6 +389,28 @@ public class FormResponseEmailParams : IEmailParameters
     {
         HasResponseDeadline = deadline.HasValue;
         ResponseDeadline = deadline;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup lists URL (if event has signup lists).
+    /// Phase 6A.116: Fixed property names to match Event-level constants (Issue #4).
+    /// </summary>
+    public FormResponseEmailParams WithSignupListsUrl(string signupListsUrl)
+    {
+        HasSignUpLists = !string.IsNullOrWhiteSpace(signupListsUrl);
+        SignupListUrl = signupListsUrl ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets signup forms URL (if event has signup forms).
+    /// Phase 6A.116: Added to fix missing placeholder (Issue #4).
+    /// </summary>
+    public FormResponseEmailParams WithSignupFormsUrl(string signupFormsUrl)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(signupFormsUrl);
+        SignupFormsUrl = signupFormsUrl ?? string.Empty;
         return this;
     }
 

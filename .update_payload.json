@@ -1,0 +1,26 @@
+{
+  "answers": [
+    {
+      "questionId": "71a387c9-74b6-449a-9cbc-15f2022f0545",
+      "textValue": "Everyone1"
+    },
+    {
+      "questionId": "9fefdd36-9963-40f2-9568-452be2163845",
+      "textValue": "8609780124"
+    },
+    {
+      "questionId": "cc58eb24-084b-4a19-8b71-e08750a50a9c",
+      "selectedOptionIds": [
+        "7648bc5d-3fa8-486a-b509-d050f22c5b3b"
+      ]
+    },
+    {
+      "questionId": "858d2270-e2ed-45e6-ab38-24e50997cc1d",
+      "textValue": "Niroshana Ralalage1"
+    },
+    {
+      "questionId": "8e099d60-7d70-4697-ad1c-f05cbecc6ee2",
+      "textValue": "niroshhh@gmail.com"
+    }
+  ]
+}

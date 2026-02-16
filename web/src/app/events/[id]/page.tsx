@@ -646,11 +646,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <Card className="overflow-hidden">
           {/* Event Image */}
           {event.images && event.images.length > 0 && (
-            <div className="relative w-full max-h-96 bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center overflow-hidden">
+            <div className="relative h-96 bg-gradient-to-br from-orange-500 to-rose-500">
               <img
                 src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
                 alt={event.title}
-                className="w-full h-auto max-h-96 object-contain"
+                className="w-full h-full object-cover"
               />
               <div className="absolute top-4 right-4">
                 <Badge

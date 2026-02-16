@@ -1,9 +1,45 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-16 - Event Description Line Breaks Fix ✅ COMPLETE*
+*Last Updated: 2026-02-16 - Tab Navigation Bug Fix ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Event Description Line Breaks Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.118 Tab Navigation Bug Fix ✅ COMPLETE
+
+### BUG FIX: SIGNUP LISTS TAB NAVIGATION - 2026-02-16
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+
+**Priority**: 🟢 **HIGH (P1) - User Experience Bug**
+
+**Problem**: When expanding items in the Suggested Items or Open Items tabs, the view would incorrectly navigate back to the Mandatory Items tab, forcing users to manually switch tabs again to see the expanded item.
+
+**Root Cause Analysis**:
+- Location: `SignUpManagementSection.tsx` line 926
+- Issue: The IIFE (Immediately Invoked Function Expression) recreated the `categoryTabs` array on every render
+- When user clicked chevron to expand: `toggleItemExpanded()` → `expandedItems` state changed → component re-rendered → IIFE ran again
+- The `defaultTab={categoryTabs[0].id}` prop always passed the first tab's ID (Mandatory)
+- TabPanel's `useEffect` detected prop change and reset to first tab
+
+**Solution Implemented**:
+- Removed `defaultTab` prop from TabPanel (line 926)
+- TabPanel now uses its own internal state management
+- Initializes to first tab on mount, maintains state independently
+- State changes in parent component no longer trigger tab resets
+
+**Files Modified**:
+1. `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (1 line changed)
+
+**Commits**:
+- `1fd249b9` - fix(ui): Phase 6A.118 - Fix tab navigation bug when expanding items
+
+**Impact**:
+- ✅ Users can now expand/collapse items in any tab without losing their position
+- ✅ Zero breaking changes to existing functionality
+- ✅ Improved UX for signup lists with multiple categories
+
+---
+
+## Event Description Line Breaks Fix ✅ COMPLETE
 
 ### USER-REPORTED BUG FIX: EVENT DESCRIPTION LINE BREAKS REMOVED - 2026-02-16
 

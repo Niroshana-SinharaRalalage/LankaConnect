@@ -84,7 +84,13 @@
 | 6A.112 | Form Response Email Enhancement | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-14 |
 | 6A.113 | Signup Commitment Reminder Emails | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-14 |
 | 6A.114 | Newsletter Event Dropdown Security Fix (Issue #81) | ✅ Complete | [RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md](./RCA_ISSUE_81_NEWSLETTER_EVENT_DROPDOWN_SHOWS_ALL_EVENTS.md) | 2026-02-15 |
+| 6A.115 | Post-Deployment Email Fixes (Part 1) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-15 |
+| 6A.116 | Post-Deployment Email Fixes (Part 2) | ✅ Complete | [RCA_PHASE_6A116_ISSUES_10_11_12.md](./RCA_PHASE_6A116_ISSUES_10_11_12.md) | 2026-02-15 |
 | 6A.117 | WWW Subdomain Redirect Middleware | 🔧 In Progress | [RCA_WWW_SUBDOMAIN_MISSING.md](./RCA_WWW_SUBDOMAIN_MISSING.md), [WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md](./WWW_SUBDOMAIN_IMPLEMENTATION_GUIDE.md) | **IN PROGRESS - Staging** |
+| 6A.118 | Tab Navigation Bug Fix & Collapsible Items | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
+| 6A.119 | Signup Items Optional Quantity Fix | ✅ Complete | [RCA_OPTIONAL_QUANTITY_SIGNUP_ITEMS.md](./RCA_OPTIONAL_QUANTITY_SIGNUP_ITEMS.md) | 2026-02-16 |
+| 6A.120 | Signup Lists UX Improvements | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
+| 6A.121 | Event Hero Image Cropping Fix (Web UI) | ✅ Complete | [RCA_EVENT_HERO_IMAGE_CROPPING.md](./RCA_EVENT_HERO_IMAGE_CROPPING.md) | 2026-02-16 |
 
 ---
 

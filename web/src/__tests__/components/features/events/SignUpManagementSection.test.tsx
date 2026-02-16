@@ -233,4 +233,100 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByLabelText(/Collapse item details/i)).toBeInTheDocument();
   });
+
+  /**
+   * TEST 6: Open Items tab shows when hasOpenItems is enabled, even with 0 items
+   * Critical test for Open Items feature - tabs must show even when no items exist yet
+   * because users create their own items (not organizer-predefined)
+   */
+  it('should show Open Items tab when hasOpenItems is enabled, even with 0 items', () => {
+    const emptyOpenList: SignUpListDto = {
+      ...mockSignUpList,
+      hasMandatoryItems: false,
+      hasSuggestedItems: false,
+      hasOpenItems: true,  // Category is enabled
+      items: []  // No items yet - users will add their own
+    };
+
+    render(<SignUpManagementSection {...mockProps} signUpLists={[emptyOpenList]} />);
+
+    // Should show Open Items (0) tab
+    const openTab = screen.getByRole('tab', { name: /Open Items \(0\)/i });
+    expect(openTab).toBeInTheDocument();
+
+    // Click the tab to verify content
+    fireEvent.click(openTab);
+
+    // Should show "Sign Up" button in tab content
+    expect(screen.getByRole('button', { name: /Sign Up/i })).toBeInTheDocument();
+
+    // Should show empty state message
+    expect(screen.getByText(/No one has signed up with their own item yet/i)).toBeInTheDocument();
+  });
+
+  /**
+   * TEST 7: Open Items tab does NOT show when hasOpenItems is disabled
+   * Verifies that the tab respects the category flag
+   */
+  it('should NOT show Open Items tab when hasOpenItems is false', () => {
+    const noOpenList: SignUpListDto = {
+      ...mockSignUpList,
+      hasOpenItems: false  // Category disabled
+    };
+
+    render(<SignUpManagementSection {...mockProps} signUpLists={[noOpenList]} />);
+
+    // Should NOT have Open Items tab
+    expect(screen.queryByRole('tab', { name: /Open Items/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * TEST 8: Open Items tab count updates when items are added
+   * Verifies that the tab count is dynamic
+   */
+  it('should update Open Items tab count when items exist', () => {
+    const mockOpenItem: SignUpItemDto = {
+      id: 'open-1',
+      itemDescription: 'Homemade Cookies',
+      quantity: 24,
+      remainingQuantity: 0,
+      itemCategory: SignUpItemCategory.Open,
+      notes: '2 dozen chocolate chip',
+      commitments: [
+        {
+          id: 'commit-open-1',
+          userId: 'user-2',
+          contactName: 'Jane Smith',
+          quantity: 24,
+          itemDescription: 'Homemade Cookies',
+          committedAt: '2026-01-16T14:00:00Z',
+          signUpItemId: 'open-1'
+        }
+      ],
+      committedQuantity: 24,
+      isFullyCommitted: true,
+      isOpenItem: true,
+      createdByUserId: 'user-2'
+    };
+
+    const openListWithItems: SignUpListDto = {
+      ...mockSignUpList,
+      hasMandatoryItems: false,
+      hasSuggestedItems: false,
+      hasOpenItems: true,
+      items: [mockOpenItem]
+    };
+
+    render(<SignUpManagementSection {...mockProps} signUpLists={[openListWithItems]} />);
+
+    // Should show Open Items (1) tab
+    expect(screen.getByRole('tab', { name: /Open Items \(1\)/i })).toBeInTheDocument();
+
+    // Click tab to verify content shows
+    const openTab = screen.getByRole('tab', { name: /Open Items \(1\)/i });
+    fireEvent.click(openTab);
+
+    // Should show the item
+    expect(screen.getByText('Homemade Cookies')).toBeInTheDocument();
+  });
 });

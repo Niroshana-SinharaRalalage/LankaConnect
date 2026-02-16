@@ -7,7 +7,39 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.120: SIGNUP LISTS UX IMPROVEMENTS ✅ COMPLETE (2026-02-16)
+## 🔄 CURRENT STATUS - PHASE 6A.121: EVENT HERO IMAGE CROPPING FIX ✅ DEPLOYED (2026-02-16)
+**Date**: 2026-02-16
+**Session**: Phase 6A.121 - Event Hero Image Cropping Fix (Web UI)
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**
+**Deployment**: ✅ Deployed successfully (0f8e60b9, 4m17s)
+**Priority**: 🟡 MEDIUM (P2) - UX Issue
+
+**Problem**: Event images cropped on detail page (top/bottom cut off for portrait images like Buddha statue)
+**Root Cause**: Fixed height container (`h-96`) with `object-cover` CSS causing cropping
+**Solution**: Changed to `max-h-96` with `object-contain` to show full image
+
+**Implementation**:
+- ✅ Changed `h-96` → `max-h-96` (flexible height up to 384px)
+- ✅ Changed `object-cover` → `object-contain` (no cropping)
+- ✅ Added flex centering for proper image positioning
+- ✅ Maintains gradient background for artistic effect
+
+**Files Modified**:
+- web/src/app/events/[id]/page.tsx (2 lines)
+
+**Status**:
+- ✅ Code committed and pushed
+- ✅ GitHub Actions deployed successfully (Run 22080208796)
+- ✅ Available on staging: https://lankaconnect-app.politebay-79d6e8a2.eastus2.azurecontainerapps.io
+- ⏳ User testing pending on event detail pages
+
+**Related**: [RCA_EVENT_HERO_IMAGE_CROPPING.md](./RCA_EVENT_HERO_IMAGE_CROPPING.md)
+
+**Future Work**: Phase 6A.122 - Email template image cropping (separate issue)
+
+---
+
+## Previous Session: PHASE 6A.120: SIGNUP LISTS UX IMPROVEMENTS ✅ COMPLETE (2026-02-16)
 **Date**: 2026-02-16
 **Session**: Phase 6A.120 - Signup Lists UX Improvements (4 User-Requested Enhancements)
 **Status**: ✅ **COMPLETE - ALL 4 ENHANCEMENTS DELIVERED**

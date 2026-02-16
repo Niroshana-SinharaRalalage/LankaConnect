@@ -3,7 +3,44 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 7.3: CUSTOM FORMS EVENT DETAIL PAGE INTEGRATION ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.121: EVENT HERO IMAGE CROPPING FIX ✅ DEPLOYED
+**Date**: 2026-02-16
+**Session**: Phase 6A.121 - Event Hero Image Cropping Fix (Web UI)
+**Progress**: **✅ COMPLETE** - CSS fix deployed to Azure staging
+**Status**: 🎉 **DEPLOYED** - Ready for user testing
+**Deployment**: ✅ Deployed successfully (0f8e60b9, Run 22080208796, 4m17s)
+**Testing**: ⏳ User testing pending on event detail pages
+
+**Issue**: Event images cropped on detail page (portrait images lose top/bottom portions)
+**Root Cause**: Fixed height container (`h-96`) with `object-cover` CSS forces cropping
+**Solution**: Changed to `max-h-96` with `object-contain` to show full images
+
+**Key Changes**:
+- Modified event detail page hero image container: `web/src/app/events/[id]/page.tsx` (lines 649, 653)
+- Changed `h-96` → `max-h-96` (flexible height up to 384px)
+- Changed `object-cover` → `object-contain` (no cropping)
+- Added `flex items-center justify-center` for proper centering
+- Maintains gradient background for artistic effect
+
+**Commits**: `0f8e60b9`
+
+**Related Documentation**: [RCA_EVENT_HERO_IMAGE_CROPPING.md](./RCA_EVENT_HERO_IMAGE_CROPPING.md)
+
+**Next Phase**: Phase 6A.122 - Email template image cropping (separate issue)
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.120: SIGNUP LISTS UX IMPROVEMENTS ✅ COMPLETE
+**Date**: 2026-02-16
+**Session**: Phase 6A.120 - Signup Lists UX Improvements (4 User-Requested Enhancements)
+**Progress**: **✅ COMPLETE** - All 4 UX improvements delivered
+**Status**: 🎉 **FEATURE COMPLETE** - Text corrections, tab styling, button repositioning
+**Deployment**: ✅ Committed and pushed to staging (4c1932d7)
+**Testing**: ✅ Ready for user testing
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 7.3: CUSTOM FORMS EVENT DETAIL PAGE INTEGRATION ✅ COMPLETE
 **Date**: 2026-02-12
 **Session**: Phase 7.3 - Custom Forms Event Detail Page Integration
 **Progress**: **✅ COMPLETE** - Event details page now shows Active custom forms section

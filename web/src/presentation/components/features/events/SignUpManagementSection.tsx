@@ -813,7 +813,9 @@ export function SignUpManagementSection({
                     }
 
                     // Phase 6A.27: Open Items as Tab
-                    if (signUpList.hasOpenItems && openItems.length > 0) {
+                    // IMPORTANT: Show tab whenever hasOpenItems is enabled, even with 0 items
+                    // Users need to see the "Sign Up" button to add their own items
+                    if (signUpList.hasOpenItems) {
                       categoryTabs.push({
                         id: 'open',
                         label: `Open Items (${openItems.length})`,

@@ -1,9 +1,85 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-16 - Tab Navigation Bug Fix ✅ COMPLETE*
+*Last Updated: 2026-02-16 - Phase 6A.120 Signup Lists UX Improvements ✅ COMPLETE*
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 
-## 🎯 Current Session Status - Phase 6A.118 Tab Navigation Bug Fix ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.120 Signup Lists UX Improvements ✅ COMPLETE
+
+### ENHANCEMENT: SIGNUP LISTS USER EXPERIENCE IMPROVEMENTS - 2026-02-16
+
+**Status**: ✅ **COMPLETE - DEPLOYED TO STAGING**
+
+**Priority**: 🟢 **MEDIUM (P2) - User Experience Enhancement**
+
+**User Requests**: Four UX improvements for signup lists feature based on user feedback:
+
+1. **Text Correction**: "Suggested Quantities" → "Suggested Quantity"
+   - User reported grammatical error in badge text
+   - Changed to singular form for correctness
+
+2. **Open Items Tab Styling**: Custom purple theme
+   - User requested different visual treatment for Open Items tab
+   - Added purple border (#9333EA) to match Open Items category colors
+   - Enhanced visual distinction between tab types
+
+3. **Sign Up Button Position**: Moved to top right corner
+   - User requested better button placement for Open Items
+   - Restructured layout with flex header
+   - Sign Up button now prominent with Plus icon and purple gradient
+   - Improved accessibility and visual hierarchy
+
+4. **Tab Navigation After Save/Update**: Already fixed
+   - User reported tabs navigating to Mandatory after saving in Open Items
+   - Already resolved by Phase 6A.118 defaultTab removal
+   - TabPanel maintains state across modal actions
+
+**Implementation Details**:
+
+**1. Text Change** (Issue #1):
+- Location: `SignUpManagementSection.tsx` line 682
+- Changed badge from "Suggested Quantities: {qty}" to "Suggested Quantity: {qty}"
+
+**2. Tab Styling Enhancement** (Issue #2):
+- Extended `Tab` interface in `TabPanel.tsx` with optional `className` and `style` props
+- Updated `TabPanel` component to merge custom styles with default styles
+- Applied purple border styling to Open Items tab: `{ borderColor: '#9333EA' }`
+- Maintains backwards compatibility - existing tabs use default styling
+
+**3. Layout Restructuring** (Issue #3):
+- Created new flex header layout for Open Items tab content
+- Sign Up button moved from bottom (line 904-911) to top-right in header
+- Button styled with purple gradient: `linear-gradient(135deg, #8B2252 0%, #9B4B6F 100%)`
+- Added Plus icon to button for better visual communication
+- Improved responsive behavior with `flex-shrink-0`
+
+**4. Navigation Fix** (Issue #4):
+- No code changes needed - already resolved in Phase 6A.118
+- Verified TabPanel state persistence across modal operations
+- Modal save/update no longer triggers tab reset
+
+**Files Modified**:
+1. `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (~60 lines changed)
+   - Line 682: Badge text change
+   - Lines 817-823: Open Items tab with custom styling
+   - Lines 822-918: Restructured Open Items content layout
+2. `web/src/presentation/components/ui/TabPanel.tsx` (~10 lines changed)
+   - Lines 5-11: Extended Tab interface
+   - Lines 90-106: Updated button rendering to support custom styles
+
+**Commits**:
+- `4c1932d7` - feat(ui): Phase 6A.120 - Signup Lists UX Improvements
+
+**Impact**:
+- ✅ Corrected grammatical error for professional appearance
+- ✅ Enhanced visual distinction for Open Items tab
+- ✅ Improved Sign Up button discoverability and accessibility
+- ✅ Confirmed stable tab navigation during all user interactions
+- ✅ Zero breaking changes to existing functionality
+- ✅ Backwards compatible Tab interface extension
+
+---
+
+## Phase 6A.118 Tab Navigation Bug Fix ✅ COMPLETE
 
 ### BUG FIX: SIGNUP LISTS TAB NAVIGATION - 2026-02-16
 

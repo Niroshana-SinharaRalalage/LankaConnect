@@ -679,7 +679,7 @@ export function SignUpManagementSection({
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Suggested Quantities: {item.quantity}
+                                        Suggested Quantity: {item.quantity}
                                       </span>
                                     </div>
                                     {item.notes && (
@@ -818,24 +818,53 @@ export function SignUpManagementSection({
                         id: 'open',
                         label: `Open Items (${openItems.length})`,
                         icon: Plus,
+                        // Phase 6A.120: Custom purple styling for Open Items tab
+                        className: 'open-items-tab',
+                        style: {
+                          borderColor: '#9333EA',
+                        },
                         content: (
-                    <div className="space-y-3 border-t pt-4 mt-4">
-                      <h4 className="font-semibold flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
-                          {getCategoryLabel(SignUpItemCategory.Open)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          (Bring your own item)
-                        </span>
-                      </h4>
+                    <div className="space-y-3">
+                      {/* Phase 6A.120: Header with Sign Up button in top right */}
+                      <div className="flex justify-between items-start gap-4 border-b pb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold flex items-center gap-2 mb-2">
+                            <span className={`px-3 py-1.5 rounded-md text-sm font-semibold border ${getCategoryColor(SignUpItemCategory.Open)}`}>
+                              {getCategoryLabel(SignUpItemCategory.Open)}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              (Bring your own item)
+                            </span>
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            You can add your own item to bring to this sign-up list.
+                          </p>
+                        </div>
 
-                      <p className="text-sm text-muted-foreground">
-                        You can add your own item to bring to this sign-up list.
-                      </p>
+                        {/* Phase 6A.120: Sign Up button moved to top right */}
+                        {/* Phase 6A.44: Allow anonymous sign-ups for Open Items */}
+                        {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
+                        {!isOrganizer && (
+                          <Button
+                            onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
+                            size="sm"
+                            variant="default"
+                            className="flex-shrink-0"
+                            style={{
+                              background: 'linear-gradient(135deg, #8B2252 0%, #9B4B6F 100%)',
+                              color: 'white',
+                              fontWeight: 600
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Sign Up
+                          </Button>
+                        )}
+                      </div>
 
                       {/* Display existing Open items */}
                       {openItems.length > 0 ? (
-                        <div className="space-y-3">
+                        <div className="space-y-3 mt-4">
                           {openItems.map((item) => {
                             const isOwnItem = item.createdByUserId === userId;
                             const commitment = item.commitments?.[0];
@@ -893,21 +922,9 @@ export function SignUpManagementSection({
                           })}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground italic">
+                        <p className="text-sm text-muted-foreground italic mt-4">
                           No one has signed up with their own item yet. Be the first!
                         </p>
-                      )}
-
-                      {/* Sign Up button for all users (Phase 6A.44: Allow anonymous sign-ups for Open Items) */}
-                      {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
-                      {!isOrganizer && (
-                        <Button
-                          onClick={() => openAddOpenItemModal(signUpList.id, signUpList.category)}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Sign Up
-                        </Button>
                       )}
                     </div>
                         )

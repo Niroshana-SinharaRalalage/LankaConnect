@@ -8,6 +8,8 @@ export interface Tab {
   label: string;
   icon?: LucideIcon;
   content: React.ReactNode;
+  className?: string; // Phase 6A.120: Custom className for tab button
+  style?: React.CSSProperties; // Phase 6A.120: Custom inline styles for tab button
 }
 
 export interface TabPanelProps {
@@ -93,14 +95,16 @@ export function TabPanel({ tabs, defaultTab, onChange, className = '' }: TabPane
                     ? 'border-b-2 text-[#8B1538]'
                     : 'text-gray-600 hover:text-[#FF7900] hover:bg-gray-50'
                 }
+                ${tab.className || ''}
               `}
-              style={
-                isActive
+              style={{
+                ...(isActive
                   ? {
                       borderImage: 'linear-gradient(90deg, #FF7900 0%, #8B1538 100%) 1',
                     }
-                  : undefined
-              }
+                  : {}),
+                ...((tab.style || {}) as React.CSSProperties)
+              }}
             >
               {Icon && <Icon className="w-4 h-4" />}
               <span>{tab.label}</span>

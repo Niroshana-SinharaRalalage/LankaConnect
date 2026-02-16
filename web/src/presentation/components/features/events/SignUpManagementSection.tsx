@@ -700,6 +700,13 @@ export function SignUpManagementSection({
                                     {item.notes && (
                                       <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>
                                     )}
+                                    {/* Phase 6A.118: Show commitment status in collapsed view */}
+                                    <div className="text-xs text-muted-foreground mt-1 flex gap-3">
+                                      <span>{item.committedQuantity} of {item.quantity} filled</span>
+                                      <span className={remainingQty === 0 ? 'text-green-600 font-medium' : ''}>
+                                        {remainingQty} remaining
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 

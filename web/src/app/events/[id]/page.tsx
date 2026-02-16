@@ -29,7 +29,7 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import { useState, useEffect } from 'react';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/presentation/lib/utils/date-formatter';
-import { sanitizeHtml, isHtmlContent, plainTextToHtml } from '@/lib/html-utils';
+import { sanitizeHtml } from '@/lib/html-utils';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -689,11 +689,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <div
                 className="prose prose-lg max-w-none text-neutral-600 leading-relaxed prose-a:text-orange-600 prose-a:underline hover:prose-a:text-orange-700"
                 dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(
-                    isHtmlContent(event.description)
-                      ? event.description
-                      : plainTextToHtml(event.description)
-                  )
+                  __html: sanitizeHtml(event.description)
                 }}
               />
             </div>

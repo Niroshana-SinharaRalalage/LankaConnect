@@ -215,6 +215,27 @@ public class EmailUrlHelper : IEmailUrlHelper
     }
 
     /// <summary>
+    /// Builds the signup forms URL for viewing event signup forms.
+    /// Phase 6A.116: Added for signup forms button in emails (Issue #4).
+    /// </summary>
+    public string BuildSignupFormsUrl(Guid eventId)
+    {
+        if (eventId == Guid.Empty)
+        {
+            throw new ArgumentException("Event ID cannot be empty.", nameof(eventId));
+        }
+
+        var frontendBaseUrl = GetFrontendBaseUrl();
+        var eventDetailsPath = _configuration["ApplicationUrls:EventDetailsPath"] ?? "/events/{eventId}";
+
+        // Replace the {eventId} placeholder
+        var path = eventDetailsPath.Replace("{eventId}", eventId.ToString());
+
+        // Add anchor to signup forms section (matches frontend tab ID)
+        return $"{frontendBaseUrl}{path}#signup-forms";
+    }
+
+    /// <summary>
     /// Gets the frontend base URL.
     /// Phase 6A.116: Made public to support direct URL construction.
     /// </summary>

@@ -612,18 +612,6 @@ public static class EmailTemplateContract
         /// Number of slots taken.
         /// </summary>
         public const string SlotsTaken = "SlotsTaken";
-
-        /// <summary>
-        /// Whether the event has signup lists (controls {{#HasSignupLists}} conditional).
-        /// Phase 6A.116: Added for signup list button in form response emails.
-        /// </summary>
-        public const string HasSignupLists = "HasSignupLists";
-
-        /// <summary>
-        /// URL to view event signup lists.
-        /// Phase 6A.116: Added for signup list button in form response emails.
-        /// </summary>
-        public const string SignupListsUrl = "SignupListsUrl";
     }
 
     #endregion

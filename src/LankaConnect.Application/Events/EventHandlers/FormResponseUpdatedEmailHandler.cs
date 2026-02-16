@@ -153,7 +153,7 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                         eventEntity.OrganizerContactPhone);
                 }
 
-                // Phase 6A.116 Issue #9: Add signup list URL if event has signup lists
+                // Phase 6A.116 Issue #4, #9: Add signup lists & forms URLs
                 if (eventEntity.SignUpLists?.Any() == true)
                 {
                     var signupListsUrl = _emailUrlHelper.BuildSignupListsUrl(eventEntity.Id);
@@ -163,6 +163,15 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                         "FormResponseUpdatedEmail: Added signup lists URL: {SignupListsUrl}",
                         signupListsUrl);
                 }
+
+                // Phase 6A.116 Issue #4: Always add signup forms URL since we're in a form response context
+                // The event definitely has forms if we're sending a form response email
+                var signupFormsUrl = _emailUrlHelper.BuildSignupFormsUrl(eventEntity.Id);
+                emailParams.WithSignupFormsUrl(signupFormsUrl);
+
+                _logger.LogInformation(
+                    "FormResponseUpdatedEmail: Added signup forms URL: {SignupFormsUrl}",
+                    signupFormsUrl);
 
                 // Send email (fail-silent)
                 var emailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);

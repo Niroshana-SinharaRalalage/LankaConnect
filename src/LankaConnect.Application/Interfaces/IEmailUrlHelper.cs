@@ -95,6 +95,14 @@ public interface IEmailUrlHelper
     string BuildSignupListsUrl(Guid eventId);
 
     /// <summary>
+    /// Builds the signup forms URL for viewing event signup forms.
+    /// Phase 6A.116: Added for signup forms button in emails (Issue #4).
+    /// </summary>
+    /// <param name="eventId">The event ID.</param>
+    /// <returns>The complete signup forms URL with anchor to signup forms section.</returns>
+    string BuildSignupFormsUrl(Guid eventId);
+
+    /// <summary>
     /// Gets the frontend base URL.
     /// Phase 6A.116: Exposed for direct URL construction in special cases.
     /// </summary>

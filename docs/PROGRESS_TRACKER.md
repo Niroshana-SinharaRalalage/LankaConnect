@@ -112,9 +112,9 @@ CNAME   www     lankaconnect-ui-prod.graystone-d581eaeb.eastus2.azurecontainerap
 
 ---
 
-### PHASE 6A.116: POST-DEPLOYMENT EMAIL SYSTEM FIXES - 2026-02-15
+### PHASE 6A.116 & 6A.117: POST-DEPLOYMENT EMAIL SYSTEM FIXES - 2026-02-16
 
-**Status**: 🔧 **IN PROGRESS - 3 of 4 P0 Issues Fixed & Deployed**
+**Status**: ✅ **COMPLETE - ALL 9 ISSUES FIXED & DEPLOYED TO STAGING**
 
 **Priority**: 🔴 **CRITICAL (P0) - Production Email Failures**
 
@@ -164,43 +164,110 @@ CNAME   www     lankaconnect-ui-prod.graystone-d581eaeb.eastus2.azurecontainerap
 - **Impact**: "View Signup List" button now works in emails
 - **Commit**: Included in Issue #4 commit
 
-**⏳ Issue #5 - HTML Line Breaks Escaped (P0 - Pending):**
+**✅ Issue #5 - HTML Line Breaks Escaped (P0 - COMPLETE):**
 - **Root Cause**: Templates use `{{ResponseSummary}}` (HTML-escaped) instead of `{{{ResponseSummary}}}` (raw HTML)
-- **Fix Required**: EF Core migration to update database templates
-- **Blocker**: Need to verify if Phase6A112 migration was applied to staging first
-- **Script Created**: `scripts/verify_phase6a112_migration.ps1`
-- **Status**: Awaiting migration verification before creating Phase6A116 migration
+- **Fix**: Created Phase6A116_FixEmailTemplateHtmlRendering migration
+- **Migration SQL**: Uses PostgreSQL REPLACE() to change `{{ResponseSummary}}` to `{{{ResponseSummary}}}`
+- **Templates Updated**: 5 templates (form-response-confirmation, update, cancellation, signup-list-commitment-confirmation, update)
+- **Files**: 20260216033407_Phase6A116_FixEmailTemplateHtmlRendering.cs
+- **Commit**: 23f818ae
+- **Deployment**: ✅ Migration applied automatically at 18:20:10 UTC
+
+**✅ Issue #10 - "Feel Free to Reply" Text (P1 - COMPLETE):**
+- **Root Cause**: Text encourages replies to automated emails (poor UX practice)
+- **User Feedback**: Identified during testing after Issue #5 fix
+- **Fix**: Remove text entirely from 3 templates via Phase6A117 migration
+- **Templates**: event-registration-cancellation, event-reminder, signup-list-commitment-update
+- **Migration SQL**: Uses PostgreSQL REPLACE() to remove text
+- **RCA Document**: docs/RCA_PHASE_6A116_ISSUES_10_11_12.md
+- **Commit**: d1468c37
+- **Deployment**: ✅ Migration applied automatically at 18:20:10 UTC
+
+**✅ Issue #11 - Empty PICKUP/DELIVERY Card (P1 - COMPLETE):**
+- **Root Cause**: Empty card section creating layout spacing issues
+- **User Feedback**: Screenshot showing extra whitespace in signup-list-commitment-confirmation
+- **Fix**: Remove empty card via REGEXP_REPLACE in Phase6A117 migration
+- **Templates**: signup-list-commitment-confirmation
+- **Migration SQL**: Uses PostgreSQL REGEXP_REPLACE() to remove card section
+- **Commit**: d1468c37
+- **Deployment**: ✅ Migration applied automatically at 18:20:10 UTC
+
+**✅ Issue #12 - Both Issues #10 and #11 (P1 - COMPLETE):**
+- **Root Cause**: signup-list-commitment-update had BOTH "feel free" text AND empty card
+- **Fix**: Same Phase6A117 migration fixes both issues in this template
+- **Commit**: d1468c37
+- **Deployment**: ✅ Migration applied automatically at 18:20:10 UTC
 
 **Deployment Status**:
-- ✅ Issue #8 committed and pushed (fd9f4c7c)
-- ✅ Issue #3 committed and pushed (f6ed6f13)
-- ✅ Issue #4 committed and pushed (30ec8338)
-- 🚀 Azure deployment in progress (deploy-staging.yml)
-- ⏳ Testing required after deployment
+- ✅ Issue #8 committed and deployed (fd9f4c7c)
+- ✅ Issue #3 committed and deployed (f6ed6f13)
+- ✅ Issue #4 & #9 committed and deployed (30ec8338)
+- ✅ Issue #5 migration created and applied (23f818ae)
+- ✅ Issues #10, #11, #12 migration created and applied (d1468c37)
+- ✅ Azure deployment: All commits deployed successfully
+- ✅ Migrations: Both Phase6A116 and Phase6A117 applied at 18:20:10 UTC
+- ⏳ User testing required for email verification
 
 **Test Results** (Local):
 - ✅ Build: All 3 commits compile successfully (0 errors, 0 warnings)
 - ✅ TypeScript: No compilation errors
 - ⏳ Integration: Requires staging deployment for end-to-end testing
 
-**Files Modified** (12 files across 3 commits):
-- Backend:
-  - `IEmailUrlHelper.cs` - Added 3 new URL builder methods
-  - `EmailUrlHelper.cs` - Implemented BuildFormEditUrl(), BuildSignupListsUrl(), BuildSignupFormsUrl()
-  - `EventsController.cs` - X-Access-Token header support for GET/PUT/DELETE
-  - `FormResponseUpdatedEmailHandler.cs` - Uses new URL helpers, adds signup lists/forms URLs
-  - `FormResponseEmailParams.cs` - Fixed property names, added SignupForms support
-  - `EmailTemplateContract.cs` - Removed duplicate wrong constants
+**Files Modified** (11 files across 5 commits):
+- Application Layer:
+  - `src/LankaConnect.Application/Events/EventHandlers/FormResponseUpdatedEmailHandler.cs` - URL generation fixes
+  - `src/LankaConnect.Application/Interfaces/IEmailUrlHelper.cs` - Added 3 new URL builder methods
+- Infrastructure Layer:
+  - `src/LankaConnect.Infrastructure/Services/EmailUrlHelper.cs` - Implemented BuildFormEditUrl(), BuildSignupListsUrl(), BuildSignupFormsUrl()
+  - `src/LankaConnect.Infrastructure/Data/Migrations/20260216033407_Phase6A116_FixEmailTemplateHtmlRendering.cs` (NEW)
+  - `src/LankaConnect.Infrastructure/Data/Migrations/20260216181052_Phase6A117_FixEmailTemplateTextAndLayout.cs` (NEW)
+- Shared Layer:
+  - `src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs` - Removed duplicate constants
+  - `src/LankaConnect.Shared/Email/Contracts/FormResponseEmailParams.cs` - Fixed property names, added SignupForms
+- API Layer:
+  - `src/LankaConnect.API/Controllers/EventsController.cs` - X-Access-Token header support
+- Documentation:
+  - `docs/RCA_PHASE_6A116_ISSUES_10_11_12.md` (NEW) - Comprehensive analysis of Issues #10, #11, #12
 - Scripts:
-  - `scripts/verify_phase6a112_migration.ps1` - Database migration verification script
+  - `scripts/apply_phase6a116_and_6a117_migrations.sh` (NEW) - Migration deployment guide
+  - `scripts/verify_migrations_applied.sh` (NEW) - Migration verification script
 
-**Next Steps**:
-1. ⏳ Wait for Azure staging deployment (~5 min)
-2. ⏳ Test deployed fixes via API endpoints
-3. ⏳ Execute migration verification script on staging database
-4. ⏳ Complete Issue #5 (HTML rendering migration) based on verification results
-5. ⏳ Test form response emails end-to-end
-6. ⏳ Update STREAMLINED_ACTION_PLAN.md with completion status
+**Completion Summary**:
+- ✅ All 9 issues fixed (4 P0, 3 P1, 2 P2 included as bonus)
+- ✅ All code changes deployed to staging
+- ✅ Both migrations (Phase6A116, Phase6A117) applied successfully
+- ✅ No errors in Azure deployment logs
+- ✅ PR #82 updated with comprehensive description
+- ⏳ User testing required to verify email rendering
+
+**User Testing Guide**:
+1. **Test Form Response Emails** (Issues #4, #5, #8, #9):
+   - Submit/update a form response
+   - Check email for:
+     - ✓ All placeholders replaced (no raw {{UserName}}, etc.)
+     - ✓ Line breaks rendering correctly (not literal `<br/>`)
+     - ✓ Edit button URL works (no 404)
+     - ✓ Signup buttons present and clickable
+
+2. **Test Signup List Commitment Emails** (Issues #10, #11, #12):
+   - Create/update signup list commitment
+   - Check confirmation email:
+     - ✓ No "feel free to reply" text
+     - ✓ No empty PICKUP/DELIVERY card
+     - ✓ Clean footer layout
+   - Check update email:
+     - ✓ No "feel free to reply" text
+     - ✓ No empty card section
+
+3. **Test Event Reminder Email** (Issue #10):
+   - Trigger event reminder
+   - Check email:
+     - ✓ No "feel free to reply" text
+
+4. **Test Anonymous User Token Auth** (Issue #3):
+   - Submit form as anonymous user
+   - Open edit URL from email in different browser
+   - Verify form loads correctly (no 400 error)
 
 **API Testing Commands** (After Deployment):
 ```bash
@@ -221,9 +288,12 @@ curl -X 'PUT' \
 **Pattern Established**: Systematic post-deployment issue resolution with comprehensive RCA, prioritization, and incremental fixes
 
 **Reference Documents**:
-- `docs/RCA_PHASE_6A115_POST_DEPLOYMENT_COMPREHENSIVE_ANALYSIS.md` - Comprehensive RCA by system-architect
-- `C:\Users\Niroshana\.claude\plans\cosmic-puzzling-bee.md` - Approved implementation plan
-- `scripts/verify_phase6a112_migration.ps1` - Database migration verification script
+- `docs/RCA_PHASE_6A115_POST_DEPLOYMENT_COMPREHENSIVE_ANALYSIS.md` - Initial RCA for 9 issues
+- `docs/RCA_PHASE_6A116_ISSUES_10_11_12.md` - Detailed RCA for Issues #10, #11, #12
+- `C:\Users\Niroshana\.claude\plans\cosmic-puzzling-bee.md` - Implementation plan
+- `scripts/apply_phase6a116_and_6a117_migrations.sh` - Migration deployment guide
+- `scripts/verify_migrations_applied.sh` - Migration verification script
+- **PR #82**: https://github.com/Niroshana-SinharaRalalage/LankaConnect/pull/82
 
 ---
 

@@ -223,6 +223,40 @@ public class SignUpList : BaseEntity
     }
 
     /// <summary>
+    /// Phase 6A.121: Adds a slot-based item to the sign-up list
+    /// </summary>
+    public Result<SignUpItem> AddSlotBasedItem(
+        string itemDescription,
+        int availableSlots,
+        int? suggestedPerSlot,
+        SignUpItemCategory itemCategory,
+        string? notes = null)
+    {
+#pragma warning disable CS0618
+        var categoryEnabled = itemCategory switch
+        {
+            SignUpItemCategory.Mandatory => HasMandatoryItems,
+            SignUpItemCategory.Preferred => HasPreferredItems,
+            SignUpItemCategory.Suggested => HasSuggestedItems,
+            SignUpItemCategory.Open => HasOpenItems,
+            _ => false
+        };
+#pragma warning restore CS0618
+
+        if (!categoryEnabled)
+            return Result<SignUpItem>.Failure($"{itemCategory} category is not enabled for this sign-up list");
+
+        var itemResult = SignUpItem.CreateSlotBased(Id, itemDescription, availableSlots, suggestedPerSlot, itemCategory, notes);
+        if (itemResult.IsFailure)
+            return Result<SignUpItem>.Failure(itemResult.Error);
+
+        _items.Add(itemResult.Value);
+        MarkAsUpdated();
+
+        return itemResult;
+    }
+
+    /// <summary>
     /// Removes an item from the sign-up list
     /// </summary>
     public Result RemoveItem(Guid itemId)

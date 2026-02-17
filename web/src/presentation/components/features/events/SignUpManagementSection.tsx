@@ -36,7 +36,7 @@ import {
   useUpdateOpenSignUpItem,
   useCancelOpenSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, isQuantityBased } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -653,8 +653,10 @@ export function SignUpManagementSection({
                       <div className="space-y-3">
                         {items.map((item) => {
                             const userItemCommitment = item.commitments.find(c => c.userId === userId);
-                            const remainingQty = item.remainingQuantity;
-                            const percentCommitted = Math.round((item.committedQuantity / item.quantity) * 100);
+                            const totalQty = isQuantityBased(item) ? item.targetQuantity : item.totalSlots;
+                            const committedQty = isQuantityBased(item) ? item.committedQuantity : item.filledSlots;
+                            const remainingQty = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
+                            const percentCommitted = Math.round((committedQty / totalQty) * 100);
                             const isExpanded = expandedItems.has(item.id);
 
                             return (
@@ -679,7 +681,7 @@ export function SignUpManagementSection({
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Suggested Quantity: {item.quantity}
+                                        Suggested Quantity: {totalQty}
                                       </span>
                                     </div>
                                     {item.notes && (
@@ -687,7 +689,7 @@ export function SignUpManagementSection({
                                     )}
                                     {/* Phase 6A.118: Show commitment status in collapsed view */}
                                     <div className="text-xs text-muted-foreground mt-1 flex gap-3">
-                                      <span>{item.committedQuantity} of {item.quantity} filled</span>
+                                      <span>{committedQty} of {totalQty} filled</span>
                                       <span className={remainingQty === 0 ? 'text-green-600 font-medium' : ''}>
                                         {remainingQty} remaining
                                       </span>
@@ -709,7 +711,7 @@ export function SignUpManagementSection({
                                     />
                                   </div>
                                   <div className="text-xs text-muted-foreground flex justify-between">
-                                    <span>{item.committedQuantity} of {item.quantity} filled</span>
+                                    <span>{committedQty} of {totalQty} filled</span>
                                     <span>{remainingQty} remaining</span>
                                   </div>
                                 </div>
@@ -779,7 +781,7 @@ export function SignUpManagementSection({
                                     {remainingQty === 0 && (
                                       <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
                                         <p className="text-sm font-medium text-green-800">
-                                          ✓ All {item.quantity} slots filled - Thank you everyone!
+                                          ✓ All {totalQty} slots filled - Thank you everyone!
                                         </p>
                                       </div>
                                     )}
@@ -878,7 +880,7 @@ export function SignUpManagementSection({
                                     <div className="flex items-center gap-2">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full font-semibold">
-                                        Qty: {item.quantity}
+                                        Qty: {isQuantityBased(item) ? item.targetQuantity : item.totalSlots}
                                       </span>
                                       {isOwnItem && (
                                         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">

@@ -1674,8 +1674,11 @@ public class EventsController : BaseController<EventsController>
             eventId,
             signupId,
             request.ItemDescription,
-            request.Quantity,
+            request.ItemType,
             request.ItemCategory,
+            request.TargetQuantity,
+            request.AvailableSlots,
+            request.SuggestedPerSlot,
             request.Notes);
 
         var result = await Mediator.Send(command);
@@ -3104,10 +3107,17 @@ public record SignUpItemRequestDto(
     SignUpItemCategory ItemCategory,
     string? Notes = null);
 
+/// <summary>
+/// Phase 6A.121: Request to add a sign-up item with dual-field support.
+/// Use ItemType=Quantity with TargetQuantity, or ItemType=Slot with AvailableSlots.
+/// </summary>
 public record AddSignUpItemRequest(
     string ItemDescription,
-    int Quantity,
+    SignUpItemType ItemType,
     SignUpItemCategory ItemCategory,
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
     string? Notes = null);
 
 /// <summary>

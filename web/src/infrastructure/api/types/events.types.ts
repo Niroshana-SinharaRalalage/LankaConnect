@@ -436,7 +436,12 @@ export interface SignUpCommitmentDto {
   signUpItemId?: string | null; // Null for legacy Open sign-ups
   userId: string;
   itemDescription: string;
+  /** @deprecated Use physicalQuantity or slotsClaimed instead. Will be removed in Phase 7. */
   quantity: number;
+  /** Phase 6A.121: For quantity-based commitments (e.g., "5 plates") */
+  physicalQuantity?: number | null;
+  /** Phase 6A.121: For slot-based commitments (e.g., "2 slots") */
+  slotsClaimed?: number | null;
   committedAt: string; // ISO 8601 date-time
   notes?: string | null;
 
@@ -447,30 +452,77 @@ export interface SignUpCommitmentDto {
 }
 
 /**
- * Sign-up item DTO
- * Represents a specific item in a category-based sign-up list
- * Phase 6A.27: Enhanced with Open item support (createdByUserId, isOpenItem)
+ * Phase 6A.121: Enum for sign-up item type discriminator
  */
-export interface SignUpItemDto {
+export enum SignUpItemType {
+  Quantity = 0,
+  Slot = 1,
+}
+
+/**
+ * Phase 6A.121: Base interface for discriminated union of sign-up item DTOs
+ */
+interface SignUpItemDtoBase {
   id: string;
   itemDescription: string;
-  quantity: number;
-  remainingQuantity: number;
   itemCategory: SignUpItemCategory;
   notes?: string | null;
   commitments: SignUpCommitmentDto[];
   isFullyCommitted: boolean;
-  committedQuantity: number;
+  isOpenItem: boolean;
   /** Phase 6A.27: User ID who created this item (only for Open items) */
   createdByUserId?: string | null;
-  /** Phase 6A.27: True if this is a user-submitted Open item */
-  isOpenItem: boolean;
+}
+
+/**
+ * Phase 6A.121: DTO for quantity-based signup items
+ * Example: "Rice - 10 plates"
+ */
+export interface QuantityBasedItemDto extends SignUpItemDtoBase {
+  itemType: SignUpItemType.Quantity;
+  targetQuantity: number;
+  committedQuantity: number;
+  remainingQuantity: number;
+}
+
+/**
+ * Phase 6A.121: DTO for slot-based signup items
+ * Example: "Assorted Fruits - 3 slots"
+ */
+export interface SlotBasedItemDto extends SignUpItemDtoBase {
+  itemType: SignUpItemType.Slot;
+  totalSlots: number;
+  filledSlots: number;
+  remainingSlots: number;
+  suggestedQuantityPerSlot?: number | null;
+  estimatedTotalQuantity?: number | null;
+}
+
+/**
+ * Phase 6A.121: Discriminated union of sign-up item DTOs
+ * Use type guards isQuantityBased() / isSlotBased() to narrow the type
+ */
+export type SignUpItemDto = QuantityBasedItemDto | SlotBasedItemDto;
+
+/**
+ * Phase 6A.121: Type guard for quantity-based items
+ */
+export function isQuantityBased(item: SignUpItemDto): item is QuantityBasedItemDto {
+  return item.itemType === SignUpItemType.Quantity;
+}
+
+/**
+ * Phase 6A.121: Type guard for slot-based items
+ */
+export function isSlotBased(item: SignUpItemDto): item is SlotBasedItemDto {
+  return item.itemType === SignUpItemType.Slot;
 }
 
 /**
  * Sign-up list DTO
  * Matches backend SignUpListDto - supports both legacy and category-based models
  * Phase 6A.27: Added hasOpenItems for user-submitted items
+ * Phase 6A.121: Items now use discriminated union (SignUpItemDto = QuantityBasedItemDto | SlotBasedItemDto)
  */
 export interface SignUpListDto {
   id: string;
@@ -882,11 +934,15 @@ export interface SignUpItemRequestDto {
 
 /**
  * Add sign-up item request
+ * Phase 6A.121: Unified request supporting both quantity-based and slot-based items
  */
 export interface AddSignUpItemRequest {
   itemDescription: string;
-  quantity: number;
+  itemType: SignUpItemType;        // Discriminator: Quantity or Slot
   itemCategory: SignUpItemCategory;
+  targetQuantity?: number | null;  // For quantity-based items (e.g., 10 plates)
+  availableSlots?: number | null;  // For slot-based items (e.g., 3 slots)
+  suggestedPerSlot?: number | null; // Optional: suggested quantity per slot
   notes?: string | null;
 }
 

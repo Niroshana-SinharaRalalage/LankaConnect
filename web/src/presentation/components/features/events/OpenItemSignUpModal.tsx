@@ -27,7 +27,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import type { SignUpItemDto } from '@/infrastructure/api/types/events.types';
+import { isQuantityBased, type SignUpItemDto } from '@/infrastructure/api/types/events.types';
 
 interface OpenItemSignUpModalProps {
   open: boolean;
@@ -81,7 +81,7 @@ export function OpenItemSignUpModal({
       if (existingItem) {
         // Edit mode - pre-fill with existing item data
         setItemName(existingItem.itemDescription);
-        setQuantity(existingItem.quantity);
+        setQuantity(isQuantityBased(existingItem) ? existingItem.targetQuantity : existingItem.totalSlots);
         setNotes(existingItem.notes || '');
         // Get contact info from first commitment (user's own)
         const userCommitment = existingItem.commitments?.[0];

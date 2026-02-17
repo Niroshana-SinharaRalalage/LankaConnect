@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, ArrowLeft, Save, Edit2, X, Check } from 'lucide-react';
-import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, SignUpItemType, isQuantityBased } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -170,7 +170,8 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newMandatoryDesc.trim(),
-        quantity: newMandatoryQty,
+        itemType: SignUpItemType.Quantity,
+        targetQuantity: newMandatoryQty,
         itemCategory: SignUpItemCategory.Mandatory,
         notes: newMandatoryNotes.trim() || undefined,
       });
@@ -200,7 +201,8 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newPreferredDesc.trim(),
-        quantity: newPreferredQty,
+        itemType: SignUpItemType.Quantity,
+        targetQuantity: newPreferredQty,
         itemCategory: SignUpItemCategory.Preferred,
         notes: newPreferredNotes.trim() || undefined,
       });
@@ -230,7 +232,8 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newSuggestedDesc.trim(),
-        quantity: newSuggestedQty,
+        itemType: SignUpItemType.Quantity,
+        targetQuantity: newSuggestedQty,
         itemCategory: SignUpItemCategory.Suggested,
         notes: newSuggestedNotes.trim() || undefined,
       });
@@ -557,10 +560,10 @@ export default function EditSignUpListPage() {
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">{isQuantityBased(item) ? item.targetQuantity : item.totalSlots}</td>
                                       <td className="px-3 py-2 text-sm">
-                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
-                                          {item.remainingQuantity}
+                                        <span className={(isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots) === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots}
                                         </span>
                                       </td>
                                       <td className="px-3 py-2">
@@ -577,8 +580,8 @@ export default function EditSignUpListPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleDeleteItem(item.id)}
-                                            disabled={item.committedQuantity > 0}
-                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            disabled={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0}
+                                            title={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
                                             className="text-red-600"
                                           >
                                             <Trash2 className="h-3 w-3" />
@@ -745,10 +748,10 @@ export default function EditSignUpListPage() {
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">{isQuantityBased(item) ? item.targetQuantity : item.totalSlots}</td>
                                       <td className="px-3 py-2 text-sm">
-                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
-                                          {item.remainingQuantity}
+                                        <span className={(isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots) === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots}
                                         </span>
                                       </td>
                                       <td className="px-3 py-2">
@@ -765,8 +768,8 @@ export default function EditSignUpListPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleDeleteItem(item.id)}
-                                            disabled={item.committedQuantity > 0}
-                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            disabled={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0}
+                                            title={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
                                             className="text-red-600"
                                           >
                                             <Trash2 className="h-3 w-3" />

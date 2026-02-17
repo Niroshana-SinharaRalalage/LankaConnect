@@ -47,20 +47,12 @@ public interface ISignUpItemDto
     bool IsOpenItem { get; }
 
     /// <summary>
-    /// Phase 6A.124: [JsonIgnore] prevents JsonStringEnumConverter from serializing
-    /// as "Quantity"/"Slot" string when STJ uses the interface type for List&lt;ISignUpItemDto&gt;.
-    /// Interface still exposes the typed enum for C# code; JSON sees only ItemTypeValue below.
+    /// Discriminator field: Quantity = 0, Slot = 1.
+    /// MUST be on the interface so the JSON serializer includes it when
+    /// the property is typed as ISignUpItemDto (System.Text.Json only
+    /// serializes properties declared on the static/interface type).
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
     SignUpItemType ItemType { get; }
-
-    /// <summary>
-    /// Serialized as "itemType": 0 or 1 (integer).
-    /// Frontend isQuantityBased() checks item.itemType === 0 (numeric enum, NOT string).
-    /// MUST be on the interface so STJ includes it when property is typed as ISignUpItemDto.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("itemType")]
-    int ItemTypeValue { get; }
 }
 
 /// <summary>
@@ -76,15 +68,8 @@ public class QuantityBasedItemDto : ISignUpItemDto
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
     public Guid? CreatedByUserId { get; set; }
 
-    // Phase 6A.124: [JsonIgnore] prevents JsonStringEnumConverter from serializing
-    // as "Quantity" string. Interface contract still satisfied (returns SignUpItemType).
-    [System.Text.Json.Serialization.JsonIgnore]
+    // Phase 6A.123: Discriminator field so frontend isQuantityBased() type guard works
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
-
-    // int bypasses JsonStringEnumConverter → sends "itemType": 0 (integer)
-    // Frontend: isQuantityBased(item) checks item.itemType === 0 (SignUpItemType.Quantity)
-    [System.Text.Json.Serialization.JsonPropertyName("itemType")]
-    public int ItemTypeValue => (int)ItemType;
 
     // Quantity-based specific fields
     public int TargetQuantity { get; set; }
@@ -109,15 +94,8 @@ public class SlotBasedItemDto : ISignUpItemDto
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
     public Guid? CreatedByUserId { get; set; }
 
-    // Phase 6A.124: [JsonIgnore] prevents JsonStringEnumConverter from serializing
-    // as "Slot" string. Interface contract still satisfied (returns SignUpItemType).
-    [System.Text.Json.Serialization.JsonIgnore]
+    // Phase 6A.123: Discriminator field so frontend isSlotBased() type guard works
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Slot;
-
-    // int bypasses JsonStringEnumConverter → sends "itemType": 1 (integer)
-    // Frontend: isSlotBased(item) checks item.itemType === 1 (SignUpItemType.Slot)
-    [System.Text.Json.Serialization.JsonPropertyName("itemType")]
-    public int ItemTypeValue => (int)ItemType;
 
     // Slot-based specific fields
     public int TotalSlots { get; set; }
@@ -149,13 +127,8 @@ public class SignUpItemDto : ISignUpItemDto
     public int CommittedQuantity => Quantity - RemainingQuantity;
     public Guid? CreatedByUserId { get; set; }
     public bool IsOpenItem => ItemCategory == SignUpItemCategory.Open && CreatedByUserId.HasValue;
-    // Phase 6A.124: [JsonIgnore] prevents JsonStringEnumConverter from serializing as "Quantity" string.
-    [System.Text.Json.Serialization.JsonIgnore]
+    // ISignUpItemDto.ItemType - legacy items are always quantity-based
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
-
-    // int bypasses JsonStringEnumConverter → sends "itemType": 0 (integer)
-    [System.Text.Json.Serialization.JsonPropertyName("itemType")]
-    public int ItemTypeValue => (int)ItemType;
 }
 
 public class SignUpCommitmentDto

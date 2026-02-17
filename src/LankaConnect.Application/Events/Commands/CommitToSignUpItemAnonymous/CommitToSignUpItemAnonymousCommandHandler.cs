@@ -193,6 +193,15 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     "CommitToSignUpItemAnonymous: Generated deterministic UserId - AnonymousUserId={AnonymousUserId}",
                     anonymousUserId);
 
+                // Phase 6A.125: Determine effective quantities based on item type
+                var physicalQuantity = request.PhysicalQuantity ?? request.Quantity;
+                var slotsClaimed = request.SlotsClaimed;
+                var itemTypeStr = signUpItem.ItemType.ToString();
+
+                _logger.LogInformation(
+                    "CommitToSignUpItemAnonymous: Sign-up item type={ItemType}, PhysicalQuantity={Qty}, SlotsClaimed={Slots}",
+                    itemTypeStr, physicalQuantity, slotsClaimed);
+
                 // Step 8: Check if user already has a commitment to this item
                 var existingCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == anonymousUserId);
 
@@ -201,39 +210,59 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
 
                 if (existingCommitment != null)
                 {
-                    // Phase 6A.121: SignUpCommitment uses backward-compatible Quantity property
-                    #pragma warning disable CS0618 // Suppress obsolete warning - Quantity is backward compatible
                     _logger.LogInformation(
-                        "CommitToSignUpItemAnonymous: Updating existing commitment - CommitmentId={CommitmentId}, OldQuantity={OldQuantity}, NewQuantity={NewQuantity}",
-                        existingCommitment.Id, existingCommitment.Quantity, request.Quantity);
-                    #pragma warning restore CS0618
+                        "CommitToSignUpItemAnonymous: Updating existing commitment - CommitmentId={CommitmentId}, ItemType={ItemType}",
+                        existingCommitment.Id, itemTypeStr);
 
-                    // User already committed - update the existing commitment
-                    commitResult = signUpItem.UpdateCommitment(
-                        anonymousUserId,
-                        request.Quantity,
-                        request.Notes,
-                        request.ContactName,
-                        request.ContactEmail,
-                        request.ContactPhone);
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    {
+                        commitResult = signUpItem.UpdateSlotCommitment(
+                            anonymousUserId,
+                            slotsClaimed ?? request.Quantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
+                    else
+                    {
+                        commitResult = signUpItem.UpdateCommitment(
+                            anonymousUserId,
+                            physicalQuantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
                     commitmentId = existingCommitment.Id;
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "CommitToSignUpItemAnonymous: Adding new commitment - Quantity={Quantity}",
-                        request.Quantity);
+                        "CommitToSignUpItemAnonymous: Adding new commitment - ItemType={ItemType}",
+                        itemTypeStr);
 
-                    // New commitment - add it
-                    commitResult = signUpItem.AddCommitment(
-                        anonymousUserId,
-                        request.Quantity,
-                        request.Notes,
-                        request.ContactName,
-                        request.ContactEmail,
-                        request.ContactPhone);
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    {
+                        commitResult = signUpItem.AddSlotCommitment(
+                            anonymousUserId,
+                            slotsClaimed ?? request.Quantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
+                    else
+                    {
+                        commitResult = signUpItem.AddCommitment(
+                            anonymousUserId,
+                            physicalQuantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
 
-                    // Get the newly created commitment ID
                     var newCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == anonymousUserId);
                     commitmentId = newCommitment?.Id ?? Guid.Empty;
 

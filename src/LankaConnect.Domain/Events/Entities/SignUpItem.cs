@@ -234,10 +234,10 @@ public class SignUpItem : BaseEntity
     }
 
     /// <summary>
-    /// User commits to bringing a certain quantity of this item
-    /// Phase 2: Now includes optional contact information
-    /// Phase 6A.121: Temporarily only supports quantity-based items
-    /// TODO: Update when SignUpCommitment is updated with PhysicalQuantity/SlotsClaimed
+    /// User commits to bringing a certain quantity of this item (quantity-based only).
+    /// Phase 2: Now includes optional contact information.
+    /// Phase 6A.121: Updated with dual nullable fields.
+    /// Phase 6A.125: Now properly rejects slot-based items; use AddSlotCommitment() instead.
     /// </summary>
     public Result AddCommitment(
         Guid userId,
@@ -247,9 +247,8 @@ public class SignUpItem : BaseEntity
         string? contactEmail = null,
         string? contactPhone = null)
     {
-        // Phase 6A.121: Temporary check - will be removed when SignUpCommitment is updated
         if (ItemType != SignUpItemType.Quantity)
-            return Result.Failure("Adding commitments to slot-based items is not yet supported. Please update SignUpCommitment first.");
+            return Result.Failure($"This is a slot-based item. Use the slot commit endpoint with slotsClaimed instead of quantity.");
 
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
@@ -265,9 +264,8 @@ public class SignUpItem : BaseEntity
         if (_commitments.Any(c => c.UserId == userId))
             return Result.Failure("User has already committed to this item");
 
-        // Create the commitment (Phase 6A.121: Using CreateQuantityBased)
         var commitmentResult = SignUpCommitment.CreateQuantityBased(
-            this,  // Pass the SignUpItem for validation
+            this,
             userId,
             commitQuantity,
             commitNotes,
@@ -281,25 +279,77 @@ public class SignUpItem : BaseEntity
         _commitments.Add(commitmentResult.Value);
         MarkAsUpdated();
 
-        // Phase 6A.51: Raise domain event for sending confirmation email
-        // Phase 6A.121: Updated with dual nullable fields
         RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
             SignUpListId,
             userId,
             ItemDescription,
-            PhysicalQuantity: commitQuantity,  // For quantity-based items
-            SlotsClaimed: null,                 // Not slot-based
+            PhysicalQuantity: commitQuantity,
+            SlotsClaimed: null,
             DateTime.UtcNow));
 
         return Result.Success();
     }
 
     /// <summary>
-    /// Updates an existing commitment for a user
-    /// Phase 6A.17: Supports updating commitment quantity and contact info
-    /// Phase 6A.18: Support for flexible updates (increase, decrease, or cancel)
-    /// Phase 6A.121: Temporarily only supports quantity-based items
-    /// Special case: newQuantity = 0 signals cancellation of entire commitment
+    /// Phase 6A.125: User commits to claiming slots on a slot-based item.
+    /// Example: User claims 2 of 3 available slots for "Assorted Fruits".
+    /// </summary>
+    public Result AddSlotCommitment(
+        Guid userId,
+        int slotsClaimed,
+        string? commitNotes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (ItemType != SignUpItemType.Slot)
+            return Result.Failure("This is a quantity-based item. Use the quantity commit endpoint with physicalQuantity instead of slotsClaimed.");
+
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (slotsClaimed <= 0)
+            return Result.Failure("Slots claimed must be greater than 0");
+
+        var remainingSlots = GetRemainingSlots();
+        if (slotsClaimed > remainingSlots)
+            return Result.Failure($"Cannot claim {slotsClaimed} slots. Only {remainingSlots} remaining");
+
+        if (_commitments.Any(c => c.UserId == userId))
+            return Result.Failure("User has already committed to this item. Use update to modify your commitment.");
+
+        var commitmentResult = SignUpCommitment.CreateSlotBased(
+            this,
+            userId,
+            slotsClaimed,
+            commitNotes,
+            contactName,
+            contactEmail,
+            contactPhone);
+
+        if (commitmentResult.IsFailure)
+            return Result.Failure(commitmentResult.Error);
+
+        _commitments.Add(commitmentResult.Value);
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
+            SignUpListId,
+            userId,
+            ItemDescription,
+            PhysicalQuantity: null,
+            SlotsClaimed: slotsClaimed,
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Updates an existing commitment for a user (quantity-based items only).
+    /// Phase 6A.17: Supports updating commitment quantity and contact info.
+    /// Phase 6A.18: Support for flexible updates (increase, decrease, or cancel).
+    /// Phase 6A.125: Routes to UpdateSlotCommitment for slot-based items.
+    /// Special case: newQuantity = 0 signals cancellation of entire commitment.
     /// </summary>
     public Result UpdateCommitment(
         Guid userId,
@@ -309,103 +359,82 @@ public class SignUpItem : BaseEntity
         string? contactEmail = null,
         string? contactPhone = null)
     {
-        // Phase 6A.121: Temporary check - will be removed when SignUpCommitment is updated
-        if (ItemType != SignUpItemType.Quantity)
-            return Result.Failure("Updating commitments on slot-based items is not yet supported. Please update SignUpCommitment first.");
+        // Phase 6A.125: Route slot-based items to UpdateSlotCommitment
+        if (ItemType == SignUpItemType.Slot)
+            return Result.Failure("This is a slot-based item. Use the slot commit endpoint with slotsClaimed.");
 
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
-        // Find existing commitment
         var existingCommitment = _commitments.FirstOrDefault(c => c.UserId == userId);
         if (existingCommitment == null)
             return Result.Failure("User has no commitment to this item");
 
         // Special case: quantity = 0 means cancel the commitment entirely
-        // Phase 6A.89 FIX: Raise CommitmentCancelledEvent so cancellation email is sent
         if (newQuantity == 0)
         {
-            // Capture data BEFORE removing commitment (needed for email notification)
             var cancelledQuantity = existingCommitment.PhysicalQuantity ?? 0;
             var commitmentId = existingCommitment.Id;
 
             _commitments.Remove(existingCommitment);
             MarkAsUpdated();
 
-            // Phase 6A.89 FIX: Raise domain event for cancellation email notification
-            // Phase 6A.121: Updated with dual nullable fields
             RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
                 Id,
                 commitmentId,
                 userId,
                 SignUpListId,
                 ItemDescription,
-                CancelledPhysicalQuantity: cancelledQuantity,  // For quantity-based items
+                CancelledPhysicalQuantity: cancelledQuantity,
                 CancelledSlotsClaimed: null));
 
             return Result.Success();
         }
 
-        // Validate new quantity is positive
         if (newQuantity <= 0)
             return Result.Failure("Quantity must be greater than 0 (or 0 to cancel)");
 
-        // Calculate the difference in quantity
         var oldQuantity = existingCommitment.PhysicalQuantity ?? 0;
         var quantityDifference = newQuantity - oldQuantity;
 
-        // Check if the new quantity exceeds available slots (account for quantity change)
-        // If decreasing, always allow
-        // If increasing, check remaining availability
         var remainingQuantity = GetRemainingQuantity();
         if (quantityDifference > 0 && quantityDifference > remainingQuantity)
             return Result.Failure($"Cannot change commitment to {newQuantity}. Only {remainingQuantity + oldQuantity} total available.");
 
-        // Update the commitment's quantity (Phase 6A.121: Using UpdatePhysicalQuantity)
         var updateResult = existingCommitment.UpdatePhysicalQuantity(newQuantity);
         if (updateResult.IsFailure)
             return updateResult;
 
-        // Update contact information if provided
         if (!string.IsNullOrWhiteSpace(contactName))
         {
-            var nameResult = existingCommitment.UpdateContactName(contactName);
-            if (nameResult.IsFailure)
-                return nameResult;
+            var r = existingCommitment.UpdateContactName(contactName);
+            if (r.IsFailure) return r;
         }
-
         if (!string.IsNullOrWhiteSpace(contactEmail))
         {
-            var emailResult = existingCommitment.UpdateContactEmail(contactEmail);
-            if (emailResult.IsFailure)
-                return emailResult;
+            var r = existingCommitment.UpdateContactEmail(contactEmail);
+            if (r.IsFailure) return r;
         }
-
         if (!string.IsNullOrWhiteSpace(contactPhone))
         {
-            var phoneResult = existingCommitment.UpdateContactPhone(contactPhone);
-            if (phoneResult.IsFailure)
-                return phoneResult;
+            var r = existingCommitment.UpdateContactPhone(contactPhone);
+            if (r.IsFailure) return r;
         }
-
         if (!string.IsNullOrWhiteSpace(commitNotes))
         {
-            var notesResult = existingCommitment.UpdateNotes(commitNotes);
-            if (notesResult.IsFailure)
-                return notesResult;
+            var r = existingCommitment.UpdateNotes(commitNotes);
+            if (r.IsFailure) return r;
         }
 
         MarkAsUpdated();
 
-        // Phase 6A.51+: Raise domain event for sending update confirmation email
-        // Phase 6A.121: Updated with dual nullable fields
         RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
             Id,
             userId,
-            OldPhysicalQuantity: oldQuantity,   // For quantity-based items
-            NewPhysicalQuantity: newQuantity,   // For quantity-based items
-            OldSlotsClaimed: null,              // Not slot-based
-            NewSlotsClaimed: null,              // Not slot-based
+            OldPhysicalQuantity: oldQuantity,
+            NewPhysicalQuantity: newQuantity,
+            OldSlotsClaimed: null,
+            NewSlotsClaimed: null,
             ItemDescription,
             DateTime.UtcNow));
 
@@ -413,40 +442,125 @@ public class SignUpItem : BaseEntity
     }
 
     /// <summary>
-    /// User cancels their commitment to this item
+    /// Phase 6A.125: Updates an existing slot commitment for a user.
+    /// Special case: newSlots = 0 cancels the commitment entirely.
+    /// </summary>
+    public Result UpdateSlotCommitment(
+        Guid userId,
+        int newSlotsClaimed,
+        string? commitNotes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (ItemType != SignUpItemType.Slot)
+            return Result.Failure("This is a quantity-based item. Use UpdateCommitment with quantity.");
+
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        var existingCommitment = _commitments.FirstOrDefault(c => c.UserId == userId);
+        if (existingCommitment == null)
+            return Result.Failure("User has no commitment to this item");
+
+        // Special case: 0 = cancel
+        if (newSlotsClaimed == 0)
+        {
+            var cancelledSlots = existingCommitment.SlotsClaimed ?? 0;
+            var commitmentId = existingCommitment.Id;
+
+            _commitments.Remove(existingCommitment);
+            MarkAsUpdated();
+
+            RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
+                Id,
+                commitmentId,
+                userId,
+                SignUpListId,
+                ItemDescription,
+                CancelledPhysicalQuantity: null,
+                CancelledSlotsClaimed: cancelledSlots));
+
+            return Result.Success();
+        }
+
+        if (newSlotsClaimed <= 0)
+            return Result.Failure("Slots claimed must be greater than 0 (or 0 to cancel)");
+
+        var oldSlots = existingCommitment.SlotsClaimed ?? 0;
+        var slotsDifference = newSlotsClaimed - oldSlots;
+        var remainingSlots = GetRemainingSlots();
+
+        if (slotsDifference > 0 && slotsDifference > remainingSlots)
+            return Result.Failure($"Cannot change to {newSlotsClaimed} slots. Only {remainingSlots + oldSlots} total available.");
+
+        var updateResult = existingCommitment.UpdateSlotsClaimed(newSlotsClaimed);
+        if (updateResult.IsFailure)
+            return updateResult;
+
+        if (!string.IsNullOrWhiteSpace(contactName))
+        {
+            var r = existingCommitment.UpdateContactName(contactName);
+            if (r.IsFailure) return r;
+        }
+        if (!string.IsNullOrWhiteSpace(contactEmail))
+        {
+            var r = existingCommitment.UpdateContactEmail(contactEmail);
+            if (r.IsFailure) return r;
+        }
+        if (!string.IsNullOrWhiteSpace(contactPhone))
+        {
+            var r = existingCommitment.UpdateContactPhone(contactPhone);
+            if (r.IsFailure) return r;
+        }
+        if (!string.IsNullOrWhiteSpace(commitNotes))
+        {
+            var r = existingCommitment.UpdateNotes(commitNotes);
+            if (r.IsFailure) return r;
+        }
+
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
+            Id,
+            userId,
+            OldPhysicalQuantity: null,
+            NewPhysicalQuantity: null,
+            OldSlotsClaimed: oldSlots,
+            NewSlotsClaimed: newSlotsClaimed,
+            ItemDescription,
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// User cancels their commitment to this item (works for both quantity and slot-based).
     /// Phase 6A.28 Issue 4 Fix: Raises CommitmentCancelledEvent so infrastructure
     /// can explicitly mark the entity as Deleted in EF Core change tracker.
-    /// Phase 6A.121: Temporarily only supports quantity-based items
+    /// Phase 6A.125: Now supports slot-based items.
     /// See ADR-008 for why this is necessary (private backing field issue).
     /// </summary>
     public Result CancelCommitment(Guid userId)
     {
-        // Phase 6A.121: Temporary check - will be removed when SignUpCommitment is updated
-        if (ItemType != SignUpItemType.Quantity)
-            return Result.Failure("Cancelling commitments on slot-based items is not yet supported. Please update SignUpCommitment first.");
-
         var commitment = _commitments.FirstOrDefault(c => c.UserId == userId);
         if (commitment == null)
             return Result.Failure("User has no commitment to this item");
 
-        // Capture data BEFORE removing commitment (needed for email notification)
-        var cancelledQuantity = commitment.PhysicalQuantity ?? 0;
+        // Capture data BEFORE removing (needed for email notification)
+        var cancelledPhysicalQuantity = commitment.PhysicalQuantity;
+        var cancelledSlotsClaimed = commitment.SlotsClaimed;
 
         _commitments.Remove(commitment);
 
-        // Phase 6A.28 Issue 4 Fix: Raise domain event for infrastructure to handle deletion
-        // EF Core cannot detect collection removals from private backing fields
-        // This event allows infrastructure to explicitly mark entity as Deleted
-        // Phase 6A.51+ Fix: Include data for email notification (entity may be deleted by then)
-        // Phase 6A.121: Updated with dual nullable fields
         RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
             Id,
             commitment.Id,
             userId,
             SignUpListId,
             ItemDescription,
-            CancelledPhysicalQuantity: cancelledQuantity,  // For quantity-based items
-            CancelledSlotsClaimed: null));
+            CancelledPhysicalQuantity: cancelledPhysicalQuantity,
+            CancelledSlotsClaimed: cancelledSlotsClaimed));
 
         MarkAsUpdated();
 

@@ -91,50 +91,82 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                     return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
                 }
 
-                // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
-                var targetQuantity = signUpItem.TargetQuantity ?? signUpItem.AvailableSlots ?? 0;
+                // Phase 6A.125: Log item details safely (GetCommittedQuantity throws for slot-based items)
+                var itemTypeStr = signUpItem.ItemType.ToString();
+                var capacityInfo = signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Quantity
+                    ? $"TargetQuantity={signUpItem.TargetQuantity}, CommittedQuantity={signUpItem.GetCommittedQuantity()}"
+                    : $"AvailableSlots={signUpItem.AvailableSlots}, FilledSlots={signUpItem.Commitments.Count(c => c.SlotsClaimed > 0)}";
 
                 _logger.LogInformation(
-                    "CommitToSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, Description={Description}, TargetQuantity={TargetQuantity}, CommittedQuantity={CommittedQuantity}",
-                    signUpItem.Id, signUpItem.ItemDescription, targetQuantity, signUpItem.GetCommittedQuantity());
+                    "CommitToSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, Description={Description}, ItemType={ItemType}, {CapacityInfo}",
+                    signUpItem.Id, signUpItem.ItemDescription, itemTypeStr, capacityInfo);
+
+                // Phase 6A.125: Determine effective quantities based on item type
+                // PhysicalQuantity/SlotsClaimed take priority; fall back to legacy Quantity field
+                var physicalQuantity = request.PhysicalQuantity ?? request.Quantity;
+                var slotsClaimed = request.SlotsClaimed;
 
                 // Phase 6A.17: Support both creating new commitments and updating existing ones
-                // Check if user already has a commitment to this item
                 var existingCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == request.UserId);
 
                 Result commitResult;
                 if (existingCommitment != null)
                 {
-                    // Phase 6A.121: SignUpCommitment uses backward-compatible Quantity property
-                    #pragma warning disable CS0618 // Suppress obsolete warning - Quantity is backward compatible
                     _logger.LogInformation(
-                        "CommitToSignUpItem: Updating existing commitment - UserId={UserId}, CurrentQuantity={CurrentQuantity}, NewQuantity={NewQuantity}",
-                        request.UserId, existingCommitment.Quantity, request.Quantity);
-                    #pragma warning restore CS0618
+                        "CommitToSignUpItem: Updating existing commitment - UserId={UserId}, ItemType={ItemType}",
+                        request.UserId, itemTypeStr);
 
-                    // User already committed - update the existing commitment
-                    commitResult = signUpItem.UpdateCommitment(
-                        request.UserId,
-                        request.Quantity,
-                        request.Notes,
-                        request.ContactName,
-                        request.ContactEmail,
-                        request.ContactPhone);
+                    // Route to correct update method based on item type
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    {
+                        var effectiveSlots = slotsClaimed ?? request.Quantity;
+                        commitResult = signUpItem.UpdateSlotCommitment(
+                            request.UserId,
+                            effectiveSlots,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
+                    else
+                    {
+                        commitResult = signUpItem.UpdateCommitment(
+                            request.UserId,
+                            physicalQuantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
                 }
                 else
                 {
                     _logger.LogInformation(
-                        "CommitToSignUpItem: Creating new commitment - UserId={UserId}, Quantity={Quantity}",
-                        request.UserId, request.Quantity);
+                        "CommitToSignUpItem: Creating new commitment - UserId={UserId}, ItemType={ItemType}",
+                        request.UserId, itemTypeStr);
 
-                    // New commitment - add it (Phase 2: with contact info)
-                    commitResult = signUpItem.AddCommitment(
-                        request.UserId,
-                        request.Quantity,
-                        request.Notes,
-                        request.ContactName,
-                        request.ContactEmail,
-                        request.ContactPhone);
+                    // Route to correct create method based on item type
+                    if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
+                    {
+                        var effectiveSlots = slotsClaimed ?? request.Quantity;
+                        commitResult = signUpItem.AddSlotCommitment(
+                            request.UserId,
+                            effectiveSlots,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
+                    else
+                    {
+                        commitResult = signUpItem.AddCommitment(
+                            request.UserId,
+                            physicalQuantity,
+                            request.Notes,
+                            request.ContactName,
+                            request.ContactEmail,
+                            request.ContactPhone);
+                    }
                 }
 
                 if (commitResult.IsFailure)

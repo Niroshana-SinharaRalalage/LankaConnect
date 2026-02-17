@@ -542,4 +542,166 @@ public class SignUpItemTests
     }
 
     #endregion
+
+    #region Phase 6A.125: Slot-Based Commitment Tests
+
+    [Fact]
+    public void AddSlotCommitment_OnSlotBasedItem_Should_Succeed()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 3, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+
+        // Act
+        var result = item.AddSlotCommitment(userId, 1, "Bringing apples");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.Commitments.Should().HaveCount(1);
+        item.Commitments[0].SlotsClaimed.Should().Be(1);
+        item.Commitments[0].PhysicalQuantity.Should().BeNull();
+        item.Commitments[0].Notes.Should().Be("Bringing apples");
+    }
+
+    [Fact]
+    public void AddSlotCommitment_OnQuantityBasedItem_Should_Fail()
+    {
+        // Arrange
+        var item = SignUpItem.CreateQuantityBased(
+            _signUpListId, "Rice", 10, SignUpItemCategory.Mandatory).Value;
+        var userId = Guid.NewGuid();
+
+        // Act
+        var result = item.AddSlotCommitment(userId, 1);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("quantity-based");
+    }
+
+    [Fact]
+    public void AddCommitment_OnSlotBasedItem_Should_Fail()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 3, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+
+        // Act
+        var result = item.AddCommitment(userId, 1);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("slot-based");
+    }
+
+    [Fact]
+    public void AddSlotCommitment_ExceedingRemainingSlots_Should_Fail()
+    {
+        // Arrange - AvailableSlots=2 means 2 DIFFERENT PEOPLE can commit (user count semantics)
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 2, null, SignUpItemCategory.Suggested).Value;
+
+        // Fill both slots (2 separate users)
+        item.AddSlotCommitment(Guid.NewGuid(), 1);
+        item.AddSlotCommitment(Guid.NewGuid(), 1);
+
+        // Act - 3rd user tries to claim a slot (no slots left)
+        var result = item.AddSlotCommitment(Guid.NewGuid(), 1);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("remaining");
+    }
+
+    [Fact]
+    public void AddSlotCommitment_DuplicateUser_Should_Fail()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 3, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+        item.AddSlotCommitment(userId, 1);
+
+        // Act
+        var result = item.AddSlotCommitment(userId, 1);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("already committed");
+    }
+
+    [Fact]
+    public void UpdateSlotCommitment_ShouldUpdateSlotsClaimed()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 5, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+        item.AddSlotCommitment(userId, 1);
+
+        // Act
+        var result = item.UpdateSlotCommitment(userId, 3);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.Commitments[0].SlotsClaimed.Should().Be(3);
+    }
+
+    [Fact]
+    public void UpdateSlotCommitment_WithZeroSlots_ShouldCancelCommitment()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 3, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+        item.AddSlotCommitment(userId, 2);
+
+        // Act - zero means cancel
+        var result = item.UpdateSlotCommitment(userId, 0);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.Commitments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CancelCommitment_OnSlotBasedItem_ShouldSucceed()
+    {
+        // Arrange
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 3, null, SignUpItemCategory.Suggested).Value;
+        var userId = Guid.NewGuid();
+        item.AddSlotCommitment(userId, 2);
+
+        // Act
+        var result = item.CancelCommitment(userId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.Commitments.Should().BeEmpty();
+        item.GetRemainingSlots().Should().Be(3);
+    }
+
+    [Fact]
+    public void GetRemainingSlots_AfterMultipleCommitments_ShouldTrackCorrectly()
+    {
+        // Arrange - 5 slots means 5 different PEOPLE can commit
+        var item = SignUpItem.CreateSlotBased(
+            _signUpListId, "Fruits", 5, null, SignUpItemCategory.Suggested).Value;
+
+        var user1 = Guid.NewGuid();
+        var user2 = Guid.NewGuid();
+
+        // Act
+        item.AddSlotCommitment(user1, 2);  // user1 commits (claims 2 slot-units but occupies 1 "slot")
+        item.AddSlotCommitment(user2, 1);  // user2 commits (claims 1 slot-unit)
+
+        // GetRemainingSlots = AvailableSlots - count of distinct users with SlotsClaimed > 0
+        // = 5 - 2 users = 3 remaining slots for other people
+        item.GetRemainingSlots().Should().Be(3);
+    }
+
+    #endregion
 }

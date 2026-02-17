@@ -287,15 +287,33 @@ public class CsvExportService : ICsvExportService
     /// Phase 6A.69 (Revised): Write item row with full details (item + optional commitment).
     /// Format: Item Description | Requested Quantity | Remaining Quantity | Contact Name | Contact Email | Contact Phone | Quantity Committed
     /// </summary>
+#pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
     private static void WriteItemRow(
         CsvWriter csv,
-        SignUpItemDto item,
+        ISignUpItemDto item,
         SignUpCommitmentDto? commitment)
     {
         // Item information
         csv.WriteField(item.ItemDescription);
-        csv.WriteField(item.Quantity);
-        csv.WriteField(item.RemainingQuantity);
+
+        // Phase 6A.121: Handle both quantity-based and slot-based items
+        var quantity = item switch
+        {
+            QuantityBasedItemDto qItem => qItem.TargetQuantity,
+            SlotBasedItemDto sItem => sItem.TotalSlots,
+            SignUpItemDto legacyItem => legacyItem.Quantity,
+            _ => 0
+        };
+        var remaining = item switch
+        {
+            QuantityBasedItemDto qItem => qItem.RemainingQuantity,
+            SlotBasedItemDto sItem => sItem.RemainingSlots,
+            SignUpItemDto legacyItem => legacyItem.RemainingQuantity,
+            _ => 0
+        };
+
+        csv.WriteField(quantity);
+        csv.WriteField(remaining);
 
         // Contact information (use em dash for missing data)
         csv.WriteField(commitment?.ContactName ?? "—");
@@ -307,9 +325,11 @@ public class CsvExportService : ICsvExportService
             : "'" + commitment.ContactPhone;
         csv.WriteField(phone);
 
-        csv.WriteField(commitment?.Quantity ?? 0);
+        // Phase 6A.121: Use dual nullable fields (PhysicalQuantity or SlotsClaimed)
+        csv.WriteField(commitment?.PhysicalQuantity ?? commitment?.SlotsClaimed ?? 0);
         csv.NextRecord();
     }
+#pragma warning restore CS0618
 
     /// <summary>
     /// Phase 6A.69 (Revised): Write commitment-only row (blank item columns, commitment data only).
@@ -335,7 +355,8 @@ public class CsvExportService : ICsvExportService
             : "'" + commitment.ContactPhone;
         csv.WriteField(phone);
 
-        csv.WriteField(commitment.Quantity);
+        // Phase 6A.121: Use dual nullable fields (PhysicalQuantity or SlotsClaimed)
+        csv.WriteField(commitment.PhysicalQuantity ?? commitment.SlotsClaimed ?? 0);
         csv.NextRecord();
     }
 

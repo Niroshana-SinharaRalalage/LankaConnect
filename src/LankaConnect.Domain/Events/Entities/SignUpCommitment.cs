@@ -12,7 +12,21 @@ public class SignUpCommitment : BaseEntity
     public Guid? SignUpItemId { get; private set; } // Nullable for backward compatibility
     public Guid UserId { get; private set; }
     public string ItemDescription { get; private set; }
-    public int Quantity { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.121: Dual nullable fields for quantity-based vs slot-based commitments
+    /// Exactly ONE of PhysicalQuantity or SlotsClaimed will be populated based on item type
+    /// </summary>
+    public int? PhysicalQuantity { get; private set; }  // For quantity-based items (e.g., "5 plates")
+    public int? SlotsClaimed { get; private set; }      // For slot-based items (e.g., "2 slots")
+
+    /// <summary>
+    /// Deprecated: Use PhysicalQuantity or SlotsClaimed instead
+    /// Kept for backward compatibility - returns whichever field is populated
+    /// </summary>
+    [Obsolete("Use PhysicalQuantity or SlotsClaimed instead. This will be removed in Phase 7.")]
+    public int Quantity => PhysicalQuantity ?? SlotsClaimed ?? 0;
+
     public DateTime CommittedAt { get; private set; }
     public string? Notes { get; private set; }
 
@@ -28,11 +42,14 @@ public class SignUpCommitment : BaseEntity
         ItemDescription = null!;
     }
 
+    /// <summary>
+    /// Phase 6A.121: Private constructor for quantity-based commitments
+    /// </summary>
     private SignUpCommitment(
         Guid? signUpItemId,
         Guid userId,
         string itemDescription,
-        int quantity,
+        int physicalQuantity,
         string? notes = null,
         string? contactName = null,
         string? contactEmail = null,
@@ -41,7 +58,34 @@ public class SignUpCommitment : BaseEntity
         SignUpItemId = signUpItemId;
         UserId = userId;
         ItemDescription = itemDescription;
-        Quantity = quantity;
+        PhysicalQuantity = physicalQuantity;
+        SlotsClaimed = null;  // Explicit null for quantity-based
+        Notes = notes;
+        ContactName = contactName;
+        ContactEmail = contactEmail;
+        ContactPhone = contactPhone;
+        CommittedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Private constructor for slot-based commitments
+    /// </summary>
+    private SignUpCommitment(
+        Guid signUpItemId,
+        Guid userId,
+        string itemDescription,
+        int slotsClaimed,
+        bool isSlotBased,  // Dummy parameter to differentiate from quantity-based constructor
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        SignUpItemId = signUpItemId;
+        UserId = userId;
+        ItemDescription = itemDescription;
+        PhysicalQuantity = null;  // Explicit null for slot-based
+        SlotsClaimed = slotsClaimed;
         Notes = notes;
         ContactName = contactName;
         ContactEmail = contactEmail;
@@ -70,7 +114,10 @@ public class SignUpCommitment : BaseEntity
     /// <summary>
     /// Creates a commitment for a specific SignUpItem (new category-based model)
     /// Phase 2: Now includes optional contact information
+    /// Phase 6A.121: DEPRECATED - Use CreateQuantityBased or CreateSlotBased instead
+    /// Kept for backward compatibility with existing code
     /// </summary>
+    [Obsolete("Use CreateQuantityBased or CreateSlotBased instead. This will be removed in Phase 7.")]
     public static Result<SignUpCommitment> CreateForItem(
         Guid signUpItemId,
         Guid userId,
@@ -97,11 +144,97 @@ public class SignUpCommitment : BaseEntity
         if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
             return Result<SignUpCommitment>.Failure("Invalid email format");
 
+        // Phase 6A.121: Use quantity-based constructor for backward compatibility
         var commitment = new SignUpCommitment(
             signUpItemId,
             userId,
             itemDescription.Trim(),
             quantity,
+            notes?.Trim(),
+            contactName?.Trim(),
+            contactEmail?.Trim(),
+            contactPhone?.Trim());
+
+        return Result<SignUpCommitment>.Success(commitment);
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Creates a quantity-based commitment
+    /// Used when committing to quantity-based items (e.g., "5 plates of rice")
+    /// </summary>
+    public static Result<SignUpCommitment> CreateQuantityBased(
+        SignUpItem item,
+        Guid userId,
+        int physicalQuantity,
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (item.ItemType != Enums.SignUpItemType.Quantity)
+            return Result<SignUpCommitment>.Failure("Cannot create quantity-based commitment for slot-based item. Use CreateSlotBased instead.");
+
+        if (userId == Guid.Empty)
+            return Result<SignUpCommitment>.Failure("User ID is required");
+
+        if (physicalQuantity <= 0)
+            return Result<SignUpCommitment>.Failure("Physical quantity must be greater than 0");
+
+        if (physicalQuantity > item.GetRemainingQuantity())
+            return Result<SignUpCommitment>.Failure($"Not enough quantity remaining. Available: {item.GetRemainingQuantity()}");
+
+        // Validate email format if provided
+        if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
+            return Result<SignUpCommitment>.Failure("Invalid email format");
+
+        var commitment = new SignUpCommitment(
+            item.Id,
+            userId,
+            item.ItemDescription,
+            physicalQuantity,
+            notes?.Trim(),
+            contactName?.Trim(),
+            contactEmail?.Trim(),
+            contactPhone?.Trim());
+
+        return Result<SignUpCommitment>.Success(commitment);
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Creates a slot-based commitment
+    /// Used when committing to slot-based items (e.g., "2 slots for assorted fruits")
+    /// </summary>
+    public static Result<SignUpCommitment> CreateSlotBased(
+        SignUpItem item,
+        Guid userId,
+        int slotsClaimed,
+        string? notes = null,
+        string? contactName = null,
+        string? contactEmail = null,
+        string? contactPhone = null)
+    {
+        if (item.ItemType != Enums.SignUpItemType.Slot)
+            return Result<SignUpCommitment>.Failure("Cannot create slot-based commitment for quantity-based item. Use CreateQuantityBased instead.");
+
+        if (userId == Guid.Empty)
+            return Result<SignUpCommitment>.Failure("User ID is required");
+
+        if (slotsClaimed <= 0)
+            return Result<SignUpCommitment>.Failure("Slots claimed must be greater than 0");
+
+        if (slotsClaimed > item.GetRemainingSlots())
+            return Result<SignUpCommitment>.Failure($"Not enough slots remaining. Available: {item.GetRemainingSlots()}");
+
+        // Validate email format if provided
+        if (!string.IsNullOrWhiteSpace(contactEmail) && !IsValidEmail(contactEmail))
+            return Result<SignUpCommitment>.Failure("Invalid email format");
+
+        var commitment = new SignUpCommitment(
+            item.Id,
+            userId,
+            item.ItemDescription,
+            slotsClaimed,
+            true,  // isSlotBased flag to use the slot-based constructor
             notes?.Trim(),
             contactName?.Trim(),
             contactEmail?.Trim(),
@@ -125,13 +258,55 @@ public class SignUpCommitment : BaseEntity
 
     /// <summary>
     /// Updates the quantity of the commitment
+    /// Phase 6A.121: DEPRECATED - Use UpdatePhysicalQuantity or UpdateSlotsClaimed instead
+    /// Kept for backward compatibility
     /// </summary>
+    [Obsolete("Use UpdatePhysicalQuantity or UpdateSlotsClaimed instead. This will be removed in Phase 7.")]
     public Result UpdateQuantity(int newQuantity)
     {
         if (newQuantity <= 0)
             return Result.Failure("Quantity must be greater than 0");
 
-        Quantity = newQuantity;
+        // Phase 6A.121: Update whichever field is populated
+        if (PhysicalQuantity.HasValue)
+            PhysicalQuantity = newQuantity;
+        else if (SlotsClaimed.HasValue)
+            SlotsClaimed = newQuantity;
+
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Updates the physical quantity for quantity-based commitments
+    /// </summary>
+    public Result UpdatePhysicalQuantity(int newPhysicalQuantity)
+    {
+        if (!PhysicalQuantity.HasValue)
+            return Result.Failure("Cannot update physical quantity for slot-based commitment. Use UpdateSlotsClaimed instead.");
+
+        if (newPhysicalQuantity <= 0)
+            return Result.Failure("Physical quantity must be greater than 0");
+
+        PhysicalQuantity = newPhysicalQuantity;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Updates the slots claimed for slot-based commitments
+    /// </summary>
+    public Result UpdateSlotsClaimed(int newSlotsClaimed)
+    {
+        if (!SlotsClaimed.HasValue)
+            return Result.Failure("Cannot update slots claimed for quantity-based commitment. Use UpdatePhysicalQuantity instead.");
+
+        if (newSlotsClaimed <= 0)
+            return Result.Failure("Slots claimed must be greater than 0");
+
+        SlotsClaimed = newSlotsClaimed;
         MarkAsUpdated();
 
         return Result.Success();

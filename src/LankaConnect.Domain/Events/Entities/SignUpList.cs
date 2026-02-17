@@ -211,8 +211,8 @@ public class SignUpList : BaseEntity
         if (!categoryEnabled)
             return Result<SignUpItem>.Failure($"{itemCategory} category is not enabled for this sign-up list");
 
-        // Create the item
-        var itemResult = SignUpItem.Create(Id, itemDescription, quantity, itemCategory, notes);
+        // Create the item (Phase 6A.121: Using CreateQuantityBased for backward compatibility)
+        var itemResult = SignUpItem.CreateQuantityBased(Id, itemDescription, quantity, itemCategory, notes);
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
@@ -292,12 +292,13 @@ public class SignUpList : BaseEntity
         _commitments.Add(commitmentResult.Value);
         MarkAsUpdated();
 
-        // Raise domain event
+        // Raise domain event (Phase 6A.121: Updated with dual nullable fields)
         RaiseDomainEvent(new UserCommittedToSignUpEvent(
             Id,
             userId,
             itemDescription,
-            quantity,
+            PhysicalQuantity: quantity,  // For legacy Open commitments (quantity-based)
+            SlotsClaimed: null,          // Not slot-based
             DateTime.UtcNow));
 
         return Result.Success();

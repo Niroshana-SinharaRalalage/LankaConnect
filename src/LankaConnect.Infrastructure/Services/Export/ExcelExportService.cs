@@ -66,7 +66,7 @@ public class ExcelExportService : IExcelExportService
                     using var workbook = new XLWorkbook();
 
                     // Group items by category within this signup list
-                    var categorizedItems = new Dictionary<string, List<SignUpItemDto>>
+                    var categorizedItems = new Dictionary<string, List<ISignUpItemDto>>
                     {
                         ["Mandatory"] = new(),
                         ["Suggested"] = new(),
@@ -155,10 +155,11 @@ public class ExcelExportService : IExcelExportService
     /// Phase 6A.73 (Revised): Create Excel sheet with grouped format (matching CSV export).
     /// Each item shows once with commitments listed below, with blank item columns for additional commitments.
     /// </summary>
+#pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
     private void CreateGroupedSignUpSheet(
         IXLWorkbook workbook,
         string sheetName,
-        List<SignUpItemDto> items)
+        List<ISignUpItemDto> items)
     {
         var sheet = workbook.Worksheets.Add(sheetName);
 
@@ -225,15 +226,32 @@ public class ExcelExportService : IExcelExportService
     private static void WriteGroupedItemRow(
         IXLWorksheet sheet,
         int row,
-        SignUpItemDto item,
+        ISignUpItemDto item,
         SignUpCommitmentDto? commitment)
     {
         int col = 1;
 
         // Item information
         sheet.Cell(row, col++).Value = item.ItemDescription;
-        sheet.Cell(row, col++).Value = item.Quantity;
-        sheet.Cell(row, col++).Value = item.RemainingQuantity;
+
+        // Phase 6A.121: Handle both quantity-based and slot-based items
+        var quantity = item switch
+        {
+            QuantityBasedItemDto qItem => qItem.TargetQuantity,
+            SlotBasedItemDto sItem => sItem.TotalSlots,
+            SignUpItemDto legacyItem => legacyItem.Quantity,
+            _ => 0
+        };
+        var remaining = item switch
+        {
+            QuantityBasedItemDto qItem => qItem.RemainingQuantity,
+            SlotBasedItemDto sItem => sItem.RemainingSlots,
+            SignUpItemDto legacyItem => legacyItem.RemainingQuantity,
+            _ => 0
+        };
+
+        sheet.Cell(row, col++).Value = quantity;
+        sheet.Cell(row, col++).Value = remaining;
 
         // Contact information (use em dash for missing data)
         sheet.Cell(row, col++).Value = commitment?.ContactName ?? "—";
@@ -245,7 +263,8 @@ public class ExcelExportService : IExcelExportService
             : "'" + commitment.ContactPhone;
         sheet.Cell(row, col++).Value = phone;
 
-        sheet.Cell(row, col++).Value = commitment?.Quantity ?? 0;
+        // Phase 6A.121: Use dual nullable fields (PhysicalQuantity or SlotsClaimed)
+        sheet.Cell(row, col++).Value = commitment?.PhysicalQuantity ?? commitment?.SlotsClaimed ?? 0;
     }
 
     /// <summary>
@@ -274,8 +293,10 @@ public class ExcelExportService : IExcelExportService
             : "'" + commitment.ContactPhone;
         sheet.Cell(row, col++).Value = phone;
 
-        sheet.Cell(row, col++).Value = commitment.Quantity;
+        // Phase 6A.121: Use dual nullable fields (PhysicalQuantity or SlotsClaimed)
+        sheet.Cell(row, col++).Value = commitment.PhysicalQuantity ?? commitment.SlotsClaimed ?? 0;
     }
+#pragma warning restore CS0618
 
     /// <summary>
     /// Phase 6A.73: Sanitize filename for ZIP entry (remove invalid characters).
@@ -561,7 +582,7 @@ public class ExcelExportService : IExcelExportService
         List<SignUpListDto> signUpLists)
     {
         // Group items by category
-        var categorizedItems = new Dictionary<string, List<(SignUpListDto List, SignUpItemDto Item)>>
+        var categorizedItems = new Dictionary<string, List<(SignUpListDto List, ISignUpItemDto Item)>>
         {
             ["Mandatory"] = new(),
             ["Suggested"] = new(),
@@ -594,10 +615,11 @@ public class ExcelExportService : IExcelExportService
         }
     }
 
+#pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
     private void CreateSignUpSheet(
         IXLWorkbook workbook,
         string sheetName,
-        List<(SignUpListDto List, SignUpItemDto Item)> items)
+        List<(SignUpListDto List, ISignUpItemDto Item)> items)
     {
         var sheet = workbook.Worksheets.Add(sheetName);
 
@@ -636,12 +658,29 @@ public class ExcelExportService : IExcelExportService
                 int col = 1;
                 sheet.Cell(row, col++).Value = list.Category;
                 sheet.Cell(row, col++).Value = item.ItemDescription;
-                sheet.Cell(row, col++).Value = item.Quantity;
+
+                // Phase 6A.121: Handle both quantity-based and slot-based items
+                var quantity = item switch
+                {
+                    QuantityBasedItemDto qItem => qItem.TargetQuantity,
+                    SlotBasedItemDto sItem => sItem.TotalSlots,
+                    SignUpItemDto legacyItem => legacyItem.Quantity,
+                    _ => 0
+                };
+                var remaining = item switch
+                {
+                    QuantityBasedItemDto qItem => qItem.RemainingQuantity,
+                    SlotBasedItemDto sItem => sItem.RemainingSlots,
+                    SignUpItemDto legacyItem => legacyItem.RemainingQuantity,
+                    _ => 0
+                };
+
+                sheet.Cell(row, col++).Value = quantity;
                 sheet.Cell(row, col++).Value = "—"; // No user name
                 sheet.Cell(row, col++).Value = "—"; // No phone
                 sheet.Cell(row, col++).Value = "—"; // No email
                 sheet.Cell(row, col++).Value = 0;   // Nothing committed
-                sheet.Cell(row, col++).Value = item.RemainingQuantity;
+                sheet.Cell(row, col++).Value = remaining;
                 row++;
             }
             else
@@ -652,7 +691,24 @@ public class ExcelExportService : IExcelExportService
                     int col = 1;
                     sheet.Cell(row, col++).Value = list.Category;
                     sheet.Cell(row, col++).Value = item.ItemDescription;
-                    sheet.Cell(row, col++).Value = item.Quantity;
+
+                    // Phase 6A.121: Handle both quantity-based and slot-based items
+                    var quantity = item switch
+                    {
+                        QuantityBasedItemDto qItem => qItem.TargetQuantity,
+                        SlotBasedItemDto sItem => sItem.TotalSlots,
+                        SignUpItemDto legacyItem => legacyItem.Quantity,
+                        _ => 0
+                    };
+                    var remaining = item switch
+                    {
+                        QuantityBasedItemDto qItem => qItem.RemainingQuantity,
+                        SlotBasedItemDto sItem => sItem.RemainingSlots,
+                        SignUpItemDto legacyItem => legacyItem.RemainingQuantity,
+                        _ => 0
+                    };
+
+                    sheet.Cell(row, col++).Value = quantity;
                     sheet.Cell(row, col++).Value = commitment.ContactName ?? "Anonymous";
 
                     // Format phone with apostrophe prefix (same as CSV)
@@ -662,12 +718,14 @@ public class ExcelExportService : IExcelExportService
                     sheet.Cell(row, col++).Value = phoneValue;
 
                     sheet.Cell(row, col++).Value = commitment.ContactEmail ?? "—";
-                    sheet.Cell(row, col++).Value = commitment.Quantity;
-                    sheet.Cell(row, col++).Value = item.RemainingQuantity;
+                    // Phase 6A.121: Use dual nullable fields (PhysicalQuantity or SlotsClaimed)
+                    sheet.Cell(row, col++).Value = commitment.PhysicalQuantity ?? commitment.SlotsClaimed ?? 0;
+                    sheet.Cell(row, col++).Value = remaining;
                     row++;
                 }
             }
         }
+#pragma warning restore CS0618
 
         // Auto-fit columns
         sheet.Columns().AdjustToContents();

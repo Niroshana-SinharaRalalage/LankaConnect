@@ -91,9 +91,12 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                     return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
                 }
 
+                // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
+                var targetQuantity = signUpItem.TargetQuantity ?? signUpItem.AvailableSlots ?? 0;
+
                 _logger.LogInformation(
-                    "CommitToSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, Description={Description}, Quantity={Quantity}, CommittedQuantity={CommittedQuantity}",
-                    signUpItem.Id, signUpItem.ItemDescription, signUpItem.Quantity, signUpItem.GetCommittedQuantity());
+                    "CommitToSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, Description={Description}, TargetQuantity={TargetQuantity}, CommittedQuantity={CommittedQuantity}",
+                    signUpItem.Id, signUpItem.ItemDescription, targetQuantity, signUpItem.GetCommittedQuantity());
 
                 // Phase 6A.17: Support both creating new commitments and updating existing ones
                 // Check if user already has a commitment to this item
@@ -102,9 +105,12 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                 Result commitResult;
                 if (existingCommitment != null)
                 {
+                    // Phase 6A.121: SignUpCommitment uses backward-compatible Quantity property
+                    #pragma warning disable CS0618 // Suppress obsolete warning - Quantity is backward compatible
                     _logger.LogInformation(
                         "CommitToSignUpItem: Updating existing commitment - UserId={UserId}, CurrentQuantity={CurrentQuantity}, NewQuantity={NewQuantity}",
                         request.UserId, existingCommitment.Quantity, request.Quantity);
+                    #pragma warning restore CS0618
 
                     // User already committed - update the existing commitment
                     commitResult = signUpItem.UpdateCommitment(

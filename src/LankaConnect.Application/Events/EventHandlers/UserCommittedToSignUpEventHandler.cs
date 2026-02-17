@@ -51,9 +51,13 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
         {
             var stopwatch = Stopwatch.StartNew();
 
+            // Phase 6A.121: Support dual nullable fields (PhysicalQuantity or SlotsClaimed)
+            var quantity = domainEvent.PhysicalQuantity ?? domainEvent.SlotsClaimed ?? 0;
+            var quantityType = domainEvent.PhysicalQuantity.HasValue ? "units" : "slots";
+
             _logger.LogInformation(
-                "UserCommittedToSignUp START: UserId={UserId}, Quantity={Quantity}, ItemDescription={ItemDescription}, SignUpListId={SignUpListId}",
-                domainEvent.UserId, domainEvent.Quantity, domainEvent.ItemDescription, domainEvent.SignUpListId);
+                "UserCommittedToSignUp START: UserId={UserId}, Quantity={Quantity} {QuantityType}, ItemDescription={ItemDescription}, SignUpListId={SignUpListId}",
+                domainEvent.UserId, quantity, quantityType, domainEvent.ItemDescription, domainEvent.SignUpListId);
 
             try
             {
@@ -82,6 +86,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 }
 
                 // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
                 var emailParams = SignupCommitmentEmailParams.CreateConfirmation(
                     userId: user.Id,
                     userName: user.FirstName,
@@ -89,7 +94,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
                     signupItem: domainEvent.ItemDescription,
-                    quantity: domainEvent.Quantity,
+                    quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
                     eventStartDate: @event.StartDate,
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: @event.Location?.ToString() ?? "Location TBD",

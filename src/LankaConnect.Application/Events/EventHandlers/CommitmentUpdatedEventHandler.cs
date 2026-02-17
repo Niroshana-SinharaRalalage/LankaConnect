@@ -51,9 +51,14 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
         {
             var stopwatch = Stopwatch.StartNew();
 
+            // Phase 6A.121: Support dual nullable fields (PhysicalQuantity or SlotsClaimed)
+            var oldQuantity = domainEvent.OldPhysicalQuantity ?? domainEvent.OldSlotsClaimed ?? 0;
+            var newQuantity = domainEvent.NewPhysicalQuantity ?? domainEvent.NewSlotsClaimed ?? 0;
+            var quantityType = domainEvent.NewPhysicalQuantity.HasValue ? "units" : "slots";
+
             _logger.LogInformation(
-                "CommitmentUpdated START: UserId={UserId}, ItemDescription={ItemDescription}, OldQuantity={OldQuantity}, NewQuantity={NewQuantity}",
-                domainEvent.UserId, domainEvent.ItemDescription, domainEvent.OldQuantity, domainEvent.NewQuantity);
+                "CommitmentUpdated START: UserId={UserId}, ItemDescription={ItemDescription}, OldQuantity={OldQuantity}, NewQuantity={NewQuantity} ({QuantityType})",
+                domainEvent.UserId, domainEvent.ItemDescription, oldQuantity, newQuantity, quantityType);
 
             try
             {
@@ -82,6 +87,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                 }
 
                 // Phase 6A.87: Use typed email parameters for compile-time safety
+                // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
                 var emailParams = SignupCommitmentEmailParams.CreateUpdate(
                     userId: user.Id,
                     userName: user.FirstName,
@@ -89,7 +95,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Untitled Event",
                     signupItem: domainEvent.ItemDescription,
-                    quantity: domainEvent.NewQuantity,
+                    quantity: newQuantity,  // Phase 6A.121: Calculated from dual fields above
                     eventStartDate: @event.StartDate,
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: @event.Location?.ToString() ?? "Location TBD",

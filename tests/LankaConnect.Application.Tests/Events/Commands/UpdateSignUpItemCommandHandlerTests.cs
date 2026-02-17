@@ -84,7 +84,8 @@ public class UpdateSignUpItemCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         item.ItemDescription.Should().Be("Basmati Rice (3 cups)");
-        item.Quantity.Should().Be(10);
+        var targetQuantity = item.TargetQuantity ?? item.AvailableSlots ?? 0;
+        targetQuantity.Should().Be(10);
         item.Notes.Should().Be("Please bring basmati or jasmine rice");
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -335,8 +336,12 @@ public class UpdateSignUpItemCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         item.ItemDescription.Should().Be("Basmati Rice");
-        item.Quantity.Should().Be(20);
-        item.RemainingQuantity.Should().Be(15); // 20 total - 5 committed
+        var targetQty = item.TargetQuantity ?? item.AvailableSlots ?? 0;
+        targetQty.Should().Be(20);
+        var remaining = item.ItemType == SignUpItemType.Quantity
+            ? item.GetRemainingQuantity()
+            : item.GetRemainingSlots();
+        remaining.Should().Be(15); // 20 total - 5 committed
         item.Notes.Should().Be("Updated notes");
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -76,13 +76,15 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
 
                     // Legacy fields (for Open/Predefined sign-ups)
                     PredefinedItems = signUpList.PredefinedItems.ToList(),
+                    // Phase 6A.121: SignUpCommitment uses dual nullable fields (PhysicalQuantity/SlotsClaimed)
                     Commitments = signUpList.Commitments.Select(c => new SignUpCommitmentDto
                     {
                         Id = c.Id,
                         SignUpItemId = c.SignUpItemId,
                         UserId = c.UserId,
                         ItemDescription = c.ItemDescription,
-                        Quantity = c.Quantity,
+                        PhysicalQuantity = c.PhysicalQuantity,
+                        SlotsClaimed = c.SlotsClaimed,
                         CommittedAt = c.CommittedAt,
                         Notes = c.Notes,
                         ContactName = c.ContactName,
@@ -96,12 +98,14 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     HasPreferredItems = signUpList.HasPreferredItems,
                     HasSuggestedItems = signUpList.HasSuggestedItems,
                     HasOpenItems = signUpList.HasOpenItems, // Phase 6A.27
-                    Items = signUpList.Items.Select(item => new SignUpItemDto
+                    // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
+                    #pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
+                    Items = signUpList.Items.Select(item => (ISignUpItemDto)new SignUpItemDto
                     {
                         Id = item.Id,
                         ItemDescription = item.ItemDescription,
-                        Quantity = item.Quantity,
-                        RemainingQuantity = item.RemainingQuantity,
+                        Quantity = item.TargetQuantity ?? item.AvailableSlots ?? 0,
+                        RemainingQuantity = item.ItemType == Domain.Events.Enums.SignUpItemType.Quantity ? item.GetRemainingQuantity() : item.GetRemainingSlots(),
                         ItemCategory = item.ItemCategory,
                         Notes = item.Notes,
                         CreatedByUserId = item.CreatedByUserId, // Phase 6A.27
@@ -111,7 +115,8 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                             SignUpItemId = c.SignUpItemId,
                             UserId = c.UserId,
                             ItemDescription = c.ItemDescription,
-                            Quantity = c.Quantity,
+                            PhysicalQuantity = c.PhysicalQuantity,
+                            SlotsClaimed = c.SlotsClaimed,
                             CommittedAt = c.CommittedAt,
                             Notes = c.Notes,
                             ContactName = c.ContactName,
@@ -119,6 +124,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                             ContactPhone = c.ContactPhone
                         }).ToList()
                     }).ToList()
+                    #pragma warning restore CS0618
                 }).ToList();
 
                 // Calculate totals for logging

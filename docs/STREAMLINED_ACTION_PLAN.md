@@ -7,10 +7,24 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.121a: SLOT-BASED SIGNUP ITEMS ✅ DEPLOYED (2026-02-16)
+## 🔄 CURRENT STATUS - PHASE 6A.124: SIGNUP TYPE GUARD FIX ✅ DEPLOYED (2026-02-17)
+**Date**: 2026-02-17
+**Session**: Phase 6A.123/124 - Critical Signup Item Schema, DTO and Type Guard Fixes
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WORKING**
+**Commits**: 21e9f26a (6A.123), 9f75510b (6A.124 backend), 02c7a1f6 (6A.124 frontend)
+
+**Fixes**:
+1. quantity NOT NULL default (Phase 6A.123) - DB migration, verified HTTP 200 commitment
+2. ItemType discriminator in API response (Phase 6A.124) - interface + TS enum string values
+3. EF Core contact field mappings (Phase 6A.123)
+4. Sign Up buttons outside collapsible (Phase 6A.123)
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.121a: SLOT-BASED SIGNUP ITEMS ✅ DEPLOYED (2026-02-16)
 **Date**: 2026-02-16
 **Session**: Phase 6A.121a - Dual Nullable Fields / Slot-Based Signup Items
-**Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**
+**Status**: ✅ **DEPLOYED TO STAGING**
 **Deployment**: ✅ Pushed commit b70adf62 to develop
 
 **Feature**: Slot-based signup items - organizers can set number of slots instead of fixed quantity

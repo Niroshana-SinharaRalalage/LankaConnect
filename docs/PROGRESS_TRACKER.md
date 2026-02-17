@@ -1,5 +1,30 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-17 - Phase 6A.124 Signup Item Type Guards Fixed ✅ DEPLOYED*
+*Last Updated: 2026-02-17 - Phase 6A.125 Slot-Based Commitment Support Complete ✅ DEPLOYED*
+
+## 🎯 Current Session Status - Phase 6A.125: Slot Commitment + JSON Serialization Fixes ✅ DEPLOYED
+
+### Phase 6A.125: Complete Slot-Based Signup Commitment Support - 2026-02-17
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit a8f0fb81)**
+
+**Root Causes Found via Code Review + Live API Testing**:
+
+**Bug 1: ALL type-specific fields missing from API response (quantity AND slot)**
+- Root cause: `List<ISignUpItemDto>` typed property → System.Text.Json only serializes interface-declared properties
+- Affected fields: `targetQuantity`, `committedQuantity`, `remainingQuantity` (quantity-based) + `totalSlots`, `filledSlots`, `remainingSlots` (slot-based)
+- Fix: Added `[JsonPolymorphic(TypeDiscriminatorPropertyName="$type")]` + `[JsonDerivedType]` to `ISignUpItemDto`
+- Verified: `targetQuantity=10, committedQuantity=9, remainingQuantity=1` now returned ✅
+
+**Bug 2: Committing to slot-based items blocked by domain**
+- Root cause A: `SignUpItem.AddCommitment()` had hard-coded "not yet supported" check for slot-based items
+- Root cause B: `CommitToSignUpItemCommandHandler` called `GetCommittedQuantity()` which throws `InvalidOperationException` for slot-based items
+- Root cause C: No `AddSlotCommitment()` method existed on domain entity
+- Fix: Added `AddSlotCommitment()`, `UpdateSlotCommitment()` to `SignUpItem`; `CancelCommitment()` now handles both types
+- Fix: Updated `CommitToSignUpItemCommand` + handler to route by ItemType with `PhysicalQuantity?` and `SlotsClaimed?` fields
+- Fix: Same applied to `CommitToSignUpItemAnonymous` command/handler + controller requests
+- Verified: HTTP 200 slot commitment created on staging ✅
+
+**Tests**: 1,468/1,468 application tests pass; 92/93 domain tests (1 pre-existing failure)
 
 ## 🎯 Current Session Status - Phase 6A.124: Signup Item Type Guard Fixes ✅ DEPLOYED
 

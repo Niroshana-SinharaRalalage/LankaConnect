@@ -1751,12 +1751,10 @@ public class EventsController : BaseController<EventsController>
         Response.Headers["Pragma"] = "no-cache";
         Response.Headers["Expires"] = "0";
 
-        // Phase 6A.114 DEBUG: Add WARNING level log at method entry to ensure visibility
-        Logger.LogWarning("[DEBUG-CONTROLLER-ENTRY] CommitToSignUpItem endpoint HIT - EventId: {EventId}, SignUpId: {SignUpId}, ItemId: {ItemId}, UserId: {UserId}, Quantity: {Quantity}",
-            eventId, signupId, itemId, request.UserId, request.Quantity);
-
-        Logger.LogInformation("User {UserId} committing to item {ItemId} in sign-up list {SignUpId} for event {EventId}",
-            request.UserId, itemId, signupId, eventId);
+        // Phase 6A.125: Log both quantity and slot fields for observability
+        Logger.LogInformation(
+            "CommitToSignUpItem: EventId={EventId}, ItemId={ItemId}, UserId={UserId}, Quantity={Quantity}, PhysicalQuantity={PhysicalQuantity}, SlotsClaimed={SlotsClaimed}",
+            eventId, itemId, request.UserId, request.Quantity, request.PhysicalQuantity, request.SlotsClaimed);
 
         var command = new CommitToSignUpItemCommand(
             eventId,
@@ -1767,7 +1765,9 @@ public class EventsController : BaseController<EventsController>
             request.Notes,
             request.ContactName,
             request.ContactEmail,
-            request.ContactPhone);
+            request.ContactPhone,
+            PhysicalQuantity: request.PhysicalQuantity,
+            SlotsClaimed: request.SlotsClaimed);
 
         // Phase 6A.114 DEBUG: Log before MediatR call
         Logger.LogWarning("[DEBUG-CONTROLLER-MEDIATOR] About to send CommitToSignUpItemCommand to MediatR");
@@ -1832,7 +1832,9 @@ public class EventsController : BaseController<EventsController>
             request.Quantity,
             request.Notes,
             request.ContactName,
-            request.ContactPhone);
+            request.ContactPhone,
+            PhysicalQuantity: request.PhysicalQuantity,
+            SlotsClaimed: request.SlotsClaimed);
 
         var result = await Mediator.Send(command);
 
@@ -3133,25 +3135,37 @@ public record UpdateSignUpItemRequest(
 /// Request to commit to bringing an item
 /// Phase 2: Added optional contact information
 /// </summary>
+/// <summary>
+/// Phase 6A.125: Added PhysicalQuantity and SlotsClaimed for dual-field support.
+/// - Quantity: legacy field, used as PhysicalQuantity for quantity-based items if PhysicalQuantity not set.
+/// - PhysicalQuantity: explicit for quantity-based items (e.g., "5 plates")
+/// - SlotsClaimed: for slot-based items (e.g., "2 slots")
+/// At least one of Quantity, PhysicalQuantity, or SlotsClaimed is required.
+/// </summary>
 public record CommitToSignUpItemRequest(
     Guid UserId,
-    int Quantity,
+    int Quantity = 1,
     string? Notes = null,
     string? ContactName = null,
     string? ContactEmail = null,
-    string? ContactPhone = null);
+    string? ContactPhone = null,
+    int? PhysicalQuantity = null,           // Phase 6A.125: For quantity-based items
+    int? SlotsClaimed = null);              // Phase 6A.125: For slot-based items
 
 /// <summary>
 /// Request for anonymous user to commit to bringing an item
 /// Phase 6A.23: Supports anonymous sign-up workflow
-/// Email is used to verify event registration and identify the anonymous user
+/// Phase 6A.125: Added PhysicalQuantity and SlotsClaimed for slot-based items.
+/// Email is used to verify event registration and identify the anonymous user.
 /// </summary>
 public record CommitToSignUpItemAnonymousRequest(
     string ContactEmail,
-    int Quantity,
+    int Quantity = 1,
     string? Notes = null,
     string? ContactName = null,
-    string? ContactPhone = null);
+    string? ContactPhone = null,
+    int? PhysicalQuantity = null,           // Phase 6A.125: For quantity-based items
+    int? SlotsClaimed = null);
 
 /// <summary>
 /// Request to add a user-submitted Open item to a sign-up list

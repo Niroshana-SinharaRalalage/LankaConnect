@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Common;
@@ -34,7 +35,18 @@ public class SignUpListDto
 /// Enables type-safe handling of quantity-based vs slot-based items.
 /// Phase 6A.124: ItemType added to interface so System.Text.Json serializes
 /// the discriminator field even when the property is declared as ISignUpItemDto.
+/// Phase 6A.125: Added [JsonPolymorphic] so System.Text.Json serializes the RUNTIME
+/// type (including type-specific fields like TargetQuantity/TotalSlots) rather than
+/// only the interface-declared properties. Without this, quantity/slot fields were
+/// silently dropped from the JSON response.
+/// Note: "$type" discriminator is added to JSON but frontend ignores it (uses "itemType").
 /// </summary>
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[JsonDerivedType(typeof(QuantityBasedItemDto), "quantity")]
+[JsonDerivedType(typeof(SlotBasedItemDto), "slot")]
+#pragma warning disable CS0618 // SignUpItemDto is obsolete but still used for legacy support
+[JsonDerivedType(typeof(SignUpItemDto), "legacy")]
+#pragma warning restore CS0618
 public interface ISignUpItemDto
 {
     Guid Id { get; }

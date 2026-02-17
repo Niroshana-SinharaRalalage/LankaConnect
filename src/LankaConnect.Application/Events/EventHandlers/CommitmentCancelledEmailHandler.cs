@@ -120,23 +120,40 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
             }
 
-            // Phase 6A.100: Send via typed email service
-            var typedResult = await _typedEmailService.SendEmailAsync(
-                emailParams,
-                cancellationToken);
+            // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email
+            // Root cause of slow signup operations: Azure Communication Services takes 2-16 seconds
+            _logger.LogInformation(
+                "CommitmentCancelled COMPLETE: Cancellation confirmed, dispatching email async - UserId={UserId}, EventId={EventId}",
+                domainEvent.UserId, @event.Id);
 
-            if (typedResult.Success)
+            var capturedParams = emailParams;
+            var capturedEmail = user.Email.Value;
+            var capturedEventId = @event.Id;
+            _ = Task.Run(async () =>
             {
-                _logger.LogInformation(
-                    "[Phase 6A.100] Commitment cancellation email sent to {Email} for event {EventId}",
-                    user.Email.Value, @event.Id);
-            }
-            else
-            {
-                _logger.LogError(
-                    "[Phase 6A.87] Failed to send commitment cancellation email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", typedResult.Errors));
-            }
+                try
+                {
+                    var emailResult = await _typedEmailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                    if (emailResult.Success)
+                    {
+                        _logger.LogInformation(
+                            "CommitmentCancelled EMAIL SENT: Email={Email}, EventId={EventId}",
+                            capturedEmail, capturedEventId);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "CommitmentCancelled EMAIL FAILED: Email={Email}, Errors={Errors}",
+                            capturedEmail, string.Join(", ", emailResult.Errors));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "CommitmentCancelled EMAIL EXCEPTION: Email={Email}, EventId={EventId}",
+                        capturedEmail, capturedEventId);
+                }
+            }, CancellationToken.None);
         }
         catch (Exception ex)
         {

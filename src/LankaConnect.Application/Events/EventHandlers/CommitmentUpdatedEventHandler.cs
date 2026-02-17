@@ -102,6 +102,12 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     eventDetailsUrl: $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups"
                 );
 
+                // Phase 6A.122: Set OldQuantity and NewQuantity for update email template
+                // Bug fix: These were calculated (lines 55-56) but never assigned to emailParams,
+                // causing the email to show "PREVIOUS QUANTITY: 0, NEW QUANTITY: 0" always.
+                emailParams.OldQuantity = oldQuantity;
+                emailParams.NewQuantity = newQuantity;
+
                 // Phase 6A.103: Add event image if available
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
                 emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");
@@ -121,25 +127,42 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
                 }
 
-                // Phase 6A.100: Send via typed email service
-                var typedResult = await _typedEmailService.SendEmailAsync(
-                    emailParams,
-                    cancellationToken);
-
+                // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email
+                // Root cause of slow signup operations: Azure Communication Services takes 2-16 seconds
+                // User should not wait for email to send before seeing success
                 stopwatch.Stop();
+                _logger.LogInformation(
+                    "CommitmentUpdated COMPLETE: Signup updated successfully, dispatching email async - UserId={UserId}, OldQty={OldQty}, NewQty={NewQty}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, oldQuantity, newQuantity, stopwatch.ElapsedMilliseconds);
 
-                if (typedResult.Success)
+                var capturedParams = emailParams;
+                var capturedEmail = user.Email.Value;
+                var capturedEventId = @event.Id;
+                _ = Task.Run(async () =>
                 {
-                    _logger.LogInformation(
-                        "[Phase 6A.100] CommitmentUpdated COMPLETE: Email sent - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
-                        user.Email.Value, @event.Id, stopwatch.ElapsedMilliseconds);
-                }
-                else
-                {
-                    _logger.LogError(
-                        "CommitmentUpdated FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
-                }
+                    try
+                    {
+                        var emailResult = await _typedEmailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                        if (emailResult.Success)
+                        {
+                            _logger.LogInformation(
+                                "CommitmentUpdated EMAIL SENT: Email={Email}, EventId={EventId}",
+                                capturedEmail, capturedEventId);
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                "CommitmentUpdated EMAIL FAILED: Email={Email}, Errors={Errors}",
+                                capturedEmail, string.Join(", ", emailResult.Errors));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "CommitmentUpdated EMAIL EXCEPTION: Email={Email}, EventId={EventId}",
+                            capturedEmail, capturedEventId);
+                    }
+                }, CancellationToken.None);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

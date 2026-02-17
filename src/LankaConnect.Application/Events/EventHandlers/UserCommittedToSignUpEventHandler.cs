@@ -120,25 +120,41 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
                 }
 
-                // Phase 6A.100: Send via typed email service
-                var typedResult = await _typedEmailService.SendEmailAsync(
-                    emailParams,
-                    cancellationToken);
-
+                // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email
+                // Root cause of slow signup operations: Azure Communication Services takes 2-16 seconds
                 stopwatch.Stop();
+                _logger.LogInformation(
+                    "UserCommittedToSignUp COMPLETE: Signup confirmed, dispatching email async - UserId={UserId}, EventId={EventId}, Duration={ElapsedMs}ms",
+                    domainEvent.UserId, @event.Id, stopwatch.ElapsedMilliseconds);
 
-                if (typedResult.Success)
+                var capturedParams = emailParams;
+                var capturedEmail = user.Email.Value;
+                var capturedEventId = @event.Id;
+                _ = Task.Run(async () =>
                 {
-                    _logger.LogInformation(
-                        "[Phase 6A.100] UserCommittedToSignUp COMPLETE: Email sent - Email={Email}, EventId={EventId}, Duration={ElapsedMs}ms",
-                        user.Email.Value, @event.Id, stopwatch.ElapsedMilliseconds);
-                }
-                else
-                {
-                    _logger.LogError(
-                        "UserCommittedToSignUp FAILED: Email sending failed - Email={Email}, Errors={Errors}, Duration={ElapsedMs}ms",
-                        user.Email.Value, string.Join(", ", typedResult.Errors), stopwatch.ElapsedMilliseconds);
-                }
+                    try
+                    {
+                        var emailResult = await _typedEmailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                        if (emailResult.Success)
+                        {
+                            _logger.LogInformation(
+                                "UserCommittedToSignUp EMAIL SENT: Email={Email}, EventId={EventId}",
+                                capturedEmail, capturedEventId);
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                "UserCommittedToSignUp EMAIL FAILED: Email={Email}, Errors={Errors}",
+                                capturedEmail, string.Join(", ", emailResult.Errors));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "UserCommittedToSignUp EMAIL EXCEPTION: Email={Email}, EventId={EventId}",
+                            capturedEmail, capturedEventId);
+                    }
+                }, CancellationToken.None);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

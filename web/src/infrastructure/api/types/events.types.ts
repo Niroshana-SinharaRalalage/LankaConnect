@@ -454,9 +454,14 @@ export interface SignUpCommitmentDto {
 /**
  * Phase 6A.121: Enum for sign-up item type discriminator
  */
+/**
+ * Phase 6A.124: String values match the API's JsonStringEnumConverter serialization.
+ * Backend uses JsonStringEnumConverter globally, so enums are returned as strings
+ * (e.g. "Quantity" not 0). Type guards use === comparison so values must match exactly.
+ */
 export enum SignUpItemType {
-  Quantity = 0,
-  Slot = 1,
+  Quantity = 'Quantity',
+  Slot = 'Slot',
 }
 
 /**

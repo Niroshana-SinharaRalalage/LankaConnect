@@ -31,7 +31,9 @@ public class SignUpListDto
 
 /// <summary>
 /// Phase 6A.121: Base interface for discriminated union of SignUpItem DTOs
-/// Enables type-safe handling of quantity-based vs slot-based items
+/// Enables type-safe handling of quantity-based vs slot-based items.
+/// Phase 6A.124: ItemType added to interface so System.Text.Json serializes
+/// the discriminator field even when the property is declared as ISignUpItemDto.
 /// </summary>
 public interface ISignUpItemDto
 {
@@ -43,6 +45,14 @@ public interface ISignUpItemDto
     Guid? CreatedByUserId { get; }
     bool IsFullyCommitted { get; }
     bool IsOpenItem { get; }
+
+    /// <summary>
+    /// Discriminator field: Quantity = 0, Slot = 1.
+    /// MUST be on the interface so the JSON serializer includes it when
+    /// the property is typed as ISignUpItemDto (System.Text.Json only
+    /// serializes properties declared on the static/interface type).
+    /// </summary>
+    SignUpItemType ItemType { get; }
 }
 
 /// <summary>
@@ -117,6 +127,8 @@ public class SignUpItemDto : ISignUpItemDto
     public int CommittedQuantity => Quantity - RemainingQuantity;
     public Guid? CreatedByUserId { get; set; }
     public bool IsOpenItem => ItemCategory == SignUpItemCategory.Open && CreatedByUserId.HasValue;
+    // ISignUpItemDto.ItemType - legacy items are always quantity-based
+    public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
 }
 
 public class SignUpCommitmentDto

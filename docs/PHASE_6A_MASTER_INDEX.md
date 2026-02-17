@@ -94,6 +94,8 @@
 | 6A.121a | Slot-Based Signup Items (Dual Nullable Fields) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
 | 6A.122 | Email Template Fixes (quantities, performance, text) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
 | 6A.122b | Hotfix: Add physical_quantity/slots_claimed to sign_up_commitments | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
+| 6A.123 | Hotfix: quantity NOT NULL default, itemType DTO, Sign-Up buttons | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-17 |
+| 6A.124 | Hotfix: ISignUpItemDto interface ItemType + TypeScript string enum | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-17 |
 
 ---
 

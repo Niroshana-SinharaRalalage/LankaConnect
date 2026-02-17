@@ -1,7 +1,34 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-16 - Phase 6A.121a Slot-Based Signup Items ✅ DEPLOYED*
+*Last Updated: 2026-02-17 - Phase 6A.124 Signup Item Type Guards Fixed ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.121a: Slot-Based Signup Items ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.124: Signup Item Type Guard Fixes ✅ DEPLOYED
+
+### Phase 6A.123 + 6A.124: Critical Signup Item Fixes - 2026-02-17
+
+**Status**: ✅ **DEPLOYED TO STAGING (commits 21e9f26a, 9f75510b, 02c7a1f6)**
+
+**Bug 1 (6A.123) - quantity NOT NULL**: Every signup commitment INSERT was failing
+- Root cause: `builder.Ignore(c => c.Quantity)` → EF excluded from INSERTs → NOT NULL violation
+- Fix: Migration Phase6A123 sets `ALTER COLUMN quantity SET DEFAULT 0`
+- Verified: HTTP 200 commitment created on staging ✅
+
+**Bug 2 (6A.124) - ItemType not in API response**: Type guards always returned false
+- Root cause A: `ItemType` only on concrete DTOs, not `ISignUpItemDto` interface
+  System.Text.Json serializes interface-declared properties only → ItemType excluded
+- Root cause B: Backend returns `"Quantity"` (string) but TS enum used `0` (number)
+- Fix A: Added `SignUpItemType ItemType { get; }` to `ISignUpItemDto` interface
+- Fix B: Changed TS enum to string values matching API: `Quantity = 'Quantity'`
+- Verified: API returns `itemType="Quantity"`, type guards now work ✅
+
+**EF Core Contact Fields**: Added explicit `HasColumnName()` mappings for ContactName/Email/Phone
+
+**Sign Up buttons**: Moved outside collapsible (always visible)
+
+**Tests**: 1,468/1,468 application tests passing; frontend build succeeded
+
+---
+
+## Previous Session - Phase 6A.121a: Slot-Based Signup Items ✅ DEPLOYED
 
 ### Phase 6A.121a: Dual Nullable Fields / Slot-Based Signup Items - 2026-02-16
 

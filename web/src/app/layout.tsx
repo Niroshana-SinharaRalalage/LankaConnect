@@ -9,8 +9,15 @@ export const metadata: Metadata = {
   title: 'LankaConnect - Sri Lankan Community Platform',
   description: 'Connect with the Sri Lankan diaspora community',
   icons: {
-    icon: '/images/lankaconnect-logo.png',
-    apple: '/images/lankaconnect-logo.png',
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.png', sizes: '64x64', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/favicon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
   },
 };
 

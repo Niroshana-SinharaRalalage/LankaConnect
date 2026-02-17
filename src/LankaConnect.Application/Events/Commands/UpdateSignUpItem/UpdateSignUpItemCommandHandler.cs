@@ -86,9 +86,12 @@ public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCo
                     return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
                 }
 
+                // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
+                var currentQuantity = signUpItem.TargetQuantity ?? signUpItem.AvailableSlots ?? 0;
+
                 _logger.LogInformation(
                     "UpdateSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, CurrentDescription={CurrentDescription}, CurrentQuantity={CurrentQuantity}",
-                    signUpItem.Id, signUpItem.ItemDescription, signUpItem.Quantity);
+                    signUpItem.Id, signUpItem.ItemDescription, currentQuantity);
 
                 // Update the sign-up item using domain method
                 var updateResult = signUpItem.UpdateDetails(

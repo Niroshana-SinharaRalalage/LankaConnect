@@ -115,7 +115,9 @@ public class SignUpManagementTests
         signUpList.Commitments.Should().HaveCount(1);
         signUpList.Commitments.First().UserId.Should().Be(userId);
         signUpList.Commitments.First().ItemDescription.Should().Be(itemDescription);
+#pragma warning disable CS0618 // Type or member is obsolete
         signUpList.Commitments.First().Quantity.Should().Be(quantity);
+#pragma warning restore CS0618 // Type or member is obsolete
     }
 
     [Fact]
@@ -640,7 +642,7 @@ public class SignUpManagementTests
 
         // The commitment should be removed
         signUpItem.Commitments.Should().BeEmpty();
-        signUpItem.RemainingQuantity.Should().Be(10); // All quantity restored
+        signUpItem.GetRemainingQuantity().Should().Be(10); // All quantity restored
 
         // CRITICAL: CommitmentCancelledEvent MUST be raised for email notification
         var domainEvents = signUpItem.DomainEvents;
@@ -651,7 +653,8 @@ public class SignUpManagementTests
         cancelEvent.UserId.Should().Be(userId);
         cancelEvent.SignUpItemId.Should().Be(signUpItem.Id);
         cancelEvent.ItemDescription.Should().Be("Rice");
-        cancelEvent.Quantity.Should().Be(3); // Original committed quantity
+        var cancelledQuantity = cancelEvent.CancelledPhysicalQuantity ?? cancelEvent.CancelledSlotsClaimed ?? 0;
+        cancelledQuantity.Should().Be(3); // Original committed quantity
     }
 
     [Fact]
@@ -678,7 +681,9 @@ public class SignUpManagementTests
         // Assert
         updateResult.IsSuccess.Should().BeTrue();
         signUpItem.Commitments.Should().HaveCount(1);
+#pragma warning disable CS0618 // Type or member is obsolete
         signUpItem.Commitments.First().Quantity.Should().Be(2);
+#pragma warning restore CS0618 // Type or member is obsolete
 
         // CommitmentUpdatedEvent should be raised (NOT cancelled)
         var domainEvents = signUpItem.DomainEvents;
@@ -717,7 +722,8 @@ public class SignUpManagementTests
 
         var cancelEvent = (CommitmentCancelledEvent)domainEvents.First();
         cancelEvent.UserId.Should().Be(userId);
-        cancelEvent.Quantity.Should().Be(2);
+        var cancelledQty = cancelEvent.CancelledPhysicalQuantity ?? cancelEvent.CancelledSlotsClaimed ?? 0;
+        cancelledQty.Should().Be(2);
     }
 
     #endregion

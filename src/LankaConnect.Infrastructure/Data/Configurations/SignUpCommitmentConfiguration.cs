@@ -26,9 +26,22 @@ public class SignUpCommitmentConfiguration : IEntityTypeConfiguration<SignUpComm
             .HasMaxLength(500)
             .IsRequired();
 
-        builder.Property(c => c.Quantity)
-            .HasColumnName("quantity")
-            .IsRequired();
+        // Phase 6A.121: Dual nullable fields for quantity-based vs slot-based commitments
+        // NOTE: Database migration for sign_up_commitments table is NOT included in Phase 6A.121a (deferred to Phase 6A.122)
+        // These mappings are for domain entity only - actual columns will be added in future migration
+        builder.Property(c => c.PhysicalQuantity)
+            .HasColumnName("physical_quantity")
+            .IsRequired(false);
+
+        builder.Property(c => c.SlotsClaimed)
+            .HasColumnName("slots_claimed")
+            .IsRequired(false);
+
+        // Phase 6A.121: Quantity is a computed property (NOT stored in database)
+        // Kept for backward compatibility - will be removed in Phase 7
+#pragma warning disable CS0618 // Type or member is obsolete
+        builder.Ignore(c => c.Quantity);
+#pragma warning restore CS0618
 
         builder.Property(c => c.CommittedAt)
             .HasColumnName("committed_at")
@@ -37,6 +50,17 @@ public class SignUpCommitmentConfiguration : IEntityTypeConfiguration<SignUpComm
         builder.Property(c => c.Notes)
             .HasColumnName("notes")
             .HasMaxLength(1000);
+
+        // Contact information - mapped explicitly using PascalCase column names
+        // (columns were created by AddContactInfoToSignUpCommitments migration as PascalCase)
+        builder.Property(c => c.ContactName)
+            .HasColumnName("ContactName");
+
+        builder.Property(c => c.ContactEmail)
+            .HasColumnName("ContactEmail");
+
+        builder.Property(c => c.ContactPhone)
+            .HasColumnName("ContactPhone");
 
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")

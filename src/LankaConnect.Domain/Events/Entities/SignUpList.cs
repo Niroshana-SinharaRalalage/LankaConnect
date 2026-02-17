@@ -211,8 +211,42 @@ public class SignUpList : BaseEntity
         if (!categoryEnabled)
             return Result<SignUpItem>.Failure($"{itemCategory} category is not enabled for this sign-up list");
 
-        // Create the item
-        var itemResult = SignUpItem.Create(Id, itemDescription, quantity, itemCategory, notes);
+        // Create the item (Phase 6A.121: Using CreateQuantityBased for backward compatibility)
+        var itemResult = SignUpItem.CreateQuantityBased(Id, itemDescription, quantity, itemCategory, notes);
+        if (itemResult.IsFailure)
+            return Result<SignUpItem>.Failure(itemResult.Error);
+
+        _items.Add(itemResult.Value);
+        MarkAsUpdated();
+
+        return itemResult;
+    }
+
+    /// <summary>
+    /// Phase 6A.121: Adds a slot-based item to the sign-up list
+    /// </summary>
+    public Result<SignUpItem> AddSlotBasedItem(
+        string itemDescription,
+        int availableSlots,
+        int? suggestedPerSlot,
+        SignUpItemCategory itemCategory,
+        string? notes = null)
+    {
+#pragma warning disable CS0618
+        var categoryEnabled = itemCategory switch
+        {
+            SignUpItemCategory.Mandatory => HasMandatoryItems,
+            SignUpItemCategory.Preferred => HasPreferredItems,
+            SignUpItemCategory.Suggested => HasSuggestedItems,
+            SignUpItemCategory.Open => HasOpenItems,
+            _ => false
+        };
+#pragma warning restore CS0618
+
+        if (!categoryEnabled)
+            return Result<SignUpItem>.Failure($"{itemCategory} category is not enabled for this sign-up list");
+
+        var itemResult = SignUpItem.CreateSlotBased(Id, itemDescription, availableSlots, suggestedPerSlot, itemCategory, notes);
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
@@ -292,12 +326,13 @@ public class SignUpList : BaseEntity
         _commitments.Add(commitmentResult.Value);
         MarkAsUpdated();
 
-        // Raise domain event
+        // Raise domain event (Phase 6A.121: Updated with dual nullable fields)
         RaiseDomainEvent(new UserCommittedToSignUpEvent(
             Id,
             userId,
             itemDescription,
-            quantity,
+            PhysicalQuantity: quantity,  // For legacy Open commitments (quantity-based)
+            SlotsClaimed: null,          // Not slot-based
             DateTime.UtcNow));
 
         return Result.Success();

@@ -14,6 +14,8 @@ namespace LankaConnect.Domain.Events.DomainEvents;
 /// Phase 6A.51+ Fix: Added ItemDescription, Quantity, and SignUpListId to support
 /// email notifications without database queries (entity may be deleted by then).
 ///
+/// Phase 6A.121: Updated with dual nullable fields to support quantity-based and slot-based commitments
+///
 /// See ADR-008 for full analysis of why this pattern is necessary.
 /// </summary>
 public record CommitmentCancelledEvent(
@@ -22,4 +24,6 @@ public record CommitmentCancelledEvent(
     Guid UserId,
     Guid SignUpListId,
     string ItemDescription,
-    int Quantity) : DomainEvent;
+    int? CancelledPhysicalQuantity,  // For quantity-based items
+    int? CancelledSlotsClaimed)      // For slot-based items
+    : DomainEvent;

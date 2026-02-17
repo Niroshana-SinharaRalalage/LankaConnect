@@ -110,7 +110,8 @@ public class ExportEventAttendeesQueryHandler
             var eventWithSignUps = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
             if (eventWithSignUps != null && eventWithSignUps.SignUpLists.Any())
             {
-                signUpListDtos = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
+                #pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
+            signUpListDtos = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
             {
                 Id = s.Id,
                 Category = s.Category,
@@ -119,12 +120,13 @@ public class ExportEventAttendeesQueryHandler
                 HasPreferredItems = s.HasPreferredItems,
                 HasSuggestedItems = s.HasSuggestedItems,
                 HasOpenItems = s.HasOpenItems,
-                Items = s.Items.Select(i => new SignUpItemDto
+                Items = s.Items.Select(i => (ISignUpItemDto)new SignUpItemDto
                 {
                     Id = i.Id,
                     ItemDescription = i.ItemDescription,
-                    Quantity = i.Quantity,
-                    RemainingQuantity = i.RemainingQuantity,
+                    // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
+                    Quantity = i.TargetQuantity ?? i.AvailableSlots ?? 0,
+                    RemainingQuantity = i.ItemType == Domain.Events.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
                     ItemCategory = i.ItemCategory,
                     CreatedByUserId = i.CreatedByUserId,
                     Commitments = i.Commitments.Select(c => new SignUpCommitmentDto
@@ -132,7 +134,9 @@ public class ExportEventAttendeesQueryHandler
                         Id = c.Id,
                         UserId = c.UserId,
                         ItemDescription = c.ItemDescription ?? string.Empty,
-                        Quantity = c.Quantity,
+                        // Phase 6A.121: SignUpCommitment uses dual nullable fields (PhysicalQuantity/SlotsClaimed)
+                        PhysicalQuantity = c.PhysicalQuantity,
+                        SlotsClaimed = c.SlotsClaimed,
                         ContactName = c.ContactName,
                         ContactEmail = c.ContactEmail,
                         ContactPhone = c.ContactPhone,
@@ -140,6 +144,7 @@ public class ExportEventAttendeesQueryHandler
                     }).ToList()
                 }).ToList()
             }).ToList();
+            #pragma warning restore CS0618
             }
         }
 
@@ -166,6 +171,7 @@ public class ExportEventAttendeesQueryHandler
             }
 
             // Map domain entities to DTOs (reuse existing mapping pattern from lines 56-85)
+            #pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
             var signUpListsForExport = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
             {
                 Id = s.Id,
@@ -175,12 +181,13 @@ public class ExportEventAttendeesQueryHandler
                 HasPreferredItems = s.HasPreferredItems,
                 HasSuggestedItems = s.HasSuggestedItems,
                 HasOpenItems = s.HasOpenItems,
-                Items = s.Items.Select(i => new SignUpItemDto
+                Items = s.Items.Select(i => (ISignUpItemDto)new SignUpItemDto
                 {
                     Id = i.Id,
                     ItemDescription = i.ItemDescription,
-                    Quantity = i.Quantity,
-                    RemainingQuantity = i.RemainingQuantity,
+                    // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
+                    Quantity = i.TargetQuantity ?? i.AvailableSlots ?? 0,
+                    RemainingQuantity = i.ItemType == Domain.Events.Enums.SignUpItemType.Quantity ? i.GetRemainingQuantity() : i.GetRemainingSlots(),
                     ItemCategory = i.ItemCategory,
                     CreatedByUserId = i.CreatedByUserId,
                     Commitments = i.Commitments.Select(c => new SignUpCommitmentDto
@@ -188,7 +195,9 @@ public class ExportEventAttendeesQueryHandler
                         Id = c.Id,
                         UserId = c.UserId,
                         ItemDescription = c.ItemDescription ?? string.Empty,
-                        Quantity = c.Quantity,
+                        // Phase 6A.121: SignUpCommitment uses dual nullable fields (PhysicalQuantity/SlotsClaimed)
+                        PhysicalQuantity = c.PhysicalQuantity,
+                        SlotsClaimed = c.SlotsClaimed,
                         ContactName = c.ContactName,
                         ContactEmail = c.ContactEmail,
                         ContactPhone = c.ContactPhone,
@@ -196,6 +205,7 @@ public class ExportEventAttendeesQueryHandler
                     }).ToList()
                 }).ToList()
             }).ToList();
+            #pragma warning restore CS0618
 
             // Phase 6A.73 (Revised): Both formats now return ZIP archives
             // CSV: ZIP with multiple CSV files (one per signup list + category)

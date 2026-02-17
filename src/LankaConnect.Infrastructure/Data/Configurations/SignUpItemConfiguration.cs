@@ -24,13 +24,22 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(si => si.Quantity)
-            .HasColumnName("quantity")
-            .IsRequired();
+        // Phase 6A.121: Dual nullable fields for quantity-based vs slot-based items
+        // Exactly ONE of TargetQuantity or AvailableSlots will be populated (enforced by DB CHECK constraint)
+        builder.Property(si => si.TargetQuantity)
+            .HasColumnName("target_quantity")
+            .IsRequired(false);
 
-        builder.Property(si => si.RemainingQuantity)
-            .HasColumnName("remaining_quantity")
-            .IsRequired();
+        builder.Property(si => si.AvailableSlots)
+            .HasColumnName("available_slots")
+            .IsRequired(false);
+
+        builder.Property(si => si.SuggestedPerSlot)
+            .HasColumnName("suggested_per_slot")
+            .IsRequired(false);
+
+        // Phase 6A.121: ItemType is a computed property (NOT stored in database)
+        builder.Ignore(si => si.ItemType);
 
         builder.Property(si => si.ItemCategory)
             .HasColumnName("item_category")

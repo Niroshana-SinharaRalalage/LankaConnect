@@ -201,9 +201,12 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
 
                 if (existingCommitment != null)
                 {
+                    // Phase 6A.121: SignUpCommitment uses backward-compatible Quantity property
+                    #pragma warning disable CS0618 // Suppress obsolete warning - Quantity is backward compatible
                     _logger.LogInformation(
                         "CommitToSignUpItemAnonymous: Updating existing commitment - CommitmentId={CommitmentId}, OldQuantity={OldQuantity}, NewQuantity={NewQuantity}",
                         existingCommitment.Id, existingCommitment.Quantity, request.Quantity);
+                    #pragma warning restore CS0618
 
                     // User already committed - update the existing commitment
                     commitResult = signUpItem.UpdateCommitment(

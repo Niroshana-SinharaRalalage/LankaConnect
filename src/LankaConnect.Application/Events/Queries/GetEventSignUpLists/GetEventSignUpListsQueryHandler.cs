@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -76,13 +77,15 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
 
                     // Legacy fields (for Open/Predefined sign-ups)
                     PredefinedItems = signUpList.PredefinedItems.ToList(),
+                    // Phase 6A.121: SignUpCommitment uses dual nullable fields (PhysicalQuantity/SlotsClaimed)
                     Commitments = signUpList.Commitments.Select(c => new SignUpCommitmentDto
                     {
                         Id = c.Id,
                         SignUpItemId = c.SignUpItemId,
                         UserId = c.UserId,
                         ItemDescription = c.ItemDescription,
-                        Quantity = c.Quantity,
+                        PhysicalQuantity = c.PhysicalQuantity,
+                        SlotsClaimed = c.SlotsClaimed,
                         CommittedAt = c.CommittedAt,
                         Notes = c.Notes,
                         ContactName = c.ContactName,
@@ -96,28 +99,58 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     HasPreferredItems = signUpList.HasPreferredItems,
                     HasSuggestedItems = signUpList.HasSuggestedItems,
                     HasOpenItems = signUpList.HasOpenItems, // Phase 6A.27
-                    Items = signUpList.Items.Select(item => new SignUpItemDto
+                    // Phase 6A.123: Return typed DTOs (QuantityBasedItemDto or SlotBasedItemDto)
+                    // so the frontend itemType discriminator works correctly.
+                    Items = signUpList.Items.Select(item =>
                     {
-                        Id = item.Id,
-                        ItemDescription = item.ItemDescription,
-                        Quantity = item.Quantity,
-                        RemainingQuantity = item.RemainingQuantity,
-                        ItemCategory = item.ItemCategory,
-                        Notes = item.Notes,
-                        CreatedByUserId = item.CreatedByUserId, // Phase 6A.27
-                        Commitments = item.Commitments.Select(c => new SignUpCommitmentDto
+                        var commitments = item.Commitments.Select(c => new SignUpCommitmentDto
                         {
                             Id = c.Id,
                             SignUpItemId = c.SignUpItemId,
                             UserId = c.UserId,
                             ItemDescription = c.ItemDescription,
-                            Quantity = c.Quantity,
+                            PhysicalQuantity = c.PhysicalQuantity,
+                            SlotsClaimed = c.SlotsClaimed,
                             CommittedAt = c.CommittedAt,
                             Notes = c.Notes,
                             ContactName = c.ContactName,
                             ContactEmail = c.ContactEmail,
                             ContactPhone = c.ContactPhone
-                        }).ToList()
+                        }).ToList();
+
+                        if (item.ItemType == SignUpItemType.Slot)
+                        {
+                            var filledSlots = (item.AvailableSlots ?? 0) - item.GetRemainingSlots();
+                            return (ISignUpItemDto)new SlotBasedItemDto
+                            {
+                                Id = item.Id,
+                                ItemDescription = item.ItemDescription,
+                                ItemCategory = item.ItemCategory,
+                                Notes = item.Notes,
+                                CreatedByUserId = item.CreatedByUserId,
+                                TotalSlots = item.AvailableSlots ?? 0,
+                                FilledSlots = filledSlots,
+                                RemainingSlots = item.GetRemainingSlots(),
+                                SuggestedQuantityPerSlot = item.SuggestedPerSlot,
+                                Commitments = commitments
+                            };
+                        }
+                        else
+                        {
+                            var committed = (item.TargetQuantity ?? 0) - item.GetRemainingQuantity();
+                            return (ISignUpItemDto)new QuantityBasedItemDto
+                            {
+                                Id = item.Id,
+                                ItemDescription = item.ItemDescription,
+                                ItemCategory = item.ItemCategory,
+                                Notes = item.Notes,
+                                CreatedByUserId = item.CreatedByUserId,
+                                TargetQuantity = item.TargetQuantity ?? 0,
+                                CommittedQuantity = committed,
+                                RemainingQuantity = item.GetRemainingQuantity(),
+                                Commitments = commitments
+                            };
+                        }
                     }).ToList()
                 }).ToList();
 

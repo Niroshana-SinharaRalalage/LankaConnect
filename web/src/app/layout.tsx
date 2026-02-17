@@ -8,6 +8,10 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'LankaConnect - Sri Lankan Community Platform',
   description: 'Connect with the Sri Lankan diaspora community',
+  icons: {
+    icon: '/images/lankaconnect-logo.png',
+    apple: '/images/lankaconnect-logo.png',
+  },
 };
 
 export default function RootLayout({

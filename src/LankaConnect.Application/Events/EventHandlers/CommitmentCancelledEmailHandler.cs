@@ -51,9 +51,13 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
 
         try
         {
+            // Phase 6A.121: Support dual nullable fields (PhysicalQuantity or SlotsClaimed)
+            var quantity = domainEvent.CancelledPhysicalQuantity ?? domainEvent.CancelledSlotsClaimed ?? 0;
+            var quantityType = domainEvent.CancelledPhysicalQuantity.HasValue ? "units" : "slots";
+
             _logger.LogInformation(
-                "[Phase 6A.51+] Processing CommitmentCancelledEvent: User {UserId} cancelled commitment {CommitmentId} for SignUpItem {SignUpItemId}, Item='{ItemDescription}', Qty={Quantity}",
-                domainEvent.UserId, domainEvent.CommitmentId, domainEvent.SignUpItemId, domainEvent.ItemDescription, domainEvent.Quantity);
+                "[Phase 6A.51+] Processing CommitmentCancelledEvent: User {UserId} cancelled commitment {CommitmentId} for SignUpItem {SignUpItemId}, Item='{ItemDescription}', Qty={Quantity} {QuantityType}",
+                domainEvent.UserId, domainEvent.CommitmentId, domainEvent.SignUpItemId, domainEvent.ItemDescription, quantity, quantityType);
 
             // Get user details
             var user = await _userRepository.GetByIdAsync(domainEvent.UserId, cancellationToken);
@@ -66,10 +70,10 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
             }
 
             // Phase 6A.51+ Fix: Use data from event directly (entities may be deleted by now)
-            // The event now contains ItemDescription and Quantity captured before deletion
+            // Phase 6A.121: Event contains ItemDescription and dual quantity fields (PhysicalQuantity or SlotsClaimed)
             _logger.LogInformation(
-                "[Phase 6A.51+] Using event data for cancellation email: Item='{ItemDescription}', Qty={Quantity}",
-                domainEvent.ItemDescription, domainEvent.Quantity);
+                "[Phase 6A.51+] Using event data for cancellation email: Item='{ItemDescription}', Qty={Quantity} {QuantityType}",
+                domainEvent.ItemDescription, quantity, quantityType);
 
             // Get event details via repository navigation method using SignUpListId
             var @event = await _eventRepository.GetEventBySignUpListIdAsync(domainEvent.SignUpListId, cancellationToken);
@@ -82,6 +86,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
             }
 
             // Phase 6A.87: Use typed email parameters for compile-time safety
+            // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
             var emailParams = SignupCommitmentEmailParams.CreateCancellation(
                 userId: user.Id,
                 userName: user.FirstName,
@@ -89,7 +94,7 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 eventId: @event.Id,
                 eventTitle: @event.Title?.Value ?? "Untitled Event",
                 signupItem: domainEvent.ItemDescription,
-                quantity: domainEvent.Quantity,
+                quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
                 eventStartDate: @event.StartDate,
                 timeZoneId: @event.TimeZoneId,
                 eventLocation: @event.Location?.ToString() ?? "Location TBD",
@@ -115,23 +120,40 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
             }
 
-            // Phase 6A.100: Send via typed email service
-            var typedResult = await _typedEmailService.SendEmailAsync(
-                emailParams,
-                cancellationToken);
+            // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email
+            // Root cause of slow signup operations: Azure Communication Services takes 2-16 seconds
+            _logger.LogInformation(
+                "CommitmentCancelled COMPLETE: Cancellation confirmed, dispatching email async - UserId={UserId}, EventId={EventId}",
+                domainEvent.UserId, @event.Id);
 
-            if (typedResult.Success)
+            var capturedParams = emailParams;
+            var capturedEmail = user.Email.Value;
+            var capturedEventId = @event.Id;
+            _ = Task.Run(async () =>
             {
-                _logger.LogInformation(
-                    "[Phase 6A.100] Commitment cancellation email sent to {Email} for event {EventId}",
-                    user.Email.Value, @event.Id);
-            }
-            else
-            {
-                _logger.LogError(
-                    "[Phase 6A.87] Failed to send commitment cancellation email to {Email}: {Errors}",
-                    user.Email.Value, string.Join(", ", typedResult.Errors));
-            }
+                try
+                {
+                    var emailResult = await _typedEmailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                    if (emailResult.Success)
+                    {
+                        _logger.LogInformation(
+                            "CommitmentCancelled EMAIL SENT: Email={Email}, EventId={EventId}",
+                            capturedEmail, capturedEventId);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "CommitmentCancelled EMAIL FAILED: Email={Email}, Errors={Errors}",
+                            capturedEmail, string.Join(", ", emailResult.Errors));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "CommitmentCancelled EMAIL EXCEPTION: Email={Email}, EventId={EventId}",
+                        capturedEmail, capturedEventId);
+                }
+            }, CancellationToken.None);
         }
         catch (Exception ex)
         {

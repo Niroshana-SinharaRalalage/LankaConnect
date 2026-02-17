@@ -17,7 +17,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, ArrowLeft, Save, Edit2, X, Check } from 'lucide-react';
-import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, SignUpItemType, isQuantityBased } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -80,14 +80,26 @@ export default function EditSignUpListPage() {
   const [newMandatoryDesc, setNewMandatoryDesc] = useState('');
   const [newMandatoryQty, setNewMandatoryQty] = useState(1);
   const [newMandatoryNotes, setNewMandatoryNotes] = useState('');
+  // Phase 6A.121: Slot-based item state for Mandatory
+  const [newMandatoryItemType, setNewMandatoryItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
+  const [newMandatorySlots, setNewMandatorySlots] = useState(3);
+  const [newMandatorySuggestedPerSlot, setNewMandatorySuggestedPerSlot] = useState<number | undefined>(undefined);
 
   const [newPreferredDesc, setNewPreferredDesc] = useState('');
   const [newPreferredQty, setNewPreferredQty] = useState(1);
   const [newPreferredNotes, setNewPreferredNotes] = useState('');
+  // Phase 6A.121: Slot-based item state for Preferred
+  const [newPreferredItemType, setNewPreferredItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
+  const [newPreferredSlots, setNewPreferredSlots] = useState(3);
+  const [newPreferredSuggestedPerSlot, setNewPreferredSuggestedPerSlot] = useState<number | undefined>(undefined);
 
   const [newSuggestedDesc, setNewSuggestedDesc] = useState('');
   const [newSuggestedQty, setNewSuggestedQty] = useState(1);
   const [newSuggestedNotes, setNewSuggestedNotes] = useState('');
+  // Phase 6A.121: Slot-based item state for Suggested
+  const [newSuggestedItemType, setNewSuggestedItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
+  const [newSuggestedSlots, setNewSuggestedSlots] = useState(3);
+  const [newSuggestedSuggestedPerSlot, setNewSuggestedSuggestedPerSlot] = useState<number | undefined>(undefined);
 
   // Initialize form when sign-up list loads
   useEffect(() => {
@@ -185,14 +197,18 @@ export default function EditSignUpListPage() {
     }
   };
 
-  // Handle add mandatory item
+  // Handle add mandatory item - Phase 6A.121: Supports both quantity-based and slot-based
   const handleAddMandatoryItem = async () => {
     if (!newMandatoryDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-    if (newMandatoryQty < 1) {
+    if (newMandatoryItemType === SignUpItemType.Quantity && newMandatoryQty < 1) {
       setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    if (newMandatoryItemType === SignUpItemType.Slot && newMandatorySlots < 1) {
+      setSubmitError('Number of slots must be at least 1');
       return;
     }
 
@@ -202,27 +218,37 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newMandatoryDesc.trim(),
-        quantity: newMandatoryQty,
+        itemType: newMandatoryItemType,
+        targetQuantity: newMandatoryItemType === SignUpItemType.Quantity ? newMandatoryQty : undefined,
+        availableSlots: newMandatoryItemType === SignUpItemType.Slot ? newMandatorySlots : undefined,
+        suggestedPerSlot: newMandatoryItemType === SignUpItemType.Slot ? newMandatorySuggestedPerSlot : undefined,
         itemCategory: SignUpItemCategory.Mandatory,
         notes: newMandatoryNotes.trim() || undefined,
       });
       setNewMandatoryDesc('');
       setNewMandatoryQty(1);
+      setNewMandatorySlots(3);
+      setNewMandatorySuggestedPerSlot(undefined);
       setNewMandatoryNotes('');
+      setNewMandatoryItemType(SignUpItemType.Quantity);
     } catch (err) {
       console.error('[EditSignUpList] Failed to add item:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to add item');
     }
   };
 
-  // Handle add preferred item
+  // Handle add preferred item - Phase 6A.121: Supports both quantity-based and slot-based
   const handleAddPreferredItem = async () => {
     if (!newPreferredDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-    if (newPreferredQty < 1) {
+    if (newPreferredItemType === SignUpItemType.Quantity && newPreferredQty < 1) {
       setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    if (newPreferredItemType === SignUpItemType.Slot && newPreferredSlots < 1) {
+      setSubmitError('Number of slots must be at least 1');
       return;
     }
 
@@ -232,27 +258,37 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newPreferredDesc.trim(),
-        quantity: newPreferredQty,
+        itemType: newPreferredItemType,
+        targetQuantity: newPreferredItemType === SignUpItemType.Quantity ? newPreferredQty : undefined,
+        availableSlots: newPreferredItemType === SignUpItemType.Slot ? newPreferredSlots : undefined,
+        suggestedPerSlot: newPreferredItemType === SignUpItemType.Slot ? newPreferredSuggestedPerSlot : undefined,
         itemCategory: SignUpItemCategory.Preferred,
         notes: newPreferredNotes.trim() || undefined,
       });
       setNewPreferredDesc('');
       setNewPreferredQty(1);
+      setNewPreferredSlots(3);
+      setNewPreferredSuggestedPerSlot(undefined);
       setNewPreferredNotes('');
+      setNewPreferredItemType(SignUpItemType.Quantity);
     } catch (err) {
       console.error('[EditSignUpList] Failed to add item:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to add item');
     }
   };
 
-  // Handle add suggested item
+  // Handle add suggested item - Phase 6A.121: Supports both quantity-based and slot-based
   const handleAddSuggestedItem = async () => {
     if (!newSuggestedDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-    if (newSuggestedQty < 1) {
+    if (newSuggestedItemType === SignUpItemType.Quantity && newSuggestedQty < 1) {
       setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    if (newSuggestedItemType === SignUpItemType.Slot && newSuggestedSlots < 1) {
+      setSubmitError('Number of slots must be at least 1');
       return;
     }
 
@@ -262,13 +298,19 @@ export default function EditSignUpListPage() {
         eventId,
         signupId,
         itemDescription: newSuggestedDesc.trim(),
-        quantity: newSuggestedQty,
+        itemType: newSuggestedItemType,
+        targetQuantity: newSuggestedItemType === SignUpItemType.Quantity ? newSuggestedQty : undefined,
+        availableSlots: newSuggestedItemType === SignUpItemType.Slot ? newSuggestedSlots : undefined,
+        suggestedPerSlot: newSuggestedItemType === SignUpItemType.Slot ? newSuggestedSuggestedPerSlot : undefined,
         itemCategory: SignUpItemCategory.Suggested,
         notes: newSuggestedNotes.trim() || undefined,
       });
       setNewSuggestedDesc('');
       setNewSuggestedQty(1);
+      setNewSuggestedSlots(3);
+      setNewSuggestedSuggestedPerSlot(undefined);
       setNewSuggestedNotes('');
+      setNewSuggestedItemType(SignUpItemType.Quantity);
     } catch (err) {
       console.error('[EditSignUpList] Failed to add item:', err);
       setSubmitError(err instanceof Error ? err.message : 'Failed to add item');
@@ -504,17 +546,72 @@ export default function EditSignUpListPage() {
                             onChange={(e) => setNewMandatoryDesc(e.target.value)}
                           />
                         </div>
+                        {/* Phase 6A.121: Item type selection */}
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1">
-                            Quantity *
+                            Item Type *
                           </label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={newMandatoryQty}
-                            onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
-                          />
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                              <input
+                                type="radio"
+                                checked={newMandatoryItemType === SignUpItemType.Quantity}
+                                onChange={() => setNewMandatoryItemType(SignUpItemType.Quantity)}
+                                className="w-4 h-4"
+                              />
+                              Quantity (e.g., &quot;10 plates&quot;)
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                              <input
+                                type="radio"
+                                checked={newMandatoryItemType === SignUpItemType.Slot}
+                                onChange={() => setNewMandatoryItemType(SignUpItemType.Slot)}
+                                className="w-4 h-4"
+                              />
+                              Slot (e.g., &quot;3 people&quot;)
+                            </label>
+                          </div>
                         </div>
+                        {newMandatoryItemType === SignUpItemType.Quantity ? (
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Quantity *
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={newMandatoryQty}
+                              onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Number of Slots *
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={newMandatorySlots}
+                                onChange={(e) => setNewMandatorySlots(parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Suggested per slot (optional)
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="e.g., 5"
+                                value={newMandatorySuggestedPerSlot ?? ''}
+                                onChange={(e) => setNewMandatorySuggestedPerSlot(e.target.value ? parseInt(e.target.value) : undefined)}
+                              />
+                            </div>
+                          </>
+                        )}
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1">
                             Notes (optional)
@@ -607,10 +704,10 @@ export default function EditSignUpListPage() {
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">{isQuantityBased(item) ? item.targetQuantity : item.totalSlots}</td>
                                       <td className="px-3 py-2 text-sm">
-                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
-                                          {item.remainingQuantity}
+                                        <span className={(isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots) === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots}
                                         </span>
                                       </td>
                                       <td className="px-3 py-2">
@@ -627,8 +724,8 @@ export default function EditSignUpListPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleDeleteItem(item.id)}
-                                            disabled={item.committedQuantity > 0}
-                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            disabled={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0}
+                                            title={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
                                             className="text-red-600"
                                           >
                                             <Trash2 className="h-3 w-3" />
@@ -692,17 +789,72 @@ export default function EditSignUpListPage() {
                             onChange={(e) => setNewSuggestedDesc(e.target.value)}
                           />
                         </div>
+                        {/* Phase 6A.121: Item type selection for Suggested */}
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1">
-                            Quantity *
+                            Item Type *
                           </label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={newSuggestedQty}
-                            onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
-                          />
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                              <input
+                                type="radio"
+                                checked={newSuggestedItemType === SignUpItemType.Quantity}
+                                onChange={() => setNewSuggestedItemType(SignUpItemType.Quantity)}
+                                className="w-4 h-4"
+                              />
+                              Quantity
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                              <input
+                                type="radio"
+                                checked={newSuggestedItemType === SignUpItemType.Slot}
+                                onChange={() => setNewSuggestedItemType(SignUpItemType.Slot)}
+                                className="w-4 h-4"
+                              />
+                              Slot-based
+                            </label>
+                          </div>
                         </div>
+                        {newSuggestedItemType === SignUpItemType.Quantity ? (
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-600 mb-1">
+                              Quantity *
+                            </label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={newSuggestedQty}
+                              onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Number of Slots *
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={newSuggestedSlots}
+                                onChange={(e) => setNewSuggestedSlots(parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Suggested per slot (optional)
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="e.g., 5"
+                                value={newSuggestedSuggestedPerSlot ?? ''}
+                                onChange={(e) => setNewSuggestedSuggestedPerSlot(e.target.value ? parseInt(e.target.value) : undefined)}
+                              />
+                            </div>
+                          </>
+                        )}
                         <div>
                           <label className="block text-xs font-medium text-neutral-600 mb-1">
                             Notes (optional)
@@ -795,10 +947,10 @@ export default function EditSignUpListPage() {
                                           )}
                                         </div>
                                       </td>
-                                      <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                      <td className="px-3 py-2 text-sm">{isQuantityBased(item) ? item.targetQuantity : item.totalSlots}</td>
                                       <td className="px-3 py-2 text-sm">
-                                        <span className={item.remainingQuantity === 0 ? 'text-red-600' : 'text-green-600'}>
-                                          {item.remainingQuantity}
+                                        <span className={(isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots) === 0 ? 'text-red-600' : 'text-green-600'}>
+                                          {isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots}
                                         </span>
                                       </td>
                                       <td className="px-3 py-2">
@@ -815,8 +967,8 @@ export default function EditSignUpListPage() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => handleDeleteItem(item.id)}
-                                            disabled={item.committedQuantity > 0}
-                                            title={item.committedQuantity > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
+                                            disabled={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0}
+                                            title={(isQuantityBased(item) ? item.committedQuantity : item.filledSlots) > 0 ? 'Cannot delete item with commitments' : 'Delete item'}
                                             className="text-red-600"
                                           >
                                             <Trash2 className="h-3 w-3" />

@@ -7,7 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.121: EVENT HERO IMAGE CROPPING FIX ✅ DEPLOYED (2026-02-16)
+## 🔄 CURRENT STATUS - PHASE 6A.121a: SLOT-BASED SIGNUP ITEMS ✅ DEPLOYED (2026-02-16)
+**Date**: 2026-02-16
+**Session**: Phase 6A.121a - Dual Nullable Fields / Slot-Based Signup Items
+**Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**
+**Deployment**: ✅ Pushed commit b70adf62 to develop
+
+**Feature**: Slot-based signup items - organizers can set number of slots instead of fixed quantity
+**Architecture**: Dual nullable fields (TargetQuantity, AvailableSlots, SuggestedPerSlot) with DB CHECK constraint
+**Tests**: 1,468 application tests passing; 20 new TDD tests added
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.121: EVENT HERO IMAGE CROPPING FIX ✅ DEPLOYED (2026-02-16)
 **Date**: 2026-02-16
 **Session**: Phase 6A.121 - Event Hero Image Cropping Fix (Web UI)
 **Status**: ✅ **DEPLOYED TO STAGING - READY FOR TESTING**

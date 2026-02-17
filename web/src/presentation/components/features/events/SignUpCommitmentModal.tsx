@@ -32,7 +32,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { SignUpItemCategory, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, isQuantityBased, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 interface SignUpCommitmentModalProps {
@@ -135,9 +135,10 @@ export function SignUpCommitmentModal({
   if (!item) return null;
 
   const currentlyCommitted = existingCommitment?.quantity || 0;
+  const itemRemainingQuantity = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
   const maxQuantity = existingCommitment
-    ? currentlyCommitted + item.remainingQuantity
-    : item.remainingQuantity;
+    ? currentlyCommitted + itemRemainingQuantity
+    : itemRemainingQuantity;
 
   // Validate form
   const validateForm = (): boolean => {
@@ -321,7 +322,7 @@ export function SignUpCommitmentModal({
                   </p>
                 )}
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Available to {existingCommitment ? 'add' : 'sign up'}: {item.remainingQuantity} of {item.quantity}
+                  Available to {existingCommitment ? 'add' : 'sign up'}: {itemRemainingQuantity} of {isQuantityBased(item) ? item.targetQuantity : item.totalSlots}
                 </p>
                 {existingCommitment && (
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">

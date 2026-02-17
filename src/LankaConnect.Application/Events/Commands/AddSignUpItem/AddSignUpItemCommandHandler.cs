@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -33,8 +34,8 @@ public class AddSignUpItemCommandHandler : ICommandHandler<AddSignUpItemCommand,
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "AddSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, Description={Description}, Quantity={Quantity}",
-                request.EventId, request.SignUpListId, request.ItemDescription, request.Quantity);
+                "AddSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, Description={Description}, ItemType={ItemType}",
+                request.EventId, request.SignUpListId, request.ItemDescription, request.ItemType);
 
             try
             {
@@ -72,12 +73,25 @@ public class AddSignUpItemCommandHandler : ICommandHandler<AddSignUpItemCommand,
                     "AddSignUpItem: Sign-up list loaded - SignUpListId={SignUpListId}, Category={Category}, CurrentItemsCount={ItemsCount}",
                     signUpList.Id, signUpList.Category, signUpList.Items.Count);
 
-                // Add item to the sign-up list
-                var itemResult = signUpList.AddItem(
-                    request.ItemDescription,
-                    request.Quantity,
-                    request.ItemCategory,
-                    request.Notes);
+                // Phase 6A.121: Add item using dual-field approach (quantity-based or slot-based)
+                Result<LankaConnect.Domain.Events.Entities.SignUpItem> itemResult;
+                if (request.ItemType == SignUpItemType.Slot)
+                {
+                    itemResult = signUpList.AddSlotBasedItem(
+                        request.ItemDescription,
+                        request.AvailableSlots ?? 1,
+                        request.SuggestedPerSlot,
+                        request.ItemCategory,
+                        request.Notes);
+                }
+                else
+                {
+                    itemResult = signUpList.AddItem(
+                        request.ItemDescription,
+                        request.TargetQuantity ?? 1,
+                        request.ItemCategory,
+                        request.Notes);
+                }
 
                 if (itemResult.IsFailure)
                 {
@@ -91,8 +105,8 @@ public class AddSignUpItemCommandHandler : ICommandHandler<AddSignUpItemCommand,
                 }
 
                 _logger.LogInformation(
-                    "AddSignUpItem: Domain method succeeded - ItemId={ItemId}, Description={Description}, Quantity={Quantity}",
-                    itemResult.Value.Id, request.ItemDescription, request.Quantity);
+                    "AddSignUpItem: Domain method succeeded - ItemId={ItemId}, Description={Description}, ItemType={ItemType}",
+                    itemResult.Value.Id, request.ItemDescription, request.ItemType);
 
                 // Commit changes
                 await _unitOfWork.CommitAsync(cancellationToken);

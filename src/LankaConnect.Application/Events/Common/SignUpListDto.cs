@@ -58,6 +58,9 @@ public class QuantityBasedItemDto : ISignUpItemDto
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
     public Guid? CreatedByUserId { get; set; }
 
+    // Phase 6A.123: Discriminator field so frontend isQuantityBased() type guard works
+    public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
+
     // Quantity-based specific fields
     public int TargetQuantity { get; set; }
     public int CommittedQuantity { get; set; }
@@ -80,6 +83,9 @@ public class SlotBasedItemDto : ISignUpItemDto
     public string? Notes { get; set; }
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
     public Guid? CreatedByUserId { get; set; }
+
+    // Phase 6A.123: Discriminator field so frontend isSlotBased() type guard works
+    public SignUpItemType ItemType { get; set; } = SignUpItemType.Slot;
 
     // Slot-based specific fields
     public int TotalSlots { get; set; }

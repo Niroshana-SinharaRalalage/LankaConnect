@@ -51,6 +51,17 @@ public class SignUpCommitmentConfiguration : IEntityTypeConfiguration<SignUpComm
             .HasColumnName("notes")
             .HasMaxLength(1000);
 
+        // Contact information - mapped explicitly using PascalCase column names
+        // (columns were created by AddContactInfoToSignUpCommitments migration as PascalCase)
+        builder.Property(c => c.ContactName)
+            .HasColumnName("ContactName");
+
+        builder.Property(c => c.ContactEmail)
+            .HasColumnName("ContactEmail");
+
+        builder.Property(c => c.ContactPhone)
+            .HasColumnName("ContactPhone");
+
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")
             .HasColumnName("created_at")

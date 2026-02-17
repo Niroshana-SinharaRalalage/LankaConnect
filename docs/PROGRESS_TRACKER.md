@@ -1,5 +1,51 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-16 - Missing Open Items Tab Fix ✅ DEPLOYED*
+*Last Updated: 2026-02-16 - Phase 6A.121a Slot-Based Signup Items ✅ DEPLOYED*
+
+## 🎯 Current Session Status - Phase 6A.121a: Slot-Based Signup Items ✅ DEPLOYED
+
+### Phase 6A.121a: Dual Nullable Fields / Slot-Based Signup Items - 2026-02-16
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit b70adf62)**
+
+**Feature**: Organizers can now create signup items with a slot count instead of a fixed quantity.
+- **Quantity-based**: "Rice - 10 plates" (as before)
+- **Slot-based**: "Assorted Fruits - 3 slots" (new) - 3 people can claim slots, each specifying what they bring
+
+**Architecture**: Dual nullable fields on SignUpItem entity:
+- `TargetQuantity` (int?) - for quantity-based items
+- `AvailableSlots` (int?) - for slot-based items
+- `SuggestedPerSlot` (int?) - optional guidance for slot-based
+- `ItemType` computed property (Quantity or Slot)
+- DB CHECK constraint enforces exactly ONE of TargetQuantity/AvailableSlots is set
+
+**Changes Made**:
+
+Backend:
+- `SignUpItem.cs` - Dual nullable fields, factory methods, calculation methods with runtime checks
+- `SignUpList.cs` - Added `AddSlotBasedItem()` method
+- `AddSignUpItemCommand.cs` - Discriminated fields (ItemType, TargetQuantity, AvailableSlots, SuggestedPerSlot)
+- `AddSignUpItemCommandValidator.cs` (NEW) - FluentValidation dual-field constraint
+- `AddSignUpItemCommandHandler.cs` - Routes to AddItem() or AddSlotBasedItem()
+- `SignUpListDto.cs` - Discriminated union DTOs: QuantityBasedItemDto | SlotBasedItemDto
+- `GetEventSignUpListsQueryHandler.cs` - MapItemToDto() helper for discriminated union mapping
+- `EventsController.cs` - Updated AddSignUpItemRequest with ItemType discriminator
+- `Migration Phase6A122b` (NEW) - Adds physical_quantity + slots_claimed to sign_up_commitments
+- 20 new TDD tests in `AddSignUpItemCommandHandlerTests.cs`
+
+Frontend:
+- `events.types.ts` - SignUpItemType enum, discriminated unions, type guards
+- `signup-lists/[signupId]/page.tsx` - Radio buttons for item type, conditional inputs
+- `manage-signups/[signupId]/page.tsx` - Same item type support
+- `SignUpManagementSection.tsx` - Type-narrowed display with isQuantityBased()
+- `SignUpCommitmentModal.tsx` - Conditional quantity/slots input
+- `OpenItemSignUpModal.tsx` - Type-safe item display
+
+**Test Results**:
+- Application tests: 1,468/1,468 passing
+- Domain tests: 83/84 (1 pre-existing FormResponseTests failure, unrelated)
+- Frontend: `npm run build` succeeded, `npx tsc --noEmit` 0 errors
+
+
 
 **⚠️ IMPORTANT**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for **single source of truth** on all Phase 6A/6B/6C features, phase numbers, and status. All documentation must stay synchronized with master index.
 

@@ -91,6 +91,9 @@
 | 6A.119 | Signup Items Optional Quantity Fix | ✅ Complete | [RCA_OPTIONAL_QUANTITY_SIGNUP_ITEMS.md](./RCA_OPTIONAL_QUANTITY_SIGNUP_ITEMS.md) | 2026-02-16 |
 | 6A.120 | Signup Lists UX Improvements | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
 | 6A.121 | Event Hero Image Cropping Fix (Web UI) | ✅ Complete | [RCA_EVENT_HERO_IMAGE_CROPPING.md](./RCA_EVENT_HERO_IMAGE_CROPPING.md) | 2026-02-16 |
+| 6A.121a | Slot-Based Signup Items (Dual Nullable Fields) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
+| 6A.122 | Email Template Fixes (quantities, performance, text) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
+| 6A.122b | Hotfix: Add physical_quantity/slots_claimed to sign_up_commitments | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-16 |
 
 ---
 

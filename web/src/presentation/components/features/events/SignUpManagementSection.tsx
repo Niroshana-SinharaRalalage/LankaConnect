@@ -697,6 +697,28 @@ export function SignUpManagementSection({
                                   </div>
                                 </div>
 
+                                {/* Phase 6A.123: Sign Up/Update button - Always Visible (outside collapsible) */}
+                                {!isOrganizer && (remainingQty > 0 || userItemCommitment) && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
+                                      size="sm"
+                                      variant={userItemCommitment ? "default" : "outline"}
+                                    >
+                                      {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
+                                    </Button>
+                                    {userItemCommitment && (
+                                      <Button
+                                        onClick={() => handleCancelSignUp(signUpList.id, item.id)}
+                                        size="sm"
+                                        variant="destructive"
+                                      >
+                                        Cancel Sign Up
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+
                                 {/* Phase 6A.118: Details - Conditionally Visible (Collapsible) */}
                                 {isExpanded && (
                                   <>
@@ -740,31 +762,6 @@ export function SignUpManagementSection({
                                         ))}
                                       </tbody>
                                     </table>
-                                  </div>
-                                )}
-
-                                {/* Sign Up/Update button - Show if remaining qty OR user has commitment */}
-                                {/* Phase 6A.28 Issue 1 Fix: Hide buttons on manage page (isOrganizer=true) */}
-                                {!isOrganizer && (remainingQty > 0 || userItemCommitment) && (
-                                  <div className="mt-3 flex gap-2">
-                                    <Button
-                                      onClick={() => openCommitmentModal(signUpList.id, item, userItemCommitment)}
-                                      size="sm"
-                                      variant={userItemCommitment ? "default" : "outline"}
-                                    >
-                                      {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
-                                    </Button>
-                                    {/* Cancel button - Show only if user has commitment */}
-                                    {/* GitHub Issue #31: Button now opens styled dialog */}
-                                    {userItemCommitment && (
-                                      <Button
-                                        onClick={() => handleCancelSignUp(signUpList.id, item.id)}
-                                        size="sm"
-                                        variant="destructive"
-                                      >
-                                        Cancel Sign Up
-                                      </Button>
-                                    )}
                                   </div>
                                 )}
 
@@ -855,7 +852,7 @@ export function SignUpManagementSection({
                             variant="default"
                             className="flex-shrink-0"
                             style={{
-                              background: 'linear-gradient(135deg, #8B2252 0%, #9B4B6F 100%)',
+                              background: '#FF7900',
                               color: 'white',
                               fontWeight: 600
                             }}

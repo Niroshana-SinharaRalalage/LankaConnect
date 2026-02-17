@@ -82,7 +82,7 @@ export default function EditSignUpListPage() {
   const [newMandatoryNotes, setNewMandatoryNotes] = useState('');
   // Phase 6A.121: Slot-based item state for Mandatory
   const [newMandatoryItemType, setNewMandatoryItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
-  const [newMandatorySlots, setNewMandatorySlots] = useState(3);
+  const [newMandatorySlots, setNewMandatorySlots] = useState(1);
   const [newMandatorySuggestedPerSlot, setNewMandatorySuggestedPerSlot] = useState<number | undefined>(undefined);
 
   const [newPreferredDesc, setNewPreferredDesc] = useState('');
@@ -90,7 +90,7 @@ export default function EditSignUpListPage() {
   const [newPreferredNotes, setNewPreferredNotes] = useState('');
   // Phase 6A.121: Slot-based item state for Preferred
   const [newPreferredItemType, setNewPreferredItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
-  const [newPreferredSlots, setNewPreferredSlots] = useState(3);
+  const [newPreferredSlots, setNewPreferredSlots] = useState(1);
   const [newPreferredSuggestedPerSlot, setNewPreferredSuggestedPerSlot] = useState<number | undefined>(undefined);
 
   const [newSuggestedDesc, setNewSuggestedDesc] = useState('');
@@ -98,7 +98,7 @@ export default function EditSignUpListPage() {
   const [newSuggestedNotes, setNewSuggestedNotes] = useState('');
   // Phase 6A.121: Slot-based item state for Suggested
   const [newSuggestedItemType, setNewSuggestedItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
-  const [newSuggestedSlots, setNewSuggestedSlots] = useState(3);
+  const [newSuggestedSlots, setNewSuggestedSlots] = useState(1);
   const [newSuggestedSuggestedPerSlot, setNewSuggestedSuggestedPerSlot] = useState<number | undefined>(undefined);
 
   // Initialize form when sign-up list loads
@@ -197,8 +197,16 @@ export default function EditSignUpListPage() {
     }
   };
 
+  // Phase 6A.126: Check if a category has unsaved changes (checkbox checked but not saved to backend)
+  const isMandatoryUnsaved = hasMandatoryItems && !signUpList?.hasMandatoryItems;
+  const isSuggestedUnsaved = hasSuggestedItems && !signUpList?.hasSuggestedItems;
+
   // Handle add mandatory item - Phase 6A.121: Supports both quantity-based and slot-based
   const handleAddMandatoryItem = async () => {
+    if (isMandatoryUnsaved) {
+      setSubmitError('Please save the list details first (click "Save List Details" above) before adding items to the Mandatory category.');
+      return;
+    }
     if (!newMandatoryDesc.trim()) {
       setSubmitError('Item description is required');
       return;
@@ -227,7 +235,7 @@ export default function EditSignUpListPage() {
       });
       setNewMandatoryDesc('');
       setNewMandatoryQty(1);
-      setNewMandatorySlots(3);
+      setNewMandatorySlots(1);
       setNewMandatorySuggestedPerSlot(undefined);
       setNewMandatoryNotes('');
       setNewMandatoryItemType(SignUpItemType.Quantity);
@@ -267,7 +275,7 @@ export default function EditSignUpListPage() {
       });
       setNewPreferredDesc('');
       setNewPreferredQty(1);
-      setNewPreferredSlots(3);
+      setNewPreferredSlots(1);
       setNewPreferredSuggestedPerSlot(undefined);
       setNewPreferredNotes('');
       setNewPreferredItemType(SignUpItemType.Quantity);
@@ -279,6 +287,10 @@ export default function EditSignUpListPage() {
 
   // Handle add suggested item - Phase 6A.121: Supports both quantity-based and slot-based
   const handleAddSuggestedItem = async () => {
+    if (isSuggestedUnsaved) {
+      setSubmitError('Please save the list details first (click "Save List Details" above) before adding items to the Suggested category.');
+      return;
+    }
     if (!newSuggestedDesc.trim()) {
       setSubmitError('Item description is required');
       return;
@@ -307,7 +319,7 @@ export default function EditSignUpListPage() {
       });
       setNewSuggestedDesc('');
       setNewSuggestedQty(1);
-      setNewSuggestedSlots(3);
+      setNewSuggestedSlots(1);
       setNewSuggestedSuggestedPerSlot(undefined);
       setNewSuggestedNotes('');
       setNewSuggestedItemType(SignUpItemType.Quantity);
@@ -624,10 +636,15 @@ export default function EditSignUpListPage() {
                             onChange={(e) => setNewMandatoryNotes(e.target.value)}
                           />
                         </div>
+                        {isMandatoryUnsaved && (
+                          <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-800">
+                            Save the list details above before adding items to this category.
+                          </div>
+                        )}
                         <Button
                           type="button"
                           onClick={handleAddMandatoryItem}
-                          disabled={addSignUpItemMutation.isPending}
+                          disabled={addSignUpItemMutation.isPending || isMandatoryUnsaved}
                           variant="outline"
                           className="w-full"
                         >
@@ -647,7 +664,7 @@ export default function EditSignUpListPage() {
                             <thead className="bg-neutral-100 sticky top-0">
                               <tr>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty/Slots</th>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Rmn</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
                               </tr>
@@ -867,10 +884,15 @@ export default function EditSignUpListPage() {
                             onChange={(e) => setNewSuggestedNotes(e.target.value)}
                           />
                         </div>
+                        {isSuggestedUnsaved && (
+                          <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm text-amber-800">
+                            Save the list details above before adding items to this category.
+                          </div>
+                        )}
                         <Button
                           type="button"
                           onClick={handleAddSuggestedItem}
-                          disabled={addSignUpItemMutation.isPending}
+                          disabled={addSignUpItemMutation.isPending || isSuggestedUnsaved}
                           variant="outline"
                           className="w-full"
                         >
@@ -890,7 +912,7 @@ export default function EditSignUpListPage() {
                             <thead className="bg-neutral-100 sticky top-0">
                               <tr>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty/Slots</th>
                                 <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Rmn</th>
                                 <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
                               </tr>

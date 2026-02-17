@@ -745,7 +745,7 @@ export function SignUpManagementSection({
                                       <thead>
                                         <tr className="border-b">
                                           <th className="text-left py-1 px-2 font-medium text-muted-foreground">Name</th>
-                                          <th className="text-left py-1 px-2 font-medium text-muted-foreground">Quantity</th>
+                                          <th className="text-left py-1 px-2 font-medium text-muted-foreground">{isQuantityBased(item) ? 'Quantity' : 'Slots'}</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -769,7 +769,9 @@ export function SignUpManagementSection({
                                 {userItemCommitment && (
                                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                                     <p className="text-sm font-medium text-blue-800">
-                                      You committed to bring {userItemCommitment.quantity} of this item
+                                      {isQuantityBased(item)
+                                        ? `You committed to bring ${userItemCommitment.quantity} of this item`
+                                        : `You claimed ${userItemCommitment.quantity} slot(s) for this item`}
                                     </p>
                                   </div>
                                 )}

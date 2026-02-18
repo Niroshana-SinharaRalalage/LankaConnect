@@ -820,6 +820,8 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await _dbSet
             .AsNoTracking()
             .Include(e => e.Location)
+            .Include(e => e.Images)      // Phase 6A.127: Load images for email
+            .Include(e => e.SignUpLists)  // Phase 6A.127: Load signup lists for email URL
             .Where(e => e.SignUpLists.Any(sl => sl.Id == signUpListId))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -833,6 +835,8 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await _dbSet
             .AsNoTracking()
             .Include(e => e.Location)
+            .Include(e => e.Images)      // Phase 6A.127: Load images for email
+            .Include(e => e.SignUpLists)  // Phase 6A.127: Load signup lists for email URL
             .Where(e => e.SignUpLists.Any(sl => sl.Items.Any(item => item.Id == signUpItemId)))
             .FirstOrDefaultAsync(cancellationToken);
     }

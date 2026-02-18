@@ -154,6 +154,80 @@ public partial class EmailTemplateValidator : IEmailTemplateValidator
             EmailTemplateContract.Common.Year
         },
 
+        // Phase 6A.127: Signup commitment templates
+        [EmailTemplateContract.TemplateNames.SignupCommitmentConfirmation] = new HashSet<string>
+        {
+            EmailTemplateContract.Common.UserName,
+            EmailTemplateContract.Event.EventTitle,
+            EmailTemplateContract.SignupList.ItemDescription,
+            EmailTemplateContract.SignupList.SignupItem,
+            "Quantity",
+            EmailTemplateContract.Event.EventDateTime,
+            EmailTemplateContract.Event.EventLocation,
+            EmailTemplateContract.Event.EventDetailsUrl,
+            EmailTemplateContract.SignupList.CommitmentType,
+            EmailTemplateContract.SignupList.PickupInstructions,
+            EmailTemplateContract.OrganizerContact.HasOrganizerContact,
+            EmailTemplateContract.OrganizerContact.OrganizerContactName,
+            EmailTemplateContract.OrganizerContact.OrganizerContactEmail,
+            EmailTemplateContract.OrganizerContact.OrganizerContactPhone,
+            EmailTemplateContract.EventImage.HasEventImage,
+            EmailTemplateContract.EventImage.EventImageUrl,
+            "HasSignUpLists",
+            "SignUpListsUrl",
+            "SignupListUrl",
+            EmailTemplateContract.Common.Year
+        },
+        [EmailTemplateContract.TemplateNames.SignupCommitmentUpdate] = new HashSet<string>
+        {
+            EmailTemplateContract.Common.UserName,
+            EmailTemplateContract.Event.EventTitle,
+            EmailTemplateContract.SignupList.ItemDescription,
+            EmailTemplateContract.SignupList.SignupItem,
+            "Quantity",
+            EmailTemplateContract.SignupList.OldQuantity,
+            EmailTemplateContract.SignupList.NewQuantity,
+            "EventDate",
+            EmailTemplateContract.Event.EventDateTime,
+            EmailTemplateContract.Event.EventLocation,
+            EmailTemplateContract.Event.EventDetailsUrl,
+            EmailTemplateContract.SignupList.CommitmentType,
+            EmailTemplateContract.SignupList.PickupInstructions,
+            EmailTemplateContract.OrganizerContact.HasOrganizerContact,
+            EmailTemplateContract.OrganizerContact.OrganizerContactName,
+            EmailTemplateContract.OrganizerContact.OrganizerContactEmail,
+            EmailTemplateContract.OrganizerContact.OrganizerContactPhone,
+            EmailTemplateContract.EventImage.HasEventImage,
+            EmailTemplateContract.EventImage.EventImageUrl,
+            "HasSignUpLists",
+            "SignUpListsUrl",
+            "SignupListUrl",
+            EmailTemplateContract.Common.Year
+        },
+        [EmailTemplateContract.TemplateNames.SignupCommitmentCancellation] = new HashSet<string>
+        {
+            EmailTemplateContract.Common.UserName,
+            EmailTemplateContract.Event.EventTitle,
+            EmailTemplateContract.SignupList.ItemDescription,
+            EmailTemplateContract.SignupList.SignupItem,
+            "Quantity",
+            EmailTemplateContract.Event.EventDateTime,
+            EmailTemplateContract.Event.EventLocation,
+            EmailTemplateContract.Event.EventDetailsUrl,
+            EmailTemplateContract.SignupList.CommitmentType,
+            EmailTemplateContract.SignupList.PickupInstructions,
+            EmailTemplateContract.OrganizerContact.HasOrganizerContact,
+            EmailTemplateContract.OrganizerContact.OrganizerContactName,
+            EmailTemplateContract.OrganizerContact.OrganizerContactEmail,
+            EmailTemplateContract.OrganizerContact.OrganizerContactPhone,
+            EmailTemplateContract.EventImage.HasEventImage,
+            EmailTemplateContract.EventImage.EventImageUrl,
+            "HasSignUpLists",
+            "SignUpListsUrl",
+            "SignupListUrl",
+            EmailTemplateContract.Common.Year
+        },
+
         // Registration cancellation
         [EmailTemplateContract.TemplateNames.EventRegistrationCancellation] = new HashSet<string>
         {

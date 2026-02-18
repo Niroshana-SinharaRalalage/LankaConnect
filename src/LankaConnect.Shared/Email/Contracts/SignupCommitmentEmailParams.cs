@@ -285,7 +285,10 @@ public class SignupCommitmentEmailParams : IEmailParameters
         if (string.IsNullOrWhiteSpace(SignupItem))
             errors.Add("SignupItem is required");
 
-        if (Quantity <= 0)
+        // Phase 6A.127: Cancellation emails must fire even if quantity resolves to 0
+        // (pre-Phase 6A.121 commitments may have null PhysicalQuantity AND null SlotsClaimed)
+        var isCancellation = _templateName == "template-signup-list-commitment-cancellation";
+        if (!isCancellation && Quantity <= 0)
             errors.Add("Quantity must be greater than 0");
 
         if (EventStartDate == default)

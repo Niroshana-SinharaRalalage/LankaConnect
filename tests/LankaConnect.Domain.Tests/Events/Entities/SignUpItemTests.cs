@@ -687,7 +687,7 @@ public class SignUpItemTests
     [Fact]
     public void GetRemainingSlots_AfterMultipleCommitments_ShouldTrackCorrectly()
     {
-        // Arrange - 5 slots means 5 different PEOPLE can commit
+        // Arrange - 5 slot-units available (users can claim multiple slots each)
         var item = SignUpItem.CreateSlotBased(
             _signUpListId, "Fruits", 5, null, SignUpItemCategory.Suggested).Value;
 
@@ -698,9 +698,9 @@ public class SignUpItemTests
         item.AddSlotCommitment(user1, 2);  // user1 commits (claims 2 slot-units but occupies 1 "slot")
         item.AddSlotCommitment(user2, 1);  // user2 commits (claims 1 slot-unit)
 
-        // GetRemainingSlots = AvailableSlots - count of distinct users with SlotsClaimed > 0
-        // = 5 - 2 users = 3 remaining slots for other people
-        item.GetRemainingSlots().Should().Be(3);
+        // Phase 6A.126 Fix: GetRemainingSlots = AvailableSlots - SUM of slot-units claimed
+        // = 5 - (2 + 1) = 2 remaining slot-units
+        item.GetRemainingSlots().Should().Be(2);
     }
 
     #endregion

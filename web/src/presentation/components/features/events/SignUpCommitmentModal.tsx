@@ -32,7 +32,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { SignUpItemCategory, isQuantityBased, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, isQuantityBased, isSlotBased, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 interface SignUpCommitmentModalProps {
@@ -134,6 +134,8 @@ export function SignUpCommitmentModal({
 
   if (!item) return null;
 
+  const slotBased = isSlotBased(item);
+  const unitLabel = slotBased ? 'slot(s)' : 'item(s)';
   const currentlyCommitted = existingCommitment?.quantity || 0;
   const itemRemainingQuantity = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
   const maxQuantity = existingCommitment
@@ -318,15 +320,15 @@ export function SignUpCommitmentModal({
               <div className="space-y-1">
                 {existingCommitment && (
                   <p className="text-sm text-neutral-700 dark:text-neutral-300">
-                    <span className="font-medium">Your current commitment:</span> {currentlyCommitted} items
+                    <span className="font-medium">Your current commitment:</span> {currentlyCommitted} {unitLabel}
                   </p>
                 )}
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Available to {existingCommitment ? 'add' : 'sign up'}: {itemRemainingQuantity} of {isQuantityBased(item) ? item.targetQuantity : item.totalSlots}
+                  Available to {existingCommitment ? 'add' : 'sign up'}: {itemRemainingQuantity} of {isQuantityBased(item) ? item.targetQuantity : item.totalSlots} {unitLabel}
                 </p>
                 {existingCommitment && (
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    You can change to any amount between 1 and {maxQuantity} items
+                    You can change to any amount between 1 and {maxQuantity} {unitLabel}
                   </p>
                 )}
               </div>
@@ -415,13 +417,13 @@ export function SignUpCommitmentModal({
               />
             </div>
 
-            {/* Quantity Selector */}
+            {/* Quantity / Slots Selector */}
             <div>
               <label
                 htmlFor="quantity"
                 className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
               >
-                Quantity * {existingCommitment && <span className="text-xs text-neutral-500">(0 to cancel)</span>} (max: {maxQuantity})
+                {slotBased ? 'Number of Slots' : 'Quantity'} * {existingCommitment && <span className="text-xs text-neutral-500">(0 to cancel)</span>} (max: {maxQuantity})
               </label>
               <input
                 id="quantity"

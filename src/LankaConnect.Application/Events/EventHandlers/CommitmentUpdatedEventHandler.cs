@@ -8,6 +8,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -20,20 +21,20 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// </summary>
 public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNotification<CommitmentUpdatedEvent>>
 {
-    private readonly ITypedEmailService _typedEmailService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<CommitmentUpdatedEventHandler> _logger;
 
     public CommitmentUpdatedEventHandler(
-        ITypedEmailService typedEmailService,
+        IServiceScopeFactory scopeFactory,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<CommitmentUpdatedEventHandler> logger)
     {
-        _typedEmailService = typedEmailService;
+        _scopeFactory = scopeFactory;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _emailUrlHelper = emailUrlHelper;
@@ -135,14 +136,20 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     "CommitmentUpdated COMPLETE: Signup updated successfully, dispatching email async - UserId={UserId}, OldQty={OldQty}, NewQty={NewQty}, Duration={ElapsedMs}ms",
                     domainEvent.UserId, oldQuantity, newQuantity, stopwatch.ElapsedMilliseconds);
 
+                // Phase 6A.127: Create new DI scope for fire-and-forget email dispatch.
+                // The HTTP request scope (and its DbContext) is disposed by the time Task.Run executes,
+                // causing ObjectDisposedException in EmailTemplateRepository.GetByNameAsync().
                 var capturedParams = emailParams;
                 var capturedEmail = user.Email.Value;
                 var capturedEventId = @event.Id;
+                var capturedScopeFactory = _scopeFactory;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        var emailResult = await _typedEmailService.SendEmailAsync(capturedParams, CancellationToken.None);
+                        using var scope = capturedScopeFactory.CreateScope();
+                        var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                        var emailResult = await emailService.SendEmailAsync(capturedParams, CancellationToken.None);
                         if (emailResult.Success)
                         {
                             _logger.LogInformation(

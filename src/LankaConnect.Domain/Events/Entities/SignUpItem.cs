@@ -215,7 +215,9 @@ public class SignUpItem : BaseEntity
         if (ItemType != SignUpItemType.Slot)
             throw new InvalidOperationException("Cannot get remaining slots for quantity-based item. Use GetRemainingQuantity().");
 
-        var filledSlots = _commitments.Count(c => c.SlotsClaimed.HasValue && c.SlotsClaimed.Value > 0);
+        // Phase 6A.126 Fix: Use Sum (slot-units) not Count (commitment records)
+        // Count would treat "1 user claiming 2 slots" as 1 filled, Sum correctly counts 2 filled
+        var filledSlots = _commitments.Sum(c => c.SlotsClaimed ?? 0);
         return AvailableSlots!.Value - filledSlots;
     }
 
@@ -229,7 +231,8 @@ public class SignUpItem : BaseEntity
         if (ItemType != SignUpItemType.Slot || !SuggestedPerSlot.HasValue)
             return null;
 
-        var filledSlots = _commitments.Count(c => c.SlotsClaimed.HasValue && c.SlotsClaimed.Value > 0);
+        // Phase 6A.126 Fix: Use Sum (slot-units) not Count (commitment records)
+        var filledSlots = _commitments.Sum(c => c.SlotsClaimed ?? 0);
         return filledSlots * SuggestedPerSlot.Value;
     }
 
@@ -615,7 +618,8 @@ public class SignUpItem : BaseEntity
         if (newSlots <= 0 || newSlots > 100)
             return Result.Failure("Slots must be between 1 and 100");
 
-        var filledSlots = _commitments.Count(c => c.SlotsClaimed.HasValue && c.SlotsClaimed.Value > 0);
+        // Phase 6A.126 Fix: Use Sum (slot-units) not Count (commitment records)
+        var filledSlots = _commitments.Sum(c => c.SlotsClaimed ?? 0);
         if (newSlots < filledSlots)
             return Result.Failure($"Cannot reduce slots below filled amount ({filledSlots})");
 
@@ -731,7 +735,8 @@ public class SignUpItem : BaseEntity
             return Result.Failure("Slots must be between 1 and 100");
 
         // Check if trying to reduce slots below filled amount
-        var filledSlots = _commitments.Count(c => c.SlotsClaimed.HasValue && c.SlotsClaimed.Value > 0);
+        // Phase 6A.126 Fix: Use Sum (slot-units) not Count (commitment records)
+        var filledSlots = _commitments.Sum(c => c.SlotsClaimed ?? 0);
         if (newSlots < filledSlots)
             return Result.Failure($"Cannot reduce slots below filled amount ({filledSlots})");
 

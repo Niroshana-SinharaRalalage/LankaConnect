@@ -1428,11 +1428,14 @@ export class EventsRepository {
     formId: string
   ): Promise<FormResponseDto | null> {
     try {
-      return await apiClient.get<FormResponseDto>(
+      const result = await apiClient.get<FormResponseDto>(
         `${this.basePath}/${eventId}/forms/${formId}/responses/my`
       );
+      // Phase 6A.128b Fix: Axios treats HTTP 204 as success (2xx) so catch block never fires.
+      // response.data is undefined for 204 (no body). Convert to null explicitly.
+      return result ?? null;
     } catch (error: any) {
-      // HTTP 204 No Content means user has no response (not an error)
+      // Fallback: some HTTP clients may throw on 204
       if (error.response?.status === 204) {
         return null;
       }

@@ -483,7 +483,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         const response = await eventsRepository.getMyFormResponse(id, deletingFormId, accessToken);
 
         if (!response) {
-          setError('Response not found.');
+          // Phase 6A.128b Fix: Response already gone from DB - clean up stale localStorage token
+          // instead of showing an error. This handles the case where response was deleted
+          // externally (e.g., via RSVP cancellation) but localStorage token persisted.
+          localStorage.removeItem(storageKey);
           setDeletingFormId(null);
           return;
         }
@@ -496,7 +499,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           accessToken,
         });
       } else {
-        setError('Unable to delete response. Please try again or use the edit link from your email.');
+        // Phase 6A.128b: If neither API response nor localStorage token exists,
+        // the user genuinely has no response. Nothing to delete.
         setDeletingFormId(null);
         return;
       }
@@ -1687,12 +1691,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       Fill out forms to provide additional information for this event
                     </p>
                     {activeForms.map((form) => {
-                      // Phase 6A.106-110 Fix: Check BOTH localStorage (anonymous) AND user response (logged-in)
+                      // Phase 6A.128b Fix: For authenticated users, API is the single source of truth.
+                      // localStorage token is ONLY used for anonymous users (no JWT to identify them).
+                      // Previous bug: stale localStorage tokens caused "You already responded" to persist
+                      // even after the response was deleted from the database.
                       const storageKey = `form_response_token_${id}_${form.id}`;
-                      const hasStoredToken = typeof window !== 'undefined' && localStorage.getItem(storageKey);
+                      const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
                       const userResponse = userFormResponses[form.id];
                       const hasUserResponse = userResponse !== null && userResponse !== undefined;
-                      const hasResponded = hasStoredToken || hasUserResponse;
+                      const hasResponded = isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
 
                       const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
                       const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();

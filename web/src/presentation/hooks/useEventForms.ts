@@ -272,6 +272,16 @@ export function useUserFormResponses(
     const query = queries[index];
     // Only set response if query succeeded; treat errors as "no response"
     responsesMap[formId] = query.data ?? null;
+
+    // Phase 6A.128b Fix: Proactively clean up stale localStorage tokens.
+    // When API confirms no response exists (query succeeded with null/undefined data),
+    // remove the stale localStorage token that would cause hasStoredToken to be true.
+    if (query.isSuccess && !query.data && eventId && typeof window !== 'undefined') {
+      const storageKey = `form_response_token_${eventId}_${formId}`;
+      if (localStorage.getItem(storageKey)) {
+        localStorage.removeItem(storageKey);
+      }
+    }
   });
 
   const isLoading = queries.some((q) => q.isLoading);

@@ -10,8 +10,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
-import { useEventForms, useDeleteFormResponse } from '@/presentation/hooks/useEventForms';
-import type { FormResponseDto } from '@/infrastructure/api/types/events.types';
+import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -102,10 +101,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Phase 6A.109: Track form response deletion
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
   const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
-
-  // Phase 6A.106-110 Fix: Track logged-in user's form responses
-  const [userFormResponses, setUserFormResponses] = useState<Record<string, FormResponseDto | null>>({});
-  const [isFetchingResponses, setIsFetchingResponses] = useState(false);
 
   // Phase 6A.113: Detect URL hash for tab navigation (e.g., #signup-forms from email links)
   const [activeTab, setActiveTab] = useState<string>('signup-lists');
@@ -228,6 +223,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     form.status === ('Active' as any) || form.status === EventFormStatus.Active
   ) || [];
 
+  // Phase 6A.128: Use React Query's useQueries for user form responses (single source of truth)
+  // Replaces manual useEffect + useState — cache invalidation from mutations propagates automatically
+  const formIds = activeForms.map(f => f.id);
+  const { userFormResponses, isFetchingResponses } = useUserFormResponses(
+    id,
+    formIds,
+    isAuthenticated,
+  );
+
   // RSVP mutation
   const rsvpMutation = useRsvpToEvent();
 
@@ -236,45 +240,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.109: Delete form response mutation
   const deleteFormResponseMutation = useDeleteFormResponse();
-
-  // Phase 6A.106-110 Fix: Fetch logged-in user's responses for all active forms
-  useEffect(() => {
-    async function fetchUserFormResponses() {
-      if (!isAuthenticated || activeForms.length === 0) {
-        setUserFormResponses({});
-        return;
-      }
-
-      setIsFetchingResponses(true);
-      try {
-        const responses = await Promise.all(
-          activeForms.map(async (form) => {
-            try {
-              const response = await eventsRepository.getMyFormResponseByUserId(id, form.id);
-              return { formId: form.id, response };
-            } catch (error) {
-              // User has no response for this form - not an error
-              return { formId: form.id, response: null };
-            }
-          })
-        );
-
-        const responsesMap: Record<string, FormResponseDto | null> = {};
-        responses.forEach(({ formId, response }) => {
-          responsesMap[formId] = response;
-        });
-
-        setUserFormResponses(responsesMap);
-      } catch (error) {
-        console.error('Failed to fetch user form responses:', error);
-        setUserFormResponses({});
-      } finally {
-        setIsFetchingResponses(false);
-      }
-    }
-
-    fetchUserFormResponses();
-  }, [id, isAuthenticated, activeForms.length]); // Only re-fetch if forms count changes
 
   // Phase 6A.74 Part 12 Issue #4 Fix: Handle hash navigation for anchor links
   // Newsletter emails contain links like /events/{id}#sign-ups that should scroll to the section
@@ -510,13 +475,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           responseId: userResponse.id,
           // No accessToken - backend will use userId from JWT
         });
-
-        // Clear from local state
-        setUserFormResponses(prev => {
-          const updated = { ...prev };
-          delete updated[deletingFormId];
-          return updated;
-        });
+        // React Query cache invalidation in useDeleteFormResponse onSuccess
+        // automatically updates userFormResponses via useUserFormResponses hook
       } else if (accessToken) {
         // Anonymous user - delete using access token
         // Fetch the response first to get the responseId

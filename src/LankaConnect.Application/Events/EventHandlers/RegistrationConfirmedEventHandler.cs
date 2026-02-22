@@ -145,10 +145,11 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             // Phase 6A.97: Set event's timezone for consistent date/time display
             typedParams.TimeZoneId = @event.TimeZoneId;
 
-            // Set signup lists URL if event has signup lists
+            // Phase 6A.128: Fix - use WithSignUpLists() which sets BOTH URL and HasSignUpLists flag
+            // Previously used WithSignUpListsUrl() which only set URL, leaving HasSignUpLists=false
             if (@event.HasSignUpLists())
             {
-                typedParams.WithSignUpListsUrl($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                typedParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
             }
 
             // Phase 6A.112: Check if event has active signup forms

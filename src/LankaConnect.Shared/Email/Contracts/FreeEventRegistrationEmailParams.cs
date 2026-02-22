@@ -362,16 +362,8 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     }
 
     /// <summary>
-    /// Sets signup lists URL (if event has signup lists).
-    /// </summary>
-    public FreeEventRegistrationEmailParams WithSignUpListsUrl(string signUpListsUrl)
-    {
-        SignUpListsUrl = signUpListsUrl ?? string.Empty;
-        return this;
-    }
-
-    /// <summary>
     /// Sets signup lists URL and HasSignUpLists flag together.
+    /// Phase 6A.128: Removed WithSignUpListsUrl() which was a trap — it set URL without the flag.
     /// </summary>
     public FreeEventRegistrationEmailParams WithSignUpLists(string url)
     {

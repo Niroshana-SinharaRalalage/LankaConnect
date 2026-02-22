@@ -456,16 +456,8 @@ public class TicketConfirmationEmailParams : IEmailParameters
     }
 
     /// <summary>
-    /// Sets signup lists URL (if event has signup lists).
-    /// </summary>
-    public TicketConfirmationEmailParams WithSignUpListsUrl(string signUpListsUrl)
-    {
-        SignUpListsUrl = signUpListsUrl ?? string.Empty;
-        return this;
-    }
-
-    /// <summary>
     /// Sets signup lists URL and HasSignUpLists flag together.
+    /// Phase 6A.128: Removed WithSignUpListsUrl() which was a trap — it set URL without the flag.
     /// </summary>
     public TicketConfirmationEmailParams WithSignUpLists(string url)
     {

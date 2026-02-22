@@ -4,6 +4,8 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -23,15 +25,18 @@ public class RegistrationEmailService : IRegistrationEmailService
 {
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly ILogger<RegistrationEmailService> _logger;
 
     public RegistrationEmailService(
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
+        IEventFormRepository eventFormRepository,
         ILogger<RegistrationEmailService> logger)
     {
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
+        _eventFormRepository = eventFormRepository;
         _logger = logger;
     }
 
@@ -120,6 +125,15 @@ public class RegistrationEmailService : IRegistrationEmailService
             {
                 emailParams.WithSignUpLists(
                     _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+            }
+
+            // Phase 6A.128: Add signup forms URL if event has active forms
+            var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+            if (hasActiveForms)
+            {
+                emailParams.WithSignupForms(
+                    _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#signup-forms");
             }
 
             // Send email via typed email service
@@ -249,6 +263,15 @@ public class RegistrationEmailService : IRegistrationEmailService
             {
                 emailParams.WithSignUpLists(
                     _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#sign-ups");
+            }
+
+            // Phase 6A.128: Add signup forms URL if event has active forms
+            var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+            var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+            if (hasActiveForms)
+            {
+                emailParams.WithSignupForms(
+                    _emailUrlHelper.BuildEventDetailsUrl(@event.Id) + "#signup-forms");
             }
 
             // Create PDF attachment

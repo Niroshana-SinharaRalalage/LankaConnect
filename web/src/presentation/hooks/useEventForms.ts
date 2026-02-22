@@ -16,6 +16,7 @@
 
 import {
   useQuery,
+  useQueries,
   useMutation,
   useQueryClient,
   UseQueryOptions,
@@ -235,6 +236,47 @@ export function useMyFormResponseByUserId(
     retry: 1,
     ...options,
   });
+}
+
+/**
+ * useUserFormResponses Hook (Phase 6A.128)
+ *
+ * Batch-fetches logged-in user's responses for all active forms using React Query's useQueries.
+ * Replaces the manual useEffect + useState pattern in page.tsx to ensure cache invalidation
+ * from mutations (delete, submit, update) automatically propagates to the UI.
+ *
+ * @param eventId - Event ID (GUID)
+ * @param formIds - Array of form IDs to check responses for
+ * @param enabled - Whether queries should run (typically: isAuthenticated && formIds.length > 0)
+ * @returns Record<formId, FormResponseDto | null> mapping each form to the user's response
+ */
+export function useUserFormResponses(
+  eventId: string | undefined,
+  formIds: string[],
+  enabled: boolean = true,
+) {
+  const queries = useQueries({
+    queries: formIds.map((formId) => ({
+      queryKey: ['formResponse', 'my', eventId, formId],
+      queryFn: () => eventsRepository.getMyFormResponseByUserId(eventId!, formId),
+      enabled: enabled && !!eventId,
+      staleTime: 60 * 1000, // 1 minute
+      refetchOnWindowFocus: false,
+      retry: 1,
+    })),
+  });
+
+  // Derive the responses map reactively from query results
+  const responsesMap: Record<string, FormResponseDto | null> = {};
+  formIds.forEach((formId, index) => {
+    const query = queries[index];
+    // Only set response if query succeeded; treat errors as "no response"
+    responsesMap[formId] = query.data ?? null;
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+
+  return { userFormResponses: responsesMap, isFetchingResponses: isLoading };
 }
 
 // ==================== MUTATIONS - FORM CRUD ====================
@@ -681,6 +723,8 @@ export function useSubmitFormResponse(
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
       // Invalidate responses list if organizer is viewing
       queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
+      // Invalidate user-based response query so "You already responded" updates for logged-in users
+      queryClient.invalidateQueries({ queryKey: ['formResponse', 'my', eventId, formId] });
     },
     ...options,
   });
@@ -816,15 +860,29 @@ export function useDeleteFormResponse(
       const storageKey = `form_response_token_${eventId}_${formId}`;
       localStorage.removeItem(storageKey);
 
-      // Invalidate response cache if access token was used
+      // 1. Invalidate token-based response cache (anonymous users)
       if (accessToken) {
         queryClient.invalidateQueries({ queryKey: formKeys.myResponse(eventId, formId, accessToken) });
       }
 
-      // Invalidate responses list to update counts
-      queryClient.invalidateQueries({ queryKey: formKeys.responsesList(eventId, formId) });
-      // Invalidate form list to update response counts
+      // 2. Invalidate user-based response query (logged-in users)
+      // This was missing — caused stale "You already responded" after deletion
+      queryClient.invalidateQueries({ queryKey: ['formResponse', 'my', eventId, formId] });
+
+      // 3. Invalidate form detail (updates question/answer state in UI)
+      queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+
+      // 4. Invalidate ALL paginated responses (not just base key)
+      queryClient.invalidateQueries({
+        queryKey: formKeys.responsesList(eventId, formId),
+        exact: false,
+      });
+
+      // 5. Invalidate form list (updates response counts in form summary)
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
+
+      // 6. Invalidate ALL form queries (wildcard catch-all)
+      queryClient.invalidateQueries({ queryKey: formKeys.all });
     },
     ...options,
   });

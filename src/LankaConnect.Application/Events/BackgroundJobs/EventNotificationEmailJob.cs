@@ -8,6 +8,7 @@ using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
@@ -26,6 +27,7 @@ public class EventNotificationEmailJob
 {
     private readonly IEventNotificationHistoryRepository _historyRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
@@ -37,6 +39,7 @@ public class EventNotificationEmailJob
     public EventNotificationEmailJob(
         IEventNotificationHistoryRepository historyRepository,
         IEventRepository eventRepository,
+        IEventFormRepository eventFormRepository,
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
@@ -47,6 +50,7 @@ public class EventNotificationEmailJob
     {
         _historyRepository = historyRepository;
         _eventRepository = eventRepository;
+        _eventFormRepository = eventFormRepository;
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
@@ -152,6 +156,13 @@ public class EventNotificationEmailJob
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "";
 
+            // Phase 6A.129: Check for active signup forms (once, outside the loop)
+            var eventForms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+            var hasActiveSignupForms = eventForms.Any(f => f.Status == EventFormStatus.Active);
+            var signupFormsUrl = hasActiveSignupForms
+                ? $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms"
+                : "";
+
             // Phase 6A.61+ RCA: Diagnostic logging using LogError to bypass log filtering
             _logger.LogError("[DIAG-NOTIF-JOB][{CorrelationId}] STARTING EMAIL SEND - Template: event-details, RecipientCount: {RecipientCount}, EventTitle: {EventTitle}",
                 correlationId, recipients.Count, @event.Title.Value);
@@ -209,6 +220,12 @@ public class EventNotificationEmailJob
 
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
+
+                    // Phase 6A.129: Add signup forms URL if event has active forms
+                    if (hasActiveSignupForms)
+                    {
+                        emailParams.WithSignupForms(signupFormsUrl);
+                    }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 

@@ -10,6 +10,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -30,6 +31,7 @@ public class EventNotificationEmailJobTests
 {
     private readonly Mock<IEventNotificationHistoryRepository> _mockHistoryRepository;
     private readonly Mock<IEventRepository> _mockEventRepository;
+    private readonly Mock<IEventFormRepository> _mockEventFormRepository;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
@@ -43,6 +45,7 @@ public class EventNotificationEmailJobTests
     {
         _mockHistoryRepository = new Mock<IEventNotificationHistoryRepository>();
         _mockEventRepository = new Mock<IEventRepository>();
+        _mockEventFormRepository = new Mock<IEventFormRepository>();
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
@@ -51,9 +54,15 @@ public class EventNotificationEmailJobTests
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<EventNotificationEmailJob>>();
 
+        // Phase 6A.129: Return empty forms list by default
+        _mockEventFormRepository
+            .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<LankaConnect.Domain.Events.Entities.EventForm>());
+
         _job = new EventNotificationEmailJob(
             _mockHistoryRepository.Object,
             _mockEventRepository.Object,
+            _mockEventFormRepository.Object,
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,

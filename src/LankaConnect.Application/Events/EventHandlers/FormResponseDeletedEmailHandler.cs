@@ -137,6 +137,16 @@ public class FormResponseDeletedEmailHandler : INotificationHandler<DomainEventN
                         eventEntity.OrganizerContactPhone);
                 }
 
+                // Phase 6A.129: Add signup lists & forms URLs for email action buttons
+                if (eventEntity.SignUpLists?.Any() == true)
+                {
+                    var signupListsUrl = _emailUrlHelper.BuildSignupListsUrl(eventEntity.Id);
+                    emailParams.WithSignupListsUrl(signupListsUrl);
+                }
+                // Always add signup forms URL — event has forms if we're sending a form response email
+                var signupFormsUrl = _emailUrlHelper.BuildSignupFormsUrl(eventEntity.Id);
+                emailParams.WithSignupFormsUrl(signupFormsUrl);
+
                 // Send email (fail-silent)
                 var emailResult = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
 

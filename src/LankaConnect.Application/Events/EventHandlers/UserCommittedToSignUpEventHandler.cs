@@ -4,6 +4,8 @@ using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
@@ -24,6 +26,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<UserCommittedToSignUpEventHandler> _logger;
 
@@ -31,12 +34,14 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
         IServiceScopeFactory scopeFactory,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<UserCommittedToSignUpEventHandler> logger)
     {
         _scopeFactory = scopeFactory;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
     }
@@ -119,6 +124,14 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 if (@event.SignUpLists?.Count > 0)
                 {
                     emailParams.WithSignUpLists($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups");
+                }
+
+                // Phase 6A.129: Add signup forms URL if event has active forms
+                var forms = await _eventFormRepository.GetByEventIdAsync(@event.Id, cancellationToken);
+                var hasActiveForms = forms.Any(f => f.Status == EventFormStatus.Active);
+                if (hasActiveForms)
+                {
+                    emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
                 }
 
                 // Phase 6A.122: Fire-and-forget email - don't block HTTP response waiting for email

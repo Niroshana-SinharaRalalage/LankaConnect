@@ -286,6 +286,17 @@ public class EventDetailsEmailParams : IEmailParameters
         return this;
     }
 
+    /// <summary>
+    /// Sets signup forms URL and HasSignupForms flag.
+    /// Phase 6A.129: Added for "View Signup Forms" button in manual notification emails.
+    /// </summary>
+    public EventDetailsEmailParams WithSignupForms(string url)
+    {
+        HasSignupForms = !string.IsNullOrWhiteSpace(url);
+        SignupFormsUrl = url ?? string.Empty;
+        return this;
+    }
+
     #endregion
 
     #region Factory Methods

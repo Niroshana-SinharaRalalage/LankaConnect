@@ -1143,10 +1143,15 @@ export class EventsRepository {
       const result = await apiClient.get<PendingAdditionDto | null>(
         `${this.basePath}/registrations/${registrationId}/pending-addition`
       );
+      // Phase 6A.128c: Defense-in-depth - validate we got an actual object back.
+      // Backend returns 204 for no pending addition; API client normalizes to null.
+      if (!result || typeof result !== 'object') {
+        return null;
+      }
       return result;
     } catch (error: any) {
-      // 404 means no pending addition exists
-      if (error?.response?.status === 404) {
+      // 404 or 204 means no pending addition exists
+      if (error?.response?.status === 404 || error?.response?.status === 204) {
         return null;
       }
       throw error;
@@ -1431,9 +1436,12 @@ export class EventsRepository {
       const result = await apiClient.get<FormResponseDto>(
         `${this.basePath}/${eventId}/forms/${formId}/responses/my`
       );
-      // Phase 6A.128b Fix: Axios treats HTTP 204 as success (2xx) so catch block never fires.
-      // response.data is undefined for 204 (no body). Convert to null explicitly.
-      return result ?? null;
+      // Phase 6A.128c: Defense-in-depth validation. The API client normalizes 204 to null,
+      // but also guard against any non-object response (e.g., "" from older Axios behavior).
+      if (!result || typeof result !== 'object') {
+        return null;
+      }
+      return result;
     } catch (error: any) {
       // Fallback: some HTTP clients may throw on 204
       if (error.response?.status === 204) {

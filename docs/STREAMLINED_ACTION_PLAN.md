@@ -7,7 +7,29 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.124: SIGNUP TYPE GUARD FIX ✅ DEPLOYED (2026-02-17)
+## 🔄 CURRENT STATUS - PHASE 6A.129: EF CORE JSONB CHANGE TRACKING FIX ✅ DEPLOYED (2026-02-24)
+**Date**: 2026-02-24
+**Session**: Phase 6A.129 - Fix EF Core JSONB change tracking for dropdown/select form updates
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WITH E2E API TEST**
+**Commit**: 8590a70d
+
+**Root Cause**: Missing ValueComparer for JSONB List backing fields → in-place mutations not detected.
+**Fixes**: ValueComparer with deep-copy snapshot on FormAnswerConfiguration + FormQuestionConfiguration.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.128c: AXIOS 204 BUG FIX ✅ DEPLOYED (2026-02-24)
+**Date**: 2026-02-24
+**Session**: Phase 6A.128c - Fix Axios 204 Empty String causing persistent "You already responded"
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WITH E2E TEST**
+**Commit**: 16fe9faa
+
+**Root Cause**: Axios returns `""` (empty string) for HTTP 204, but `??` only catches null/undefined.
+**Fixes**: API client interceptor normalizes 204→null + repository defense-in-depth validation
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.124: SIGNUP TYPE GUARD FIX ✅ DEPLOYED (2026-02-17)
 **Date**: 2026-02-17
 **Session**: Phase 6A.123/124 - Critical Signup Item Schema, DTO and Type Guard Fixes
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WORKING**

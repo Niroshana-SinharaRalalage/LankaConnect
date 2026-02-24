@@ -1,7 +1,47 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-17 - Phase 6A.125 Slot-Based Commitment Support Complete ✅ DEPLOYED*
+*Last Updated: 2026-02-24 - Phase 6A.129 EF Core JSONB Change Tracking Fix ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.125: Slot Commitment + JSON Serialization Fixes ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.129: EF Core JSONB Change Tracking Fix ✅ DEPLOYED
+
+### Phase 6A.129: Fix dropdown/select form answer updates not persisting - 2026-02-24
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 8590a70d) - VERIFIED WITH E2E API TEST**
+
+**Root Cause**: EF Core JSONB change tracking failure with mutable backing fields.
+FormAnswer.Update() mutates `_selectedOptionIds` in-place (Clear+AddRange). Without ValueComparer,
+EF Core's snapshot references the same List instance → in-place mutations modify both current and
+snapshot → no change detected → JSONB column omitted from UPDATE SQL.
+
+**Proof**: API test: submit dropdown="1" → update to "5+" → re-fetch still showed "1" (BEFORE fix).
+After fix: re-fetch correctly shows "5+".
+
+**Fixes**: Added ValueComparer with deep-copy snapshot to FormAnswerConfiguration (2 JSONB props)
+and FormQuestionConfiguration (1 JSONB prop). No migration needed.
+
+---
+
+## 🎯 Previous Session - Phase 6A.128c: Axios 204 Empty String Bug Fix ✅ DEPLOYED
+
+### Phase 6A.128c: Fix "You already responded" persisting after form response deletion - 2026-02-24
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 16fe9faa)**
+
+**Root Cause (Empirically Verified with Real Axios Call)**:
+- Backend API correctly returns HTTP 204 No Content when no form response exists
+- Axios `JSON.parse("")` fails for empty 204 body, falls back to returning raw empty string `""`
+- Nullish coalescing `??` does NOT catch empty string (`"" ?? null` = `""`)
+- `"" !== null && "" !== undefined` = `true` → `hasUserResponse = true` → bug!
+
+**Fixes Applied**:
+1. **API Client** (`api-client.ts`): Normalize `response.data = null` for HTTP 204 in response interceptor
+2. **Repository** (`events.repository.ts`): Defense-in-depth object type validation in `getMyFormResponseByUserId()`
+3. **Repository** (`events.repository.ts`): Fixed same latent 204 bug in `getPendingAddition()`
+
+**Verification**: End-to-end test confirms `hasUserResponse = false` after fix (PASS)
+
+---
+
+## 🎯 Previous Session - Phase 6A.125: Slot Commitment + JSON Serialization Fixes ✅ DEPLOYED
 
 ### Phase 6A.125: Complete Slot-Based Signup Commitment Support - 2026-02-17
 

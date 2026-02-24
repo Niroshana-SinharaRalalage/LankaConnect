@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
@@ -42,11 +43,22 @@ public class FormQuestionConfiguration : IEntityTypeConfiguration<FormQuestion>
             .HasColumnName("help_text")
             .HasMaxLength(300);
 
-        // Options stored as JSONB - structured objects with Guid Id + Text + SortOrder
-        // EF Core auto-discovers _options backing field by convention
+        // Phase 6A.129: Options stored as JSONB - structured objects with Guid Id + Text + SortOrder
+        // ValueComparer required to detect in-place mutations (Clear + AddRange) on the backing field.
+        // QuestionOption extends ValueObject with GetEqualityComponents() for proper equality.
         builder.Property(q => q.Options)
             .HasColumnName("options")
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<QuestionOption>>(
+                (c1, c2) => c1 != null && c2 != null
+                    ? c1.SequenceEqual(c2)
+                    : ReferenceEquals(c1, c2),
+                c => c != null
+                    ? c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode()))
+                    : 0,
+                c => c != null
+                    ? c.ToList().AsReadOnly()
+                    : (IReadOnlyList<QuestionOption>)new List<QuestionOption>().AsReadOnly()));
 
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")

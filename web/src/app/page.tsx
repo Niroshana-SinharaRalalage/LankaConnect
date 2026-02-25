@@ -5,8 +5,9 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag, ExternalLink } from 'lucide-react';
-import { FacebookPageEmbed } from '@/presentation/components/widgets/FacebookPageEmbed';
+import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag } from 'lucide-react';
+import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
+import { MARKETPLACE_ITEMS } from '@/config/marketplaceItems';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -449,7 +450,7 @@ export default function Home() {
               </Card>
             </div>
 
-            {/* Right Sidebar - Marketplace (Facebook Page Feed) */}
+            {/* Right Sidebar - Marketplace */}
             <div>
               <Card className="border-neutral-200 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
@@ -457,26 +458,21 @@ export default function Home() {
                     <ShoppingBag className="h-5 w-5 text-emerald-600" />
                     Marketplace
                   </CardTitle>
-                  <a
-                    href="https://www.facebook.com/LankaConnectUSA/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-emerald-600 hover:text-emerald-700 flex items-center gap-1 text-sm font-medium"
-                    title="View all on Facebook"
-                  >
-                    <ExternalLink className="h-4 w-4" />
+                  <a href="/marketplace" className="text-emerald-600 hover:text-emerald-700">
+                    <ArrowRight className="h-5 w-5" />
                   </a>
                 </CardHeader>
 
-                <CardContent className="p-4">
-                  <FacebookPageEmbed
-                    pageUrl="https://www.facebook.com/LankaConnectUSA/"
-                    tabs="timeline"
-                    height={600}
-                    smallHeader={true}
-                    hideCover={false}
-                    showFacepile={false}
-                  />
+                <CardContent className="p-3 space-y-1">
+                  {MARKETPLACE_ITEMS.slice(0, 5).map((item) => (
+                    <MarketplaceItemCard key={item.id} item={item} compact />
+                  ))}
+                  <a
+                    href="/marketplace"
+                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 mt-2 border-t border-neutral-100"
+                  >
+                    View All {MARKETPLACE_ITEMS.length} Items
+                  </a>
                 </CardContent>
               </Card>
             </div>

@@ -3,7 +3,7 @@
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardContent } from '@/presentation/components/ui/Card';
-import { ShoppingBag, Phone, MessageCircle, Clock } from 'lucide-react';
+import { ShoppingBag, MessageCircle, Clock } from 'lucide-react';
 import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
 import { MARKETPLACE_ITEMS, MARKETPLACE_COMMON_DESCRIPTION } from '@/config/marketplaceItems';
 
@@ -64,21 +64,6 @@ export default function MarketplacePage() {
             {desc.details.map((detail, i) => (
               <p key={i} className="text-sm text-neutral-600">{detail}</p>
             ))}
-
-            {/* Price Table */}
-            <div className="mt-4 bg-white rounded-lg border border-neutral-200 overflow-hidden">
-              <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-200">
-                <h3 className="text-sm font-semibold text-neutral-800">Price Range</h3>
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {desc.priceList.map((item, i) => (
-                  <div key={i} className="flex justify-between items-center px-4 py-2 text-sm">
-                    <span className="text-neutral-700">{item.label}</span>
-                    <span className="font-medium text-neutral-900">{item.price}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

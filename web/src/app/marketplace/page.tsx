@@ -3,7 +3,7 @@
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardContent } from '@/presentation/components/ui/Card';
-import { ShoppingBag, MessageCircle, Clock } from 'lucide-react';
+import { MessageCircle, Clock } from 'lucide-react';
 import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
 import { MARKETPLACE_ITEMS, MARKETPLACE_COMMON_DESCRIPTION } from '@/config/marketplaceItems';
 
@@ -21,19 +21,6 @@ export default function MarketplacePage() {
       <Header />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        {/* Page Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 mb-4">
-            <ShoppingBag className="h-8 w-8 text-emerald-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-            Marketplace
-          </h1>
-          <p className="text-neutral-600 max-w-lg mx-auto">
-            Handmade batik clothing shipped from the USA. Click any item to view and order on Facebook.
-          </p>
-        </div>
-
         {/* Common Description Banner */}
         <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm mb-8">
           <CardContent className="p-6">

@@ -6,6 +6,8 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag } from 'lucide-react';
+import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
+import { MARKETPLACE_ITEMS } from '@/config/marketplaceItems';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -456,17 +458,23 @@ export default function Home() {
                     <ShoppingBag className="h-5 w-5 text-emerald-600" />
                     Marketplace
                   </CardTitle>
-                  <button className="text-emerald-600 hover:text-emerald-700">
+                  <a href="/marketplace" className="text-emerald-600 hover:text-emerald-700">
                     <ArrowRight className="h-5 w-5" />
-                  </button>
+                  </a>
                 </CardHeader>
 
-                <CardContent className="p-6 space-y-4">
-                  <div className="text-center py-6 text-neutral-500">
-                    <ShoppingBag className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
-                    <p className="text-sm">No marketplace listings yet</p>
-                    <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
+                <CardContent className="p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {MARKETPLACE_ITEMS.map((item) => (
+                      <MarketplaceItemCard key={item.id} item={item} compact />
+                    ))}
                   </div>
+                  <a
+                    href="/marketplace"
+                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium py-3 mt-3 border-t border-neutral-100"
+                  >
+                    View All Details & Order
+                  </a>
                 </CardContent>
               </Card>
             </div>

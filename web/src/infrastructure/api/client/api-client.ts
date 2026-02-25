@@ -102,6 +102,14 @@ export class ApiClient {
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
+        // Phase 6A.128c Fix: Normalize HTTP 204 No Content responses.
+        // Axios returns "" (empty string) for 204 because JSON.parse("") fails
+        // and it falls back to raw text. Downstream code using ?? (nullish coalescing)
+        // doesn't catch "" since it's not null/undefined. Normalize to null here.
+        if (response.status === 204) {
+          response.data = null;
+        }
+
         // PHASE 6A.10: Log successful responses
         console.log('✅ API Response Success:', {
           status: response.status,

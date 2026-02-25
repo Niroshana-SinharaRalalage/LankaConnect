@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events.Entities;
 
@@ -31,17 +32,40 @@ public class FormAnswerConfiguration : IEntityTypeConfiguration<FormAnswer>
             .HasColumnName("text_value")
             .HasColumnType("text");
 
-        // SelectedOptionIds stored as JSONB List<Guid>
-        // EF Core auto-discovers _selectedOptionIds backing field by convention
+        // Phase 6A.129: SelectedOptionIds stored as JSONB List<Guid>
+        // CRITICAL: ValueComparer required for mutable in-place collection updates.
+        // Without it, EF Core's change tracker uses reference equality on the snapshot,
+        // which fails to detect Clear() + AddRange() mutations on the same List instance.
+        // The domain's FormAnswer.Update() mutates _selectedOptionIds in-place (readonly field).
         builder.Property(a => a.SelectedOptionIds)
             .HasColumnName("selected_option_ids")
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<Guid>>(
+                (c1, c2) => c1 != null && c2 != null
+                    ? c1.SequenceEqual(c2)
+                    : ReferenceEquals(c1, c2),
+                c => c != null
+                    ? c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode()))
+                    : 0,
+                c => c != null
+                    ? c.ToList().AsReadOnly()
+                    : (IReadOnlyList<Guid>)new List<Guid>().AsReadOnly()));
 
-        // SelectedOptionTextSnapshots stored as JSONB List<string>
-        // EF Core auto-discovers _selectedOptionTextSnapshots backing field by convention
+        // Phase 6A.129: SelectedOptionTextSnapshots stored as JSONB List<string>
+        // Same ValueComparer pattern to detect in-place mutations.
         builder.Property(a => a.SelectedOptionTextSnapshots)
             .HasColumnName("selected_option_text_snapshots")
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<string>>(
+                (c1, c2) => c1 != null && c2 != null
+                    ? c1.SequenceEqual(c2)
+                    : ReferenceEquals(c1, c2),
+                c => c != null
+                    ? c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode()))
+                    : 0,
+                c => c != null
+                    ? c.ToList().AsReadOnly()
+                    : (IReadOnlyList<string>)new List<string>().AsReadOnly()));
 
         builder.Property(a => a.BooleanValue)
             .HasColumnName("boolean_value");

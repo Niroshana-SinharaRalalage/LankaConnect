@@ -82,4 +82,46 @@ export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
     image: '/images/marketplace/item-08.png',
     fbPostUrl: 'https://www.facebook.com/share/p/1DazmTWwpa/',
   },
+  {
+    id: 'item-09',
+    productName: 'Batik Kaftan Dresses',
+    image: '/images/marketplace/item-09.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/18Hzfbm1Fs/',
+  },
+  {
+    id: 'item-10',
+    productName: 'Batik Saree Collection',
+    image: '/images/marketplace/item-10.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/1DmK8KCTRM/',
+  },
+  {
+    id: 'item-11',
+    productName: 'Batik Sarees - Designer',
+    image: '/images/marketplace/item-11.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/16PhJhmjS2/',
+  },
+  {
+    id: 'item-12',
+    productName: 'Batik Poncho Tops',
+    image: '/images/marketplace/item-12.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/17awEHzDsW/',
+  },
+  {
+    id: 'item-13',
+    productName: 'Batik Short Dresses',
+    image: '/images/marketplace/item-13.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/18HoNsQuzq/',
+  },
+  {
+    id: 'item-14',
+    productName: 'Batik Maxi Dresses',
+    image: '/images/marketplace/item-14.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/1H2dtj89ib/',
+  },
+  {
+    id: 'item-15',
+    productName: 'Batik Kaftan Collection',
+    image: '/images/marketplace/item-15.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/1C1nTDGgNm/',
+  },
 ];

@@ -463,15 +463,17 @@ export default function Home() {
                   </a>
                 </CardHeader>
 
-                <CardContent className="p-3 space-y-1">
-                  {MARKETPLACE_ITEMS.slice(0, 5).map((item) => (
-                    <MarketplaceItemCard key={item.id} item={item} compact />
-                  ))}
+                <CardContent className="p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    {MARKETPLACE_ITEMS.map((item) => (
+                      <MarketplaceItemCard key={item.id} item={item} compact />
+                    ))}
+                  </div>
                   <a
                     href="/marketplace"
-                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium py-2 mt-2 border-t border-neutral-100"
+                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium py-3 mt-3 border-t border-neutral-100"
                   >
-                    View All {MARKETPLACE_ITEMS.length} Items
+                    View All Details & Order
                   </a>
                 </CardContent>
               </Card>

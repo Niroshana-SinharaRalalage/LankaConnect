@@ -4,11 +4,13 @@
  *
  * To add/edit items: update this file and redeploy.
  * Images are stored in /public/images/marketplace/
+ *
+ * NOTE: Supplier/vendor names are intentionally hidden from customers.
  */
 
 export interface MarketplaceItem {
   id: string;
-  vendor: string;
+  productName: string;
   image: string;
   fbPostUrl: string;
   priceRange: string;
@@ -16,7 +18,7 @@ export interface MarketplaceItem {
 
 /** Common description displayed on the marketplace page for all items */
 export const MARKETPLACE_COMMON_DESCRIPTION = {
-  title: 'Handmade Batik Family Kit',
+  title: '2026 Sinhala & Tamil New Year Handmade Batik and Printed Collection',
   preOrderDeadline: 'March 01, 2026',
   contact: {
     whatsapp: '(234) 359-9194',
@@ -42,57 +44,57 @@ export const MARKETPLACE_COMMON_DESCRIPTION = {
 /** Individual marketplace items - one per Facebook post */
 export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
   {
-    id: 'smartbatik',
-    vendor: 'SmartBatik',
+    id: 'batik-saree-red',
+    productName: 'Batik Saree - Red Floral',
     image: '/images/marketplace/smartbatik.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1CK7fmhWH8/',
     priceRange: '$34.99 - $45.00',
   },
   {
-    id: 'ceylone-batik',
-    vendor: 'Ceylone Batik',
+    id: 'couple-set-red-classic',
+    productName: 'Couple Set - Red Classic Batik',
     image: '/images/marketplace/ceylone-batik.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1Fh1pc2gJA/',
     priceRange: '$19.90 - $25.90',
   },
   {
-    id: 'rs-batik',
-    vendor: 'RS Batik',
+    id: 'family-kit-white-red',
+    productName: 'Family Kit - White & Red Printed',
     image: '/images/marketplace/rs-batik.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1ANEsPY3nd/',
     priceRange: '$24.90 - $39.90',
   },
   {
-    id: 'orina-batik',
-    vendor: 'Orina Batik and Fashion',
+    id: 'family-kit-red-floral',
+    productName: 'Family Kit - Red Floral Batik',
     image: '/images/marketplace/orina-batik.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1AfiZYwPQg/',
     priceRange: '$19.90 - $39.90',
   },
   {
-    id: 'sorabora',
-    vendor: 'Sorabora',
+    id: 'couple-set-blue-white',
+    productName: 'Couple Set - Blue & White Batik',
     image: '/images/marketplace/sorabora.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1GP514N4QV/',
     priceRange: '$29.90 - $39.90',
   },
   {
-    id: 'st-fashions',
-    vendor: 'ST Fashions',
+    id: 'family-kit-maroon-white',
+    productName: 'Family Kit - Maroon & White',
     image: '/images/marketplace/st-fashions.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/17wyRiU2Ds/',
     priceRange: '$29.90 - $39.90',
   },
   {
-    id: 'seam-and-color',
-    vendor: 'Seam And Color',
+    id: 'couple-set-red-poinsettia',
+    productName: 'Couple Set - Red Poinsettia',
     image: '/images/marketplace/seam-and-color.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1CBQmR1zfH/',
     priceRange: '$24.90 - $39.90',
   },
   {
-    id: 'seam-and-color-2',
-    vendor: 'Seam And Color',
+    id: 'crop-top-lungi-teal',
+    productName: 'Crop Top & Lungi - Teal Batik',
     image: '/images/marketplace/seam-and-color-2.jpg',
     fbPostUrl: 'https://www.facebook.com/share/p/1DazmTWwpa/',
     priceRange: '$24.90 - $39.90',

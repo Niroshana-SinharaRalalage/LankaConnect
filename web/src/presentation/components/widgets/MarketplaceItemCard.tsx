@@ -19,21 +19,25 @@ export function MarketplaceItemCard({ item, compact = false }: MarketplaceItemCa
         href={item.fbPostUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex gap-3 p-2 rounded-lg hover:bg-neutral-50 transition-colors"
+        className="group block rounded-lg overflow-hidden hover:shadow-md transition-all border border-transparent hover:border-emerald-100"
       >
-        <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100">
+        <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
           <img
             src={item.image}
-            alt={item.vendor}
+            alt={item.productName}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
+          <div className="absolute top-2 left-2">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-500 text-white shadow-sm">
+              Pre-Order
+            </span>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="p-2.5 bg-white">
           <p className="text-sm font-medium text-neutral-900 truncate group-hover:text-emerald-700 transition-colors">
-            {item.vendor}
+            {item.productName}
           </p>
-          <p className="text-xs text-neutral-500 mt-0.5">Handmade Batik</p>
-          <p className="text-sm font-semibold text-emerald-700 mt-1">{item.priceRange}</p>
+          <p className="text-sm font-bold text-emerald-700 mt-0.5">{item.priceRange}</p>
         </div>
       </a>
     );
@@ -49,7 +53,7 @@ export function MarketplaceItemCard({ item, compact = false }: MarketplaceItemCa
       <div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
         <img
           src={item.image}
-          alt={item.vendor}
+          alt={item.productName}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-3 left-3">
@@ -60,9 +64,8 @@ export function MarketplaceItemCard({ item, compact = false }: MarketplaceItemCa
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-neutral-900 group-hover:text-emerald-700 transition-colors">
-          {item.vendor}
+          {item.productName}
         </h3>
-        <p className="text-sm text-neutral-500 mt-1">Handmade Batik Family Kit</p>
         <div className="flex items-center justify-between mt-3">
           <span className="text-lg font-bold text-emerald-700">{item.priceRange}</span>
           <span className="text-xs text-blue-600 flex items-center gap-1 group-hover:underline">

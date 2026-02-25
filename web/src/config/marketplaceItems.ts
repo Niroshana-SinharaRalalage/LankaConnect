@@ -124,4 +124,10 @@ export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
     image: '/images/marketplace/item-15.png',
     fbPostUrl: 'https://www.facebook.com/share/p/1C1nTDGgNm/',
   },
+  {
+    id: 'item-16',
+    productName: 'Batik Saree & Osari Collection',
+    image: '/images/marketplace/item-16.png',
+    fbPostUrl: 'https://www.facebook.com/share/p/1DCFgGWeTo/',
+  },
 ];

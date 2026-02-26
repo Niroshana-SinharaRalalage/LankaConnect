@@ -23,9 +23,11 @@ public class DonationConfiguration : ValueObject
     /// <summary>
     /// Suggested donation amounts displayed as quick-select buttons (up to 3).
     /// Stored as plain decimals (C5 Guard: no nested Money types in JSONB).
+    /// NOTE: Uses List{decimal} with private set instead of IReadOnlyList{decimal} with
+    /// private readonly backing field, because EF Core's ToJson() materializer cannot
+    /// properly deserialize IReadOnlyList with readonly backing fields.
     /// </summary>
-    private readonly List<decimal> _suggestedAmounts = new();
-    public IReadOnlyList<decimal> SuggestedAmounts => _suggestedAmounts.AsReadOnly();
+    public List<decimal> SuggestedAmounts { get; private set; } = new();
 
     /// <summary>
     /// Whether donors can enter a custom amount (not limited to suggested amounts).
@@ -61,8 +63,7 @@ public class DonationConfiguration : ValueObject
         string? donationMessage)
     {
         IsEnabled = isEnabled;
-        if (suggestedAmounts != null)
-            _suggestedAmounts.AddRange(suggestedAmounts);
+        SuggestedAmounts = suggestedAmounts != null ? new List<decimal>(suggestedAmounts) : new List<decimal>();
         AllowCustomAmount = allowCustomAmount;
         MinAmount = minAmount;
         MaxAmount = maxAmount;
@@ -175,7 +176,7 @@ public class DonationConfiguration : ValueObject
         yield return MaxAmount ?? 0m;
         yield return DonationMessage ?? string.Empty;
 
-        foreach (var amount in _suggestedAmounts)
+        foreach (var amount in SuggestedAmounts)
             yield return amount;
     }
 }

@@ -97,6 +97,9 @@
 | 6A.123 | Hotfix: quantity NOT NULL default, itemType DTO, Sign-Up buttons | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-17 |
 | 6A.124 | Hotfix: ISignUpItemDto interface ItemType + TypeScript string enum | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-17 |
 | 6A.125 | Complete slot-based commitment: JSON polymorphic serialization + AddSlotCommitment() | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-17 |
+| 6A.128c | Axios 204 Empty String Bug Fix | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-24 |
+| 6A.129 | EF Core JSONB Change Tracking Fix (ValueComparer) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-24 |
+| 6A.130 | Standalone Donation System for Events | ✅ Complete | See PROGRESS_TRACKER.md | 2026-02-26 |
 
 ---
 

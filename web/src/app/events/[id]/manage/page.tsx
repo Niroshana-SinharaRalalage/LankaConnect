@@ -294,7 +294,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       id: 'donations',
       label: 'Donations',
       icon: Heart,
-      content: <DonationsManagementTab eventId={id} />,
+      content: <DonationsManagementTab eventId={id} donationConfig={event.donationConfig ?? null} />,
     },
     {
       id: 'communications',

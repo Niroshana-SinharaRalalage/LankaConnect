@@ -11,16 +11,20 @@ import {
   Phone,
   Calendar,
   RefreshCw,
+  Settings,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventDonations } from '@/presentation/hooks/useDonations';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import type { DonationDto, DonationStatus } from '@/infrastructure/api/types/events.types';
+import type { DonationDto, DonationStatus, DonationConfigurationDto } from '@/infrastructure/api/types/events.types';
 
 interface DonationsManagementTabProps {
   eventId: string;
+  donationConfig?: DonationConfigurationDto | null;
 }
 
 function getDonationStatusColor(status: DonationStatus | string): string {
@@ -45,7 +49,7 @@ function getDonationStatusColor(status: DonationStatus | string): string {
  * Shows donation summary, donations table, and export button.
  * Follows AttendeeManagementTab pattern.
  */
-export function DonationsManagementTab({ eventId }: DonationsManagementTabProps) {
+export function DonationsManagementTab({ eventId, donationConfig }: DonationsManagementTabProps) {
   const [isExporting, setIsExporting] = useState(false);
 
   const { data: donationsData, isLoading, error, refetch } = useEventDonations(eventId);
@@ -91,6 +95,68 @@ export function DonationsManagementTab({ eventId }: DonationsManagementTabProps)
 
   return (
     <div className="space-y-6">
+      {/* Donation Configuration */}
+      {donationConfig && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Settings className="h-4 w-4 text-neutral-500" />
+              Donation Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                {donationConfig.isEnabled ? (
+                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-neutral-400" />
+                )}
+                <span className="text-neutral-700">
+                  {donationConfig.isEnabled ? 'Donations enabled' : 'Donations disabled'}
+                </span>
+              </div>
+              {donationConfig.isEnabled && (
+                <>
+                  {donationConfig.suggestedAmounts.length > 0 && (
+                    <div>
+                      <span className="text-neutral-500">Suggested amounts:</span>{' '}
+                      <span className="font-medium text-neutral-700">
+                        {donationConfig.suggestedAmounts.map((a) => `$${a.toFixed(2)}`).join(', ')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {donationConfig.allowCustomAmount ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-neutral-400" />
+                    )}
+                    <span className="text-neutral-700">Custom amount</span>
+                  </div>
+                  {(donationConfig.minAmount || donationConfig.maxAmount) && (
+                    <div>
+                      <span className="text-neutral-500">Range:</span>{' '}
+                      <span className="font-medium text-neutral-700">
+                        {donationConfig.minAmount ? `$${donationConfig.minAmount.toFixed(2)}` : 'No min'}
+                        {' — '}
+                        {donationConfig.maxAmount ? `$${donationConfig.maxAmount.toFixed(2)}` : 'No max'}
+                      </span>
+                    </div>
+                  )}
+                  {donationConfig.donationMessage && (
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <span className="text-neutral-500">Message:</span>{' '}
+                      <span className="text-neutral-700 italic">&ldquo;{donationConfig.donationMessage}&rdquo;</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

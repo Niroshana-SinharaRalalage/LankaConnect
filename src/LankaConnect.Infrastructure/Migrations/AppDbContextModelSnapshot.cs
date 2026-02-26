@@ -1409,6 +1409,114 @@ namespace LankaConnect.Infrastructure.Migrations
                     b.ToTable("replies", "community");
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Donation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AbandonedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("abandoned_at");
+
+                    b.Property<DateTime?>("CheckoutExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checkout_expires_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("DonorEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("donor_email");
+
+                    b.Property<string>("DonorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("donor_name");
+
+                    b.Property<string>("DonorNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("donor_notes");
+
+                    b.Property<string>("DonorPhone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("donor_phone");
+
+                    b.Property<Guid?>("DonorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("donor_user_id");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<DateTime?>("PaymentCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payment_completed_at");
+
+                    b.Property<DateTime?>("RefundedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refunded_at");
+
+                    b.Property<Guid?>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StripeCheckoutSessionId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("stripe_checkout_session_id");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("stripe_payment_intent_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DonorUserId")
+                        .HasDatabaseName("ix_donations_donor_user_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_donations_event_id");
+
+                    b.HasIndex("RegistrationId")
+                        .HasDatabaseName("ix_donations_registration_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_donations_status");
+
+                    b.HasIndex("StripeCheckoutSessionId")
+                        .HasDatabaseName("ix_donations_checkout_session");
+
+                    b.HasIndex("StripePaymentIntentId")
+                        .HasDatabaseName("ix_donations_payment_intent");
+
+                    b.ToTable("donations", "events");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2775,7 +2883,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                             Code = "Religious",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3592),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7127),
                             DisplayOrder = 1,
                             EnumType = "EventCategory",
                             IntValue = 0,
@@ -2787,7 +2895,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                             Code = "Cultural",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3718),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7214),
                             DisplayOrder = 2,
                             EnumType = "EventCategory",
                             IntValue = 1,
@@ -2799,7 +2907,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                             Code = "Community",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3735),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7443),
                             DisplayOrder = 3,
                             EnumType = "EventCategory",
                             IntValue = 2,
@@ -2811,7 +2919,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                             Code = "Educational",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3751),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7487),
                             DisplayOrder = 4,
                             EnumType = "EventCategory",
                             IntValue = 3,
@@ -2823,7 +2931,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                             Code = "Social",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3767),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7525),
                             DisplayOrder = 5,
                             EnumType = "EventCategory",
                             IntValue = 4,
@@ -2835,7 +2943,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                             Code = "Business",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3782),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7560),
                             DisplayOrder = 6,
                             EnumType = "EventCategory",
                             IntValue = 5,
@@ -2847,7 +2955,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                             Code = "Charity",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3797),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7594),
                             DisplayOrder = 7,
                             EnumType = "EventCategory",
                             IntValue = 6,
@@ -2859,7 +2967,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                             Code = "Entertainment",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3813),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7628),
                             DisplayOrder = 8,
                             EnumType = "EventCategory",
                             IntValue = 7,
@@ -2871,7 +2979,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                             Code = "Workshop",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3827),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7664),
                             DisplayOrder = 9,
                             EnumType = "EventCategory",
                             IntValue = 8,
@@ -2883,7 +2991,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                             Code = "Festival",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3840),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7697),
                             DisplayOrder = 10,
                             EnumType = "EventCategory",
                             IntValue = 9,
@@ -2895,7 +3003,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                             Code = "Ceremony",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3855),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7731),
                             DisplayOrder = 11,
                             EnumType = "EventCategory",
                             IntValue = 10,
@@ -2907,7 +3015,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                             Code = "Celebration",
-                            CreatedAt = new DateTime(2026, 2, 17, 13, 24, 11, 145, DateTimeKind.Utc).AddTicks(3870),
+                            CreatedAt = new DateTime(2026, 2, 26, 5, 55, 35, 482, DateTimeKind.Utc).AddTicks(7768),
                             DisplayOrder = 12,
                             EnumType = "EventCategory",
                             IntValue = 11,
@@ -4150,6 +4258,120 @@ namespace LankaConnect.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Donation", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "Amount", b1 =>
+                        {
+                            b1.Property<Guid>("DonationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("amount_currency");
+
+                            b1.HasKey("DonationId");
+
+                            b1.ToTable("donations", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DonationId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "OrganizerPayoutAmount", b1 =>
+                        {
+                            b1.Property<Guid>("DonationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("organizer_payout_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("organizer_payout_currency");
+
+                            b1.HasKey("DonationId");
+
+                            b1.ToTable("donations", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DonationId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "PlatformCommissionAmount", b1 =>
+                        {
+                            b1.Property<Guid>("DonationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("platform_commission_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("platform_commission_currency");
+
+                            b1.HasKey("DonationId");
+
+                            b1.ToTable("donations", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DonationId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "StripeFeeAmount", b1 =>
+                        {
+                            b1.Property<Guid>("DonationId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("stripe_fee_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("stripe_fee_currency");
+
+                            b1.HasKey("DonationId");
+
+                            b1.ToTable("donations", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DonationId");
+                        });
+
+                    b.Navigation("Amount")
+                        .IsRequired();
+
+                    b.Navigation("OrganizerPayoutAmount");
+
+                    b.Navigation("PlatformCommissionAmount");
+
+                    b.Navigation("StripeFeeAmount");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventBadge", b =>
                 {
                     b.HasOne("LankaConnect.Domain.Badges.Badge", "Badge")
@@ -4269,6 +4491,36 @@ namespace LankaConnect.Infrastructure.Migrations
                             b1.ToTable("events", "events");
 
                             b1.ToJson("ticket_price");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EventId");
+                        });
+
+                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.DonationConfiguration", "DonationConfig", b1 =>
+                        {
+                            b1.Property<Guid>("EventId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<bool>("AllowCustomAmount")
+                                .HasColumnType("boolean");
+
+                            b1.Property<string>("DonationMessage")
+                                .HasColumnType("text");
+
+                            b1.Property<bool>("IsEnabled")
+                                .HasColumnType("boolean");
+
+                            b1.Property<decimal?>("MaxAmount")
+                                .HasColumnType("numeric");
+
+                            b1.Property<decimal?>("MinAmount")
+                                .HasColumnType("numeric");
+
+                            b1.HasKey("EventId");
+
+                            b1.ToTable("events", "events");
+
+                            b1.ToJson("donation_config");
 
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
@@ -4716,6 +4968,8 @@ namespace LankaConnect.Infrastructure.Migrations
 
                     b.Navigation("Description")
                         .IsRequired();
+
+                    b.Navigation("DonationConfig");
 
                     b.Navigation("Location");
 

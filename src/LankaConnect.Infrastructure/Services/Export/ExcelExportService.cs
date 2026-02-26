@@ -828,4 +828,63 @@ public class ExcelExportService : IExcelExportService
 
         return "—";
     }
+
+    /// <summary>
+    /// Donation Feature: Exports donations to Excel format.
+    /// </summary>
+    public byte[] ExportDonations(EventDonationsResponse donations)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Donations");
+
+        // Headers
+        var headers = new[] { "Donor Name", "Email", "Phone", "Amount", "Currency", "Status", "Notes", "Date", "Bundled" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = sheet.Cell(1, i + 1);
+            cell.Value = headers[i];
+        }
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        // Data rows
+        int rowIndex = 2;
+        foreach (var d in donations.Donations)
+        {
+            int col = 1;
+            sheet.Cell(rowIndex, col++).Value = d.DonorName;
+            sheet.Cell(rowIndex, col++).Value = d.DonorEmail;
+            sheet.Cell(rowIndex, col++).Value = d.DonorPhone ?? "";
+            sheet.Cell(rowIndex, col++).Value = d.Amount;
+            sheet.Cell(rowIndex, col++).Value = d.Currency;
+            sheet.Cell(rowIndex, col++).Value = d.Status;
+            sheet.Cell(rowIndex, col++).Value = d.DonorNotes ?? "";
+
+            var dateCell = sheet.Cell(rowIndex, col++);
+            if (d.PaymentCompletedAt.HasValue)
+            {
+                dateCell.Value = d.PaymentCompletedAt.Value;
+                dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            }
+            else
+            {
+                dateCell.Value = d.CreatedAt;
+                dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            }
+
+            sheet.Cell(rowIndex, col++).Value = d.IsBundled ? "Yes" : "No";
+            rowIndex++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
 }

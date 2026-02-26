@@ -90,28 +90,50 @@ public class StripePaymentService : IStripePaymentService
                 Mode = "payment",  // One-time payment (not subscription)
                 // Phase 6A.44: For anonymous users, provide email for receipt
                 CustomerEmail = isAnonymous && request.Metadata?.TryGetValue("email", out var email) == true ? email : null,
-                LineItems = new List<SessionLineItemOptions>
-                {
-                    new SessionLineItemOptions
+                // C1 Guard: Support multi-line-item checkout (combined ticket + donation).
+                // Null/empty LineItems = legacy single-item behavior (backward compatible).
+                LineItems = request.LineItems?.Count > 0
+                    ? request.LineItems.Select(li => new SessionLineItemOptions
                     {
                         PriceData = new SessionLineItemPriceDataOptions
                         {
-                            Currency = request.Currency.ToLower(),  // stripe expects lowercase
+                            Currency = li.Currency.ToLower(),
                             ProductData = new SessionLineItemPriceDataProductDataOptions
                             {
-                                Name = $"Event Registration: {request.EventTitle}",
-                                Description = $"Registration for {request.EventTitle}",
+                                Name = li.Name,
+                                Description = li.Description,
                                 Metadata = new Dictionary<string, string>
                                 {
                                     ["event_id"] = request.EventId.ToString(),
                                     ["registration_id"] = request.RegistrationId.ToString()
                                 }
                             },
-                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                            UnitAmount = ConvertToStripeAmount(li.Amount, li.Currency)
                         },
-                        Quantity = 1
-                    }
-                },
+                        Quantity = li.Quantity
+                    }).ToList()
+                    : new List<SessionLineItemOptions>
+                    {
+                        new SessionLineItemOptions
+                        {
+                            PriceData = new SessionLineItemPriceDataOptions
+                            {
+                                Currency = request.Currency.ToLower(),
+                                ProductData = new SessionLineItemPriceDataProductDataOptions
+                                {
+                                    Name = $"Event Registration: {request.EventTitle}",
+                                    Description = $"Registration for {request.EventTitle}",
+                                    Metadata = new Dictionary<string, string>
+                                    {
+                                        ["event_id"] = request.EventId.ToString(),
+                                        ["registration_id"] = request.RegistrationId.ToString()
+                                    }
+                                },
+                                UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                            },
+                            Quantity = 1
+                        }
+                    },
                 // Phase 6A.44: Append registrationId to success URL for anonymous users
                 SuccessUrl = AppendRegistrationIdToUrl(request.SuccessUrl, request.RegistrationId),
                 CancelUrl = request.CancelUrl,
@@ -625,6 +647,113 @@ public class StripePaymentService : IStripePaymentService
                 request.RegistrationId,
                 request.RegistrationAdditionId);
             return Result<AdditionCheckoutResult>.Failure("Failed to create payment session");
+        }
+    }
+
+    /// <summary>
+    /// Donation Feature: Creates a Stripe Checkout session for a standalone donation.
+    /// Follows the CreateAdditionCheckoutSessionAsync pattern.
+    /// </summary>
+    public async Task<Result<DonationCheckoutResult>> CreateDonationCheckoutSessionAsync(
+        CreateDonationCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Donation] Creating donation checkout session - EventId={EventId}, DonationId={DonationId}, Amount={Amount} {Currency}",
+                request.EventId,
+                request.DonationId,
+                request.Amount,
+                request.Currency);
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"Donation: {request.EventTitle}",
+                                Description = "Voluntary donation to event",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["donation_id"] = request.DonationId.ToString(),
+                                    ["payment_type"] = "donation"
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["donation_id"] = request.DonationId.ToString(),
+                    ["payment_type"] = "donation"
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["donation_id"] = request.DonationId.ToString(),
+                        ["payment_type"] = "donation"
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            // Add any additional metadata from request
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[Donation] Created checkout session - SessionId={SessionId}, DonationId={DonationId}, ExpiresAt={ExpiresAt}",
+                session.Id,
+                request.DonationId,
+                session.ExpiresAt);
+
+            return Result<DonationCheckoutResult>.Success(new DonationCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Donation] Stripe error creating donation checkout - DonationId={DonationId}, Error={Error}",
+                request.DonationId,
+                ex.Message);
+            return Result<DonationCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Donation] Error creating donation checkout - DonationId={DonationId}",
+                request.DonationId);
+            return Result<DonationCheckoutResult>.Failure("Failed to create donation payment session");
         }
     }
 

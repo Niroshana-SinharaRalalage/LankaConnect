@@ -22,6 +22,7 @@ import { useContentImageUpload } from '@/presentation/hooks/useContentImageUploa
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
+import { DonationConfigForm } from './DonationConfigForm';
 
 interface EventEditFormProps {
   event: EventDto;
@@ -46,6 +47,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const { user } = useAuthStore();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Donation Feature: Donation configuration state (pre-filled from event)
+  const [donationsEnabled, setDonationsEnabled] = useState(event.donationConfig?.isEnabled ?? false);
+  const [donationSuggestedAmounts, setDonationSuggestedAmounts] = useState<number[]>(event.donationConfig?.suggestedAmounts ?? []);
+  const [donationAllowCustom, setDonationAllowCustom] = useState(event.donationConfig?.allowCustomAmount ?? true);
+  const [donationMinAmount, setDonationMinAmount] = useState<number | null>(event.donationConfig?.minAmount ?? null);
+  const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(event.donationConfig?.maxAmount ?? null);
+  const [donationMessage, setDonationMessage] = useState(event.donationConfig?.donationMessage ?? '');
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
@@ -346,6 +355,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
         organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
         organizerContactPhone: data.publishOrganizerContact ? data.organizerContactPhone : null,
         organizerContactEmail: data.publishOrganizerContact ? data.organizerContactEmail : null,
+        // Donation Feature: Donation configuration
+        donationsEnabled,
+        ...(donationsEnabled && {
+          donationSuggestedAmounts: donationSuggestedAmounts,
+          donationAllowCustomAmount: donationAllowCustom,
+          donationMinAmount: donationMinAmount,
+          donationMaxAmount: donationMaxAmount,
+          donationMessage: donationMessage || null,
+        }),
         // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
         // CRITICAL: Use null for empty optional fields, NOT empty strings
         ...(hasCompleteLocation && {
@@ -1257,6 +1275,22 @@ export function EventEditForm({ event }: EventEditFormProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Donation Feature: Donation Configuration */}
+      <DonationConfigForm
+        isEnabled={donationsEnabled}
+        onEnabledChange={setDonationsEnabled}
+        suggestedAmounts={donationSuggestedAmounts}
+        onSuggestedAmountsChange={setDonationSuggestedAmounts}
+        allowCustomAmount={donationAllowCustom}
+        onAllowCustomAmountChange={setDonationAllowCustom}
+        minAmount={donationMinAmount}
+        onMinAmountChange={setDonationMinAmount}
+        maxAmount={donationMaxAmount}
+        onMaxAmountChange={setDonationMaxAmount}
+        donationMessage={donationMessage}
+        onDonationMessageChange={setDonationMessage}
+      />
 
       {/* Note about Media */}
       <Card>

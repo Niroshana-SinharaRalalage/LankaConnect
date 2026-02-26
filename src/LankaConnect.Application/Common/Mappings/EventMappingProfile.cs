@@ -5,6 +5,7 @@ using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.ValueObjects;
+using DonationConfiguration = LankaConnect.Domain.Events.ValueObjects.DonationConfiguration;
 
 namespace LankaConnect.Application.Common.Mappings;
 
@@ -73,7 +74,13 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.OrganizerContactPhone, opt => opt.MapFrom(src => src.OrganizerContactPhone))
             .ForMember(dest => dest.OrganizerContactEmail, opt => opt.MapFrom(src => src.OrganizerContactEmail))
             // Phase 6A.X: Revenue Breakdown for paid events
-            .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown));
+            .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown))
+            // Donation Feature: Donation configuration mapping
+            .ForMember(dest => dest.DonationConfig, opt => opt.MapFrom(src => src.DonationConfig));
+
+        // Donation Feature: DonationConfiguration -> DonationConfigurationDto mapping
+        CreateMap<DonationConfiguration, DonationConfigurationDto>()
+            .ForMember(dest => dest.SuggestedAmounts, opt => opt.MapFrom(src => src.SuggestedAmounts.ToList()));
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();

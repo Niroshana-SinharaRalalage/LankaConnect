@@ -389,6 +389,29 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(contactResult.Error);
         }
 
+        // Donation Feature: Set donation configuration if enabled
+        if (request.DonationsEnabled == true)
+        {
+            var donationConfigResult = DonationConfiguration.Create(
+                isEnabled: true,
+                suggestedAmounts: request.DonationSuggestedAmounts,
+                allowCustomAmount: request.DonationAllowCustomAmount ?? true,
+                minAmount: request.DonationMinAmount,
+                maxAmount: request.DonationMaxAmount,
+                donationMessage: request.DonationMessage);
+
+            if (donationConfigResult.IsFailure)
+                return Result<Guid>.Failure(donationConfigResult.Error);
+
+            var setDonationResult = eventResult.Value.SetDonationConfiguration(donationConfigResult.Value);
+            if (setDonationResult.IsFailure)
+                return Result<Guid>.Failure(setDonationResult.Error);
+
+            _logger.LogInformation(
+                "CreateEvent: Donation configuration set - EventId={EventId}, MinAmount={MinAmount}, MaxAmount={MaxAmount}",
+                eventResult.Value.Id, request.DonationMinAmount, request.DonationMaxAmount);
+        }
+
         // Issue #55: Set TimeZoneId based on event location state
         // This ensures emails and frontend display times in the correct timezone
         try

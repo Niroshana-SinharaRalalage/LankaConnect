@@ -1520,6 +1520,57 @@ export class EventsRepository {
     );
     return blob;
   }
+
+  // ==================== DONATIONS ====================
+
+  /**
+   * Creates a standalone donation for an event.
+   * Returns the Stripe checkout URL for payment redirect.
+   */
+  async createDonation(
+    eventId: string,
+    request: import('../types/events.types').CreateDonationRequest
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/donations`,
+      request
+    );
+  }
+
+  /**
+   * Gets all donations for an event with summary (organizer only).
+   */
+  async getEventDonations(
+    eventId: string
+  ): Promise<import('../types/events.types').EventDonationsResponse> {
+    return await apiClient.get<import('../types/events.types').EventDonationsResponse>(
+      `${this.basePath}/${eventId}/donations`
+    );
+  }
+
+  /**
+   * Gets donation summary for an event (organizer only).
+   */
+  async getDonationSummary(
+    eventId: string
+  ): Promise<import('../types/events.types').DonationSummaryDto> {
+    return await apiClient.get<import('../types/events.types').DonationSummaryDto>(
+      `${this.basePath}/${eventId}/donations/summary`
+    );
+  }
+
+  /**
+   * Exports donations for an event in Excel or CSV format.
+   */
+  async exportDonations(
+    eventId: string,
+    format: 'csv' | 'excel' = 'excel'
+  ): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/donations/export?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+  }
 }
 
 /**

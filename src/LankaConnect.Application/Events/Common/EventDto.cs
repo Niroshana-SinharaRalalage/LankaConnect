@@ -132,6 +132,12 @@ public record EventDto
     public RevenueBreakdownDto? RevenueBreakdown { get; init; }
 
     /// <summary>
+    /// Donation Feature: Donation configuration for this event.
+    /// Null if donations have never been configured.
+    /// </summary>
+    public DonationConfigurationDto? DonationConfig { get; init; }
+
+    /// <summary>
     /// Issue #2: User's registration status for this event (if user is registered)
     /// Only populated for authenticated queries like /my-rsvps
     /// Null if user is not registered or for public event listings

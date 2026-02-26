@@ -20,6 +20,7 @@ import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
+import { DonationConfigForm } from './DonationConfigForm';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 
 /**
@@ -39,6 +40,14 @@ export function EventCreationForm() {
   const { user } = useAuthStore();
   const createEventMutation = useCreateEvent();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Donation Feature: Donation configuration state
+  const [donationsEnabled, setDonationsEnabled] = useState(false);
+  const [donationSuggestedAmounts, setDonationSuggestedAmounts] = useState<number[]>([]);
+  const [donationAllowCustom, setDonationAllowCustom] = useState(true);
+  const [donationMinAmount, setDonationMinAmount] = useState<number | null>(null);
+  const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(null);
+  const [donationMessage, setDonationMessage] = useState('');
 
   // Phase 6A.106 Part 3: Azure image upload for rich text editor
   const { mutateAsync: uploadImage } = useContentImageUpload();
@@ -207,6 +216,15 @@ export function EventCreationForm() {
         organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
         organizerContactPhone: data.publishOrganizerContact ? data.organizerContactPhone : null,
         organizerContactEmail: data.publishOrganizerContact ? data.organizerContactEmail : null,
+        // Donation Feature: Donation configuration
+        donationsEnabled,
+        ...(donationsEnabled && {
+          donationSuggestedAmounts: donationSuggestedAmounts,
+          donationAllowCustomAmount: donationAllowCustom,
+          donationMinAmount: donationMinAmount,
+          donationMaxAmount: donationMaxAmount,
+          donationMessage: donationMessage || null,
+        }),
         // Only include location if we have at least address and city
         ...(hasCompleteLocation && {
           locationAddress: data.locationAddress,
@@ -1027,6 +1045,22 @@ export function EventCreationForm() {
           )}
         </CardContent>
       </Card>
+
+      {/* Donation Feature: Donation Configuration */}
+      <DonationConfigForm
+        isEnabled={donationsEnabled}
+        onEnabledChange={setDonationsEnabled}
+        suggestedAmounts={donationSuggestedAmounts}
+        onSuggestedAmountsChange={setDonationSuggestedAmounts}
+        allowCustomAmount={donationAllowCustom}
+        onAllowCustomAmountChange={setDonationAllowCustom}
+        minAmount={donationMinAmount}
+        onMinAmountChange={setDonationMinAmount}
+        maxAmount={donationMaxAmount}
+        onMaxAmountChange={setDonationMaxAmount}
+        donationMessage={donationMessage}
+        onDonationMessageChange={setDonationMessage}
+      />
 
       {/* Note about Media */}
       <Card>

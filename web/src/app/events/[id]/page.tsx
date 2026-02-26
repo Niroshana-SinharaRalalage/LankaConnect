@@ -29,6 +29,8 @@ import { useState, useEffect } from 'react';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/presentation/lib/utils/date-formatter';
 import { sanitizeHtml } from '@/lib/html-utils';
+// Donation Feature: Import DonationSection for standalone donations
+import { DonationSection } from '@/presentation/components/features/events/DonationSection';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -886,6 +888,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1180,6 +1183,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           hasGroupPricing={event.hasGroupPricing}
                           groupPricingTiers={event.groupPricingTiers}
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                          donationConfig={event.donationConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1439,6 +1443,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1498,6 +1503,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1571,6 +1577,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     hasGroupPricing={event.hasGroupPricing}
                     groupPricingTiers={event.groupPricingTiers}
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                    donationConfig={event.donationConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}
@@ -1621,6 +1628,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {_hasHydrated && isUserRegistered && event && !event.isFree && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
+          </div>
+        )}
+
+        {/* Donation Feature: Standalone Donation Section */}
+        {event?.donationConfig?.isEnabled === true && (
+          <div className="mt-8">
+            <DonationSection eventId={id} donationConfig={event.donationConfig} />
           </div>
         )}
 

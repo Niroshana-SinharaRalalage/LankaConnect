@@ -37,4 +37,9 @@ public interface IExcelExportService
     /// <param name="responses">All responses with answers</param>
     /// <returns>Excel file content as byte array</returns>
     byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses);
+
+    /// <summary>
+    /// Donation Feature: Exports donations to Excel format.
+    /// </summary>
+    byte[] ExportDonations(EventDonationsResponse donations);
 }

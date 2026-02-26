@@ -350,6 +350,9 @@ export interface EventDto {
   /** Detailed fee breakdown (null for free events) */
   revenueBreakdown?: RevenueBreakdownDto | null;
 
+  // Donation Feature: Donation configuration
+  donationConfig?: DonationConfigurationDto | null;
+
   /**
    * Issue #2: User's registration status for this event (if user is registered)
    * Only populated for authenticated queries like /my-rsvps
@@ -654,6 +657,14 @@ export interface CreateEventRequest {
 
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
+
+  // Donation Feature: Donation configuration
+  donationsEnabled?: boolean;
+  donationSuggestedAmounts?: number[];
+  donationAllowCustomAmount?: boolean;
+  donationMinAmount?: number | null;
+  donationMaxAmount?: number | null;
+  donationMessage?: string | null;
 }
 
 /**
@@ -709,6 +720,14 @@ export interface UpdateEventRequest {
 
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
+
+  // Donation Feature: Donation configuration
+  donationsEnabled?: boolean;
+  donationSuggestedAmounts?: number[];
+  donationAllowCustomAmount?: boolean;
+  donationMinAmount?: number | null;
+  donationMaxAmount?: number | null;
+  donationMessage?: string | null;
 }
 
 /**
@@ -734,6 +753,12 @@ export interface RsvpRequest {
   // Session 23: Payment redirect URLs (required for paid events)
   successUrl?: string;
   cancelUrl?: string;
+
+  // Donation Feature: Optional donation during registration
+  donationAmount?: number | null;
+  donorName?: string | null;
+  donorPhone?: string | null;
+  donorNotes?: string | null;
 }
 
 /**
@@ -761,6 +786,12 @@ export interface AnonymousRegistrationRequest {
   // Phase 6A.44: Stripe checkout URLs (required for paid events)
   successUrl?: string;
   cancelUrl?: string;
+
+  // Donation Feature: Optional donation during registration
+  donationAmount?: number | null;
+  donorName?: string | null;
+  donorPhone?: string | null;
+  donorNotes?: string | null;
 }
 
 /**
@@ -1622,4 +1653,92 @@ export interface SubmitFormResponseResult {
  */
 export interface UpdateFormResponseRequest {
   Answers: SubmitFormAnswerItem[];  // Capital 'A' to match backend
+}
+
+// ==================== Donations ====================
+
+/**
+ * Donation status enum.
+ * Uses string values to match backend JsonStringEnumConverter.
+ */
+export enum DonationStatus {
+  Pending = 'Pending',
+  Completed = 'Completed',
+  Failed = 'Failed',
+  Abandoned = 'Abandoned',
+  Refunded = 'Refunded',
+}
+
+/**
+ * Donation configuration for an event.
+ * Maps from backend DonationConfigurationDto.
+ */
+export interface DonationConfigurationDto {
+  isEnabled: boolean;
+  suggestedAmounts: number[];
+  allowCustomAmount: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  donationMessage?: string | null;
+}
+
+/**
+ * Individual donation record.
+ */
+export interface DonationDto {
+  id: string;
+  eventId: string;
+  registrationId?: string | null;
+  donorUserId?: string | null;
+  donorName: string;
+  donorEmail: string;
+  donorPhone?: string | null;
+  donorNotes?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  isBundled: boolean;
+  stripeFeeAmount?: number | null;
+  platformCommissionAmount?: number | null;
+  organizerPayoutAmount?: number | null;
+  createdAt: string;
+  paymentCompletedAt?: string | null;
+}
+
+/**
+ * Donation summary statistics.
+ */
+export interface DonationSummaryDto {
+  totalDonations: number;
+  completedDonations: number;
+  totalAmount: number;
+  averageDonation: number;
+  currency: string;
+  totalStripeFees: number;
+  totalPlatformCommission: number;
+  totalOrganizerPayout: number;
+}
+
+/**
+ * Response from GetEventDonationsQuery.
+ */
+export interface EventDonationsResponse {
+  eventId: string;
+  eventTitle: string;
+  donations: DonationDto[];
+  summary: DonationSummaryDto;
+}
+
+/**
+ * Request body for creating a standalone donation.
+ */
+export interface CreateDonationRequest {
+  donorName: string;
+  donorEmail: string;
+  donorPhone?: string | null;
+  donorNotes?: string | null;
+  amount: number;
+  currency?: string | null;
+  successUrl: string;
+  cancelUrl: string;
 }

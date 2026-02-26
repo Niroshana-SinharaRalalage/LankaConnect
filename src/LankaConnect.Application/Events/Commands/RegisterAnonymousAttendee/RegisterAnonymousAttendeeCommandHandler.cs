@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -22,6 +23,7 @@ namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterAnonymousAttendeeCommand, string?>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IDonationRepository _donationRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUserRepository _userRepository;
     private readonly IStripePaymentService _stripePaymentService;
@@ -30,6 +32,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
     public RegisterAnonymousAttendeeCommandHandler(
         IEventRepository eventRepository,
+        IDonationRepository donationRepository,
         IUnitOfWork unitOfWork,
         IUserRepository userRepository,
         IStripePaymentService stripePaymentService,
@@ -37,6 +40,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
+        _donationRepository = donationRepository;
         _unitOfWork = unitOfWork;
         _userRepository = userRepository;
         _stripePaymentService = stripePaymentService;
@@ -327,6 +331,26 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             }
         }
 
+        // Donation Feature: Handle optional donation during anonymous registration
+        // C2 Guard: Donation in isolated try-catch, registration succeeds even if donation fails
+        // C3 Guard: Check > 0, not just HasValue. Treat 0 same as null.
+        Donation? bundledDonation = null;
+        if (request.DonationAmount.HasValue && request.DonationAmount.Value > 0 && @event.AreDonationsEnabled())
+        {
+            try
+            {
+                bundledDonation = await HandleDonationDuringAnonymousRegistration(
+                    @event, registration, request, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "HandleMultiAttendeeRegistration: Donation processing failed - EventId={EventId}, RegistrationId={RegistrationId}. Registration will continue without donation.",
+                    @event.Id, registration.Id);
+                bundledDonation = null;
+            }
+        }
+
         // Phase 6A.44: Handle payment for paid events
         if (!@event.IsFree())
         {
@@ -334,7 +358,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (string.IsNullOrWhiteSpace(request.SuccessUrl) || string.IsNullOrWhiteSpace(request.CancelUrl))
                 return Result<string?>.Failure("Success and Cancel URLs are required for paid events");
 
-            // Create Stripe Checkout session
+            // Build checkout request
             var checkoutRequest = new CreateEventCheckoutSessionRequest
             {
                 EventId = @event.Id,
@@ -353,6 +377,31 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 }
             };
 
+            // Combined checkout: Add donation as second line item
+            if (bundledDonation != null)
+            {
+                var currency = registration.TotalPrice.Currency.ToString();
+                checkoutRequest.LineItems = new List<CheckoutLineItem>
+                {
+                    new CheckoutLineItem
+                    {
+                        Name = $"Event Registration: {@event.Title.Value}",
+                        Description = $"Registration for {registration.Attendees?.Count ?? 1} attendee(s)",
+                        Amount = registration.TotalPrice.Amount,
+                        Currency = currency
+                    },
+                    new CheckoutLineItem
+                    {
+                        Name = $"Donation: {@event.Title.Value}",
+                        Description = "Voluntary donation",
+                        Amount = bundledDonation.Amount.Amount,
+                        Currency = currency
+                    }
+                };
+                checkoutRequest.Amount = registration.TotalPrice.Amount + bundledDonation.Amount.Amount;
+                checkoutRequest.Metadata["donation_id"] = bundledDonation.Id.ToString();
+            }
+
             var checkoutResult = await _stripePaymentService.CreateEventCheckoutSessionAsync(checkoutRequest, cancellationToken);
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
@@ -362,43 +411,93 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
-            // Phase 6A.81 DIAGNOSTIC: Log status BEFORE SaveChanges
-            _logger.LogInformation(
-                "HandleMultiAttendeeRegistration: BEFORE SaveChanges (PAID) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
-                registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
+            // Set same checkout session on bundled donation
+            if (bundledDonation != null)
+            {
+                var donationSessionResult = bundledDonation.SetStripeCheckoutSession(
+                    checkoutResult.Value,
+                    DateTime.UtcNow.AddHours(24));
+
+                if (donationSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration: Failed to set checkout session on bundled donation - DonationId={DonationId}, Error={Error}",
+                        bundledDonation.Id, donationSessionResult.Error);
+                }
+
+                await _donationRepository.AddAsync(bundledDonation, cancellationToken);
+            }
 
             // Save changes with checkout session ID
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            // Phase 6A.81 DIAGNOSTIC: Log status AFTER SaveChanges
-            _logger.LogInformation(
-                "HandleMultiAttendeeRegistration: AFTER SaveChanges (PAID) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
-                registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
-
             stopwatch.Stop();
 
             _logger.LogInformation(
-                "HandleMultiAttendeeRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, CheckoutSessionId={SessionId}, Amount={Amount}, Duration={ElapsedMs}ms",
-                @event.Id, registration.Id, checkoutResult.Value, registration.TotalPrice!.Amount, stopwatch.ElapsedMilliseconds);
+                "HandleMultiAttendeeRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}, HasDonation={HasDonation}, Duration={ElapsedMs}ms",
+                @event.Id, registration.Id, registration.TotalPrice!.Amount, bundledDonation != null, stopwatch.ElapsedMilliseconds);
 
             // Return checkout session URL for frontend to redirect
             return Result<string?>.Success(checkoutResult.Value);
         }
 
+        // Free event handling
+        if (bundledDonation != null)
+        {
+            // Free event + donation: Create standalone donation checkout
+            if (!string.IsNullOrWhiteSpace(request.SuccessUrl) && !string.IsNullOrWhiteSpace(request.CancelUrl))
+            {
+                var donationCheckoutRequest = new CreateDonationCheckoutSessionRequest
+                {
+                    EventId = @event.Id,
+                    DonationId = bundledDonation.Id,
+                    EventTitle = @event.Title.Value,
+                    Amount = bundledDonation.Amount.Amount,
+                    Currency = bundledDonation.Amount.Currency.ToString(),
+                    SuccessUrl = request.SuccessUrl,
+                    CancelUrl = request.CancelUrl,
+                    Metadata = new Dictionary<string, string>
+                    {
+                        { "payment_type", "donation" },
+                        { "event_id", @event.Id.ToString() },
+                        { "donation_id", bundledDonation.Id.ToString() },
+                        { "registration_id", registration.Id.ToString() },
+                        { "anonymous", "true" },
+                        { "email", request.Email }
+                    }
+                };
+
+                var donationCheckoutResult = await _stripePaymentService.CreateDonationCheckoutSessionAsync(
+                    donationCheckoutRequest, cancellationToken);
+
+                if (donationCheckoutResult.IsSuccess)
+                {
+                    bundledDonation.SetStripeCheckoutSession(
+                        donationCheckoutResult.Value.SessionId,
+                        donationCheckoutResult.Value.ExpiresAt);
+
+                    await _donationRepository.AddAsync(bundledDonation, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "HandleMultiAttendeeRegistration COMPLETE (FREE+DONATION): EventId={EventId}, RegistrationId={RegistrationId}, DonationId={DonationId}, Duration={ElapsedMs}ms",
+                        @event.Id, registration.Id, bundledDonation.Id, stopwatch.ElapsedMilliseconds);
+
+                    return Result<string?>.Success(donationCheckoutResult.Value.CheckoutUrl);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration: Failed to create donation checkout - DonationId={DonationId}, Error={Error}. Registration will complete without donation.",
+                        bundledDonation.Id, donationCheckoutResult.Error);
+                }
+            }
+        }
+
         // FREE event - save and return null (no payment needed)
-        // Domain event will trigger confirmation email
-
-        // Phase 6A.81 DIAGNOSTIC: Log status BEFORE SaveChanges (free event)
-        _logger.LogInformation(
-            "HandleMultiAttendeeRegistration: BEFORE SaveChanges (FREE) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
-            registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
-
         await _unitOfWork.CommitAsync(cancellationToken);
-
-        // Phase 6A.81 DIAGNOSTIC: Log status AFTER SaveChanges (free event)
-        _logger.LogInformation(
-            "HandleMultiAttendeeRegistration: AFTER SaveChanges (FREE) - RegistrationId={RegistrationId}, Status={Status} (int: {StatusInt}), PaymentStatus={PaymentStatus}",
-            registration.Id, registration.Status, (int)registration.Status, registration.PaymentStatus);
 
         stopwatch.Stop();
 
@@ -407,6 +506,86 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             @event.Id, registration.Id, attendeeDetailsList.Count, stopwatch.ElapsedMilliseconds);
 
         return Result<string?>.Success(null);
+    }
+
+    /// <summary>
+    /// Handles creating a bundled donation during anonymous registration.
+    /// C2 Guard: Called inside isolated try-catch so registration succeeds even if this fails.
+    /// Returns null if donation creation fails.
+    /// </summary>
+    private async Task<Donation?> HandleDonationDuringAnonymousRegistration(
+        Event @event,
+        Registration registration,
+        RegisterAnonymousAttendeeCommand request,
+        CancellationToken cancellationToken)
+    {
+        var validateResult = @event.ValidateDonationAmount(request.DonationAmount!.Value);
+        if (validateResult.IsFailure)
+        {
+            _logger.LogWarning(
+                "Donation validation failed during anonymous registration - EventId={EventId}, Amount={Amount}, Error={Error}",
+                @event.Id, request.DonationAmount.Value, validateResult.Error);
+            return null;
+        }
+
+        var currency = registration.TotalPrice?.Currency
+            ?? @event.Pricing?.Currency
+            ?? Domain.Shared.Enums.Currency.USD;
+
+        var amountResult = Money.Create(request.DonationAmount!.Value, currency);
+        if (amountResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to create donation Money - Error={Error}", amountResult.Error);
+            return null;
+        }
+
+        var donorName = !string.IsNullOrWhiteSpace(request.DonorName)
+            ? request.DonorName
+            : request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Anonymous";
+
+        var donationResult = Donation.CreateBundledWithRegistration(
+            @event.Id,
+            registration.Id,
+            donorUserId: null, // Anonymous
+            donorName,
+            request.Email,
+            request.DonorPhone,
+            request.DonorNotes,
+            amountResult.Value);
+
+        if (donationResult.IsFailure)
+        {
+            _logger.LogWarning("Failed to create bundled donation - Error={Error}", donationResult.Error);
+            return null;
+        }
+
+        try
+        {
+            var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
+                amountResult.Value,
+                @event.Location,
+                cancellationToken);
+
+            if (breakdownResult.IsSuccess)
+            {
+                donationResult.Value.SetRevenueBreakdown(
+                    breakdownResult.Value.StripeFeeAmount,
+                    breakdownResult.Value.PlatformCommission,
+                    breakdownResult.Value.OrganizerPayout);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Exception calculating donation revenue breakdown - DonationId={DonationId}",
+                donationResult.Value.Id);
+        }
+
+        _logger.LogInformation(
+            "Bundled donation created (anonymous) - DonationId={DonationId}, RegistrationId={RegistrationId}, Amount={Amount}",
+            donationResult.Value.Id, registration.Id, request.DonationAmount.Value);
+
+        return donationResult.Value;
     }
 
     /// <summary>

@@ -22,7 +22,13 @@ public record RsvpToEventCommand(
     string? Address = null,
     // Session 23: Payment integration - URLs for Stripe Checkout redirect
     string? SuccessUrl = null,
-    string? CancelUrl = null
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration
+    // C3 Guard: Always check > 0, not just HasValue. Treat 0 same as null.
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>

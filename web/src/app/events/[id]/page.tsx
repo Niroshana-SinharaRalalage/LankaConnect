@@ -31,8 +31,8 @@ import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/pre
 import { sanitizeHtml } from '@/lib/html-utils';
 // Donation Feature: Import DonationSection for standalone donations
 import { DonationSection } from '@/presentation/components/features/events/DonationSection';
-// Donation Feature: Import donation summary hook for organizer view
-import { useDonationSummary } from '@/presentation/hooks/useDonations';
+// Donation Feature: Import donation hooks for organizer view
+import { useEventDonations } from '@/presentation/hooks/useDonations';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -123,9 +123,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
-  // Donation Feature: Fetch donation summary for organizer view
+  // Donation Feature: Fetch donations for organizer view
   const isOrganizer = event?.organizerId === user?.userId;
-  const { data: donationSummary } = useDonationSummary(
+  const { data: donationsData } = useEventDonations(
     isOrganizer && event?.donationConfig?.isEnabled ? id : undefined
   );
 
@@ -1674,30 +1674,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Donation Feature: Organizer Donation Summary */}
-        {isOrganizer && donationSummary && donationSummary.completedDonations > 0 && (
+        {/* Donation Feature: Organizer Donations List */}
+        {isOrganizer && donationsData && donationsData.donations && donationsData.donations.length > 0 && (
           <div className="mt-8 p-4 bg-rose-50 border border-rose-200 rounded-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <Heart className="h-5 w-5 text-rose-600" />
-              <h3 className="font-semibold text-rose-800">Donation Summary</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <Heart className="h-5 w-5 text-rose-600" />
+                <h3 className="font-semibold text-rose-800">
+                  Donations ({donationsData.summary.completedDonations} completed)
+                </h3>
+              </div>
+              {donationsData.summary.totalAmount > 0 && (
+                <span className="text-sm font-medium text-rose-700">
+                  Total Raised: ${donationsData.summary.totalAmount.toFixed(2)}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-rose-600">Total Donations</p>
-                <p className="text-lg font-bold text-rose-900">{donationSummary.completedDonations}</p>
-              </div>
-              <div>
-                <p className="text-xs text-rose-600">Amount Raised</p>
-                <p className="text-lg font-bold text-rose-900">${donationSummary.totalAmount.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-rose-600">Average</p>
-                <p className="text-lg font-bold text-rose-900">${donationSummary.averageDonation.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-rose-600">Your Payout</p>
-                <p className="text-lg font-bold text-rose-900">${donationSummary.totalOrganizerPayout.toFixed(2)}</p>
-              </div>
+            <div className="space-y-2">
+              {donationsData.donations.map((donation) => (
+                <div key={donation.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-rose-100">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-neutral-800">{donation.donorName}</span>
+                    {donation.isBundled && (
+                      <span className="text-xs text-neutral-500">(with registration)</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-neutral-900">${donation.amount.toFixed(2)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      donation.status === 'Completed'
+                        ? 'bg-green-100 text-green-700'
+                        : donation.status === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-neutral-100 text-neutral-600'
+                    }`}>
+                      {donation.status}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(donation.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

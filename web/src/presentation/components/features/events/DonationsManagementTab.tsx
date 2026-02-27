@@ -206,8 +206,8 @@ export function DonationsManagementTab({ eventId, donationConfig }: DonationsMan
                   <Users className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500">Organizer Payout</p>
-                  <p className="text-lg font-bold text-neutral-800">${summary.totalOrganizerPayout.toFixed(2)}</p>
+                  <p className="text-xs text-neutral-500">Net Raised</p>
+                  <p className="text-lg font-bold text-neutral-800">${(summary.totalAmount - summary.totalStripeFees - summary.totalPlatformCommission).toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>

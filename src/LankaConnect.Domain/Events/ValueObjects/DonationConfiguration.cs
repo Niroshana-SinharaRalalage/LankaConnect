@@ -49,6 +49,12 @@ public class DonationConfiguration : ValueObject
     /// </summary>
     public string? DonationMessage { get; private set; }
 
+    /// <summary>
+    /// Whether to show donation summary (count + net raised) publicly on the event details page.
+    /// Defaults to false — organizer must explicitly enable this.
+    /// </summary>
+    public bool ShowDonationSummary { get; private set; }
+
     // EF Core constructor
     private DonationConfiguration()
     {
@@ -60,7 +66,8 @@ public class DonationConfiguration : ValueObject
         bool allowCustomAmount,
         decimal? minAmount,
         decimal? maxAmount,
-        string? donationMessage)
+        string? donationMessage,
+        bool showDonationSummary)
     {
         IsEnabled = isEnabled;
         SuggestedAmounts = suggestedAmounts != null ? new List<decimal>(suggestedAmounts) : new List<decimal>();
@@ -68,6 +75,7 @@ public class DonationConfiguration : ValueObject
         MinAmount = minAmount;
         MaxAmount = maxAmount;
         DonationMessage = donationMessage;
+        ShowDonationSummary = showDonationSummary;
     }
 
     /// <summary>
@@ -79,7 +87,8 @@ public class DonationConfiguration : ValueObject
         bool allowCustomAmount,
         decimal? minAmount,
         decimal? maxAmount,
-        string? donationMessage)
+        string? donationMessage,
+        bool showDonationSummary = false)
     {
         if (!isEnabled)
             return Result<DonationConfiguration>.Success(Disabled());
@@ -137,7 +146,8 @@ public class DonationConfiguration : ValueObject
             allowCustomAmount,
             minAmount,
             maxAmount,
-            donationMessage?.Trim()));
+            donationMessage?.Trim(),
+            showDonationSummary));
     }
 
     /// <summary>
@@ -145,7 +155,7 @@ public class DonationConfiguration : ValueObject
     /// </summary>
     public static DonationConfiguration Disabled()
     {
-        return new DonationConfiguration(false, null, false, null, null, null);
+        return new DonationConfiguration(false, null, false, null, null, null, false);
     }
 
     /// <summary>
@@ -175,6 +185,7 @@ public class DonationConfiguration : ValueObject
         yield return MinAmount ?? 0m;
         yield return MaxAmount ?? 0m;
         yield return DonationMessage ?? string.Empty;
+        yield return ShowDonationSummary;
 
         foreach (var amount in SuggestedAmounts)
             yield return amount;

@@ -403,4 +403,56 @@ public class DonationRepository : Repository<Donation>, IDonationRepository
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Donation>> GetByUserIdAndEventIdAsync(
+        Guid userId,
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetByUserIdAndEventId"))
+        using (LogContext.PushProperty("EntityType", "Donation"))
+        using (LogContext.PushProperty("UserId", userId))
+        using (LogContext.PushProperty("EventId", eventId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetByUserIdAndEventIdAsync START: UserId={UserId}, EventId={EventId}",
+                userId, eventId);
+
+            try
+            {
+                var donations = await _dbSet
+                    .AsNoTracking()
+                    .Where(d => d.DonorUserId == userId && d.EventId == eventId)
+                    .OrderByDescending(d => d.CreatedAt)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByUserIdAndEventIdAsync COMPLETE: UserId={UserId}, EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    userId,
+                    eventId,
+                    donations.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return donations;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByUserIdAndEventIdAsync FAILED: UserId={UserId}, EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    userId,
+                    eventId,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message);
+
+                throw;
+            }
+        }
+    }
 }

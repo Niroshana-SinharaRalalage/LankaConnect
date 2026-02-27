@@ -55,6 +55,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [donationMinAmount, setDonationMinAmount] = useState<number | null>(event.donationConfig?.minAmount ?? null);
   const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(event.donationConfig?.maxAmount ?? null);
   const [donationMessage, setDonationMessage] = useState(event.donationConfig?.donationMessage ?? '');
+  const [showDonationSummary, setShowDonationSummary] = useState(event.donationConfig?.showDonationSummary ?? false);
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
@@ -363,6 +364,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
           donationMinAmount: donationMinAmount,
           donationMaxAmount: donationMaxAmount,
           donationMessage: donationMessage || null,
+          showDonationSummary: showDonationSummary,
         }),
         // Backend expects: LocationAddress, LocationCity, LocationState, LocationZipCode, LocationCountry
         // CRITICAL: Use null for empty optional fields, NOT empty strings
@@ -1290,6 +1292,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
         onMaxAmountChange={setDonationMaxAmount}
         donationMessage={donationMessage}
         onDonationMessageChange={setDonationMessage}
+        showDonationSummary={showDonationSummary}
+        onShowDonationSummaryChange={setShowDonationSummary}
       />
 
       {/* Note about Media */}

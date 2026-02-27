@@ -665,6 +665,7 @@ export interface CreateEventRequest {
   donationMinAmount?: number | null;
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
+  showDonationSummary?: boolean;
 }
 
 /**
@@ -728,6 +729,7 @@ export interface UpdateEventRequest {
   donationMinAmount?: number | null;
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
+  showDonationSummary?: boolean;
 }
 
 /**
@@ -1680,6 +1682,18 @@ export interface DonationConfigurationDto {
   minAmount?: number | null;
   maxAmount?: number | null;
   donationMessage?: string | null;
+  showDonationSummary: boolean;
+}
+
+/**
+ * Public-facing donation summary (no PII).
+ * Returned by GET /api/events/{eventId}/donations/public-summary
+ * Only available when organizer has enabled ShowDonationSummary.
+ */
+export interface PublicDonationSummaryDto {
+  completedDonations: number;
+  netRaisedAmount: number;
+  currency: string;
 }
 
 /**

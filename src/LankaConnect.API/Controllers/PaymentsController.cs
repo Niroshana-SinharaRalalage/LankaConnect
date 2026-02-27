@@ -530,6 +530,12 @@ public class PaymentsController : ControllerBase
                         }
                         else
                         {
+                            // Phase 6A.X FIX: Detach all non-Donation entities before second CommitAsync.
+                            // After the first CommitAsync (registration), domain event handlers may have loaded/modified
+                            // additional entities in the shared DbContext. These stale tracked entities can cause
+                            // DbUpdateException during the donation save. Same pattern as StripeWebhookEventRepository.
+                            await _unitOfWork.ClearChangeTrackerExceptAsync<Donation>();
+
                             _donationRepository.Update(donation);
                             await _unitOfWork.CommitAsync();
 
@@ -544,8 +550,8 @@ public class PaymentsController : ControllerBase
                     // C2 Guard: Never let donation failure affect registration.
                     // Log error but return 200 OK to Stripe.
                     _logger.LogError(donationEx,
-                        "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation (registration already committed) - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                        correlationId, donationId);
+                        "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation (registration already committed) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, ExceptionType: {ExceptionType}, Message: {ErrorMessage}, InnerException: {InnerMessage}",
+                        correlationId, donationId, donationEx.GetType().FullName, donationEx.Message, donationEx.InnerException?.Message ?? "None");
                 }
             }
         }

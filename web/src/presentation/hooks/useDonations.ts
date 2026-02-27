@@ -5,6 +5,8 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import type {
   EventDonationsResponse,
   DonationSummaryDto,
+  DonationDto,
+  PublicDonationSummaryDto,
   CreateDonationRequest,
 } from '@/infrastructure/api/types/events.types';
 
@@ -12,6 +14,8 @@ export const donationKeys = {
   all: ['donations'] as const,
   byEvent: (eventId: string) => [...donationKeys.all, 'event', eventId] as const,
   summary: (eventId: string) => [...donationKeys.all, 'summary', eventId] as const,
+  publicSummary: (eventId: string) => [...donationKeys.all, 'public-summary', eventId] as const,
+  mine: (eventId: string) => [...donationKeys.all, 'mine', eventId] as const,
 };
 
 /**
@@ -36,6 +40,33 @@ export function useDonationSummary(eventId: string | undefined, enabled = true) 
     queryFn: () => eventsRepository.getDonationSummary(eventId!),
     enabled: !!eventId && enabled,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches public donation summary for an event (anyone can call).
+ * Only returns data when organizer has enabled ShowDonationSummary.
+ */
+export function usePublicDonationSummary(eventId: string | undefined, enabled = true) {
+  return useQuery<PublicDonationSummaryDto | null>({
+    queryKey: donationKeys.publicSummary(eventId || ''),
+    queryFn: () => eventsRepository.getPublicDonationSummary(eventId!),
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches the authenticated user's own donations for an event.
+ * Returns individual line items (e.g., $50 + $25 = two items).
+ */
+export function useMyDonations(eventId: string | undefined, enabled = true) {
+  return useQuery<DonationDto[]>({
+    queryKey: donationKeys.mine(eventId || ''),
+    queryFn: () => eventsRepository.getMyDonations(eventId!),
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

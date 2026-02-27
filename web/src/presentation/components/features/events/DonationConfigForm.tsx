@@ -24,6 +24,9 @@ interface DonationConfigFormProps {
   /** Custom donation message (optional) */
   donationMessage: string;
   onDonationMessageChange: (message: string) => void;
+  /** Whether to show donation summary publicly on event page */
+  showDonationSummary: boolean;
+  onShowDonationSummaryChange: (show: boolean) => void;
 }
 
 /**
@@ -43,6 +46,8 @@ export function DonationConfigForm({
   onMaxAmountChange,
   donationMessage,
   onDonationMessageChange,
+  showDonationSummary,
+  onShowDonationSummaryChange,
 }: DonationConfigFormProps) {
   const [newAmount, setNewAmount] = useState('');
 
@@ -210,6 +215,25 @@ export function DonationConfigForm({
                     className="pl-7 text-sm"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Show Donation Summary Toggle */}
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="showDonationSummary"
+                checked={showDonationSummary}
+                onChange={(e) => onShowDonationSummaryChange(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <label htmlFor="showDonationSummary" className="text-sm font-medium text-gray-700">
+                  Show donation summary on event page
+                </label>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Display total donation count and amount raised publicly to all visitors
+                </p>
               </div>
             </div>
           </div>

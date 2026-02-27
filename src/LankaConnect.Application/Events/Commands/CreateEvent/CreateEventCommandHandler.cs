@@ -398,7 +398,8 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 allowCustomAmount: request.DonationAllowCustomAmount ?? true,
                 minAmount: request.DonationMinAmount,
                 maxAmount: request.DonationMaxAmount,
-                donationMessage: request.DonationMessage);
+                donationMessage: request.DonationMessage,
+                showDonationSummary: request.ShowDonationSummary ?? false);
 
             if (donationConfigResult.IsFailure)
                 return Result<Guid>.Failure(donationConfigResult.Error);

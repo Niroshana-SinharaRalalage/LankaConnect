@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Queries.ExportDonations;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventDonations;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,8 +21,16 @@ namespace LankaConnect.API.Controllers;
 [Produces("application/json")]
 public class DonationsController : BaseController<DonationsController>
 {
-    public DonationsController(IMediator mediator, ILogger<DonationsController> logger)
-        : base(mediator, logger) { }
+    private readonly IDonationRepository _donationRepository;
+
+    public DonationsController(
+        IMediator mediator,
+        ILogger<DonationsController> logger,
+        IDonationRepository donationRepository)
+        : base(mediator, logger)
+    {
+        _donationRepository = donationRepository;
+    }
 
     /// <summary>
     /// Creates a standalone donation for an event.
@@ -145,6 +154,90 @@ public class DonationsController : BaseController<DonationsController>
     }
 
     /// <summary>
+    /// Gets public donation summary for an event (anyone can call).
+    /// Only returns data if the organizer has enabled ShowDonationSummary.
+    /// Returns: completed donation count + net raised amount.
+    /// </summary>
+    [HttpGet("public-summary")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicDonationSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicDonationSummary(Guid eventId)
+    {
+        Logger.LogInformation("GetPublicDonationSummary: EventId={EventId}", eventId);
+
+        // Load event to check ShowDonationSummary toggle
+        var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
+        if (eventResult.IsFailure)
+            return NotFound(new { Error = "Event not found" });
+
+        var eventDto = eventResult.Value!;
+
+        // Only return summary if organizer explicitly enabled it
+        if (eventDto.DonationConfig == null ||
+            !eventDto.DonationConfig.IsEnabled ||
+            !eventDto.DonationConfig.ShowDonationSummary)
+        {
+            return NotFound(new { Error = "Donation summary is not available for this event" });
+        }
+
+        // Get donations and compute public summary
+        var donationsResult = await Mediator.Send(new GetEventDonationsQuery(eventId));
+        if (donationsResult.IsFailure)
+            return NotFound(new { Error = "Could not load donations" });
+
+        var summary = donationsResult.Value.Summary;
+        var netRaised = summary.TotalAmount - summary.TotalStripeFees - summary.TotalPlatformCommission;
+
+        return Ok(new PublicDonationSummaryResponse
+        {
+            CompletedDonations = summary.CompletedDonations,
+            NetRaisedAmount = netRaised,
+            Currency = summary.Currency ?? "USD"
+        });
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's own donations for an event.
+    /// Returns individual donation line items for the logged-in user.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<DonationDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyDonations(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "GetMyDonations: EventId={EventId}, UserId={UserId}", eventId, userId);
+
+        var donations = await _donationRepository.GetByUserIdAndEventIdAsync(userId, eventId);
+
+        var donationDtos = donations.Select(d => new DonationDto
+        {
+            Id = d.Id,
+            EventId = d.EventId,
+            RegistrationId = d.RegistrationId,
+            DonorUserId = d.DonorUserId,
+            DonorName = d.DonorName,
+            DonorEmail = d.DonorEmail,
+            DonorPhone = d.DonorPhone,
+            DonorNotes = d.DonorNotes,
+            Amount = d.Amount.Amount,
+            Currency = d.Amount.Currency.ToString(),
+            Status = d.Status.ToString(),
+            IsBundled = d.IsBundled,
+            StripeFeeAmount = d.StripeFeeAmount?.Amount,
+            PlatformCommissionAmount = d.PlatformCommissionAmount?.Amount,
+            OrganizerPayoutAmount = d.OrganizerPayoutAmount?.Amount,
+            CreatedAt = d.CreatedAt,
+            PaymentCompletedAt = d.PaymentCompletedAt,
+        }).ToList();
+
+        return Ok(donationDtos);
+    }
+
+    /// <summary>
     /// Verifies that the authenticated user is the organizer of the specified event.
     /// Returns null if authorized, or an IActionResult (Forbid/NotFound) if not.
     /// Follows the same pattern as EventsController.GetEventAttendees.
@@ -187,4 +280,15 @@ public class CreateDonationRequest
     public string? Currency { get; init; }
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
+}
+
+/// <summary>
+/// Public-facing donation summary response (no PII, no individual donor details).
+/// Only returned when organizer has enabled ShowDonationSummary.
+/// </summary>
+public class PublicDonationSummaryResponse
+{
+    public int CompletedDonations { get; init; }
+    public decimal NetRaisedAmount { get; init; }
+    public string Currency { get; init; } = "USD";
 }

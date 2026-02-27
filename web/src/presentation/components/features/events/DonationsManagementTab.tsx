@@ -206,13 +206,55 @@ export function DonationsManagementTab({ eventId, donationConfig }: DonationsMan
                   <Users className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500">Net Raised</p>
-                  <p className="text-lg font-bold text-neutral-800">${(summary.totalAmount - summary.totalStripeFees - summary.totalPlatformCommission).toFixed(2)}</p>
+                  <p className="text-xs text-neutral-500">Organizer Payout</p>
+                  <p className="text-lg font-bold text-neutral-800">${summary.totalOrganizerPayout.toFixed(2)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Payout Breakdown Card (matching Attendees tab pattern) */}
+      {summary && summary.completedDonations > 0 && summary.totalAmount > 0 && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-neutral-600">Your Payout</p>
+                <p className="text-3xl font-bold text-green-700">
+                  ${summary.totalOrganizerPayout.toFixed(2)}
+                </p>
+                <p className="text-xs text-neutral-500 mt-1">
+                  After Stripe fees &amp; platform commission
+                </p>
+              </div>
+              <DollarSign className="h-10 w-10 text-orange-600" />
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-neutral-200">
+              <div className="flex justify-between text-xs text-neutral-600 mb-1">
+                <span>Gross Revenue:</span>
+                <span className="font-medium">${summary.totalAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-red-600 mb-1">
+                <span>Stripe Fees (2.9% + $0.30):</span>
+                <span className="font-medium">-${summary.totalStripeFees.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-red-600 mb-1">
+                <span>Platform Commission (2%):</span>
+                <span className="font-medium">-${summary.totalPlatformCommission.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-green-700 font-semibold pt-1 border-t border-neutral-200">
+                <span>Your Payout:</span>
+                <span>${summary.totalOrganizerPayout.toFixed(2)}</span>
+              </div>
+              <p className="text-[10px] text-neutral-400 mt-2">
+                * Stripe &amp; LankaConnect fees shown separately.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Actions Row */}

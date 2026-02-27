@@ -48,6 +48,7 @@ export function EventCreationForm() {
   const [donationMinAmount, setDonationMinAmount] = useState<number | null>(null);
   const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(null);
   const [donationMessage, setDonationMessage] = useState('');
+  const [showDonationSummary, setShowDonationSummary] = useState(false);
 
   // Phase 6A.106 Part 3: Azure image upload for rich text editor
   const { mutateAsync: uploadImage } = useContentImageUpload();
@@ -224,6 +225,7 @@ export function EventCreationForm() {
           donationMinAmount: donationMinAmount,
           donationMaxAmount: donationMaxAmount,
           donationMessage: donationMessage || null,
+          showDonationSummary: showDonationSummary,
         }),
         // Only include location if we have at least address and city
         ...(hasCompleteLocation && {
@@ -1060,6 +1062,8 @@ export function EventCreationForm() {
         onMaxAmountChange={setDonationMaxAmount}
         donationMessage={donationMessage}
         onDonationMessageChange={setDonationMessage}
+        showDonationSummary={showDonationSummary}
+        onShowDonationSummaryChange={setShowDonationSummary}
       />
 
       {/* Note about Media */}

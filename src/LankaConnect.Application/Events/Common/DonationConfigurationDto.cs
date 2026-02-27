@@ -12,4 +12,5 @@ public record DonationConfigurationDto
     public decimal? MinAmount { get; init; }
     public decimal? MaxAmount { get; init; }
     public string? DonationMessage { get; init; }
+    public bool ShowDonationSummary { get; init; }
 }

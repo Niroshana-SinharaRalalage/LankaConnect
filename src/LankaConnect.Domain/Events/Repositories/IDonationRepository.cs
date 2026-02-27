@@ -71,4 +71,13 @@ public interface IDonationRepository : IRepository<Donation>
         Guid eventId,
         DonationStatus status,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all donations by a specific user for a specific event.
+    /// Used on the event details page to show a logged-in user their own donations.
+    /// </summary>
+    Task<IReadOnlyList<Donation>> GetByUserIdAndEventIdAsync(
+        Guid userId,
+        Guid eventId,
+        CancellationToken cancellationToken = default);
 }

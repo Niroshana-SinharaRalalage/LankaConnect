@@ -1560,6 +1560,38 @@ export class EventsRepository {
   }
 
   /**
+   * Gets public donation summary for an event (anyone can call).
+   * Only returns data if organizer has enabled ShowDonationSummary.
+   */
+  async getPublicDonationSummary(
+    eventId: string
+  ): Promise<import('../types/events.types').PublicDonationSummaryDto | null> {
+    try {
+      return await apiClient.get<import('../types/events.types').PublicDonationSummaryDto>(
+        `${this.basePath}/${eventId}/donations/public-summary`
+      );
+    } catch (error: any) {
+      // 404 means donations not enabled or summary not shown
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Gets the authenticated user's own donations for an event.
+   * Returns individual donation line items.
+   */
+  async getMyDonations(
+    eventId: string
+  ): Promise<import('../types/events.types').DonationDto[]> {
+    return await apiClient.get<import('../types/events.types').DonationDto[]>(
+      `${this.basePath}/${eventId}/donations/mine`
+    );
+  }
+
+  /**
    * Exports donations for an event in Excel or CSV format.
    */
   async exportDonations(

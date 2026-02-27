@@ -48,7 +48,8 @@ public record CreateEventCommand(
     bool? DonationAllowCustomAmount = null,
     decimal? DonationMinAmount = null,
     decimal? DonationMaxAmount = null,
-    string? DonationMessage = null
+    string? DonationMessage = null,
+    bool? ShowDonationSummary = null
 ) : ICommand<Guid>;
 
 /// <summary>

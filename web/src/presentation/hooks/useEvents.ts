@@ -427,9 +427,10 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string }) => {
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string }) => {
       // Phase 6A.11: Construct full RsvpRequest with all fields (legacy and new format support)
-      const rsvpRequest = {
+      // Donation Feature: Include donation fields for combined checkout
+      const rsvpRequest: RsvpRequest = {
         userId: data.userId,
         quantity: data.quantity ?? 1,
         attendees: data.attendees,
@@ -438,6 +439,13 @@ export function useRsvpToEvent() {
         address: data.address,
         successUrl: data.successUrl,
         cancelUrl: data.cancelUrl,
+        // Donation Feature: Include donation fields when amount > 0
+        ...(data.donationAmount && data.donationAmount > 0 && {
+          donationAmount: data.donationAmount,
+          donorName: data.donorName,
+          donorPhone: data.donorPhone,
+          donorNotes: data.donorNotes,
+        }),
       };
       return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);
     },

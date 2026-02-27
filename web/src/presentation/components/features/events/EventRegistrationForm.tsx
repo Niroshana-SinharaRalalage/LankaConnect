@@ -659,10 +659,18 @@ export function EventRegistrationForm({
             </div>
           )}
 
+          {/* Donation Feature: Show donation amount in price breakdown */}
+          {donationAmount && donationAmount > 0 && (
+            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
+              <span>Donation (voluntary)</span>
+              <span>${donationAmount.toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${totalPrice.toFixed(2)}
+              ${(totalPrice + (donationAmount || 0)).toFixed(2)}
             </span>
           </div>
         </div>

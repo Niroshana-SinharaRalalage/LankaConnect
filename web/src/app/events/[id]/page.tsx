@@ -333,6 +333,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         // Session 23: RSVP with payment support
         // Backend returns checkout URL for paid events, null for free events
         // Phase 6A.11 FIX: Always send both quantity AND attendees (backend expects both)
+        // Donation Feature: Pass through donation fields for combined checkout
         const checkoutUrl = await rsvpMutation.mutateAsync({
           eventId: id,
           userId: data.userId,
@@ -343,6 +344,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           address: data.address,
           successUrl,
           cancelUrl,
+          // Donation Feature: Include donation fields for combined checkout
+          donationAmount: (data as any).donationAmount ?? undefined,
+          donorName: (data as any).donorName ?? undefined,
+          donorPhone: (data as any).donorPhone ?? undefined,
+          donorNotes: (data as any).donorNotes ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment

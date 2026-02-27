@@ -31,6 +31,8 @@ import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/pre
 import { sanitizeHtml } from '@/lib/html-utils';
 // Donation Feature: Import DonationSection for standalone donations
 import { DonationSection } from '@/presentation/components/features/events/DonationSection';
+// Donation Feature: Import donation summary hook for organizer view
+import { useDonationSummary } from '@/presentation/hooks/useDonations';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -120,6 +122,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
+
+  // Donation Feature: Fetch donation summary for organizer view
+  const isOrganizer = event?.organizerId === user?.userId;
+  const { data: donationSummary } = useDonationSummary(
+    isOrganizer && event?.donationConfig?.isEnabled ? id : undefined
+  );
 
   // Phase 6A.56 FIX: Remove _hasHydrated dependency - causes registration status "flipping"
   // The auth store now correctly restores isAuthenticated during hydration
@@ -1655,6 +1663,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-sm text-amber-700 mt-0.5">
                   Your donation was not processed. You can try again below if you&apos;d like to support this event.
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Donation Feature: Organizer Donation Summary */}
+        {isOrganizer && donationSummary && donationSummary.completedDonations > 0 && (
+          <div className="mt-8 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <Heart className="h-5 w-5 text-rose-600" />
+              <h3 className="font-semibold text-rose-800">Donation Summary</h3>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-rose-600">Total Donations</p>
+                <p className="text-lg font-bold text-rose-900">{donationSummary.completedDonations}</p>
+              </div>
+              <div>
+                <p className="text-xs text-rose-600">Amount Raised</p>
+                <p className="text-lg font-bold text-rose-900">${donationSummary.totalAmount.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-rose-600">Average</p>
+                <p className="text-lg font-bold text-rose-900">${donationSummary.averageDonation.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-rose-600">Your Payout</p>
+                <p className="text-lg font-bold text-rose-900">${donationSummary.totalOrganizerPayout.toFixed(2)}</p>
               </div>
             </div>
           </div>

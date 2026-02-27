@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -74,6 +74,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
+  const donationStatus = searchParams.get('donation'); // 'success' | 'cancelled' | null
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -1628,6 +1629,34 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {_hasHydrated && isUserRegistered && event && !event.isFree && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
+          </div>
+        )}
+
+        {/* Donation Feature: Success/Cancelled Banner */}
+        {donationStatus === 'success' && (
+          <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Heart className="h-6 w-6 text-emerald-600" />
+              <div>
+                <h3 className="font-semibold text-emerald-800">Thank you for your generous donation!</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  Your payment has been processed successfully. You will receive a confirmation email shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {donationStatus === 'cancelled' && (
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Heart className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800">Donation cancelled</h3>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Your donation was not processed. You can try again below if you&apos;d like to support this event.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

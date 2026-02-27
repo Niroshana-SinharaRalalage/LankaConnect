@@ -79,7 +79,7 @@ public class DonationEntityConfiguration : IEntityTypeConfiguration<Donation>
         // Stripe payment fields
         builder.Property(d => d.StripeCheckoutSessionId)
             .HasColumnName("stripe_checkout_session_id")
-            .HasMaxLength(200);
+            .HasMaxLength(500);
 
         builder.Property(d => d.StripePaymentIntentId)
             .HasColumnName("stripe_payment_intent_id")

@@ -92,7 +92,7 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
         // Payment tracking
         builder.Property(ra => ra.StripeCheckoutSessionId)
             .HasColumnName("stripe_checkout_session_id")
-            .HasMaxLength(200);
+            .HasMaxLength(500);
 
         builder.Property(ra => ra.StripePaymentIntentId)
             .HasColumnName("stripe_payment_intent_id")

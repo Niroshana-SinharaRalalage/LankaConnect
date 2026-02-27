@@ -568,6 +568,7 @@ public class EventsController : BaseController<EventsController>
         }
 
         // Phase 6A.11: Map all DTO fields to command (including multi-attendee fields)
+        // Donation Feature: Include donation fields for combined checkout
         var command = new RsvpToEventCommand(
             id,
             request.UserId,
@@ -577,7 +578,12 @@ public class EventsController : BaseController<EventsController>
             request.PhoneNumber,
             request.Address,
             request.SuccessUrl,
-            request.CancelUrl
+            request.CancelUrl,
+            // Donation Feature: Pass donation fields (C3 Guard: handler checks > 0)
+            DonationAmount: request.DonationAmount,
+            DonorName: request.DonorName,
+            DonorPhone: request.DonorPhone,
+            DonorNotes: request.DonorNotes
         );
         var result = await Mediator.Send(command);
 
@@ -660,7 +666,12 @@ public class EventsController : BaseController<EventsController>
             Address: request.Address,
             Quantity: request.Quantity,
             SuccessUrl: request.SuccessUrl, // Phase 6A.44: Stripe checkout URLs
-            CancelUrl: request.CancelUrl
+            CancelUrl: request.CancelUrl,
+            // Donation Feature: Pass donation fields for combined checkout
+            DonationAmount: request.DonationAmount,
+            DonorName: request.DonorName,
+            DonorPhone: request.DonorPhone,
+            DonorNotes: request.DonorNotes
         );
 
         var result = await Mediator.Send(command);
@@ -3005,7 +3016,12 @@ public record RsvpRequest(
     string? Address = null,
     // Session 23: Payment integration - URLs for Stripe Checkout redirect
     string? SuccessUrl = null,
-    string? CancelUrl = null
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration (combined checkout)
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3031,7 +3047,12 @@ public record AnonymousRegistrationRequest(
     int Quantity = 1,
     // Phase 6A.44: Stripe checkout URLs (required for paid events)
     string? SuccessUrl = null,
-    string? CancelUrl = null);
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration (combined checkout)
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration

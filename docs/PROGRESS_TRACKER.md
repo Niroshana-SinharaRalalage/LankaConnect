@@ -1,7 +1,30 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-28 - Phase 6A.131 Quantity/Slot Support in Create Sign-Up List ✅ DEPLOYED*
+*Last Updated: 2026-02-28 - Phase 6A.129b Fix Missing Signup Forms Button in Email Templates ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.131: Add Quantity/Slot Item Type Support to Create Sign-Up List ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.129b: Fix Missing "View Signup Forms" Button in Email Templates ✅ DEPLOYED
+
+### Phase 6A.129b: Add Styled Signup Forms Button to Email Templates - 2026-02-28
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit be4ae98f + 3631880e) - VERIFIED VIA API**
+
+**Root Cause**: Phase 6A.113 migration used `File.ReadAllText()` to load template HTML from disk files. This approach was fragile and the `{{#HasSignupForms}}` block it added was only a simple `<p>` text link — visually inconsistent with the styled `{{#HasSignUpLists}}` button.
+
+**Fix**: New migration (`Phase6A129b`) with inline SQL (not file-based):
+- Step 1: `REGEXP_REPLACE` removes any existing simple-style `{{#HasSignupForms}}` blocks
+- Step 2: `REPLACE` adds a fully styled button (MSO VML roundrect + HTML `<a>` tag) after `{{/HasSignUpLists}}`
+- Idempotent: `WHERE NOT LIKE '%HasSignupForms%'` guard
+
+**Verification** (via API):
+- ✅ `GET /api/Diagnostics/email-templates/check-blocks`: 17/17 templates have both `HasSignUpLists` and `HasSignupForms`
+- ✅ Event `62bf37a7` confirmed: 1 signup list + 2 Active forms
+- ✅ All handler code correctly calls `WithSignupForms()` when active forms exist
+- ✅ Migration applied confirmed in deployment logs
+
+**Supplementary**: Added `check-blocks` diagnostic endpoint to verify template Handlebars blocks server-side.
+
+---
+
+## 🎯 Previous Session - Phase 6A.131: Add Quantity/Slot Item Type Support to Create Sign-Up List ✅ DEPLOYED
 
 ### Phase 6A.131: Quantity/Slot-Based Items in Create Sign-Up List - 2026-02-28
 

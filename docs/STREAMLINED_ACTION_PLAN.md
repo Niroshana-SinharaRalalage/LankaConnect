@@ -7,7 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.131: QUANTITY/SLOT IN CREATE SIGN-UP LIST ✅ DEPLOYED (2026-02-28)
+## 🔄 CURRENT STATUS - PHASE 6A.129b: FIX MISSING SIGNUP FORMS BUTTON IN EMAILS ✅ DEPLOYED (2026-02-28)
+**Date**: 2026-02-28
+**Session**: Phase 6A.129b - Fix Missing "View Signup Forms" Button in Email Templates
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED VIA API**
+**Commits**: be4ae98f (migration), 3631880e (diagnostic endpoint)
+
+**Root Cause**: Phase 6A.113 used fragile `File.ReadAllText()` in migration; signup forms button was only simple text link.
+**Fix**: New inline SQL migration adds styled button (MSO VML + HTML) to all 17 templates with `{{#HasSignUpLists}}`.
+**Verification**: `check-blocks` endpoint confirms 17/17 templates have both `HasSignUpLists` and `HasSignupForms` blocks.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.131: QUANTITY/SLOT IN CREATE SIGN-UP LIST ✅ DEPLOYED (2026-02-28)
 **Date**: 2026-02-28
 **Session**: Phase 6A.131 - Add Quantity/Slot Item Type Support to Create Sign-Up List
 **Status**: ✅ **DEPLOYED TO STAGING**

@@ -1594,11 +1594,14 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Creating sign-up list '{Category}' with {ItemCount} items for event {EventId}",
             request.Category, request.Items.Count, id);
 
-        // Map API DTOs to Application layer DTOs
+        // Phase 6A.131: Map API DTOs to Application layer DTOs with dual-field support
         var items = request.Items.Select(item => new LankaConnect.Application.Events.Commands.CreateSignUpListWithItems.SignUpItemDto(
             item.ItemDescription,
-            item.Quantity,
+            item.ItemType,
             item.ItemCategory,
+            item.TargetQuantity,
+            item.AvailableSlots,
+            item.SuggestedPerSlot,
             item.Notes)).ToList();
 
         var command = new CreateSignUpListWithItemsCommand(
@@ -3124,10 +3127,17 @@ public record UpdateSignUpListRequest(
     bool HasSuggestedItems,
     bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
+/// <summary>
+/// Phase 6A.131: Updated to support both quantity-based and slot-based items in batch creation.
+/// ItemType defaults to Quantity for backward compatibility.
+/// </summary>
 public record SignUpItemRequestDto(
     string ItemDescription,
-    int Quantity,
-    SignUpItemCategory ItemCategory,
+    SignUpItemType ItemType = SignUpItemType.Quantity,
+    SignUpItemCategory ItemCategory = SignUpItemCategory.Mandatory,
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
     string? Notes = null);
 
 /// <summary>

@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X, Edit } from 'lucide-react';
-import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, SignUpItemType } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -68,19 +68,25 @@ export default function ManageSignUpsPage() {
   // Phase 6A.28: Open Items - users can add their own items
   const [hasOpenItems, setHasOpenItems] = useState(false);
 
-  // Separate item arrays for each category
-  type ItemType = {
+  // Phase 6A.131: Item type supporting both quantity-based and slot-based items
+  type ItemEntry = {
     description: string;
-    quantity: number;
+    itemType: SignUpItemType;
+    targetQuantity: number;
+    availableSlots: number;
+    suggestedPerSlot?: number;
     notes: string;
   };
-  const [mandatoryItems, setMandatoryItems] = useState<ItemType[]>([]);
-  const [preferredItems, setPreferredItems] = useState<ItemType[]>([]);
-  const [suggestedItems, setSuggestedItems] = useState<ItemType[]>([]);
+  const [mandatoryItems, setMandatoryItems] = useState<ItemEntry[]>([]);
+  const [preferredItems, setPreferredItems] = useState<ItemEntry[]>([]);
+  const [suggestedItems, setSuggestedItems] = useState<ItemEntry[]>([]);
 
-  // Separate form state for each category
+  // Separate form state for each category (Phase 6A.131: with item type support)
   const [newMandatoryDesc, setNewMandatoryDesc] = useState('');
+  const [newMandatoryItemType, setNewMandatoryItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
   const [newMandatoryQty, setNewMandatoryQty] = useState(1);
+  const [newMandatorySlots, setNewMandatorySlots] = useState(1);
+  const [newMandatorySuggestedPerSlot, setNewMandatorySuggestedPerSlot] = useState<number | undefined>(undefined);
   const [newMandatoryNotes, setNewMandatoryNotes] = useState('');
 
   const [newPreferredDesc, setNewPreferredDesc] = useState('');
@@ -88,7 +94,10 @@ export default function ManageSignUpsPage() {
   const [newPreferredNotes, setNewPreferredNotes] = useState('');
 
   const [newSuggestedDesc, setNewSuggestedDesc] = useState('');
+  const [newSuggestedItemType, setNewSuggestedItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
   const [newSuggestedQty, setNewSuggestedQty] = useState(1);
+  const [newSuggestedSlots, setNewSuggestedSlots] = useState(1);
+  const [newSuggestedSuggestedPerSlot, setNewSuggestedSuggestedPerSlot] = useState<number | undefined>(undefined);
   const [newSuggestedNotes, setNewSuggestedNotes] = useState('');
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -110,23 +119,33 @@ export default function ManageSignUpsPage() {
     }
   }, [isAuthenticated, user, event, eventId, router]);
 
-  // Handle add mandatory item
+  // Handle add mandatory item (Phase 6A.131: supports Quantity and Slot types)
   const handleAddMandatoryItem = () => {
     if (!newMandatoryDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-    if (newMandatoryQty < 1) {
+    if (newMandatoryItemType === SignUpItemType.Quantity && newMandatoryQty < 1) {
       setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    if (newMandatoryItemType === SignUpItemType.Slot && newMandatorySlots < 1) {
+      setSubmitError('Available slots must be at least 1');
       return;
     }
     setMandatoryItems([...mandatoryItems, {
       description: newMandatoryDesc.trim(),
-      quantity: newMandatoryQty,
+      itemType: newMandatoryItemType,
+      targetQuantity: newMandatoryQty,
+      availableSlots: newMandatorySlots,
+      suggestedPerSlot: newMandatoryItemType === SignUpItemType.Slot ? newMandatorySuggestedPerSlot : undefined,
       notes: newMandatoryNotes.trim(),
     }]);
     setNewMandatoryDesc('');
+    setNewMandatoryItemType(SignUpItemType.Quantity);
     setNewMandatoryQty(1);
+    setNewMandatorySlots(1);
+    setNewMandatorySuggestedPerSlot(undefined);
     setNewMandatoryNotes('');
     setSubmitError(null);
   };
@@ -143,7 +162,9 @@ export default function ManageSignUpsPage() {
     }
     setPreferredItems([...preferredItems, {
       description: newPreferredDesc.trim(),
-      quantity: newPreferredQty,
+      itemType: SignUpItemType.Quantity,
+      targetQuantity: newPreferredQty,
+      availableSlots: 1,
       notes: newPreferredNotes.trim(),
     }]);
     setNewPreferredDesc('');
@@ -152,23 +173,33 @@ export default function ManageSignUpsPage() {
     setSubmitError(null);
   };
 
-  // Handle add suggested item
+  // Handle add suggested item (Phase 6A.131: supports Quantity and Slot types)
   const handleAddSuggestedItem = () => {
     if (!newSuggestedDesc.trim()) {
       setSubmitError('Item description is required');
       return;
     }
-    if (newSuggestedQty < 1) {
+    if (newSuggestedItemType === SignUpItemType.Quantity && newSuggestedQty < 1) {
       setSubmitError('Quantity must be at least 1');
+      return;
+    }
+    if (newSuggestedItemType === SignUpItemType.Slot && newSuggestedSlots < 1) {
+      setSubmitError('Available slots must be at least 1');
       return;
     }
     setSuggestedItems([...suggestedItems, {
       description: newSuggestedDesc.trim(),
-      quantity: newSuggestedQty,
+      itemType: newSuggestedItemType,
+      targetQuantity: newSuggestedQty,
+      availableSlots: newSuggestedSlots,
+      suggestedPerSlot: newSuggestedItemType === SignUpItemType.Slot ? newSuggestedSuggestedPerSlot : undefined,
       notes: newSuggestedNotes.trim(),
     }]);
     setNewSuggestedDesc('');
+    setNewSuggestedItemType(SignUpItemType.Quantity);
     setNewSuggestedQty(1);
+    setNewSuggestedSlots(1);
+    setNewSuggestedSuggestedPerSlot(undefined);
     setNewSuggestedNotes('');
     setSubmitError(null);
   };
@@ -220,24 +251,33 @@ export default function ManageSignUpsPage() {
     try {
       setSubmitError(null);
 
-      // Convert items to API format
+      // Phase 6A.131: Convert items to API format with dual-field support
       const items = [
         ...mandatoryItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: item.itemType,
           itemCategory: SignUpItemCategory.Mandatory,
+          targetQuantity: item.itemType === SignUpItemType.Quantity ? item.targetQuantity : null,
+          availableSlots: item.itemType === SignUpItemType.Slot ? item.availableSlots : null,
+          suggestedPerSlot: item.itemType === SignUpItemType.Slot ? (item.suggestedPerSlot || null) : null,
           notes: item.notes || null,
         })),
         ...preferredItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: item.itemType,
           itemCategory: SignUpItemCategory.Preferred,
+          targetQuantity: item.itemType === SignUpItemType.Quantity ? item.targetQuantity : null,
+          availableSlots: item.itemType === SignUpItemType.Slot ? item.availableSlots : null,
+          suggestedPerSlot: item.itemType === SignUpItemType.Slot ? (item.suggestedPerSlot || null) : null,
           notes: item.notes || null,
         })),
         ...suggestedItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: item.itemType,
           itemCategory: SignUpItemCategory.Suggested,
+          targetQuantity: item.itemType === SignUpItemType.Quantity ? item.targetQuantity : null,
+          availableSlots: item.itemType === SignUpItemType.Slot ? item.availableSlots : null,
+          suggestedPerSlot: item.itemType === SignUpItemType.Slot ? (item.suggestedPerSlot || null) : null,
           notes: item.notes || null,
         })),
       ];
@@ -491,17 +531,75 @@ export default function ManageSignUpsPage() {
                               onChange={(e) => setNewMandatoryDesc(e.target.value)}
                             />
                           </div>
+                          {/* Phase 6A.131: Item Type selector */}
                           <div>
                             <label className="block text-xs font-medium text-neutral-600 mb-1">
-                              Quantity *
+                              Item Type *
                             </label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={newMandatoryQty}
-                              onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
-                            />
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  checked={newMandatoryItemType === SignUpItemType.Quantity}
+                                  onChange={() => setNewMandatoryItemType(SignUpItemType.Quantity)}
+                                  className="w-4 h-4"
+                                />
+                                Quantity (e.g., &quot;10 plates&quot;)
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  checked={newMandatoryItemType === SignUpItemType.Slot}
+                                  onChange={() => setNewMandatoryItemType(SignUpItemType.Slot)}
+                                  className="w-4 h-4"
+                                />
+                                Slot (e.g., &quot;3 people&quot;)
+                              </label>
+                            </div>
                           </div>
+                          {/* Conditional fields based on item type */}
+                          {newMandatoryItemType === SignUpItemType.Quantity ? (
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Target Quantity *
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={newMandatoryQty}
+                                onChange={(e) => setNewMandatoryQty(parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                  Available Slots *
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={newMandatorySlots}
+                                  onChange={(e) => setNewMandatorySlots(parseInt(e.target.value) || 1)}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                  Suggested Qty Per Slot (optional)
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  placeholder="e.g., 2-3 items per person"
+                                  value={newMandatorySuggestedPerSlot ?? ''}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    setNewMandatorySuggestedPerSlot(isNaN(val) ? undefined : val);
+                                  }}
+                                />
+                              </div>
+                            </>
+                          )}
                           <div>
                             <label className="block text-xs font-medium text-neutral-600 mb-1">
                               Notes (optional)
@@ -536,7 +634,8 @@ export default function ManageSignUpsPage() {
                               <thead className="bg-neutral-100 sticky top-0">
                                 <tr>
                                   <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Type</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty/Slots</th>
                                   <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
                                 </tr>
                               </thead>
@@ -551,7 +650,16 @@ export default function ManageSignUpsPage() {
                                         )}
                                       </div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                    <td className="px-3 py-2 text-xs">
+                                      <span className={`px-1.5 py-0.5 rounded ${item.itemType === SignUpItemType.Slot ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {item.itemType === SignUpItemType.Slot ? 'Slot' : 'Qty'}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-sm">
+                                      {item.itemType === SignUpItemType.Slot
+                                        ? `${item.availableSlots} slot${item.availableSlots > 1 ? 's' : ''}${item.suggestedPerSlot ? ` (${item.suggestedPerSlot}/slot)` : ''}`
+                                        : item.targetQuantity}
+                                    </td>
                                     <td className="px-3 py-2 text-center">
                                       <Button
                                         variant="outline"
@@ -614,17 +722,75 @@ export default function ManageSignUpsPage() {
                               onChange={(e) => setNewSuggestedDesc(e.target.value)}
                             />
                           </div>
+                          {/* Phase 6A.131: Item Type selector */}
                           <div>
                             <label className="block text-xs font-medium text-neutral-600 mb-1">
-                              Quantity *
+                              Item Type *
                             </label>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={newSuggestedQty}
-                              onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
-                            />
+                            <div className="flex gap-4">
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  checked={newSuggestedItemType === SignUpItemType.Quantity}
+                                  onChange={() => setNewSuggestedItemType(SignUpItemType.Quantity)}
+                                  className="w-4 h-4"
+                                />
+                                Quantity (e.g., &quot;10 plates&quot;)
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                <input
+                                  type="radio"
+                                  checked={newSuggestedItemType === SignUpItemType.Slot}
+                                  onChange={() => setNewSuggestedItemType(SignUpItemType.Slot)}
+                                  className="w-4 h-4"
+                                />
+                                Slot (e.g., &quot;3 people&quot;)
+                              </label>
+                            </div>
                           </div>
+                          {/* Conditional fields based on item type */}
+                          {newSuggestedItemType === SignUpItemType.Quantity ? (
+                            <div>
+                              <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                Target Quantity *
+                              </label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={newSuggestedQty}
+                                onChange={(e) => setNewSuggestedQty(parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                  Available Slots *
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={newSuggestedSlots}
+                                  onChange={(e) => setNewSuggestedSlots(parseInt(e.target.value) || 1)}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                                  Suggested Qty Per Slot (optional)
+                                </label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  placeholder="e.g., 2-3 items per person"
+                                  value={newSuggestedSuggestedPerSlot ?? ''}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value);
+                                    setNewSuggestedSuggestedPerSlot(isNaN(val) ? undefined : val);
+                                  }}
+                                />
+                              </div>
+                            </>
+                          )}
                           <div>
                             <label className="block text-xs font-medium text-neutral-600 mb-1">
                               Notes (optional)
@@ -659,7 +825,8 @@ export default function ManageSignUpsPage() {
                               <thead className="bg-neutral-100 sticky top-0">
                                 <tr>
                                   <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Item</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Type</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-neutral-600">Qty/Slots</th>
                                   <th className="px-3 py-2 text-center text-xs font-medium text-neutral-600">Action</th>
                                 </tr>
                               </thead>
@@ -674,7 +841,16 @@ export default function ManageSignUpsPage() {
                                         )}
                                       </div>
                                     </td>
-                                    <td className="px-3 py-2 text-sm">{item.quantity}</td>
+                                    <td className="px-3 py-2 text-xs">
+                                      <span className={`px-1.5 py-0.5 rounded ${item.itemType === SignUpItemType.Slot ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                        {item.itemType === SignUpItemType.Slot ? 'Slot' : 'Qty'}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2 text-sm">
+                                      {item.itemType === SignUpItemType.Slot
+                                        ? `${item.availableSlots} slot${item.availableSlots > 1 ? 's' : ''}${item.suggestedPerSlot ? ` (${item.suggestedPerSlot}/slot)` : ''}`
+                                        : item.targetQuantity}
+                                    </td>
                                     <td className="px-3 py-2 text-center">
                                       <Button
                                         variant="outline"

@@ -110,6 +110,7 @@ public class SignUpList : BaseEntity
     /// Creates a category-based sign-up list WITH items in a single operation
     /// Matches requirement: POST /api/events/{eventId}/signups with items array
     /// Phase 6A.27: Added hasOpenItems parameter for user-submitted items
+    /// Phase 6A.131: Updated to support both quantity-based and slot-based items
     /// </summary>
     public static Result<SignUpList> CreateWithCategoriesAndItems(
         string category,
@@ -117,7 +118,7 @@ public class SignUpList : BaseEntity
         bool hasMandatoryItems,
         bool hasPreferredItems,
         bool hasSuggestedItems,
-        IEnumerable<(string description, int quantity, SignUpItemCategory category, string? notes)> items,
+        IEnumerable<(string description, SignUpItemType itemType, SignUpItemCategory category, int? targetQuantity, int? availableSlots, int? suggestedPerSlot, string? notes)> items,
         bool hasOpenItems = false)
     {
         // Validate basic list properties
@@ -145,14 +146,27 @@ public class SignUpList : BaseEntity
             hasSuggestedItems,
             hasOpenItems);
 
-        // Add all items
+        // Phase 6A.131: Add all items, branching on item type for quantity-based vs slot-based
         foreach (var item in itemsList)
         {
-            var itemResult = signUpList.AddItem(
-                item.description,
-                item.quantity,
-                item.category,
-                item.notes);
+            Result<SignUpItem> itemResult;
+            if (item.itemType == SignUpItemType.Slot)
+            {
+                itemResult = signUpList.AddSlotBasedItem(
+                    item.description,
+                    item.availableSlots ?? 1,
+                    item.suggestedPerSlot,
+                    item.category,
+                    item.notes);
+            }
+            else
+            {
+                itemResult = signUpList.AddItem(
+                    item.description,
+                    item.targetQuantity ?? 1,
+                    item.category,
+                    item.notes);
+            }
 
             if (itemResult.IsFailure)
                 return Result<SignUpList>.Failure(itemResult.Error);

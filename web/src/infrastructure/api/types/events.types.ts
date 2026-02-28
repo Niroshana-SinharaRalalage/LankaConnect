@@ -962,11 +962,15 @@ export interface UpdateSignUpListRequest {
 
 /**
  * Sign-up item within CreateSignUpListRequest
+ * Phase 6A.131: Updated to support both quantity-based and slot-based items
  */
 export interface SignUpItemRequestDto {
   itemDescription: string;
-  quantity: number;
+  itemType: SignUpItemType;
   itemCategory: SignUpItemCategory;
+  targetQuantity?: number | null;
+  availableSlots?: number | null;
+  suggestedPerSlot?: number | null;
   notes?: string | null;
 }
 

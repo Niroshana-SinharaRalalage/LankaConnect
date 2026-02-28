@@ -142,7 +142,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
       <CollapsibleSection
         title="Your Ticket"
         icon={<Ticket className="h-5 w-5" style={{ color: '#FF7900' }} />}
-        defaultOpen={true}
+        defaultOpen={false}
       >
         <div className="flex items-center justify-center py-8">
           <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -157,7 +157,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
       <CollapsibleSection
         title="Your Ticket"
         icon={<Ticket className="h-5 w-5" style={{ color: '#FF7900' }} />}
-        defaultOpen={true}
+        defaultOpen={false}
       >
         <div className="flex items-center gap-2 text-muted-foreground">
           <Clock className="h-5 w-5" />
@@ -184,7 +184,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
           {isExpired ? 'Expired' : 'Invalid'}
         </Badge>
       )}
-      defaultOpen={true}
+      defaultOpen={false}
     >
       <div className="space-y-6">
         {/* Ticket Code */}

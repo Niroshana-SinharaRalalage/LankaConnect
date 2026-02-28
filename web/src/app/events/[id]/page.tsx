@@ -807,14 +807,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               title={isCancelled
                 ? 'Event Cancelled'
                 : isUserRegistered
-                ? 'Your Registration'
+                ? "You're Registered!"
                 : registrationDetails?.status === 'Cancelled'
                 ? 'Registration Cancelled'
                 : 'Register for this Event'}
               description={isCancelled
                 ? 'This event has been cancelled. Registration is not available.'
                 : isUserRegistered
-                ? 'You are already registered for this event!'
+                ? 'Click to view your registration details'
                 : registrationDetails?.status === 'Cancelled'
                 ? hasStarted
                   ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
@@ -825,7 +825,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
                 : 'Reserve your spot now!'}
               borderColor="#FF7900"
-              defaultOpen={true}
+              defaultOpen={false}
+              badge={isUserRegistered ? <CheckCircle className="h-5 w-5 text-green-600" /> : undefined}
             >
                 {/* GitHub Issue #37: Show cancelled event info box FIRST */}
                 {isCancelled ? (
@@ -1741,7 +1742,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <CollapsibleSection
               title="Event Organizer Contact"
               icon={<Users className="h-5 w-5 text-blue-600" />}
-              defaultOpen={true}
+              defaultOpen={false}
             >
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">

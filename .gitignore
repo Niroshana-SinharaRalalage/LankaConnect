@@ -18,6 +18,9 @@ claude-flow
 claude-flow.bat
 claude-flow.ps1
 
+# Marketplace image backups
+web/public/images/marketplace/originals/
+
 ## .NET Core and Visual Studio
 
 # User-specific files

@@ -7,7 +7,17 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.130: STANDALONE DONATION SYSTEM ✅ DEPLOYED (2026-02-26)
+## 🔄 CURRENT STATUS - PHASE 6A.131: QUANTITY/SLOT IN CREATE SIGN-UP LIST ✅ DEPLOYED (2026-02-28)
+**Date**: 2026-02-28
+**Session**: Phase 6A.131 - Add Quantity/Slot Item Type Support to Create Sign-Up List
+**Status**: ✅ **DEPLOYED TO STAGING**
+**Commit**: 7ccb20da
+
+**Feature Gap Fix**: Create Sign-Up List form was missing Quantity-based vs Slot-based item type selection that Phase 6A.121 added only to the Edit page. Updated full-stack: Domain, Application, API, and Frontend. Backend defaults to Quantity type for backward compatibility.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.130: STANDALONE DONATION SYSTEM ✅ DEPLOYED (2026-02-26)
 **Date**: 2026-02-26
 **Session**: Phase 6A.130 - Complete Standalone Donation System for Events
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WITH API TESTS + ARCHITECT REVIEW**

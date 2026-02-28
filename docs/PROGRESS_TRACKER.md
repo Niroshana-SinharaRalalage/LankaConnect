@@ -1,7 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-26 - Phase 6A.130 Standalone Donation System ✅ DEPLOYED*
+*Last Updated: 2026-02-28 - Phase 6A.131 Quantity/Slot Support in Create Sign-Up List ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.130: Standalone Donation System ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.131: Add Quantity/Slot Item Type Support to Create Sign-Up List ✅ DEPLOYED
+
+### Phase 6A.131: Quantity/Slot-Based Items in Create Sign-Up List - 2026-02-28
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 7ccb20da)**
+
+**Root Cause**: Phase 6A.121 added Quantity-based vs Slot-based item types but ONLY for the Edit Sign-Up List page. The Create Sign-Up List form (last modified Dec 2025) was never updated and still used the old flat `quantity` field model.
+
+**Classification**: Feature Gap - not a regression.
+
+**Fixes** (7 files, full-stack):
+- **Domain**: Updated `SignUpList.CreateWithCategoriesAndItems()` to accept extended tuple with `ItemType`, `TargetQuantity`, `AvailableSlots`, `SuggestedPerSlot` and branch on item type
+- **Application**: Updated `SignUpItemDto` command DTO with dual-field support
+- **Handler**: Updated `CreateSignUpListWithItemsCommandHandler` to pass extended item data to domain
+- **API**: Updated `SignUpItemRequestDto` with `ItemType` (defaults to Quantity for backward compat), updated controller mapping
+- **Frontend DTO**: Updated `SignUpItemRequestDto` TypeScript interface with `itemType` and dual fields
+- **Frontend UI**: Added Item Type radio buttons (Quantity vs Slot) with conditional fields for Mandatory and Suggested categories in Create Sign-Up List form
+- **Backward compat**: Updated old `manage-signups` page to work with new DTO
+
+**Verification**:
+- ✅ Backend: 0 errors, 0 warnings
+- ✅ Frontend: No new TypeScript errors in changed files
+- ✅ Both GH Actions deployments triggered
+
+---
+
+## 🎯 Previous Session - Phase 6A.130: Standalone Donation System ✅ DEPLOYED
 
 ### Phase 6A.130: Complete Standalone Donation System for Events - 2026-02-26
 

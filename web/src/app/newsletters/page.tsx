@@ -85,32 +85,20 @@ export default function DiscoverNewslettersPage() {
       const metrosForState = metroAreasByState.get(state.code) || [];
       if (metrosForState.length === 0) return;
 
-      const stateMetro = metrosForState.find((m) => m.isStateLevelArea);
+      // Only show city-level metros (state checkbox already means "all in state")
       const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
 
-      const children: TreeNode[] = [];
-
-      if (stateMetro) {
-        children.push({
-          id: stateMetro.id,
-          label: `All of ${state.name}`,
-          checked: selectedMetroIds.includes(stateMetro.id),
-        });
-      }
-
-      cityMetros.forEach((metro) => {
-        children.push({
-          id: metro.id,
-          label: metro.name,
-          checked: selectedMetroIds.includes(metro.id),
-        });
-      });
+      if (cityMetros.length === 0) return;
 
       nodes.push({
         id: state.code,
         label: state.name,
         checked: false,
-        children,
+        children: cityMetros.map((metro) => ({
+          id: metro.id,
+          label: metro.name,
+          checked: selectedMetroIds.includes(metro.id),
+        })),
       });
     });
 

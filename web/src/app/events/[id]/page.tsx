@@ -1679,65 +1679,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Donation Feature: Public Donation Summary (when organizer enabled ShowDonationSummary) */}
-        {publicDonationSummary && publicDonationSummary.completedDonations > 0 && (
-          <div className="mt-8 p-4 bg-rose-50 border border-rose-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Heart className="h-5 w-5 text-rose-600" />
-              <div>
-                <p className="text-sm font-semibold text-rose-800">
-                  {publicDonationSummary.completedDonations} donation{publicDonationSummary.completedDonations !== 1 ? 's' : ''} received
-                </p>
-                <p className="text-xs text-rose-600 mt-0.5">
-                  ${publicDonationSummary.netRaisedAmount.toFixed(2)} {publicDonationSummary.currency} raised
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Donation Feature: My Donations (logged-in user's own donations) */}
-        {myDonations && myDonations.length > 0 && (
-          <div className="mt-6">
-            <CollapsibleSection
-              title="Your Donations"
-              icon={<Heart className="h-5 w-5 text-rose-600" />}
-              defaultOpen={false}
-            >
-              <div className="space-y-2">
-                {myDonations.map((donation) => (
-                  <div key={donation.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-rose-100">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-semibold text-neutral-900">${donation.amount.toFixed(2)}</span>
-                      {donation.isBundled && (
-                        <span className="text-xs text-neutral-500">(with registration)</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        donation.status === 'Completed'
-                          ? 'bg-green-100 text-green-700'
-                          : donation.status === 'Pending'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-neutral-100 text-neutral-600'
-                      }`}>
-                        {donation.status}
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        {new Date(donation.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CollapsibleSection>
-          </div>
-        )}
-
-        {/* Donation Feature: Standalone Donation Section */}
+        {/* Donation Feature: Combined Section (summary + donate form + your donations) */}
         {event?.donationConfig?.isEnabled === true && (
           <div className="mt-8">
-            <DonationSection eventId={id} donationConfig={event.donationConfig} />
+            <DonationSection
+              eventId={id}
+              donationConfig={event.donationConfig}
+              publicSummary={publicDonationSummary}
+              myDonations={myDonations}
+            />
           </div>
         )}
 

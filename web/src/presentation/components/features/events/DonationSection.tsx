@@ -6,18 +6,22 @@ import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSect
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useCreateDonation } from '@/presentation/hooks/useDonations';
-import type { DonationConfigurationDto } from '@/infrastructure/api/types/events.types';
+import type { DonationConfigurationDto, PublicDonationSummaryDto, DonationDto } from '@/infrastructure/api/types/events.types';
 
 interface DonationSectionProps {
   eventId: string;
   donationConfig: DonationConfigurationDto;
+  /** Public donation summary (when organizer enabled ShowDonationSummary) */
+  publicSummary?: PublicDonationSummaryDto | null;
+  /** Logged-in user's own donations for this event */
+  myDonations?: DonationDto[] | null;
 }
 
 /**
  * Public standalone donation UI shown on event details page.
  * Allows any visitor to donate at any time when donations are enabled.
  */
-export function DonationSection({ eventId, donationConfig }: DonationSectionProps) {
+export function DonationSection({ eventId, donationConfig, publicSummary, myDonations }: DonationSectionProps) {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(
     donationConfig.suggestedAmounts.length > 0 ? donationConfig.suggestedAmounts[0] : null
   );
@@ -105,6 +109,23 @@ export function DonationSection({ eventId, donationConfig }: DonationSectionProp
       description={donationConfig.donationMessage || undefined}
       defaultOpen={false}
     >
+        {/* Public Donation Summary */}
+        {publicSummary && publicSummary.completedDonations > 0 && (
+          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Heart className="h-5 w-5 text-rose-600" />
+              <div>
+                <p className="text-sm font-semibold text-rose-800">
+                  {publicSummary.completedDonations} donation{publicSummary.completedDonations !== 1 ? 's' : ''} received
+                </p>
+                <p className="text-xs text-rose-600 mt-0.5">
+                  ${publicSummary.netRaisedAmount.toFixed(2)} {publicSummary.currency} raised
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Suggested Amounts */}
           {donationConfig.suggestedAmounts.length > 0 && (
@@ -228,6 +249,39 @@ export function DonationSection({ eventId, donationConfig }: DonationSectionProp
                 : 'Select an amount'}
           </Button>
         </form>
+
+        {/* Your Donations */}
+        {myDonations && myDonations.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-neutral-200">
+            <h4 className="text-sm font-semibold text-neutral-700 mb-2">Your Donations</h4>
+            <div className="space-y-2">
+              {myDonations.map((donation) => (
+                <div key={donation.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-rose-100">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-neutral-900">${donation.amount.toFixed(2)}</span>
+                    {donation.isBundled && (
+                      <span className="text-xs text-neutral-500">(with registration)</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      donation.status === 'Completed'
+                        ? 'bg-green-100 text-green-700'
+                        : donation.status === 'Pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-neutral-100 text-neutral-600'
+                    }`}>
+                      {donation.status}
+                    </span>
+                    <span className="text-xs text-neutral-500">
+                      {new Date(donation.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
     </CollapsibleSection>
   );
 }

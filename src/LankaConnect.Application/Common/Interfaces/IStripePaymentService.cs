@@ -40,6 +40,11 @@ public interface IStripePaymentService
     Task<Result<AdditionCheckoutResult>> CreateAdditionCheckoutSessionAsync(
         CreateAdditionCheckoutSessionRequest request,
         CancellationToken cancellationToken = default);
+
+    // Donation Feature: Create standalone checkout session for donations
+    Task<Result<DonationCheckoutResult>> CreateDonationCheckoutSessionAsync(
+        CreateDonationCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -363,11 +368,30 @@ public class CreateEventCheckoutSessionRequest
     public Guid EventId { get; init; }
     public Guid RegistrationId { get; init; }
     public required string EventTitle { get; init; }
-    public decimal Amount { get; init; }
+    public decimal Amount { get; set; }
     public string Currency { get; init; } = "USD";
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
     public Dictionary<string, string>? Metadata { get; init; }
+
+    /// <summary>
+    /// Optional line items for multi-item checkout (e.g., ticket + donation).
+    /// C1 Guard: When null or empty, existing single-item behavior is preserved.
+    /// </summary>
+    public List<CheckoutLineItem>? LineItems { get; set; }
+}
+
+/// <summary>
+/// Represents a single line item in a Stripe Checkout session.
+/// Used for combined ticket + donation checkout.
+/// </summary>
+public class CheckoutLineItem
+{
+    public required string Name { get; init; }
+    public required string Description { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public int Quantity { get; init; } = 1;
 }
 
 /// <summary>
@@ -522,5 +546,30 @@ public class AdditionCheckoutResult
     /// <summary>
     /// When the checkout session expires (typically 24 hours).
     /// </summary>
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to create a standalone Stripe Checkout session for a donation.
+/// </summary>
+public class CreateDonationCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid DonationId { get; init; }
+    public required string EventTitle { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Result of creating a donation Stripe Checkout session.
+/// </summary>
+public class DonationCheckoutResult
+{
+    public required string SessionId { get; init; }
+    public required string CheckoutUrl { get; init; }
     public DateTime ExpiresAt { get; init; }
 }

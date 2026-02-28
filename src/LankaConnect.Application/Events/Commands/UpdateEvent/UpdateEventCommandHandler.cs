@@ -507,6 +507,35 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return contactResult;
         }
 
+        // Donation Feature: Update donation configuration if provided
+        if (request.DonationsEnabled.HasValue)
+        {
+            if (request.DonationsEnabled.Value)
+            {
+                var donationConfigResult = DonationConfiguration.Create(
+                    isEnabled: true,
+                    suggestedAmounts: request.DonationSuggestedAmounts,
+                    allowCustomAmount: request.DonationAllowCustomAmount ?? true,
+                    minAmount: request.DonationMinAmount,
+                    maxAmount: request.DonationMaxAmount,
+                    donationMessage: request.DonationMessage,
+                    showDonationSummary: request.ShowDonationSummary ?? false);
+
+                if (donationConfigResult.IsFailure)
+                    return Result.Failure(donationConfigResult.Error);
+
+                var setDonationResult = @event.SetDonationConfiguration(donationConfigResult.Value);
+                if (setDonationResult.IsFailure)
+                    return setDonationResult;
+            }
+            else
+            {
+                var disableResult = @event.DisableDonations();
+                if (disableResult.IsFailure)
+                    return disableResult;
+            }
+        }
+
                 // Save changes (EF Core now detects changes via ChangeTracker)
                 _eventRepository.Update(@event);
                 await _unitOfWork.CommitAsync(cancellationToken);

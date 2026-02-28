@@ -136,6 +136,14 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             breakdown.OwnsOne(b => b.OrganizerPayout);
         });
 
+        // Donation Configuration: JSONB value object (C5 Guard: flat primitives only, no nested Money)
+        builder.OwnsOne(e => e.DonationConfig, donationConfig =>
+        {
+            donationConfig.ToJson("donation_config");
+
+            // SuggestedAmounts is a List<decimal> — EF Core handles this automatically in JSONB
+        });
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

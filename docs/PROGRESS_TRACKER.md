@@ -1,7 +1,80 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-24 - Phase 6A.129 EF Core JSONB Change Tracking Fix ✅ DEPLOYED*
+*Last Updated: 2026-02-28 - Phase 6A.129b Fix Missing Signup Forms Button in Email Templates ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.129: EF Core JSONB Change Tracking Fix ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.129b: Fix Missing "View Signup Forms" Button in Email Templates ✅ DEPLOYED
+
+### Phase 6A.129b: Add Styled Signup Forms Button to Email Templates - 2026-02-28
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit be4ae98f + 3631880e) - VERIFIED VIA API**
+
+**Root Cause**: Phase 6A.113 migration used `File.ReadAllText()` to load template HTML from disk files. This approach was fragile and the `{{#HasSignupForms}}` block it added was only a simple `<p>` text link — visually inconsistent with the styled `{{#HasSignUpLists}}` button.
+
+**Fix**: New migration (`Phase6A129b`) with inline SQL (not file-based):
+- Step 1: `REGEXP_REPLACE` removes any existing simple-style `{{#HasSignupForms}}` blocks
+- Step 2: `REPLACE` adds a fully styled button (MSO VML roundrect + HTML `<a>` tag) after `{{/HasSignUpLists}}`
+- Idempotent: `WHERE NOT LIKE '%HasSignupForms%'` guard
+
+**Verification** (via API):
+- ✅ `GET /api/Diagnostics/email-templates/check-blocks`: 17/17 templates have both `HasSignUpLists` and `HasSignupForms`
+- ✅ Event `62bf37a7` confirmed: 1 signup list + 2 Active forms
+- ✅ All handler code correctly calls `WithSignupForms()` when active forms exist
+- ✅ Migration applied confirmed in deployment logs
+
+**Supplementary**: Added `check-blocks` diagnostic endpoint to verify template Handlebars blocks server-side.
+
+---
+
+## 🎯 Previous Session - Phase 6A.131: Add Quantity/Slot Item Type Support to Create Sign-Up List ✅ DEPLOYED
+
+### Phase 6A.131: Quantity/Slot-Based Items in Create Sign-Up List - 2026-02-28
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 7ccb20da)**
+
+**Root Cause**: Phase 6A.121 added Quantity-based vs Slot-based item types but ONLY for the Edit Sign-Up List page. The Create Sign-Up List form (last modified Dec 2025) was never updated and still used the old flat `quantity` field model.
+
+**Classification**: Feature Gap - not a regression.
+
+**Fixes** (7 files, full-stack):
+- **Domain**: Updated `SignUpList.CreateWithCategoriesAndItems()` to accept extended tuple with `ItemType`, `TargetQuantity`, `AvailableSlots`, `SuggestedPerSlot` and branch on item type
+- **Application**: Updated `SignUpItemDto` command DTO with dual-field support
+- **Handler**: Updated `CreateSignUpListWithItemsCommandHandler` to pass extended item data to domain
+- **API**: Updated `SignUpItemRequestDto` with `ItemType` (defaults to Quantity for backward compat), updated controller mapping
+- **Frontend DTO**: Updated `SignUpItemRequestDto` TypeScript interface with `itemType` and dual fields
+- **Frontend UI**: Added Item Type radio buttons (Quantity vs Slot) with conditional fields for Mandatory and Suggested categories in Create Sign-Up List form
+- **Backward compat**: Updated old `manage-signups` page to work with new DTO
+
+**Verification**:
+- ✅ Backend: 0 errors, 0 warnings
+- ✅ Frontend: No new TypeScript errors in changed files
+- ✅ Both GH Actions deployments triggered
+
+---
+
+## 🎯 Previous Session - Phase 6A.130: Standalone Donation System ✅ DEPLOYED
+
+### Phase 6A.130: Complete Standalone Donation System for Events - 2026-02-26
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit e3112bbf) - VERIFIED WITH API TESTS + 2x ARCHITECT REVIEW**
+
+**Feature**: Full standalone donation system for events across all architecture layers.
+
+**Implementation Summary** (61 files, ~12,465 lines):
+- **Domain**: `Donation` entity (Stripe lifecycle), `DonationConfiguration` VO (JSONB), `DonationStatus` enum, `DonationCompletedEvent`, `IDonationRepository`, Event donation methods
+- **Infrastructure**: `DonationEntityConfiguration`, `DonationRepository`, EF Core migration (`events.donations` table + `donation_config` JSONB), DI registration
+- **Application**: `CreateDonationCommand`, combined checkout in `RsvpToEvent`/`RegisterAnonymousAttendee`, `GetEventDonationsQuery`, `ExportDonationsQuery`, `DonationCompletedEventHandler`
+- **Stripe**: `CreateDonationCheckoutSessionAsync`, webhook routing with C2/C4 guards
+- **API**: `DonationsController` (POST anonymous, GET/export organizer-authorized)
+- **Frontend**: `DonationSection`, `DonationOptionInForm`, `DonationConfigForm`, `DonationsManagementTab`, `useDonations` hooks
+
+**Verification**:
+- ✅ Backend: 0 errors, 0 warnings | Frontend: builds clean
+- ✅ Tests: 1468 passed, 0 failed | Azure logs: clean
+- ✅ API tested on staging: 200/400/403 responses correct
+- ✅ Both GH Actions deployments: success
+
+---
+
+## 🎯 Previous Session - Phase 6A.129: EF Core JSONB Change Tracking Fix ✅ DEPLOYED
 
 ### Phase 6A.129: Fix dropdown/select form answer updates not persisting - 2026-02-24
 

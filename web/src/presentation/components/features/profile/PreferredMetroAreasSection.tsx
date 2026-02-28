@@ -61,35 +61,20 @@ export function PreferredMetroAreasSection() {
 
       if (metrosForState.length === 0) return;
 
-      // Separate state-level and city-level metros
-      const stateMetro = metrosForState.find((m) => m.isStateLevelArea);
+      // Only show city-level metros (state checkbox already means "all in state")
       const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
 
-      const children: TreeNode[] = [];
-
-      // Add state-level metro first if it exists
-      if (stateMetro) {
-        children.push({
-          id: stateMetro.id,
-          label: stateMetro.name,
-          checked: selectedMetroAreas.includes(stateMetro.id),
-        });
-      }
-
-      // Add city-level metros
-      cityMetros.forEach((metro) => {
-        children.push({
-          id: metro.id,
-          label: metro.name,
-          checked: selectedMetroAreas.includes(metro.id),
-        });
-      });
+      if (cityMetros.length === 0) return;
 
       nodes.push({
         id: state.code,
         label: state.name,
-        checked: false, // Parent nodes don't have checkboxes in our design
-        children,
+        checked: false,
+        children: cityMetros.map((metro) => ({
+          id: metro.id,
+          label: metro.name,
+          checked: selectedMetroAreas.includes(metro.id),
+        })),
       });
     });
 

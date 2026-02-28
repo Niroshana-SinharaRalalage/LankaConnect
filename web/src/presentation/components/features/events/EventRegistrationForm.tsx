@@ -7,8 +7,9 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto } from '@/infrastructure/api/types/events.types';
+import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { DonationOptionInForm } from './DonationOptionInForm';
 import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
 
 /**
@@ -34,6 +35,8 @@ interface EventRegistrationFormProps {
   groupPricingTiers?: readonly GroupPricingTierDto[];
   // Issue #51: Max attendees per registration (configurable by event organizer)
   maxAttendeesPerRegistration?: number;
+  // Donation Feature: Optional donation configuration
+  donationConfig?: DonationConfigurationDto | null;
   isProcessing: boolean;
   onSubmit: (data: AnonymousRegistrationRequest | RsvpRequest) => Promise<void>;
   error?: string | null;
@@ -51,12 +54,16 @@ export function EventRegistrationForm({
   hasGroupPricing,
   groupPricingTiers,
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
+  donationConfig,
   isProcessing,
   onSubmit,
   error,
 }: EventRegistrationFormProps) {
   const { user } = useAuthStore();
   const { profile, loadProfile } = useProfileStore();
+
+  // Donation Feature: Donation amount state
+  const [donationAmount, setDonationAmount] = useState<number | null>(null);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -280,6 +287,11 @@ export function EventRegistrationForm({
         quantity: attendeesData.length,
         // Attendees array with AgeCategory and Gender
         attendees: attendeesData,
+        // Donation Feature: Include donation amount if provided
+        ...(donationAmount && donationAmount > 0 && {
+          donationAmount,
+          donorName: attendeesData[0]?.name?.trim() || email.trim(),
+        }),
       };
 
       await onSubmit(anonymousData);
@@ -293,6 +305,11 @@ export function EventRegistrationForm({
         email: email.trim() || undefined,
         phoneNumber: phoneNumber.trim() || undefined,
         address: address.trim() || undefined,
+        // Donation Feature: Include donation amount if provided
+        ...(donationAmount && donationAmount > 0 && {
+          donationAmount,
+          donorName: user.fullName || undefined,
+        }),
       };
 
       await onSubmit(rsvpData);
@@ -589,6 +606,14 @@ export function EventRegistrationForm({
         </div>
       )}
 
+      {/* Donation Feature: Optional donation add-on */}
+      {donationConfig?.isEnabled === true && (
+        <DonationOptionInForm
+          donationConfig={donationConfig}
+          onDonationChange={setDonationAmount}
+        />
+      )}
+
       {/* Total Price with Group/Dual/Single Pricing Breakdown */}
       {!isFree && totalPrice > 0 && (
         <div className="p-4 bg-neutral-50 rounded-lg border-t-2 border-orange-500">
@@ -634,10 +659,18 @@ export function EventRegistrationForm({
             </div>
           )}
 
+          {/* Donation Feature: Show donation amount in price breakdown */}
+          {donationAmount && donationAmount > 0 && (
+            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
+              <span>Donation (voluntary)</span>
+              <span>${donationAmount.toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${totalPrice.toFixed(2)}
+              ${(totalPrice + (donationAmount || 0)).toFixed(2)}
             </span>
           </div>
         </div>

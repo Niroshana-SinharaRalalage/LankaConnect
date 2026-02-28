@@ -82,6 +82,9 @@ public static class EmailTemplateContract
         public const string FormResponseConfirmation = "template-form-response-confirmation";
         public const string FormResponseUpdate = "template-form-response-update";
         public const string FormResponseCancellation = "template-form-response-cancellation";
+
+        // Donation Templates
+        public const string DonationReceipt = "template-donation-receipt";
     }
 
     #endregion
@@ -900,6 +903,26 @@ public static class EmailTemplateContract
         /// Report URL (e.g., analytics page).
         /// </summary>
         public const string ReportUrl = "ReportUrl";
+    }
+
+    #endregion
+
+    #region Donation Parameters
+
+    /// <summary>
+    /// Parameters for donation receipt email.
+    /// Template: template-donation-receipt
+    /// </summary>
+    public static class Donation
+    {
+        public const string DonorName = "DonorName";
+        public const string DonorEmail = "DonorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string DonationAmount = "DonationAmount";
+        public const string DonationCurrency = "DonationCurrency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
     }
 
     #endregion

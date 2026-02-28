@@ -69,20 +69,23 @@ export function MetroAreasSelector({
       stateA.localeCompare(stateB)
     );
 
-    // Build tree structure: states as parents, metros as children
-    return stateEntries.map(([state, metros]) => ({
-      id: state,
-      label: state,
-      checked: false, // Parent nodes don't have direct checked state
-      children: metros
-        // Sort metros alphabetically within each state
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((metro) => ({
-          id: metro.id,
-          label: metro.name,
-          checked: value.includes(metro.id),
-        })),
-    }));
+    // Build tree structure: states as parents, city-level metros as children
+    // Filter out state-level areas (state checkbox already means "all in state")
+    return stateEntries
+      .map(([state, metros]) => ({
+        id: state,
+        label: state,
+        checked: false,
+        children: metros
+          .filter((m) => !m.isStateLevelArea)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((metro) => ({
+            id: metro.id,
+            label: metro.name,
+            checked: value.includes(metro.id),
+          })),
+      }))
+      .filter((node) => node.children.length > 0);
   }, [metroAreas, metroAreasByState, value]);
 
   // Determine placeholder text based on loading state

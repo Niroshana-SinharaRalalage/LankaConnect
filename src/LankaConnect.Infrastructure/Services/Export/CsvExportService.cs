@@ -463,4 +463,50 @@ public class CsvExportService : ICsvExportService
 
         return "—";
     }
+
+    /// <summary>
+    /// Donation Feature: Exports donations to CSV format.
+    /// </summary>
+    public byte[] ExportDonations(EventDonationsResponse donations)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            NewLine = "\n",
+            ShouldQuote = args => true,
+            TrimOptions = TrimOptions.Trim
+        });
+
+        // Header row
+        csv.WriteField("Donor Name");
+        csv.WriteField("Email");
+        csv.WriteField("Phone");
+        csv.WriteField("Amount");
+        csv.WriteField("Currency");
+        csv.WriteField("Status");
+        csv.WriteField("Notes");
+        csv.WriteField("Date");
+        csv.WriteField("Bundled with Registration");
+        csv.NextRecord();
+
+        // Data rows
+        foreach (var d in donations.Donations)
+        {
+            csv.WriteField(d.DonorName);
+            csv.WriteField(d.DonorEmail);
+            csv.WriteField(d.DonorPhone ?? "");
+            csv.WriteField(d.Amount.ToString("F2"));
+            csv.WriteField(d.Currency);
+            csv.WriteField(d.Status);
+            csv.WriteField(d.DonorNotes ?? "");
+            csv.WriteField(d.PaymentCompletedAt?.ToString("yyyy-MM-dd HH:mm:ss")
+                ?? d.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
+            csv.WriteField(d.IsBundled ? "Yes" : "No");
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
 }

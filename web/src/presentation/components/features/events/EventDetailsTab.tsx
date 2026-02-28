@@ -25,6 +25,9 @@ import {
   Save,
   X,
   Edit,
+  Heart,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -402,6 +405,101 @@ export function EventDetailsTab({
                     {event.organizerContactPhone}
                   </a>
                 </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Donation Feature: Donation Configuration Section */}
+      {event.donationConfig && (
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ color: '#8B1538' }}>Donation Configuration</CardTitle>
+            <CardDescription>Donation settings for this event</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-[#FF7900]" />
+                  Status:
+                </span>
+                <div className="flex items-center gap-2">
+                  {event.donationConfig.isEnabled ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700 font-medium">Donations enabled</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-500">Donations disabled</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              {event.donationConfig.isEnabled && (
+                <>
+                  {event.donationConfig.suggestedAmounts && event.donationConfig.suggestedAmounts.length > 0 && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Suggested Amounts:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {event.donationConfig.suggestedAmounts.map((amount: number) => (
+                          <Badge key={amount} className="bg-rose-50 text-rose-700 border border-rose-200">
+                            ${amount.toFixed(2)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Custom Amount:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.donationConfig.allowCustomAmount ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Allowed</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">Not allowed</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {(event.donationConfig.minAmount || event.donationConfig.maxAmount) && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Amount Range:
+                      </span>
+                      <span className="text-sm text-neutral-700">
+                        {event.donationConfig.minAmount ? `$${event.donationConfig.minAmount.toFixed(2)}` : 'No min'}
+                        {' — '}
+                        {event.donationConfig.maxAmount ? `$${event.donationConfig.maxAmount.toFixed(2)}` : 'No max'}
+                      </span>
+                    </div>
+                  )}
+                  {event.donationConfig.donationMessage && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-[#FF7900]" />
+                        Donation Message:
+                      </span>
+                      <span className="text-sm text-neutral-600 italic">
+                        &ldquo;{event.donationConfig.donationMessage}&rdquo;
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </CardContent>

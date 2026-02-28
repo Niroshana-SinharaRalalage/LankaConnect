@@ -29,7 +29,13 @@ public record RegisterAnonymousAttendeeCommand(
     int Quantity = 1,
     // Phase 6A.44: Stripe checkout URLs (required for paid events)
     string? SuccessUrl = null,
-    string? CancelUrl = null
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration
+    // C3 Guard: Always check > 0, not just HasValue. Treat 0 same as null.
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null
 ) : ICommand<string?>;
 
 /// <summary>

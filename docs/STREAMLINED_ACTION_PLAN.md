@@ -7,7 +7,49 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.129: EF CORE JSONB CHANGE TRACKING FIX ✅ DEPLOYED (2026-02-24)
+## 🔄 CURRENT STATUS - PHASE 6A.129b: FIX MISSING SIGNUP FORMS BUTTON IN EMAILS ✅ DEPLOYED (2026-02-28)
+**Date**: 2026-02-28
+**Session**: Phase 6A.129b - Fix Missing "View Signup Forms" Button in Email Templates
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED VIA API**
+**Commits**: be4ae98f (migration), 3631880e (diagnostic endpoint)
+
+**Root Cause**: Phase 6A.113 used fragile `File.ReadAllText()` in migration; signup forms button was only simple text link.
+**Fix**: New inline SQL migration adds styled button (MSO VML + HTML) to all 17 templates with `{{#HasSignUpLists}}`.
+**Verification**: `check-blocks` endpoint confirms 17/17 templates have both `HasSignUpLists` and `HasSignupForms` blocks.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.131: QUANTITY/SLOT IN CREATE SIGN-UP LIST ✅ DEPLOYED (2026-02-28)
+**Date**: 2026-02-28
+**Session**: Phase 6A.131 - Add Quantity/Slot Item Type Support to Create Sign-Up List
+**Status**: ✅ **DEPLOYED TO STAGING**
+**Commit**: 7ccb20da
+
+**Feature Gap Fix**: Create Sign-Up List form was missing Quantity-based vs Slot-based item type selection that Phase 6A.121 added only to the Edit page. Updated full-stack: Domain, Application, API, and Frontend. Backend defaults to Quantity type for backward compatibility.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.130: STANDALONE DONATION SYSTEM ✅ DEPLOYED (2026-02-26)
+**Date**: 2026-02-26
+**Session**: Phase 6A.130 - Complete Standalone Donation System for Events
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WITH API TESTS + ARCHITECT REVIEW**
+**Commit**: e3112bbf
+
+**Feature**: Full donation system across all layers (Domain, Application, Infrastructure, API, Frontend).
+- Donation entity with Stripe lifecycle (Pending→Completed→Failed→Abandoned→Refunded)
+- DonationConfiguration JSONB value object on Event
+- Standalone + bundled (during registration) donation flows
+- Combined Stripe Checkout with proportional fee allocation
+- DonationsController with organizer authorization
+- DonationSection (public), DonationConfigForm (organizer), DonationsManagementTab (management)
+- Fire-and-forget receipt email, Excel/CSV export
+- 1468 tests passing, 0 errors, 0 warnings
+
+**Architect Review**: 2 reviews completed. All CRITICAL issues from review 1 fixed. Review 2 found only UI polish items (focus rings, color consistency, accessibility labels) - no architectural or functional issues.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.129: EF CORE JSONB CHANGE TRACKING FIX ✅ DEPLOYED (2026-02-24)
 **Date**: 2026-02-24
 **Session**: Phase 6A.129 - Fix EF Core JSONB change tracking for dropdown/select form updates
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED WITH E2E API TEST**

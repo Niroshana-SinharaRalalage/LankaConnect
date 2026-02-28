@@ -58,20 +58,23 @@ public class CreateSignUpListWithItemsCommandHandler : ICommandHandler<CreateSig
                     "CreateSignUpListWithItems: Event loaded - EventId={EventId}, Title={Title}, CurrentSignUpListCount={SignUpListCount}",
                     @event.Id, @event.Title.Value, @event.SignUpLists.Count);
 
-                // Convert items to tuple format expected by domain method
-                var items = request.Items.Select(item => (
-                    description: item.ItemDescription,
-                    quantity: item.Quantity,
-                    category: item.ItemCategory,
-                    notes: item.Notes
-                ));
-
                 _logger.LogInformation(
                     "CreateSignUpListWithItems: Creating sign-up list - Category={Category}, HasMandatory={HasMandatory}, HasPreferred={HasPreferred}, HasSuggested={HasSuggested}, HasOpen={HasOpen}",
                     request.Category, request.HasMandatoryItems, request.HasPreferredItems, request.HasSuggestedItems, request.HasOpenItems);
 
+                // Phase 6A.131: Convert items to extended tuple format supporting both quantity-based and slot-based items
+                var items = request.Items.Select(item => (
+                    description: item.ItemDescription,
+                    itemType: item.ItemType,
+                    category: item.ItemCategory,
+                    targetQuantity: item.TargetQuantity,
+                    availableSlots: item.AvailableSlots,
+                    suggestedPerSlot: item.SuggestedPerSlot,
+                    notes: item.Notes
+                ));
+
                 // Create sign-up list with items in single operation
-                // Phase 6A.27: Pass HasOpenItems parameter
+                // Phase 6A.131: Pass dual-field item data for quantity/slot support
                 var signUpListResult = SignUpList.CreateWithCategoriesAndItems(
                     request.Category,
                     request.Description,

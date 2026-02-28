@@ -88,6 +88,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<RegistrationAddition> RegistrationAdditions => Set<RegistrationAddition>(); // Delta payment for adding attendees
     public DbSet<RegistrationPayment> RegistrationPayments => Set<RegistrationPayment>(); // Payment audit trail
 
+    // Donation Entity Set (Standalone Donation System)
+    public DbSet<Donation> Donations => Set<Donation>(); // Event donations with Stripe payment lifecycle
+
     // Badge Entity Sets (Phase 6A.25)
     public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
     public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
@@ -171,6 +174,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Registration Addition entity configurations (Add-Only Attendees Feature)
         modelBuilder.ApplyConfiguration(new RegistrationAdditionConfiguration());
         modelBuilder.ApplyConfiguration(new RegistrationPaymentConfiguration());
+
+        // Donation entity configuration (Standalone Donation System)
+        modelBuilder.ApplyConfiguration(new DonationEntityConfiguration());
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
@@ -267,6 +273,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
         modelBuilder.Entity<RegistrationPayment>().ToTable("registration_payments", "events");
 
+        // Donation table (Standalone Donation System)
+        modelBuilder.Entity<Donation>().ToTable("donations", "events");
+
         // Badges schema (Phase 6A.25)
         modelBuilder.Entity<Badge>().ToTable("badges", "badges");
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
@@ -331,7 +340,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventForm), // Custom Form/Survey Sign-Up Feature
             typeof(FormQuestion), // Custom Form/Survey Sign-Up Feature
             typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
-            typeof(FormAnswer) // Custom Form/Survey Sign-Up Feature
+            typeof(FormAnswer), // Custom Form/Survey Sign-Up Feature
+            typeof(Donation) // Standalone Donation System
         };
 
         // Get all types from Domain assembly that aren't in our configured list

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { Download, Mail, Ticket, CheckCircle, XCircle, Clock, Users, QrCode, RefreshCw } from 'lucide-react';
@@ -139,66 +139,54 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
 
   if (isLoading) {
     return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            Your Ticket
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">Loading ticket...</span>
-          </div>
-        </CardContent>
-      </Card>
+      <CollapsibleSection
+        title="Your Ticket"
+        icon={<Ticket className="h-5 w-5" style={{ color: '#FF7900' }} />}
+        defaultOpen={false}
+      >
+        <div className="flex items-center justify-center py-8">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading ticket...</span>
+        </div>
+      </CollapsibleSection>
     );
   }
 
   if (error || !ticket) {
     return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            Your Ticket
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock className="h-5 w-5" />
-            <span>{error || 'Ticket not available yet.'}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <CollapsibleSection
+        title="Your Ticket"
+        icon={<Ticket className="h-5 w-5" style={{ color: '#FF7900' }} />}
+        defaultOpen={false}
+      >
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock className="h-5 w-5" />
+          <span>{error || 'Ticket not available yet.'}</span>
+        </div>
+      </CollapsibleSection>
     );
   }
 
   const isExpired = new Date(ticket.expiresAt) < new Date();
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Ticket className="h-5 w-5" />
-            Your Ticket
-          </div>
-          {ticket.isValid && !isExpired ? (
-            <Badge variant="featured" className="bg-green-500 text-white">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Valid
-            </Badge>
-          ) : (
-            <Badge variant="hot">
-              <XCircle className="h-3 w-3 mr-1" />
-              {isExpired ? 'Expired' : 'Invalid'}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <CollapsibleSection
+      title="Your Ticket"
+      icon={<Ticket className="h-5 w-5" style={{ color: '#FF7900' }} />}
+      badge={ticket.isValid && !isExpired ? (
+        <Badge variant="featured" className="bg-green-500 text-white">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Valid
+        </Badge>
+      ) : (
+        <Badge variant="hot">
+          <XCircle className="h-3 w-3 mr-1" />
+          {isExpired ? 'Expired' : 'Invalid'}
+        </Badge>
+      )}
+      defaultOpen={false}
+    >
+      <div className="space-y-6">
         {/* Ticket Code */}
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           {/* QR Code */}
@@ -357,7 +345,7 @@ export function TicketSection({ eventId, isPaidEvent }: TicketSectionProps) {
             })}
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </CollapsibleSection>
   );
 }

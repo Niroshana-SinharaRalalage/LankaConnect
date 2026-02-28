@@ -42,5 +42,13 @@ public record UpdateEventCommand(
     string? OrganizerContactPhone = null,
     string? OrganizerContactEmail = null,
     // IsFreeEvent fix: Explicit free event flag from frontend
-    bool? IsFree = null
+    bool? IsFree = null,
+    // Donation Feature: Optional donation configuration (null = don't modify)
+    bool? DonationsEnabled = null,
+    List<decimal>? DonationSuggestedAmounts = null,
+    bool? DonationAllowCustomAmount = null,
+    decimal? DonationMinAmount = null,
+    decimal? DonationMaxAmount = null,
+    string? DonationMessage = null,
+    bool? ShowDonationSummary = null
 ) : ICommand;

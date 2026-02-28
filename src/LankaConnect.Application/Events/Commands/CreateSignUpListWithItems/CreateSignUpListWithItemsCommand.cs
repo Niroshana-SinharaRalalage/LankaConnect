@@ -21,9 +21,13 @@ public record CreateSignUpListWithItemsCommand(
 
 /// <summary>
 /// DTO for sign-up item within the command
+/// Phase 6A.131: Added ItemType, TargetQuantity, AvailableSlots, SuggestedPerSlot for dual-field support
 /// </summary>
 public record SignUpItemDto(
     string ItemDescription,
-    int Quantity,
+    SignUpItemType ItemType,
     SignUpItemCategory ItemCategory,
-    string? Notes);
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
+    string? Notes = null);

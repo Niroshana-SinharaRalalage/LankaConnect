@@ -30,29 +30,32 @@ export function LocationFilter({
   const { metroAreas, isLoading } = useMetroAreas();
 
   // Transform metro areas API data into TreeNode structure
-  const treeNodes: TreeNode[] = metroAreas.reduce((acc: TreeNode[], metroArea) => {
-    // Find or create state node
-    let stateNode = acc.find((node) => node.id === metroArea.state);
+  // Only include city-level metros (state checkbox already means "all in state")
+  const treeNodes: TreeNode[] = metroAreas
+    .filter((m) => !m.isStateLevelArea)
+    .reduce((acc: TreeNode[], metroArea) => {
+      // Find or create state node
+      let stateNode = acc.find((node) => node.id === metroArea.state);
 
-    if (!stateNode) {
-      stateNode = {
-        id: metroArea.state,
-        label: metroArea.state,
-        checked: false,
-        children: [],
-      };
-      acc.push(stateNode);
-    }
+      if (!stateNode) {
+        stateNode = {
+          id: metroArea.state,
+          label: metroArea.state,
+          checked: false,
+          children: [],
+        };
+        acc.push(stateNode);
+      }
 
-    // Add metro area as child
-    stateNode.children!.push({
-      id: metroArea.id,
-      label: metroArea.name,
-      checked: selectedMetroAreaIds.includes(metroArea.id),
-    });
+      // Add metro area as child
+      stateNode.children!.push({
+        id: metroArea.id,
+        label: metroArea.name,
+        checked: selectedMetroAreaIds.includes(metroArea.id),
+      });
 
-    return acc;
-  }, []);
+      return acc;
+    }, []);
 
   if (isLoading) {
     return (

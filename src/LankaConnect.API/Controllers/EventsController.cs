@@ -568,6 +568,7 @@ public class EventsController : BaseController<EventsController>
         }
 
         // Phase 6A.11: Map all DTO fields to command (including multi-attendee fields)
+        // Donation Feature: Include donation fields for combined checkout
         var command = new RsvpToEventCommand(
             id,
             request.UserId,
@@ -577,7 +578,12 @@ public class EventsController : BaseController<EventsController>
             request.PhoneNumber,
             request.Address,
             request.SuccessUrl,
-            request.CancelUrl
+            request.CancelUrl,
+            // Donation Feature: Pass donation fields (C3 Guard: handler checks > 0)
+            DonationAmount: request.DonationAmount,
+            DonorName: request.DonorName,
+            DonorPhone: request.DonorPhone,
+            DonorNotes: request.DonorNotes
         );
         var result = await Mediator.Send(command);
 
@@ -660,7 +666,12 @@ public class EventsController : BaseController<EventsController>
             Address: request.Address,
             Quantity: request.Quantity,
             SuccessUrl: request.SuccessUrl, // Phase 6A.44: Stripe checkout URLs
-            CancelUrl: request.CancelUrl
+            CancelUrl: request.CancelUrl,
+            // Donation Feature: Pass donation fields for combined checkout
+            DonationAmount: request.DonationAmount,
+            DonorName: request.DonorName,
+            DonorPhone: request.DonorPhone,
+            DonorNotes: request.DonorNotes
         );
 
         var result = await Mediator.Send(command);
@@ -1583,11 +1594,14 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Creating sign-up list '{Category}' with {ItemCount} items for event {EventId}",
             request.Category, request.Items.Count, id);
 
-        // Map API DTOs to Application layer DTOs
+        // Phase 6A.131: Map API DTOs to Application layer DTOs with dual-field support
         var items = request.Items.Select(item => new LankaConnect.Application.Events.Commands.CreateSignUpListWithItems.SignUpItemDto(
             item.ItemDescription,
-            item.Quantity,
+            item.ItemType,
             item.ItemCategory,
+            item.TargetQuantity,
+            item.AvailableSlots,
+            item.SuggestedPerSlot,
             item.Notes)).ToList();
 
         var command = new CreateSignUpListWithItemsCommand(
@@ -3005,7 +3019,12 @@ public record RsvpRequest(
     string? Address = null,
     // Session 23: Payment integration - URLs for Stripe Checkout redirect
     string? SuccessUrl = null,
-    string? CancelUrl = null
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration (combined checkout)
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3031,7 +3050,12 @@ public record AnonymousRegistrationRequest(
     int Quantity = 1,
     // Phase 6A.44: Stripe checkout URLs (required for paid events)
     string? SuccessUrl = null,
-    string? CancelUrl = null);
+    string? CancelUrl = null,
+    // Donation Feature: Optional donation during registration (combined checkout)
+    decimal? DonationAmount = null,
+    string? DonorName = null,
+    string? DonorPhone = null,
+    string? DonorNotes = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration
@@ -3103,10 +3127,17 @@ public record UpdateSignUpListRequest(
     bool HasSuggestedItems,
     bool HasOpenItems = false); // Phase 6A.28: Open Items support
 
+/// <summary>
+/// Phase 6A.131: Updated to support both quantity-based and slot-based items in batch creation.
+/// ItemType defaults to Quantity for backward compatibility.
+/// </summary>
 public record SignUpItemRequestDto(
     string ItemDescription,
-    int Quantity,
-    SignUpItemCategory ItemCategory,
+    SignUpItemType ItemType = SignUpItemType.Quantity,
+    SignUpItemCategory ItemCategory = SignUpItemCategory.Mandatory,
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
     string? Notes = null);
 
 /// <summary>

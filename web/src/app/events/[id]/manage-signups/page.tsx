@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, Download, ArrowLeft, ListPlus, Users, X, Edit } from 'lucide-react';
-import { SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { SignUpItemCategory, SignUpItemType } from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -217,24 +217,27 @@ export default function ManageSignUpsPage() {
     try {
       setSubmitError(null);
 
-      // Convert items to API format
+      // Convert items to API format (Phase 6A.131: default to Quantity type for backward compat)
       const items = [
         ...mandatoryItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: SignUpItemType.Quantity,
           itemCategory: SignUpItemCategory.Mandatory,
+          targetQuantity: item.quantity,
           notes: item.notes || null,
         })),
         ...preferredItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: SignUpItemType.Quantity,
           itemCategory: SignUpItemCategory.Preferred,
+          targetQuantity: item.quantity,
           notes: item.notes || null,
         })),
         ...suggestedItems.map(item => ({
           itemDescription: item.description,
-          quantity: item.quantity,
+          itemType: SignUpItemType.Quantity,
           itemCategory: SignUpItemCategory.Suggested,
+          targetQuantity: item.quantity,
           notes: item.notes || null,
         })),
       ];

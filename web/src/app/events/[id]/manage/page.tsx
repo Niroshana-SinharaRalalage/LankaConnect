@@ -12,6 +12,7 @@ import {
   Trash2,
   XCircle,
   Mail,
+  Heart,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -33,6 +34,9 @@ import { DeleteEventModal } from '@/presentation/components/features/events/Dele
 
 // Phase 6A.74: Import EventNewslettersTab
 import { EventNewslettersTab } from '@/presentation/components/features/newsletters/EventNewslettersTab';
+
+// Donation Feature: Import DonationsManagementTab
+import { DonationsManagementTab } from '@/presentation/components/features/events/DonationsManagementTab';
 
 // Custom Forms Feature - Phase 6A: Import EventFormsTab
 import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
@@ -285,6 +289,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Signup Forms',
       icon: FileText,
       content: <EventFormsTab eventId={id} />,
+    },
+    {
+      id: 'donations',
+      label: 'Donations',
+      icon: Heart,
+      content: <DonationsManagementTab eventId={id} donationConfig={event.donationConfig ?? null} />,
     },
     {
       id: 'communications',

@@ -104,6 +104,46 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Phase 6A.129b: Check if specific Handlebars blocks exist in email templates
+    /// Used to verify that migration correctly added {{#HasSignUpLists}} and {{#HasSignupForms}} blocks
+    /// </summary>
+    [HttpGet("email-templates/check-blocks")]
+    public async Task<IActionResult> CheckTemplateBlocks(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var allTemplates = await _emailTemplateRepository.GetAllAsync(cancellationToken);
+            var results = allTemplates
+                .Where(t => t.IsActive)
+                .Select(t => new
+                {
+                    Name = t.Name,
+                    HasSignUpLists = t.HtmlTemplate?.Contains("HasSignUpLists") ?? false,
+                    HasSignupForms = t.HtmlTemplate?.Contains("HasSignupForms") ?? false,
+                    HasOrganizerContact = t.HtmlTemplate?.Contains("HasOrganizerContact") ?? false,
+                    HasEventImage = t.HtmlTemplate?.Contains("HasEventImage") ?? false,
+                    TemplateLength = t.HtmlTemplate?.Length ?? 0,
+                    UpdatedAt = t.UpdatedAt
+                })
+                .OrderBy(t => t.Name)
+                .ToList();
+
+            return Ok(new
+            {
+                TotalChecked = results.Count,
+                WithSignUpLists = results.Count(r => r.HasSignUpLists),
+                WithSignupForms = results.Count(r => r.HasSignupForms),
+                Templates = results
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[DIAGNOSTICS] Failed to check template blocks");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Test endpoint to trigger a diagnostic log entry for signup commitment
     /// </summary>
     [HttpPost("test-signup-commitment-logging")]

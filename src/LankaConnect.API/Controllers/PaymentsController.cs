@@ -33,6 +33,7 @@ public class PaymentsController : ControllerBase
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IRegistrationAdditionRepository _additionRepository;
     private readonly IRegistrationPaymentRepository _paymentRepository;
+    private readonly IDonationRepository _donationRepository;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly StripeOptions _stripeOptions;
@@ -47,6 +48,7 @@ public class PaymentsController : ControllerBase
         IRegistrationRepository registrationRepository,
         IRegistrationAdditionRepository additionRepository,
         IRegistrationPaymentRepository paymentRepository,
+        IDonationRepository donationRepository,
         IRevenueCalculatorService revenueCalculatorService,
         IUnitOfWork unitOfWork,
         IOptions<StripeOptions> stripeOptions,
@@ -60,6 +62,7 @@ public class PaymentsController : ControllerBase
         _registrationRepository = registrationRepository;
         _additionRepository = additionRepository;
         _paymentRepository = paymentRepository;
+        _donationRepository = donationRepository;
         _revenueCalculatorService = revenueCalculatorService;
         _unitOfWork = unitOfWork;
         _stripeOptions = stripeOptions.Value;
@@ -371,14 +374,28 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
-            // [AddOnlyAttendees] Check if this is an addition payment
-            if (session.Metadata.TryGetValue("payment_type", out var paymentType) && paymentType == "addition")
+            // Route based on payment_type metadata
+            if (session.Metadata.TryGetValue("payment_type", out var paymentType))
             {
-                _logger.LogInformation(
-                    "[AddOnlyAttendees] [Webhook-Route] Routing to addition handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                await HandleAdditionCheckoutCompletedAsync(session, stripeEvent, correlationId);
-                return;
+                // [AddOnlyAttendees] Check if this is an addition payment
+                if (paymentType == "addition")
+                {
+                    _logger.LogInformation(
+                        "[AddOnlyAttendees] [Webhook-Route] Routing to addition handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                        correlationId, session.Id);
+                    await HandleAdditionCheckoutCompletedAsync(session, stripeEvent, correlationId);
+                    return;
+                }
+
+                // [Donation] Check if this is a standalone donation payment
+                if (paymentType == "donation")
+                {
+                    _logger.LogInformation(
+                        "[Donation] [Webhook-Route] Routing to donation handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                        correlationId, session.Id);
+                    await HandleDonationCheckoutCompletedAsync(session, stripeEvent, correlationId);
+                    return;
+                }
             }
 
             // Extract metadata (regular registration payment)
@@ -483,6 +500,60 @@ public class PaymentsController : ControllerBase
             _logger.LogInformation(
                 "[Phase 6A.52] [Webhook-SUCCESS] Payment completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, PaymentIntentId: {PaymentIntentId}",
                 correlationId, eventId, registrationId, paymentIntentId);
+
+            // C2 Guard: Handle bundled donation in ISOLATED try-catch AFTER registration commits.
+            // If donation fails, registration is already saved — never lose registration.
+            if (session.Metadata.TryGetValue("donation_id", out var donationIdStr) &&
+                Guid.TryParse(donationIdStr, out var donationId))
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "[Donation] [Webhook-Bundled-1] Processing bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}, RegistrationId: {RegistrationId}",
+                        correlationId, donationId, registrationId);
+
+                    var donation = await _donationRepository.GetByDonationIdAsync(donationId);
+                    if (donation == null)
+                    {
+                        _logger.LogWarning(
+                            "[Donation] [Webhook-Bundled-WARN] Bundled donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                            correlationId, donationId);
+                    }
+                    else
+                    {
+                        var donationCompleteResult = donation.CompletePayment(paymentIntentId);
+                        if (donationCompleteResult.IsFailure)
+                        {
+                            _logger.LogWarning(
+                                "[Donation] [Webhook-Bundled-WARN] Donation CompletePayment failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
+                                correlationId, donationId, donationCompleteResult.Error);
+                        }
+                        else
+                        {
+                            // Phase 6A.X FIX: Detach all non-Donation entities before second CommitAsync.
+                            // After the first CommitAsync (registration), domain event handlers may have loaded/modified
+                            // additional entities in the shared DbContext. These stale tracked entities can cause
+                            // DbUpdateException during the donation save. Same pattern as StripeWebhookEventRepository.
+                            await _unitOfWork.ClearChangeTrackerExceptAsync<Donation>();
+
+                            _donationRepository.Update(donation);
+                            await _unitOfWork.CommitAsync();
+
+                            _logger.LogInformation(
+                                "[Donation] [Webhook-Bundled-SUCCESS] Bundled donation completed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}",
+                                correlationId, donationId, paymentIntentId);
+                        }
+                    }
+                }
+                catch (Exception donationEx)
+                {
+                    // C2 Guard: Never let donation failure affect registration.
+                    // Log error but return 200 OK to Stripe.
+                    _logger.LogError(donationEx,
+                        "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation (registration already committed) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, ExceptionType: {ExceptionType}, Message: {ErrorMessage}, InnerException: {InnerMessage}",
+                        correlationId, donationId, donationEx.GetType().FullName, donationEx.Message, donationEx.InnerException?.Message ?? "None");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -742,6 +813,89 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// [Donation] Handles checkout.session.completed for standalone donation payments.
+    /// Completes the Donation entity and dispatches DonationCompletedEvent.
+    /// </summary>
+    private async Task HandleDonationCheckoutCompletedAsync(Session session, Stripe.Event stripeEvent, Guid correlationId)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Donation] [Webhook-Donation-1] Processing standalone donation payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                correlationId, session.Id);
+
+            // Extract donation_id metadata
+            if (!session.Metadata.TryGetValue("donation_id", out var donationIdStr) ||
+                !Guid.TryParse(donationIdStr, out var donationId))
+            {
+                _logger.LogWarning(
+                    "[Donation] [Webhook-Donation-ERROR] Missing donation_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Donation-2] Metadata extracted - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                correlationId, donationId);
+
+            // Load the donation (with tracking)
+            var donation = await _donationRepository.GetByDonationIdAsync(donationId);
+            if (donation == null)
+            {
+                _logger.LogError(
+                    "[Donation] [Webhook-Donation-ERROR] Donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                    correlationId, donationId);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Donation-3] Donation loaded - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}, Amount: {Amount}",
+                correlationId, donationId, donation.Status, donation.Amount.Amount);
+
+            // Verify the donation is still pending (idempotency check)
+            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
+            {
+                _logger.LogWarning(
+                    "[Donation] [Webhook-Donation-WARN] Donation not in Pending status (idempotent skip) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, CurrentStatus: {Status}",
+                    correlationId, donationId, donation.Status);
+                return;
+            }
+
+            // Complete payment on the donation entity
+            var paymentIntentId = session.PaymentIntentId ?? session.Id;
+            var completeResult = donation.CompletePayment(paymentIntentId);
+
+            if (completeResult.IsFailure)
+            {
+                _logger.LogError(
+                    "[Donation] [Webhook-Donation-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
+                    correlationId, donationId, completeResult.Error);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Donation-4] Payment completed on donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, donationId, paymentIntentId);
+
+            // Save changes and dispatch DonationCompletedEvent
+            _donationRepository.Update(donation);
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Donation-SUCCESS] Standalone donation completed successfully - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}, Amount: {Amount}",
+                correlationId, donationId, paymentIntentId, donation.Amount.Amount);
+        }
+        catch (Exception ex)
+        {
+            // Swallow donation errors: standalone donation failures should NOT return HTTP 500
+            // to Stripe (causes retry storms). Donation stays Pending; expiry cleanup handles it.
+            _logger.LogError(ex,
+                "[Donation] [Webhook-Donation-ERROR] Error handling donation checkout (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
+                correlationId, ex.GetType().FullName, ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Phase 6A.81: Handles checkout.session.expired webhook to mark abandoned registrations
     /// This is part of the Three-State Registration Lifecycle to prevent payment bypass.
     /// When Stripe checkout expires (24h), mark registration as Abandoned to allow retry.
@@ -764,6 +918,14 @@ public class PaymentsController : ControllerBase
             _logger.LogInformation(
                 "[Phase 6A.81] [Webhook-Expired-1] Processing checkout.session.expired - CorrelationId: {CorrelationId}, SessionId: {SessionId}, StripeEventId: {StripeEventId}",
                 correlationId, session.Id, stripeEvent.Id);
+
+            // [Donation] Handle standalone donation expiry (no registration_id in metadata)
+            if (session.Metadata.TryGetValue("payment_type", out var expiredPaymentType) &&
+                expiredPaymentType == "donation")
+            {
+                await HandleDonationCheckoutExpiredAsync(session, correlationId);
+                return;
+            }
 
             // Extract metadata
             if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
@@ -834,6 +996,45 @@ public class PaymentsController : ControllerBase
             _logger.LogInformation(
                 "[Phase 6A.81] [Webhook-Expired-SUCCESS] Checkout session expired, registration marked as Abandoned - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AbandonedAt: {AbandonedAt}",
                 correlationId, eventId, registrationId, registration.AbandonedAt?.ToString("o") ?? "null");
+
+            // C4 Guard: If this was a combined checkout, also abandon the bundled donation.
+            // Separate try-catch so registration abandonment is preserved even if donation fails.
+            if (session.Metadata.TryGetValue("donation_id", out var donationIdStr) &&
+                Guid.TryParse(donationIdStr, out var donationId))
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "[Donation] [Webhook-Expired-Donation-1] Abandoning bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                        correlationId, donationId);
+
+                    var donation = await _donationRepository.GetByDonationIdAsync(donationId);
+                    if (donation != null && donation.Status == Domain.Events.Enums.DonationStatus.Pending)
+                    {
+                        donation.MarkAsAbandoned();
+                        _donationRepository.Update(donation);
+                        await _unitOfWork.CommitAsync();
+
+                        _logger.LogInformation(
+                            "[Donation] [Webhook-Expired-Donation-SUCCESS] Bundled donation abandoned - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                            correlationId, donationId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[Donation] [Webhook-Expired-Donation-WARN] Donation not found or not Pending - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}",
+                            correlationId, donationId, donation?.Status.ToString() ?? "NULL");
+                    }
+                }
+                catch (Exception donationEx)
+                {
+                    // C4 Guard: Don't fail the overall expiry handling if donation cleanup fails
+                    _logger.LogError(donationEx,
+                        "[Donation] [Webhook-Expired-Donation-ERROR] Failed to abandon bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                        correlationId, donationId);
+                }
+            }
+
         }
         catch (Exception ex)
         {
@@ -841,6 +1042,62 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.81] [Webhook-Expired-ERROR] Error handling checkout.session.expired webhook - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
                 correlationId, ex.GetType().FullName, ex.Message);
             throw; // Re-throw to trigger outer catch block with HTTP 500
+        }
+    }
+
+    /// <summary>
+    /// [Donation] Handles checkout.session.expired for standalone donation payments.
+    /// Marks the donation as Abandoned.
+    /// </summary>
+    private async Task HandleDonationCheckoutExpiredAsync(Session session, Guid correlationId)
+    {
+        try
+        {
+            if (!session.Metadata.TryGetValue("donation_id", out var donationIdStr) ||
+                !Guid.TryParse(donationIdStr, out var donationId))
+            {
+                _logger.LogWarning(
+                    "[Donation] [Webhook-Expired-Standalone-WARN] Missing donation_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, session.Id);
+                return;
+            }
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Expired-Standalone-1] Processing standalone donation expiry - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                correlationId, donationId);
+
+            var donation = await _donationRepository.GetByDonationIdAsync(donationId);
+            if (donation == null)
+            {
+                _logger.LogWarning(
+                    "[Donation] [Webhook-Expired-Standalone-WARN] Donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                    correlationId, donationId);
+                return;
+            }
+
+            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
+            {
+                _logger.LogWarning(
+                    "[Donation] [Webhook-Expired-Standalone-WARN] Donation not in Pending status - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}",
+                    correlationId, donationId, donation.Status);
+                return;
+            }
+
+            donation.MarkAsAbandoned();
+            _donationRepository.Update(donation);
+            await _unitOfWork.CommitAsync();
+
+            _logger.LogInformation(
+                "[Donation] [Webhook-Expired-Standalone-SUCCESS] Standalone donation abandoned - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                correlationId, donationId);
+        }
+        catch (Exception ex)
+        {
+            // Swallow: donation expiry failure should NOT return HTTP 500 to Stripe.
+            // Donation stays Pending and can be cleaned up by background job.
+            _logger.LogError(ex,
+                "[Donation] [Webhook-Expired-Standalone-ERROR] Error handling donation expiry (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
+                correlationId, ex.GetType().FullName, ex.Message);
         }
     }
 

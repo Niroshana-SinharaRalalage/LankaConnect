@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -29,6 +29,12 @@ import { useState, useEffect } from 'react';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/presentation/lib/utils/date-formatter';
 import { sanitizeHtml } from '@/lib/html-utils';
+// Donation Feature: Import DonationSection for standalone donations
+import { DonationSection } from '@/presentation/components/features/events/DonationSection';
+// Collapsible sections for Registration, Ticket, and Organizer
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
+// Donation Feature: Import donation hooks
+import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/useDonations';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -72,6 +78,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
+  const donationStatus = searchParams.get('donation'); // 'success' | 'cancelled' | null
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -117,6 +124,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
+
+  const isOrganizer = event?.organizerId === user?.userId;
+
+  // Donation Feature: Public summary (when organizer enabled ShowDonationSummary)
+  const { data: publicDonationSummary } = usePublicDonationSummary(
+    event?.donationConfig?.isEnabled && event?.donationConfig?.showDonationSummary ? id : undefined
+  );
+
+  // Donation Feature: My donations (logged-in user's own donations for this event)
+  const { data: myDonations } = useMyDonations(
+    isAuthenticated && event?.donationConfig?.isEnabled ? id : undefined
+  );
 
   // Phase 6A.56 FIX: Remove _hasHydrated dependency - causes registration status "flipping"
   // The auth store now correctly restores isAuthenticated during hydration
@@ -322,6 +341,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         // Session 23: RSVP with payment support
         // Backend returns checkout URL for paid events, null for free events
         // Phase 6A.11 FIX: Always send both quantity AND attendees (backend expects both)
+        // Donation Feature: Pass through donation fields for combined checkout
         const checkoutUrl = await rsvpMutation.mutateAsync({
           eventId: id,
           userId: data.userId,
@@ -332,6 +352,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           address: data.address,
           successUrl,
           cancelUrl,
+          // Donation Feature: Include donation fields for combined checkout
+          donationAmount: (data as any).donationAmount ?? undefined,
+          donorName: (data as any).donorName ?? undefined,
+          donorPhone: (data as any).donorPhone ?? undefined,
+          donorNotes: (data as any).donorNotes ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment
@@ -777,37 +802,36 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Registration Section */}
-            <Card className="border-2" style={{ borderColor: '#FF7900' }}>
-              <CardHeader>
-                <CardTitle>
-                  {/* GitHub Issue #37: Show "Event Cancelled" for cancelled events */}
-                  {isCancelled
-                    ? 'Event Cancelled'
-                    : isUserRegistered
-                    ? 'Your Registration'
-                    : registrationDetails?.status === 'Cancelled'
-                    ? 'Registration Cancelled'
-                    : 'Register for this Event'}
-                </CardTitle>
-                <CardDescription>
-                  {/* GitHub Issue #37: Show cancelled event message first */}
-                  {isCancelled
-                    ? 'This event has been cancelled. Registration is not available.'
-                    : isUserRegistered
-                    ? 'You are already registered for this event!'
-                    : registrationDetails?.status === 'Cancelled'
-                    ? hasStarted
-                      ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
-                      : 'Your registration for this event has been cancelled. You can register again if you wish.'
-                    : hasStarted
-                    ? 'This event has already started. Registration is no longer available.'
-                    : isFull
-                    ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
-                    : 'Reserve your spot now!'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+          </CardContent>
+        </Card>
+
+        {/* Registration Section — outside Event Details card */}
+        <div className="mt-8">
+          <CollapsibleSection
+            title={isCancelled
+                ? 'Event Cancelled'
+                : isUserRegistered
+                ? "You're Registered!"
+                : registrationDetails?.status === 'Cancelled'
+                ? 'Registration Cancelled'
+                : 'Register for this Event'}
+              description={isCancelled
+                ? 'This event has been cancelled. Registration is not available.'
+                : isUserRegistered
+                ? 'Click to view your registration details'
+                : registrationDetails?.status === 'Cancelled'
+                ? hasStarted
+                  ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
+                  : 'Your registration for this event has been cancelled. You can register again if you wish.'
+                : hasStarted
+                ? 'This event has already started. Registration is no longer available.'
+                : isFull
+                ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
+                : 'Reserve your spot now!'}
+              borderColor="#FF7900"
+              defaultOpen={false}
+              badge={isUserRegistered ? <CheckCircle className="h-5 w-5 text-green-600" /> : undefined}
+            >
                 {/* GitHub Issue #37: Show cancelled event info box FIRST */}
                 {isCancelled ? (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -886,6 +910,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1180,6 +1205,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           hasGroupPricing={event.hasGroupPricing}
                           groupPricingTiers={event.groupPricingTiers}
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                          donationConfig={event.donationConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1439,6 +1465,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1498,6 +1525,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                        donationConfig={event.donationConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1571,6 +1599,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     hasGroupPricing={event.hasGroupPricing}
                     groupPricingTiers={event.groupPricingTiers}
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                    donationConfig={event.donationConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}
@@ -1610,10 +1639,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </>
                 )}
-              </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
+            </CollapsibleSection>
+        </div>
 
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
@@ -1624,14 +1651,54 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 6A.X: Event Organizer Contact - Compact Version */}
+        {/* Donation Feature: Success/Cancelled Banner */}
+        {donationStatus === 'success' && (
+          <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Heart className="h-6 w-6 text-emerald-600" />
+              <div>
+                <h3 className="font-semibold text-emerald-800">Thank you for your generous donation!</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  Your payment has been processed successfully. You will receive a confirmation email shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {donationStatus === 'cancelled' && (
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Heart className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800">Donation cancelled</h3>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Your donation was not processed. You can try again below if you&apos;d like to support this event.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Donation Feature: Combined Section (summary + donate form + your donations) */}
+        {event?.donationConfig?.isEnabled === true && (
+          <div className="mt-8">
+            <DonationSection
+              eventId={id}
+              donationConfig={event.donationConfig}
+              publicSummary={publicDonationSummary}
+              myDonations={myDonations}
+            />
+          </div>
+        )}
+
+        {/* Phase 6A.X: Event Organizer Contact - Collapsible */}
         {event && event.publishOrganizerContact && event.organizerContactName && (
           <div className="mt-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-blue-900">Event Organizer Contact</h3>
-              </div>
+            <CollapsibleSection
+              title="Event Organizer Contact"
+              icon={<Users className="h-5 w-5 text-blue-600" />}
+              defaultOpen={false}
+            >
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-700">Name:</span>
@@ -1660,7 +1727,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 )}
               </div>
-            </div>
+            </CollapsibleSection>
           </div>
         )}
 

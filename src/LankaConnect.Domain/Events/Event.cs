@@ -75,6 +75,9 @@ public class Event : BaseEntity
     public string? OrganizerContactPhone { get; private set; }
     public string? OrganizerContactEmail { get; private set; }
 
+    // Donation Configuration: Optional donation settings for the event
+    public DonationConfiguration? DonationConfig { get; private set; }
+
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
@@ -2053,6 +2056,51 @@ public class Event : BaseEntity
             System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return emailRegex.IsMatch(email.Trim());
+    }
+
+    #endregion
+
+    #region Donation Configuration
+
+    /// <summary>
+    /// Sets or updates the donation configuration for this event.
+    /// Organizer uses this to enable/configure donations.
+    /// </summary>
+    public Result SetDonationConfiguration(DonationConfiguration config)
+    {
+        if (config == null)
+            return Result.Failure("Donation configuration is required");
+
+        DonationConfig = config;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Disables donations for this event by setting config to disabled state.
+    /// </summary>
+    public Result DisableDonations()
+    {
+        DonationConfig = DonationConfiguration.Disabled();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Whether donations are currently enabled for this event.
+    /// Returns false when DonationConfig is null (safe default for existing events).
+    /// </summary>
+    public bool AreDonationsEnabled() => DonationConfig?.IsEnabled == true;
+
+    /// <summary>
+    /// Validates a donation amount against the event's donation configuration.
+    /// </summary>
+    public Result ValidateDonationAmount(decimal amount)
+    {
+        if (!AreDonationsEnabled())
+            return Result.Failure("Donations are not enabled for this event");
+
+        return DonationConfig!.ValidateAmount(amount);
     }
 
     #endregion

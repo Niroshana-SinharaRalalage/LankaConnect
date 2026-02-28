@@ -33,4 +33,9 @@ public interface ICsvExportService
     /// <param name="responses">All responses with answers</param>
     /// <returns>CSV file content as byte array</returns>
     byte[] ExportFormResponses(EventFormDetailDto form, FormResponsesPagedDto responses);
+
+    /// <summary>
+    /// Donation Feature: Exports donations to CSV format.
+    /// </summary>
+    byte[] ExportDonations(EventDonationsResponse donations);
 }

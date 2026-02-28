@@ -31,6 +31,8 @@ import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/pre
 import { sanitizeHtml } from '@/lib/html-utils';
 // Donation Feature: Import DonationSection for standalone donations
 import { DonationSection } from '@/presentation/components/features/events/DonationSection';
+// Collapsible sections for Registration, Ticket, and Organizer
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 // Donation Feature: Import donation hooks
 import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/useDonations';
 
@@ -801,36 +803,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
 
             {/* Registration Section */}
-            <Card className="border-2" style={{ borderColor: '#FF7900' }}>
-              <CardHeader>
-                <CardTitle>
-                  {/* GitHub Issue #37: Show "Event Cancelled" for cancelled events */}
-                  {isCancelled
-                    ? 'Event Cancelled'
-                    : isUserRegistered
-                    ? 'Your Registration'
-                    : registrationDetails?.status === 'Cancelled'
-                    ? 'Registration Cancelled'
-                    : 'Register for this Event'}
-                </CardTitle>
-                <CardDescription>
-                  {/* GitHub Issue #37: Show cancelled event message first */}
-                  {isCancelled
-                    ? 'This event has been cancelled. Registration is not available.'
-                    : isUserRegistered
-                    ? 'You are already registered for this event!'
-                    : registrationDetails?.status === 'Cancelled'
-                    ? hasStarted
-                      ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
-                      : 'Your registration for this event has been cancelled. You can register again if you wish.'
-                    : hasStarted
-                    ? 'This event has already started. Registration is no longer available.'
-                    : isFull
-                    ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
-                    : 'Reserve your spot now!'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <CollapsibleSection
+              title={isCancelled
+                ? 'Event Cancelled'
+                : isUserRegistered
+                ? 'Your Registration'
+                : registrationDetails?.status === 'Cancelled'
+                ? 'Registration Cancelled'
+                : 'Register for this Event'}
+              description={isCancelled
+                ? 'This event has been cancelled. Registration is not available.'
+                : isUserRegistered
+                ? 'You are already registered for this event!'
+                : registrationDetails?.status === 'Cancelled'
+                ? hasStarted
+                  ? 'Your registration was cancelled. This event has already started, so new registrations are not allowed.'
+                  : 'Your registration for this event has been cancelled. You can register again if you wish.'
+                : hasStarted
+                ? 'This event has already started. Registration is no longer available.'
+                : isFull
+                ? 'This event is currently full. Join the waitlist to be notified when spots become available.'
+                : 'Reserve your spot now!'}
+              borderColor="#FF7900"
+              defaultOpen={true}
+            >
                 {/* GitHub Issue #37: Show cancelled event info box FIRST */}
                 {isCancelled ? (
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -1638,8 +1634,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </>
                 )}
-              </CardContent>
-            </Card>
+            </CollapsibleSection>
           </CardContent>
         </Card>
 
@@ -1740,14 +1735,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 6A.X: Event Organizer Contact - Compact Version */}
+        {/* Phase 6A.X: Event Organizer Contact - Collapsible */}
         {event && event.publishOrganizerContact && event.organizerContactName && (
           <div className="mt-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="h-4 w-4 text-blue-600" />
-                <h3 className="text-sm font-semibold text-blue-900">Event Organizer Contact</h3>
-              </div>
+            <CollapsibleSection
+              title="Event Organizer Contact"
+              icon={<Users className="h-5 w-5 text-blue-600" />}
+              defaultOpen={true}
+            >
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-700">Name:</span>
@@ -1776,7 +1771,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                 )}
               </div>
-            </div>
+            </CollapsibleSection>
           </div>
         )}
 

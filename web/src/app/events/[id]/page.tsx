@@ -802,9 +802,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Registration Section */}
-            <CollapsibleSection
-              title={isCancelled
+          </CardContent>
+        </Card>
+
+        {/* Registration Section — outside Event Details card */}
+        <div className="mt-8">
+          <CollapsibleSection
+            title={isCancelled
                 ? 'Event Cancelled'
                 : isUserRegistered
                 ? "You're Registered!"
@@ -1636,8 +1640,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </>
                 )}
             </CollapsibleSection>
-          </CardContent>
-        </Card>
+        </div>
 
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
@@ -1695,37 +1698,39 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Donation Feature: My Donations (logged-in user's own donations) */}
         {myDonations && myDonations.length > 0 && (
-          <div className="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-lg">
-            <div className="flex items-center gap-3 mb-3">
-              <Heart className="h-5 w-5 text-rose-600" />
-              <h3 className="font-semibold text-rose-800">Your Donations</h3>
-            </div>
-            <div className="space-y-2">
-              {myDonations.map((donation) => (
-                <div key={donation.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-rose-100">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-neutral-900">${donation.amount.toFixed(2)}</span>
-                    {donation.isBundled && (
-                      <span className="text-xs text-neutral-500">(with registration)</span>
-                    )}
+          <div className="mt-6">
+            <CollapsibleSection
+              title="Your Donations"
+              icon={<Heart className="h-5 w-5 text-rose-600" />}
+              defaultOpen={false}
+            >
+              <div className="space-y-2">
+                {myDonations.map((donation) => (
+                  <div key={donation.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-rose-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold text-neutral-900">${donation.amount.toFixed(2)}</span>
+                      {donation.isBundled && (
+                        <span className="text-xs text-neutral-500">(with registration)</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        donation.status === 'Completed'
+                          ? 'bg-green-100 text-green-700'
+                          : donation.status === 'Pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-neutral-100 text-neutral-600'
+                      }`}>
+                        {donation.status}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        {new Date(donation.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      donation.status === 'Completed'
-                        ? 'bg-green-100 text-green-700'
-                        : donation.status === 'Pending'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-neutral-100 text-neutral-600'
-                    }`}>
-                      {donation.status}
-                    </span>
-                    <span className="text-xs text-neutral-500">
-                      {new Date(donation.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </CollapsibleSection>
           </div>
         )}
 

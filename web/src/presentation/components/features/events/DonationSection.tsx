@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Heart } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useCreateDonation } from '@/presentation/hooks/useDonations';
@@ -99,17 +99,12 @@ export function DonationSection({ eventId, donationConfig }: DonationSectionProp
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Heart className="h-5 w-5 text-rose-500" />
-          Support This Event
-        </CardTitle>
-        {donationConfig.donationMessage && (
-          <p className="text-sm text-neutral-600 mt-1">{donationConfig.donationMessage}</p>
-        )}
-      </CardHeader>
-      <CardContent>
+    <CollapsibleSection
+      title="Support This Event"
+      icon={<Heart className="h-5 w-5 text-rose-500" />}
+      description={donationConfig.donationMessage || undefined}
+      defaultOpen={false}
+    >
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Suggested Amounts */}
           {donationConfig.suggestedAmounts.length > 0 && (
@@ -233,7 +228,6 @@ export function DonationSection({ eventId, donationConfig }: DonationSectionProp
                 : 'Select an amount'}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+    </CollapsibleSection>
   );
 }

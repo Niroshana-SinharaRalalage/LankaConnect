@@ -182,6 +182,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
         modelBuilder.ApplyConfiguration(new EventBadgeConfiguration());
 
+        // Organizer Contact entity configuration (Multiple Organizer Contacts)
+        modelBuilder.ApplyConfiguration(new EventOrganizerContactConfiguration());
+
         // Email Group entity configuration (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new EmailGroupConfiguration());
 
@@ -341,7 +344,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(FormQuestion), // Custom Form/Survey Sign-Up Feature
             typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
             typeof(FormAnswer), // Custom Form/Survey Sign-Up Feature
-            typeof(Donation) // Standalone Donation System
+            typeof(Donation), // Standalone Donation System
+            typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact) // Multiple Organizer Contacts
         };
 
         // Get all types from Domain assembly that aren't in our configured list

@@ -18,10 +18,12 @@ public class Event : BaseEntity
     private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
     private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
     private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
+    private readonly List<EventOrganizerContact> _organizerContacts = new(); // Multiple organizer contacts
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_BADGES = 3; // Maximum badges per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
+    private const int MAX_ORGANIZER_CONTACTS = 10; // Phase 6A.132: Maximum organizer contacts per event
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
@@ -69,11 +71,14 @@ public class Event : BaseEntity
     // System-wide maximum for safety (prevents one registration from booking entire large event)
     public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
 
-    // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
+    // Event Organizer Contact Details: Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
-    public string? OrganizerContactName { get; private set; }
-    public string? OrganizerContactPhone { get; private set; }
-    public string? OrganizerContactEmail { get; private set; }
+    public IReadOnlyList<EventOrganizerContact> OrganizerContacts => _organizerContacts.AsReadOnly();
+
+    // Backward-compat computed properties for email handlers (delegate to primary contact)
+    public string? OrganizerContactName => GetPrimaryContact()?.ContactName;
+    public string? OrganizerContactPhone => GetPrimaryContact()?.ContactPhone;
+    public string? OrganizerContactEmail => GetPrimaryContact()?.ContactEmail;
 
     // Donation Configuration: Optional donation settings for the event
     public DonationConfiguration? DonationConfig { get; private set; }
@@ -1976,54 +1981,51 @@ public class Event : BaseEntity
     #region Organizer Contact Management
 
     /// <summary>
-    /// Sets organizer contact details for event inquiries
+    /// Sets organizer contacts for event inquiries (supports multiple contacts).
     /// Business Rules:
-    /// - If publishContact is true, contactName is required
-    /// - If publishContact is true, at least one contact method (email or phone) is required
-    /// - Email format is validated if provided
-    /// - If publishContact is false, all contact fields are cleared (privacy)
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// - If publishContact is true, at least one contact is required
+    /// - Each contact must have a name and at least one contact method (email or phone)
+    /// - Email format is validated per contact
+    /// - If publishContact is false, all contacts are cleared (privacy)
+    /// - First contact is automatically set as primary if none specified
     /// </summary>
-    /// <param name="publishContact">Whether to publish organizer contact information</param>
-    /// <param name="contactName">Organizer's display name</param>
-    /// <param name="contactPhone">Organizer's phone number (optional if email provided)</param>
-    /// <param name="contactEmail">Organizer's email address (optional if phone provided)</param>
-    public Result SetOrganizerContactDetails(
+    public Result SetOrganizerContacts(
         bool publishContact,
-        string? contactName,
-        string? contactPhone,
-        string? contactEmail)
+        List<(string name, string? email, string? phone)> contacts)
     {
-        // Business Rule 1: If publishing contact, name is required
         if (publishContact)
         {
-            if (string.IsNullOrWhiteSpace(contactName))
-                return Result.Failure("Contact name is required when publishing organizer contact");
+            if (contacts == null || contacts.Count == 0)
+                return Result.Failure("At least one organizer contact is required when publishing");
 
-            // Business Rule 2: At least one contact method (email or phone) must be provided
-            var hasEmail = !string.IsNullOrWhiteSpace(contactEmail);
-            var hasPhone = !string.IsNullOrWhiteSpace(contactPhone);
+            if (contacts.Count > MAX_ORGANIZER_CONTACTS)
+                return Result.Failure($"Maximum {MAX_ORGANIZER_CONTACTS} organizer contacts allowed");
 
-            if (!hasEmail && !hasPhone)
-                return Result.Failure("At least one contact method (email or phone) is required");
+            // Validate each contact
+            var newContacts = new List<EventOrganizerContact>();
+            for (var i = 0; i < contacts.Count; i++)
+            {
+                var (name, email, phone) = contacts[i];
+                var isPrimary = i == 0; // First contact is primary by default
+                var contactResult = EventOrganizerContact.Create(
+                    Id, name, email, phone, isPrimary, sortOrder: i);
 
-            // Business Rule 3: Email validation if provided
-            if (hasEmail && !IsValidEmail(contactEmail!))
-                return Result.Failure("Invalid email format");
+                if (contactResult.IsFailure)
+                    return Result.Failure($"Contact {i + 1}: {contactResult.Error}");
 
-            // Set contact details (trimmed and normalized)
+                newContacts.Add(contactResult.Value);
+            }
+
+            // Replace all contacts
+            _organizerContacts.Clear();
+            _organizerContacts.AddRange(newContacts);
             PublishOrganizerContact = true;
-            OrganizerContactName = contactName.Trim();
-            OrganizerContactPhone = hasPhone ? contactPhone!.Trim() : null;
-            OrganizerContactEmail = hasEmail ? contactEmail!.Trim().ToLowerInvariant() : null;
         }
         else
         {
-            // Privacy: Clear all contact details when unpublishing
+            // Privacy: Clear all contacts when unpublishing
+            _organizerContacts.Clear();
             PublishOrganizerContact = false;
-            OrganizerContactName = null;
-            OrganizerContactPhone = null;
-            OrganizerContactEmail = null;
         }
 
         MarkAsUpdated();
@@ -2031,32 +2033,17 @@ public class Event : BaseEntity
     }
 
     /// <summary>
-    /// Checks if organizer contact information is published and available
-    /// Returns true only if contact is published AND has a valid contact name
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// Gets the primary organizer contact (or first contact if none marked primary)
     /// </summary>
-    public bool HasOrganizerContact() =>
-        PublishOrganizerContact && !string.IsNullOrWhiteSpace(OrganizerContactName);
+    public EventOrganizerContact? GetPrimaryContact() =>
+        _organizerContacts.FirstOrDefault(c => c.IsPrimary)
+        ?? _organizerContacts.FirstOrDefault();
 
     /// <summary>
-    /// Validates email format using the same regex pattern as Email value object
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// Checks if organizer contact information is published and available
     /// </summary>
-    /// <param name="email">Email address to validate</param>
-    /// <returns>True if email format is valid, false otherwise</returns>
-    private static bool IsValidEmail(string email)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-            return false;
-
-        // RFC 5322 compliant email regex (same pattern as Email value object)
-        // Supports formats like: user@example.com, DoNotReply@7689582e-73cc-4552-b2ff-8afd9d1a6814.azurecomm.net
-        var emailRegex = new System.Text.RegularExpressions.Regex(
-            @"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$",
-            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        return emailRegex.IsMatch(email.Trim());
-    }
+    public bool HasOrganizerContact() =>
+        PublishOrganizerContact && _organizerContacts.Any();
 
     #endregion
 

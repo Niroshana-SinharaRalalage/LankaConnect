@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.CreateEvent;
+using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -494,14 +495,16 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         }
         // If null, don't modify existing email groups
 
-        // Phase 6A.X: Update organizer contact details if provided
+        // Update organizer contacts if provided
         if (request.PublishOrganizerContact.HasValue)
         {
-            var contactResult = @event.SetOrganizerContactDetails(
+            var contacts = (request.OrganizerContacts ?? new List<UpdateEventOrganizerContact.OrganizerContactRequest>())
+                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone))
+                .ToList();
+
+            var contactResult = @event.SetOrganizerContacts(
                 request.PublishOrganizerContact.Value,
-                request.OrganizerContactName,
-                request.OrganizerContactPhone,
-                request.OrganizerContactEmail);
+                contacts);
 
             if (contactResult.IsFailure)
                 return contactResult;

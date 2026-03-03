@@ -67,11 +67,12 @@ public class CancelEventCommandHandlerTests
         // Set organizer contact if required
         if (hasOrganizerContact)
         {
-            @event.SetOrganizerContactDetails(
+            @event.SetOrganizerContacts(
                 publishContact: true,
-                contactName: "Test Organizer",
-                contactPhone: "123-456-7890",
-                contactEmail: "organizer@test.com");
+                contacts: new List<(string name, string? email, string? phone)>
+                {
+                    ("Test Organizer", "organizer@test.com", "123-456-7890")
+                });
         }
 
         return @event;

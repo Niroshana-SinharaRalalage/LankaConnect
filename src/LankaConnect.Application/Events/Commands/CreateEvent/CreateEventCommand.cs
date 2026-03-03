@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Shared.Enums;
 
@@ -35,11 +36,9 @@ public record CreateEventCommand(
     List<GroupPricingTierRequest>? GroupPricingTiers = null,
     // Phase 6A.32: Email Groups - optional
     List<Guid>? EmailGroupIds = null,
-    // Phase 6A.X: Organizer Contact Details - optional
+    // Organizer Contact Details - optional (supports multiple contacts)
     bool? PublishOrganizerContact = false,
-    string? OrganizerContactName = null,
-    string? OrganizerContactPhone = null,
-    string? OrganizerContactEmail = null,
+    List<OrganizerContactRequest>? OrganizerContacts = null,
     // IsFreeEvent fix: Explicit free event flag from frontend
     bool? IsFree = null,
     // Donation Feature: Optional donation configuration

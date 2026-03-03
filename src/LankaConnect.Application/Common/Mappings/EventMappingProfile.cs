@@ -68,11 +68,9 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Badges, opt => opt.MapFrom(src => src.Badges))
             // Phase 6A.46: Display label based on lifecycle
             .ForMember(dest => dest.DisplayLabel, opt => opt.MapFrom(src => src.GetDisplayLabel()))
-            // Phase 6A.X: Organizer Contact Details
+            // Organizer Contact Details (multiple contacts)
             .ForMember(dest => dest.PublishOrganizerContact, opt => opt.MapFrom(src => src.PublishOrganizerContact))
-            .ForMember(dest => dest.OrganizerContactName, opt => opt.MapFrom(src => src.OrganizerContactName))
-            .ForMember(dest => dest.OrganizerContactPhone, opt => opt.MapFrom(src => src.OrganizerContactPhone))
-            .ForMember(dest => dest.OrganizerContactEmail, opt => opt.MapFrom(src => src.OrganizerContactEmail))
+            .ForMember(dest => dest.OrganizerContacts, opt => opt.MapFrom(src => src.OrganizerContacts))
             // Phase 6A.X: Revenue Breakdown for paid events
             .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown))
             // Donation Feature: Donation configuration mapping
@@ -81,6 +79,9 @@ public class EventMappingProfile : Profile
         // Donation Feature: DonationConfiguration -> DonationConfigurationDto mapping
         CreateMap<DonationConfiguration, DonationConfigurationDto>()
             .ForMember(dest => dest.SuggestedAmounts, opt => opt.MapFrom(src => src.SuggestedAmounts.ToList()));
+
+        // EventOrganizerContact -> OrganizerContactDto mapping
+        CreateMap<EventOrganizerContact, OrganizerContactDto>();
 
         // EventImage -> EventImageDto mapping (Epic 2 Phase 2)
         CreateMap<EventImage, EventImageDto>();

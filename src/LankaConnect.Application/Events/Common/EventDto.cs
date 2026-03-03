@@ -116,13 +116,10 @@ public record EventDto
     public IReadOnlyList<EmailGroupSummaryDto> EmailGroups { get; init; } = Array.Empty<EmailGroupSummaryDto>();
 
     /// <summary>
-    /// Phase 6A.X: Event Organizer Contact Details
-    /// Optional contact information published by the event organizer
+    /// Organizer Contact Details - supports multiple contacts per event
     /// </summary>
     public bool PublishOrganizerContact { get; init; }
-    public string? OrganizerContactName { get; init; }
-    public string? OrganizerContactPhone { get; init; }
-    public string? OrganizerContactEmail { get; init; }
+    public IReadOnlyList<OrganizerContactDto> OrganizerContacts { get; init; } = Array.Empty<OrganizerContactDto>();
 
     /// <summary>
     /// Phase 6A.X: Revenue Breakdown for paid events

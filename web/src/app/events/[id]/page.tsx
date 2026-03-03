@@ -1691,41 +1691,50 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 6A.X: Event Organizer Contact - Collapsible */}
-        {event && event.publishOrganizerContact && event.organizerContactName && (
+        {/* Event Organizer Contacts - Collapsible */}
+        {event && event.publishOrganizerContact && event.organizerContacts && event.organizerContacts.length > 0 && (
           <div className="mt-6">
             <CollapsibleSection
-              title="Event Organizer Contact"
+              title="Event Organizer Contacts"
               icon={<Users className="h-5 w-5 text-blue-600" />}
               defaultOpen={false}
             >
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-700">Name:</span>
-                  <span className="text-gray-900">{event.organizerContactName}</span>
-                </div>
-                {event.organizerContactEmail && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Email:</span>
-                    <a
-                      href={`mailto:${event.organizerContactEmail}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {event.organizerContactEmail}
-                    </a>
+              <div className="space-y-4">
+                {event.organizerContacts.map((contact, idx) => (
+                  <div key={contact.id || idx} className={`space-y-2 text-sm ${idx > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-700">Name:</span>
+                      <span className="text-gray-900">{contact.contactName}</span>
+                      {contact.isPrimary && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    {contact.contactEmail && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-700">Email:</span>
+                        <a
+                          href={`mailto:${contact.contactEmail}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {contact.contactEmail}
+                        </a>
+                      </div>
+                    )}
+                    {contact.contactPhone && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-700">Phone:</span>
+                        <a
+                          href={`tel:${contact.contactPhone}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {contact.contactPhone}
+                        </a>
+                      </div>
+                    )}
                   </div>
-                )}
-                {event.organizerContactPhone && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Phone:</span>
-                    <a
-                      href={`tel:${event.organizerContactPhone}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {event.organizerContactPhone}
-                    </a>
-                  </div>
-                )}
+                ))}
               </div>
             </CollapsibleSection>
           </div>

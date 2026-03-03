@@ -231,6 +231,28 @@ export interface GroupPricingTierDto {
 }
 
 /**
+ * Organizer contact DTO - supports multiple contacts per event
+ */
+export interface OrganizerContactDto {
+  id: string;
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
+/**
+ * Request model for creating/updating an organizer contact
+ */
+export interface OrganizerContactRequest {
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  isPrimary?: boolean;
+}
+
+/**
  * Phase 6A.X: Revenue breakdown DTO
  * Matches backend RevenueBreakdownDto
  * Shows detailed fee breakdown for paid events
@@ -340,11 +362,9 @@ export interface EventDto {
   // Phase 6A.32: Email Groups Integration
   emailGroupIds?: string[];
 
-  // Phase 6A.X: Event Organizer Contact Details
+  // Organizer Contact Details (supports multiple contacts)
   publishOrganizerContact: boolean;
-  organizerContactName?: string | null;
-  organizerContactPhone?: string | null;
-  organizerContactEmail?: string | null;
+  organizerContacts?: OrganizerContactDto[];
 
   // Phase 6A.X: Revenue Breakdown for paid events
   /** Detailed fee breakdown (null for free events) */
@@ -666,6 +686,10 @@ export interface CreateEventRequest {
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
   showDonationSummary?: boolean;
+
+  // Phase 6A.132: Multiple organizer contacts
+  publishOrganizerContact?: boolean;
+  organizerContacts?: OrganizerContactRequest[];
 }
 
 /**
@@ -730,6 +754,10 @@ export interface UpdateEventRequest {
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
   showDonationSummary?: boolean;
+
+  // Phase 6A.132: Multiple organizer contacts
+  publishOrganizerContact?: boolean;
+  organizerContacts?: OrganizerContactRequest[];
 }
 
 /**

@@ -208,28 +208,29 @@ export const createEventSchema = z.object({
     .optional()
     .nullable(),
 
-  // Phase 6A.X: Event Organizer Contact Details
+  // Organizer Contact Details (supports multiple contacts)
   publishOrganizerContact: z.boolean().default(false),
 
-  organizerContactName: z
-    .string()
-    .min(1, 'Contact name is required when publishing contact details')
-    .max(200, 'Contact name must be less than 200 characters')
-    .optional()
-    .nullable(),
-
-  organizerContactPhone: z
-    .string()
-    .max(20, 'Phone number must be less than 20 characters')
-    .optional()
-    .nullable(),
-
-  organizerContactEmail: z
-    .string()
-    .email('Invalid email address')
-    .max(255, 'Email must be less than 255 characters')
-    .optional()
-    .nullable(),
+  organizerContacts: z.array(z.object({
+    contactName: z
+      .string()
+      .min(1, 'Contact name is required')
+      .max(200, 'Contact name must be less than 200 characters'),
+    contactEmail: z
+      .string()
+      .email('Invalid email address')
+      .max(255, 'Email must be less than 255 characters')
+      .optional()
+      .nullable()
+      .or(z.literal('')),
+    contactPhone: z
+      .string()
+      .max(20, 'Phone number must be less than 20 characters')
+      .optional()
+      .nullable()
+      .or(z.literal('')),
+    isPrimary: z.boolean().optional().default(false),
+  })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
 }).refine(
   (data) => {
     // Validate that end date is after start date
@@ -403,35 +404,23 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Phase 6A.X: If publishing organizer contact, name is required
+    // If publishing organizer contact, at least one contact with valid data is required
     if (data.publishOrganizerContact) {
-      return data.organizerContactName !== null &&
-             data.organizerContactName !== undefined &&
-             data.organizerContactName.trim().length > 0;
+      const contacts = data.organizerContacts || [];
+      if (contacts.length === 0) return false;
+      // Each contact must have name and at least email or phone
+      return contacts.every(c => {
+        const hasName = c.contactName && c.contactName.trim().length > 0;
+        const hasEmail = c.contactEmail && c.contactEmail.trim().length > 0;
+        const hasPhone = c.contactPhone && c.contactPhone.trim().length > 0;
+        return hasName && (hasEmail || hasPhone);
+      });
     }
     return true;
   },
   {
-    message: 'Contact name is required when publishing organizer contact',
-    path: ['organizerContactName'],
-  }
-).refine(
-  (data) => {
-    // Phase 6A.X: If publishing organizer contact, at least one contact method (email or phone) is required
-    if (data.publishOrganizerContact) {
-      const hasEmail = data.organizerContactEmail !== null &&
-                      data.organizerContactEmail !== undefined &&
-                      data.organizerContactEmail.trim().length > 0;
-      const hasPhone = data.organizerContactPhone !== null &&
-                      data.organizerContactPhone !== undefined &&
-                      data.organizerContactPhone.trim().length > 0;
-      return hasEmail || hasPhone;
-    }
-    return true;
-  },
-  {
-    message: 'At least one contact method (email or phone) is required when publishing organizer contact',
-    path: ['organizerContactEmail'],
+    message: 'At least one organizer contact with name and contact method (email or phone) is required',
+    path: ['organizerContacts'],
   }
 );
 
@@ -592,28 +581,29 @@ const baseEditEventSchema = z.object({
     .optional()
     .nullable(),
 
-  // Phase 6A.X: Event Organizer Contact Details
+  // Organizer Contact Details (supports multiple contacts)
   publishOrganizerContact: z.boolean().default(false),
 
-  organizerContactName: z
-    .string()
-    .min(1, 'Contact name is required when publishing contact details')
-    .max(200, 'Contact name must be less than 200 characters')
-    .optional()
-    .nullable(),
-
-  organizerContactPhone: z
-    .string()
-    .max(20, 'Phone number must be less than 20 characters')
-    .optional()
-    .nullable(),
-
-  organizerContactEmail: z
-    .string()
-    .email('Invalid email address')
-    .max(255, 'Email must be less than 255 characters')
-    .optional()
-    .nullable(),
+  organizerContacts: z.array(z.object({
+    contactName: z
+      .string()
+      .min(1, 'Contact name is required')
+      .max(200, 'Contact name must be less than 200 characters'),
+    contactEmail: z
+      .string()
+      .email('Invalid email address')
+      .max(255, 'Email must be less than 255 characters')
+      .optional()
+      .nullable()
+      .or(z.literal('')),
+    contactPhone: z
+      .string()
+      .max(20, 'Phone number must be less than 20 characters')
+      .optional()
+      .nullable()
+      .or(z.literal('')),
+    isPrimary: z.boolean().optional().default(false),
+  })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
 });
 
 /**
@@ -737,35 +727,22 @@ export const editEventSchema = baseEditEventSchema.refine(
   }
 ).refine(
   (data) => {
-    // Phase 6A.X: If publishing organizer contact, name is required
+    // If publishing organizer contact, at least one contact with valid data is required
     if (data.publishOrganizerContact) {
-      return data.organizerContactName !== null &&
-             data.organizerContactName !== undefined &&
-             data.organizerContactName.trim().length > 0;
+      const contacts = data.organizerContacts || [];
+      if (contacts.length === 0) return false;
+      return contacts.every(c => {
+        const hasName = c.contactName && c.contactName.trim().length > 0;
+        const hasEmail = c.contactEmail && c.contactEmail.trim().length > 0;
+        const hasPhone = c.contactPhone && c.contactPhone.trim().length > 0;
+        return hasName && (hasEmail || hasPhone);
+      });
     }
     return true;
   },
   {
-    message: 'Contact name is required when publishing organizer contact',
-    path: ['organizerContactName'],
-  }
-).refine(
-  (data) => {
-    // Phase 6A.X: If publishing organizer contact, at least one contact method (email or phone) is required
-    if (data.publishOrganizerContact) {
-      const hasEmail = data.organizerContactEmail !== null &&
-                      data.organizerContactEmail !== undefined &&
-                      data.organizerContactEmail.trim().length > 0;
-      const hasPhone = data.organizerContactPhone !== null &&
-                      data.organizerContactPhone !== undefined &&
-                      data.organizerContactPhone.trim().length > 0;
-      return hasEmail || hasPhone;
-    }
-    return true;
-  },
-  {
-    message: 'At least one contact method (email or phone) is required when publishing organizer contact',
-    path: ['organizerContactEmail'],
+    message: 'At least one organizer contact with name and contact method (email or phone) is required',
+    path: ['organizerContacts'],
   }
 );
 

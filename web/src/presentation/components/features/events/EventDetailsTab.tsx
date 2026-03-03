@@ -360,52 +360,63 @@ export function EventDetailsTab({
         </CardContent>
       </Card>
 
-      {/* Phase 6A.X: Organizer Contact Section - Table Grid */}
-      {event.publishOrganizerContact && event.organizerContactName && (
+      {/* Organizer Contact Section - Multiple Contacts */}
+      {event.publishOrganizerContact && event.organizerContacts && event.organizerContacts.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact</CardTitle>
-            <CardDescription>Event organizer's contact information</CardDescription>
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts</CardTitle>
+            <CardDescription>Event organizer contact information</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
-                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#FF7900]" />
-                  Name:
-                </span>
-                <span className="text-sm text-neutral-900">{event.organizerContactName}</span>
-              </div>
-              {event.organizerContactEmail && (
-                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
-                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-[#FF7900]" />
-                    Email:
-                  </span>
-                  <a
-                    href={`mailto:${event.organizerContactEmail}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {event.organizerContactEmail}
-                  </a>
+            <div className="space-y-4">
+              {event.organizerContacts.map((contact, idx) => (
+                <div key={contact.id || idx} className={`space-y-3 ${idx > 0 ? 'pt-4 border-t' : ''}`}>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Users className="h-4 w-4 text-[#FF7900]" />
+                      Name:
+                    </span>
+                    <span className="text-sm text-neutral-900">
+                      {contact.contactName}
+                      {contact.isPrimary && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          Primary
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {contact.contactEmail && (
+                    <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-[#FF7900]" />
+                        Email:
+                      </span>
+                      <a
+                        href={`mailto:${contact.contactEmail}`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {contact.contactEmail}
+                      </a>
+                    </div>
+                  )}
+                  {contact.contactPhone && (
+                    <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <svg className="h-4 w-4 text-[#FF7900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Phone:
+                      </span>
+                      <a
+                        href={`tel:${contact.contactPhone}`}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        {contact.contactPhone}
+                      </a>
+                    </div>
+                  )}
                 </div>
-              )}
-              {event.organizerContactPhone && (
-                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
-                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-[#FF7900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    Phone:
-                  </span>
-                  <a
-                    href={`tel:${event.organizerContactPhone}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {event.organizerContactPhone}
-                  </a>
-                </div>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>

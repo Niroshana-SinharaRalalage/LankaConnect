@@ -1,7 +1,36 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-03 - Phase 6A.132 Multiple Organizer Contacts ✅ DEPLOYED*
+*Last Updated: 2026-03-04 - Email Deliverability Improvements (DMARC, Sender Address, Template Cleanup) ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.132: Multiple Organizer Contacts ✅ DEPLOYED
+## 🎯 Current Session Status - Email Deliverability Improvements ✅ DEPLOYED
+
+### Email Deliverability Improvements (DMARC, Sender Address, Template Cleanup) - 2026-03-04
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 5c275894) - VERIFIED**
+
+**Classification**: Infrastructure + Email Quality — Improves email deliverability to prevent emails being flagged as spam (reported by Google Group recipients).
+
+**Problem**: LankaConnect emails were being flagged as spam by Google Groups. Root causes: sender address `DoNotReply@lankaconnect.app` looked suspicious, no DMARC DNS record for the domain, and email subjects/params contained unhelpful "TBA" defaults for missing location/price data.
+
+**Changes Applied**:
+
+| Area | Change | Details |
+|------|--------|---------|
+| Azure ACS | Changed sender address | `DoNotReply@lankaconnect.app` → `noreply@lankaconnect.app` |
+| Azure ACS | Created MailFrom records | New `noreply@lankaconnect.app` MailFrom in both staging and production |
+| Key Vault | Updated secrets | `azure-email-sender-address` updated in both environments |
+| DNS | Added DMARC record | `v=DMARC1; p=none;` TXT record for `lankaconnect.app` |
+| Email Params | Removed "TBA" defaults | Cleared hardcoded "TBA" from `EventCity`, `EventState`, `TicketPrice` across 7 TypedEmailParams files |
+| Email Params | Added HasLocation flag | Boolean flag for conditional subject rendering when location is available |
+| Migration | Updated email subject | `20260304175027_UpdateEventEmailSubjectWithLocationConditional` — conditionally includes location in `template-new-event-publication` subject line |
+| Tests | Added HasLocation tests | Unit tests for HasLocation logic |
+
+**Tests**: 1487 passed, 0 failed
+
+**Commits**: `5c275894`
+
+---
+
+## 🎯 Previous Session - Phase 6A.132: Multiple Organizer Contacts ✅ DEPLOYED
 
 ### Phase 6A.132: Complete Multiple Organizer Contacts Feature - 2026-03-03
 

@@ -7,7 +7,25 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.132: COMPLETE MULTIPLE ORGANIZER CONTACTS ✅ DEPLOYED (2026-03-02)
+## 🔄 CURRENT STATUS - EMAIL DELIVERABILITY IMPROVEMENTS ✅ DEPLOYED (2026-03-04)
+**Date**: 2026-03-04
+**Session**: Email Deliverability Improvements (DMARC, Sender Address, Template Cleanup)
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED**
+**Commit**: 5c275894
+
+**Problem**: Emails flagged as spam by Google Groups. Multiple deliverability issues addressed:
+- Changed sender from `DoNotReply@lankaconnect.app` to `noreply@lankaconnect.app` (both staging + production)
+- Added DMARC DNS record (`v=DMARC1; p=none;`) for `lankaconnect.app`
+- Removed "TBA" defaults from email params (`EventCity`, `EventState`, `TicketPrice`) across 7 files
+- Added `HasLocation` boolean flag for conditional email subject rendering
+- Migration `20260304175027_UpdateEventEmailSubjectWithLocationConditional` — subject conditionally includes location
+- Unit tests for HasLocation logic
+
+**Tests**: 1487 passed, 0 failed
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.132: COMPLETE MULTIPLE ORGANIZER CONTACTS ✅ DEPLOYED (2026-03-02)
 **Date**: 2026-03-02
 **Session**: Phase 6A.132 - Complete Multiple Organizer Contacts Feature (4 Gap Fixes)
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED VIA API**

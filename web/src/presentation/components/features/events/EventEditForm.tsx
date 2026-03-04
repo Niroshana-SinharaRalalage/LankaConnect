@@ -1306,10 +1306,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
                   onClick={() => appendContact({ contactName: '', contactEmail: '', contactPhone: '', isPrimary: false })}
                   className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  <span className="text-lg">+</span> Add Another Contact
+                  <span className="text-lg">+</span> Add Another Organizer Contact
                 </button>
               ) : (
-                <p className="text-sm text-neutral-500">Maximum 10 contacts reached</p>
+                <p className="text-sm text-neutral-500">Maximum 10 organizer contacts reached</p>
               )}
 
               {/* Validation Error */}

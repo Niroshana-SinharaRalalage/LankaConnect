@@ -1699,42 +1699,40 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               icon={<Users className="h-5 w-5 text-blue-600" />}
               defaultOpen={false}
             >
-              <div className="space-y-4">
-                {event.organizerContacts.map((contact, idx) => (
-                  <div key={contact.id || idx} className={`space-y-2 text-sm ${idx > 0 ? 'pt-3 border-t border-gray-200' : ''}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-700">Name:</span>
-                      <span className="text-gray-900">{contact.contactName}</span>
-                      {contact.isPrimary && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          Primary
-                        </span>
-                      )}
-                    </div>
-                    {contact.contactEmail && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-700">Email:</span>
-                        <a
-                          href={`mailto:${contact.contactEmail}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {contact.contactEmail}
-                        </a>
-                      </div>
-                    )}
-                    {contact.contactPhone && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-700">Phone:</span>
-                        <a
-                          href={`tel:${contact.contactPhone}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {contact.contactPhone}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Name</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Email</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {event.organizerContacts.map((contact, idx) => (
+                      <tr key={contact.id || idx} className="border-b border-gray-100">
+                        <td className="px-4 py-2">
+                          <span className="font-medium text-gray-900">{contact.contactName}</span>
+                          {contact.isPrimary && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              Primary
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600">
+                          {contact.contactEmail ? (
+                            <a href={`mailto:${contact.contactEmail}`} className="text-blue-600 hover:underline">{contact.contactEmail}</a>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600">
+                          {contact.contactPhone ? (
+                            <a href={`tel:${contact.contactPhone}`} className="text-blue-600 hover:underline">{contact.contactPhone}</a>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CollapsibleSection>
           </div>

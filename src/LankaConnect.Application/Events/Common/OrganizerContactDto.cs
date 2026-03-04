@@ -11,4 +11,10 @@ public record OrganizerContactDto
     public string? ContactPhone { get; init; }
     public bool IsPrimary { get; init; }
     public int SortOrder { get; init; }
+
+    /// <summary>
+    /// Phase 6A.133: The linked user ID for co-organizer management.
+    /// Null if no user is linked to this contact.
+    /// </summary>
+    public Guid? LinkedUserId { get; init; }
 }

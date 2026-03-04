@@ -65,5 +65,11 @@ public class EventOrganizerContactConfiguration : IEntityTypeConfiguration<Event
         // Indexes
         builder.HasIndex(c => c.EventId)
             .HasDatabaseName("ix_event_organizer_contacts_event_id");
+
+        // Phase 6A.133: Partial index for co-organizer lookups
+        // Enables efficient "find all events where user is a co-organizer" queries
+        builder.HasIndex(c => c.LinkedUserId)
+            .HasDatabaseName("ix_event_organizer_contacts_linked_user_id")
+            .HasFilter("linked_user_id IS NOT NULL");
     }
 }

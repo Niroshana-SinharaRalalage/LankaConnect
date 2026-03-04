@@ -16,6 +16,7 @@ using LankaConnect.Application.Users.Commands.UpdateUserEmail;
 using LankaConnect.Application.Users.Queries.GetUserById;
 using LankaConnect.Application.Users.Queries.GetLinkedProviders;
 using LankaConnect.Application.Users.Queries.GetUserPreferredMetroAreas;
+using LankaConnect.Application.Users.Queries.SearchUsers;
 using LankaConnect.Application.MetroAreas.Common;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Domain.Users.Enums;
@@ -832,6 +833,48 @@ public class UsersController : BaseController<UsersController>
 
             var firstError = result.Errors.FirstOrDefault();
             Logger.LogWarning("Cancel role upgrade failed: {Error}", firstError);
+
+            return BadRequest(new ProblemDetails
+            {
+                Detail = firstError,
+                Status = 400,
+                Title = "Bad Request"
+            });
+        }
+    }
+
+    #endregion
+
+    #region Phase 6A.133: User Search for Co-Organizer Linking
+
+    /// <summary>
+    /// Search registered users by name, email, or phone for co-organizer linking.
+    /// Returns max 10 results. Excludes the current user.
+    /// </summary>
+    /// <param name="query">Search term (min 2 characters)</param>
+    /// <returns>List of matching users</returns>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IReadOnlyList<UserSearchResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SearchUsers([FromQuery] string query)
+    {
+        using (Logger.BeginScope(new Dictionary<string, object>
+        {
+            ["Operation"] = "SearchUsers"
+        }))
+        {
+            Logger.LogInformation("Searching users with term: {SearchTerm}", query);
+
+            var searchQuery = new SearchUsersQuery(query);
+            var result = await Mediator.Send(searchQuery);
+
+            if (result.IsSuccess)
+            {
+                return Ok(result.Value);
+            }
+
+            var firstError = result.Errors.FirstOrDefault();
+            Logger.LogWarning("User search failed: {Error}", firstError);
 
             return BadRequest(new ProblemDetails
             {

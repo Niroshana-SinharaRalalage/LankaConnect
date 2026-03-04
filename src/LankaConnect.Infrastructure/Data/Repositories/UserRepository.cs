@@ -179,6 +179,41 @@ public class UserRepository : Repository<User>, IUserRepository
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Phase 6A.133: Search active users by name, email, or phone for co-organizer linking.
+    /// </summary>
+    public async Task<IReadOnlyList<User>> SearchUsersAsync(
+        string searchTerm,
+        Guid? excludeUserId = null,
+        int maxResults = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return new List<User>();
+
+        var normalizedSearchTerm = searchTerm.Trim().ToLower();
+
+        var query = _dbSet
+            .AsNoTracking()
+            .Where(u => u.IsActive &&
+                (u.FirstName.ToLower().Contains(normalizedSearchTerm) ||
+                 u.LastName.ToLower().Contains(normalizedSearchTerm) ||
+                 (u.FirstName + " " + u.LastName).ToLower().Contains(normalizedSearchTerm) ||
+                 u.Email.Value.ToLower().Contains(normalizedSearchTerm) ||
+                 (u.PhoneNumber != null && u.PhoneNumber.Value.Contains(normalizedSearchTerm))));
+
+        if (excludeUserId.HasValue && excludeUserId.Value != Guid.Empty)
+        {
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        }
+
+        return await query
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Take(maxResults)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         // CRITICAL FIX: Remove AsNoTracking to enable token rotation

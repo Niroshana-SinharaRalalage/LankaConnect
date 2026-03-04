@@ -313,11 +313,13 @@ public class EventRepository : Repository<Event>, IEventRepository
             {
                 // Session 33: Include Registrations to populate CurrentRegistrations for dashboard
                 // Phase 6A.67 FIX: Include Images for dashboard event thumbnails
+                // Phase 6A.133: Include co-organized events (linked via OrganizerContacts)
                 var result = await _dbSet
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)
-                    .Where(e => e.OrganizerId == organizerId)
+                    .Where(e => e.OrganizerId == organizerId
+                        || e.OrganizerContacts.Any(c => c.LinkedUserId == organizerId))
                     .OrderByDescending(e => e.StartDate)
                     .ToListAsync(cancellationToken);
 

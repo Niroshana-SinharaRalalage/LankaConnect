@@ -74,7 +74,9 @@ public class EventMappingProfile : Profile
             // Phase 6A.X: Revenue Breakdown for paid events
             .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown))
             // Donation Feature: Donation configuration mapping
-            .ForMember(dest => dest.DonationConfig, opt => opt.MapFrom(src => src.DonationConfig));
+            .ForMember(dest => dest.DonationConfig, opt => opt.MapFrom(src => src.DonationConfig))
+            // Phase 6A.133: IsCurrentUserOrganizer is computed post-mapping by query handlers
+            .ForMember(dest => dest.IsCurrentUserOrganizer, opt => opt.Ignore());
 
         // Donation Feature: DonationConfiguration -> DonationConfigurationDto mapping
         CreateMap<DonationConfiguration, DonationConfigurationDto>()

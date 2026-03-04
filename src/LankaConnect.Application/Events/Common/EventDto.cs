@@ -141,6 +141,13 @@ public record EventDto
     /// Used to show accurate "You are registered" badge (only for Confirmed status)
     /// </summary>
     public RegistrationStatus? UserRegistrationStatus { get; init; }
+
+    /// <summary>
+    /// Phase 6A.133: Server-computed organizer check for the current user.
+    /// null = unauthenticated, true = user is primary or co-organizer, false = not an organizer.
+    /// Frontend uses this instead of comparing organizerId === userId client-side.
+    /// </summary>
+    public bool? IsCurrentUserOrganizer { get; init; }
 }
 
 /// <summary>

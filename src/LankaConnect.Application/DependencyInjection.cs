@@ -25,6 +25,14 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(CommissionSettings.SectionName))
             .ValidateOnStart();
 
+        // Phase 6A.133: Configure event settings (co-organizer limits)
+        services.Configure<EventSettings>(
+            configuration.GetSection(EventSettings.SectionName));
+
+        services.AddOptions<EventSettings>()
+            .Bind(configuration.GetSection(EventSettings.SectionName))
+            .ValidateOnStart();
+
         // Add MediatR
         services.AddMediatR(config =>
         {

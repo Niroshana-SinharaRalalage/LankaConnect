@@ -19,17 +19,20 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 {
     private readonly IEventRepository _eventRepository;
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
+    private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventByIdQueryHandler> _logger;
 
     public GetEventByIdQueryHandler(
         IEventRepository eventRepository,
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
+        ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventByIdQueryHandler> logger)
     {
         _eventRepository = eventRepository;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
+        _currentUserService = currentUserService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -116,11 +119,17 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
                         @event.Id, emailGroupSummaries.Count, @event.EmailGroupIds.Count);
                 }
 
-                // Create new DTO with email group data (record with-expression)
+                // Create new DTO with email group data and organizer status (record with-expression)
+                // Phase 6A.133: Compute IsCurrentUserOrganizer server-side
+                bool? isCurrentUserOrganizer = _currentUserService.IsAuthenticated
+                    ? @event.IsOrganizer(_currentUserService.UserId)
+                    : null;
+
                 result = result with
                 {
                     EmailGroupIds = @event.EmailGroupIds.ToList(),
-                    EmailGroups = emailGroupSummaries
+                    EmailGroups = emailGroupSummaries,
+                    IsCurrentUserOrganizer = isCurrentUserOrganizer
                 };
 
                 stopwatch.Stop();

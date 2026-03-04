@@ -98,7 +98,7 @@ export default function ManageSignUpsPage() {
 
     // Check if user is organizer or admin
     const isAuthorized = event && (
-      event.organizerId === user.userId ||
+      event.isCurrentUserOrganizer === true ||
       user.role === UserRole.Admin ||
       user.role === UserRole.AdminManager
     );
@@ -350,7 +350,7 @@ export default function ManageSignUpsPage() {
   }
 
   // Verify user is organizer
-  if (event.organizerId !== user.userId) {
+  if (event.isCurrentUserOrganizer !== true) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />

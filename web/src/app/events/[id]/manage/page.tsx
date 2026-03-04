@@ -91,7 +91,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Handle Publish Event
   const handlePublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -110,7 +110,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Handle Unpublish Event
   const handleUnpublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -130,7 +130,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.59: Handle Cancel Event
   const handleCancelEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -161,7 +161,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.59: Handle Delete Event
   const handleDeleteEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -215,7 +215,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   }
 
   // Check if user is the organizer
-  const isOrganizer = event.organizerId === user?.userId;
+  const isOrganizer = event.isCurrentUserOrganizer === true;
 
   if (!isOrganizer) {
     return (

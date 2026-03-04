@@ -2045,6 +2045,141 @@ public class Event : BaseEntity
     public bool HasOrganizerContact() =>
         PublishOrganizerContact && _organizerContacts.Any();
 
+    /// <summary>
+    /// Phase 6A.133: Determines if the given user is an organizer of this event.
+    /// Returns true if the user is the primary organizer (OrganizerId)
+    /// or a co-organizer (linked via OrganizerContacts.LinkedUserId).
+    /// </summary>
+    public bool IsOrganizer(Guid userId)
+    {
+        if (userId == Guid.Empty) return false;
+
+        // Primary organizer (original event creator)
+        if (OrganizerId == userId) return true;
+
+        // Co-organizer (linked via organizer contacts)
+        return _organizerContacts.Any(c => c.LinkedUserId.HasValue && c.LinkedUserId.Value == userId);
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Gets all user IDs that are organizers of this event.
+    /// Includes the primary OrganizerId and all linked co-organizer user IDs.
+    /// </summary>
+    public IReadOnlyList<Guid> GetAllOrganizerUserIds()
+    {
+        var ids = new List<Guid> { OrganizerId };
+        ids.AddRange(_organizerContacts
+            .Where(c => c.LinkedUserId.HasValue)
+            .Select(c => c.LinkedUserId!.Value)
+            .Where(id => id != OrganizerId)); // Avoid duplicates if primary is also linked
+        return ids.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Links an organizer contact to a user account, granting co-organizer access.
+    /// Business rules:
+    /// - Contact must exist on this event
+    /// - Cannot link to the primary organizer (they already have full access via OrganizerId)
+    /// - User cannot be linked to multiple contacts on the same event
+    /// </summary>
+    public Result LinkOrganizerContactToUser(Guid contactId, Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (contactId == Guid.Empty)
+            return Result.Failure("Contact ID is required");
+
+        // Cannot link the primary organizer — they already have access
+        if (userId == OrganizerId)
+            return Result.Failure("The primary organizer already has full access to this event");
+
+        var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact == null)
+            return Result.Failure("Organizer contact not found");
+
+        // Check if this user is already linked to another contact on this event
+        var existingLink = _organizerContacts.FirstOrDefault(c => c.LinkedUserId == userId);
+        if (existingLink != null && existingLink.Id != contactId)
+            return Result.Failure("User is already linked to another organizer contact on this event");
+
+        var linkResult = contact.LinkToUser(userId);
+        if (linkResult.IsFailure)
+            return linkResult;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Removes the user link from an organizer contact, revoking co-organizer access.
+    /// The contact information remains, but the user loses management access.
+    /// </summary>
+    public Result UnlinkOrganizerContact(Guid contactId)
+    {
+        if (contactId == Guid.Empty)
+            return Result.Failure("Contact ID is required");
+
+        var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact == null)
+            return Result.Failure("Organizer contact not found");
+
+        var unlinkResult = contact.UnlinkUser();
+        if (unlinkResult.IsFailure)
+            return unlinkResult;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Batch-links multiple organizer contacts to user accounts in one operation.
+    /// Validates all links before applying any (all-or-nothing).
+    /// </summary>
+    public Result BatchLinkOrganizerContacts(IList<(Guid contactId, Guid userId)> links)
+    {
+        if (links == null || links.Count == 0)
+            return Result.Success();
+
+        // Pre-validate: check for duplicate user IDs in the batch
+        var userIds = links.Select(l => l.userId).ToList();
+        if (userIds.Distinct().Count() != userIds.Count)
+            return Result.Failure("Batch contains duplicate user IDs — each user can only be linked once");
+
+        // Pre-validate each link before applying any
+        foreach (var (contactId, userId) in links)
+        {
+            if (userId == Guid.Empty)
+                return Result.Failure("User ID is required");
+
+            if (contactId == Guid.Empty)
+                return Result.Failure("Contact ID is required");
+
+            if (userId == OrganizerId)
+                return Result.Failure("The primary organizer already has full access to this event");
+
+            var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+            if (contact == null)
+                return Result.Failure($"Organizer contact not found for contact ID {contactId}");
+
+            // Check for conflicts with existing links (not in this batch)
+            var existingLink = _organizerContacts.FirstOrDefault(c =>
+                c.LinkedUserId == userId && !links.Any(l => l.contactId == c.Id));
+            if (existingLink != null)
+                return Result.Failure($"User is already linked to another organizer contact on this event");
+        }
+
+        // All validations passed — apply all links
+        foreach (var (contactId, userId) in links)
+        {
+            var result = LinkOrganizerContactToUser(contactId, userId);
+            if (result.IsFailure)
+                return result; // Should not happen after pre-validation, but safety net
+        }
+
+        return Result.Success();
+    }
+
     #endregion
 
     #region Donation Configuration

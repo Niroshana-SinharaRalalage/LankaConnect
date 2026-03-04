@@ -96,9 +96,9 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
                         return Result<Guid>.Failure("The selected event does not exist.");
                     }
 
-                    // ✅ CRITICAL SECURITY CHECK: Verify organizer owns the event
+                    // ✅ CRITICAL SECURITY CHECK: Verify organizer (primary or co-organizer) — Phase 6A.133
                     // Admins can link newsletters to any event
-                    if (linkedEvent.OrganizerId != _currentUserService.UserId && !_currentUserService.IsAdmin)
+                    if (!linkedEvent.IsOrganizer(_currentUserService.UserId) && !_currentUserService.IsAdmin)
                     {
                         stopwatch.Stop();
                         _logger.LogWarning(
@@ -108,7 +108,7 @@ public class CreateNewsletterCommandHandler : ICommandHandler<CreateNewsletterCo
                             linkedEvent.OrganizerId,
                             stopwatch.ElapsedMilliseconds);
 
-                        return Result<Guid>.Failure("You can only link newsletters to events you created.");
+                        return Result<Guid>.Failure("You can only link newsletters to events you organize.");
                     }
 
                     _logger.LogInformation(

@@ -240,6 +240,18 @@ export interface OrganizerContactDto {
   contactPhone?: string | null;
   isPrimary: boolean;
   sortOrder: number;
+  /** Phase 6A.133: Linked user ID for co-organizer management */
+  linkedUserId?: string | null;
+}
+
+/**
+ * Phase 6A.133: Minimal user DTO for co-organizer search results.
+ */
+export interface UserSearchResultDto {
+  id: string;
+  displayName: string;
+  email: string;
+  profilePhotoUrl?: string | null;
 }
 
 /**
@@ -380,6 +392,13 @@ export interface EventDto {
    * Used to show accurate "You are registered" badge (only for Confirmed status)
    */
   userRegistrationStatus?: RegistrationStatus | null;
+
+  /**
+   * Phase 6A.133: Server-computed organizer check for the current user.
+   * null/undefined = unauthenticated, true = user is primary or co-organizer, false = not an organizer.
+   * Frontend uses this instead of comparing organizerId === userId client-side.
+   */
+  isCurrentUserOrganizer?: boolean | null;
 }
 
 /**

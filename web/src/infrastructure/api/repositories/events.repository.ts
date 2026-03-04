@@ -62,6 +62,8 @@ import type {
   SubmitFormResponseRequest,
   SubmitFormResponseResult,
   UpdateFormResponseRequest,
+  // Phase 6A.133: Co-Organizer Management
+  UserSearchResultDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1601,6 +1603,43 @@ export class EventsRepository {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/donations/export?format=${format}`,
       { responseType: 'blob' as any }
+    );
+  }
+
+  // ==================== Phase 6A.133: Co-Organizer Management ====================
+
+  /**
+   * Search registered users by name, email, or phone for co-organizer linking.
+   * Returns max 10 results. Excludes the current user.
+   */
+  async searchUsers(query: string): Promise<UserSearchResultDto[]> {
+    return await apiClient.get<UserSearchResultDto[]>(
+      `/users/search?query=${encodeURIComponent(query)}`
+    );
+  }
+
+  /**
+   * Batch link registered users to organizer contacts as co-organizers.
+   */
+  async batchLinkOrganizerContacts(
+    eventId: string,
+    links: Array<{ contactId: string; userId: string }>
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/organizer-contacts/link`,
+      { links }
+    );
+  }
+
+  /**
+   * Unlink a user from an organizer contact, removing co-organizer access.
+   */
+  async unlinkOrganizerContact(
+    eventId: string,
+    contactId: string
+  ): Promise<void> {
+    await apiClient.delete<void>(
+      `${this.basePath}/${eventId}/organizer-contacts/${contactId}/link`
     );
   }
 }

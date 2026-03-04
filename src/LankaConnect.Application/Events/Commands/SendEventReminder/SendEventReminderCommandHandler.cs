@@ -75,11 +75,11 @@ public class SendEventReminderCommandHandler : IRequestHandler<SendEventReminder
                     "SendEventReminder: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, OrganizerId={OrganizerId}",
                     @event.Id, @event.Title.Value, @event.Status, @event.OrganizerId);
 
-                // 2. Authorization: Verify organizer or admin
+                // 2. Authorization: Verify organizer (primary or co-organizer) or admin — Phase 6A.133
                 var userId = _currentUserService.UserId;
                 var isAdmin = _currentUserService.IsAdmin;
 
-                if (@event.OrganizerId != userId && !isAdmin)
+                if (!@event.IsOrganizer(userId) && !isAdmin)
                 {
                     stopwatch.Stop();
 

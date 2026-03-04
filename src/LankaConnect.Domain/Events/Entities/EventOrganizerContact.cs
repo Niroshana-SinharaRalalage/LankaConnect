@@ -154,6 +154,40 @@ public class EventOrganizerContact : BaseEntity
     }
 
     /// <summary>
+    /// Links this organizer contact to a registered user account.
+    /// Once linked, the user gains co-organizer access to the event.
+    /// </summary>
+    internal Result LinkToUser(Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (LinkedUserId.HasValue && LinkedUserId.Value == userId)
+            return Result.Success(); // Already linked to this user, idempotent
+
+        if (LinkedUserId.HasValue)
+            return Result.Failure("This contact is already linked to a different user. Unlink first.");
+
+        LinkedUserId = userId;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Removes the user account link from this organizer contact.
+    /// The contact information remains, but the user loses co-organizer access.
+    /// </summary>
+    internal Result UnlinkUser()
+    {
+        if (!LinkedUserId.HasValue)
+            return Result.Success(); // Already unlinked, idempotent
+
+        LinkedUserId = null;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Validates email format using RFC 5322 compliant regex
     /// Same pattern as used in Event.cs domain validation
     /// </summary>

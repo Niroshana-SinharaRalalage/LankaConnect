@@ -255,7 +255,7 @@ public class DonationsController : BaseController<DonationsController>
             return NotFound(new { Error = "Event not found" });
         }
 
-        if (eventResult.Value!.OrganizerId != userId)
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
         {
             Logger.LogWarning(
                 "User {UserId} attempted to access donations for event {EventId} without authorization (organizer: {OrganizerId})",

@@ -10,7 +10,13 @@ public interface IUserRepository : IRepository<User>
     Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<User>> GetActiveUsersAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<User>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default);
-    
+
+    /// <summary>
+    /// Phase 6A.133: Search active users by name, email, or phone for co-organizer linking.
+    /// Returns max 10 results, excludes specified user ID (typically current user).
+    /// </summary>
+    Task<IReadOnlyList<User>> SearchUsersAsync(string searchTerm, Guid? excludeUserId = null, int maxResults = 10, CancellationToken cancellationToken = default);
+
     // Authentication-related methods
     Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
     Task<User?> GetByEmailVerificationTokenAsync(string token, CancellationToken cancellationToken = default);

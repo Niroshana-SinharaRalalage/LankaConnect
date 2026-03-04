@@ -288,7 +288,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
       return;
     }
 
-    if (event.organizerId !== user.userId) {
+    if (event.isCurrentUserOrganizer !== true) {
       setSubmitError('You can only edit your own events');
       return;
     }

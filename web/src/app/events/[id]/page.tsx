@@ -125,7 +125,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
-  const isOrganizer = event?.organizerId === user?.userId;
+  // Phase 6A.133: Use backend-computed organizer flag instead of client-side ID comparison
+  const isOrganizer = event?.isCurrentUserOrganizer === true;
 
   // Donation Feature: Public summary (when organizer enabled ShowDonationSummary)
   const { data: publicDonationSummary } = usePublicDonationSummary(
@@ -443,7 +444,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Handle Publish Event
   const handlePublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -612,7 +613,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
 
           {/* Organizer-only actions */}
-          {event && user && event.organizerId === user.userId && (
+          {event && user && event.isCurrentUserOrganizer === true && (
             <div className="flex items-center gap-3">
               {/* Publish button - only show for Draft events */}
               {event.status === EventStatus.Draft && (

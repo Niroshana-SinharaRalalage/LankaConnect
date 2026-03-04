@@ -110,7 +110,7 @@ public class FormResponseDeletedEmailHandler : INotificationHandler<DomainEventN
                     responseSummary: responseSummary,
                     eventStartDate: eventEntity.StartDate,
                     timeZoneId: eventEntity.TimeZoneId,
-                    eventLocation: eventEntity.Location?.ToString() ?? "TBA",
+                    eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),
                     cancelledAt: domainEvent.OccurredAt
                 );

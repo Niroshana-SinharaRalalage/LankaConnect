@@ -121,7 +121,7 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                     editFormUrl: editUrl,
                     eventStartDate: eventEntity.StartDate,
                     timeZoneId: eventEntity.TimeZoneId,
-                    eventLocation: eventEntity.Location?.ToString() ?? "TBA",
+                    eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),
                     updatedAt: domainEvent.OccurredAt
                 );

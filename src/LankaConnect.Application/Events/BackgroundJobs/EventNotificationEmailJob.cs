@@ -218,6 +218,9 @@ public class EventNotificationEmailJob
                         organizerContactPhone: baseTemplateData.TryGetValue("OrganizerContactPhone", out var orgPhone) ? (string?)orgPhone : null,
                         subjectPrefix: (string)baseTemplateData["SubjectPrefix"]);
 
+                    // Set location flag for conditional subject rendering
+                    emailParams.HasLocation = (bool)baseTemplateData["HasLocation"];
+
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
 
@@ -384,8 +387,9 @@ public class EventNotificationEmailJob
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Template expects combined EventDateTime
-            { "EventCity", @event.Location?.Address.City ?? "TBA" },
-            { "EventState", @event.Location?.Address.State ?? "TBA" },
+            { "EventCity", @event.Location?.Address.City ?? string.Empty },
+            { "EventState", @event.Location?.Address.State ?? string.Empty },
+            { "HasLocation", !string.IsNullOrWhiteSpace(@event.Location?.Address.City) && !string.IsNullOrWhiteSpace(@event.Location?.Address.State) },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional

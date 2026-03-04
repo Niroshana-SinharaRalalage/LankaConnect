@@ -129,7 +129,7 @@ public class FormResponseSubmittedEmailHandler : INotificationHandler<DomainEven
                     editFormUrl: editUrl,
                     eventStartDate: eventEntity.StartDate,
                     timeZoneId: eventEntity.TimeZoneId,
-                    eventLocation: eventEntity.Location?.ToString() ?? "TBA",
+                    eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),
                     submittedAt: response.SubmittedAt
                 );

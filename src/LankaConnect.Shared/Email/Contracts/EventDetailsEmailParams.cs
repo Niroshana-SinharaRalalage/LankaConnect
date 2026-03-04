@@ -75,12 +75,17 @@ public class EventDetailsEmailParams : IEmailParameters
     /// <summary>
     /// Event city.
     /// </summary>
-    public string EventCity { get; set; } = "TBA";
+    public string EventCity { get; set; } = string.Empty;
 
     /// <summary>
     /// Event state.
     /// </summary>
-    public string EventState { get; set; } = "TBA";
+    public string EventState { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has location data (controls {{#if HasLocation}} conditional in subject).
+    /// </summary>
+    public bool HasLocation { get; set; }
 
     /// <summary>
     /// Event description.
@@ -225,6 +230,7 @@ public class EventDetailsEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventLocation, EventLocation },
             { "EventCity", EventCity },
             { "EventState", EventState },
+            { "HasLocation", HasLocation },
             { EmailTemplateContract.Event.EventDescription, EventDescription },
             { EmailTemplateContract.Event.EventDetailsUrl, EventDetailsUrl },
             { EmailTemplateContract.Event.EventUrl, EventUrl },

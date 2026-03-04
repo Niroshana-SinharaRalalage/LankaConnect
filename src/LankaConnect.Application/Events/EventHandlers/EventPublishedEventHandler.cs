@@ -121,8 +121,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                       ?? "See Event Details";
                 var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
                 var eventLocation = GetEventLocationString(@event);
-                var eventCity = @event.Location?.Address.City ?? "TBA";
-                var eventState = @event.Location?.Address.State ?? "TBA";
+                var eventCity = @event.Location?.Address.City ?? string.Empty;
+                var eventState = @event.Location?.Address.State ?? string.Empty;
+                var hasLocation = !string.IsNullOrWhiteSpace(eventCity) && !string.IsNullOrWhiteSpace(eventState);
 
                 // Organizer contact info
                 var hasOrganizerContact = @event.HasOrganizerContact();
@@ -154,6 +155,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         organizerContactName: hasOrganizerContact ? @event.OrganizerContactName ?? "Event Organizer" : null,
                         organizerContactEmail: hasOrganizerContact ? @event.OrganizerContactEmail : null,
                         organizerContactPhone: hasOrganizerContact ? @event.OrganizerContactPhone : null);
+
+                    // Set location flag for conditional subject rendering
+                    emailParams.HasLocation = hasLocation;
 
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);

@@ -63,12 +63,17 @@ public class EventPublishedEmailParams : IEmailParameters
     /// <summary>
     /// Event city.
     /// </summary>
-    public string EventCity { get; set; } = "TBA";
+    public string EventCity { get; set; } = string.Empty;
 
     /// <summary>
     /// Event state.
     /// </summary>
-    public string EventState { get; set; } = "TBA";
+    public string EventState { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has location data (controls {{#if HasLocation}} conditional in subject).
+    /// </summary>
+    public bool HasLocation { get; set; }
 
     #endregion
 
@@ -82,7 +87,7 @@ public class EventPublishedEmailParams : IEmailParameters
     /// <summary>
     /// Ticket price text (e.g., "Free" or "$25.00").
     /// </summary>
-    public string TicketPrice { get; set; } = "TBA";
+    public string TicketPrice { get; set; } = "See Event Details";
 
     #endregion
 
@@ -181,6 +186,7 @@ public class EventPublishedEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventLocation, EventLocation },
             { "EventCity", EventCity },
             { "EventState", EventState },
+            { "HasLocation", HasLocation },
             { "IsFree", IsFree },
             { "IsPaid", !IsFree },
             { "TicketPrice", TicketPrice },

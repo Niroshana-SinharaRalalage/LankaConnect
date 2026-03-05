@@ -75,7 +75,8 @@ public class EventOrganizerContact : BaseEntity
         string? contactEmail,
         string? contactPhone,
         bool isPrimary = false,
-        int sortOrder = 0)
+        int sortOrder = 0,
+        Guid? linkedUserId = null)
     {
         if (eventId == Guid.Empty)
             return Result<EventOrganizerContact>.Failure("Event ID is required");
@@ -100,6 +101,12 @@ public class EventOrganizerContact : BaseEntity
 
         var contact = new EventOrganizerContact(
             eventId, contactName, contactEmail, contactPhone, isPrimary, sortOrder);
+
+        // Pre-link to a registered user if provided
+        if (linkedUserId.HasValue && linkedUserId.Value != Guid.Empty)
+        {
+            contact.LinkedUserId = linkedUserId.Value;
+        }
 
         return Result<EventOrganizerContact>.Success(contact);
     }

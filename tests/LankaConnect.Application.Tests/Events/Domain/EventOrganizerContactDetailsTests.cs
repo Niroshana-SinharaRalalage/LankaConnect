@@ -685,4 +685,115 @@ public class EventOrganizerContactDetailsTests
     }
 
     #endregion
+
+    #region Pre-Linked Co-Organizer (Phase 6A.133 UX Fix)
+
+    [Fact]
+    public void SetOrganizerContacts_WithLinkedUserId_ShouldPreLinkContact()
+    {
+        // Arrange
+        var @event = CreateValidEvent();
+        var coOrgUserId = Guid.NewGuid();
+
+        // Act
+        var result = @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            {
+                ("Primary Organizer", "primary@test.com", null, (Guid?)null),
+                ("Co-Organizer", "coorg@test.com", null, coOrgUserId)
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts.Should().HaveCount(2);
+        @event.OrganizerContacts[0].LinkedUserId.Should().BeNull("primary contact has no linked user");
+        @event.OrganizerContacts[1].LinkedUserId.Should().Be(coOrgUserId, "co-organizer should be pre-linked");
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_WithLinkedUserId_IsOrganizerReturnsTrue()
+    {
+        // Arrange
+        var @event = CreateValidEvent();
+        var coOrgUserId = Guid.NewGuid();
+
+        @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            {
+                ("Co-Organizer", "coorg@test.com", null, coOrgUserId)
+            });
+
+        // Act & Assert
+        @event.IsOrganizer(coOrgUserId).Should().BeTrue("pre-linked user should be recognized as organizer");
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_WithEmptyGuidLinkedUserId_ShouldNotLink()
+    {
+        // Arrange
+        var @event = CreateValidEvent();
+
+        // Act
+        var result = @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            {
+                ("Test Contact", "test@test.com", null, Guid.Empty)
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts[0].LinkedUserId.Should().BeNull("empty GUID should not be stored");
+    }
+
+    [Fact]
+    public void EventOrganizerContact_Create_WithLinkedUserId_ShouldSetProperty()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        // Act
+        var result = EventOrganizerContact.Create(
+            Guid.NewGuid(), "Test Contact", "test@example.com", null,
+            isPrimary: false, sortOrder: 0, linkedUserId: userId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkedUserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public void EventOrganizerContact_Create_WithoutLinkedUserId_ShouldBeNull()
+    {
+        // Act
+        var result = EventOrganizerContact.Create(
+            Guid.NewGuid(), "Test Contact", "test@example.com", null);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.LinkedUserId.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_BackwardCompatibleOverload_ShouldWork()
+    {
+        // Arrange
+        var @event = CreateValidEvent();
+
+        // Act - using the 3-element tuple (backward-compatible overload)
+        var result = @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone)>
+            {
+                ("Test Contact", "test@test.com", null)
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts[0].LinkedUserId.Should().BeNull("backward-compatible overload should not link");
+    }
+
+    #endregion
 }

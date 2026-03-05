@@ -4,7 +4,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail, Link2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -21,7 +21,9 @@ import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { DonationConfigForm } from './DonationConfigForm';
+import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Creation Form Component
@@ -116,6 +118,29 @@ export function EventCreationForm() {
       }
     }
   }, [publishOrganizerContact, user, setValue, watch]);
+
+  // Co-organizer inline search state
+  const [showCoOrgSearch, setShowCoOrgSearch] = useState(false);
+
+  // Get list of already-linked user IDs to exclude from search results
+  const linkedUserIds = useMemo(() => {
+    const contacts = watch('organizerContacts') || [];
+    return contacts
+      .map((c) => c.linkedUserId)
+      .filter((id): id is string => !!id);
+  }, [watch('organizerContacts')]);
+
+  // Handle selecting a user from inline search
+  const handleSearchUserSelected = (selectedUser: UserSearchResultDto) => {
+    appendContact({
+      contactName: selectedUser.displayName,
+      contactEmail: selectedUser.email,
+      contactPhone: '',
+      isPrimary: false,
+      linkedUserId: selectedUser.id,
+    });
+    setShowCoOrgSearch(false);
+  };
 
   // Session 33: Track validation errors for display
   const hasErrors = Object.keys(errors).length > 0;
@@ -221,6 +246,7 @@ export function EventCreationForm() {
               contactEmail: c.contactEmail || null,
               contactPhone: c.contactPhone || null,
               isPrimary: idx === 0, // First contact is primary
+              linkedUserId: c.linkedUserId || null,
             }))
           : [],
         // Donation Feature: Donation configuration
@@ -994,12 +1020,21 @@ export function EventCreationForm() {
           {/* Show contact fields only when checkbox is checked */}
           {watch('publishOrganizerContact') && (
             <div className="ml-7 space-y-4">
-              {contactFields.map((field, index) => (
-                <div key={field.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+              {contactFields.map((field, index) => {
+                const contactLinkedUserId = watch(`organizerContacts.${index}.linkedUserId`);
+                return (
+                <div key={field.id} className={`p-4 border rounded-lg space-y-3 ${contactLinkedUserId ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">
-                      {index === 0 ? 'Primary Contact' : `Contact ${index + 1}`}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-700">
+                        {index === 0 ? 'Primary Contact' : `Contact ${index + 1}`}
+                      </span>
+                      {contactLinkedUserId && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <Link2 className="h-3 w-3" /> Linked User
+                        </span>
+                      )}
+                    </div>
                     {index > 0 && (
                       <button
                         type="button"
@@ -1061,20 +1096,39 @@ export function EventCreationForm() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
-              {/* Add Contact Button (max 10) */}
-              {contactFields.length < 10 ? (
-                <button
-                  type="button"
-                  onClick={() => appendContact({ contactName: '', contactEmail: '', contactPhone: '', isPrimary: false })}
-                  className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  <span className="text-lg">+</span> Add Another Organizer Contact
-                </button>
-              ) : (
-                <p className="text-sm text-neutral-500">Maximum 10 organizer contacts reached</p>
+              {/* Inline co-organizer search */}
+              {showCoOrgSearch && (
+                <CoOrganizerInlineSearch
+                  onSelectUser={handleSearchUserSelected}
+                  excludeUserIds={linkedUserIds}
+                  onClose={() => setShowCoOrgSearch(false)}
+                />
               )}
+
+              {/* Add Contact Buttons (max 10) */}
+              {contactFields.length < 10 && !showCoOrgSearch ? (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => appendContact({ contactName: '', contactEmail: '', contactPhone: '', isPrimary: false })}
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    <span className="text-lg">+</span> Add Contact Manually
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCoOrgSearch(true)}
+                    className="flex items-center gap-2 text-sm text-[#FF7900] hover:text-[#e06d00] font-medium"
+                  >
+                    <Users className="h-4 w-4" /> Search & Add LankaConnect User
+                  </button>
+                </div>
+              ) : contactFields.length >= 10 ? (
+                <p className="text-sm text-neutral-500">Maximum 10 organizer contacts reached</p>
+              ) : null}
 
               {/* Validation Error */}
               {errors.organizerContacts && !Array.isArray(errors.organizerContacts) && (

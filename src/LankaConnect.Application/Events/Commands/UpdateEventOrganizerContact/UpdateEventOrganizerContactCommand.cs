@@ -15,4 +15,5 @@ public record OrganizerContactRequest(
     string ContactName,
     string? ContactEmail = null,
     string? ContactPhone = null,
-    bool IsPrimary = false);
+    bool IsPrimary = false,
+    Guid? LinkedUserId = null);

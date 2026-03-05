@@ -262,6 +262,7 @@ export interface OrganizerContactRequest {
   contactEmail?: string | null;
   contactPhone?: string | null;
   isPrimary?: boolean;
+  linkedUserId?: string | null;
 }
 
 /**

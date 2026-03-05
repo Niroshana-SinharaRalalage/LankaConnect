@@ -1991,7 +1991,7 @@ public class Event : BaseEntity
     /// </summary>
     public Result SetOrganizerContacts(
         bool publishContact,
-        List<(string name, string? email, string? phone)> contacts)
+        List<(string name, string? email, string? phone, Guid? linkedUserId)> contacts)
     {
         if (publishContact)
         {
@@ -2005,10 +2005,10 @@ public class Event : BaseEntity
             var newContacts = new List<EventOrganizerContact>();
             for (var i = 0; i < contacts.Count; i++)
             {
-                var (name, email, phone) = contacts[i];
+                var (name, email, phone, linkedUserId) = contacts[i];
                 var isPrimary = i == 0; // First contact is primary by default
                 var contactResult = EventOrganizerContact.Create(
-                    Id, name, email, phone, isPrimary, sortOrder: i);
+                    Id, name, email, phone, isPrimary, sortOrder: i, linkedUserId: linkedUserId);
 
                 if (contactResult.IsFailure)
                     return Result.Failure($"Contact {i + 1}: {contactResult.Error}");
@@ -2030,6 +2030,19 @@ public class Event : BaseEntity
 
         MarkAsUpdated();
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Backward-compatible overload: sets organizer contacts without linkedUserId.
+    /// </summary>
+    public Result SetOrganizerContacts(
+        bool publishContact,
+        List<(string name, string? email, string? phone)> contacts)
+    {
+        var contactsWithUserId = contacts
+            .Select(c => (c.name, c.email, c.phone, (Guid?)null))
+            .ToList();
+        return SetOrganizerContacts(publishContact, contactsWithUserId);
     }
 
     /// <summary>

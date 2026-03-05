@@ -499,7 +499,7 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         if (request.PublishOrganizerContact.HasValue)
         {
             var contacts = (request.OrganizerContacts ?? new List<UpdateEventOrganizerContact.OrganizerContactRequest>())
-                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone))
+                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId))
                 .ToList();
 
             var contactResult = @event.SetOrganizerContacts(

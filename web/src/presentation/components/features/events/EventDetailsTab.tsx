@@ -9,7 +9,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { sanitizeHtml } from '@/lib/html-utils';
 import { useRouter } from 'next/navigation';
 import {
@@ -28,10 +28,7 @@ import {
   Heart,
   CheckCircle,
   XCircle,
-  UserPlus,
   Link2,
-  Unlink,
-  Loader2,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -40,7 +37,6 @@ import { ImageUploader } from '@/presentation/components/features/events/ImageUp
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { type EventDto } from '@/infrastructure/api/types/events.types';
-import { CoOrganizerSearchModal } from '@/presentation/components/features/events/CoOrganizerSearchModal';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDateTime } from '@/presentation/lib/utils/date-formatter';
 
@@ -68,30 +64,12 @@ export function EventDetailsTab({
   const [isSavingMaxAttendees, setIsSavingMaxAttendees] = useState(false);
   const [maxAttendeesError, setMaxAttendeesError] = useState<string | null>(null);
 
-  // Phase 6A.133: Co-organizer management state
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
-  const [unlinkingContactId, setUnlinkingContactId] = useState<string | null>(null);
-
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
 
-  // Phase 6A.133: Co-organizer stats
+  // Co-organizer stats (read-only display)
   const linkedCount = event.organizerContacts?.filter(c => c.linkedUserId).length ?? 0;
   const totalContacts = event.organizerContacts?.length ?? 0;
-  const unlinkableContacts = event.organizerContacts?.filter(c => !c.linkedUserId) ?? [];
-
-  // Phase 6A.133: Handle unlinking a co-organizer
-  const handleUnlink = async (contactId: string) => {
-    try {
-      setUnlinkingContactId(contactId);
-      await eventsRepository.unlinkOrganizerContact(event.id, contactId);
-      await onRefetch();
-    } catch (err) {
-      console.error('Failed to unlink co-organizer:', err);
-    } finally {
-      setUnlinkingContactId(null);
-    }
-  };
 
   // Issue #51: Handle saving max attendees per registration
   const handleSaveMaxAttendees = async () => {
@@ -387,32 +365,19 @@ export function EventDetailsTab({
         </CardContent>
       </Card>
 
-      {/* Organizer Contact Section - Multiple Contacts with Co-Organizer Management */}
+      {/* Organizer Contact Section - Read-only display */}
       {event.organizerContacts && event.organizerContacts.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts</CardTitle>
-                <CardDescription>
-                  Event organizer contact information
-                  {linkedCount > 0 && (
-                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                      {linkedCount}/{totalContacts} co-organizers linked
-                    </span>
-                  )}
-                </CardDescription>
-              </div>
-              {event.isCurrentUserOrganizer && unlinkableContacts.length > 0 && (
-                <button
-                  onClick={() => setIsLinkModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-[#8B1538] hover:bg-[#6d1029] rounded-lg transition-colors"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Link Co-Organizers
-                </button>
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts</CardTitle>
+            <CardDescription>
+              Event organizer contact information
+              {linkedCount > 0 && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                  {linkedCount}/{totalContacts} co-organizers linked
+                </span>
               )}
-            </div>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-lg border border-neutral-200">
@@ -422,10 +387,7 @@ export function EventDetailsTab({
                     <th className="text-left px-4 py-3 font-medium text-neutral-600">Name</th>
                     <th className="text-left px-4 py-3 font-medium text-neutral-600">Email</th>
                     <th className="text-left px-4 py-3 font-medium text-neutral-600">Phone</th>
-                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Linked User</th>
-                    {event.isCurrentUserOrganizer && (
-                      <th className="text-left px-4 py-3 font-medium text-neutral-600">Actions</th>
-                    )}
+                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -453,58 +415,24 @@ export function EventDetailsTab({
                         {contact.linkedUserId ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                             <Link2 className="h-3 w-3" />
-                            Linked
+                            Co-Organizer
                           </span>
                         ) : (
-                          <span className="text-xs text-neutral-400">Not linked</span>
+                          <span className="text-xs text-neutral-400">Contact only</span>
                         )}
                       </td>
-                      {event.isCurrentUserOrganizer && (
-                        <td className="px-4 py-3">
-                          {contact.linkedUserId ? (
-                            <button
-                              onClick={() => handleUnlink(contact.id)}
-                              disabled={unlinkingContactId === contact.id}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                              title="Unlink co-organizer"
-                            >
-                              {unlinkingContactId === contact.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Unlink className="h-3 w-3" />
-                              )}
-                              Unlink
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setIsLinkModalOpen(true)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#FF7900] hover:bg-orange-50 rounded transition-colors"
-                              title="Link a user to this contact"
-                            >
-                              <UserPlus className="h-3 w-3" />
-                              Link User
-                            </button>
-                          )}
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {event.isCurrentUserOrganizer && (
+              <p className="mt-3 text-xs text-neutral-500">
+                To add or manage co-organizers, use the Edit Event page.
+              </p>
+            )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Phase 6A.133: Co-Organizer Search Modal */}
-      {event.isCurrentUserOrganizer && (
-        <CoOrganizerSearchModal
-          open={isLinkModalOpen}
-          onOpenChange={setIsLinkModalOpen}
-          eventId={event.id}
-          unlinkableContacts={unlinkableContacts}
-          onLinkComplete={onRefetch}
-        />
       )}
 
       {/* Donation Feature: Donation Configuration Section */}

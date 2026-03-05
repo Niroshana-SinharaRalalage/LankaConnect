@@ -57,7 +57,7 @@ public class UpdateEventOrganizerContactCommandHandler : ICommandHandler<UpdateE
 
                 // Call domain method to set organizer contacts
                 var contacts = (request.Contacts ?? new List<OrganizerContactRequest>())
-                    .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone))
+                    .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId))
                     .ToList();
 
                 var setContactResult = @event.SetOrganizerContacts(

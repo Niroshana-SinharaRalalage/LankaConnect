@@ -230,6 +230,7 @@ export const createEventSchema = z.object({
       .nullable()
       .or(z.literal('')),
     isPrimary: z.boolean().optional().default(false),
+    linkedUserId: z.string().uuid().optional().nullable(),
   })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
 }).refine(
   (data) => {
@@ -603,6 +604,7 @@ const baseEditEventSchema = z.object({
       .nullable()
       .or(z.literal('')),
     isPrimary: z.boolean().optional().default(false),
+    linkedUserId: z.string().uuid().optional().nullable(),
   })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
 });
 

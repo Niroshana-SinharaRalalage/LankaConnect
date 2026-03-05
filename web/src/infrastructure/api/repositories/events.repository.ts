@@ -1618,30 +1618,6 @@ export class EventsRepository {
     );
   }
 
-  /**
-   * Batch link registered users to organizer contacts as co-organizers.
-   */
-  async batchLinkOrganizerContacts(
-    eventId: string,
-    links: Array<{ contactId: string; userId: string }>
-  ): Promise<void> {
-    await apiClient.post<void>(
-      `${this.basePath}/${eventId}/organizer-contacts/link`,
-      { links }
-    );
-  }
-
-  /**
-   * Unlink a user from an organizer contact, removing co-organizer access.
-   */
-  async unlinkOrganizerContact(
-    eventId: string,
-    contactId: string
-  ): Promise<void> {
-    await apiClient.delete<void>(
-      `${this.basePath}/${eventId}/organizer-contacts/${contactId}/link`
-    );
-  }
 }
 
 /**

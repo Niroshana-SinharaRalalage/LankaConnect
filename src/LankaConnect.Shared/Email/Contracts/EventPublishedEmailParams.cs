@@ -11,7 +11,7 @@ namespace LankaConnect.Shared.Email.Contracts;
 ///
 /// Sent to email group subscribers and newsletter subscribers when event is published.
 /// </summary>
-public class EventPublishedEmailParams : IEmailParameters
+public class EventPublishedEmailParams : IEmailParameters, IUnsubscribeableEmail
 {
     /// <summary>
     /// The template name for event published notification email.
@@ -27,6 +27,12 @@ public class EventPublishedEmailParams : IEmailParameters
     /// Recipient name (if known).
     /// </summary>
     public string RecipientName { get; set; } = "Subscriber";
+
+    /// <summary>
+    /// Per-recipient unsubscribe URL for List-Unsubscribe header.
+    /// Set when recipient is a newsletter subscriber with an unsubscribe token.
+    /// </summary>
+    public string? UnsubscribeUrl { get; set; }
 
     #region Core Event Properties
 

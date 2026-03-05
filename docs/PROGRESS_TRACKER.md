@@ -1,7 +1,37 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-04 - Phase 6A.133: Multiple Event Organizers (Co-Organizer Linking) ✅ DEPLOYED*
+*Last Updated: 2026-03-05 - Rich Text Formatting Fix (Events + Newsletters) ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Phase 6A.133: Multiple Event Organizers ✅ DEPLOYED
+## 🎯 Current Session Status - Rich Text Formatting Fix ✅ DEPLOYED
+
+### Rich Text Formatting Fix (Events + Newsletters) - 2026-03-05
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 83acbf90) - VERIFIED**
+
+**Classification**: UI Bug Fix — Rich text formatting (headings, bullet lists, numbered lists, links, images) lost when displaying saved event descriptions and newsletter content.
+
+**Root Cause**: `@tailwindcss/typography` plugin was never installed. The `prose` CSS class used on 4 display pages was non-functional, while Tailwind's preflight CSS reset stripped browser defaults for lists (`list-style: none`), headings (`font-size: inherit`), and links (`text-decoration: inherit`). Bold/italic survived because `<strong>`/`<em>` are not affected by preflight.
+
+**Affected Pages** (all fixed by single dependency):
+- Event Details (public) — `events/[id]/page.tsx`
+- Event Details (manage) — `EventDetailsTab.tsx`
+- Newsletter View (public) — `newsletters/[id]/page.tsx`
+- Newsletter View (dashboard) — `my-newsletters/[id]/page.tsx`
+
+**Changes (6 files, 91 insertions, 22 deletions)**:
+
+| Change | File | Detail |
+|--------|------|--------|
+| Install `@tailwindcss/typography` | `package.json`, `tailwind.config.ts` | Enables `prose` class for typographic rendering |
+| Add `img` to DOMPurify whitelist | `html-utils.ts` | Azure blob images preserved on display (with safe attrs: src, alt, width, height) |
+| Fix RichTextEditor content sync | `RichTextEditor.tsx` | Re-added `content` to useEffect deps with debounce echo prevention via `lastContentRef` |
+| Add tests | `html-utils.test.ts` | 5 new tests: img sanitization, XSS attrs stripped, ordered lists, blockquotes |
+
+**Tests**: 25/25 html-utils tests pass, build succeeds
+**Commits**: `83acbf90`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133: Multiple Event Organizers ✅ DEPLOYED
 
 ### Phase 6A.133: Multiple Event Organizers (Co-Organizer Linking) - 2026-03-04
 

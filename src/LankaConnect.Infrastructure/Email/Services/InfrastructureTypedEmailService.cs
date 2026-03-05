@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
 
@@ -66,11 +67,19 @@ public class InfrastructureTypedEmailService : ITypedEmailService
             // Convert to dictionary for template rendering
             var parameters = emailParams.ToDictionary();
 
+            // Build List-Unsubscribe headers for marketing emails (RFC 2369 + RFC 8058)
+            Dictionary<string, string>? emailHeaders = null;
+            if (emailParams is IUnsubscribeableEmail unsub && !string.IsNullOrWhiteSpace(unsub.UnsubscribeUrl))
+            {
+                emailHeaders = ListUnsubscribeHeaderBuilder.BuildHeaders(unsub.UnsubscribeUrl);
+            }
+
             // Send email via AzureEmailService directly (no bridge)
             var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
                 parameters,
+                emailHeaders,
                 cancellationToken);
 
             stopwatch.Stop();
@@ -148,12 +157,20 @@ public class InfrastructureTypedEmailService : ITypedEmailService
                 ContentId = a.ContentId
             }).ToList();
 
+            // Build List-Unsubscribe headers for marketing emails (RFC 2369 + RFC 8058)
+            Dictionary<string, string>? attachEmailHeaders = null;
+            if (emailParams is IUnsubscribeableEmail unsubAttach && !string.IsNullOrWhiteSpace(unsubAttach.UnsubscribeUrl))
+            {
+                attachEmailHeaders = ListUnsubscribeHeaderBuilder.BuildHeaders(unsubAttach.UnsubscribeUrl);
+            }
+
             // Send email with attachments via AzureEmailService directly (no bridge)
             var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
                 parameters,
                 emailAttachments,
+                attachEmailHeaders,
                 cancellationToken);
 
             stopwatch.Stop();

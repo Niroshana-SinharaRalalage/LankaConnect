@@ -10,7 +10,7 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Sent to email groups and newsletter subscribers when an organizer manually
 /// sends event details/notifications.
 /// </summary>
-public class EventDetailsEmailParams : IEmailParameters
+public class EventDetailsEmailParams : IEmailParameters, IUnsubscribeableEmail
 {
     #region Template Selection
 
@@ -28,6 +28,12 @@ public class EventDetailsEmailParams : IEmailParameters
     /// Recipient name.
     /// </summary>
     public string RecipientName => UserName;
+
+    /// <summary>
+    /// Per-recipient unsubscribe URL for List-Unsubscribe header.
+    /// Set when recipient is a newsletter subscriber with an unsubscribe token.
+    /// </summary>
+    public string? UnsubscribeUrl { get; set; }
 
     #endregion
 

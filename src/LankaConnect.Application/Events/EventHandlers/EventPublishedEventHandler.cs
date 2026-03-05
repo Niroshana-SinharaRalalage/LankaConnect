@@ -31,6 +31,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEventFormRepository _eventFormRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
     private readonly EmailNotificationSettings _emailNotificationSettings;
     private readonly ILogger<EventPublishedEventHandler> _logger;
 
@@ -40,6 +41,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         IEventFormRepository eventFormRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
+        INewsletterSubscriberRepository newsletterSubscriberRepository,
         IOptions<EmailNotificationSettings> emailNotificationSettings,
         ILogger<EventPublishedEventHandler> logger)
     {
@@ -48,6 +50,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         _eventFormRepository = eventFormRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
+        _newsletterSubscriberRepository = newsletterSubscriberRepository;
         _emailNotificationSettings = emailNotificationSettings.Value;
         _logger = logger;
     }
@@ -158,6 +161,13 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
 
                     // Set location flag for conditional subject rendering
                     emailParams.HasLocation = hasLocation;
+
+                    // Set per-recipient unsubscribe URL for List-Unsubscribe header (RFC 2369/8058)
+                    var subscriber = await _newsletterSubscriberRepository.GetByEmailAsync(email, cancellationToken);
+                    if (subscriber?.UnsubscribeToken != null)
+                    {
+                        emailParams.UnsubscribeUrl = _emailUrlHelper.BuildNewsletterUnsubscribeUrl(subscriber.UnsubscribeToken);
+                    }
 
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);

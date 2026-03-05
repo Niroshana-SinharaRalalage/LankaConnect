@@ -7,7 +7,23 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133: MULTIPLE EVENT ORGANIZERS ✅ DEPLOYED (2026-03-04)
+## 🔄 CURRENT STATUS - RICH TEXT FORMATTING FIX ✅ DEPLOYED (2026-03-05)
+**Date**: 2026-03-05
+**Session**: Rich Text Formatting Fix (Events + Newsletters)
+**Status**: ✅ **DEPLOYED TO STAGING - VERIFIED**
+**Commit**: 83acbf90
+
+**Bug Fix**: Rich text formatting (headings, bullet/numbered lists, links, images) lost on display pages.
+- Root cause: `@tailwindcss/typography` plugin missing — `prose` class non-functional
+- Tailwind preflight reset `list-style: none`, heading sizes, link decorations
+- Fix: Install `@tailwindcss/typography`, add `img` to DOMPurify whitelist, fix RichTextEditor content sync race condition
+- Affects: Event details (2 pages), Newsletter view (2 pages) — all fixed by single dependency
+
+**Tests**: 25/25 html-utils tests pass
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133: MULTIPLE EVENT ORGANIZERS ✅ DEPLOYED (2026-03-04)
 **Date**: 2026-03-04
 **Session**: Phase 6A.133 - Multiple Event Organizers (Co-Organizer Linking)
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED VIA API**

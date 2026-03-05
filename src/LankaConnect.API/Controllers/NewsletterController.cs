@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using LankaConnect.Application.Communications.Common;
@@ -201,6 +203,57 @@ public class NewsletterController : ControllerBase
         {
             _logger.LogError(ex, "Error unsubscribing from newsletter with token: {Token}", token);
             return Redirect($"{_configuration["ApplicationUrls:FrontendBaseUrl"] ?? "https://lankaconnect.app"}/newsletter/unsubscribe?status=error&message=An+error+occurred");
+        }
+    }
+
+    /// <summary>
+    /// RFC 8058 one-click unsubscribe POST endpoint.
+    /// Email clients (Gmail, Yahoo, etc.) send a POST request with the token in the query string.
+    /// This enables the "Unsubscribe" button in email client UIs.
+    /// </summary>
+    [HttpPost("unsubscribe")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UnsubscribeOneClick(
+        [FromQuery] string token,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                _logger.LogWarning("[RFC-8058] One-click unsubscribe POST received with empty token");
+                return BadRequest("Invalid unsubscribe token");
+            }
+
+            _logger.LogInformation(
+                "[RFC-8058] One-click unsubscribe POST received. TokenPreview={TokenPreview}",
+                token[..Math.Min(8, token.Length)]);
+
+            var command = new UnsubscribeFromNewsletterCommand(token);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning(
+                    "[RFC-8058] One-click unsubscribe failed: {Error}. TokenPreview={TokenPreview}",
+                    result.Error, token[..Math.Min(8, token.Length)]);
+                return BadRequest(result.Error);
+            }
+
+            _logger.LogInformation(
+                "[RFC-8058] One-click unsubscribe successful. TokenPreview={TokenPreview}",
+                token[..Math.Min(8, token.Length)]);
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[RFC-8058] One-click unsubscribe error. TokenPreview={TokenPreview}",
+                token?[..Math.Min(8, token?.Length ?? 0)] ?? "null");
+            return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }
 }

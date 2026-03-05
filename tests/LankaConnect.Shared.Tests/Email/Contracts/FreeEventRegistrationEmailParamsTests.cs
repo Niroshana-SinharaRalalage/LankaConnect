@@ -179,7 +179,7 @@ public class FreeEventRegistrationEmailParamsTests
     {
         // Arrange
         var emailParams = CreateValidParams();
-        emailParams.WithSignUpListsUrl("https://lankaconnect.com/events/123#sign-ups");
+        emailParams.WithSignUpLists("https://lankaconnect.com/events/123#sign-ups");
 
         // Act
         var dict = emailParams.ToDictionary();
@@ -456,14 +456,14 @@ public class FreeEventRegistrationEmailParamsTests
     }
 
     [Fact]
-    public void WithSignUpListsUrl_ShouldSetSignUpListsUrl()
+    public void WithSignUpLists_ShouldSetSignUpListsUrl()
     {
         // Arrange
         var emailParams = CreateValidParams();
         var signUpListsUrl = "https://example.com/events/123#sign-ups";
 
         // Act
-        var result = emailParams.WithSignUpListsUrl(signUpListsUrl);
+        var result = emailParams.WithSignUpLists(signUpListsUrl);
 
         // Assert
         result.SignUpListsUrl.Should().Be(signUpListsUrl);

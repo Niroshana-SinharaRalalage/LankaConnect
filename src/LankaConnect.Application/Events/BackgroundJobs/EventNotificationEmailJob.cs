@@ -31,6 +31,7 @@ public class EventNotificationEmailJob
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
+    private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IUnitOfWork _unitOfWork;
@@ -43,6 +44,7 @@ public class EventNotificationEmailJob
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
+        INewsletterSubscriberRepository newsletterSubscriberRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IUnitOfWork unitOfWork,
@@ -54,6 +56,7 @@ public class EventNotificationEmailJob
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
+        _newsletterSubscriberRepository = newsletterSubscriberRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _unitOfWork = unitOfWork;
@@ -228,6 +231,13 @@ public class EventNotificationEmailJob
                     if (hasActiveSignupForms)
                     {
                         emailParams.WithSignupForms(signupFormsUrl);
+                    }
+
+                    // Set per-recipient unsubscribe URL for List-Unsubscribe header (RFC 2369/8058)
+                    var subscriber = await _newsletterSubscriberRepository.GetByEmailAsync(email, cancellationToken);
+                    if (subscriber?.UnsubscribeToken != null)
+                    {
+                        emailParams.UnsubscribeUrl = _emailUrlHelper.BuildNewsletterUnsubscribeUrl(subscriber.UnsubscribeToken);
                     }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);

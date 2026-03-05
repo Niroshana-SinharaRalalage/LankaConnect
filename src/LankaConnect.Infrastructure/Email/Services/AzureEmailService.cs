@@ -149,7 +149,8 @@ public class AzureEmailService : IEmailTemplateService
     }
 
     public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
-        Dictionary<string, object> parameters, CancellationToken cancellationToken = default)
+        Dictionary<string, object> parameters, Dictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -204,7 +205,8 @@ public class AzureEmailService : IEmailTemplateService
                 PlainTextBody = textBody ?? string.Empty,
                 FromEmail = _emailSettings.FromEmail,
                 FromName = _emailSettings.FromName,
-                Priority = 2 // Normal priority for templated emails
+                Priority = 2, // Normal priority for templated emails
+                Headers = headers
             };
 
             // TODO-REMOVE: Diagnostic logging
@@ -238,7 +240,7 @@ public class AzureEmailService : IEmailTemplateService
     /// </summary>
     public async Task<Result> SendTemplatedEmailAsync(string templateName, string recipientEmail,
         Dictionary<string, object> parameters, List<DtoEmailAttachment>? attachments,
-        CancellationToken cancellationToken = default)
+        Dictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -276,7 +278,8 @@ public class AzureEmailService : IEmailTemplateService
                 FromEmail = _emailSettings.FromEmail,
                 FromName = _emailSettings.FromName,
                 Priority = 2,
-                Attachments = attachments
+                Attachments = attachments,
+                Headers = headers
             };
 
             // Send the email
@@ -842,6 +845,19 @@ public class AzureEmailService : IEmailTemplateService
 
                     azureEmailMessage.Attachments.Add(azureAttachment);
                 }
+            }
+
+            // Copy custom headers from DTO to Azure EmailMessage (e.g., List-Unsubscribe)
+            if (emailMessage.Headers?.Count > 0)
+            {
+                foreach (var header in emailMessage.Headers)
+                {
+                    azureEmailMessage.Headers.Add(header.Key, header.Value);
+                }
+                _logger.LogInformation(
+                    "Added {HeaderCount} custom email headers for {ToEmail}: {HeaderNames}",
+                    emailMessage.Headers.Count, emailMessage.ToEmail,
+                    string.Join(", ", emailMessage.Headers.Keys));
             }
 
             // Send email

@@ -10,7 +10,7 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Sent to newsletter subscribers when a new newsletter is published.
 /// Can be linked to an event or standalone.
 /// </summary>
-public class NewsletterEmailParams : IEmailParameters
+public class NewsletterEmailParams : IEmailParameters, IUnsubscribeableEmail
 {
     #region Template Selection
 
@@ -113,6 +113,11 @@ public class NewsletterEmailParams : IEmailParameters
     /// URL for unsubscribing from newsletter.
     /// </summary>
     public string UnsubscribeLink { get; set; } = string.Empty;
+
+    /// <summary>
+    /// IUnsubscribeableEmail implementation — aliases UnsubscribeLink for header generation.
+    /// </summary>
+    public string? UnsubscribeUrl => string.IsNullOrWhiteSpace(UnsubscribeLink) ? null : UnsubscribeLink;
 
     #endregion
 

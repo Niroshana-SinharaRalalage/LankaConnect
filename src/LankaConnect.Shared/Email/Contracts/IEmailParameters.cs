@@ -52,3 +52,19 @@ public interface IEmailParameters
     /// <returns>True if all parameters are valid, false otherwise</returns>
     bool Validate(out List<string> errors);
 }
+
+/// <summary>
+/// Optional interface for email parameters that support List-Unsubscribe headers.
+/// Marketing/subscription emails implement this; transactional emails do NOT.
+/// When implemented, the email service adds RFC 2369 List-Unsubscribe and
+/// RFC 8058 List-Unsubscribe-Post headers to enable one-click unsubscribe in Gmail/Yahoo.
+/// </summary>
+public interface IUnsubscribeableEmail
+{
+    /// <summary>
+    /// Per-recipient unsubscribe URL containing their unique token.
+    /// Example: https://api.lankaconnect.app/api/newsletter/unsubscribe?token=abc123
+    /// Returns null if no unsubscribe URL is available for this recipient.
+    /// </summary>
+    string? UnsubscribeUrl { get; }
+}

@@ -1991,7 +1991,7 @@ public class Event : BaseEntity
     /// </summary>
     public Result SetOrganizerContacts(
         bool publishContact,
-        List<(string name, string? email, string? phone, Guid? linkedUserId)> contacts)
+        List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)> contacts)
     {
         if (publishContact)
         {
@@ -2001,12 +2001,15 @@ public class Event : BaseEntity
             if (contacts.Count > MAX_ORGANIZER_CONTACTS)
                 return Result.Failure($"Maximum {MAX_ORGANIZER_CONTACTS} organizer contacts allowed");
 
+            // If no contact is explicitly marked primary, default the first one
+            var anyPrimary = contacts.Any(c => c.isPrimary);
+
             // Validate each contact
             var newContacts = new List<EventOrganizerContact>();
             for (var i = 0; i < contacts.Count; i++)
             {
-                var (name, email, phone, linkedUserId) = contacts[i];
-                var isPrimary = i == 0; // First contact is primary by default
+                var (name, email, phone, linkedUserId, requestedPrimary) = contacts[i];
+                var isPrimary = requestedPrimary || (!anyPrimary && i == 0);
                 var contactResult = EventOrganizerContact.Create(
                     Id, name, email, phone, isPrimary, sortOrder: i, linkedUserId: linkedUserId);
 
@@ -2039,10 +2042,10 @@ public class Event : BaseEntity
         bool publishContact,
         List<(string name, string? email, string? phone)> contacts)
     {
-        var contactsWithUserId = contacts
-            .Select(c => (c.name, c.email, c.phone, (Guid?)null))
+        var contactsWithDefaults = contacts
+            .Select(c => (c.name, c.email, c.phone, (Guid?)null, false))
             .ToList();
-        return SetOrganizerContacts(publishContact, contactsWithUserId);
+        return SetOrganizerContacts(publishContact, contactsWithDefaults);
     }
 
     /// <summary>

@@ -698,10 +698,10 @@ public class EventOrganizerContactDetailsTests
         // Act
         var result = @event.SetOrganizerContacts(
             publishContact: true,
-            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
             {
-                ("Primary Organizer", "primary@test.com", null, (Guid?)null),
-                ("Co-Organizer", "coorg@test.com", null, coOrgUserId)
+                ("Primary Organizer", "primary@test.com", null, (Guid?)null, true),
+                ("Co-Organizer", "coorg@test.com", null, coOrgUserId, false)
             });
 
         // Assert
@@ -720,9 +720,9 @@ public class EventOrganizerContactDetailsTests
 
         @event.SetOrganizerContacts(
             publishContact: true,
-            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
             {
-                ("Co-Organizer", "coorg@test.com", null, coOrgUserId)
+                ("Co-Organizer", "coorg@test.com", null, coOrgUserId, false)
             });
 
         // Act & Assert
@@ -738,9 +738,9 @@ public class EventOrganizerContactDetailsTests
         // Act
         var result = @event.SetOrganizerContacts(
             publishContact: true,
-            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId)>
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
             {
-                ("Test Contact", "test@test.com", null, Guid.Empty)
+                ("Test Contact", "test@test.com", null, Guid.Empty, false)
             });
 
         // Assert
@@ -793,6 +793,50 @@ public class EventOrganizerContactDetailsTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.OrganizerContacts[0].LinkedUserId.Should().BeNull("backward-compatible overload should not link");
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_PrimaryFlagRespected_NotOverriddenByPosition()
+    {
+        // Arrange - primary organizer is at index 1, not index 0
+        var @event = CreateValidEvent();
+        var coOrgUserId = Guid.NewGuid();
+
+        // Act - co-organizer first, primary organizer second
+        var result = @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
+            {
+                ("Co-Organizer", "coorg@test.com", null, coOrgUserId, false),
+                ("Primary Organizer", "primary@test.com", null, (Guid?)null, true)
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts.Should().HaveCount(2);
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("co-organizer should NOT become primary just because it's first");
+        @event.OrganizerContacts[1].IsPrimary.Should().BeTrue("explicit primary flag should be respected");
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_NoPrimarySpecified_FirstContactBecomesPrimary()
+    {
+        // Arrange - no contact marked as primary
+        var @event = CreateValidEvent();
+
+        // Act
+        var result = @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
+            {
+                ("Contact A", "a@test.com", null, (Guid?)null, false),
+                ("Contact B", "b@test.com", null, (Guid?)null, false)
+            });
+
+        // Assert - fallback: first contact becomes primary
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts[0].IsPrimary.Should().BeTrue("first contact should default to primary when none specified");
+        @event.OrganizerContacts[1].IsPrimary.Should().BeFalse();
     }
 
     #endregion

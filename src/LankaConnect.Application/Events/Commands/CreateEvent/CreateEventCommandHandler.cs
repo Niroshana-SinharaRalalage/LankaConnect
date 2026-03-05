@@ -380,7 +380,7 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         if (request.PublishOrganizerContact.GetValueOrDefault() && request.OrganizerContacts?.Any() == true)
         {
             var contacts = request.OrganizerContacts
-                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId))
+                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId, c.IsPrimary))
                 .ToList();
 
             var contactResult = eventResult.Value.SetOrganizerContacts(

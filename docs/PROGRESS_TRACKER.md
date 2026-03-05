@@ -1,7 +1,37 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-05 - Rich Text Formatting Fix (Events + Newsletters) ✅ DEPLOYED*
+*Last Updated: 2026-03-05 - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE*
 
-## 🎯 Current Session Status - Rich Text Formatting Fix ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE
+
+### Phase 6A.133 UX Fix: Inline Co-Organizer Search - 2026-03-05
+
+**Status**: ✅ **COMPLETE (commit 35b91a0f on develop) - ALL 1517 TESTS PASS**
+
+**Classification**: UX Improvement — Consolidated co-organizer management from a confusing two-page workflow (Edit form + Event Details tab linking) into a single inline search in Create/Edit Event forms.
+
+**Problem**: Co-organizer management was split across two pages: organizer contacts were added in the Edit form, but linking them to registered users required navigating to the Event Details tab separately. This was confusing and error-prone for users.
+
+**Solution**: Replaced the heavy `CoOrganizerSearchModal` with a lightweight `CoOrganizerInlineSearch` component embedded directly in Create/Edit Event forms. Users can now search for and pre-link co-organizers at event creation time. EventDetailsTab simplified to read-only display.
+
+**Changes**:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Backend | `OrganizerContactRequest` accepts optional `LinkedUserId` | `CreateEventCommand.cs`, `UpdateEventCommand.cs` |
+| Backend | `EventOrganizerContact.Create()` accepts optional `linkedUserId` | `EventOrganizerContact.cs` |
+| Backend | `Event.SetOrganizerContacts()` passes through `linkedUserId` to pre-link contacts at creation time | `Event.cs` |
+| Frontend | New `CoOrganizerInlineSearch` component replaces `CoOrganizerSearchModal` | `CoOrganizerInlineSearch.tsx` |
+| Frontend | Inline user search in both EventCreationForm and EventEditForm | `EventCreationForm.tsx`, `EventEditForm.tsx` |
+| Frontend | EventDetailsTab simplified to read-only | `EventDetailsTab.tsx` |
+| Frontend | Dead code removed | Removed `CoOrganizerSearchModal` |
+| Tests | 6 new domain tests for pre-linked co-organizer functionality | Domain test files |
+
+**Tests**: 1517 passed, 0 failed (6 new pre-linked co-organizer domain tests)
+**Commits**: `35b91a0f`
+
+---
+
+## 🎯 Previous Session - Rich Text Formatting Fix ✅ DEPLOYED
 
 ### Rich Text Formatting Fix (Events + Newsletters) - 2026-03-05
 
@@ -31,7 +61,7 @@
 
 ---
 
-## 🎯 Previous Session - Phase 6A.133: Multiple Event Organizers ✅ DEPLOYED
+## 🎯 Previous Session - Phase 6A.133: Multiple Event Organizers ✅ DEPLOYED (+ UX Fix 2026-03-05)
 
 ### Phase 6A.133: Multiple Event Organizers (Co-Organizer Linking) - 2026-03-04
 

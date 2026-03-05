@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133: MULTIPLE EVENT ORGANIZERS ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE
+**Date**: 2026-03-05
+**Session**: Phase 6A.133 UX Fix - Inline Co-Organizer Search
+**Progress**: **✅ COMPLETE** - Co-organizer workflow consolidated into inline search
+**Status**: ✅ **COMPLETE** - All 1517 tests pass (6 new pre-linked co-organizer domain tests)
+**Testing**: ✅ 1517 tests passing, 0 failed.
+**Commits**: 35b91a0f
+
+**UX Improvement**: Consolidated co-organizer management from confusing two-page workflow (Edit form + Event Details tab linking) into single inline search in Create/Edit Event forms.
+
+**Key Changes**:
+- Backend: `OrganizerContactRequest` accepts optional `LinkedUserId`, `EventOrganizerContact.Create()` and `Event.SetOrganizerContacts()` pass through `linkedUserId` to pre-link contacts at creation time
+- Frontend: New `CoOrganizerInlineSearch` replaces `CoOrganizerSearchModal`. Both Create/Edit forms have inline user search. EventDetailsTab simplified to read-only. Dead code removed.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133: MULTIPLE EVENT ORGANIZERS ✅ DEPLOYED
 **Date**: 2026-03-04
 **Session**: Phase 6A.133 - Multiple Event Organizers (Co-Organizer Linking)
 **Progress**: **✅ COMPLETE** - All 10 phases implemented and deployed

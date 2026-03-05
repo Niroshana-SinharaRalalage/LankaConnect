@@ -7,7 +7,22 @@
 
 ---
 
-## 🔄 CURRENT STATUS - RICH TEXT FORMATTING FIX ✅ DEPLOYED (2026-03-05)
+## 🔄 CURRENT STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE (2026-03-05)
+**Date**: 2026-03-05
+**Session**: Phase 6A.133 UX Fix - Inline Co-Organizer Search
+**Status**: ✅ **COMPLETE (commit 35b91a0f on develop)**
+**Commit**: 35b91a0f
+
+**UX Improvement**: Consolidated co-organizer management from confusing two-page workflow into single inline search.
+- Backend: `OrganizerContactRequest` accepts optional `LinkedUserId`, `EventOrganizerContact.Create()` and `Event.SetOrganizerContacts()` pass through `linkedUserId` to pre-link contacts at creation time
+- Frontend: New `CoOrganizerInlineSearch` component replaces heavy `CoOrganizerSearchModal`. Both Create/Edit forms have inline user search. EventDetailsTab simplified to read-only. Dead code removed.
+- 6 new domain tests for pre-linked co-organizer functionality
+
+**Tests**: 1517 passed, 0 failed
+
+---
+
+## PREVIOUS STATUS - RICH TEXT FORMATTING FIX ✅ DEPLOYED (2026-03-05)
 **Date**: 2026-03-05
 **Session**: Rich Text Formatting Fix (Events + Newsletters)
 **Status**: ✅ **DEPLOYED TO STAGING - VERIFIED**

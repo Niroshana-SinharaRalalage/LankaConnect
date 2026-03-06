@@ -1,7 +1,39 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-06 - Phase 6A.133 Primary Toggle ✅ COMPLETE*
+*Last Updated: 2026-03-06 - Email Deliverability Improvements ✅ COMPLETE*
 
-## 🎯 Current Session Status - Phase 6A.133 Primary Toggle ✅ COMPLETE
+## 🎯 Current Session Status - Email Deliverability Improvements ✅ COMPLETE
+
+### Email Deliverability: List-Unsubscribe, SPF, DMARC, Feedback-ID — 2026-03-06
+
+**Status**: ✅ **COMPLETE (commits 95505de5, fa0bd738 on develop)**
+
+**Classification**: Infrastructure/Email Deliverability — Gmail/Yahoo compliance and spam prevention.
+
+**Problem**: Emails sent from LankaConnect (via Azure Communication Services) landing in spam, especially when sent to Google Groups. Root causes: missing List-Unsubscribe headers (Google/Yahoo 2024 bulk sender requirement), SPF record missing ACS include, DMARC with no reporting, no Feedback-ID header.
+
+**Solution**: Multi-layered fix addressing DNS, application code, and UI:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Shared | Created `ListUnsubscribeHeaderBuilder` utility (RFC 2369 + RFC 8058) | `ListUnsubscribeHeaderBuilder.cs` |
+| Shared | Added `IUnsubscribeableEmail` interface for marketing email opt-in | `IEmailParameters.cs` |
+| Shared | Implemented on `EventPublishedEmailParams`, `EventDetailsEmailParams`, `NewsletterEmailParams` | Email param files |
+| Infrastructure | Header propagation in `AzureEmailService` (custom headers → Azure SDK) | `AzureEmailService.cs` |
+| Infrastructure | Auto-detect `IUnsubscribeableEmail`, build headers in `InfrastructureTypedEmailService` | `InfrastructureTypedEmailService.cs` |
+| Infrastructure | Added `Feedback-ID` header for Google Postmaster Tools tracking | `InfrastructureTypedEmailService.cs` |
+| API | RFC 8058 POST `/api/newsletter/unsubscribe` endpoint for one-click unsubscribe | `NewsletterController.cs` |
+| Application | Per-recipient unsubscribe URL wiring in both event handlers | `EventPublishedEventHandler.cs`, `EventNotificationEmailJob.cs` |
+| DNS | Fixed SPF: added `include:spf.acsemail.azure.com` | DNS TXT record |
+| DNS | Added DMARC reporting: `rua=mailto:lankaconnect.app@gmail.com` | DNS TXT record |
+| Frontend | Google Group address warning in EmailGroupModal | `EmailGroupModal.tsx` |
+
+**Testing**: All 1520+ application tests pass. 7 new ListUnsubscribeHeaderBuilder tests. DNS verified via nslookup.
+
+**Commits**: `95505de5`, `fa0bd738`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133 Primary Toggle ✅ COMPLETE
 
 ### Phase 6A.133: Primary Organizer Toggle Feature - 2026-03-06
 

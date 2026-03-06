@@ -7,7 +7,33 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE (2026-03-06)
+## 🔄 CURRENT STATUS - EMAIL DELIVERABILITY IMPROVEMENTS ✅ COMPLETE (2026-03-06)
+**Date**: 2026-03-06
+**Session**: Email Deliverability — List-Unsubscribe, SPF, DMARC, Feedback-ID
+**Status**: ✅ **COMPLETE (commits 95505de5, fa0bd738 on develop)**
+
+**Email Deliverability Fixes** (Gmail/Yahoo 2024 bulk sender compliance + spam prevention):
+- List-Unsubscribe + List-Unsubscribe-Post headers (RFC 2369/8058) on marketing emails
+- IUnsubscribeableEmail interface for opt-in header injection (transactional emails excluded)
+- RFC 8058 POST endpoint for one-click unsubscribe
+- Per-recipient unsubscribe URL wiring in EventPublishedEventHandler + EventNotificationEmailJob
+- Feedback-ID header for Google Postmaster Tools campaign-level reputation tracking
+- DNS: Fixed SPF (added `include:spf.acsemail.azure.com`), added DMARC reporting
+- UI: Google Group address warning in EmailGroupModal
+
+**Tests**: 1520+ passed, 0 failed. 7 new ListUnsubscribeHeaderBuilder tests.
+**DNS**: SPF and DMARC verified via nslookup on Google DNS (8.8.8.8)
+
+**DMARC Progression Plan** (future):
+- Now: `p=none` with reporting (monitoring)
+- Week 3: `p=quarantine; pct=10`
+- Week 5: `p=quarantine; pct=50`
+- Week 7: `p=quarantine; pct=100`
+- Week 9+: `p=reject`
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE (2026-03-06)
 **Date**: 2026-03-06
 **Session**: Phase 6A.133 Primary Toggle
 **Status**: ✅ **COMPLETE (commit 6056ad22 on develop)**

@@ -3,7 +3,25 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE
+**Date**: 2026-03-06
+**Session**: Phase 6A.133 Primary Toggle
+**Progress**: **✅ COMPLETE** - Flexible primary organizer management fully implemented
+**Status**: ✅ **COMPLETE** - All 1520 tests pass (5 updated, 1 new)
+**Testing**: ✅ 1520 tests passing, 0 failed. All 3 staging API tests verified.
+**Commits**: 6056ad22
+
+**Feature**: Flexible primary organizer management with star toggle control.
+
+**Key Changes**:
+- Domain: Removed forced isPrimary fallback in `SetOrganizerContacts()` — respects user choice, allows zero primaries
+- Frontend: Fixed `isPrimary: idx === 0` submit override in Create/Edit forms
+- Frontend: Added star toggle button per contact card for primary control
+- Dynamic "Primary Organizer" label (shown only if primary exists)
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE
 **Date**: 2026-03-05
 **Session**: Phase 6A.133 UX Fix - Inline Co-Organizer Search
 **Progress**: **✅ COMPLETE** - Co-organizer workflow consolidated into inline search

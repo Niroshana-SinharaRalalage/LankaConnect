@@ -7,7 +7,25 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.134: NEWSLETTER/NOTIFICATION UX REFACTORING ✅ COMPLETE (2026-03-05)
+## 🔄 CURRENT STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE (2026-03-06)
+**Date**: 2026-03-06
+**Session**: Phase 6A.133 Primary Toggle
+**Status**: ✅ **COMPLETE (commit 6056ad22 on develop)**
+**Commit**: 6056ad22
+
+**Feature**: Flexible primary organizer management with star toggle control.
+- Domain: Removed forced isPrimary fallback in `SetOrganizerContacts()` — respects user choice, allows zero primaries
+- Frontend: Fixed `isPrimary: idx === 0` submit override in both Create/Edit forms
+- Frontend: Added star toggle button per contact card for primary control
+- Dynamic "Primary Organizer" label (shown only if primary exists)
+- 5 tests updated, 1 new test for zero-primary + GetPrimaryContact fallback
+
+**Tests**: 1520 passed, 0 failed
+**Verification**: All 3 staging API tests pass (zero primaries, specific primary assignment, primary removal)
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.134: NEWSLETTER/NOTIFICATION UX REFACTORING ✅ COMPLETE (2026-03-05)
 **Date**: 2026-03-05
 **Session**: Phase 6A.134 - Newsletter/Notification UX Refactoring
 **Status**: ✅ **COMPLETE (commit a5efbe40 on develop)**

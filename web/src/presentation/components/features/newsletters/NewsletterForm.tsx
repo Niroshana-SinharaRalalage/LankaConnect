@@ -119,13 +119,18 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
     }
   }, [newsletter, isEditMode, reset]);
 
-  // Auto-populate title when event is selected (only if title is empty or was auto-generated)
+  // Auto-populate title when event is selected, clear when unselected
   useEffect(() => {
-    if (selectedEvent && !isEditMode) {
-      // Only auto-populate if title is empty or looks like a previous auto-population
+    if (isEditMode) return;
+
+    if (selectedEvent) {
+      // Only auto-populate if title is empty or was auto-generated
       if (!currentTitle || currentTitle.startsWith('Newsletter for ') || currentTitle.startsWith('[UPDATE] on ')) {
         setValue('title', `[UPDATE] on ${selectedEvent.title}`);
       }
+    } else if (currentTitle?.startsWith('[UPDATE] on ')) {
+      // Event was unselected — clear the auto-generated title
+      setValue('title', '');
     }
   }, [selectedEvent, isEditMode, currentTitle, setValue]);
 

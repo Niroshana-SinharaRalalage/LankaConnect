@@ -273,7 +273,68 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
         </div>
       )}
 
-      {/* 1. EVENT LINKAGE - MOVED TO TOP */}
+      {/* 1. TYPE SELECTOR - Newsletter vs Notification */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
+            <CardTitle style={{ color: '#8B1538' }}>Type</CardTitle>
+          </div>
+          <CardDescription>
+            Choose what you want to create
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Newsletter Option */}
+            <button
+              type="button"
+              onClick={() => setValue('isAnnouncementOnly', false)}
+              disabled={isEditMode && newsletter?.status !== 'Draft'}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                !watch('isAnnouncementOnly')
+                  ? 'border-[#FF7900] bg-orange-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              } ${isEditMode && newsletter?.status !== 'Draft' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
+                <span className="font-semibold text-[#8B1538]">Newsletter</span>
+              </div>
+              <p className="text-xs text-gray-600">
+                Public. Visible on /newsletters page. Requires publish before sending emails.
+              </p>
+            </button>
+
+            {/* Notification Option */}
+            <button
+              type="button"
+              onClick={() => setValue('isAnnouncementOnly', true)}
+              disabled={isEditMode && newsletter?.status !== 'Draft'}
+              className={`p-4 rounded-lg border-2 text-left transition-all ${
+                watch('isAnnouncementOnly')
+                  ? 'border-[#8B5CF6] bg-purple-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              } ${isEditMode && newsletter?.status !== 'Draft' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="h-5 w-5" style={{ color: '#8B5CF6' }} />
+                <span className="font-semibold text-[#8B1538]">Notification</span>
+              </div>
+              <p className="text-xs text-gray-600">
+                Private. Targets specific email groups. Auto-activates immediately. Send right after creation.
+              </p>
+            </button>
+          </div>
+          {isEditMode && newsletter?.status !== 'Draft' && (
+            <p className="text-xs text-amber-600 mt-3">
+              Type cannot be changed after the newsletter leaves Draft status.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. EVENT LINKAGE */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -281,10 +342,7 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
             <CardTitle style={{ color: '#8B1538' }}>Event Linkage</CardTitle>
           </div>
           <CardDescription>
-            {isEditMode
-              ? 'Optionally link this newsletter to an event'
-              : 'Start by linking to an event (recommended) or create a standalone newsletter'
-            }
+            Optionally link to an event to auto-populate details
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -368,54 +426,6 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
         </CardContent>
       </Card>
 
-      {/* 2. PUBLICATION INFORMATION - Phase 6A.74 Part 14 */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Publication Information</CardTitle>
-          </div>
-          <CardDescription>
-            Choose how this newsletter will be published
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              id="isAnnouncementOnly"
-              {...register('isAnnouncementOnly')}
-              disabled={isEditMode && newsletter?.status !== 'Draft'}
-              className="h-4 w-4 mt-1 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-            />
-            <div>
-              <label htmlFor="isAnnouncementOnly" className="text-sm font-medium text-neutral-700 cursor-pointer">
-                Unpublished Announcement Only Newsletter
-              </label>
-              <div className="text-xs text-neutral-500 mt-1 space-y-1">
-                <p>When checked:</p>
-                <ul className="list-disc list-inside ml-2 space-y-0.5">
-                  <li>Auto-activates immediately (skips Draft status)</li>
-                  <li><strong>NOT</strong> visible on public /newsletters page</li>
-                  <li>Can send emails right after creation</li>
-                  <li>Expires after 7 days, can be reactivated</li>
-                </ul>
-                <p className="mt-2">When unchecked (default):</p>
-                <ul className="list-disc list-inside ml-2 space-y-0.5">
-                  <li>Creates in Draft status</li>
-                  <li>Must Publish to make visible on /newsletters page</li>
-                  <li>Can only send emails after publishing</li>
-                </ul>
-              </div>
-              {isEditMode && newsletter?.status !== 'Draft' && (
-                <p className="text-xs text-amber-600 mt-2">
-                  This setting cannot be changed after the newsletter leaves Draft status.
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* 3. BASIC INFORMATION */}
       <Card>
@@ -592,7 +602,12 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
           disabled={isSubmitting}
           className="bg-[#FF7900] hover:bg-[#E66D00] text-white"
         >
-          {isSubmitting ? 'Saving...' : isEditMode ? 'Update Newsletter' : 'Create Newsletter'}
+          {isSubmitting
+            ? 'Saving...'
+            : isEditMode
+              ? (watch('isAnnouncementOnly') ? 'Update Notification' : 'Update Newsletter')
+              : (watch('isAnnouncementOnly') ? 'Create Notification' : 'Create Newsletter')
+          }
         </Button>
       </div>
     </form>

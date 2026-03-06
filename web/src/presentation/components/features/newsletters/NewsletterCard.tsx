@@ -4,7 +4,9 @@ import * as React from 'react';
 import { Calendar, Mail, MapPin, ExternalLink } from 'lucide-react';
 import { NewsletterDto } from '@/infrastructure/api/types/newsletters.types';
 import { isNewsletterActive } from '@/lib/enum-utils';
+import { getNewsletterMainType, isEventLinked } from '@/lib/newsletter-type-utils';
 import { NewsletterStatusBadge } from './NewsletterStatusBadge';
+import { NewsletterTypeBadge } from './NewsletterTypeBadge';
 
 export interface NewsletterCardProps {
   newsletter: NewsletterDto;
@@ -79,7 +81,15 @@ export function NewsletterCard({ newsletter, onClick, actionButtons, isSending =
         <h3 className="text-lg font-semibold text-[#8B1538] flex-1 line-clamp-2 pr-4">
           {newsletter.title}
         </h3>
-        <NewsletterStatusBadge status={newsletter.status} />
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <NewsletterTypeBadge type={getNewsletterMainType(newsletter)} />
+          {isEventLinked(newsletter) && (
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium whitespace-nowrap">
+              Event-linked
+            </span>
+          )}
+          <NewsletterStatusBadge status={newsletter.status} />
+        </div>
       </div>
 
       {/* Phase 6A.86: Sending Status Banner */}

@@ -7,7 +7,26 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE (2026-03-05)
+## 🔄 CURRENT STATUS - PHASE 6A.134: NEWSLETTER/NOTIFICATION UX REFACTORING ✅ COMPLETE (2026-03-05)
+**Date**: 2026-03-05
+**Session**: Phase 6A.134 - Newsletter/Notification UX Refactoring
+**Status**: ✅ **COMPLETE (commit a5efbe40 on develop)**
+**Commit**: a5efbe40
+
+**UX Refactoring**: Improved newsletter/notification type clarity and simplified create/detail UX.
+- New `newsletter-type-utils.ts`: derives main type (Newsletter/Notification) from `isAnnouncementOnly` + event linkage from `eventId`
+- New `NewsletterTypeBadge` component for visual type indicators
+- Replaced verbose Publication Information checkbox with type selector cards in `NewsletterForm`
+- Added type badge + event-linked indicator to `NewsletterCard`
+- Added type filter dropdown to `NewslettersTab`
+- Replaced Recipients card with Audience section showing email group names and metro area names on detail page
+- Updated create page header
+
+**Scope**: Frontend-only change, no backend changes.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE (2026-03-05)
 **Date**: 2026-03-05
 **Session**: Phase 6A.133 UX Fix - Inline Co-Organizer Search
 **Status**: ✅ **COMPLETE (commit 35b91a0f on develop)**

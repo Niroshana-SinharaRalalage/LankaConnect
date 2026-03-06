@@ -1,7 +1,36 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-05 - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE*
+*Last Updated: 2026-03-05 - Phase 6A.134: Newsletter/Notification UX Refactoring ✅ COMPLETE*
 
-## 🎯 Current Session Status - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.134: Newsletter/Notification UX Refactoring ✅ COMPLETE
+
+### Phase 6A.134: Newsletter/Notification UX Refactoring - 2026-03-05
+
+**Status**: ✅ **COMPLETE (commit a5efbe40 on develop)**
+
+**Classification**: UX Refactoring — Improved newsletter/notification type clarity by deriving type from existing data, adding visual type indicators, and simplifying the create/detail UX.
+
+**Problem**: The newsletter creation form used a verbose "Publication Information" checkbox that was unclear. There was no visual distinction between newsletters and notifications in the listing. The detail page showed a complex Recipients card instead of a clean audience summary.
+
+**Solution**: Derived newsletter type (Newsletter vs Notification) from `isAnnouncementOnly` flag and event linkage from `eventId`. Added type badges, filter dropdown, and simplified audience display.
+
+**Changes**:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Frontend | New `newsletter-type-utils.ts` — derives main type from `isAnnouncementOnly` + event linkage from `eventId` | `newsletter-type-utils.ts` |
+| Frontend | New `NewsletterTypeBadge` component for visual type indicators | `NewsletterTypeBadge.tsx` |
+| Frontend | Replaced verbose Publication Information checkbox with type selector cards | `NewsletterForm.tsx` |
+| Frontend | Added type badge + event-linked indicator to newsletter cards | `NewsletterCard.tsx` |
+| Frontend | Added type filter dropdown to newsletters tab | `NewslettersTab.tsx` |
+| Frontend | Replaced Recipients card with Audience section showing email group names and metro area names | Newsletter detail page |
+| Frontend | Updated create page header | Newsletter create page |
+
+**Scope**: Frontend-only change, no backend changes.
+**Commits**: `a5efbe40`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE
 
 ### Phase 6A.133 UX Fix: Inline Co-Organizer Search - 2026-03-05
 

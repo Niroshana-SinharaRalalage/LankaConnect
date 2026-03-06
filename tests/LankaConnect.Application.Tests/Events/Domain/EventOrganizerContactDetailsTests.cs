@@ -54,7 +54,7 @@ public class EventOrganizerContactDetailsTests
         @event.OrganizerContacts[0].ContactName.Should().Be("John Organizer");
         @event.OrganizerContacts[0].ContactEmail.Should().Be("john@example.com");
         @event.OrganizerContacts[0].ContactPhone.Should().Be("+1-555-1234");
-        @event.OrganizerContacts[0].IsPrimary.Should().BeTrue("first contact should be primary");
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("no forced primary — backward-compatible overload passes isPrimary=false");
         @event.HasOrganizerContact().Should().BeTrue();
     }
 
@@ -77,7 +77,7 @@ public class EventOrganizerContactDetailsTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.OrganizerContacts.Should().HaveCount(3);
-        @event.OrganizerContacts[0].IsPrimary.Should().BeTrue("first contact should be primary");
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("no forced primary — backward-compatible overload passes isPrimary=false");
         @event.OrganizerContacts[1].IsPrimary.Should().BeFalse();
         @event.OrganizerContacts[2].IsPrimary.Should().BeFalse();
         @event.OrganizerContacts[0].SortOrder.Should().Be(0);
@@ -341,9 +341,9 @@ public class EventOrganizerContactDetailsTests
     #region GetPrimaryContact
 
     [Fact]
-    public void GetPrimaryContact_WithMultipleContacts_ShouldReturnPrimary()
+    public void GetPrimaryContact_WithMultipleContacts_NoPrimarySet_ShouldFallbackToFirst()
     {
-        // Arrange
+        // Arrange - backward-compatible overload sets isPrimary=false for all
         var @event = CreateValidEvent();
         @event.SetOrganizerContacts(
             publishContact: true,
@@ -356,10 +356,10 @@ public class EventOrganizerContactDetailsTests
         // Act
         var primary = @event.GetPrimaryContact();
 
-        // Assert
+        // Assert - GetPrimaryContact falls back to first contact for email compatibility
         primary.Should().NotBeNull();
         primary!.ContactName.Should().Be("First Contact");
-        primary.IsPrimary.Should().BeTrue();
+        primary.IsPrimary.Should().BeFalse("no contact is explicitly marked primary");
     }
 
     [Fact]
@@ -681,7 +681,7 @@ public class EventOrganizerContactDetailsTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.OrganizerContacts.Should().HaveCount(10);
-        @event.OrganizerContacts.First().IsPrimary.Should().BeTrue();
+        @event.OrganizerContacts.First().IsPrimary.Should().BeFalse("backward-compatible overload passes isPrimary=false");
     }
 
     #endregion
@@ -819,7 +819,7 @@ public class EventOrganizerContactDetailsTests
     }
 
     [Fact]
-    public void SetOrganizerContacts_NoPrimarySpecified_FirstContactBecomesPrimary()
+    public void SetOrganizerContacts_NoPrimarySpecified_AllContactsHaveNoPrimary()
     {
         // Arrange - no contact marked as primary
         var @event = CreateValidEvent();
@@ -833,10 +833,31 @@ public class EventOrganizerContactDetailsTests
                 ("Contact B", "b@test.com", null, (Guid?)null, false)
             });
 
-        // Assert - fallback: first contact becomes primary
+        // Assert - zero primaries allowed: all organizers are equal
         result.IsSuccess.Should().BeTrue();
-        @event.OrganizerContacts[0].IsPrimary.Should().BeTrue("first contact should default to primary when none specified");
-        @event.OrganizerContacts[1].IsPrimary.Should().BeFalse();
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("no forced primary when none specified");
+        @event.OrganizerContacts[1].IsPrimary.Should().BeFalse("no forced primary when none specified");
+    }
+
+    [Fact]
+    public void SetOrganizerContacts_AllContactsNotPrimary_GetPrimaryContactFallsBackToFirst()
+    {
+        // Arrange - no contact marked as primary
+        var @event = CreateValidEvent();
+
+        @event.SetOrganizerContacts(
+            publishContact: true,
+            contacts: new List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)>
+            {
+                ("Contact A", "a@test.com", null, (Guid?)null, false),
+                ("Contact B", "b@test.com", null, (Guid?)null, false)
+            });
+
+        // Act & Assert - GetPrimaryContact still returns first contact as fallback for emails
+        var primaryContact = @event.GetPrimaryContact();
+        primaryContact.Should().NotBeNull("GetPrimaryContact falls back to first contact for email compatibility");
+        primaryContact!.ContactName.Should().Be("Contact A");
+        primaryContact.IsPrimary.Should().BeFalse("fallback contact is NOT marked primary in the data");
     }
 
     #endregion

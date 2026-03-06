@@ -88,7 +88,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.OrganizerContacts.Should().HaveCount(2);
-        @event.OrganizerContacts[0].IsPrimary.Should().BeTrue();
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("no contact explicitly marked primary");
         @event.OrganizerContacts[1].IsPrimary.Should().BeFalse();
     }
 

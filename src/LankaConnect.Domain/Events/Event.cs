@@ -2001,15 +2001,12 @@ public class Event : BaseEntity
             if (contacts.Count > MAX_ORGANIZER_CONTACTS)
                 return Result.Failure($"Maximum {MAX_ORGANIZER_CONTACTS} organizer contacts allowed");
 
-            // If no contact is explicitly marked primary, default the first one
-            var anyPrimary = contacts.Any(c => c.isPrimary);
-
-            // Validate each contact
+            // Validate each contact — respect isPrimary as provided (zero primaries allowed)
             var newContacts = new List<EventOrganizerContact>();
             for (var i = 0; i < contacts.Count; i++)
             {
                 var (name, email, phone, linkedUserId, requestedPrimary) = contacts[i];
-                var isPrimary = requestedPrimary || (!anyPrimary && i == 0);
+                var isPrimary = requestedPrimary;
                 var contactResult = EventOrganizerContact.Create(
                     Id, name, email, phone, isPrimary, sortOrder: i, linkedUserId: linkedUserId);
 

@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X, Mail, Link2 } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X, Mail, Link2, Star } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -308,6 +308,18 @@ export function EventEditForm({ event }: EventEditFormProps) {
     setShowCoOrgSearch(false);
   };
 
+  // Toggle primary organizer status for a contact
+  const handleTogglePrimary = (index: number) => {
+    const contacts = watch('organizerContacts') || [];
+    const isCurrentlyPrimary = contacts[index]?.isPrimary;
+    // Clear primary from all contacts first
+    contacts.forEach((_, i) => setValue(`organizerContacts.${i}.isPrimary`, false));
+    // If wasn't primary, set this one as primary; if was primary, leave all cleared
+    if (!isCurrentlyPrimary) {
+      setValue(`organizerContacts.${index}.isPrimary`, true);
+    }
+  };
+
   const onSubmit = handleSubmit(async (data: EditEventFormData) => {
     if (!user?.userId) {
       setSubmitError('You must be logged in to edit events');
@@ -391,7 +403,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
               contactName: c.contactName,
               contactEmail: c.contactEmail || null,
               contactPhone: c.contactPhone || null,
-              isPrimary: idx === 0,
+              isPrimary: c.isPrimary || false, // Preserve user's choice
               linkedUserId: c.linkedUserId || null,
             }))
           : [],
@@ -1259,12 +1271,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
             <div className="ml-7 space-y-4">
               {contactFields.map((field, index) => {
                 const contactLinkedUserId = watch(`organizerContacts.${index}.linkedUserId`);
+                const contactIsPrimary = watch(`organizerContacts.${index}.isPrimary`);
                 return (
                 <div key={field.id} className={`p-4 border rounded-lg space-y-3 ${contactLinkedUserId ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-gray-700">
-                        {index === 0 ? 'Primary Contact' : `Contact ${index + 1}`}
+                        {contactIsPrimary ? 'Primary Organizer' : `Contact ${index + 1}`}
                       </span>
                       {contactLinkedUserId && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -1272,15 +1285,30 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         </span>
                       )}
                     </div>
-                    {index > 0 && (
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => removeContact(index)}
-                        className="text-sm text-red-600 hover:text-red-800"
+                        onClick={() => handleTogglePrimary(index)}
+                        className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
+                          contactIsPrimary
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                        title={contactIsPrimary ? 'Remove primary status' : 'Set as primary organizer'}
                       >
-                        Remove
+                        <Star className={`h-3.5 w-3.5 ${contactIsPrimary ? 'fill-blue-500 text-blue-500' : ''}`} />
+                        {contactIsPrimary ? 'Primary' : 'Set Primary'}
                       </button>
-                    )}
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeContact(index)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Contact Name */}

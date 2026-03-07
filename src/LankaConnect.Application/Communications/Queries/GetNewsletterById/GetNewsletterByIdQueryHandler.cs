@@ -103,6 +103,38 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                         .FirstOrDefaultAsync(h => h.NewsletterId == newsletter.Id, cancellationToken);
                 }
 
+                // Phase 6A.135: Look up email group details for Audience section
+                var emailGroupDtos = new List<EmailGroupSummaryDto>();
+                if (newsletter.EmailGroupIds.Any() && dbContext != null)
+                {
+                    emailGroupDtos = await dbContext.Set<EmailGroup>()
+                        .AsNoTracking()
+                        .Where(eg => newsletter.EmailGroupIds.Contains(eg.Id))
+                        .Select(eg => new EmailGroupSummaryDto
+                        {
+                            Id = eg.Id,
+                            Name = eg.Name,
+                            IsActive = eg.IsActive
+                        })
+                        .ToListAsync(cancellationToken);
+                }
+
+                // Phase 6A.135: Look up metro area details for Audience section
+                var metroAreaDtos = new List<MetroAreaSummaryDto>();
+                if (newsletter.MetroAreaIds.Any())
+                {
+                    metroAreaDtos = await _dbContext.MetroAreas
+                        .AsNoTracking()
+                        .Where(m => newsletter.MetroAreaIds.Contains(m.Id))
+                        .Select(m => new MetroAreaSummaryDto
+                        {
+                            Id = m.Id,
+                            Name = m.Name,
+                            State = m.State
+                        })
+                        .ToListAsync(cancellationToken);
+                }
+
                 var dto = new NewsletterDto
                 {
                     Id = newsletter.Id,
@@ -122,9 +154,9 @@ public class GetNewsletterByIdQueryHandler : IQueryHandler<GetNewsletterByIdQuer
                     CreatedAt = newsletter.CreatedAt,
                     UpdatedAt = newsletter.UpdatedAt,
                     EmailGroupIds = newsletter.EmailGroupIds,
-                    EmailGroups = new List<EmailGroupSummaryDto>(), // Populated by controller if needed
+                    EmailGroups = emailGroupDtos,
                     MetroAreaIds = newsletter.MetroAreaIds,
-                    MetroAreas = new List<MetroAreaSummaryDto>(), // Populated by controller if needed
+                    MetroAreas = metroAreaDtos,
                     // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
                     TotalRecipientCount = history?.TotalRecipientCount,
                     NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,

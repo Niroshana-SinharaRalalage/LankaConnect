@@ -3,7 +3,10 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Events;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Communications.Queries.GetPublishedNewsletters;
@@ -12,17 +15,21 @@ namespace LankaConnect.Application.Communications.Queries.GetPublishedNewsletter
 /// Handler for GetPublishedNewslettersQuery
 /// Phase 6A.74 Parts 10 & 11: Public newsletter list page with filtering
 /// Returns published (Active) newsletters with location-based sorting and filtering
+/// Phase 6A.135: Enriched with email group and metro area summary data
 /// </summary>
 public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNewslettersQuery, IReadOnlyList<NewsletterDto>>
 {
     private readonly INewsletterRepository _newsletterRepository;
+    private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<GetPublishedNewslettersQueryHandler> _logger;
 
     public GetPublishedNewslettersQueryHandler(
         INewsletterRepository newsletterRepository,
+        IApplicationDbContext dbContext,
         ILogger<GetPublishedNewslettersQueryHandler> logger)
     {
         _newsletterRepository = newsletterRepository;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -58,6 +65,77 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                     longitude: request.Longitude,
                     cancellationToken: cancellationToken);
 
+                var newsletterIds = newsletters.Select(n => n.Id).ToList();
+                var dbContext = _dbContext as DbContext;
+
+                // Phase 6A.135: Query junction tables for email group and metro area mappings
+                var emailGroupJunction = dbContext != null
+                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_email_groups")
+                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
+                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], EmailGroupId = (Guid)j["email_group_id"] })
+                        .ToListAsync(cancellationToken)
+                    : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
+
+                var metroAreaJunction = dbContext != null
+                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_metro_areas")
+                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
+                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], MetroAreaId = (Guid)j["metro_area_id"] })
+                        .ToListAsync(cancellationToken)
+                    : new List<object>().Select(x => new { NewsletterId = Guid.Empty, MetroAreaId = Guid.Empty }).ToList();
+
+                // Batch load email group entities
+                var allEmailGroupIds = emailGroupJunction.Select(j => j.EmailGroupId).Distinct().ToList();
+                var emailGroupLookup = allEmailGroupIds.Any() && dbContext != null
+                    ? (await dbContext.Set<EmailGroup>()
+                        .AsNoTracking()
+                        .Where(eg => allEmailGroupIds.Contains(eg.Id))
+                        .ToListAsync(cancellationToken))
+                        .ToDictionary(eg => eg.Id)
+                    : new Dictionary<Guid, EmailGroup>();
+
+                // Batch load metro area entities
+                var allMetroAreaIds = metroAreaJunction.Select(j => j.MetroAreaId).Distinct().ToList();
+                var metroAreaLookup = allMetroAreaIds.Any()
+                    ? (await _dbContext.MetroAreas
+                        .AsNoTracking()
+                        .Where(m => allMetroAreaIds.Contains(m.Id))
+                        .ToListAsync(cancellationToken))
+                        .ToDictionary(m => m.Id)
+                    : new Dictionary<Guid, MetroArea>();
+
+                // Build per-newsletter lookup dictionaries
+                var emailGroupIdsByNewsletter = emailGroupJunction
+                    .GroupBy(j => j.NewsletterId)
+                    .ToDictionary(g => g.Key, g => g.Select(j => j.EmailGroupId).ToList());
+
+                var emailGroupDtosByNewsletter = emailGroupIdsByNewsletter
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value
+                            .Where(id => emailGroupLookup.ContainsKey(id))
+                            .Select(id => new EmailGroupSummaryDto
+                            {
+                                Id = emailGroupLookup[id].Id,
+                                Name = emailGroupLookup[id].Name,
+                                IsActive = emailGroupLookup[id].IsActive
+                            }).ToList());
+
+                var metroAreaIdsByNewsletter = metroAreaJunction
+                    .GroupBy(j => j.NewsletterId)
+                    .ToDictionary(g => g.Key, g => g.Select(j => j.MetroAreaId).ToList());
+
+                var metroAreaDtosByNewsletter = metroAreaIdsByNewsletter
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value
+                            .Where(id => metroAreaLookup.ContainsKey(id))
+                            .Select(id => new MetroAreaSummaryDto
+                            {
+                                Id = metroAreaLookup[id].Id,
+                                Name = metroAreaLookup[id].Name,
+                                State = metroAreaLookup[id].State
+                            }).ToList());
+
                 // Manual mapping to DTOs (following pattern from GetNewsletterByIdQueryHandler)
                 var result = newsletters.Select(newsletter => new NewsletterDto
                 {
@@ -76,10 +154,14 @@ public class GetPublishedNewslettersQueryHandler : IQueryHandler<GetPublishedNew
                     TargetAllLocations = newsletter.TargetAllLocations,
                     CreatedAt = newsletter.CreatedAt,
                     UpdatedAt = newsletter.UpdatedAt,
-                    EmailGroupIds = newsletter.EmailGroupIds,
-                    EmailGroups = new List<EmailGroupSummaryDto>(), // Public endpoint, no group details
-                    MetroAreaIds = newsletter.MetroAreaIds,
-                    MetroAreas = new List<MetroAreaSummaryDto>(), // Can be populated by frontend if needed
+                    EmailGroupIds = emailGroupIdsByNewsletter.TryGetValue(newsletter.Id, out var egIds)
+                        ? egIds : newsletter.EmailGroupIds,
+                    EmailGroups = emailGroupDtosByNewsletter.TryGetValue(newsletter.Id, out var egDtos)
+                        ? egDtos : new List<EmailGroupSummaryDto>(),
+                    MetroAreaIds = metroAreaIdsByNewsletter.TryGetValue(newsletter.Id, out var maIds)
+                        ? maIds : newsletter.MetroAreaIds,
+                    MetroAreas = metroAreaDtosByNewsletter.TryGetValue(newsletter.Id, out var maDtos)
+                        ? maDtos : new List<MetroAreaSummaryDto>(),
                     // Phase 6A.74 Part 14: Announcement-only flag (always false for public page)
                     IsAnnouncementOnly = newsletter.IsAnnouncementOnly
                 }).ToList();

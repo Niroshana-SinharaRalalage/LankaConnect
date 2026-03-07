@@ -4,6 +4,7 @@ using LankaConnect.Application.Communications.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.Communications.Entities;
+using LankaConnect.Domain.Events;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Serilog.Context;
@@ -63,6 +64,74 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
                         .ToDictionaryAsync(h => h.NewsletterId, cancellationToken)
                     : new Dictionary<Guid, NewsletterEmailHistory>();
 
+                // Phase 6A.135: Query junction tables for email group and metro area mappings
+                var emailGroupJunction = dbContext != null
+                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_email_groups")
+                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
+                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], EmailGroupId = (Guid)j["email_group_id"] })
+                        .ToListAsync(cancellationToken)
+                    : new List<object>().Select(x => new { NewsletterId = Guid.Empty, EmailGroupId = Guid.Empty }).ToList();
+
+                var metroAreaJunction = dbContext != null
+                    ? await dbContext.Set<Dictionary<string, object>>("newsletter_metro_areas")
+                        .Where(j => newsletterIds.Contains((Guid)j["newsletter_id"]))
+                        .Select(j => new { NewsletterId = (Guid)j["newsletter_id"], MetroAreaId = (Guid)j["metro_area_id"] })
+                        .ToListAsync(cancellationToken)
+                    : new List<object>().Select(x => new { NewsletterId = Guid.Empty, MetroAreaId = Guid.Empty }).ToList();
+
+                // Batch load email group entities
+                var allEmailGroupIds = emailGroupJunction.Select(j => j.EmailGroupId).Distinct().ToList();
+                var emailGroupLookup = allEmailGroupIds.Any() && dbContext != null
+                    ? (await dbContext.Set<EmailGroup>()
+                        .AsNoTracking()
+                        .Where(eg => allEmailGroupIds.Contains(eg.Id))
+                        .ToListAsync(cancellationToken))
+                        .ToDictionary(eg => eg.Id)
+                    : new Dictionary<Guid, EmailGroup>();
+
+                // Batch load metro area entities
+                var allMetroAreaIds = metroAreaJunction.Select(j => j.MetroAreaId).Distinct().ToList();
+                var metroAreaLookup = allMetroAreaIds.Any()
+                    ? (await _dbContext.MetroAreas
+                        .AsNoTracking()
+                        .Where(m => allMetroAreaIds.Contains(m.Id))
+                        .ToListAsync(cancellationToken))
+                        .ToDictionary(m => m.Id)
+                    : new Dictionary<Guid, MetroArea>();
+
+                // Build per-newsletter lookup dictionaries
+                var emailGroupIdsByNewsletter = emailGroupJunction
+                    .GroupBy(j => j.NewsletterId)
+                    .ToDictionary(g => g.Key, g => g.Select(j => j.EmailGroupId).ToList());
+
+                var emailGroupDtosByNewsletter = emailGroupIdsByNewsletter
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value
+                            .Where(id => emailGroupLookup.ContainsKey(id))
+                            .Select(id => new EmailGroupSummaryDto
+                            {
+                                Id = emailGroupLookup[id].Id,
+                                Name = emailGroupLookup[id].Name,
+                                IsActive = emailGroupLookup[id].IsActive
+                            }).ToList());
+
+                var metroAreaIdsByNewsletter = metroAreaJunction
+                    .GroupBy(j => j.NewsletterId)
+                    .ToDictionary(g => g.Key, g => g.Select(j => j.MetroAreaId).ToList());
+
+                var metroAreaDtosByNewsletter = metroAreaIdsByNewsletter
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value
+                            .Where(id => metroAreaLookup.ContainsKey(id))
+                            .Select(id => new MetroAreaSummaryDto
+                            {
+                                Id = metroAreaLookup[id].Id,
+                                Name = metroAreaLookup[id].Name,
+                                State = metroAreaLookup[id].State
+                            }).ToList());
+
                 var dtoList = newsletters.Select(newsletter =>
                 {
                     // Get history record if exists
@@ -86,10 +155,14 @@ public class GetNewslettersByCreatorQueryHandler : IQueryHandler<GetNewslettersB
                         IsAnnouncementOnly = newsletter.IsAnnouncementOnly,
                         CreatedAt = newsletter.CreatedAt,
                         UpdatedAt = newsletter.UpdatedAt,
-                        EmailGroupIds = newsletter.EmailGroupIds,
-                        EmailGroups = new List<EmailGroupSummaryDto>(),
-                        MetroAreaIds = newsletter.MetroAreaIds,
-                        MetroAreas = new List<MetroAreaSummaryDto>(),
+                        EmailGroupIds = emailGroupIdsByNewsletter.TryGetValue(newsletter.Id, out var egIds)
+                            ? egIds : newsletter.EmailGroupIds,
+                        EmailGroups = emailGroupDtosByNewsletter.TryGetValue(newsletter.Id, out var egDtos)
+                            ? egDtos : new List<EmailGroupSummaryDto>(),
+                        MetroAreaIds = metroAreaIdsByNewsletter.TryGetValue(newsletter.Id, out var maIds)
+                            ? maIds : newsletter.MetroAreaIds,
+                        MetroAreas = metroAreaDtosByNewsletter.TryGetValue(newsletter.Id, out var maDtos)
+                            ? maDtos : new List<MetroAreaSummaryDto>(),
                         // Phase 6A.74 Part 13+: Populate all recipient breakdown fields from history
                         TotalRecipientCount = history?.TotalRecipientCount,
                         NewsletterEmailGroupCount = history?.NewsletterEmailGroupCount,

@@ -75,8 +75,8 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                     return Result<PhotoAlbumDto>.Failure("Only the event organizer can create a photo album");
                 }
 
-                // 3. Verify event status allows album creation (Active, Completed, or Archived)
-                var allowedStatuses = new[] { EventStatus.Active, EventStatus.Completed, EventStatus.Archived };
+                // 3. Verify event status allows album creation (Published, Active, Completed, or Archived)
+                var allowedStatuses = new[] { EventStatus.Published, EventStatus.Active, EventStatus.Completed, EventStatus.Archived };
                 if (!allowedStatuses.Contains(@event.Status))
                 {
                     stopwatch.Stop();
@@ -84,7 +84,7 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                         "CreatePhotoAlbum FAILED: Invalid event status - EventId={EventId}, Status={Status}, Duration={ElapsedMs}ms",
                         request.EventId, @event.Status, stopwatch.ElapsedMilliseconds);
                     return Result<PhotoAlbumDto>.Failure(
-                        $"Cannot create a photo album for an event in {(int)@event.Status} status. Event must be Active, Completed, or Archived.");
+                        $"Cannot create a photo album for an event in {(int)@event.Status} status. Event must be Published, Active, Completed, or Archived.");
                 }
 
                 // 4. Verify no album exists for this event

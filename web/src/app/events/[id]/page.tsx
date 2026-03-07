@@ -1692,8 +1692,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Photo Album Section — visible for Active/Completed/Archived events */}
-        {event && (event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived) && (
+        {/* Photo Album Section — visible for Published/Active/Completed/Archived events */}
+        {event && (event.status === EventStatus.Published || event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived) && (
           <div className="mt-8">
             <CollapsibleSection
               title="Photo Album"

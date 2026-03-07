@@ -303,8 +303,8 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       icon: Mail,
       content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
     },
-    // Photo Album tab — visible for Active/Completed/Archived events
-    ...(event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived
+    // Photo Album tab — visible for Published/Active/Completed/Archived events
+    ...(event.status === EventStatus.Published || event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived
       ? [{
           id: 'album',
           label: 'Photo Album',

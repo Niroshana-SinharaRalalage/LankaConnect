@@ -13,6 +13,7 @@ import {
   XCircle,
   Mail,
   Heart,
+  Camera,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -302,6 +303,30 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       icon: Mail,
       content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
     },
+    // Photo Album tab — visible for Active/Completed/Archived events
+    ...(event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived
+      ? [{
+          id: 'album',
+          label: 'Photo Album',
+          icon: Camera,
+          content: (
+            <div className="text-center py-8">
+              <Camera className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Photo Album Management</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Create and manage your event photo album. Attendees can upload and share memories.
+              </p>
+              <Button
+                onClick={() => router.push(`/events/${id}/manage/album`)}
+                className="text-white"
+                style={{ background: '#8B1538' }}
+              >
+                Manage Photo Album
+              </Button>
+            </div>
+          ),
+        }]
+      : []),
   ];
 
   return (

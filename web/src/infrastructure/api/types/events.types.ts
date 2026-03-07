@@ -1808,3 +1808,107 @@ export interface CreateDonationRequest {
   successUrl: string;
   cancelUrl: string;
 }
+
+// ==================== Photo Album Types ====================
+
+/**
+ * Album status matching backend AlbumStatus enum (string via JsonStringEnumConverter)
+ */
+export enum AlbumStatus {
+  Draft = 'Draft',
+  Published = 'Published',
+  Closed = 'Closed',
+}
+
+/**
+ * Album upload permission matching backend AlbumUploadPermission enum
+ */
+export enum AlbumUploadPermission {
+  OrganizerOnly = 'OrganizerOnly',
+  RegisteredAttendees = 'RegisteredAttendees',
+  AnyAuthenticated = 'AnyAuthenticated',
+}
+
+/**
+ * Album moderation mode matching backend AlbumModerationMode enum
+ */
+export enum AlbumModerationMode {
+  None = 'None',
+  PostModeration = 'PostModeration',
+  PreApproval = 'PreApproval',
+}
+
+/**
+ * Album photo status matching backend AlbumPhotoStatus enum
+ */
+export enum AlbumPhotoStatus {
+  PendingApproval = 'PendingApproval',
+  Approved = 'Approved',
+  Rejected = 'Rejected',
+}
+
+/**
+ * Photo album DTO matching backend PhotoAlbumDto
+ */
+export interface PhotoAlbumDto {
+  id: string;
+  eventId: string;
+  organizerId: string;
+  eventTitle: string;
+  status: AlbumStatus;
+  uploadPermission: AlbumUploadPermission;
+  moderationMode: AlbumModerationMode;
+  description: string | null;
+  coverPhotoUrl: string | null;
+  retentionDays: number;
+  photoCount: number;
+  publishedAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Album photo DTO matching backend AlbumPhotoDto
+ */
+export interface AlbumPhotoDto {
+  id: string;
+  albumId: string;
+  uploaderId: string;
+  uploaderName: string;
+  originalUrl: string;
+  thumbnailUrl: string;
+  mediumUrl: string;
+  caption: string | null;
+  status: AlbumPhotoStatus;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  expiresAt: string;
+  displayOrder: number;
+}
+
+/**
+ * Paginated album photos response matching backend PaginatedAlbumPhotosResponse
+ */
+export interface PaginatedAlbumPhotosResponse {
+  photos: AlbumPhotoDto[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  totalCount: number;
+}
+
+/**
+ * Request to create a photo album
+ */
+export interface CreatePhotoAlbumRequest {
+  description?: string;
+}
+
+/**
+ * Request to update album settings
+ */
+export interface UpdateAlbumSettingsRequest {
+  uploadPermission?: AlbumUploadPermission;
+  moderationMode?: AlbumModerationMode;
+  description?: string;
+}

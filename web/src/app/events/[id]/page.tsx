@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -1689,6 +1689,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               publicSummary={publicDonationSummary}
               myDonations={myDonations}
             />
+          </div>
+        )}
+
+        {/* Photo Album Section — visible for Active/Completed/Archived events */}
+        {event && (event.status === EventStatus.Active || event.status === EventStatus.Completed || event.status === EventStatus.Archived) && (
+          <div className="mt-8">
+            <CollapsibleSection
+              title="Photo Album"
+              icon={<Camera className="h-5 w-5 text-purple-600" />}
+              defaultOpen={false}
+            >
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  View and share photos from this event
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/events/${id}/photos`)}
+                >
+                  View Photo Album
+                </Button>
+              </div>
+            </CollapsibleSection>
           </div>
         )}
 

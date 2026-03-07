@@ -123,6 +123,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>(); // Phase 6A.89: Support/Feedback System
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>(); // Phase 6A.89: Admin Audit Logging
 
+    // Photo Album Entity Sets (After Event Photo Album Feature)
+    public DbSet<PhotoAlbum> PhotoAlbums => Set<PhotoAlbum>();
+    public DbSet<AlbumPhoto> AlbumPhotos => Set<AlbumPhoto>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -212,6 +216,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Support entity configurations (Phase 6A.89)
         modelBuilder.ApplyConfiguration(new SupportTicketConfiguration()); // Phase 6A.89: Support/Feedback System
         modelBuilder.ApplyConfiguration(new AdminAuditLogConfiguration()); // Phase 6A.89: Admin Audit Logging
+
+        // Photo Album entity configurations (After Event Photo Album Feature)
+        modelBuilder.ApplyConfiguration(new PhotoAlbumConfiguration());
+        modelBuilder.ApplyConfiguration(new AlbumPhotoConfiguration());
 
         // Configure schemas
         ConfigureSchemas(modelBuilder);
@@ -345,7 +353,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
             typeof(FormAnswer), // Custom Form/Survey Sign-Up Feature
             typeof(Donation), // Standalone Donation System
-            typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact) // Multiple Organizer Contacts
+            typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
+            typeof(PhotoAlbum), // After Event Photo Album Feature
+            typeof(AlbumPhoto) // After Event Photo Album Feature
         };
 
         // Get all types from Domain assembly that aren't in our configured list

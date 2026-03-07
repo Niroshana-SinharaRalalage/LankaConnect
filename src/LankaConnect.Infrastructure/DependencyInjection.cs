@@ -185,6 +185,9 @@ public static class DependencyInjection
         services.AddScoped<IEventFormRepository, EventFormRepository>();
         services.AddScoped<IFormResponseRepository, FormResponseRepository>();
 
+        // Photo Album Feature Repositories
+        services.AddScoped<IPhotoAlbumRepository, PhotoAlbumRepository>();
+
         // Phase 6A.95: Configure Sales Tax Settings (feature flag)
         services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));
 
@@ -250,6 +253,7 @@ public static class DependencyInjection
         // Phase 6A.9: Azure Blob Storage and Image Service
         services.AddScoped<IAzureBlobStorageService, LankaConnect.Infrastructure.Services.AzureBlobStorageService>();
         services.AddScoped<IImageService, LankaConnect.Infrastructure.Services.ImageService>();
+        services.AddScoped<IAlbumImageService, LankaConnect.Infrastructure.Services.AlbumImageService>();
 
         // Add Authentication Services
         services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -313,6 +317,9 @@ public static class DependencyInjection
 
         // Phase 6A.99: Add Email Failure Cleanup Service (Background Service - runs daily at 2 AM UTC)
         services.AddHostedService<BackgroundServices.EmailFailureCleanupService>();
+
+        // Photo Album: Add Album Photo Cleanup Service (Background Service - 7-day retention, runs daily at 2 AM UTC)
+        services.AddHostedService<BackgroundServices.AlbumPhotoCleanupService>();
 
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();

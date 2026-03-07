@@ -8,6 +8,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -103,12 +104,13 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
 
                 // Phase 6A.97+ Fix: Populate organizer contact if available
-                if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))
+                if (@event.HasOrganizerContact())
                 {
-                    emailParams.WithOrganizerContact(
-                        @event.OrganizerContactName,
-                        @event.OrganizerContactEmail,
-                        @event.OrganizerContactPhone);
+                    emailParams.WithOrganizerContacts(
+                        @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList());
                 }
 
                 // Phase 6A.100 Fix: Add signup lists URL if event has signup lists

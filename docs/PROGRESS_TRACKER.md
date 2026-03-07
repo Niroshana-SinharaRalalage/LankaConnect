@@ -1,7 +1,38 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-06 - Email Deliverability Improvements ✅ COMPLETE*
+*Last Updated: 2026-03-07 - Phase 6A.135 Newsletter Query Handlers EmailGroups/MetroAreas Fix ✅ COMPLETE*
 
-## 🎯 Current Session Status - Email Deliverability Improvements ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.135: Newsletter Query Handlers Fix ✅ COMPLETE
+
+### Phase 6A.135: Fix EmailGroups and MetroAreas Population in Newsletter Query Handlers - 2026-03-07
+
+**Status**: ✅ **COMPLETE (deployed to staging, API verified)**
+
+**Classification**: Bug Fix — All 4 newsletter query handlers were returning empty lists for `emailGroups` and `metroAreas`, despite the data existing in the database.
+
+**Problem**: All 4 newsletter query handlers hardcoded `EmailGroups = new List<...>()` and `MetroAreas = new List<...>()` as empty lists in their DTO mappings. The `GetPublishedNewslettersQueryHandler` also lacked `IApplicationDbContext` injection entirely, making it impossible to perform any additional queries.
+
+**Solution**: Each handler was updated to look up the actual email group and metro area entities using IDs already available from repository `Include` navigation properties, then populate the DTO fields with real names and data. A batch lookup pattern was applied consistently across the three multi-newsletter handlers.
+
+**Changes**:
+
+| Handler | Change | Key Files |
+|---------|--------|-----------|
+| `GetNewsletterByIdQueryHandler` | Direct entity lookups using IDs from already-included navigation properties | `GetNewsletterByIdQueryHandler.cs` |
+| `GetNewslettersByCreatorQueryHandler` | Junction table queries + batch entity lookups for all newsletters in result set | `GetNewslettersByCreatorQueryHandler.cs` |
+| `GetNewslettersByEventQueryHandler` | Same batch pattern as creator handler | `GetNewslettersByEventQueryHandler.cs` |
+| `GetPublishedNewslettersQueryHandler` | Added `IApplicationDbContext` DI + batch lookup pattern | `GetPublishedNewslettersQueryHandler.cs` |
+
+**Files Modified**:
+- `src/LankaConnect.Application/Communications/Queries/GetNewsletterById/GetNewsletterByIdQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetNewslettersByCreator/GetNewslettersByCreatorQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetNewslettersByEvent/GetNewslettersByEventQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetPublishedNewsletters/GetPublishedNewslettersQueryHandler.cs`
+
+**Testing**: Build succeeded. Deployed to Azure staging. API verified — `emailGroups` now returns names correctly.
+
+---
+
+## 🎯 Previous Session - Email Deliverability Improvements ✅ COMPLETE
 
 ### Email Deliverability: List-Unsubscribe, SPF, DMARC, Feedback-ID — 2026-03-06
 

@@ -8,6 +8,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,14 +112,12 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
                 emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");
 
-                // Phase 6A.87+ Fix: Populate organizer contact if available
-                if (!string.IsNullOrWhiteSpace(@event.OrganizerContactName))
-                {
-                    emailParams.WithOrganizerContact(
-                        @event.OrganizerContactName,
-                        @event.OrganizerContactEmail,
-                        @event.OrganizerContactPhone);
-                }
+                // Phase 6A.87+ Fix: Populate organizer contacts if available
+                emailParams.WithOrganizerContacts(
+                    @event.OrganizerContacts
+                        .OrderBy(c => c.SortOrder)
+                        .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                        .ToList());
 
                 // Phase 6A.87+ Fix: Populate signup lists URL if event has signup lists
                 if (@event.SignUpLists?.Count > 0)

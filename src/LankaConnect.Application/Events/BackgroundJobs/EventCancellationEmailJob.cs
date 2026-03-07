@@ -10,6 +10,7 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -278,14 +279,12 @@ public class EventCancellationEmailJob
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
 
-                    // Phase 6A.100 Fix: Add organizer contact if available
-                    if (@event.HasOrganizerContact())
-                    {
-                        emailParams.WithOrganizerContact(
-                            @event.OrganizerContactName,
-                            @event.OrganizerContactEmail,
-                            @event.OrganizerContactPhone);
-                    }
+                    // Phase 6A.100 Fix: Add organizer contacts if available
+                    emailParams.WithOrganizerContacts(
+                        @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList());
 
                     // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
                     if (@event.HasSignUpLists())

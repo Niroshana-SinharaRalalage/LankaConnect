@@ -3,7 +3,24 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.135: NEWSLETTER QUERY HANDLERS FIX ✅ COMPLETE
+**Date**: 2026-03-07
+**Session**: Phase 6A.135 — Fix EmailGroups and MetroAreas Population in Newsletter Query Handlers
+**Progress**: **✅ COMPLETE** - All 4 newsletter query handlers now return populated EmailGroups and MetroAreas
+**Status**: ✅ **COMPLETE** - Build succeeded, deployed to staging, API verified
+**Testing**: ✅ Build succeeded. Staging API verified — emailGroups now return names.
+
+**Bug Fix**: Newsletter query handlers were hardcoding empty lists for EmailGroups and MetroAreas.
+
+**Key Changes**:
+- `GetNewsletterByIdQueryHandler`: Direct entity lookups using IDs from repository Include navigation properties
+- `GetNewslettersByCreatorQueryHandler`: Junction table queries + batch entity lookups
+- `GetNewslettersByEventQueryHandler`: Same batch pattern as creator handler
+- `GetPublishedNewslettersQueryHandler`: Added IApplicationDbContext DI + batch lookup pattern
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE
 **Date**: 2026-03-06
 **Session**: Phase 6A.133 Primary Toggle
 **Progress**: **✅ COMPLETE** - Flexible primary organizer management fully implemented

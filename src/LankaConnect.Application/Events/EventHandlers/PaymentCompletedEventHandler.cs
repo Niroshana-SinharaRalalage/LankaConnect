@@ -10,6 +10,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -262,10 +263,11 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 // Set organizer contact
                 if (@event.HasOrganizerContact())
                 {
-                    typedParams.WithOrganizerContact(
-                        @event.OrganizerContactName,
-                        @event.OrganizerContactEmail,
-                        @event.OrganizerContactPhone);
+                    typedParams.WithOrganizerContacts(
+                        @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList());
                 }
 
                 // Phase 6A.100: Validate parameters

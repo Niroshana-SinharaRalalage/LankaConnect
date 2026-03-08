@@ -4,20 +4,18 @@
  * PhotoAlbumManagementTab Component
  *
  * Inline tab content for the Photo Album tab on the Event Manage page.
- * Follows the same pattern as DonationsManagementTab and EventNewslettersTab:
- * receives eventId, fetches data via hooks, renders management UI inline.
+ * Simplified UI: stats card + gallery with upload area.
+ * Album auto-publishes on first photo upload (no manual Publish button needed).
  *
  * States handled:
  * 1. Loading — spinner while album data loads
  * 2. No album — empty state with "Create Album" CTA
- * 3. Album exists — stats, actions, settings, moderation, and gallery
+ * 3. Album exists — stats card, close action, gallery with upload
  */
 
 import { useState } from 'react';
 import {
   Camera,
-  Settings,
-  Shield,
   Image,
   Loader2,
   AlertCircle,
@@ -29,11 +27,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import {
   usePhotoAlbum,
   useCreateAlbum,
-  usePublishAlbum,
   useCloseAlbum,
 } from '@/presentation/hooks/usePhotoAlbum';
-import { AlbumSettingsForm } from './AlbumSettingsForm';
-import { AlbumModerationQueue } from './AlbumModerationQueue';
 import { AlbumGallery } from './AlbumGallery';
 import {
   AlbumStatus,
@@ -59,10 +54,8 @@ function getStatusBadge(status: AlbumStatus): { label: string; className: string
 export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProps) {
   const { data: album, isLoading, error } = usePhotoAlbum(eventId);
   const createAlbum = useCreateAlbum();
-  const publishAlbum = usePublishAlbum();
   const closeAlbum = useCloseAlbum();
 
-  const [activeSection, setActiveSection] = useState<'gallery' | 'settings' | 'moderation'>('gallery');
   const [inlineMessage, setInlineMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -76,15 +69,6 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
       showMessage('success', 'Photo album created successfully!');
     } catch {
       showMessage('error', 'Failed to create album. Please try again.');
-    }
-  };
-
-  const handlePublish = async () => {
-    try {
-      await publishAlbum.mutateAsync({ eventId });
-      showMessage('success', 'Album published! Registered attendees will be notified via email.');
-    } catch {
-      showMessage('error', 'Failed to publish album. Please try again.');
     }
   };
 
@@ -144,7 +128,7 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
           <Camera className="h-16 w-16 text-purple-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Photo Album Yet</h3>
           <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Create a photo album to let attendees share and view photos from your event.
+            Create a photo album to share photos from your event.
             Photos are automatically deleted after 7 days.
           </p>
           <Button
@@ -167,7 +151,7 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
     );
   }
 
-  // Album exists — render full management UI
+  // Album exists — render stats card + gallery
   const statusBadge = getStatusBadge(album.status);
 
   return (
@@ -199,29 +183,8 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
               )}
             </div>
 
-            {/* Right: Actions */}
+            {/* Right: Close Album action (Published only) */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Publish (Draft only) */}
-              {album.status === AlbumStatus.Draft && (
-                <Button
-                  onClick={handlePublish}
-                  disabled={publishAlbum.isPending}
-                  className="text-white"
-                  style={{ background: '#10B981' }}
-                  size="sm"
-                >
-                  {publishAlbum.isPending ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      Publishing...
-                    </>
-                  ) : (
-                    'Publish Album'
-                  )}
-                </Button>
-              )}
-
-              {/* Close (Published only) */}
               {album.status === AlbumStatus.Published && (
                 <Button
                   onClick={handleClose}
@@ -245,60 +208,13 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
         </CardContent>
       </Card>
 
-      {/* Section Toggle */}
-      <div className="flex gap-2 border-b border-gray-200 pb-0">
-        <button
-          onClick={() => setActiveSection('gallery')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeSection === 'gallery'
-              ? 'border-purple-600 text-purple-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <Image className="h-4 w-4" />
-          Gallery
-        </button>
-        <button
-          onClick={() => setActiveSection('settings')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeSection === 'settings'
-              ? 'border-purple-600 text-purple-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <Settings className="h-4 w-4" />
-          Settings
-        </button>
-        <button
-          onClick={() => setActiveSection('moderation')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            activeSection === 'moderation'
-              ? 'border-purple-600 text-purple-700'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-        >
-          <Shield className="h-4 w-4" />
-          Moderation
-        </button>
-      </div>
-
-      {/* Active Section Content */}
-      {activeSection === 'gallery' && (
-        <AlbumGallery
-          eventId={eventId}
-          album={album}
-          isOrganizer={true}
-          canUpload={album.status !== AlbumStatus.Closed}
-        />
-      )}
-
-      {activeSection === 'settings' && (
-        <AlbumSettingsForm eventId={eventId} album={album} />
-      )}
-
-      {activeSection === 'moderation' && (
-        <AlbumModerationQueue eventId={eventId} />
-      )}
+      {/* Gallery with upload area — shown directly (no sub-tabs) */}
+      <AlbumGallery
+        eventId={eventId}
+        album={album}
+        isOrganizer={true}
+        canUpload={album.status !== AlbumStatus.Closed}
+      />
     </div>
   );
 }

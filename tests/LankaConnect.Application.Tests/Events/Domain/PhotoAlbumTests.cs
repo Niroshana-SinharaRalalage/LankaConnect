@@ -836,17 +836,49 @@ public class PhotoAlbumTests
     }
 
     [Fact]
-    public void AddPhoto_ToDraftAlbum_ShouldFail()
+    public void AddPhoto_ToDraftAlbum_ShouldSucceedAndAutoPublish()
     {
         // Arrange
         var album = CreateDraftAlbum();
+        album.ClearDomainEvents();
 
         // Act
         var result = AddTestPhoto(album);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("not yet published");
+        result.IsSuccess.Should().BeTrue("uploads should be allowed on Draft albums");
+        album.Status.Should().Be(AlbumStatus.Published, "album should auto-publish on first upload");
+        album.PublishedAt.Should().NotBeNull();
+        album.PhotoCount.Should().Be(1);
+        album.Photos.Should().HaveCount(1);
+
+        // Should raise PhotoAlbumPublishedDomainEvent
+        album.DomainEvents.Should().ContainSingle(e => e is PhotoAlbumPublishedDomainEvent);
+        // Should also raise PhotoUploadedToAlbumDomainEvent
+        album.DomainEvents.Should().ContainSingle(e => e is PhotoUploadedToAlbumDomainEvent);
+    }
+
+    [Fact]
+    public void AddPhoto_SecondPhotoAfterAutoPublish_ShouldNotRePublish()
+    {
+        // Arrange — first photo auto-publishes
+        var album = CreateDraftAlbum();
+        album.ClearDomainEvents();
+        AddTestPhoto(album, photoIndex: 1);
+        album.ClearDomainEvents();
+
+        // Act — second photo on Published album
+        var result = AddTestPhoto(album, photoIndex: 2);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        album.Status.Should().Be(AlbumStatus.Published);
+        album.PhotoCount.Should().Be(2);
+
+        // Should NOT raise another PhotoAlbumPublishedDomainEvent
+        album.DomainEvents.Should().NotContain(e => e is PhotoAlbumPublishedDomainEvent);
+        // Should raise PhotoUploadedToAlbumDomainEvent
+        album.DomainEvents.Should().ContainSingle(e => e is PhotoUploadedToAlbumDomainEvent);
     }
 
     [Fact]

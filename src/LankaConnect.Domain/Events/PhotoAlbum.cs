@@ -163,8 +163,6 @@ public class PhotoAlbum : BaseEntity
         string? caption,
         long fileSizeBytes)
     {
-        if (Status == AlbumStatus.Draft)
-            return Result<AlbumPhoto>.Failure("Album is not yet published — cannot accept uploads");
         if (Status == AlbumStatus.Closed)
             return Result<AlbumPhoto>.Failure("Album is closed — no more uploads accepted");
 
@@ -194,6 +192,15 @@ public class PhotoAlbum : BaseEntity
             // Only increment count for immediately-approved photos
             if (initialStatus == AlbumPhotoStatus.Approved)
                 PhotoCount++;
+
+            // Auto-publish on first photo upload — ensures attendees get email
+            // only when there's at least one photo to view
+            if (Status == AlbumStatus.Draft)
+            {
+                Status = AlbumStatus.Published;
+                PublishedAt = DateTime.UtcNow;
+                RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle));
+            }
 
             MarkAsUpdated();
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, photo.Id, uploaderId));

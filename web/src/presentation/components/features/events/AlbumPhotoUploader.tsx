@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { Upload, Loader2, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Textarea } from '@/presentation/components/ui/Textarea';
@@ -54,7 +54,7 @@ export function AlbumPhotoUploader({ eventId, onUploadComplete }: AlbumPhotoUplo
   }, []);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: Array<{ errors: Array<{ message: string }> }>) => {
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       setValidationError(null);
 
       if (rejectedFiles.length > 0) {

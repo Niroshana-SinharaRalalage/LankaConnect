@@ -44,8 +44,7 @@ export class PhotoAlbumRepository {
    */
   async getAlbum(eventId: string): Promise<PhotoAlbumDto | null> {
     try {
-      const response = await apiClient.get<PhotoAlbumDto>(this.albumPath(eventId));
-      return response.data;
+      return await apiClient.get<PhotoAlbumDto>(this.albumPath(eventId));
     } catch (error: any) {
       if (error?.response?.status === 404) return null;
       throw error;
@@ -60,11 +59,10 @@ export class PhotoAlbumRepository {
    * @returns Created album DTO
    */
   async createAlbum(eventId: string, request?: CreatePhotoAlbumRequest): Promise<PhotoAlbumDto> {
-    const response = await apiClient.post<PhotoAlbumDto>(
+    return await apiClient.post<PhotoAlbumDto>(
       this.albumPath(eventId),
       request ?? {},
     );
-    return response.data;
   }
 
   /**
@@ -114,11 +112,10 @@ export class PhotoAlbumRepository {
     if (pageSize) params.pageSize = pageSize;
     if (cursor) params.cursor = cursor;
 
-    const response = await apiClient.get<PaginatedAlbumPhotosResponse>(
+    return await apiClient.get<PaginatedAlbumPhotosResponse>(
       `${this.albumPath(eventId)}/photos`,
       { params },
     );
-    return response.data;
   }
 
   /**
@@ -135,12 +132,11 @@ export class PhotoAlbumRepository {
     formData.append('image', file);
     if (caption) formData.append('caption', caption);
 
-    const response = await apiClient.post<AlbumPhotoDto>(
+    return await apiClient.post<AlbumPhotoDto>(
       `${this.albumPath(eventId)}/photos`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
-    return response.data;
   }
 
   /**
@@ -192,10 +188,9 @@ export class PhotoAlbumRepository {
    * @returns Array of photos awaiting approval
    */
   async getPendingPhotos(eventId: string): Promise<AlbumPhotoDto[]> {
-    const response = await apiClient.get<AlbumPhotoDto[]>(
+    return await apiClient.get<AlbumPhotoDto[]>(
       `${this.albumPath(eventId)}/photos/pending`,
     );
-    return response.data;
   }
 }
 

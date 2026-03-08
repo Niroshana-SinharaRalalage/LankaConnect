@@ -1,7 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
-import { SignUpListDto, SignUpItemDto, SignUpCommitmentDto, SignUpItemCategory, SignUpType } from '@/infrastructure/api/types/events.types';
+import { SignUpListDto, SignUpItemDto, SignUpCommitmentDto, SignUpItemCategory, SignUpType, SignUpItemType } from '@/infrastructure/api/types/events.types';
+
+// Mock the hooks used by SignUpManagementSection
+const mockUseEventSignUps = vi.fn();
+const mockMutate = vi.fn();
+const mockMutation = { mutate: mockMutate, mutateAsync: vi.fn(), isPending: false, isError: false, error: null };
+
+vi.mock('@/presentation/hooks/useEventSignUps', () => ({
+  useEventSignUps: (...args: unknown[]) => mockUseEventSignUps(...args),
+  useCommitToSignUp: () => mockMutation,
+  useCancelCommitment: () => mockMutation,
+  useAddSignUpList: () => mockMutation,
+  useRemoveSignUpList: () => mockMutation,
+  useCommitToSignUpItem: () => mockMutation,
+  useCommitToSignUpItemAnonymous: () => mockMutation,
+  useAddOpenSignUpItem: () => mockMutation,
+  useAddOpenSignUpItemAnonymous: () => mockMutation,
+  useUpdateOpenSignUpItem: () => mockMutation,
+  useCancelOpenSignUpItem: () => mockMutation,
+}));
+
+vi.mock('@/presentation/store/useAuthStore', () => ({
+  useAuthStore: () => ({ user: { userId: 'user-2' }, isAuthenticated: true }),
+}));
 
 /**
  * Test Suite for SignUpManagementSection Component
@@ -21,7 +44,9 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
   const mockMandatoryItem: SignUpItemDto = {
     id: 'mandatory-1',
     itemDescription: 'Chicken Curry',
-    quantity: 5,
+    itemType: SignUpItemType.Quantity,
+    targetQuantity: 5,
+    committedQuantity: 2,
     remainingQuantity: 3,
     itemCategory: SignUpItemCategory.Mandatory,
     notes: 'Non-spicy preferred',
@@ -36,7 +61,6 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
         signUpItemId: 'mandatory-1'
       }
     ],
-    committedQuantity: 2,
     isFullyCommitted: false,
     isOpenItem: false
   };
@@ -44,12 +68,13 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
   const mockSuggestedItem: SignUpItemDto = {
     id: 'suggested-1',
     itemDescription: 'Paper Plates',
-    quantity: 10,
+    itemType: SignUpItemType.Quantity,
+    targetQuantity: 10,
+    committedQuantity: 0,
     remainingQuantity: 10,
     itemCategory: SignUpItemCategory.Suggested,
     notes: null,
     commitments: [],
-    committedQuantity: 0,
     isFullyCommitted: false,
     isOpenItem: false
   };
@@ -70,14 +95,19 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
   };
 
   const mockProps = {
-    signUpLists: [mockSignUpList],
-    isLoading: false,
+    eventId: 'test-event-id',
     isOrganizer: false,
     userId: 'user-2'
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return sign-up lists data from the hook
+    mockUseEventSignUps.mockReturnValue({
+      data: [mockSignUpList],
+      isLoading: false,
+      error: null,
+    });
   });
 
   /**
@@ -196,7 +226,13 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
       items: [mockMandatoryItem] // Only mandatory items
     };
 
-    render(<SignUpManagementSection {...mockProps} signUpLists={[emptyList]} />);
+    mockUseEventSignUps.mockReturnValue({
+      data: [emptyList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<SignUpManagementSection {...mockProps} />);
 
     // Should have Mandatory tab
     expect(screen.getByRole('tab', { name: /Mandatory Items/i })).toBeInTheDocument();
@@ -248,7 +284,13 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
       items: []  // No items yet - users will add their own
     };
 
-    render(<SignUpManagementSection {...mockProps} signUpLists={[emptyOpenList]} />);
+    mockUseEventSignUps.mockReturnValue({
+      data: [emptyOpenList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<SignUpManagementSection {...mockProps} />);
 
     // Should show Open Items (0) tab
     const openTab = screen.getByRole('tab', { name: /Open Items \(0\)/i });
@@ -274,7 +316,13 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
       hasOpenItems: false  // Category disabled
     };
 
-    render(<SignUpManagementSection {...mockProps} signUpLists={[noOpenList]} />);
+    mockUseEventSignUps.mockReturnValue({
+      data: [noOpenList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<SignUpManagementSection {...mockProps} />);
 
     // Should NOT have Open Items tab
     expect(screen.queryByRole('tab', { name: /Open Items/i })).not.toBeInTheDocument();
@@ -288,7 +336,9 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
     const mockOpenItem: SignUpItemDto = {
       id: 'open-1',
       itemDescription: 'Homemade Cookies',
-      quantity: 24,
+      itemType: SignUpItemType.Quantity,
+      targetQuantity: 24,
+      committedQuantity: 24,
       remainingQuantity: 0,
       itemCategory: SignUpItemCategory.Open,
       notes: '2 dozen chocolate chip',
@@ -303,7 +353,6 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
           signUpItemId: 'open-1'
         }
       ],
-      committedQuantity: 24,
       isFullyCommitted: true,
       isOpenItem: true,
       createdByUserId: 'user-2'
@@ -317,7 +366,13 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
       items: [mockOpenItem]
     };
 
-    render(<SignUpManagementSection {...mockProps} signUpLists={[openListWithItems]} />);
+    mockUseEventSignUps.mockReturnValue({
+      data: [openListWithItems],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<SignUpManagementSection {...mockProps} />);
 
     // Should show Open Items (1) tab
     expect(screen.getByRole('tab', { name: /Open Items \(1\)/i })).toBeInTheDocument();

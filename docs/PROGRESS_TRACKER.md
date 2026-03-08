@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-07 - After Event Photo Album Feature ✅ COMPLETE*
+*Last Updated: 2026-03-07 - Photo Album Tab Inline Fix ✅ COMPLETE*
 
-## 🎯 Current Session Status - After Event Photo Album Feature ✅ COMPLETE
+## 🎯 Current Session Status - Photo Album Tab Inline Fix ✅ COMPLETE
+
+### Photo Album Manage Tab UX Fix - 2026-03-07
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging)**
+
+**Classification**: UX Fix — Photo Album tab on event manage page was rendering as a placeholder with a redirect button to a separate page, inconsistent with all other tabs which render inline.
+
+**Problem**: The Photo Album tab opened a separate route (`/events/[id]/manage/album/page.tsx`) instead of rendering inline like every other tab (Details, Sign-Ups, Newsletters, etc.). Additionally, a string enum comparison bug prevented the tab from appearing at all.
+
+**Solution**:
+- Created `PhotoAlbumManagementTab.tsx` — inline component composing existing `AlbumGallery`, `AlbumSettingsForm`, and `AlbumModerationQueue` with sub-tab navigation
+- Deleted the separate `manage/album/page.tsx` route
+- Fixed string enum comparison bug that prevented the Photo Album tab from rendering
+
+**Files Changed**:
+- `web/src/presentation/components/features/events/PhotoAlbumManagementTab.tsx` (new)
+- `web/src/app/events/[id]/manage/page.tsx` (updated to use inline tab)
+- `web/src/app/events/[id]/manage/album/page.tsx` (deleted)
+- `web/src/infrastructure/api/types/events.types.ts` (enum fix)
+
+**Commits**: ec0c7c43 (enum fix), e5fcfa07 (inline tab)
+
+---
+
+## ⏸️ Previous Session - After Event Photo Album Feature ✅ COMPLETE
 
 ### After Event Photo Album Feature - 2026-03-07
 

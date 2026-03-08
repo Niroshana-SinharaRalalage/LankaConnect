@@ -42,6 +42,9 @@ import { DonationsManagementTab } from '@/presentation/components/features/event
 // Custom Forms Feature - Phase 6A: Import EventFormsTab
 import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
 
+// Photo Album Feature: Inline management tab
+import { PhotoAlbumManagementTab } from '@/presentation/components/features/events/PhotoAlbumManagementTab';
+
 /**
  * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
  * Organizer-only page with tabbed interface for managing events
@@ -310,22 +313,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           id: 'album',
           label: 'Photo Album',
           icon: Camera,
-          content: (
-            <div className="text-center py-8">
-              <Camera className="h-12 w-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Photo Album Management</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Create and manage your event photo album. Attendees can upload and share memories.
-              </p>
-              <Button
-                onClick={() => router.push(`/events/${id}/manage/album`)}
-                className="text-white"
-                style={{ background: '#8B1538' }}
-              >
-                Manage Photo Album
-              </Button>
-            </div>
-          ),
+          content: <PhotoAlbumManagementTab eventId={id} />,
         }]
       : []),
   ];

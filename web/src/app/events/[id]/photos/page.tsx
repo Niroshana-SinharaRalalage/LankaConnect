@@ -51,12 +51,13 @@ export default function PhotosPage({ params }: { params: Promise<{ id: string }>
 
   const activeAlbum = useMemo(() => {
     if (publishedAlbums.length === 0) return null;
-    if (requestedAlbumId) {
-      const found = publishedAlbums.find((a) => a.id === requestedAlbumId);
-      if (found) return found;
-    }
+    // User's tab click takes priority over URL query param
     if (selectedAlbumId) {
       const found = publishedAlbums.find((a) => a.id === selectedAlbumId);
+      if (found) return found;
+    }
+    if (requestedAlbumId) {
+      const found = publishedAlbums.find((a) => a.id === requestedAlbumId);
       if (found) return found;
     }
     return publishedAlbums[0];

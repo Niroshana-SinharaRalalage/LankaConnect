@@ -17,7 +17,7 @@ import {
   Info,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/presentation/components/ui/Dialog';
-import { useAlbumPhotos } from '@/presentation/hooks/usePhotoAlbum';
+import { useAlbumPhotos, useDeleteAlbumPhoto } from '@/presentation/hooks/usePhotoAlbum';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { AlbumPhotoCard } from '@/presentation/components/features/events/AlbumPhotoCard';
 import { AlbumPhotoUploader } from '@/presentation/components/features/events/AlbumPhotoUploader';
@@ -40,6 +40,7 @@ const SKELETON_COUNT = 8;
 export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGalleryProps) {
   const { user } = useAuthStore();
   const [lightboxPhoto, setLightboxPhoto] = useState<AlbumPhotoDto | null>(null);
+  const deletePhotoMutation = useDeleteAlbumPhoto();
 
   // Infinite scroll query — uses album.id for multi-album support
   const {
@@ -89,15 +90,18 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
   }, [currentLightboxIndex, allPhotos]);
 
   const handleDeletePhoto = useCallback(
-    (photoId: string) => {
-      // If the deleted photo is currently in the lightbox, close it
-      if (lightboxPhoto?.id === photoId) {
-        setLightboxPhoto(null);
+    async (photoId: string) => {
+      if (!confirm('Delete this photo? This action cannot be undone.')) return;
+      try {
+        await deletePhotoMutation.mutateAsync({ eventId, albumId: album.id, photoId });
+        if (lightboxPhoto?.id === photoId) {
+          setLightboxPhoto(null);
+        }
+      } catch {
+        // Error handled by React Query onError
       }
-      // Deletion is handled by the parent page via the useDeleteAlbumPhoto hook
-      // This component just provides the UI trigger
     },
-    [lightboxPhoto]
+    [eventId, album.id, lightboxPhoto, deletePhotoMutation]
   );
 
   // Keyboard navigation for lightbox

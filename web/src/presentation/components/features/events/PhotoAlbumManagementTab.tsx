@@ -23,6 +23,7 @@ import {
   Send,
   Download,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { Card, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -30,6 +31,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import {
   useEventAlbums,
   useCreateAlbum,
+  useUpdateAlbumDetails,
   usePublishAlbum,
   useSendAlbumNotification,
   useDeleteAlbum,
@@ -57,6 +59,7 @@ function getStatusBadge(status: AlbumStatus): { label: string; className: string
 export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProps) {
   const { data: albums, isLoading, error } = useEventAlbums(eventId);
   const createAlbum = useCreateAlbum();
+  const updateAlbumDetails = useUpdateAlbumDetails();
   const publishAlbum = usePublishAlbum();
   const sendNotification = useSendAlbumNotification();
   const deleteAlbum = useDeleteAlbum();
@@ -67,6 +70,11 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
   const [newAlbumName, setNewAlbumName] = useState('');
   const [newAlbumDescription, setNewAlbumDescription] = useState('');
   const [inlineMessage, setInlineMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Inline edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setInlineMessage({ type, text });
@@ -130,6 +138,30 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
       await downloadZip.mutateAsync({ eventId, albumId: album.id, albumName: album.name });
     } catch {
       showMessage('error', 'Failed to download ZIP. Please try again.');
+    }
+  };
+
+  const startEditing = (album: PhotoAlbumDto) => {
+    setEditName(album.name);
+    setEditDescription(album.description ?? '');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async (album: PhotoAlbumDto) => {
+    if (!editName.trim()) return;
+    try {
+      await updateAlbumDetails.mutateAsync({
+        eventId,
+        albumId: album.id,
+        request: {
+          name: editName.trim(),
+          description: editDescription.trim() || undefined,
+        },
+      });
+      setIsEditing(false);
+      showMessage('success', `Album "${editName.trim()}" updated!`);
+    } catch {
+      showMessage('error', 'Failed to update album. Please try again.');
     }
   };
 
@@ -347,108 +379,174 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
         <>
           {/* Album Stats & Actions Card */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                {/* Left: Status + Stats */}
-                <div className="flex items-center gap-4 flex-wrap">
-                  {statusBadge && (
-                    <Badge className={`text-sm px-3 py-1 font-semibold ${statusBadge.className}`}>
-                      {statusBadge.label}
-                    </Badge>
-                  )}
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Image className="h-4 w-4" />
-                      {activeAlbum.photoCount} {activeAlbum.photoCount === 1 ? 'photo' : 'photos'}
-                    </span>
-                    <span>{activeAlbum.retentionDays}-day retention</span>
+            <CardContent className="pt-6 space-y-4">
+              {/* Inline Edit Form */}
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Album Name *
+                    </label>
+                    <input
+                      id="edit-name"
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      maxLength={100}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
                   </div>
-                </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Publish (Draft + has photos) */}
-                  {activeAlbum.status === AlbumStatus.Draft && activeAlbum.photoCount > 0 && (
+                  <div>
+                    <label htmlFor="edit-desc" className="block text-sm font-medium text-gray-700 mb-1">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      id="edit-desc"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex gap-2">
                     <Button
-                      onClick={() => handlePublish(activeAlbum)}
-                      disabled={publishAlbum.isPending}
+                      onClick={() => handleSaveEdit(activeAlbum)}
+                      disabled={!editName.trim() || updateAlbumDetails.isPending}
                       className="text-white"
                       style={{ background: '#8B1538' }}
                       size="sm"
                     >
-                      {publishAlbum.isPending ? (
+                      {updateAlbumDetails.isPending ? (
                         <>
                           <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          Publishing...
+                          Saving...
                         </>
                       ) : (
-                        'Publish'
+                        'Save'
                       )}
                     </Button>
-                  )}
-
-                  {/* Send Email (Published only) */}
-                  {activeAlbum.status === AlbumStatus.Published && (
-                    <Button
-                      onClick={() => handleSendNotification(activeAlbum)}
-                      disabled={sendNotification.isPending}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {sendNotification.isPending ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-3 w-3 mr-1" />
-                          Send Email
-                        </>
-                      )}
+                    <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                      Cancel
                     </Button>
-                  )}
-
-                  {/* Download ZIP (has photos) */}
-                  {activeAlbum.photoCount > 0 && (
-                    <Button
-                      onClick={() => handleDownloadZip(activeAlbum)}
-                      disabled={downloadZip.isPending}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {downloadZip.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Download className="h-3 w-3 mr-1" />
-                          ZIP
-                        </>
-                      )}
-                    </Button>
-                  )}
-
-                  {/* Delete (Draft only) */}
-                  {activeAlbum.status === AlbumStatus.Draft && (
-                    <Button
-                      onClick={() => handleDeleteAlbum(activeAlbum)}
-                      disabled={deleteAlbum.isPending}
-                      variant="outline"
-                      className="text-red-600 border-red-300 hover:bg-red-50"
-                      size="sm"
-                    >
-                      {deleteAlbum.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
-                        </>
-                      )}
-                    </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  {/* Left: Status + Stats + Edit */}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {statusBadge && (
+                      <Badge className={`text-sm px-3 py-1 font-semibold ${statusBadge.className}`}>
+                        {statusBadge.label}
+                      </Badge>
+                    )}
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Image className="h-4 w-4" />
+                        {activeAlbum.photoCount} {activeAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                      </span>
+                      <span>{activeAlbum.retentionDays}-day retention</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEditing(activeAlbum)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Publish (Draft + has photos) */}
+                    {activeAlbum.status === AlbumStatus.Draft && activeAlbum.photoCount > 0 && (
+                      <Button
+                        onClick={() => handlePublish(activeAlbum)}
+                        disabled={publishAlbum.isPending}
+                        className="text-white"
+                        style={{ background: '#8B1538' }}
+                        size="sm"
+                      >
+                        {publishAlbum.isPending ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            Publishing...
+                          </>
+                        ) : (
+                          'Publish'
+                        )}
+                      </Button>
+                    )}
+
+                    {/* Send Email (Published only) */}
+                    {activeAlbum.status === AlbumStatus.Published && (
+                      <Button
+                        onClick={() => handleSendNotification(activeAlbum)}
+                        disabled={sendNotification.isPending}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {sendNotification.isPending ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="h-3 w-3 mr-1" />
+                            Send Email
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {/* Download ZIP (has photos) */}
+                    {activeAlbum.photoCount > 0 && (
+                      <Button
+                        onClick={() => handleDownloadZip(activeAlbum)}
+                        disabled={downloadZip.isPending}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {downloadZip.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Download className="h-3 w-3 mr-1" />
+                            ZIP
+                          </>
+                        )}
+                      </Button>
+                    )}
+
+                    {/* Delete (Draft only) */}
+                    {activeAlbum.status === AlbumStatus.Draft && (
+                      <Button
+                        onClick={() => handleDeleteAlbum(activeAlbum)}
+                        disabled={deleteAlbum.isPending}
+                        variant="outline"
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        size="sm"
+                      >
+                        {deleteAlbum.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            Delete
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Album description (display mode) */}
+              {!isEditing && activeAlbum.description && (
+                <p className="text-sm text-gray-500">{activeAlbum.description}</p>
+              )}
             </CardContent>
           </Card>
 

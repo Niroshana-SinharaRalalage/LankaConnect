@@ -88,9 +88,9 @@ export function AlbumPhotoCard({
       className="relative aspect-square rounded-lg overflow-hidden bg-neutral-100 dark:bg-neutral-800 group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
       aria-label={`View photo by ${photo.uploaderName}${photo.caption ? `: ${photo.caption}` : ''}`}
     >
-      {/* Thumbnail Image */}
+      {/* Gallery Image — use medium (800px) for crisp display in grid */}
       <img
-        src={photo.thumbnailUrl}
+        src={photo.mediumUrl}
         alt={photo.caption || `Photo by ${photo.uploaderName}`}
         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
         loading="lazy"

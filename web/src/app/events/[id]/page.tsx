@@ -1713,7 +1713,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <CollapsibleSection
               title="After Event Albums"
               icon={<Camera className="h-5 w-5 text-purple-600" />}
-              defaultOpen={true}
+              defaultOpen={false}
             >
               <div className="space-y-4">
                 {/* Album Tabs (if multiple) */}

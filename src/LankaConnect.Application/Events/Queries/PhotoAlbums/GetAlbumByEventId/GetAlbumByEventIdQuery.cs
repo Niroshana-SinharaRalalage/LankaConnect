@@ -9,12 +9,12 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumByEventId;
 
 /// <summary>
-/// Query to get a photo album by its event ID.
-/// Returns null if no album exists for the event (not an error).
+/// Query to get all photo albums for an event.
+/// Returns empty list if no albums exist (not an error).
 /// </summary>
-public record GetAlbumByEventIdQuery(Guid EventId) : IQuery<PhotoAlbumDto?>;
+public record GetAlbumByEventIdQuery(Guid EventId) : IQuery<List<PhotoAlbumDto>>;
 
-public class GetAlbumByEventIdQueryHandler : IQueryHandler<GetAlbumByEventIdQuery, PhotoAlbumDto?>
+public class GetAlbumByEventIdQueryHandler : IQueryHandler<GetAlbumByEventIdQuery, List<PhotoAlbumDto>>
 {
     private readonly IPhotoAlbumRepository _photoAlbumRepository;
     private readonly ILogger<GetAlbumByEventIdQueryHandler> _logger;
@@ -27,7 +27,7 @@ public class GetAlbumByEventIdQueryHandler : IQueryHandler<GetAlbumByEventIdQuer
         _logger = logger;
     }
 
-    public async Task<Result<PhotoAlbumDto?>> Handle(GetAlbumByEventIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<List<PhotoAlbumDto>>> Handle(GetAlbumByEventIdQuery request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "GetAlbumByEventId"))
         using (LogContext.PushProperty("EntityType", "PhotoAlbum"))
@@ -48,30 +48,21 @@ public class GetAlbumByEventIdQueryHandler : IQueryHandler<GetAlbumByEventIdQuer
                     _logger.LogWarning(
                         "GetAlbumByEventId FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
                         request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result<PhotoAlbumDto?>.Failure("Event ID is required");
+                    return Result<List<PhotoAlbumDto>>.Failure("Event ID is required");
                 }
 
-                // Get album with no change tracking (read-only query)
-                var album = await _photoAlbumRepository.GetByEventIdAsync(
+                // Get all albums for this event with no change tracking (read-only query)
+                var albums = await _photoAlbumRepository.GetAllByEventIdAsync(
                     request.EventId, trackChanges: false, cancellationToken);
-
-                if (album == null)
-                {
-                    stopwatch.Stop();
-                    _logger.LogInformation(
-                        "GetAlbumByEventId COMPLETE: No album found - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result<PhotoAlbumDto?>.Success(null);
-                }
 
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "GetAlbumByEventId COMPLETE: AlbumId={AlbumId}, EventId={EventId}, Status={Status}, PhotoCount={PhotoCount}, Duration={ElapsedMs}ms",
-                    album.Id, request.EventId, album.Status, album.PhotoCount, stopwatch.ElapsedMilliseconds);
+                    "GetAlbumByEventId COMPLETE: EventId={EventId}, AlbumCount={AlbumCount}, Duration={ElapsedMs}ms",
+                    request.EventId, albums.Count, stopwatch.ElapsedMilliseconds);
 
-                var dto = MapToDto(album);
-                return Result<PhotoAlbumDto?>.Success(dto);
+                var dtos = albums.Select(MapToDto).ToList();
+                return Result<List<PhotoAlbumDto>>.Success(dtos);
             }
             catch (Exception ex)
             {
@@ -92,15 +83,13 @@ public class GetAlbumByEventIdQueryHandler : IQueryHandler<GetAlbumByEventIdQuer
             EventId = album.EventId,
             OrganizerId = album.OrganizerId,
             EventTitle = album.EventTitle,
+            Name = album.Name,
             Status = album.Status,
-            UploadPermission = album.UploadPermission,
-            ModerationMode = album.ModerationMode,
             Description = album.Description,
             CoverPhotoUrl = album.CoverPhotoUrl,
             RetentionDays = album.RetentionDays,
             PhotoCount = album.PhotoCount,
             PublishedAt = album.PublishedAt,
-            ClosedAt = album.ClosedAt,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt
         };

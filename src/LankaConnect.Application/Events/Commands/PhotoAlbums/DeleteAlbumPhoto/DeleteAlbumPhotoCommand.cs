@@ -8,12 +8,12 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.Commands.PhotoAlbums.DeleteAlbumPhoto;
 
 /// <summary>
-/// Command to delete a photo from an event's photo album.
+/// Command to delete a photo from a photo album.
 /// Only the photo uploader or event organizer can delete a photo.
 /// Removes from aggregate and deletes all 3 blob sizes from Azure Blob Storage.
 /// </summary>
 public record DeleteAlbumPhotoCommand(
-    Guid EventId,
+    Guid AlbumId,
     Guid PhotoId,
     Guid RequesterId
 ) : ICommand;
@@ -41,27 +41,27 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
     {
         using (LogContext.PushProperty("Operation", "DeleteAlbumPhoto"))
         using (LogContext.PushProperty("EntityType", "AlbumPhoto"))
-        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("AlbumId", request.AlbumId))
         using (LogContext.PushProperty("PhotoId", request.PhotoId))
         using (LogContext.PushProperty("RequesterId", request.RequesterId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "DeleteAlbumPhoto START: EventId={EventId}, PhotoId={PhotoId}, RequesterId={RequesterId}",
-                request.EventId, request.PhotoId, request.RequesterId);
+                "DeleteAlbumPhoto START: AlbumId={AlbumId}, PhotoId={PhotoId}, RequesterId={RequesterId}",
+                request.AlbumId, request.PhotoId, request.RequesterId);
 
             try
             {
-                // 1. Get album by event ID with change tracking
-                var album = await _photoAlbumRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+                // 1. Get album by ID with change tracking
+                var album = await _photoAlbumRepository.GetByIdAsync(request.AlbumId, trackChanges: true, cancellationToken);
                 if (album == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "DeleteAlbumPhoto FAILED: Album not found - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result.Failure("Photo album not found for this event");
+                        "DeleteAlbumPhoto FAILED: Album not found - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure("Photo album not found");
                 }
 
                 // 2. Remove photo from aggregate (domain checks uploader/organizer permission)
@@ -70,8 +70,8 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "DeleteAlbumPhoto FAILED: Domain validation failed - EventId={EventId}, PhotoId={PhotoId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.EventId, request.PhotoId, removeResult.Error, stopwatch.ElapsedMilliseconds);
+                        "DeleteAlbumPhoto FAILED: Domain validation failed - AlbumId={AlbumId}, PhotoId={PhotoId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.AlbumId, request.PhotoId, removeResult.Error, stopwatch.ElapsedMilliseconds);
                     return Result.Failure(removeResult.Errors);
                 }
 
@@ -90,7 +90,7 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
 
                 if (deleteResult.IsFailure)
                 {
-                    // Log but continue — blobs can be cleaned up by background service
+                    // Log but continue -- blobs can be cleaned up by background service
                     _logger.LogWarning(
                         "DeleteAlbumPhoto: Blob deletion failed (will be cleaned up later) - PhotoId={PhotoId}, Error={Error}",
                         request.PhotoId, deleteResult.Error);
@@ -102,8 +102,8 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "DeleteAlbumPhoto COMPLETE: PhotoId={PhotoId}, AlbumId={AlbumId}, EventId={EventId}, Duration={ElapsedMs}ms",
-                    request.PhotoId, album.Id, request.EventId, stopwatch.ElapsedMilliseconds);
+                    "DeleteAlbumPhoto COMPLETE: PhotoId={PhotoId}, AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                    request.PhotoId, album.Id, stopwatch.ElapsedMilliseconds);
 
                 return Result.Success();
             }
@@ -111,8 +111,8 @@ public class DeleteAlbumPhotoCommandHandler : ICommandHandler<DeleteAlbumPhotoCo
             {
                 stopwatch.Stop();
                 _logger.LogError(ex,
-                    "DeleteAlbumPhoto FAILED: Exception occurred - EventId={EventId}, PhotoId={PhotoId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    request.EventId, request.PhotoId, stopwatch.ElapsedMilliseconds, ex.Message);
+                    "DeleteAlbumPhoto FAILED: Exception occurred - AlbumId={AlbumId}, PhotoId={PhotoId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.AlbumId, request.PhotoId, stopwatch.ElapsedMilliseconds, ex.Message);
                 throw;
             }
         }

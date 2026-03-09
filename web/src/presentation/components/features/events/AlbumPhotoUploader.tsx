@@ -19,6 +19,7 @@ import { cn } from '@/presentation/lib/utils';
 
 export interface AlbumPhotoUploaderProps {
   eventId: string;
+  albumId: string;
   onUploadComplete?: () => void;
 }
 
@@ -51,7 +52,7 @@ function getErrorMessage(error: unknown): string {
   return 'Upload failed. Please try again.';
 }
 
-export function AlbumPhotoUploader({ eventId, onUploadComplete }: AlbumPhotoUploaderProps) {
+export function AlbumPhotoUploader({ eventId, albumId, onUploadComplete }: AlbumPhotoUploaderProps) {
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export function AlbumPhotoUploader({ eventId, onUploadComplete }: AlbumPhotoUplo
       try {
         await uploadMutation.mutateAsync({
           eventId,
+          albumId,
           file: item.file,
         });
 
@@ -175,8 +177,8 @@ export function AlbumPhotoUploader({ eventId, onUploadComplete }: AlbumPhotoUplo
     }
 
     // Batch invalidation after all uploads complete
-    queryClient.invalidateQueries({ queryKey: albumKeys.photos(eventId) });
-    queryClient.invalidateQueries({ queryKey: albumKeys.detail(eventId) });
+    queryClient.invalidateQueries({ queryKey: albumKeys.photos(albumId) });
+    queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(eventId) });
 
     setIsUploading(false);
     onUploadComplete?.();
@@ -195,7 +197,7 @@ export function AlbumPhotoUploader({ eventId, onUploadComplete }: AlbumPhotoUplo
         return remaining;
       });
     }, 2000);
-  }, [queue, eventId, uploadMutation, queryClient, onUploadComplete]);
+  }, [queue, eventId, albumId, uploadMutation, queryClient, onUploadComplete]);
 
   const pendingCount = queue.filter((f) => f.status === 'pending').length;
   const doneCount = queue.filter((f) => f.status === 'done').length;

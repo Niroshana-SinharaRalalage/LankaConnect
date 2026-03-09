@@ -14,7 +14,7 @@ namespace LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumPhotos;
 /// Uses cursor-based pagination for infinite scroll support.
 /// </summary>
 public record GetAlbumPhotosQuery(
-    Guid EventId,
+    Guid AlbumId,
     int PageSize = 20,
     DateTime? Cursor = null
 ) : IQuery<PaginatedAlbumPhotosResponse>;
@@ -39,40 +39,40 @@ public class GetAlbumPhotosQueryHandler : IQueryHandler<GetAlbumPhotosQuery, Pag
     {
         using (LogContext.PushProperty("Operation", "GetAlbumPhotos"))
         using (LogContext.PushProperty("EntityType", "AlbumPhoto"))
-        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("AlbumId", request.AlbumId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "GetAlbumPhotos START: EventId={EventId}, PageSize={PageSize}, Cursor={Cursor}",
-                request.EventId, request.PageSize, request.Cursor);
+                "GetAlbumPhotos START: AlbumId={AlbumId}, PageSize={PageSize}, Cursor={Cursor}",
+                request.AlbumId, request.PageSize, request.Cursor);
 
             try
             {
                 // Validate request
-                if (request.EventId == Guid.Empty)
+                if (request.AlbumId == Guid.Empty)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "GetAlbumPhotos FAILED: Invalid EventId - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result<PaginatedAlbumPhotosResponse>.Failure("Event ID is required");
+                        "GetAlbumPhotos FAILED: Invalid AlbumId - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result<PaginatedAlbumPhotosResponse>.Failure("Album ID is required");
                 }
 
                 // Clamp page size
                 var pageSize = Math.Clamp(request.PageSize, 1, MAX_PAGE_SIZE);
 
                 // Get album to verify it exists and get photo count
-                var album = await _photoAlbumRepository.GetByEventIdAsync(
-                    request.EventId, trackChanges: false, cancellationToken);
+                var album = await _photoAlbumRepository.GetByIdAsync(
+                    request.AlbumId, trackChanges: false, cancellationToken);
 
                 if (album == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "GetAlbumPhotos FAILED: Album not found - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result<PaginatedAlbumPhotosResponse>.Failure("Photo album not found for this event");
+                        "GetAlbumPhotos FAILED: Album not found - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result<PaginatedAlbumPhotosResponse>.Failure("Photo album not found");
                 }
 
                 // Get paginated approved photos
@@ -92,8 +92,8 @@ public class GetAlbumPhotosQueryHandler : IQueryHandler<GetAlbumPhotosQuery, Pag
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "GetAlbumPhotos COMPLETE: EventId={EventId}, AlbumId={AlbumId}, ReturnedPhotos={ReturnedPhotos}, HasMore={HasMore}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
-                    request.EventId, album.Id, photoDtos.Count, hasMore, album.PhotoCount, stopwatch.ElapsedMilliseconds);
+                    "GetAlbumPhotos COMPLETE: AlbumId={AlbumId}, ReturnedPhotos={ReturnedPhotos}, HasMore={HasMore}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
+                    request.AlbumId, photoDtos.Count, hasMore, album.PhotoCount, stopwatch.ElapsedMilliseconds);
 
                 var response = new PaginatedAlbumPhotosResponse
                 {
@@ -109,8 +109,8 @@ public class GetAlbumPhotosQueryHandler : IQueryHandler<GetAlbumPhotosQuery, Pag
             {
                 stopwatch.Stop();
                 _logger.LogError(ex,
-                    "GetAlbumPhotos FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+                    "GetAlbumPhotos FAILED: Exception occurred - AlbumId={AlbumId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.AlbumId, stopwatch.ElapsedMilliseconds, ex.Message);
                 throw;
             }
         }

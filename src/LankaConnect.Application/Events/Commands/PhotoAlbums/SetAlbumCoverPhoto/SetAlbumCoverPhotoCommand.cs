@@ -8,11 +8,11 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.Commands.PhotoAlbums.SetAlbumCoverPhoto;
 
 /// <summary>
-/// Command to set an approved photo as the album cover.
+/// Command to set a photo as the album cover.
 /// Only the event organizer can set the cover photo.
 /// </summary>
 public record SetAlbumCoverPhotoCommand(
-    Guid EventId,
+    Guid AlbumId,
     Guid PhotoId,
     Guid UserId
 ) : ICommand;
@@ -37,27 +37,27 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
     {
         using (LogContext.PushProperty("Operation", "SetAlbumCoverPhoto"))
         using (LogContext.PushProperty("EntityType", "PhotoAlbum"))
-        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("AlbumId", request.AlbumId))
         using (LogContext.PushProperty("PhotoId", request.PhotoId))
         using (LogContext.PushProperty("UserId", request.UserId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "SetAlbumCoverPhoto START: EventId={EventId}, PhotoId={PhotoId}, UserId={UserId}",
-                request.EventId, request.PhotoId, request.UserId);
+                "SetAlbumCoverPhoto START: AlbumId={AlbumId}, PhotoId={PhotoId}, UserId={UserId}",
+                request.AlbumId, request.PhotoId, request.UserId);
 
             try
             {
-                // 1. Get album by event ID with change tracking
-                var album = await _photoAlbumRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+                // 1. Get album by ID with change tracking
+                var album = await _photoAlbumRepository.GetByIdAsync(request.AlbumId, trackChanges: true, cancellationToken);
                 if (album == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "SetAlbumCoverPhoto FAILED: Album not found - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result.Failure("Photo album not found for this event");
+                        "SetAlbumCoverPhoto FAILED: Album not found - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure("Photo album not found");
                 }
 
                 // 2. Verify the user is the organizer
@@ -65,8 +65,8 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "SetAlbumCoverPhoto FAILED: User is not organizer - EventId={EventId}, UserId={UserId}, OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
-                        request.EventId, request.UserId, album.OrganizerId, stopwatch.ElapsedMilliseconds);
+                        "SetAlbumCoverPhoto FAILED: User is not organizer - AlbumId={AlbumId}, UserId={UserId}, OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, request.UserId, album.OrganizerId, stopwatch.ElapsedMilliseconds);
                     return Result.Failure("Only the event organizer can set the album cover photo");
                 }
 
@@ -76,8 +76,8 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "SetAlbumCoverPhoto FAILED: Domain validation failed - EventId={EventId}, PhotoId={PhotoId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.EventId, request.PhotoId, setCoverResult.Error, stopwatch.ElapsedMilliseconds);
+                        "SetAlbumCoverPhoto FAILED: Domain validation failed - AlbumId={AlbumId}, PhotoId={PhotoId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.AlbumId, request.PhotoId, setCoverResult.Error, stopwatch.ElapsedMilliseconds);
                     return setCoverResult;
                 }
 
@@ -87,8 +87,8 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "SetAlbumCoverPhoto COMPLETE: PhotoId={PhotoId}, AlbumId={AlbumId}, EventId={EventId}, CoverPhotoUrl={CoverPhotoUrl}, Duration={ElapsedMs}ms",
-                    request.PhotoId, album.Id, request.EventId, album.CoverPhotoUrl, stopwatch.ElapsedMilliseconds);
+                    "SetAlbumCoverPhoto COMPLETE: PhotoId={PhotoId}, AlbumId={AlbumId}, CoverPhotoUrl={CoverPhotoUrl}, Duration={ElapsedMs}ms",
+                    request.PhotoId, album.Id, album.CoverPhotoUrl, stopwatch.ElapsedMilliseconds);
 
                 return Result.Success();
             }
@@ -96,8 +96,8 @@ public class SetAlbumCoverPhotoCommandHandler : ICommandHandler<SetAlbumCoverPho
             {
                 stopwatch.Stop();
                 _logger.LogError(ex,
-                    "SetAlbumCoverPhoto FAILED: Exception occurred - EventId={EventId}, PhotoId={PhotoId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    request.EventId, request.PhotoId, stopwatch.ElapsedMilliseconds, ex.Message);
+                    "SetAlbumCoverPhoto FAILED: Exception occurred - AlbumId={AlbumId}, PhotoId={PhotoId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.AlbumId, request.PhotoId, stopwatch.ElapsedMilliseconds, ex.Message);
                 throw;
             }
         }

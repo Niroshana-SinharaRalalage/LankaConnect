@@ -12,15 +12,13 @@ public record PhotoAlbumDto
     public Guid EventId { get; init; }
     public Guid OrganizerId { get; init; }
     public string EventTitle { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
     public AlbumStatus Status { get; init; }
-    public AlbumUploadPermission UploadPermission { get; init; }
-    public AlbumModerationMode ModerationMode { get; init; }
     public string? Description { get; init; }
     public string? CoverPhotoUrl { get; init; }
     public int RetentionDays { get; init; }
     public int PhotoCount { get; init; }
     public DateTime? PublishedAt { get; init; }
-    public DateTime? ClosedAt { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

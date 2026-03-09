@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -35,6 +35,10 @@ import { DonationSection } from '@/presentation/components/features/events/Donat
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 // Donation Feature: Import donation hooks
 import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/useDonations';
+// Multi-Album: Import album hooks and carousel
+import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
+import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
+import { AlbumStatus } from '@/infrastructure/api/types/events.types';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -137,6 +141,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: myDonations } = useMyDonations(
     isAuthenticated && event?.donationConfig?.isEnabled ? id : undefined
   );
+
+  // Multi-Album: Fetch published albums for event details carousel
+  const { data: eventAlbums } = useEventAlbums(id);
+  const publishedAlbumsWithPhotos = (eventAlbums ?? []).filter(
+    (a) => a.status === AlbumStatus.Published && a.photoCount > 0,
+  );
+  const [activeCarouselAlbumId, setActiveCarouselAlbumId] = useState<string | null>(null);
+  const activeCarouselAlbum =
+    publishedAlbumsWithPhotos.find((a) => a.id === activeCarouselAlbumId) ??
+    publishedAlbumsWithPhotos[0] ?? null;
+  const downloadZip = useDownloadAlbumZip();
 
   // Phase 6A.56 FIX: Remove _hasHydrated dependency - causes registration status "flipping"
   // The auth store now correctly restores isAuthenticated during hydration
@@ -1692,25 +1707,89 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Photo Album Section — visible for Published/Active/Completed/Archived events */}
-        {event && (['Published', 'Active', 'Completed', 'Archived'].includes(String(event.status)) ||
-          [EventStatus.Published, EventStatus.Active, EventStatus.Completed, EventStatus.Archived].includes(event.status as EventStatus)) && (
+        {/* After Event Albums — shows published albums with photo carousel */}
+        {publishedAlbumsWithPhotos.length > 0 && (
           <div className="mt-8">
             <CollapsibleSection
-              title="Photo Album"
+              title="After Event Albums"
               icon={<Camera className="h-5 w-5 text-purple-600" />}
-              defaultOpen={false}
+              defaultOpen={true}
             >
-              <div className="text-center py-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  View and share photos from this event
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push(`/events/${id}/photos`)}
-                >
-                  View Photo Album
-                </Button>
+              <div className="space-y-4">
+                {/* Album Tabs (if multiple) */}
+                {publishedAlbumsWithPhotos.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b">
+                    {publishedAlbumsWithPhotos.map((album) => (
+                      <button
+                        key={album.id}
+                        type="button"
+                        onClick={() => setActiveCarouselAlbumId(album.id)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                          activeCarouselAlbum?.id === album.id
+                            ? 'bg-white border border-b-0 border-gray-200 text-gray-900'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {album.name}
+                        <span className="ml-1.5 text-xs text-gray-400">({album.photoCount})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Active Album Carousel */}
+                {activeCarouselAlbum && (
+                  <>
+                    {publishedAlbumsWithPhotos.length === 1 && (
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-700">
+                          {activeCarouselAlbum.name}
+                          <span className="ml-2 text-xs text-gray-400 font-normal">
+                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                          </span>
+                        </h3>
+                      </div>
+                    )}
+
+                    <AlbumPhotoCarousel
+                      eventId={id}
+                      albumId={activeCarouselAlbum.id}
+                      onPhotoClick={() => router.push(`/events/${id}/photos?album=${activeCarouselAlbum.id}`)}
+                    />
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/events/${id}/photos?album=${activeCarouselAlbum.id}`)}
+                      >
+                        View All Photos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadZip.mutateAsync({
+                            eventId: id,
+                            albumId: activeCarouselAlbum.id,
+                            albumName: activeCarouselAlbum.name,
+                          })
+                        }
+                        disabled={downloadZip.isPending}
+                      >
+                        {downloadZip.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-1" />
+                            Download ZIP
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             </CollapsibleSection>
           </div>

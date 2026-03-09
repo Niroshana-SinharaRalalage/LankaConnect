@@ -1,12 +1,14 @@
 /**
- * Photo Album React Query Hooks
+ * Photo Album React Query Hooks — Multi-Album System
  *
- * Provides React Query hooks for Photo Album API integration
- * Implements caching, infinite scroll pagination, and proper cache invalidation
+ * Provides React Query hooks for multi-album API integration.
+ * Implements caching, infinite scroll pagination, and proper cache invalidation.
  *
- * @requires @tanstack/react-query
- * @requires photoAlbumRepository from infrastructure/repositories/photoAlbum.repository
- * @requires Photo Album types from infrastructure/api/types/events.types
+ * Key changes from single-album system:
+ * - All hooks now take albumId (not eventId) for album-specific operations
+ * - useEventAlbums replaces usePhotoAlbum (returns list of albums)
+ * - Removed: close, moderation (approve/reject/pending), settings hooks
+ * - Added: sendNotification, deleteAlbum, updateDetails, downloadZip hooks
  */
 
 import {
@@ -19,145 +21,57 @@ import {
 import { photoAlbumRepository } from '@/infrastructure/api/repositories/photoAlbum.repository';
 import type {
   PhotoAlbumDto,
-  AlbumPhotoDto,
   PaginatedAlbumPhotosResponse,
   CreatePhotoAlbumRequest,
-  UpdateAlbumSettingsRequest,
+  UpdateAlbumDetailsRequest,
 } from '@/infrastructure/api/types/events.types';
 
 /**
- * Query Keys for Photo Albums
- * Centralized query key management for cache invalidation
+ * Query Keys for Photo Albums — Multi-Album Structure
  */
 export const albumKeys = {
   all: ['albums'] as const,
-  detail: (eventId: string) => [...albumKeys.all, 'detail', eventId] as const,
-  photos: (eventId: string) => [...albumKeys.all, 'photos', eventId] as const,
-  pending: (eventId: string) => [...albumKeys.all, 'pending', eventId] as const,
+  byEvent: (eventId: string) => [...albumKeys.all, 'byEvent', eventId] as const,
+  detail: (albumId: string) => [...albumKeys.all, 'detail', albumId] as const,
+  photos: (albumId: string) => [...albumKeys.all, 'photos', albumId] as const,
 };
 
 // ==================== Query Hooks ====================
 
 /**
- * usePhotoAlbum Hook
- *
- * Fetches album metadata for a specific event
- *
- * Features:
- * - Returns null if event has no album (404 handled gracefully)
- * - Automatic caching with 5-minute stale time
- * - Refetch on window focus
- * - Only enabled when eventId is provided
- *
- * @param eventId - Event ID to fetch album for
- *
- * @example
- * ```tsx
- * const { data: album, isLoading } = usePhotoAlbum(eventId);
- * if (album) {
- *   console.log('Album status:', album.status);
- *   console.log('Photo count:', album.photoCount);
- * }
- * ```
+ * useEventAlbums — Fetch all albums for an event
  */
-export function usePhotoAlbum(eventId: string) {
+export function useEventAlbums(eventId: string) {
   return useQuery({
-    queryKey: albumKeys.detail(eventId),
-    queryFn: () => photoAlbumRepository.getAlbum(eventId),
+    queryKey: albumKeys.byEvent(eventId),
+    queryFn: () => photoAlbumRepository.getAlbums(eventId),
     enabled: !!eventId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
     retry: 1,
   });
 }
 
 /**
- * useAlbumPhotos Hook
- *
- * Fetches album photos with cursor-based infinite scroll pagination
- *
- * Features:
- * - Infinite scroll with cursor-based pagination
- * - Configurable page size
- * - Automatic caching with 5-minute stale time
- * - Only enabled when eventId is provided
- *
- * @param eventId - Event ID to fetch photos for
- * @param pageSize - Number of photos per page (default: 20)
- *
- * @example
- * ```tsx
- * const {
- *   data,
- *   fetchNextPage,
- *   hasNextPage,
- *   isFetchingNextPage,
- * } = useAlbumPhotos(eventId);
- *
- * const allPhotos = data?.pages.flatMap(page => page.photos) ?? [];
- * ```
+ * useAlbumPhotos — Fetch photos with cursor-based infinite scroll
  */
-export function useAlbumPhotos(eventId: string, pageSize = 20) {
+export function useAlbumPhotos(eventId: string, albumId: string, pageSize = 20) {
   return useInfiniteQuery<PaginatedAlbumPhotosResponse>({
-    queryKey: [...albumKeys.photos(eventId), { pageSize }],
+    queryKey: [...albumKeys.photos(albumId), { pageSize }],
     queryFn: ({ pageParam }) =>
-      photoAlbumRepository.getPhotos(eventId, pageSize, pageParam as string | undefined),
+      photoAlbumRepository.getPhotos(eventId, albumId, pageSize, pageParam as string | undefined),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore ? lastPage.nextCursor ?? undefined : undefined,
-    enabled: !!eventId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
-
-/**
- * usePendingPhotos Hook
- *
- * Fetches photos awaiting moderation approval
- *
- * Features:
- * - Automatic caching with 2-minute stale time
- * - Refetch on window focus for real-time moderation
- * - Only enabled when eventId is provided
- *
- * @param eventId - Event ID to fetch pending photos for
- *
- * @example
- * ```tsx
- * const { data: pendingPhotos } = usePendingPhotos(eventId);
- * console.log('Photos awaiting review:', pendingPhotos?.length);
- * ```
- */
-export function usePendingPhotos(eventId: string) {
-  return useQuery({
-    queryKey: albumKeys.pending(eventId),
-    queryFn: () => photoAlbumRepository.getPendingPhotos(eventId),
-    enabled: !!eventId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchOnWindowFocus: true,
+    enabled: !!eventId && !!albumId,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 // ==================== Mutation Hooks ====================
 
 /**
- * useCreateAlbum Hook
- *
- * Mutation hook for creating a new photo album for an event
- *
- * Features:
- * - Automatic cache invalidation on success
- * - Proper error handling
- *
- * @example
- * ```tsx
- * const createAlbum = useCreateAlbum();
- *
- * await createAlbum.mutateAsync({
- *   eventId: 'event-123',
- *   request: { description: 'Event photos' },
- * });
- * ```
+ * useCreateAlbum — Create a new photo album for an event
  */
 export function useCreateAlbum() {
   const queryClient = useQueryClient();
@@ -168,131 +82,97 @@ export function useCreateAlbum() {
       request,
     }: {
       eventId: string;
-      request?: CreatePhotoAlbumRequest;
+      request: CreatePhotoAlbumRequest;
     }) => photoAlbumRepository.createAlbum(eventId, request),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
     },
   });
 }
 
 /**
- * useUpdateAlbumSettings Hook
- *
- * Mutation hook for updating album settings (upload permission, moderation, description)
- *
- * Features:
- * - Automatic cache invalidation on success
- * - Proper error handling
- *
- * @example
- * ```tsx
- * const updateSettings = useUpdateAlbumSettings();
- *
- * await updateSettings.mutateAsync({
- *   eventId: 'event-123',
- *   request: {
- *     uploadPermission: AlbumUploadPermission.RegisteredAttendees,
- *     moderationMode: AlbumModerationMode.PostModeration,
- *   },
- * });
- * ```
+ * useUpdateAlbumDetails — Update album name and description
  */
-export function useUpdateAlbumSettings() {
+export function useUpdateAlbumDetails() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({
       eventId,
+      albumId,
       request,
     }: {
       eventId: string;
-      request: UpdateAlbumSettingsRequest;
-    }) => photoAlbumRepository.updateSettings(eventId, request),
+      albumId: string;
+      request: UpdateAlbumDetailsRequest;
+    }) => photoAlbumRepository.updateAlbumDetails(eventId, albumId, request),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.albumId) });
     },
   });
 }
 
 /**
- * usePublishAlbum Hook
- *
- * Mutation hook for publishing an album (making it visible to attendees)
- *
- * Features:
- * - Automatic cache invalidation on success
- * - Proper error handling
- *
- * @example
- * ```tsx
- * const publishAlbum = usePublishAlbum();
- *
- * await publishAlbum.mutateAsync({ eventId: 'event-123' });
- * ```
+ * useDeleteAlbum — Delete a draft album
+ */
+export function useDeleteAlbum() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      albumId,
+    }: {
+      eventId: string;
+      albumId: string;
+    }) => photoAlbumRepository.deleteAlbum(eventId, albumId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * usePublishAlbum — Publish an album (make it visible to attendees)
  */
 export function usePublishAlbum() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId }: { eventId: string }) =>
-      photoAlbumRepository.publishAlbum(eventId),
+    mutationFn: ({
+      eventId,
+      albumId,
+    }: {
+      eventId: string;
+      albumId: string;
+    }) => photoAlbumRepository.publishAlbum(eventId, albumId),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.albumId) });
     },
   });
 }
 
 /**
- * useCloseAlbum Hook
- *
- * Mutation hook for closing an album (preventing further uploads)
- *
- * Features:
- * - Automatic cache invalidation on success
- * - Proper error handling
- *
- * @example
- * ```tsx
- * const closeAlbum = useCloseAlbum();
- *
- * await closeAlbum.mutateAsync({ eventId: 'event-123' });
- * ```
+ * useSendAlbumNotification — Send email notification for a published album
  */
-export function useCloseAlbum() {
+export function useSendAlbumNotification() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId }: { eventId: string }) =>
-      photoAlbumRepository.closeAlbum(eventId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
-    },
+    mutationFn: ({
+      eventId,
+      albumId,
+    }: {
+      eventId: string;
+      albumId: string;
+    }) => photoAlbumRepository.sendNotification(eventId, albumId),
   });
 }
 
 /**
- * useUploadAlbumPhoto Hook
- *
- * Mutation hook for uploading a photo to an album
- *
- * Features:
- * - FormData-based file upload
- * - Optional caption support
- * - Invalidates both photos and album detail (photo count) on success
- *
- * @example
- * ```tsx
- * const uploadPhoto = useUploadAlbumPhoto();
- *
- * const handleUpload = async (file: File) => {
- *   await uploadPhoto.mutateAsync({
- *     eventId: 'event-123',
- *     file,
- *     caption: 'Group photo',
- *   });
- * };
- * ```
+ * useUploadAlbumPhoto — Upload a photo to an album
  */
 export function useUploadAlbumPhoto() {
   const queryClient = useQueryClient();
@@ -300,144 +180,91 @@ export function useUploadAlbumPhoto() {
   return useMutation({
     mutationFn: ({
       eventId,
+      albumId,
       file,
       caption,
     }: {
       eventId: string;
+      albumId: string;
       file: File;
       caption?: string;
-    }) => photoAlbumRepository.uploadPhoto(eventId, file, caption),
+    }) => photoAlbumRepository.uploadPhoto(eventId, albumId, file, caption),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.albumId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
     },
   });
 }
 
 /**
- * useDeleteAlbumPhoto Hook
- *
- * Mutation hook for deleting a photo from an album
- *
- * Features:
- * - Invalidates photos, album detail, and pending photos on success
- *
- * @example
- * ```tsx
- * const deletePhoto = useDeleteAlbumPhoto();
- *
- * await deletePhoto.mutateAsync({
- *   eventId: 'event-123',
- *   photoId: 'photo-456',
- * });
- * ```
+ * useDeleteAlbumPhoto — Delete a photo from an album
  */
 export function useDeleteAlbumPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId, photoId }: { eventId: string; photoId: string }) =>
-      photoAlbumRepository.deletePhoto(eventId, photoId),
+    mutationFn: ({
+      eventId,
+      albumId,
+      photoId,
+    }: {
+      eventId: string;
+      albumId: string;
+      photoId: string;
+    }) => photoAlbumRepository.deletePhoto(eventId, albumId, photoId),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.pending(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.albumId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
     },
   });
 }
 
 /**
- * useApprovePhoto Hook
- *
- * Mutation hook for approving a pending photo (moderation action)
- *
- * Features:
- * - Invalidates photos and pending photos on success
- * - Approved photo moves from pending queue to published photos
- *
- * @example
- * ```tsx
- * const approvePhoto = useApprovePhoto();
- *
- * await approvePhoto.mutateAsync({
- *   eventId: 'event-123',
- *   photoId: 'photo-456',
- * });
- * ```
- */
-export function useApprovePhoto() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ eventId, photoId }: { eventId: string; photoId: string }) =>
-      photoAlbumRepository.approvePhoto(eventId, photoId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.pending(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
-    },
-  });
-}
-
-/**
- * useRejectPhoto Hook
- *
- * Mutation hook for rejecting a pending photo (moderation action)
- *
- * Features:
- * - Invalidates photos and pending photos on success
- * - Rejected photo is removed from pending queue
- *
- * @example
- * ```tsx
- * const rejectPhoto = useRejectPhoto();
- *
- * await rejectPhoto.mutateAsync({
- *   eventId: 'event-123',
- *   photoId: 'photo-456',
- * });
- * ```
- */
-export function useRejectPhoto() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ eventId, photoId }: { eventId: string; photoId: string }) =>
-      photoAlbumRepository.rejectPhoto(eventId, photoId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.pending(variables.eventId) });
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
-    },
-  });
-}
-
-/**
- * useSetCoverPhoto Hook
- *
- * Mutation hook for setting a photo as the album cover
- *
- * Features:
- * - Invalidates album detail on success (cover photo URL changes)
- *
- * @example
- * ```tsx
- * const setCover = useSetCoverPhoto();
- *
- * await setCover.mutateAsync({
- *   eventId: 'event-123',
- *   photoId: 'photo-456',
- * });
- * ```
+ * useSetCoverPhoto — Set a photo as the album cover
  */
 export function useSetCoverPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ eventId, photoId }: { eventId: string; photoId: string }) =>
-      photoAlbumRepository.setCoverPhoto(eventId, photoId),
+    mutationFn: ({
+      eventId,
+      albumId,
+      photoId,
+    }: {
+      eventId: string;
+      albumId: string;
+      photoId: string;
+    }) => photoAlbumRepository.setCoverPhoto(eventId, albumId, photoId),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.detail(variables.albumId) });
     },
+  });
+}
+
+/**
+ * useDownloadAlbumZip — Download all album photos as ZIP
+ */
+export function useDownloadAlbumZip() {
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      albumId,
+      albumName,
+    }: {
+      eventId: string;
+      albumId: string;
+      albumName: string;
+    }) => photoAlbumRepository.downloadZip(eventId, albumId).then((blob) => {
+      // Trigger browser download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${albumName.replace(/[^a-zA-Z0-9_-]/g, '_')}_photos.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }),
   });
 }

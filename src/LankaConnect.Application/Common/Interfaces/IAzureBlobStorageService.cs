@@ -63,4 +63,16 @@ public interface IAzureBlobStorageService
     /// <param name="expiresIn">How long the SAS URL should be valid (defaults to 365 days)</param>
     /// <returns>SAS URL with read permission, or the direct URL if SAS generation is not possible</returns>
     string GetBlobSasUrl(string blobName, string? containerName = null, TimeSpan? expiresIn = null);
+
+    /// <summary>
+    /// Downloads a blob as a stream for streaming operations (e.g., ZIP download).
+    /// </summary>
+    /// <param name="blobName">Name of the blob to download</param>
+    /// <param name="containerName">Container name (defaults to configured default if not specified)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Stream containing the blob data, or null if blob not found</returns>
+    Task<Stream?> DownloadBlobStreamAsync(
+        string blobName,
+        string? containerName = null,
+        CancellationToken cancellationToken = default);
 }

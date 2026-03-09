@@ -4,9 +4,9 @@ namespace LankaConnect.Domain.Events.DomainEvents;
 
 /// <summary>
 /// Domain event raised when a photo album is published.
-/// Triggers email notification to registered attendees.
+/// Used for logging/auditing. Email notification is decoupled (sent via SendAlbumNotificationCommand).
 /// </summary>
-public record PhotoAlbumPublishedDomainEvent(Guid AlbumId, Guid EventId, string EventTitle) : IDomainEvent
+public record PhotoAlbumPublishedDomainEvent(Guid AlbumId, Guid EventId, string EventTitle, string AlbumName) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;
 }

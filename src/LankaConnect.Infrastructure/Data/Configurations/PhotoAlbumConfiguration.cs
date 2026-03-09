@@ -16,7 +16,9 @@ public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>
         builder.Property(a => a.Id).ValueGeneratedNever();
 
         builder.Property(a => a.EventId).IsRequired();
-        builder.HasIndex(a => a.EventId).IsUnique(); // One album per event
+
+        // Composite unique: one album name per event (multi-album support)
+        builder.HasIndex(a => new { a.EventId, a.Name }).IsUnique();
 
         builder.Property(a => a.OrganizerId).IsRequired();
 
@@ -24,23 +26,15 @@ public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(a => a.Name)
+            .HasMaxLength(100)
+            .IsRequired();
+
         builder.Property(a => a.Status)
             .HasConversion<string>()
             .HasMaxLength(20)
             .IsRequired()
             .HasDefaultValue(AlbumStatus.Draft);
-
-        builder.Property(a => a.UploadPermission)
-            .HasConversion<string>()
-            .HasMaxLength(30)
-            .IsRequired()
-            .HasDefaultValue(AlbumUploadPermission.OrganizerOnly);
-
-        builder.Property(a => a.ModerationMode)
-            .HasConversion<string>()
-            .HasMaxLength(20)
-            .IsRequired()
-            .HasDefaultValue(AlbumModerationMode.PostModeration);
 
         builder.Property(a => a.Description)
             .HasColumnType("text");
@@ -57,10 +51,6 @@ public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>
             .HasDefaultValue(0);
 
         builder.Property(a => a.PublishedAt)
-            .HasColumnType("timestamp with time zone")
-            .IsRequired(false);
-
-        builder.Property(a => a.ClosedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 

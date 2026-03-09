@@ -8,6 +8,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Entity within PhotoAlbum aggregate — lifecycle controlled by PhotoAlbum.
 /// Stores 3 image sizes: original, medium (800px), thumbnail (150px).
 /// Photos auto-expire after RetentionDays (default 7 days).
+/// All photos are immediately approved (no moderation).
 /// </summary>
 public class AlbumPhoto : BaseEntity
 {
@@ -52,7 +53,6 @@ public class AlbumPhoto : BaseEntity
         string mediumUrl,
         string mediumBlobName,
         string? caption,
-        AlbumPhotoStatus status,
         long fileSizeBytes,
         int displayOrder,
         int retentionDays)
@@ -67,7 +67,7 @@ public class AlbumPhoto : BaseEntity
         MediumUrl = mediumUrl;
         MediumBlobName = mediumBlobName;
         Caption = caption;
-        Status = status;
+        Status = AlbumPhotoStatus.Approved;  // Always approved (no moderation)
         FileSizeBytes = fileSizeBytes;
         DisplayOrder = displayOrder;
         UploadedAt = DateTime.UtcNow;
@@ -77,6 +77,7 @@ public class AlbumPhoto : BaseEntity
     /// <summary>
     /// Factory method to create a new AlbumPhoto.
     /// Called internally by PhotoAlbum aggregate.
+    /// All photos are immediately approved.
     /// </summary>
     internal static AlbumPhoto Create(
         Guid albumId,
@@ -89,7 +90,6 @@ public class AlbumPhoto : BaseEntity
         string mediumUrl,
         string mediumBlobName,
         string? caption,
-        AlbumPhotoStatus status,
         long fileSizeBytes,
         int displayOrder,
         int retentionDays)
@@ -116,33 +116,7 @@ public class AlbumPhoto : BaseEntity
             originalUrl, originalBlobName,
             thumbnailUrl, thumbnailBlobName,
             mediumUrl, mediumBlobName,
-            caption, status, fileSizeBytes, displayOrder, retentionDays);
-    }
-
-    /// <summary>
-    /// Approve this photo (organizer action).
-    /// Internal — only PhotoAlbum aggregate can call this.
-    /// </summary>
-    internal void Approve()
-    {
-        if (Status != AlbumPhotoStatus.PendingApproval)
-            throw new InvalidOperationException($"Cannot approve photo in status {Status}");
-
-        Status = AlbumPhotoStatus.Approved;
-        MarkAsUpdated();
-    }
-
-    /// <summary>
-    /// Reject this photo (organizer action).
-    /// Internal — only PhotoAlbum aggregate can call this.
-    /// </summary>
-    internal void Reject()
-    {
-        if (Status != AlbumPhotoStatus.PendingApproval)
-            throw new InvalidOperationException($"Cannot reject photo in status {Status}");
-
-        Status = AlbumPhotoStatus.Rejected;
-        MarkAsUpdated();
+            caption, fileSizeBytes, displayOrder, retentionDays);
     }
 
     /// <summary>

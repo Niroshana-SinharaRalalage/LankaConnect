@@ -1,0 +1,121 @@
+using System.Diagnostics;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
+using Microsoft.Extensions.Logging;
+using Serilog.Context;
+
+namespace LankaConnect.Application.Events.Commands.PhotoAlbums.UpdateAlbumDetails;
+
+/// <summary>
+/// Command to update photo album details (name and description).
+/// Only allowed by the album organizer.
+/// </summary>
+public record UpdateAlbumDetailsCommand(
+    Guid AlbumId,
+    Guid UserId,
+    string Name,
+    string? Description = null
+) : ICommand;
+
+public class UpdateAlbumDetailsCommandHandler : ICommandHandler<UpdateAlbumDetailsCommand>
+{
+    private readonly IPhotoAlbumRepository _photoAlbumRepository;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UpdateAlbumDetailsCommandHandler> _logger;
+
+    public UpdateAlbumDetailsCommandHandler(
+        IPhotoAlbumRepository photoAlbumRepository,
+        IUnitOfWork unitOfWork,
+        ILogger<UpdateAlbumDetailsCommandHandler> logger)
+    {
+        _photoAlbumRepository = photoAlbumRepository;
+        _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    public async Task<Result> Handle(UpdateAlbumDetailsCommand request, CancellationToken cancellationToken)
+    {
+        using (LogContext.PushProperty("Operation", "UpdateAlbumDetails"))
+        using (LogContext.PushProperty("EntityType", "PhotoAlbum"))
+        using (LogContext.PushProperty("AlbumId", request.AlbumId))
+        using (LogContext.PushProperty("UserId", request.UserId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "UpdateAlbumDetails START: AlbumId={AlbumId}, UserId={UserId}, Name={AlbumName}",
+                request.AlbumId, request.UserId, request.Name);
+
+            try
+            {
+                // 1. Get album by ID with change tracking
+                var album = await _photoAlbumRepository.GetByIdAsync(request.AlbumId, trackChanges: true, cancellationToken);
+                if (album == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "UpdateAlbumDetails FAILED: Album not found - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure("Photo album not found");
+                }
+
+                // 2. Verify the user is the organizer
+                if (album.OrganizerId != request.UserId)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "UpdateAlbumDetails FAILED: User is not organizer - AlbumId={AlbumId}, UserId={UserId}, OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, request.UserId, album.OrganizerId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure("Only the event organizer can update album details");
+                }
+
+                // 3. Check for duplicate name (if name is changing)
+                if (!string.Equals(album.Name, request.Name, StringComparison.Ordinal))
+                {
+                    var nameExists = await _photoAlbumRepository.ExistsByEventIdAndNameAsync(
+                        album.EventId, request.Name, cancellationToken);
+                    if (nameExists)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "UpdateAlbumDetails FAILED: Name already exists - AlbumId={AlbumId}, Name={AlbumName}, Duration={ElapsedMs}ms",
+                            request.AlbumId, request.Name, stopwatch.ElapsedMilliseconds);
+                        return Result.Failure($"A photo album with the name '{request.Name}' already exists for this event");
+                    }
+                }
+
+                // 4. Update details via domain method
+                var updateResult = album.UpdateDetails(request.Name, request.Description);
+
+                if (updateResult.IsFailure)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "UpdateAlbumDetails FAILED: Domain validation failed - AlbumId={AlbumId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.AlbumId, updateResult.Error, stopwatch.ElapsedMilliseconds);
+                    return updateResult;
+                }
+
+                // 5. Commit changes
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "UpdateAlbumDetails COMPLETE: AlbumId={AlbumId}, Name={AlbumName}, Duration={ElapsedMs}ms",
+                    album.Id, album.Name, stopwatch.ElapsedMilliseconds);
+
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "UpdateAlbumDetails FAILED: Exception occurred - AlbumId={AlbumId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.AlbumId, stopwatch.ElapsedMilliseconds, ex.Message);
+                throw;
+            }
+        }
+    }
+}

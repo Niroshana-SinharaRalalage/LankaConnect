@@ -41,7 +41,7 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
   const { user } = useAuthStore();
   const [lightboxPhoto, setLightboxPhoto] = useState<AlbumPhotoDto | null>(null);
 
-  // Infinite scroll query
+  // Infinite scroll query — uses album.id for multi-album support
   const {
     data,
     fetchNextPage,
@@ -49,7 +49,7 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
     isFetchingNextPage,
     isLoading,
     isError,
-  } = useAlbumPhotos(eventId);
+  } = useAlbumPhotos(eventId, album.id);
 
   // Flatten all pages into a single photos array
   const allPhotos = useMemo(
@@ -126,7 +126,7 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
 
       {/* Upload Section */}
       {canUpload && (
-        <AlbumPhotoUploader eventId={eventId} />
+        <AlbumPhotoUploader eventId={eventId} albumId={album.id} />
       )}
 
       {/* Loading State */}

@@ -9,9 +9,10 @@ namespace LankaConnect.Domain.Events;
 /// Aggregate root for post-event photo albums.
 /// Separate from Event aggregate to maintain DDD boundaries:
 /// - Event images (max 10) are marketing/listing photos managed by organizer only
-/// - Album photos (max 200) are post-event memories, potentially community-contributed
+/// - Album photos (max 200) are post-event memories managed by organizer
 ///
-/// Lifecycle: Draft → Published → Closed
+/// Lifecycle: Draft → Published
+/// Multiple albums per event allowed (unique constraint on EventId + Name).
 /// Photos auto-expire after RetentionDays (default 7 days).
 /// </summary>
 public class PhotoAlbum : BaseEntity
@@ -21,19 +22,18 @@ public class PhotoAlbum : BaseEntity
     public const int MAX_PHOTOS = 200;
     public const int DEFAULT_RETENTION_DAYS = 7;
     public const int MAX_DESCRIPTION_LENGTH = 2000;
+    public const int MAX_NAME_LENGTH = 100;
 
     public Guid EventId { get; private set; }
     public Guid OrganizerId { get; private set; }
-    public string EventTitle { get; private set; }           // Denormalized for display
+    public string EventTitle { get; private set; }           // Denormalized for email notifications
+    public string Name { get; private set; }                  // Album display name (required)
     public AlbumStatus Status { get; private set; }
-    public AlbumUploadPermission UploadPermission { get; private set; }
-    public AlbumModerationMode ModerationMode { get; private set; }
     public string? Description { get; private set; }
     public string? CoverPhotoUrl { get; private set; }
     public int RetentionDays { get; private set; }
-    public int PhotoCount { get; private set; }              // Cached count (approved only)
+    public int PhotoCount { get; private set; }              // Cached count
     public DateTime? PublishedAt { get; private set; }
-    public DateTime? ClosedAt { get; private set; }
 
     public IReadOnlyList<AlbumPhoto> Photos => _photos.AsReadOnly();
 
@@ -41,33 +41,35 @@ public class PhotoAlbum : BaseEntity
     private PhotoAlbum()
     {
         EventTitle = null!;
+        Name = null!;
     }
 
     private PhotoAlbum(
         Guid eventId,
         Guid organizerId,
         string eventTitle,
+        string name,
         string? description)
     {
         EventId = eventId;
         OrganizerId = organizerId;
         EventTitle = eventTitle;
+        Name = name;
         Description = description;
         Status = AlbumStatus.Draft;
-        UploadPermission = AlbumUploadPermission.OrganizerOnly;
-        ModerationMode = AlbumModerationMode.PostModeration;
         RetentionDays = DEFAULT_RETENTION_DAYS;
         PhotoCount = 0;
     }
 
     /// <summary>
     /// Factory method to create a new PhotoAlbum for an event.
-    /// Only one album per event (enforced by unique constraint on EventId).
+    /// Multiple albums per event allowed — unique constraint on (EventId, Name).
     /// </summary>
     public static Result<PhotoAlbum> Create(
         Guid eventId,
         Guid organizerId,
         string eventTitle,
+        string name,
         string? description = null)
     {
         if (eventId == Guid.Empty)
@@ -76,70 +78,53 @@ public class PhotoAlbum : BaseEntity
             return Result<PhotoAlbum>.Failure("Organizer ID is required");
         if (string.IsNullOrWhiteSpace(eventTitle))
             return Result<PhotoAlbum>.Failure("Event title is required");
+        if (string.IsNullOrWhiteSpace(name))
+            return Result<PhotoAlbum>.Failure("Album name is required");
+        if (name.Length > MAX_NAME_LENGTH)
+            return Result<PhotoAlbum>.Failure($"Album name cannot exceed {MAX_NAME_LENGTH} characters");
         if (description != null && description.Length > MAX_DESCRIPTION_LENGTH)
             return Result<PhotoAlbum>.Failure($"Description cannot exceed {MAX_DESCRIPTION_LENGTH} characters");
 
-        var album = new PhotoAlbum(eventId, organizerId, eventTitle, description);
-        album.RaiseDomainEvent(new PhotoAlbumCreatedDomainEvent(album.Id, eventId));
+        var album = new PhotoAlbum(eventId, organizerId, eventTitle, name, description);
 
         return Result<PhotoAlbum>.Success(album);
     }
 
     /// <summary>
-    /// Publish the album — makes it visible to attendees and triggers notification email.
+    /// Publish the album — makes it visible to attendees on the event details page.
+    /// Requires at least one photo to be uploaded first.
+    /// Note: Email notification is sent separately via SendAlbumNotificationCommand.
     /// </summary>
     public Result Publish()
     {
         if (Status == AlbumStatus.Published)
             return Result.Failure("Album is already published");
-        if (Status == AlbumStatus.Closed)
-            return Result.Failure("Cannot publish a closed album");
+
+        if (PhotoCount == 0)
+            return Result.Failure("Upload at least one photo before publishing");
 
         Status = AlbumStatus.Published;
         PublishedAt = DateTime.UtcNow;
         MarkAsUpdated();
 
-        RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle));
+        RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle, Name));
 
         return Result.Success();
     }
 
     /// <summary>
-    /// Close the album — stop accepting new uploads. Photos remain viewable until expiry.
+    /// Update album details (name and description).
     /// </summary>
-    public Result Close()
+    public Result UpdateDetails(string name, string? description = null)
     {
-        if (Status == AlbumStatus.Closed)
-            return Result.Failure("Album is already closed");
-        if (Status == AlbumStatus.Draft)
-            return Result.Failure("Cannot close a draft album — publish it first");
-
-        Status = AlbumStatus.Closed;
-        ClosedAt = DateTime.UtcNow;
-        MarkAsUpdated();
-
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Update album settings (permissions, moderation, description).
-    /// Only allowed while album is in Draft or Published status.
-    /// </summary>
-    public Result UpdateSettings(
-        AlbumUploadPermission? uploadPermission = null,
-        AlbumModerationMode? moderationMode = null,
-        string? description = null)
-    {
-        if (Status == AlbumStatus.Closed)
-            return Result.Failure("Cannot update settings on a closed album");
-
+        if (string.IsNullOrWhiteSpace(name))
+            return Result.Failure("Album name is required");
+        if (name.Length > MAX_NAME_LENGTH)
+            return Result.Failure($"Album name cannot exceed {MAX_NAME_LENGTH} characters");
         if (description != null && description.Length > MAX_DESCRIPTION_LENGTH)
             return Result.Failure($"Description cannot exceed {MAX_DESCRIPTION_LENGTH} characters");
 
-        if (uploadPermission.HasValue)
-            UploadPermission = uploadPermission.Value;
-        if (moderationMode.HasValue)
-            ModerationMode = moderationMode.Value;
+        Name = name;
         if (description != null)
             Description = description;
 
@@ -149,7 +134,8 @@ public class PhotoAlbum : BaseEntity
 
     /// <summary>
     /// Add a photo to the album.
-    /// Validates album status, photo count limits, and applies moderation rules.
+    /// Photos can be added in both Draft and Published states.
+    /// All photos are immediately approved (no moderation).
     /// </summary>
     public Result<AlbumPhoto> AddPhoto(
         Guid uploaderId,
@@ -163,18 +149,8 @@ public class PhotoAlbum : BaseEntity
         string? caption,
         long fileSizeBytes)
     {
-        if (Status == AlbumStatus.Closed)
-            return Result<AlbumPhoto>.Failure("Album is closed — no more uploads accepted");
-
-        // Count non-rejected photos toward the limit
-        var activePhotoCount = _photos.Count(p => p.Status != AlbumPhotoStatus.Rejected);
-        if (activePhotoCount >= MAX_PHOTOS)
+        if (_photos.Count >= MAX_PHOTOS)
             return Result<AlbumPhoto>.Failure($"Album has reached the maximum of {MAX_PHOTOS} photos");
-
-        // Determine initial status based on moderation mode
-        var initialStatus = ModerationMode == AlbumModerationMode.PreApproval
-            ? AlbumPhotoStatus.PendingApproval
-            : AlbumPhotoStatus.Approved;
 
         var displayOrder = _photos.Count + 1;
 
@@ -185,22 +161,10 @@ public class PhotoAlbum : BaseEntity
                 originalUrl, originalBlobName,
                 thumbnailUrl, thumbnailBlobName,
                 mediumUrl, mediumBlobName,
-                caption, initialStatus, fileSizeBytes, displayOrder, RetentionDays);
+                caption, fileSizeBytes, displayOrder, RetentionDays);
 
             _photos.Add(photo);
-
-            // Only increment count for immediately-approved photos
-            if (initialStatus == AlbumPhotoStatus.Approved)
-                PhotoCount++;
-
-            // Auto-publish on first photo upload — ensures attendees get email
-            // only when there's at least one photo to view
-            if (Status == AlbumStatus.Draft)
-            {
-                Status = AlbumStatus.Published;
-                PublishedAt = DateTime.UtcNow;
-                RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle));
-            }
+            PhotoCount++;
 
             MarkAsUpdated();
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, photo.Id, uploaderId));
@@ -228,51 +192,9 @@ public class PhotoAlbum : BaseEntity
             return Result<AlbumPhoto>.Failure("Only the photo uploader or event organizer can delete this photo");
 
         _photos.Remove(photo);
-
-        if (photo.Status == AlbumPhotoStatus.Approved)
-            PhotoCount = Math.Max(0, PhotoCount - 1);
+        PhotoCount = Math.Max(0, PhotoCount - 1);
 
         MarkAsUpdated();
-        return Result<AlbumPhoto>.Success(photo);
-    }
-
-    /// <summary>
-    /// Approve a pending photo (organizer action).
-    /// </summary>
-    public Result ApprovePhoto(Guid photoId)
-    {
-        var photo = _photos.FirstOrDefault(p => p.Id == photoId);
-        if (photo == null)
-            return Result.Failure($"Photo with ID {photoId} not found in this album");
-
-        if (photo.Status != AlbumPhotoStatus.PendingApproval)
-            return Result.Failure($"Photo is not pending approval (current status: {photo.Status})");
-
-        photo.Approve();
-        PhotoCount++;
-        MarkAsUpdated();
-
-        RaiseDomainEvent(new PhotoApprovedDomainEvent(Id, photoId));
-        return Result.Success();
-    }
-
-    /// <summary>
-    /// Reject a pending photo (organizer action).
-    /// Returns the rejected photo so caller can clean up blob storage.
-    /// </summary>
-    public Result<AlbumPhoto> RejectPhoto(Guid photoId)
-    {
-        var photo = _photos.FirstOrDefault(p => p.Id == photoId);
-        if (photo == null)
-            return Result<AlbumPhoto>.Failure($"Photo with ID {photoId} not found in this album");
-
-        if (photo.Status != AlbumPhotoStatus.PendingApproval)
-            return Result<AlbumPhoto>.Failure($"Photo is not pending approval (current status: {photo.Status})");
-
-        photo.Reject();
-        MarkAsUpdated();
-
-        RaiseDomainEvent(new PhotoRejectedDomainEvent(Id, photoId));
         return Result<AlbumPhoto>.Success(photo);
     }
 
@@ -284,9 +206,6 @@ public class PhotoAlbum : BaseEntity
         var photo = _photos.FirstOrDefault(p => p.Id == photoId);
         if (photo == null)
             return Result.Failure($"Photo with ID {photoId} not found in this album");
-
-        if (photo.Status != AlbumPhotoStatus.Approved)
-            return Result.Failure("Only approved photos can be set as album cover");
 
         CoverPhotoUrl = photo.MediumUrl;
         MarkAsUpdated();

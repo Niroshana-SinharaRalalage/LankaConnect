@@ -13,25 +13,23 @@ public class PhotoAlbumRepository : Repository<PhotoAlbum>, IPhotoAlbumRepositor
     {
     }
 
-    public async Task<PhotoAlbum?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task<List<PhotoAlbum>> GetAllByEventIdAsync(Guid eventId, bool trackChanges = false, CancellationToken cancellationToken = default)
     {
-        return await GetByEventIdAsync(eventId, trackChanges: true, cancellationToken);
-    }
-
-    public async Task<PhotoAlbum?> GetByEventIdAsync(Guid eventId, bool trackChanges, CancellationToken cancellationToken = default)
-    {
-        using (LogContext.PushProperty("Operation", "GetByEventId"))
+        using (LogContext.PushProperty("Operation", "GetAllByEventId"))
         using (LogContext.PushProperty("EventId", eventId))
         {
-            _logger.Debug("Getting PhotoAlbum for EventId {EventId}, trackChanges: {TrackChanges}", eventId, trackChanges);
+            _logger.Debug("Getting all PhotoAlbums for EventId {EventId}, trackChanges: {TrackChanges}", eventId, trackChanges);
 
             var query = trackChanges
                 ? _dbSet.Include(a => a.Photos)
                 : _dbSet.AsNoTracking().Include(a => a.Photos);
 
-            var result = await query.FirstOrDefaultAsync(a => a.EventId == eventId, cancellationToken);
+            var result = await query
+                .Where(a => a.EventId == eventId)
+                .OrderBy(a => a.CreatedAt)
+                .ToListAsync(cancellationToken);
 
-            _logger.Debug("PhotoAlbum for EventId {EventId} {Result}", eventId, result != null ? "found" : "not found");
+            _logger.Debug("Found {Count} albums for EventId {EventId}", result.Count, eventId);
             return result;
         }
     }
@@ -56,8 +54,21 @@ public class PhotoAlbumRepository : Repository<PhotoAlbum>, IPhotoAlbumRepositor
 
     public override async Task<PhotoAlbum?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        // Override base to include Photos collection by default
         return await GetByIdAsync(id, trackChanges: true, cancellationToken);
+    }
+
+    public async Task<bool> ExistsByEventIdAndNameAsync(Guid eventId, string name, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "ExistsByEventIdAndName"))
+        using (LogContext.PushProperty("EventId", eventId))
+        {
+            var exists = await _dbSet.AnyAsync(
+                a => a.EventId == eventId && a.Name == name,
+                cancellationToken);
+
+            _logger.Debug("Album with name '{Name}' exists for EventId {EventId}: {Exists}", name, eventId, exists);
+            return exists;
+        }
     }
 
     public async Task<(IReadOnlyList<AlbumPhoto> Photos, bool HasMore)> GetApprovedPhotosAsync(
@@ -76,11 +87,9 @@ public class PhotoAlbumRepository : Repository<PhotoAlbum>, IPhotoAlbumRepositor
                 .AsNoTracking()
                 .Where(p => p.AlbumId == albumId && p.Status == AlbumPhotoStatus.Approved);
 
-            // Cursor-based pagination: get photos uploaded before the cursor timestamp
             if (cursor.HasValue)
                 query = query.Where(p => p.UploadedAt < cursor.Value);
 
-            // Fetch one extra to determine if there are more
             var photos = await query
                 .OrderByDescending(p => p.UploadedAt)
                 .Take(pageSize + 1)
@@ -94,26 +103,6 @@ public class PhotoAlbumRepository : Repository<PhotoAlbum>, IPhotoAlbumRepositor
                 photos.Count, albumId, hasMore);
 
             return (photos, hasMore);
-        }
-    }
-
-    public async Task<IReadOnlyList<AlbumPhoto>> GetPendingPhotosAsync(
-        Guid albumId,
-        CancellationToken cancellationToken = default)
-    {
-        using (LogContext.PushProperty("Operation", "GetPendingPhotos"))
-        using (LogContext.PushProperty("AlbumId", albumId))
-        {
-            _logger.Debug("Getting pending photos for AlbumId {AlbumId}", albumId);
-
-            var photos = await _context.Set<AlbumPhoto>()
-                .AsNoTracking()
-                .Where(p => p.AlbumId == albumId && p.Status == AlbumPhotoStatus.PendingApproval)
-                .OrderBy(p => p.UploadedAt)
-                .ToListAsync(cancellationToken);
-
-            _logger.Debug("Retrieved {Count} pending photos for AlbumId {AlbumId}", photos.Count, albumId);
-            return photos;
         }
     }
 
@@ -133,17 +122,6 @@ public class PhotoAlbumRepository : Repository<PhotoAlbum>, IPhotoAlbumRepositor
 
             _logger.Debug("Retrieved {Count} expired photos", photos.Count);
             return photos;
-        }
-    }
-
-    public async Task<bool> AlbumExistsForEventAsync(Guid eventId, CancellationToken cancellationToken = default)
-    {
-        using (LogContext.PushProperty("Operation", "AlbumExistsForEvent"))
-        using (LogContext.PushProperty("EventId", eventId))
-        {
-            var exists = await _dbSet.AnyAsync(a => a.EventId == eventId, cancellationToken);
-            _logger.Debug("Album exists for EventId {EventId}: {Exists}", eventId, exists);
-            return exists;
         }
     }
 }

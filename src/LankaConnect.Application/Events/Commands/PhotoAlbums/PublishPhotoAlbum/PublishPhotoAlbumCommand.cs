@@ -12,7 +12,7 @@ namespace LankaConnect.Application.Events.Commands.PhotoAlbums.PublishPhotoAlbum
 /// Triggers a PhotoAlbumPublishedDomainEvent for notification emails.
 /// </summary>
 public record PublishPhotoAlbumCommand(
-    Guid EventId,
+    Guid AlbumId,
     Guid UserId
 ) : ICommand;
 
@@ -36,26 +36,26 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
     {
         using (LogContext.PushProperty("Operation", "PublishPhotoAlbum"))
         using (LogContext.PushProperty("EntityType", "PhotoAlbum"))
-        using (LogContext.PushProperty("EventId", request.EventId))
+        using (LogContext.PushProperty("AlbumId", request.AlbumId))
         using (LogContext.PushProperty("UserId", request.UserId))
         {
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "PublishPhotoAlbum START: EventId={EventId}, UserId={UserId}",
-                request.EventId, request.UserId);
+                "PublishPhotoAlbum START: AlbumId={AlbumId}, UserId={UserId}",
+                request.AlbumId, request.UserId);
 
             try
             {
-                // 1. Get album by event ID with change tracking
-                var album = await _photoAlbumRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+                // 1. Get album by ID with change tracking
+                var album = await _photoAlbumRepository.GetByIdAsync(request.AlbumId, trackChanges: true, cancellationToken);
                 if (album == null)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "PublishPhotoAlbum FAILED: Album not found - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result.Failure("Photo album not found for this event");
+                        "PublishPhotoAlbum FAILED: Album not found - AlbumId={AlbumId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure("Photo album not found");
                 }
 
                 // 2. Verify the user is the organizer
@@ -63,8 +63,8 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "PublishPhotoAlbum FAILED: User is not organizer - EventId={EventId}, UserId={UserId}, OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
-                        request.EventId, request.UserId, album.OrganizerId, stopwatch.ElapsedMilliseconds);
+                        "PublishPhotoAlbum FAILED: User is not organizer - AlbumId={AlbumId}, UserId={UserId}, OrganizerId={OrganizerId}, Duration={ElapsedMs}ms",
+                        request.AlbumId, request.UserId, album.OrganizerId, stopwatch.ElapsedMilliseconds);
                     return Result.Failure("Only the event organizer can publish the photo album");
                 }
 
@@ -74,8 +74,8 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "PublishPhotoAlbum FAILED: Domain validation failed - EventId={EventId}, AlbumId={AlbumId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.EventId, album.Id, publishResult.Error, stopwatch.ElapsedMilliseconds);
+                        "PublishPhotoAlbum FAILED: Domain validation failed - AlbumId={AlbumId}, Error={Error}, Duration={ElapsedMs}ms",
+                        request.AlbumId, publishResult.Error, stopwatch.ElapsedMilliseconds);
                     return publishResult;
                 }
 
@@ -86,7 +86,7 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
 
                 _logger.LogInformation(
                     "PublishPhotoAlbum COMPLETE: AlbumId={AlbumId}, EventId={EventId}, Status={Status}, Duration={ElapsedMs}ms",
-                    album.Id, request.EventId, album.Status, stopwatch.ElapsedMilliseconds);
+                    album.Id, album.EventId, album.Status, stopwatch.ElapsedMilliseconds);
 
                 return Result.Success();
             }
@@ -94,8 +94,8 @@ public class PublishPhotoAlbumCommandHandler : ICommandHandler<PublishPhotoAlbum
             {
                 stopwatch.Stop();
                 _logger.LogError(ex,
-                    "PublishPhotoAlbum FAILED: Exception occurred - EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
-                    request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
+                    "PublishPhotoAlbum FAILED: Exception occurred - AlbumId={AlbumId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    request.AlbumId, stopwatch.ElapsedMilliseconds, ex.Message);
                 throw;
             }
         }

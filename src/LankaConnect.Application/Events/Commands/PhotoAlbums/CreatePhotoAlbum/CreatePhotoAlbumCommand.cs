@@ -11,12 +11,13 @@ namespace LankaConnect.Application.Events.Commands.PhotoAlbums.CreatePhotoAlbum;
 
 /// <summary>
 /// Command to create a photo album for an event.
-/// Only one album per event (enforced by unique constraint).
-/// Event must be in Active, Completed, or Archived status.
+/// Multiple albums per event allowed (unique constraint on EventId + Name).
+/// Event must be in Published, Active, Completed, or Archived status.
 /// </summary>
 public record CreatePhotoAlbumCommand(
     Guid EventId,
     Guid UserId,
+    string Name,
     string? Description = null
 ) : ICommand<PhotoAlbumDto>;
 
@@ -49,8 +50,8 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "CreatePhotoAlbum START: EventId={EventId}, UserId={UserId}",
-                request.EventId, request.UserId);
+                "CreatePhotoAlbum START: EventId={EventId}, UserId={UserId}, Name={AlbumName}",
+                request.EventId, request.UserId, request.Name);
 
             try
             {
@@ -87,15 +88,16 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                         $"Cannot create a photo album for an event in {(int)@event.Status} status. Event must be Published, Active, Completed, or Archived.");
                 }
 
-                // 4. Verify no album exists for this event
-                var albumExists = await _photoAlbumRepository.AlbumExistsForEventAsync(request.EventId, cancellationToken);
-                if (albumExists)
+                // 4. Verify no album with same name exists for this event
+                var nameExists = await _photoAlbumRepository.ExistsByEventIdAndNameAsync(
+                    request.EventId, request.Name, cancellationToken);
+                if (nameExists)
                 {
                     stopwatch.Stop();
                     _logger.LogWarning(
-                        "CreatePhotoAlbum FAILED: Album already exists - EventId={EventId}, Duration={ElapsedMs}ms",
-                        request.EventId, stopwatch.ElapsedMilliseconds);
-                    return Result<PhotoAlbumDto>.Failure("A photo album already exists for this event");
+                        "CreatePhotoAlbum FAILED: Album with name already exists - EventId={EventId}, Name={AlbumName}, Duration={ElapsedMs}ms",
+                        request.EventId, request.Name, stopwatch.ElapsedMilliseconds);
+                    return Result<PhotoAlbumDto>.Failure($"A photo album with the name '{request.Name}' already exists for this event");
                 }
 
                 // 5. Create album via domain factory method
@@ -103,6 +105,7 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                     request.EventId,
                     request.UserId,
                     @event.Title.Value,
+                    request.Name,
                     request.Description);
 
                 if (createResult.IsFailure)
@@ -123,8 +126,8 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "CreatePhotoAlbum COMPLETE: AlbumId={AlbumId}, EventId={EventId}, Duration={ElapsedMs}ms",
-                    album.Id, request.EventId, stopwatch.ElapsedMilliseconds);
+                    "CreatePhotoAlbum COMPLETE: AlbumId={AlbumId}, EventId={EventId}, Name={AlbumName}, Duration={ElapsedMs}ms",
+                    album.Id, request.EventId, album.Name, stopwatch.ElapsedMilliseconds);
 
                 // 7. Map to DTO and return
                 var dto = MapToDto(album);
@@ -149,15 +152,13 @@ public class CreatePhotoAlbumCommandHandler : ICommandHandler<CreatePhotoAlbumCo
             EventId = album.EventId,
             OrganizerId = album.OrganizerId,
             EventTitle = album.EventTitle,
+            Name = album.Name,
             Status = album.Status,
-            UploadPermission = album.UploadPermission,
-            ModerationMode = album.ModerationMode,
             Description = album.Description,
             CoverPhotoUrl = album.CoverPhotoUrl,
             RetentionDays = album.RetentionDays,
             PhotoCount = album.PhotoCount,
             PublishedAt = album.PublishedAt,
-            ClosedAt = album.ClosedAt,
             CreatedAt = album.CreatedAt,
             UpdatedAt = album.UpdatedAt
         };

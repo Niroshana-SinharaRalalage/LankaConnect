@@ -1817,34 +1817,13 @@ export interface CreateDonationRequest {
 export enum AlbumStatus {
   Draft = 'Draft',
   Published = 'Published',
-  Closed = 'Closed',
-}
-
-/**
- * Album upload permission matching backend AlbumUploadPermission enum
- */
-export enum AlbumUploadPermission {
-  OrganizerOnly = 'OrganizerOnly',
-  RegisteredAttendees = 'RegisteredAttendees',
-  AnyAuthenticated = 'AnyAuthenticated',
-}
-
-/**
- * Album moderation mode matching backend AlbumModerationMode enum
- */
-export enum AlbumModerationMode {
-  None = 'None',
-  PostModeration = 'PostModeration',
-  PreApproval = 'PreApproval',
 }
 
 /**
  * Album photo status matching backend AlbumPhotoStatus enum
  */
 export enum AlbumPhotoStatus {
-  PendingApproval = 'PendingApproval',
   Approved = 'Approved',
-  Rejected = 'Rejected',
 }
 
 /**
@@ -1855,15 +1834,13 @@ export interface PhotoAlbumDto {
   eventId: string;
   organizerId: string;
   eventTitle: string;
+  name: string;
   status: AlbumStatus;
-  uploadPermission: AlbumUploadPermission;
-  moderationMode: AlbumModerationMode;
   description: string | null;
   coverPhotoUrl: string | null;
   retentionDays: number;
   photoCount: number;
   publishedAt: string | null;
-  closedAt: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -1901,14 +1878,14 @@ export interface PaginatedAlbumPhotosResponse {
  * Request to create a photo album
  */
 export interface CreatePhotoAlbumRequest {
+  name: string;
   description?: string;
 }
 
 /**
- * Request to update album settings
+ * Request to update album details (name and description)
  */
-export interface UpdateAlbumSettingsRequest {
-  uploadPermission?: AlbumUploadPermission;
-  moderationMode?: AlbumModerationMode;
+export interface UpdateAlbumDetailsRequest {
+  name: string;
   description?: string;
 }

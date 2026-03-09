@@ -4,107 +4,91 @@ import type {
   AlbumPhotoDto,
   PaginatedAlbumPhotosResponse,
   CreatePhotoAlbumRequest,
-  UpdateAlbumSettingsRequest,
+  UpdateAlbumDetailsRequest,
 } from '../types/events.types';
 
 /**
  * PhotoAlbumRepository
- * Handles all photo album-related API calls following the repository pattern
+ * Multi-album API integration following the repository pattern.
  *
- * Backend endpoints from PhotoAlbumController.cs:
- * - GET    /api/events/{eventId}/album              - Get album metadata
- * - POST   /api/events/{eventId}/album              - Create album
- * - PUT    /api/events/{eventId}/album/settings      - Update album settings
- * - POST   /api/events/{eventId}/album/publish       - Publish album
- * - POST   /api/events/{eventId}/album/close         - Close album
- * - GET    /api/events/{eventId}/album/photos        - Get photos (paginated)
- * - POST   /api/events/{eventId}/album/photos        - Upload photo
- * - DELETE /api/events/{eventId}/album/photos/{id}   - Delete photo
- * - POST   /api/events/{eventId}/album/photos/{id}/approve  - Approve photo
- * - POST   /api/events/{eventId}/album/photos/{id}/reject   - Reject photo
- * - POST   /api/events/{eventId}/album/photos/{id}/cover    - Set cover photo
- * - GET    /api/events/{eventId}/album/photos/pending       - Get pending photos
+ * Backend endpoints from PhotoAlbumsController.cs:
+ * - GET    /api/events/{eventId}/albums                      - List all albums
+ * - POST   /api/events/{eventId}/albums                      - Create album
+ * - PUT    /api/events/{eventId}/albums/{albumId}             - Update album details
+ * - DELETE /api/events/{eventId}/albums/{albumId}             - Delete draft album
+ * - POST   /api/events/{eventId}/albums/{albumId}/publish     - Publish album
+ * - POST   /api/events/{eventId}/albums/{albumId}/notify      - Send email notification
+ * - GET    /api/events/{eventId}/albums/{albumId}/photos      - Get photos (paginated)
+ * - POST   /api/events/{eventId}/albums/{albumId}/photos      - Upload photo
+ * - DELETE /api/events/{eventId}/albums/{albumId}/photos/{id} - Delete photo
+ * - PUT    /api/events/{eventId}/albums/{albumId}/cover/{id}  - Set cover photo
+ * - GET    /api/events/{eventId}/albums/{albumId}/download    - Download ZIP
  */
 export class PhotoAlbumRepository {
-  /**
-   * Build the base album path for a given event
-   */
-  private albumPath(eventId: string): string {
-    return `/events/${eventId}/album`;
+  private basePath(eventId: string): string {
+    return `/events/${eventId}/albums`;
+  }
+
+  private albumPath(eventId: string, albumId: string): string {
+    return `${this.basePath(eventId)}/${albumId}`;
   }
 
   // ==================== ALBUM MANAGEMENT ====================
 
   /**
-   * Get album metadata for an event
-   * Returns null if the event does not have an album (404)
-   *
-   * @param eventId - Event ID
-   * @returns Album DTO or null if not found
+   * Get all albums for an event
    */
-  async getAlbum(eventId: string): Promise<PhotoAlbumDto | null> {
-    try {
-      return await apiClient.get<PhotoAlbumDto>(this.albumPath(eventId));
-    } catch (error: any) {
-      if (error?.response?.status === 404) return null;
-      throw error;
-    }
+  async getAlbums(eventId: string): Promise<PhotoAlbumDto[]> {
+    return await apiClient.get<PhotoAlbumDto[]>(this.basePath(eventId));
   }
 
   /**
    * Create a new photo album for an event
-   *
-   * @param eventId - Event ID
-   * @param request - Optional creation parameters (description)
-   * @returns Created album DTO
    */
-  async createAlbum(eventId: string, request?: CreatePhotoAlbumRequest): Promise<PhotoAlbumDto> {
-    return await apiClient.post<PhotoAlbumDto>(
-      this.albumPath(eventId),
-      request ?? {},
-    );
+  async createAlbum(eventId: string, request: CreatePhotoAlbumRequest): Promise<PhotoAlbumDto> {
+    return await apiClient.post<PhotoAlbumDto>(this.basePath(eventId), request);
   }
 
   /**
-   * Update album settings (upload permission, moderation mode, description)
-   *
-   * @param eventId - Event ID
-   * @param request - Settings to update
+   * Update album details (name and description)
    */
-  async updateSettings(eventId: string, request: UpdateAlbumSettingsRequest): Promise<void> {
-    await apiClient.put(`${this.albumPath(eventId)}/settings`, request);
+  async updateAlbumDetails(
+    eventId: string,
+    albumId: string,
+    request: UpdateAlbumDetailsRequest,
+  ): Promise<void> {
+    await apiClient.put(`${this.albumPath(eventId, albumId)}`, request);
+  }
+
+  /**
+   * Delete a draft album and clean up blob storage
+   */
+  async deleteAlbum(eventId: string, albumId: string): Promise<void> {
+    await apiClient.delete(`${this.albumPath(eventId, albumId)}`);
   }
 
   /**
    * Publish an album, making it visible to attendees
-   *
-   * @param eventId - Event ID
    */
-  async publishAlbum(eventId: string): Promise<void> {
-    await apiClient.post(`${this.albumPath(eventId)}/publish`);
+  async publishAlbum(eventId: string, albumId: string): Promise<void> {
+    await apiClient.post(`${this.albumPath(eventId, albumId)}/publish`);
   }
 
   /**
-   * Close an album, preventing further uploads
-   *
-   * @param eventId - Event ID
+   * Send email notification to registered attendees about a published album
    */
-  async closeAlbum(eventId: string): Promise<void> {
-    await apiClient.post(`${this.albumPath(eventId)}/close`);
+  async sendNotification(eventId: string, albumId: string): Promise<void> {
+    await apiClient.post(`${this.albumPath(eventId, albumId)}/notify`);
   }
 
   // ==================== PHOTO OPERATIONS ====================
 
   /**
    * Get photos for an album with cursor-based pagination
-   *
-   * @param eventId - Event ID
-   * @param pageSize - Number of photos per page (default: 20)
-   * @param cursor - Pagination cursor for next page
-   * @returns Paginated photos response
    */
   async getPhotos(
     eventId: string,
+    albumId: string,
     pageSize?: number,
     cursor?: string,
   ): Promise<PaginatedAlbumPhotosResponse> {
@@ -113,27 +97,26 @@ export class PhotoAlbumRepository {
     if (cursor) params.cursor = cursor;
 
     return await apiClient.get<PaginatedAlbumPhotosResponse>(
-      `${this.albumPath(eventId)}/photos`,
+      `${this.albumPath(eventId, albumId)}/photos`,
       { params },
     );
   }
 
   /**
    * Upload a photo to an album
-   * Uses FormData for multipart file upload
-   *
-   * @param eventId - Event ID
-   * @param file - Image file to upload
-   * @param caption - Optional photo caption
-   * @returns Uploaded photo DTO
    */
-  async uploadPhoto(eventId: string, file: File, caption?: string): Promise<AlbumPhotoDto> {
+  async uploadPhoto(
+    eventId: string,
+    albumId: string,
+    file: File,
+    caption?: string,
+  ): Promise<AlbumPhotoDto> {
     const formData = new FormData();
     formData.append('image', file);
     if (caption) formData.append('caption', caption);
 
     return await apiClient.post<AlbumPhotoDto>(
-      `${this.albumPath(eventId)}/photos`,
+      `${this.albumPath(eventId, albumId)}/photos`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
@@ -141,55 +124,25 @@ export class PhotoAlbumRepository {
 
   /**
    * Delete a photo from an album
-   *
-   * @param eventId - Event ID
-   * @param photoId - Photo ID to delete
    */
-  async deletePhoto(eventId: string, photoId: string): Promise<void> {
-    await apiClient.delete(`${this.albumPath(eventId)}/photos/${photoId}`);
-  }
-
-  /**
-   * Approve a photo (moderation action)
-   *
-   * @param eventId - Event ID
-   * @param photoId - Photo ID to approve
-   */
-  async approvePhoto(eventId: string, photoId: string): Promise<void> {
-    await apiClient.post(`${this.albumPath(eventId)}/photos/${photoId}/approve`);
-  }
-
-  /**
-   * Reject a photo (moderation action)
-   *
-   * @param eventId - Event ID
-   * @param photoId - Photo ID to reject
-   */
-  async rejectPhoto(eventId: string, photoId: string): Promise<void> {
-    await apiClient.post(`${this.albumPath(eventId)}/photos/${photoId}/reject`);
+  async deletePhoto(eventId: string, albumId: string, photoId: string): Promise<void> {
+    await apiClient.delete(`${this.albumPath(eventId, albumId)}/photos/${photoId}`);
   }
 
   /**
    * Set a photo as the album cover
-   *
-   * @param eventId - Event ID
-   * @param photoId - Photo ID to set as cover
    */
-  async setCoverPhoto(eventId: string, photoId: string): Promise<void> {
-    await apiClient.post(`${this.albumPath(eventId)}/photos/${photoId}/cover`);
+  async setCoverPhoto(eventId: string, albumId: string, photoId: string): Promise<void> {
+    await apiClient.put(`${this.albumPath(eventId, albumId)}/cover/${photoId}`);
   }
 
-  // ==================== MODERATION ====================
-
   /**
-   * Get photos pending moderation approval
-   *
-   * @param eventId - Event ID
-   * @returns Array of photos awaiting approval
+   * Download all album photos as a ZIP file
    */
-  async getPendingPhotos(eventId: string): Promise<AlbumPhotoDto[]> {
-    return await apiClient.get<AlbumPhotoDto[]>(
-      `${this.albumPath(eventId)}/photos/pending`,
+  async downloadZip(eventId: string, albumId: string): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.albumPath(eventId, albumId)}/download`,
+      { responseType: 'blob' },
     );
   }
 }

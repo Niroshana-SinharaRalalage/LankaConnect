@@ -5,28 +5,26 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.API.Extensions;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.CreatePhotoAlbum;
-using LankaConnect.Application.Events.Commands.PhotoAlbums.UpdateAlbumSettings;
+using LankaConnect.Application.Events.Commands.PhotoAlbums.UpdateAlbumDetails;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.PublishPhotoAlbum;
-using LankaConnect.Application.Events.Commands.PhotoAlbums.ClosePhotoAlbum;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.UploadAlbumPhoto;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.DeleteAlbumPhoto;
-using LankaConnect.Application.Events.Commands.PhotoAlbums.ApproveAlbumPhoto;
-using LankaConnect.Application.Events.Commands.PhotoAlbums.RejectAlbumPhoto;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SetAlbumCoverPhoto;
+using LankaConnect.Application.Events.Commands.PhotoAlbums.DeletePhotoAlbum;
+using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification;
 using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumByEventId;
 using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumPhotos;
-using LankaConnect.Application.Events.Queries.PhotoAlbums.GetPendingPhotos;
+using LankaConnect.Application.Events.Queries.PhotoAlbums.DownloadAlbumZip;
 using LankaConnect.Application.Events.Common;
-using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
 /// Manages photo albums for events. Provides endpoints for album lifecycle
-/// (create, publish, close), settings management, and photo operations
-/// (upload, delete, approve, reject, set cover).
+/// (create, publish), details management, and photo operations
+/// (upload, delete, set cover).
 /// </summary>
-[Route("api/events/{eventId:guid}/album")]
+[Route("api/events/{eventId:guid}/albums")]
 public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
 {
     public PhotoAlbumsController(IMediator mediator, ILogger<PhotoAlbumsController> logger)
@@ -38,28 +36,30 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
 
     /// <summary>
     /// Create a photo album for an event.
-    /// Only one album per event. Event must be in Active, Completed, or Archived status.
+    /// Multiple albums per event allowed (unique constraint on EventId + Name).
+    /// Event must be in Published, Active, Completed, or Archived status.
     /// </summary>
     /// <param name="eventId">The event ID to create the album for.</param>
-    /// <param name="request">Optional album creation settings.</param>
+    /// <param name="request">Album creation details including name.</param>
     /// <returns>The created photo album.</returns>
     [HttpPost]
     [Authorize]
     [ProducesResponseType(typeof(PhotoAlbumDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CreatePhotoAlbum(Guid eventId, [FromBody] CreatePhotoAlbumRequest? request = null)
+    public async Task<IActionResult> CreatePhotoAlbum(Guid eventId, [FromBody] CreatePhotoAlbumRequest request)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Creating photo album for event {EventId} by user {UserId}",
-            eventId, userId);
+            "Creating photo album for event {EventId} by user {UserId}, Name={AlbumName}",
+            eventId, userId, request.Name);
 
         var command = new CreatePhotoAlbumCommand(
             EventId: eventId,
             UserId: userId,
-            Description: request?.Description);
+            Name: request.Name,
+            Description: request.Description);
 
         var result = await Mediator.Send(command);
 
@@ -67,19 +67,19 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     }
 
     /// <summary>
-    /// Get the photo album for an event.
-    /// Returns the album metadata including status, settings, and photo count.
-    /// Returns null wrapped in success if no album exists.
+    /// Get all photo albums for an event.
+    /// Returns album metadata including status, settings, and photo count.
+    /// Returns empty list if no albums exist.
     /// </summary>
-    /// <param name="eventId">The event ID to get the album for.</param>
-    /// <returns>The photo album DTO, or null if no album exists.</returns>
+    /// <param name="eventId">The event ID to get albums for.</param>
+    /// <returns>List of photo album DTOs.</returns>
     [HttpGet]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(PhotoAlbumDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<PhotoAlbumDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetAlbumByEventId(Guid eventId)
+    public async Task<IActionResult> GetAlbumsByEventId(Guid eventId)
     {
-        Logger.LogInformation("Getting photo album for event {EventId}", eventId);
+        Logger.LogInformation("Getting photo albums for event {EventId}", eventId);
 
         var query = new GetAlbumByEventIdQuery(EventId: eventId);
         var result = await Mediator.Send(query);
@@ -88,30 +88,29 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     }
 
     /// <summary>
-    /// Update album settings (upload permission, moderation mode, description).
-    /// Only the event organizer can update settings.
-    /// Only allowed while album is in Draft or Published status.
+    /// Update album details (name and description).
+    /// Only the event organizer can update details.
     /// </summary>
-    /// <param name="eventId">The event ID whose album settings to update.</param>
-    /// <param name="request">The settings to update. All fields are optional.</param>
-    [HttpPut("settings")]
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID to update.</param>
+    /// <param name="request">The details to update.</param>
+    [HttpPut("{albumId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UpdateAlbumSettings(Guid eventId, [FromBody] UpdateAlbumSettingsRequest request)
+    public async Task<IActionResult> UpdateAlbumDetails(Guid eventId, Guid albumId, [FromBody] UpdateAlbumDetailsRequest request)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Updating album settings for event {EventId} by user {UserId}, UploadPermission={UploadPermission}, ModerationMode={ModerationMode}",
-            eventId, userId, request.UploadPermission, request.ModerationMode);
+            "Updating album details for album {AlbumId} on event {EventId} by user {UserId}, Name={AlbumName}",
+            albumId, eventId, userId, request.Name);
 
-        var command = new UpdateAlbumSettingsCommand(
-            EventId: eventId,
+        var command = new UpdateAlbumDetailsCommand(
+            AlbumId: albumId,
             UserId: userId,
-            UploadPermission: request.UploadPermission,
-            ModerationMode: request.ModerationMode,
+            Name: request.Name,
             Description: request.Description);
 
         var result = await Mediator.Send(command);
@@ -123,22 +122,23 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     /// Publish a photo album, making it visible to attendees.
     /// Only the event organizer can publish an album.
     /// </summary>
-    /// <param name="eventId">The event ID whose album to publish.</param>
-    [HttpPost("publish")]
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID to publish.</param>
+    [HttpPost("{albumId:guid}/publish")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> PublishPhotoAlbum(Guid eventId)
+    public async Task<IActionResult> PublishPhotoAlbum(Guid eventId, Guid albumId)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Publishing photo album for event {EventId} by user {UserId}",
-            eventId, userId);
+            "Publishing photo album {AlbumId} for event {EventId} by user {UserId}",
+            albumId, eventId, userId);
 
         var command = new PublishPhotoAlbumCommand(
-            EventId: eventId,
+            AlbumId: albumId,
             UserId: userId);
 
         var result = await Mediator.Send(command);
@@ -147,26 +147,53 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     }
 
     /// <summary>
-    /// Close a photo album, stopping new uploads.
-    /// Photos remain viewable until their individual expiry dates.
-    /// Only the event organizer can close an album.
+    /// Delete a draft photo album and clean up all associated blob storage.
+    /// Only draft albums can be deleted. Published albums cannot be removed.
+    /// Only the event organizer can delete albums.
     /// </summary>
-    /// <param name="eventId">The event ID whose album to close.</param>
-    [HttpPost("close")]
+    [HttpDelete("{albumId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ClosePhotoAlbum(Guid eventId)
+    public async Task<IActionResult> DeletePhotoAlbum(Guid eventId, Guid albumId)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Closing photo album for event {EventId} by user {UserId}",
-            eventId, userId);
+            "Deleting photo album {AlbumId} for event {EventId} by user {UserId}",
+            albumId, eventId, userId);
 
-        var command = new ClosePhotoAlbumCommand(
+        var command = new DeletePhotoAlbumCommand(
+            AlbumId: albumId,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Send email notification to registered attendees about a published album.
+    /// Separate from publishing: organizer explicitly triggers notification.
+    /// Album must be in Published status.
+    /// </summary>
+    [HttpPost("{albumId:guid}/notify")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SendAlbumNotification(Guid eventId, Guid albumId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "Sending album notification for album {AlbumId}, event {EventId} by user {UserId}",
+            albumId, eventId, userId);
+
+        var command = new SendAlbumNotificationCommand(
             EventId: eventId,
+            AlbumId: albumId,
             UserId: userId);
 
         var result = await Mediator.Send(command);
@@ -177,21 +204,22 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     // ==================== PHOTO OPERATIONS ====================
 
     /// <summary>
-    /// Upload a photo to an event's photo album.
-    /// Validates upload permissions, processes the image (EXIF strip, thumbnails),
-    /// and uploads to Azure Blob Storage.
+    /// Upload a photo to a photo album.
+    /// Only the event organizer can upload photos.
+    /// Processes the image (EXIF strip, thumbnails) and uploads to Azure Blob Storage.
     /// </summary>
-    /// <param name="eventId">The event ID whose album to upload to.</param>
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID to upload to.</param>
     /// <param name="image">The image file to upload.</param>
     /// <param name="caption">Optional caption for the photo.</param>
     /// <returns>The uploaded photo metadata.</returns>
-    [HttpPost("photos")]
+    [HttpPost("{albumId:guid}/photos")]
     [Authorize]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AlbumPhotoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UploadAlbumPhoto(Guid eventId, IFormFile image, [FromForm] string? caption = null)
+    public async Task<IActionResult> UploadAlbumPhoto(Guid eventId, Guid albumId, IFormFile image, [FromForm] string? caption = null)
     {
         if (image == null || image.Length == 0)
             return BadRequest("Image file is required");
@@ -205,11 +233,11 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
         var imageData = memoryStream.ToArray();
 
         Logger.LogInformation(
-            "Uploading photo to album for event {EventId} by user {UserId} ({UserName}), FileName={FileName}, Size={Size}",
-            eventId, userId, userName, image.FileName, imageData.Length);
+            "Uploading photo to album {AlbumId} for event {EventId} by user {UserId} ({UserName}), FileName={FileName}, Size={Size}",
+            albumId, eventId, userId, userName, image.FileName, imageData.Length);
 
         var command = new UploadAlbumPhotoCommand(
-            EventId: eventId,
+            AlbumId: albumId,
             UploaderId: userId,
             UploaderName: userName,
             ImageData: imageData,
@@ -225,25 +253,27 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     /// Get paginated approved photos from an album.
     /// Uses cursor-based pagination for infinite scroll support.
     /// </summary>
-    /// <param name="eventId">The event ID whose album photos to retrieve.</param>
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID whose photos to retrieve.</param>
     /// <param name="pageSize">Number of photos per page (default 20, max 50).</param>
     /// <param name="cursor">Cursor for pagination (UploadedAt of last photo in previous page).</param>
     /// <returns>Paginated list of approved album photos.</returns>
-    [HttpGet("photos")]
+    [HttpGet("{albumId:guid}/photos")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedAlbumPhotosResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAlbumPhotos(
         Guid eventId,
+        Guid albumId,
         [FromQuery] int pageSize = 20,
         [FromQuery] DateTime? cursor = null)
     {
         Logger.LogInformation(
-            "Getting album photos for event {EventId}, PageSize={PageSize}, Cursor={Cursor}",
-            eventId, pageSize, cursor);
+            "Getting album photos for album {AlbumId} on event {EventId}, PageSize={PageSize}, Cursor={Cursor}",
+            albumId, eventId, pageSize, cursor);
 
         var query = new GetAlbumPhotosQuery(
-            EventId: eventId,
+            AlbumId: albumId,
             PageSize: pageSize,
             Cursor: cursor);
 
@@ -253,55 +283,28 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     }
 
     /// <summary>
-    /// Get all pending photos for organizer moderation queue.
-    /// Only the event organizer can view pending photos.
-    /// </summary>
-    /// <param name="eventId">The event ID whose pending photos to retrieve.</param>
-    /// <returns>List of photos awaiting approval.</returns>
-    [HttpGet("photos/pending")]
-    [Authorize]
-    [ProducesResponseType(typeof(IReadOnlyList<AlbumPhotoDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetPendingPhotos(Guid eventId)
-    {
-        var userId = User.GetUserId();
-
-        Logger.LogInformation(
-            "Getting pending photos for event {EventId} by organizer {UserId}",
-            eventId, userId);
-
-        var query = new GetPendingPhotosQuery(
-            EventId: eventId,
-            UserId: userId);
-
-        var result = await Mediator.Send(query);
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// Delete a photo from an event's photo album.
+    /// Delete a photo from a photo album.
     /// Only the photo uploader or event organizer can delete a photo.
     /// Removes blobs from Azure Blob Storage.
     /// </summary>
-    /// <param name="eventId">The event ID whose album contains the photo.</param>
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID containing the photo.</param>
     /// <param name="photoId">The ID of the photo to delete.</param>
-    [HttpDelete("photos/{photoId:guid}")]
+    [HttpDelete("{albumId:guid}/photos/{photoId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeleteAlbumPhoto(Guid eventId, Guid photoId)
+    public async Task<IActionResult> DeleteAlbumPhoto(Guid eventId, Guid albumId, Guid photoId)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Deleting photo {PhotoId} from album for event {EventId} by user {UserId}",
-            photoId, eventId, userId);
+            "Deleting photo {PhotoId} from album {AlbumId} for event {EventId} by user {UserId}",
+            photoId, albumId, eventId, userId);
 
         var command = new DeleteAlbumPhotoCommand(
-            EventId: eventId,
+            AlbumId: albumId,
             PhotoId: photoId,
             RequesterId: userId);
 
@@ -311,91 +314,60 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     }
 
     /// <summary>
-    /// Approve a pending photo in a pre-moderation album.
-    /// Only the event organizer can approve photos.
-    /// </summary>
-    /// <param name="eventId">The event ID whose album contains the photo.</param>
-    /// <param name="photoId">The ID of the photo to approve.</param>
-    [HttpPost("photos/{photoId:guid}/approve")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ApproveAlbumPhoto(Guid eventId, Guid photoId)
-    {
-        var userId = User.GetUserId();
-
-        Logger.LogInformation(
-            "Approving photo {PhotoId} in album for event {EventId} by user {UserId}",
-            photoId, eventId, userId);
-
-        var command = new ApproveAlbumPhotoCommand(
-            EventId: eventId,
-            PhotoId: photoId,
-            UserId: userId);
-
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// Reject a pending photo in a pre-moderation album.
-    /// Only the event organizer can reject photos.
-    /// Rejected photos have their blobs deleted from Azure Blob Storage.
-    /// </summary>
-    /// <param name="eventId">The event ID whose album contains the photo.</param>
-    /// <param name="photoId">The ID of the photo to reject.</param>
-    [HttpPost("photos/{photoId:guid}/reject")]
-    [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RejectAlbumPhoto(Guid eventId, Guid photoId)
-    {
-        var userId = User.GetUserId();
-
-        Logger.LogInformation(
-            "Rejecting photo {PhotoId} in album for event {EventId} by user {UserId}",
-            photoId, eventId, userId);
-
-        var command = new RejectAlbumPhotoCommand(
-            EventId: eventId,
-            PhotoId: photoId,
-            UserId: userId);
-
-        var result = await Mediator.Send(command);
-
-        return HandleResult(result);
-    }
-
-    /// <summary>
-    /// Set an approved photo as the album cover.
+    /// Set a photo as the album cover.
     /// Only the event organizer can set the cover photo.
     /// </summary>
-    /// <param name="eventId">The event ID whose album cover to set.</param>
-    /// <param name="photoId">The ID of the approved photo to use as cover.</param>
-    [HttpPut("cover/{photoId:guid}")]
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID whose cover to set.</param>
+    /// <param name="photoId">The ID of the photo to use as cover.</param>
+    [HttpPut("{albumId:guid}/cover/{photoId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> SetAlbumCoverPhoto(Guid eventId, Guid photoId)
+    public async Task<IActionResult> SetAlbumCoverPhoto(Guid eventId, Guid albumId, Guid photoId)
     {
         var userId = User.GetUserId();
 
         Logger.LogInformation(
-            "Setting cover photo {PhotoId} for album on event {EventId} by user {UserId}",
-            photoId, eventId, userId);
+            "Setting cover photo {PhotoId} for album {AlbumId} on event {EventId} by user {UserId}",
+            photoId, albumId, eventId, userId);
 
         var command = new SetAlbumCoverPhotoCommand(
-            EventId: eventId,
+            AlbumId: albumId,
             PhotoId: photoId,
             UserId: userId);
 
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
+    }
+
+    // ==================== DOWNLOAD ====================
+
+    /// <summary>
+    /// Download all approved photos in an album as a ZIP file.
+    /// Streams directly to the response body to handle large albums (up to 200 photos).
+    /// Uses original quality images.
+    /// </summary>
+    [HttpGet("{albumId:guid}/download")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DownloadAlbumZip(Guid eventId, Guid albumId)
+    {
+        Logger.LogInformation(
+            "Downloading album ZIP for album {AlbumId}, event {EventId}",
+            albumId, eventId);
+
+        var query = new DownloadAlbumZipQuery(AlbumId: albumId);
+        var result = await Mediator.Send(query);
+
+        if (!result.IsSuccess)
+            return BadRequest(new ProblemDetails { Detail = result.Error });
+
+        var zipData = result.Value;
+        return File(zipData.ZipStream, "application/zip", zipData.FileName);
     }
 }
 
@@ -407,26 +379,25 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
 public class CreatePhotoAlbumRequest
 {
     /// <summary>
+    /// Display name for the photo album (required).
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
     /// Optional description for the photo album.
     /// </summary>
     public string? Description { get; set; }
 }
 
 /// <summary>
-/// Request body for updating album settings.
-/// All fields are optional; only provided values will be updated.
+/// Request body for updating album details.
 /// </summary>
-public class UpdateAlbumSettingsRequest
+public class UpdateAlbumDetailsRequest
 {
     /// <summary>
-    /// Who can upload photos: OrganizerOnly, RegisteredAttendees, or AnyAuthenticated.
+    /// Display name for the photo album (required).
     /// </summary>
-    public AlbumUploadPermission? UploadPermission { get; set; }
-
-    /// <summary>
-    /// Moderation mode: None (auto-approve) or PreApproval (organizer must approve).
-    /// </summary>
-    public AlbumModerationMode? ModerationMode { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Optional description for the photo album.

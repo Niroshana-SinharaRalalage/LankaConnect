@@ -7,7 +7,28 @@
 
 ---
 
-## 🔄 CURRENT STATUS - UI ENHANCEMENTS ✅ COMPLETE (2026-03-09)
+## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE (2026-03-09)
+**Date**: 2026-03-09
+**Session**: Phase 6A.133 Email — Add organizer contacts to newsletters + fix refund templates
+**Status**: ✅ **COMPLETE (commit d089f7bb on develop, deployed to staging)**
+**Commit**: d089f7bb
+
+**RCA Findings**:
+- Event Reminder (Christmas Dinner Dance 2025): NOT a bug — event has `publishOrganizerContact=true` but zero contacts defined. Domain `HasOrganizerContact()` correctly returns false.
+- Newsletter emails: FEATURE GAP — `NewsletterEmailParams` had zero organizer properties; `NewsletterEmailJob` never accessed organizer contacts.
+- Refund templates: DB TEMPLATE DEFECTS — `template-refund-requested` had unwrapped organizer card (no `{{#if HasOrganizerContact}}`), `template-refund-completed` completely missing organizer section.
+
+**Changes**:
+- `NewsletterEmailParams.cs`: Added 6 organizer contact properties, updated `ToDictionary()`, added `WithOrganizerContacts()` fluent method
+- `NewsletterEmailJob.cs`: Extract organizer contacts from event, pass to email params for event-linked newsletters
+- EF Core migration `Phase6A133Email_FixRemainingOrganizerTemplates`: Fix 3 DB templates (newsletter-notification INSERT, refund-requested REPLACE, refund-completed INSERT)
+- 12 new unit tests for newsletter organizer contact support
+
+**Tests**: 1566 application tests pass, 255 shared tests pass (5 pre-existing date formatting failures), 146 domain tests pass
+
+---
+
+## PREVIOUS STATUS - UI ENHANCEMENTS ✅ COMPLETE (2026-03-09)
 **Date**: 2026-03-09
 **Session**: UI Enhancements — Menu simplification, Event card CTAs, Cinematic LandingPage2
 **Status**: ✅ **COMPLETE (build verified, ready for staging deployment)**

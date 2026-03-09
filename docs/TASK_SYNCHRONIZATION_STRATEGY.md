@@ -3,7 +3,16 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - UI ENHANCEMENTS ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE
+**Date**: 2026-03-09
+**Session**: Phase 6A.133 Email — Add organizer contacts to newsletters + fix refund templates
+**Progress**: ✅ **COMPLETE** — 3 files modified, 1 migration + 1 test file created, deployed to staging
+**Status**: ✅ **COMPLETE** — Commit d089f7bb, 1566 application tests pass, 12 new newsletter tests
+**Changes**: NewsletterEmailParams (6 organizer properties + WithOrganizerContacts), NewsletterEmailJob (organizer contact extraction), EF migration (3 template fixes: newsletter-notification, refund-requested, refund-completed)
+
+---
+
+## PREVIOUS SESSION - UI ENHANCEMENTS ✅ COMPLETE
 **Date**: 2026-03-09
 **Session**: UI Enhancements — Menu, Event Cards, LandingPage2
 **Progress**: ✅ **COMPLETE** — Build verified, 4 files modified, 1 new page created

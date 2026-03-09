@@ -7,34 +7,48 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHOTO ALBUM TAB INLINE FIX ✅ COMPLETE (2026-03-07)
-**Date**: 2026-03-07
-**Session**: Photo Album Manage Tab UX Fix — Inline rendering consistency
-**Status**: ✅ **COMPLETE (deployed to Azure staging)**
+## 🔄 CURRENT STATUS - UI ENHANCEMENTS ✅ COMPLETE (2026-03-09)
+**Date**: 2026-03-09
+**Session**: UI Enhancements — Menu simplification, Event card CTAs, Cinematic LandingPage2
+**Status**: ✅ **COMPLETE (build verified, ready for staging deployment)**
 
-**UX Fix**: Photo Album tab on event manage page was a placeholder with redirect button instead of rendering inline like all other tabs.
-- Created `PhotoAlbumManagementTab.tsx` composing existing AlbumGallery, AlbumSettingsForm, AlbumModerationQueue with sub-tab navigation
-- Deleted separate `manage/album/page.tsx` route
-- Fixed string enum comparison bug preventing tab from appearing
+**Changes**:
+- Menu: Removed Forums/Business/Marketplace. Added Create Event button with role logic.
+- Event cards: Free → "View Details / Register →", Paid → "View Details / Buy Tickets →"
+- New `/landing2` page with cinema screen mockup + 3 animation modes for event cards
+- Added "Preview New Design" banner on current landing page
 
+---
+
+## PREVIOUS STATUS - MULTI-ALBUM REDESIGN + BUG FIXES ✅ COMPLETE (2026-03-09)
+**Date**: 2026-03-08/09
+**Session**: Multi-Album Photo System Redesign + 5 UI Bug Fixes
+**Status**: ✅ **COMPLETE (deployed to Azure staging, all API endpoints verified)**
+
+**Redesign**: Converted single-album to multi-album system (Sign-Up Lists pattern).
+- 6-phase implementation: Domain → DB Migration → Application/API → Frontend Infra → Cleanup → Public UI
+- Multiple named albums per event, Draft/Published lifecycle, manual publish + separate notify
+- AlbumPhotoCarousel on event details, multi-album tabs on photos page, streaming ZIP download
+- Removed: Close state, moderation, upload permissions, auto-publish, settings form
+
+**5 Bug Fixes** (from user testing):
+1. Tab switching on /photos page (useMemo priority inversion)
+2. Delete button wired to actual mutation (was stub)
+3. "After Event Albums" collapsed by default
+4. Inline edit UI for album name/description
+5. Image quality (mediumUrl instead of thumbnailUrl)
+
+**Commits**: Multi-album redesign + fd7a6e06 (bug fixes)
+
+---
+
+## PREVIOUS STATUS - PHOTO ALBUM TAB INLINE FIX ✅ COMPLETE (2026-03-07)
 **Commits**: ec0c7c43, e5fcfa07
 
 ---
 
 ## PREVIOUS STATUS - AFTER EVENT PHOTO ALBUM FEATURE ✅ COMPLETE (2026-03-07)
-**Date**: 2026-03-07
-**Session**: After Event Photo Album — Full-stack implementation
-**Status**: ✅ **COMPLETE (deployed to staging, all 8 API endpoints verified)**
-
-**New Feature**: Comprehensive photo album system for events.
-- **Domain**: PhotoAlbum aggregate root, AlbumPhoto entity, 4 enums, 5 domain events
-- **Application**: 9 commands, 3 queries, 3 DTOs, email notification handler
-- **Infrastructure**: AlbumImageService (EXIF strip, thumbnails, WebP), PhotoAlbumRepository, cleanup BackgroundService, EF Core migration
-- **API**: PhotoAlbumsController — 11 endpoints at /api/events/{eventId}/album
-- **Frontend**: Types, repository, React Query hooks (infinite scroll), 5 components, 2 pages
-- **Tests**: 104 domain unit tests (1630 total passing)
-
-**Commits**: 854e4bae, df916d75
+**Commits**: 854e4bae, df916d75 (superseded by multi-album redesign)
 
 ---
 

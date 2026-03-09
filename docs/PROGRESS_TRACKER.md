@@ -1,26 +1,71 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-07 - Photo Album Tab Inline Fix ✅ COMPLETE*
+*Last Updated: 2026-03-09 - UI Enhancements (Menu, Event Cards, LandingPage2) ✅ COMPLETE*
 
-## 🎯 Current Session Status - Photo Album Tab Inline Fix ✅ COMPLETE
+## 🎯 Current Session Status - UI Enhancements ✅ COMPLETE
+
+### UI Enhancements - 2026-03-09
+
+**Status**: ✅ **COMPLETE (build verified, ready for staging deployment)**
+
+**Classification**: UI Enhancement — Menu simplification, event card CTA improvements, new cinematic landing page.
+
+**Changes**:
+1. **Menu Bar Simplification** (`Header.tsx`): Removed Forums/Business/Marketplace links. Anonymous users see only Events. Logged-in users see Events, My Dashboard, Create Event button (with role-based logic: EventOrganizer→create page, GeneralUser→UpgradeModal).
+2. **Event Card Button Text** (`events/page.tsx`): Changed "View Details" to "View Details / Register →" for free events and "View Details / Buy Tickets →" for paid events.
+3. **New LandingPage2** (`landing2/page.tsx`): Cinematic landing page with angled TV/cinema screen mockup (placeholder for future video clips) and scrolling event cards with 3 switchable animation modes (auto-scroll, slide-in, carousel).
+4. **Landing Page Navigation** (`page.tsx`): Added "Preview New Design" banner linking to `/landing2`.
+
+---
+
+## Previous Session - Multi-Album Redesign + Bug Fixes ✅ COMPLETE
+
+### Multi-Album Photo System Redesign - 2026-03-08/09
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, all API endpoints verified)**
+
+**Classification**: Feature Redesign — Converted single-album photo system to multi-album system modeled after Sign-Up Lists pattern, then fixed 5 UI bugs found in user testing.
+
+**Problem**: Single-album design was inadequate. User required multiple named albums per event, manual publish control, separate email notifications, and a public carousel view with ZIP download.
+
+**Solution — Multi-Album Redesign (6 Phases)**:
+- **Phase 1 (Domain)**: Added `Name` property to PhotoAlbum, removed Close/Moderation/UploadPermission, simplified to Draft/Published only, allow photo uploads in both states
+- **Phase 2 (DB)**: EF Core migration `MultiAlbumRedesign` — added `name` column (NULLABLE→backfill→NOT NULL), composite unique index on (EventId, Name), dropped removed columns
+- **Phase 3 (Application + API)**: Rewrote commands/queries for multi-album (albumId params), new endpoints: UpdateAlbumDetails, DeleteAlbum, SendNotification, DownloadZip (streaming)
+- **Phase 4 (Frontend Infra)**: Updated TypeScript types, rewrote API repository and React Query hooks for multi-album
+- **Phase 5 (Cleanup)**: Deleted unused AlbumModerationQueue, AlbumSettingsForm components
+- **Phase 6 (Public UI)**: Created AlbumPhotoCarousel component, added "After Event Albums" section to event details with tabs/carousel/ZIP download, updated photos page for multi-album
+
+**Bug Fixes (5 issues from user testing)**:
+1. **Tab switching broken** on /photos page — useMemo priority inversion (URL param checked before local state)
+2. **Delete button non-functional** — handleDeletePhoto was a stub, never called useDeleteAlbumPhoto mutation
+3. **"After Event Albums" not collapsed** — defaultOpen={true} instead of false
+4. **Cannot edit album** — No inline edit UI despite hook existing. Added inline edit form for name/description
+5. **Low image quality** — AlbumPhotoCard used thumbnailUrl (150px) instead of mediumUrl (800px)
+
+**Files Changed**: 49+ files (8611 insertions, 4151 deletions for redesign; 201 insertions, 98 deletions for bug fixes)
+
+**API Endpoints Verified on Staging**:
+- POST /api/events/{id}/albums — Create album (name required)
+- GET /api/events/{id}/albums — List all albums
+- PUT /api/events/{id}/albums/{albumId} — Update name/description
+- DELETE /api/events/{id}/albums/{albumId} — Delete draft album
+- POST /api/events/{id}/albums/{albumId}/publish — Publish (requires photos)
+- POST /api/events/{id}/albums/{albumId}/notify — Send email notification
+- GET /api/events/{id}/albums/{albumId}/photos — Paginated photos
+- POST /api/events/{id}/albums/{albumId}/photos — Upload photo
+- DELETE /api/events/{id}/albums/{albumId}/photos/{photoId} — Delete photo
+- GET /api/events/{id}/albums/{albumId}/download — Download ZIP (streaming)
+
+**Tests**: 41 PhotoAlbum domain tests passing, full suite passing
+**Commits**: Multi-album redesign commit + fd7a6e06 (bug fixes)
+
+---
+
+## ⏸️ Previous Session - Photo Album Tab Inline Fix ✅ COMPLETE
 
 ### Photo Album Manage Tab UX Fix - 2026-03-07
 
 **Status**: ✅ **COMPLETE (deployed to Azure staging)**
-
-**Classification**: UX Fix — Photo Album tab on event manage page was rendering as a placeholder with a redirect button to a separate page, inconsistent with all other tabs which render inline.
-
-**Problem**: The Photo Album tab opened a separate route (`/events/[id]/manage/album/page.tsx`) instead of rendering inline like every other tab (Details, Sign-Ups, Newsletters, etc.). Additionally, a string enum comparison bug prevented the tab from appearing at all.
-
-**Solution**:
-- Created `PhotoAlbumManagementTab.tsx` — inline component composing existing `AlbumGallery`, `AlbumSettingsForm`, and `AlbumModerationQueue` with sub-tab navigation
-- Deleted the separate `manage/album/page.tsx` route
-- Fixed string enum comparison bug that prevented the Photo Album tab from rendering
-
-**Files Changed**:
-- `web/src/presentation/components/features/events/PhotoAlbumManagementTab.tsx` (new)
-- `web/src/app/events/[id]/manage/page.tsx` (updated to use inline tab)
-- `web/src/app/events/[id]/manage/album/page.tsx` (deleted)
-- `web/src/infrastructure/api/types/events.types.ts` (enum fix)
 
 **Commits**: ec0c7c43 (enum fix), e5fcfa07 (inline tab)
 

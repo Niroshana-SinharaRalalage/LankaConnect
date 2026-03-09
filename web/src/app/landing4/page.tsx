@@ -57,24 +57,28 @@ export default function LandingPage4() {
             <div className="relative hidden lg:flex flex-col gap-3">
               {/* Video Area - no frame, just the video with shading */}
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                {/* Video Player */}
+                {/* Video Player — full resolution, clear center */}
                 <div className="absolute inset-0 bg-black">
                   <VideoPlayer />
                 </div>
 
-                {/* Heavy vignette shading around all edges */}
-                <div className="absolute inset-0 pointer-events-none" style={{
-                  background: 'radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5) 80%, rgba(0,0,0,0.8) 100%)',
+                {/* Edge-only shading: clear center, fades to dark at edges */}
+                {/* Top edge fade */}
+                <div className="absolute top-0 left-0 right-0 h-20 pointer-events-none" style={{
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)',
                 }} />
-
-                {/* Top edge fade into banner */}
-                <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
                 {/* Bottom edge fade */}
-                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none" style={{
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)',
+                }} />
                 {/* Left edge fade */}
-                <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
+                <div className="absolute left-0 top-0 bottom-0 w-20 pointer-events-none" style={{
+                  background: 'linear-gradient(to right, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
+                }} />
                 {/* Right edge fade */}
-                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black/40 to-transparent pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-20 pointer-events-none" style={{
+                  background: 'linear-gradient(to left, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
+                }} />
               </div>
 
               <EventScroller events={events} isLoading={scrollLoading} />

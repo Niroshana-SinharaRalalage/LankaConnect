@@ -93,18 +93,26 @@ export default function LandingPage3() {
                       {/* Ambient glow behind screen */}
                       <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/10 via-rose-500/10 to-emerald-500/10 blur-xl" />
 
-                      {/* Screen content - Video Player */}
+                      {/* Screen content - Video Player with clear center */}
                       <div className="relative w-full h-full bg-black overflow-hidden">
                         <VideoPlayer />
 
-                        {/* Film grain overlay */}
-                        <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
-                          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+                        {/* Edge-only shading: clear center, darkens toward screen edges */}
+                        {/* Top edge */}
+                        <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{
+                          background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
                         }} />
-
-                        {/* Vignette effect */}
-                        <div className="absolute inset-0 pointer-events-none" style={{
-                          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)',
+                        {/* Bottom edge */}
+                        <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 40%, transparent 100%)',
+                        }} />
+                        {/* Left edge */}
+                        <div className="absolute left-0 top-0 bottom-0 w-14 pointer-events-none" style={{
+                          background: 'linear-gradient(to right, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.15) 40%, transparent 100%)',
+                        }} />
+                        {/* Right edge */}
+                        <div className="absolute right-0 top-0 bottom-0 w-14 pointer-events-none" style={{
+                          background: 'linear-gradient(to left, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.15) 40%, transparent 100%)',
                         }} />
                       </div>
                     </div>

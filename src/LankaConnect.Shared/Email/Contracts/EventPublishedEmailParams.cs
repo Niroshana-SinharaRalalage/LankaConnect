@@ -128,6 +128,16 @@ public class EventPublishedEmailParams : IEmailParameters, IUnsubscribeableEmail
     /// </summary>
     public string? OrganizerContactPhone { get; set; }
 
+    /// <summary>
+    /// Phase 6A.133 Email: Pre-formatted HTML for all organizer contacts.
+    /// </summary>
+    public string OrganizerContactsHtml { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 6A.133 Email: Dynamic header text ("EVENT ORGANIZER" or "EVENT ORGANIZERS").
+    /// </summary>
+    public string OrganizerContactHeader { get; set; } = "EVENT ORGANIZER";
+
     #endregion
 
     #region Event Image Properties
@@ -205,6 +215,8 @@ public class EventPublishedEmailParams : IEmailParameters, IUnsubscribeableEmail
             { EmailTemplateContract.OrganizerContact.OrganizerContactName, OrganizerContactName ?? string.Empty },
             { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail ?? string.Empty },
             { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone ?? string.Empty },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactsHtml, OrganizerContactsHtml },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactHeader, OrganizerContactHeader },
 
             // Event image params (for {{#HasEventImage}} conditional)
             { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
@@ -257,6 +269,24 @@ public class EventPublishedEmailParams : IEmailParameters, IUnsubscribeableEmail
     {
         HasEventImage = !string.IsNullOrEmpty(imageUrl);
         EventImageUrl = imageUrl ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.133 Email: Sets all organizer contacts with pre-formatted HTML.
+    /// </summary>
+    public EventPublishedEmailParams WithOrganizerContacts(IReadOnlyList<OrganizerContactInfo> contacts)
+    {
+        if (contacts.Count > 0)
+        {
+            HasOrganizerContact = true;
+            var primary = contacts.FirstOrDefault(c => c.IsPrimary) ?? contacts[0];
+            OrganizerContactName = primary.Name;
+            OrganizerContactEmail = primary.Email ?? string.Empty;
+            OrganizerContactPhone = primary.Phone ?? string.Empty;
+        }
+        OrganizerContactsHtml = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
+        OrganizerContactHeader = OrganizerContactHtmlBuilder.BuildHeaderText(contacts.Count);
         return this;
     }
 

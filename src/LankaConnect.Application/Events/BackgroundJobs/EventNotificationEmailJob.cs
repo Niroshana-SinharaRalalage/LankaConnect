@@ -13,6 +13,7 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -231,6 +232,16 @@ public class EventNotificationEmailJob
                     if (hasActiveSignupForms)
                     {
                         emailParams.WithSignupForms(signupFormsUrl);
+                    }
+
+                    // Phase 6A.133 Email: Set all organizer contacts with pre-formatted HTML
+                    if (@event.HasOrganizerContact())
+                    {
+                        emailParams.WithOrganizerContacts(
+                            @event.OrganizerContacts
+                                .OrderBy(c => c.SortOrder)
+                                .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                                .ToList());
                     }
 
                     // Set per-recipient unsubscribe URL for List-Unsubscribe header (RFC 2369/8058)

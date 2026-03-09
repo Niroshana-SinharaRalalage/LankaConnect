@@ -6,7 +6,7 @@ namespace LankaConnect.Shared.Tests.Email.Helpers;
 
 /// <summary>
 /// Phase 6A.133 Email: Tests for OrganizerContactHtmlBuilder.
-/// Verifies HTML generation for multi-contact email display.
+/// Verifies HTML table generation for multi-contact email display.
 /// </summary>
 public class OrganizerContactHtmlBuilderTests
 {
@@ -41,7 +41,7 @@ public class OrganizerContactHtmlBuilderTests
     #region BuildContactListHtml Tests
 
     [Fact]
-    public void BuildContactListHtml_SingleContact_ReturnsFormattedHtml()
+    public void BuildContactListHtml_SingleContact_ReturnsTableWithHeaders()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -50,16 +50,21 @@ public class OrganizerContactHtmlBuilderTests
 
         var result = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
 
+        // Should be a table with header row
+        result.Should().Contain("<table");
+        result.Should().Contain("</table>");
+        result.Should().Contain(">Name</td>");
+        result.Should().Contain(">Email</td>");
+        result.Should().Contain(">Phone</td>");
+        // Contact data
         result.Should().Contain("John Smith");
         result.Should().Contain("john@example.com");
         result.Should().Contain("+1234567890");
         result.Should().Contain("mailto:john@example.com");
-        // Single contact should NOT have a divider
-        result.Should().NotContain("border-bottom");
     }
 
     [Fact]
-    public void BuildContactListHtml_MultipleContacts_ReturnsAllWithDividers()
+    public void BuildContactListHtml_MultipleContacts_ReturnsAllInTable()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -76,7 +81,7 @@ public class OrganizerContactHtmlBuilderTests
         result.Should().Contain("john@example.com");
         result.Should().Contain("jane@example.com");
         result.Should().Contain("bob@example.com");
-        // Should have dividers between contacts (2 dividers for 3 contacts)
+        // Row dividers between contacts
         result.Should().Contain("border-bottom");
     }
 
@@ -92,7 +97,6 @@ public class OrganizerContactHtmlBuilderTests
         var result = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
 
         result.Should().Contain("Primary");
-        // Primary badge should use crimson color
         result.Should().Contain("#9f1239");
     }
 
@@ -111,7 +115,7 @@ public class OrganizerContactHtmlBuilderTests
     }
 
     [Fact]
-    public void BuildContactListHtml_NoEmail_OmitsEmailLine()
+    public void BuildContactListHtml_NoEmail_ShowsDash()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -123,10 +127,12 @@ public class OrganizerContactHtmlBuilderTests
         result.Should().Contain("John Smith");
         result.Should().Contain("+1234567890");
         result.Should().NotContain("mailto:");
+        // Should show em-dash for missing email
+        result.Should().Contain("&mdash;");
     }
 
     [Fact]
-    public void BuildContactListHtml_NoPhone_OmitsPhoneLine()
+    public void BuildContactListHtml_NoPhone_ShowsDash()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -138,10 +144,12 @@ public class OrganizerContactHtmlBuilderTests
         result.Should().Contain("John Smith");
         result.Should().Contain("john@example.com");
         result.Should().NotContain("tel:");
+        // Should show em-dash for missing phone
+        result.Should().Contain("&mdash;");
     }
 
     [Fact]
-    public void BuildContactListHtml_EmptyEmail_OmitsEmailLine()
+    public void BuildContactListHtml_EmptyEmail_ShowsDash()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -151,10 +159,11 @@ public class OrganizerContactHtmlBuilderTests
         var result = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
 
         result.Should().NotContain("mailto:");
+        result.Should().Contain("&mdash;");
     }
 
     [Fact]
-    public void BuildContactListHtml_EmptyPhone_OmitsPhoneLine()
+    public void BuildContactListHtml_EmptyPhone_ShowsDash()
     {
         var contacts = new List<OrganizerContactInfo>
         {
@@ -164,6 +173,7 @@ public class OrganizerContactHtmlBuilderTests
         var result = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
 
         result.Should().NotContain("tel:");
+        result.Should().Contain("&mdash;");
     }
 
     [Fact]
@@ -177,7 +187,7 @@ public class OrganizerContactHtmlBuilderTests
     }
 
     [Fact]
-    public void BuildContactListHtml_ContactWithOnlyName_ReturnsNameOnly()
+    public void BuildContactListHtml_ContactWithOnlyName_ShowsDashesForEmailAndPhone()
     {
         var contacts = new List<OrganizerContactInfo>
         {

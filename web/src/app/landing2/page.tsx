@@ -14,8 +14,6 @@ import {
   MessageSquare,
   Newspaper,
   ShoppingBag,
-  ChevronLeft,
-  ChevronRight,
   Monitor,
 } from 'lucide-react';
 import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
@@ -26,7 +24,6 @@ import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useCommunityStats } from '@/presentation/hooks/useStats';
 import { usePublishedNewsletters } from '@/presentation/hooks/useNewsletters';
 
-type AnimationMode = 'auto-scroll' | 'slide-in' | 'carousel';
 
 export default function LandingPage2() {
   const { user } = useAuthStore();
@@ -46,34 +43,7 @@ export default function LandingPage2() {
   const { data: stats, isLoading: statsLoading } = useCommunityStats();
   const { data: newsletters, isLoading: newslettersLoading } = usePublishedNewsletters();
 
-  const [animationMode, setAnimationMode] = React.useState<AnimationMode>('auto-scroll');
-  const [carouselIndex, setCarouselIndex] = React.useState(0);
-  const [slideInIndex, setSlideInIndex] = React.useState(0);
-  const [slideDirection, setSlideDirection] = React.useState<'enter' | 'exit'>('enter');
-
   const events = featuredEvents || [];
-
-  // Auto-advance for carousel mode
-  React.useEffect(() => {
-    if (animationMode !== 'carousel' || events.length === 0) return;
-    const interval = setInterval(() => {
-      setCarouselIndex((prev) => (prev + 1) % events.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [animationMode, events.length]);
-
-  // Slide-in one by one
-  React.useEffect(() => {
-    if (animationMode !== 'slide-in' || events.length === 0) return;
-    const interval = setInterval(() => {
-      setSlideDirection('exit');
-      setTimeout(() => {
-        setSlideInIndex((prev) => (prev + 1) % events.length);
-        setSlideDirection('enter');
-      }, 500);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [animationMode, events.length]);
 
   const formatCount = (count: number): string => {
     if (count >= 1000) {
@@ -118,7 +88,7 @@ export default function LandingPage2() {
     return (
       <div
         key={event.id}
-        className="group relative min-w-[220px] h-36 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70 flex-shrink-0"
+        className="group relative min-w-[170px] w-[170px] h-32 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70 flex-shrink-0"
         onClick={() => (window.location.href = `/events/${event.id}`)}
       >
         {hasImage ? (
@@ -181,7 +151,7 @@ export default function LandingPage2() {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {/* Left Content */}
             <div className="text-center lg:text-left">
@@ -247,14 +217,15 @@ export default function LandingPage2() {
             </div>
 
             {/* Right - Cinematic Area */}
-            <div className="relative hidden lg:flex flex-col gap-4">
+            <div className="relative hidden lg:flex flex-col gap-3">
               {/* Top-Right: Cinema Screen Mockup */}
-              <div className="relative" style={{ perspective: '1200px' }}>
+              <div className="relative ml-auto" style={{ perspective: '800px', width: '85%' }}>
                 <div
                   className="relative rounded-lg overflow-hidden shadow-2xl border-4 border-gray-800"
                   style={{
-                    transform: 'rotateY(-8deg) rotateX(2deg)',
+                    transform: 'rotateY(-18deg) rotateX(3deg)',
                     transformStyle: 'preserve-3d',
+                    transformOrigin: 'right center',
                   }}
                 >
                   {/* Screen bezel */}
@@ -319,144 +290,39 @@ export default function LandingPage2() {
               </div>
 
               {/* Bottom-Right: Scrolling Event Cards */}
-              <div className="mt-2">
-                {/* Animation Mode Selector */}
-                <div className="flex items-center justify-between mb-3">
+              <div className="mt-1">
+                <div className="mb-2">
                   <span className="text-white/70 text-xs font-medium uppercase tracking-wider">
                     Featured Events
                   </span>
-                  <select
-                    value={animationMode}
-                    onChange={(e) => setAnimationMode(e.target.value as AnimationMode)}
-                    className="text-xs bg-white/10 border border-white/20 text-white rounded-md px-2 py-1 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-white/30"
-                  >
-                    <option value="auto-scroll" className="text-gray-900">
-                      Auto Scroll
-                    </option>
-                    <option value="slide-in" className="text-gray-900">
-                      Slide In
-                    </option>
-                    <option value="carousel" className="text-gray-900">
-                      Carousel
-                    </option>
-                  </select>
                 </div>
 
                 {eventsLoading || (isAnonymous && locationLoading) ? (
                   <div className="flex gap-3 overflow-hidden">
-                    {[...Array(3)].map((_, i) => (
+                    {[...Array(4)].map((_, i) => (
                       <div
                         key={i}
-                        className="min-w-[220px] h-36 rounded-2xl animate-pulse bg-white/10 ring-2 ring-white/20"
+                        className="min-w-[180px] h-32 rounded-2xl animate-pulse bg-white/10 ring-2 ring-white/20"
                       />
                     ))}
                   </div>
                 ) : eventsError || events.length === 0 ? (
-                  <div className="flex items-center justify-center h-36 rounded-2xl bg-white/10 ring-2 ring-white/20">
+                  <div className="flex items-center justify-center h-32 rounded-2xl bg-white/10 ring-2 ring-white/20">
                     <p className="text-white/60 text-sm">No events to display</p>
                   </div>
-                ) : animationMode === 'auto-scroll' ? (
+                ) : (
                   /* Horizontal Auto-Scroll (Marquee) */
                   <div className="overflow-hidden relative">
                     <div className="flex gap-3 animate-marquee">
                       {/* Duplicate events for seamless loop */}
-                      {[...events, ...events].map((event, index) =>
+                      {[...events, ...events, ...events].map((event, index) =>
                         renderEventCard(event, index % events.length)
                       )}
-                    </div>
-                  </div>
-                ) : animationMode === 'slide-in' ? (
-                  /* Slide In One by One */
-                  <div className="relative h-36 overflow-hidden">
-                    {events.length > 0 && (
-                      <div
-                        className={`absolute inset-0 transition-all duration-500 ease-in-out ${
-                          slideDirection === 'enter'
-                            ? 'translate-x-0 opacity-100'
-                            : 'translate-x-full opacity-0'
-                        }`}
-                      >
-                        {renderEventCard(events[slideInIndex], slideInIndex)}
-                      </div>
-                    )}
-                    {/* Slide indicators */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                      {events.map((_, i) => (
-                        <div
-                          key={i}
-                          className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                            i === slideInIndex ? 'bg-white' : 'bg-white/30'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  /* Carousel with Dots */
-                  <div className="relative">
-                    <div className="overflow-hidden">
-                      <div
-                        className="flex transition-transform duration-500 ease-in-out gap-3"
-                        style={{
-                          transform: `translateX(-${carouselIndex * (220 + 12)}px)`,
-                        }}
-                      >
-                        {events.map((event, index) => renderEventCard(event, index))}
-                      </div>
-                    </div>
-
-                    {/* Navigation arrows */}
-                    {events.length > 1 && (
-                      <>
-                        <button
-                          onClick={() =>
-                            setCarouselIndex(
-                              (prev) => (prev - 1 + events.length) % events.length
-                            )
-                          }
-                          className="absolute -left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setCarouselIndex((prev) => (prev + 1) % events.length)
-                          }
-                          className="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-
-                    {/* Dot indicators */}
-                    <div className="flex justify-center gap-1.5 mt-3">
-                      {events.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCarouselIndex(i)}
-                          className={`w-2 h-2 rounded-full transition-all ${
-                            i === carouselIndex
-                              ? 'bg-white w-4'
-                              : 'bg-white/30 hover:bg-white/50'
-                          }`}
-                        />
-                      ))}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* View All Events Button */}
-              <div className="flex justify-center mt-2">
-                <a
-                  href="/events"
-                  className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-neutral-100 shadow-lg rounded-lg font-semibold transition-all"
-                >
-                  <Calendar className="mr-2 h-5 w-5" />
-                  View All Events
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -620,11 +486,11 @@ export default function LandingPage2() {
             transform: translateX(0);
           }
           100% {
-            transform: translateX(-50%);
+            transform: translateX(-33.33%);
           }
         }
         .animate-marquee {
-          animation: marquee 20s linear infinite;
+          animation: marquee 12s linear infinite;
         }
         .animate-marquee:hover {
           animation-play-state: paused;

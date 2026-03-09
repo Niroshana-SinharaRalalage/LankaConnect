@@ -130,6 +130,20 @@ export class PhotoAlbumRepository {
   }
 
   /**
+   * Bulk delete photos from an album (organizer only, max 50)
+   */
+  async bulkDeletePhotos(
+    eventId: string,
+    albumId: string,
+    photoIds: string[],
+  ): Promise<number> {
+    return await apiClient.post<number>(
+      `${this.albumPath(eventId, albumId)}/photos/bulk-delete`,
+      { photoIds },
+    );
+  }
+
+  /**
    * Set a photo as the album cover
    */
   async setCoverPhoto(eventId: string, albumId: string, photoId: string): Promise<void> {

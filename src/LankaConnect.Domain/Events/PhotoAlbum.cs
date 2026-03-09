@@ -199,6 +199,37 @@ public class PhotoAlbum : BaseEntity
     }
 
     /// <summary>
+    /// Remove multiple photos from the album in a single operation (organizer-only).
+    /// Skips any photo IDs not found — returns the list of successfully removed photos
+    /// so the caller can clean up blob storage.
+    /// </summary>
+    public Result<List<AlbumPhoto>> RemovePhotos(IReadOnlyList<Guid> photoIds, Guid requesterId)
+    {
+        if (OrganizerId != requesterId)
+            return Result<List<AlbumPhoto>>.Failure("Only the event organizer can bulk delete photos");
+
+        var removed = new List<AlbumPhoto>();
+
+        foreach (var photoId in photoIds)
+        {
+            var photo = _photos.FirstOrDefault(p => p.Id == photoId);
+            if (photo == null)
+                continue;
+
+            _photos.Remove(photo);
+            removed.Add(photo);
+        }
+
+        if (removed.Count > 0)
+        {
+            PhotoCount = Math.Max(0, PhotoCount - removed.Count);
+            MarkAsUpdated();
+        }
+
+        return Result<List<AlbumPhoto>>.Success(removed);
+    }
+
+    /// <summary>
     /// Set a photo as the album cover.
     /// </summary>
     public Result SetCoverPhoto(Guid photoId)

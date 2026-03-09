@@ -9,6 +9,7 @@ using LankaConnect.Application.Events.Commands.PhotoAlbums.UpdateAlbumDetails;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.PublishPhotoAlbum;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.UploadAlbumPhoto;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.DeleteAlbumPhoto;
+using LankaConnect.Application.Events.Commands.PhotoAlbums.BulkDeleteAlbumPhotos;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SetAlbumCoverPhoto;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.DeletePhotoAlbum;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification;
@@ -343,6 +344,41 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Bulk delete photos from a photo album.
+    /// Only the event organizer can perform bulk delete.
+    /// Returns the count of successfully deleted photos.
+    /// </summary>
+    [HttpPost("{albumId:guid}/photos/bulk-delete")]
+    [Authorize]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BulkDeleteAlbumPhotos(
+        Guid eventId, Guid albumId, [FromBody] BulkDeletePhotosRequest request)
+    {
+        if (request.PhotoIds == null || request.PhotoIds.Count == 0)
+            return BadRequest(new ProblemDetails { Detail = "At least one photo ID is required" });
+
+        if (request.PhotoIds.Count > 50)
+            return BadRequest(new ProblemDetails { Detail = "Cannot delete more than 50 photos at once" });
+
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "Bulk deleting {PhotoCount} photos from album {AlbumId} for event {EventId} by user {UserId}",
+            request.PhotoIds.Count, albumId, eventId, userId);
+
+        var command = new BulkDeleteAlbumPhotosCommand(
+            AlbumId: albumId,
+            PhotoIds: request.PhotoIds,
+            RequesterId: userId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
     // ==================== DOWNLOAD ====================
 
     /// <summary>
@@ -403,4 +439,15 @@ public class UpdateAlbumDetailsRequest
     /// Optional description for the photo album.
     /// </summary>
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// Request body for bulk deleting photos from an album.
+/// </summary>
+public class BulkDeletePhotosRequest
+{
+    /// <summary>
+    /// List of photo IDs to delete (max 50).
+    /// </summary>
+    public List<Guid> PhotoIds { get; set; } = new();
 }

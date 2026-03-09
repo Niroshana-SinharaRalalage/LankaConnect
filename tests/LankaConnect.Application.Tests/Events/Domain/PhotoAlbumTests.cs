@@ -605,6 +605,93 @@ public class PhotoAlbumTests
 
     #endregion
 
+    #region RemovePhotos (Batch) Tests
+
+    [Fact]
+    public void RemovePhotos_ByOrganizer_ShouldRemoveAll()
+    {
+        var album = CreateDraftAlbum(organizerId: DefaultOrganizerId);
+        var photo1 = AddTestPhoto(album, photoIndex: 1).Value;
+        var photo2 = AddTestPhoto(album, photoIndex: 2).Value;
+        var photo3 = AddTestPhoto(album, photoIndex: 3).Value;
+        album.PhotoCount.Should().Be(3);
+
+        var result = album.RemovePhotos(
+            new List<Guid> { photo1.Id, photo2.Id, photo3.Id },
+            DefaultOrganizerId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(3);
+        album.PhotoCount.Should().Be(0);
+        album.Photos.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RemovePhotos_ByNonOrganizer_ShouldFail()
+    {
+        var album = CreateDraftAlbum(organizerId: DefaultOrganizerId);
+        var photo1 = AddTestPhoto(album, photoIndex: 1).Value;
+        var nonOrganizer = Guid.NewGuid();
+
+        var result = album.RemovePhotos(
+            new List<Guid> { photo1.Id },
+            nonOrganizer);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("organizer");
+        album.PhotoCount.Should().Be(1, "photos should not be removed on failure");
+    }
+
+    [Fact]
+    public void RemovePhotos_WithSomeMissing_ShouldRemoveFoundOnly()
+    {
+        var album = CreateDraftAlbum(organizerId: DefaultOrganizerId);
+        var photo1 = AddTestPhoto(album, photoIndex: 1).Value;
+        AddTestPhoto(album, photoIndex: 2);
+        album.PhotoCount.Should().Be(2);
+
+        var missingId = Guid.NewGuid();
+        var result = album.RemovePhotos(
+            new List<Guid> { photo1.Id, missingId },
+            DefaultOrganizerId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(1);
+        result.Value[0].Id.Should().Be(photo1.Id);
+        album.PhotoCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void RemovePhotos_EmptyList_ShouldReturnEmpty()
+    {
+        var album = CreateDraftAlbum(organizerId: DefaultOrganizerId);
+        AddTestPhoto(album, photoIndex: 1);
+
+        var result = album.RemovePhotos(
+            new List<Guid>(),
+            DefaultOrganizerId);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty();
+        album.PhotoCount.Should().Be(1, "no photos should be removed");
+    }
+
+    [Fact]
+    public void RemovePhotos_ShouldDecrementPhotoCountCorrectly()
+    {
+        var album = CreateDraftAlbum(organizerId: DefaultOrganizerId);
+        var photo1 = AddTestPhoto(album, photoIndex: 1).Value;
+        AddTestPhoto(album, photoIndex: 2);
+        AddTestPhoto(album, photoIndex: 3);
+        album.PhotoCount.Should().Be(3);
+
+        album.RemovePhotos(new List<Guid> { photo1.Id }, DefaultOrganizerId);
+
+        album.PhotoCount.Should().Be(2);
+    }
+
+    #endregion
+
     #region AlbumPhoto Entity Tests
 
     [Fact]

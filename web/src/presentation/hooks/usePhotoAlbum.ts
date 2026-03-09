@@ -220,6 +220,29 @@ export function useDeleteAlbumPhoto() {
 }
 
 /**
+ * useBulkDeleteAlbumPhotos — Delete multiple photos from an album (organizer only)
+ */
+export function useBulkDeleteAlbumPhotos() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      albumId,
+      photoIds,
+    }: {
+      eventId: string;
+      albumId: string;
+      photoIds: string[];
+    }) => photoAlbumRepository.bulkDeletePhotos(eventId, albumId, photoIds),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.albumId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+    },
+  });
+}
+
+/**
  * useSetCoverPhoto — Set a photo as the album cover
  */
 export function useSetCoverPhoto() {

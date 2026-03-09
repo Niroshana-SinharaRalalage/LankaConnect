@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Azure;
 using Azure.Communication.Email;
 using LankaConnect.Application.Common.DTOs;
@@ -194,6 +195,10 @@ public class AzureEmailService : IEmailTemplateService
             _logger.LogError("[DIAG-EMAIL] Template RENDERED - SubjectLen: {SubjectLen}, HtmlLen: {HtmlLen}, TextLen: {TextLen}",
                 subject?.Length ?? 0, htmlBody?.Length ?? 0, textBody?.Length ?? 0);
 
+            // Phase 6A.133: Check for unreplaced template placeholders (defense-in-depth)
+            CheckForUnreplacedPlaceholders(htmlBody, templateName, "html");
+            CheckForUnreplacedPlaceholders(textBody, templateName, "text");
+
             _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
             // Create email message DTO
@@ -244,6 +249,10 @@ public class AzureEmailService : IEmailTemplateService
     {
         try
         {
+            // Phase 6A.133: DIAG logging for attachment path (previously had zero observability)
+            _logger.LogError("[DIAG-EMAIL-ATTACH] SendTemplatedEmailAsync START - Template: {TemplateName}, Recipient: {RecipientEmail}, AttachmentCount: {AttachmentCount}",
+                templateName, recipientEmail, attachments?.Count ?? 0);
+
             _logger.LogInformation("Sending templated email '{TemplateName}' to {RecipientEmail} with {AttachmentCount} attachments",
                 templateName, recipientEmail, attachments?.Count ?? 0);
 
@@ -251,20 +260,32 @@ public class AzureEmailService : IEmailTemplateService
             var template = await _emailTemplateRepository.GetByNameAsync(templateName, cancellationToken);
             if (template == null)
             {
+                _logger.LogError("[DIAG-EMAIL-ATTACH] Template NOT FOUND - TemplateName: {TemplateName}", templateName);
                 _logger.LogWarning("Email template '{TemplateName}' not found in database", templateName);
                 return Result.Failure($"Email template '{templateName}' not found");
             }
 
+            // Phase 6A.133: DIAG logging
+            _logger.LogError("[DIAG-EMAIL-ATTACH] Template FOUND - IsActive: {IsActive}, HasHtml: {HasHtml}, SubjectLength: {SubjectLen}",
+                template.IsActive, !string.IsNullOrEmpty(template.HtmlTemplate), template.SubjectTemplate.Value?.Length ?? 0);
+
             if (!template.IsActive)
             {
+                _logger.LogError("[DIAG-EMAIL-ATTACH] Template INACTIVE - TemplateName: {TemplateName}", templateName);
                 _logger.LogWarning("Email template '{TemplateName}' is not active", templateName);
                 return Result.Failure($"Email template '{templateName}' is not active");
             }
 
             // Render template directly from database content
-            var subject = RenderTemplateContent(template.SubjectTemplate.Value, parameters);
+            var subject = RenderTemplateContent(template.SubjectTemplate.Value ?? string.Empty, parameters);
             var htmlBody = RenderTemplateContent(template.HtmlTemplate ?? string.Empty, parameters);
-            var textBody = RenderTemplateContent(template.TextTemplate, parameters);
+            var textBody = RenderTemplateContent(template.TextTemplate ?? string.Empty, parameters);
+
+            // Phase 6A.133: DIAG logging + placeholder detection
+            _logger.LogError("[DIAG-EMAIL-ATTACH] Template RENDERED - SubjectLen: {SubjectLen}, HtmlLen: {HtmlLen}, TextLen: {TextLen}",
+                subject.Length, htmlBody.Length, textBody.Length);
+            CheckForUnreplacedPlaceholders(htmlBody, templateName, "html");
+            CheckForUnreplacedPlaceholders(textBody, templateName, "text");
 
             _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
@@ -272,9 +293,9 @@ public class AzureEmailService : IEmailTemplateService
             var emailMessage = new EmailMessageDto
             {
                 ToEmail = recipientEmail,
-                Subject = subject,
-                HtmlBody = htmlBody,
-                PlainTextBody = textBody,
+                Subject = subject ?? string.Empty,
+                HtmlBody = htmlBody ?? string.Empty,
+                PlainTextBody = textBody ?? string.Empty,
                 FromEmail = _emailSettings.FromEmail,
                 FromName = _emailSettings.FromName,
                 Priority = 2,
@@ -380,6 +401,34 @@ public class AzureEmailService : IEmailTemplateService
             null => false,
             _ => true
         };
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Detects unreplaced template placeholders after rendering.
+    /// Logs an error if any {{variable}}, {{{variable}}}, {{#if}}, or {{/if}} patterns remain
+    /// in the rendered output, indicating a parameter mismatch or rendering bug.
+    /// </summary>
+    private void CheckForUnreplacedPlaceholders(string? renderedContent, string templateName, string contentType)
+    {
+        if (string.IsNullOrEmpty(renderedContent)) return;
+
+        // Match any remaining Handlebars-style placeholders:
+        // {{{Variable}}} (triple-brace), {{Variable}} (double-brace),
+        // {{#if Variable}} (conditional open), {{/if}} (conditional close),
+        // {{#Variable}} (legacy open), {{/Variable}} (legacy close)
+        var unreplaced = Regex.Matches(renderedContent, @"\{\{\{?\#?(?:if\s+)?/?[A-Za-z]\w*\}?\}\}");
+        if (unreplaced.Count > 0)
+        {
+            var placeholders = unreplaced.Cast<Match>()
+                .Select(m => m.Value)
+                .Distinct()
+                .Take(10)
+                .ToList();
+
+            _logger.LogError(
+                "[PLACEHOLDER-BUG] Template '{TemplateName}' has {Count} unreplaced placeholder(s) in {ContentType}: {Placeholders}",
+                templateName, placeholders.Count, contentType, string.Join(", ", placeholders));
+        }
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
@@ -369,6 +370,16 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 if (registration.Contact != null)
                 {
                     typedParams.WithContactInfo(registration.Contact.Email, registration.Contact.PhoneNumber);
+                }
+
+                // Phase 6A.133: Set organizer contacts (previously missing — caused empty organizer section)
+                if (@event.HasOrganizerContact())
+                {
+                    typedParams.WithOrganizerContacts(
+                        @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList());
                 }
 
                 // Phase 6A.100: Validate parameters

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
-import { Play } from 'lucide-react';
+import { VideoPlayer } from '@/presentation/components/features/landing/VideoPlayer';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -57,28 +57,9 @@ export default function LandingPage4() {
             <div className="relative hidden lg:flex flex-col gap-3">
               {/* Video Area - no frame, just the video with shading */}
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                {/* Video placeholder background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-                  {/* Animated color wash simulating video */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-600/25 via-rose-600/20 to-emerald-600/25 animate-pulse" />
-                    <div
-                      className="absolute inset-0 opacity-20"
-                      style={{
-                        background: 'radial-gradient(circle at 30% 40%, rgba(255,121,0,0.3) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(139,21,56,0.3) 0%, transparent 50%)',
-                        animation: 'float 6s ease-in-out infinite',
-                      }}
-                    />
-                  </div>
-
-                  {/* Play button overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white z-10">
-                    <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center mb-4 hover:bg-white/20 transition-colors cursor-pointer">
-                      <Play className="w-8 h-8 ml-1 opacity-80" />
-                    </div>
-                    <p className="text-lg font-bold opacity-80 tracking-wider">EVENT HIGHLIGHTS</p>
-                    <p className="text-sm opacity-50 mt-1">Video Coming Soon</p>
-                  </div>
+                {/* Video Player */}
+                <div className="absolute inset-0 bg-black">
+                  <VideoPlayer />
                 </div>
 
                 {/* Heavy vignette shading around all edges */}
@@ -104,15 +85,6 @@ export default function LandingPage4() {
 
       <BelowBannerContent newsletters={newsletters} newslettersLoading={newslettersLoading} />
       <Footer />
-
-      {/* Float animation for video placeholder */}
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: scale(1) translate(0, 0); }
-          33% { transform: scale(1.05) translate(2%, -2%); }
-          66% { transform: scale(1.02) translate(-1%, 1%); }
-        }
-      `}</style>
     </div>
   );
 }

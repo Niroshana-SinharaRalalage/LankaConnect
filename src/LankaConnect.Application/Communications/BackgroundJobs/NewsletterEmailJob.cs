@@ -8,6 +8,7 @@ using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -135,6 +136,7 @@ public class NewsletterEmailJob
             string? eventDescription = null;  // Phase 6A.83: Added eventDescription
             string? eventLocation = null;
             bool hasSignUpLists = false;
+            List<OrganizerContactInfo>? organizerContacts = null;  // Phase 6A.133 Email
 
             if (newsletter.EventId.HasValue)
             {
@@ -146,6 +148,19 @@ public class NewsletterEmailJob
                     eventDescription = @event.Description?.Value ?? "";  // Phase 6A.83: Extract event description
                     eventLocation = GetEventLocationString(@event);
                     hasSignUpLists = @event.HasSignUpLists();
+
+                    // Phase 6A.133 Email: Extract organizer contacts if event has them
+                    if (@event.HasOrganizerContact())
+                    {
+                        organizerContacts = @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList();
+
+                        _logger.LogInformation(
+                            "[Phase 6A.133] Newsletter {NewsletterId} has {ContactCount} organizer contacts from event",
+                            newsletterId, organizerContacts.Count);
+                    }
 
                     _logger.LogInformation(
                         "[Phase 6A.74] Event details for newsletter {NewsletterId}: Title={EventTitle}, HasSignUpLists={HasSignUpLists}",
@@ -199,6 +214,12 @@ public class NewsletterEmailJob
                             newsletterTitle: newsletterTitle,
                             newsletterContent: newsletterContent,
                             dashboardUrl: dashboardUrl);
+                    }
+
+                    // Phase 6A.133 Email: Add organizer contacts for event-linked newsletters
+                    if (organizerContacts != null && organizerContacts.Count > 0)
+                    {
+                        emailParams.WithOrganizerContacts(organizerContacts);
                     }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, CancellationToken.None);

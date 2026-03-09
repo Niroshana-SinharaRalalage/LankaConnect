@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
-import { Film } from 'lucide-react';
+import { VideoPlayer } from '@/presentation/components/features/landing/VideoPlayer';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -93,22 +93,11 @@ export default function LandingPage3() {
                       {/* Ambient glow behind screen */}
                       <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/10 via-rose-500/10 to-emerald-500/10 blur-xl" />
 
-                      {/* Screen content */}
-                      <div className="relative w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-r from-orange-600/20 via-rose-600/15 to-emerald-600/20 animate-pulse" />
+                      {/* Screen content - Video Player */}
+                      <div className="relative w-full h-full bg-black overflow-hidden">
+                        <VideoPlayer />
 
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                          <Film className="w-14 h-14 mb-3 opacity-30" />
-                          <p className="text-xl font-bold opacity-80 tracking-widest uppercase">Now Showing</p>
-                          <p className="text-sm opacity-50 mt-2">Event Highlights Coming Soon</p>
-                          <div className="flex gap-2 mt-4">
-                            <div className="w-2 h-2 rounded-full bg-white/20 animate-pulse" />
-                            <div className="w-2 h-2 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '0.3s' }} />
-                            <div className="w-2 h-2 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '0.6s' }} />
-                          </div>
-                        </div>
-
-                        {/* Film grain */}
+                        {/* Film grain overlay */}
                         <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
                           backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
                         }} />

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
-import { Monitor } from 'lucide-react';
+import { VideoPlayer } from '@/presentation/components/features/landing/VideoPlayer';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
@@ -65,19 +65,11 @@ export default function LandingPage2() {
                     <div className="flex items-center justify-center pb-1">
                       <div className="w-2 h-2 rounded-full bg-gray-600" />
                     </div>
-                    <div className="relative w-full aspect-video bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-orange-600/30 via-rose-600/20 to-emerald-600/30 animate-pulse" />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                        <Monitor className="w-12 h-12 mb-3 opacity-40" />
-                        <p className="text-lg font-bold opacity-80 tracking-wider">EVENT HIGHLIGHTS</p>
-                        <p className="text-sm opacity-50 mt-1">Coming Soon</p>
-                        <div className="flex gap-3 mt-4">
-                          {[3, 2, 1].map((num) => (
-                            <div key={num} className="w-8 h-8 rounded-full border-2 border-white/30 flex items-center justify-center text-white/40 text-sm font-mono">{num}</div>
-                          ))}
-                        </div>
-                      </div>
+                    <div className="relative w-full aspect-video bg-black rounded overflow-hidden">
+                      <VideoPlayer />
+                      {/* Scan lines overlay */}
                       <div className="absolute inset-0 pointer-events-none opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px)' }} />
+                      {/* Glare */}
                       <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
                     </div>
                   </div>

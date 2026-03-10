@@ -5,6 +5,7 @@ import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, XCircle, Users } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
 import { NewsletterTypeBadge } from '@/presentation/components/features/newsletters/NewsletterTypeBadge';
@@ -332,16 +333,14 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
               </div>
             )}
 
-            {/* Metro Areas with names */}
+            {/* Metro Areas with names — collapsible to save space */}
             {newsletter.metroAreas && newsletter.metroAreas.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <MapPin className="w-4 h-4 text-indigo-600" />
-                  <span className="text-sm font-medium">
-                    Target Locations ({newsletter.metroAreas.length})
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2 ml-6">
+              <CollapsibleSection
+                title={`Target Locations (${newsletter.metroAreas.length})`}
+                icon={<MapPin className="w-4 h-4 text-indigo-600" />}
+                defaultOpen={false}
+              >
+                <div className="flex flex-wrap gap-2">
                   {newsletter.metroAreas.map((metro) => (
                     <span
                       key={metro.id}
@@ -351,7 +350,7 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
                     </span>
                   ))}
                 </div>
-              </div>
+              </CollapsibleSection>
             )}
 
             {/* Newsletter Subscribers */}

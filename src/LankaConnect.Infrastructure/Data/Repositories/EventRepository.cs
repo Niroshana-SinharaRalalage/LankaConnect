@@ -421,6 +421,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Registrations)
+            .Include(e => e.OrganizerContacts) // Phase 6A.133: Include for manual reminder emails
             .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);
     }
 

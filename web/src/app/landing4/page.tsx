@@ -15,9 +15,10 @@ import { BelowBannerContent } from '@/presentation/components/features/landing/B
 
 /**
  * Landing Page Variant 4: Background Video
- * Video sits behind the hero, covering the right ~60% of the section.
- * Left edge of the video blends into the banner gradient via shading.
- * Hero text sits on top of the darker left area.
+ * 2-column grid. Right side: video fills a large area.
+ * Shading zone around the video uses banner-matching colors
+ * so there is NO sharp border — video blends seamlessly into the banner.
+ * Inner area is crystal clear, outer area fades into banner gradient.
  */
 export default function LandingPage4() {
   const { user } = useAuthStore();
@@ -51,33 +52,44 @@ export default function LandingPage4() {
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Video — positioned behind hero, covering right ~60% */}
-        <div className="absolute top-0 bottom-0 right-0 hidden lg:block" style={{ width: '65%' }}>
-          <VideoPlayer />
-          {/* Left edge fade: blends video into the banner gradient */}
-          <div className="absolute left-0 top-0 bottom-0 pointer-events-none" style={{
-            width: '40%',
-            background: 'linear-gradient(to right, rgba(155,28,56,0.95) 0%, rgba(155,28,56,0.6) 40%, transparent 100%)',
-          }} />
-          {/* Top edge fade */}
-          <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{
-            background: 'linear-gradient(to bottom, rgba(155,28,56,0.5) 0%, transparent 100%)',
-          }} />
-          {/* Bottom edge fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none" style={{
-            background: 'linear-gradient(to top, rgba(30,60,40,0.6) 0%, transparent 100%)',
-          }} />
-        </div>
-
-        {/* Content layer — on top of everything */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="max-w-xl">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <HeroLeftContent stats={stats} statsLoading={statsLoading} />
-          </div>
 
-          {/* Event scroller at the bottom */}
-          <div className="mt-10 lg:mt-14">
-            <EventScroller events={events} isLoading={scrollLoading} />
+            {/* Right — Video area + Event Scroller */}
+            <div className="relative hidden lg:flex flex-col gap-3">
+              {/* Outer area — invisible container, no border, no background */}
+              <div className="relative w-full" style={{ aspectRatio: '16 / 11' }}>
+                {/* Video fills the outer area */}
+                <div className="absolute inset-0 overflow-hidden rounded-lg">
+                  <VideoPlayer />
+                </div>
+
+                {/* Shading zone overlays — use banner gradient colors for seamless blend */}
+                {/* Left shading — rose-800 (#9f1239) matching banner center-right area */}
+                <div className="absolute left-0 top-0 bottom-0 pointer-events-none rounded-l-lg" style={{
+                  width: '30%',
+                  background: 'linear-gradient(to right, rgba(159,18,57,1) 0%, rgba(159,18,57,0.7) 30%, rgba(159,18,57,0.3) 60%, transparent 100%)',
+                }} />
+                {/* Right shading — emerald-800 (#065f46) matching banner right area */}
+                <div className="absolute right-0 top-0 bottom-0 pointer-events-none rounded-r-lg" style={{
+                  width: '15%',
+                  background: 'linear-gradient(to left, rgba(6,95,70,1) 0%, rgba(6,95,70,0.5) 40%, transparent 100%)',
+                }} />
+                {/* Top shading — blend of rose/emerald */}
+                <div className="absolute top-0 left-0 right-0 pointer-events-none rounded-t-lg" style={{
+                  height: '20%',
+                  background: 'linear-gradient(to bottom, rgba(120,25,55,0.9) 0%, rgba(120,25,55,0.4) 50%, transparent 100%)',
+                }} />
+                {/* Bottom shading */}
+                <div className="absolute bottom-0 left-0 right-0 pointer-events-none rounded-b-lg" style={{
+                  height: '20%',
+                  background: 'linear-gradient(to top, rgba(50,70,60,0.9) 0%, rgba(50,70,60,0.4) 50%, transparent 100%)',
+                }} />
+              </div>
+
+              <EventScroller events={events} isLoading={scrollLoading} />
+            </div>
           </div>
         </div>
       </div>

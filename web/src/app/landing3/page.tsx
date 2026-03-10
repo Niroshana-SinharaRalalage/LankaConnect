@@ -15,9 +15,10 @@ import { BelowBannerContent } from '@/presentation/components/features/landing/B
 
 /**
  * Landing Page Variant 3: Theater Screen
- * 2-column layout. Right side has a large outer container (screen boundary).
- * Inside: clear video (inner rectangle) with dark theater surround + curtains
- * shading from clear video edge outward to the screen boundary.
+ * Video sits behind the hero like a cinema screen, covering the right ~60%.
+ * Dark theater surround with curtain drapes frame the video.
+ * Left edge of the video blends into the banner via dark shading.
+ * Hero text sits on top of the darker left area.
  */
 export default function LandingPage3() {
   const { user } = useAuthStore();
@@ -51,70 +52,58 @@ export default function LandingPage3() {
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        {/* Theater screen — positioned behind hero, covering right ~60% */}
+        <div className="absolute top-0 bottom-0 right-0 hidden lg:block" style={{ width: '65%' }}>
+          {/* Dark theater wall base behind the video */}
+          <div className="absolute inset-0 bg-gray-950" />
+
+          {/* Video — crystal clear */}
+          <div className="absolute inset-0">
+            <VideoPlayer />
+          </div>
+
+          {/* Left edge fade: blends video into the banner gradient */}
+          <div className="absolute left-0 top-0 bottom-0 pointer-events-none" style={{
+            width: '40%',
+            background: 'linear-gradient(to right, rgba(155,28,56,0.95) 0%, rgba(100,20,40,0.7) 30%, rgba(20,20,20,0.4) 60%, transparent 100%)',
+          }} />
+          {/* Top edge — dark theater ceiling */}
+          <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none" style={{
+            background: 'linear-gradient(to bottom, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.2) 60%, transparent 100%)',
+          }} />
+          {/* Bottom edge — dark theater floor */}
+          <div className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none" style={{
+            background: 'linear-gradient(to top, rgba(10,10,10,0.7) 0%, rgba(10,10,10,0.2) 60%, transparent 100%)',
+          }} />
+          {/* Right edge fade */}
+          <div className="absolute right-0 top-0 bottom-0 w-10 pointer-events-none" style={{
+            background: 'linear-gradient(to left, rgba(10,10,10,0.5) 0%, transparent 100%)',
+          }} />
+
+          {/* Curtain drape — right edge */}
+          <div className="absolute right-0 top-0 bottom-0 w-6 z-[2]" style={{
+            background: 'linear-gradient(270deg, #7f1d1d 0%, #991b1b 50%, transparent 100%)',
+          }}>
+            <div className="absolute inset-0 opacity-30" style={{
+              backgroundImage: 'repeating-linear-gradient(180deg, transparent, transparent 10px, rgba(0,0,0,0.3) 10px, rgba(0,0,0,0.3) 20px)',
+            }} />
+          </div>
+
+          {/* Top curtain valance */}
+          <div className="absolute top-0 left-0 right-0 h-4 z-[2]" style={{
+            background: 'linear-gradient(180deg, #7f1d1d 0%, #991b1b 50%, transparent 100%)',
+          }} />
+        </div>
+
+        {/* Content layer — on top of everything */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+          <div className="max-w-xl">
             <HeroLeftContent stats={stats} statsLoading={statsLoading} />
+          </div>
 
-            {/* Right — Theater screen + Event Scroller */}
-            <div className="relative hidden lg:flex flex-col gap-3">
-              {/* Outer rectangle — screen boundary with theater surround */}
-              <div className="relative w-full rounded-xl overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.5)]" style={{ aspectRatio: '16 / 10' }}>
-                {/* Dark theater wall (fills outer rectangle) */}
-                <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950" />
-
-                {/* Inner rectangle — clear video, no overlays */}
-                <div className="absolute rounded-sm overflow-hidden z-[1]" style={{
-                  top: '8%', bottom: '8%', left: '10%', right: '10%',
-                }}>
-                  <VideoPlayer />
-                </div>
-
-                {/* Gradient shading: transitions from clear video outward to dark theater surround */}
-                {/* Top shading zone */}
-                <div className="absolute left-0 right-0 top-0 z-[2] pointer-events-none" style={{
-                  height: '16%',
-                  background: 'linear-gradient(to bottom, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.5) 60%, transparent 100%)',
-                }} />
-                {/* Bottom shading zone */}
-                <div className="absolute left-0 right-0 bottom-0 z-[2] pointer-events-none" style={{
-                  height: '16%',
-                  background: 'linear-gradient(to top, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.5) 60%, transparent 100%)',
-                }} />
-                {/* Left shading zone */}
-                <div className="absolute left-0 top-0 bottom-0 z-[2] pointer-events-none" style={{
-                  width: '16%',
-                  background: 'linear-gradient(to right, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.5) 55%, transparent 100%)',
-                }} />
-                {/* Right shading zone */}
-                <div className="absolute right-0 top-0 bottom-0 z-[2] pointer-events-none" style={{
-                  width: '16%',
-                  background: 'linear-gradient(to left, rgba(3,7,18,0.95) 0%, rgba(3,7,18,0.5) 55%, transparent 100%)',
-                }} />
-
-                {/* Curtain drapes — left */}
-                <div className="absolute left-0 top-0 bottom-0 w-5 z-[3]" style={{
-                  background: 'linear-gradient(90deg, #7f1d1d 0%, #991b1b 40%, #450a0a 100%)',
-                }}>
-                  <div className="absolute inset-0 opacity-30" style={{
-                    backgroundImage: 'repeating-linear-gradient(180deg, transparent, transparent 8px, rgba(0,0,0,0.3) 8px, rgba(0,0,0,0.3) 16px)',
-                  }} />
-                </div>
-                {/* Curtain drapes — right */}
-                <div className="absolute right-0 top-0 bottom-0 w-5 z-[3]" style={{
-                  background: 'linear-gradient(270deg, #7f1d1d 0%, #991b1b 40%, #450a0a 100%)',
-                }}>
-                  <div className="absolute inset-0 opacity-30" style={{
-                    backgroundImage: 'repeating-linear-gradient(180deg, transparent, transparent 8px, rgba(0,0,0,0.3) 8px, rgba(0,0,0,0.3) 16px)',
-                  }} />
-                </div>
-                {/* Top curtain valance */}
-                <div className="absolute top-0 left-5 right-5 h-3 z-[3]" style={{
-                  background: 'linear-gradient(180deg, #7f1d1d 0%, #991b1b 60%, transparent 100%)',
-                }} />
-              </div>
-
-              <EventScroller events={events} isLoading={scrollLoading} />
-            </div>
+          {/* Event scroller at the bottom */}
+          <div className="mt-10 lg:mt-14">
+            <EventScroller events={events} isLoading={scrollLoading} />
           </div>
         </div>
       </div>

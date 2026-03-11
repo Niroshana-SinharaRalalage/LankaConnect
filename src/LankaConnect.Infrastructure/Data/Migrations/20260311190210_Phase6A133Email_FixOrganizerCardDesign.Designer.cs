@@ -5,17 +5,20 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311190210_Phase6A133Email_FixOrganizerCardDesign")]
+    partial class Phase6A133Email_FixOrganizerCardDesign
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3076,7 +3079,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                             Code = "Religious",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(79),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6272),
                             DisplayOrder = 1,
                             EnumType = "EventCategory",
                             IntValue = 0,
@@ -3088,7 +3091,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                             Code = "Cultural",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(126),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6322),
                             DisplayOrder = 2,
                             EnumType = "EventCategory",
                             IntValue = 1,
@@ -3100,7 +3103,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                             Code = "Community",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(152),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6381),
                             DisplayOrder = 3,
                             EnumType = "EventCategory",
                             IntValue = 2,
@@ -3112,7 +3115,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                             Code = "Educational",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(178),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6412),
                             DisplayOrder = 4,
                             EnumType = "EventCategory",
                             IntValue = 3,
@@ -3124,7 +3127,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                             Code = "Social",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(202),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6454),
                             DisplayOrder = 5,
                             EnumType = "EventCategory",
                             IntValue = 4,
@@ -3136,7 +3139,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                             Code = "Business",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(225),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6494),
                             DisplayOrder = 6,
                             EnumType = "EventCategory",
                             IntValue = 5,
@@ -3148,7 +3151,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                             Code = "Charity",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(248),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6689),
                             DisplayOrder = 7,
                             EnumType = "EventCategory",
                             IntValue = 6,
@@ -3160,7 +3163,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                             Code = "Entertainment",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(273),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6730),
                             DisplayOrder = 8,
                             EnumType = "EventCategory",
                             IntValue = 7,
@@ -3172,7 +3175,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                             Code = "Workshop",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(296),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6771),
                             DisplayOrder = 9,
                             EnumType = "EventCategory",
                             IntValue = 8,
@@ -3184,7 +3187,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                             Code = "Festival",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(318),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6800),
                             DisplayOrder = 10,
                             EnumType = "EventCategory",
                             IntValue = 9,
@@ -3196,7 +3199,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                             Code = "Ceremony",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(341),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6830),
                             DisplayOrder = 11,
                             EnumType = "EventCategory",
                             IntValue = 10,
@@ -3208,7 +3211,7 @@ namespace LankaConnect.Infrastructure.Migrations
                         {
                             Id = new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                             Code = "Celebration",
-                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 50, 253, DateTimeKind.Utc).AddTicks(364),
+                            CreatedAt = new DateTime(2026, 3, 11, 19, 2, 2, 143, DateTimeKind.Utc).AddTicks(6859),
                             DisplayOrder = 12,
                             EnumType = "EventCategory",
                             IntValue = 11,

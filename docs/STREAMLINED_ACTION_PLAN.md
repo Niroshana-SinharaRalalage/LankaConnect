@@ -7,7 +7,26 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE (2026-03-09)
+## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: TEMPLATE PLACEMENT FIX ✅ COMPLETE (2026-03-10)
+**Date**: 2026-03-10
+**Session**: Phase 6A.133 Email — Fix organizer block placement in newsletter + event-reminder templates + collapsible locations UI
+**Status**: ✅ **COMPLETE (commit 64ff3e96 on develop, deployed to staging, API verified)**
+
+**3 Issues Fixed**:
+1. Newsletter email organizer contacts rendered INSIDE Event Details card → moved to separate card before CLOSING
+2. Newsletter detail page Target Locations too large → wrapped in CollapsibleSection (defaultOpen=false)
+3. Event Reminder no organizer contacts → fixed template + added OrganizerContacts Include to GetWithRegistrationsAsync
+
+**Changes**:
+- EF migration `Phase6A133Email_FixTemplateOrganizerPlacement`: Fix 2 templates (newsletter-notification: move organizer block, event-reminder: clean + re-insert)
+- `EventRepository.cs`: Added `.Include(e => e.OrganizerContacts)` to `GetWithRegistrationsAsync()` (manual reminder fix)
+- `my-newsletters/[id]/page.tsx`: Wrapped metro areas in CollapsibleSection with defaultOpen={false}
+
+**API Verification**: Newsletter sent + event reminder triggered — both render organizer contacts, no organizer placeholders unreplaced
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE (2026-03-09)
 **Date**: 2026-03-09
 **Session**: Phase 6A.133 Email — Add organizer contacts to newsletters + fix refund templates
 **Status**: ✅ **COMPLETE (commit d089f7bb on develop, deployed to staging)**

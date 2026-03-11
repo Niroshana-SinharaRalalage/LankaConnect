@@ -3,7 +3,16 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: TEMPLATE PLACEMENT FIX ✅ COMPLETE
+**Date**: 2026-03-10
+**Session**: Phase 6A.133 Email — Fix organizer block placement + event reminder + collapsible locations
+**Progress**: ✅ **COMPLETE** — 2 files modified, 1 migration created, deployed to staging, API verified
+**Status**: ✅ **COMPLETE** — Commit 64ff3e96, both deployments succeeded
+**Changes**: EF migration (fix newsletter + event-reminder template organizer placement), EventRepository.GetWithRegistrationsAsync (add OrganizerContacts Include), newsletter detail page (CollapsibleSection for metro areas)
+
+---
+
+## PREVIOUS SESSION - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE
 **Date**: 2026-03-09
 **Session**: Phase 6A.133 Email — Add organizer contacts to newsletters + fix refund templates
 **Progress**: ✅ **COMPLETE** — 3 files modified, 1 migration + 1 test file created, deployed to staging

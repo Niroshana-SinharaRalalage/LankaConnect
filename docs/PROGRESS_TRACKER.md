@@ -1,7 +1,61 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-09 - UI Enhancements (Menu, Event Cards, LandingPage2) ✅ COMPLETE*
+*Last Updated: 2026-03-10 - Phase 6A.133 Email: Template Placement Fix + Event Reminder Fix + UI Improvement ✅ COMPLETE*
 
-## 🎯 Current Session Status - UI Enhancements ✅ COMPLETE
+## 🎯 Current Session Status - Phase 6A.133 Email Template Placement Fix ✅ COMPLETE
+
+### Phase 6A.133 Email: Template Placement Fix + Event Reminder + Collapsible Locations - 2026-03-10
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, API verified)**
+
+**Classification**: DB template defect (newsletter + event-reminder) + Repository bug + UI enhancement
+
+**3 Issues Reported (post-deployment of 2026-03-09 fix)**:
+1. **Newsletter email**: Organizer contacts rendered INSIDE Event Details card instead of as a separate card below it
+2. **Newsletter detail page**: Target Locations (84 metro areas) took too much space — needed collapsing
+3. **Event Reminder email**: Still no organizer contact section for "[NorthEastSL]" event
+
+**RCA Findings**:
+1. **Newsletter template**: Previous migration anchored on `<!-- DUAL CTA BUTTONS -->` which is INSIDE the Event Details card. Correct anchor is `<!-- CLOSING -->` which is OUTSIDE the card.
+2. **Event Reminder template**: Template may have old/broken organizer format from earlier migrations. Also `GetWithRegistrationsAsync()` (used by manual reminder trigger) was missing `.Include(e => e.OrganizerContacts)`.
+3. **Newsletter detail page**: Simple UI enhancement — wrap metro areas in existing `CollapsibleSection` component.
+
+**Changes**:
+1. EF migration `Phase6A133Email_FixTemplateOrganizerPlacement` — Fixes 2 templates:
+   - `template-newsletter-notification`: Remove organizer block from inside Event Details card, re-insert before `<!-- CLOSING -->`
+   - `template-event-reminder`: Remove any old/broken organizer blocks, insert standardized block before `<!-- CLOSING -->`
+2. `EventRepository.cs` — Added `.Include(e => e.OrganizerContacts)` to `GetWithRegistrationsAsync()` (fixes manual reminder trigger)
+3. `my-newsletters/[id]/page.tsx` — Wrapped metro areas in `CollapsibleSection` with `defaultOpen={false}`
+
+**API Verification**:
+- Newsletter sent (8230d2e9): HtmlLen=58856, only `{{UnsubscribeUrl}}` unreplaced — organizer contacts rendered
+- Event Reminder sent for NorthEastSL: HtmlLen=61466, SQL JOINs `event_organizer_contacts`, only `{{UserName}}`/`{{EventLocation}}` unreplaced in text
+- Both deployments (backend + frontend) succeeded
+
+---
+
+### Phase 6A.133 Email: Newsletter + Refund Template Fixes - 2026-03-09
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, 12 new tests passing)**
+
+**Classification**: Feature gap (newsletter) + Database template defect (refund templates)
+
+**RCA Findings**:
+1. **Event Reminder** (user-reported): NOT a bug — test event "Christmas Dinner Dance 2025" has `publishOrganizerContact=true` but zero contacts defined. Code is correct at all layers.
+2. **Newsletter emails**: Feature gap — `NewsletterEmailParams` had no organizer contact support. Job loads Event entity but never accessed `OrganizerContacts`.
+3. **Refund templates**: `template-refund-requested` had unwrapped organizer HTML (always renders). `template-refund-completed` had no organizer section at all. Code (`RefundEmailParams`) was correct.
+
+**Changes**:
+1. `NewsletterEmailParams.cs` — Added 6 organizer contact properties, `WithOrganizerContacts()`, updated `ToDictionary()`
+2. `NewsletterEmailJob.cs` — Extract organizer contacts from Event entity, call `WithOrganizerContacts()` for event-linked newsletters
+3. EF migration `Phase6A133Email_FixRemainingOrganizerTemplates` — Fixes 3 templates:
+   - `template-newsletter-notification`: Insert organizer contact block before CTA buttons
+   - `template-refund-requested`: Replace unwrapped organizer card with standardized `{{{OrganizerContactsHtml}}}` block
+   - `template-refund-completed`: Insert missing organizer contact block
+4. 12 new unit tests for `NewsletterEmailParamsTests`
+
+---
+
+## Previous Session - UI Enhancements ✅ COMPLETE
 
 ### UI Enhancements - 2026-03-09
 

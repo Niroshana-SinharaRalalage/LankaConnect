@@ -421,6 +421,7 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Registrations)
+            .Include(e => e.Images)  // Phase 6A.133: Load images for email template
             .Include(e => e.OrganizerContacts) // Phase 6A.133: Include for manual reminder emails
             .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);
     }
@@ -520,6 +521,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await _dbSet
             .AsNoTracking()
             .Include(e => e.Registrations) // Include registrations for attendee notifications
+            .Include(e => e.Images)  // Phase 6A.133: Load images for event reminder email template
             .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for event reminder emails
             .Where(e => e.StartDate >= startTime && e.StartDate <= endTime)
             .Where(e => statuses.Contains(e.Status))

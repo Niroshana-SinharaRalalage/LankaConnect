@@ -7,7 +7,18 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: TEMPLATE PLACEMENT FIX ✅ COMPLETE (2026-03-10)
+## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE (2026-03-11)
+**Date**: 2026-03-11
+**Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
+**Status**: ✅ **COMPLETE (commit 0359d55f on develop, deployed to staging, API verified)**
+
+**Issue**: Simplified single-table organizer block didn't match established card design pattern (nested tables with header + content).
+**Fix**: EF migration `Phase6A133Email_FixOrganizerCardDesign` replaces block in both newsletter + event-reminder templates.
+**Verification**: Event reminder HtmlLen=62660, newsletter sent, no organizer placeholders unreplaced.
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 EMAIL: TEMPLATE PLACEMENT FIX ✅ COMPLETE (2026-03-10)
 **Date**: 2026-03-10
 **Session**: Phase 6A.133 Email — Fix organizer block placement in newsletter + event-reminder templates + collapsible locations UI
 **Status**: ✅ **COMPLETE (commit 64ff3e96 on develop, deployed to staging, API verified)**

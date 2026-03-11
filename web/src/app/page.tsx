@@ -5,7 +5,7 @@ import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag, Monitor } from 'lucide-react';
+import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag } from 'lucide-react';
 import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
 import { MARKETPLACE_ITEMS } from '@/config/marketplaceItems';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
@@ -338,22 +338,6 @@ export default function Home() {
       </div>
 
 
-      {/* Preview New Landing Page Variants Banner */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 py-3">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-3 flex-wrap">
-          <Monitor className="h-4 w-4 text-amber-400" />
-          <span className="text-white/80 text-sm">Preview new designs:</span>
-          <a href="/landing2" className="inline-flex items-center gap-1 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-gray-900 text-xs font-semibold rounded-full transition-colors">
-            TV Display
-          </a>
-          <a href="/landing3" className="inline-flex items-center gap-1 px-3 py-1 bg-rose-500 hover:bg-rose-400 text-white text-xs font-semibold rounded-full transition-colors">
-            Theater Screen
-          </a>
-          <a href="/landing4" className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-semibold rounded-full transition-colors">
-            Background Video
-          </a>
-        </div>
-      </div>
 
       {/* Main Content */}
       {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with header */}

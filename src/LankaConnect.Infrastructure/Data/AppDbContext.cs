@@ -91,6 +91,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Donation Entity Set (Standalone Donation System)
     public DbSet<Donation> Donations => Set<Donation>(); // Event donations with Stripe payment lifecycle
 
+    // Financial Feature Entity Sets (Collections, Sponsors, Add-ons)
+    public DbSet<Collection> Collections => Set<Collection>(); // Event fund contributions with Stripe payment lifecycle
+    public DbSet<Sponsor> Sponsors => Set<Sponsor>(); // Money (Stripe) or item-based sponsorships
+    public DbSet<AddOnDefinition> AddOnDefinitions => Set<AddOnDefinition>(); // Organizer-defined purchasable add-on items
+    public DbSet<AddOnPurchase> AddOnPurchases => Set<AddOnPurchase>(); // Add-on purchases with Stripe payment lifecycle
+
     // Badge Entity Sets (Phase 6A.25)
     public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
     public DbSet<EventBadge> EventBadges => Set<EventBadge>(); // Phase 6A.25: Event-Badge assignments
@@ -181,6 +187,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Donation entity configuration (Standalone Donation System)
         modelBuilder.ApplyConfiguration(new DonationEntityConfiguration());
+
+        // Financial Feature configurations (Collections, Sponsors, Add-ons)
+        modelBuilder.ApplyConfiguration(new CollectionEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new SponsorEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new AddOnDefinitionEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new AddOnPurchaseEntityConfiguration());
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
@@ -353,6 +365,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
             typeof(FormAnswer), // Custom Form/Survey Sign-Up Feature
             typeof(Donation), // Standalone Donation System
+            typeof(Collection), // Event fund contributions (Financial Features)
+            typeof(Sponsor), // Money/item sponsorships (Financial Features)
+            typeof(AddOnDefinition), // Purchasable add-on items (Financial Features)
+            typeof(AddOnPurchase), // Add-on purchases (Financial Features)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(PhotoAlbum), // After Event Photo Album Feature
             typeof(AlbumPhoto) // After Event Photo Album Feature

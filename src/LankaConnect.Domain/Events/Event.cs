@@ -83,6 +83,15 @@ public class Event : BaseEntity
     // Donation Configuration: Optional donation settings for the event
     public DonationConfiguration? DonationConfig { get; private set; }
 
+    // Collection Configuration: Optional event fund / fundraising settings
+    public CollectionConfiguration? CollectionConfig { get; private set; }
+
+    // Sponsor Configuration: Optional sponsorship settings (money + item)
+    public SponsorConfiguration? SponsorConfig { get; private set; }
+
+    // Add-on Configuration: Optional purchasable items settings
+    public AddOnConfiguration? AddOnConfig { get; private set; }
+
     public IReadOnlyList<Registration> Registrations => _registrations.AsReadOnly();
     public IReadOnlyList<EventImage> Images => _images.AsReadOnly(); // Epic 2 Phase 2: Read-only image collection
     public IReadOnlyList<EventVideo> Videos => _videos.AsReadOnly(); // Epic 2 Phase 2: Read-only video collection
@@ -2237,6 +2246,113 @@ public class Event : BaseEntity
 
         return DonationConfig!.ValidateAmount(amount);
     }
+
+    #endregion
+
+    #region Collection Configuration
+
+    /// <summary>
+    /// Sets or updates the collection (event fund) configuration for this event.
+    /// </summary>
+    public Result SetCollectionConfiguration(CollectionConfiguration config)
+    {
+        if (config == null)
+            return Result.Failure("Collection configuration is required");
+
+        CollectionConfig = config;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Disables collections for this event.
+    /// </summary>
+    public Result DisableCollections()
+    {
+        CollectionConfig = CollectionConfiguration.Disabled();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Whether collections are currently enabled for this event.
+    /// </summary>
+    public bool AreCollectionsEnabled() => CollectionConfig?.IsEnabled == true;
+
+    /// <summary>
+    /// Validates a collection contribution amount against the event's collection configuration.
+    /// </summary>
+    public Result ValidateCollectionAmount(decimal amount)
+    {
+        if (!AreCollectionsEnabled())
+            return Result.Failure("Collections are not enabled for this event");
+
+        return CollectionConfig!.ValidateAmount(amount);
+    }
+
+    #endregion
+
+    #region Sponsor Configuration
+
+    /// <summary>
+    /// Sets or updates the sponsor configuration for this event.
+    /// </summary>
+    public Result SetSponsorConfiguration(SponsorConfiguration config)
+    {
+        if (config == null)
+            return Result.Failure("Sponsor configuration is required");
+
+        SponsorConfig = config;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Disables sponsorships for this event.
+    /// </summary>
+    public Result DisableSponsors()
+    {
+        SponsorConfig = SponsorConfiguration.Disabled();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Whether sponsorships are currently enabled for this event.
+    /// </summary>
+    public bool AreSponsorsEnabled() => SponsorConfig?.IsEnabled == true;
+
+    #endregion
+
+    #region Add-on Configuration
+
+    /// <summary>
+    /// Sets or updates the add-on configuration for this event.
+    /// </summary>
+    public Result SetAddOnConfiguration(AddOnConfiguration config)
+    {
+        if (config == null)
+            return Result.Failure("Add-on configuration is required");
+
+        AddOnConfig = config;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Disables add-ons for this event.
+    /// </summary>
+    public Result DisableAddOns()
+    {
+        AddOnConfig = AddOnConfiguration.Disabled();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Whether add-ons are currently enabled for this event.
+    /// </summary>
+    public bool AreAddOnsEnabled() => AddOnConfig?.IsEnabled == true;
 
     #endregion
 }

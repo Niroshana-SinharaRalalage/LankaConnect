@@ -45,6 +45,21 @@ public interface IStripePaymentService
     Task<Result<DonationCheckoutResult>> CreateDonationCheckoutSessionAsync(
         CreateDonationCheckoutSessionRequest request,
         CancellationToken cancellationToken = default);
+
+    // Collection (Event Fund) Feature: Create checkout session for contributions
+    Task<Result<CollectionCheckoutResult>> CreateCollectionCheckoutSessionAsync(
+        CreateCollectionCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Sponsor Feature: Create checkout session for money sponsorships
+    Task<Result<SponsorCheckoutResult>> CreateSponsorCheckoutSessionAsync(
+        CreateSponsorCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Add-On Purchase Feature: Create checkout session for add-on purchases
+    Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnPurchaseCheckoutSessionAsync(
+        CreateAddOnPurchaseCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -568,6 +583,87 @@ public class CreateDonationCheckoutSessionRequest
 /// Result of creating a donation Stripe Checkout session.
 /// </summary>
 public class DonationCheckoutResult
+{
+    public required string SessionId { get; init; }
+    public required string CheckoutUrl { get; init; }
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to create a Stripe Checkout session for an event fund collection contribution.
+/// </summary>
+public class CreateCollectionCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid CollectionId { get; init; }
+    public required string EventTitle { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Result of creating a collection Stripe Checkout session.
+/// </summary>
+public class CollectionCheckoutResult
+{
+    public required string SessionId { get; init; }
+    public required string CheckoutUrl { get; init; }
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to create a Stripe Checkout session for a money sponsorship.
+/// </summary>
+public class CreateSponsorCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid SponsorId { get; init; }
+    public required string EventTitle { get; init; }
+    public string? SponsorOrganization { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Result of creating a sponsor Stripe Checkout session.
+/// </summary>
+public class SponsorCheckoutResult
+{
+    public required string SessionId { get; init; }
+    public required string CheckoutUrl { get; init; }
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to create a Stripe Checkout session for an add-on purchase.
+/// Price is snapshotted from AddOnDefinition at checkout creation time (M3).
+/// </summary>
+public class CreateAddOnPurchaseCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid AddOnPurchaseId { get; init; }
+    public Guid AddOnDefinitionId { get; init; }
+    public required string EventTitle { get; init; }
+    public required string AddOnName { get; init; }
+    public int Quantity { get; init; }
+    public decimal UnitPrice { get; init; }
+    public decimal TotalAmount { get; init; }
+    public string Currency { get; init; } = "USD";
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Result of creating an add-on purchase Stripe Checkout session.
+/// </summary>
+public class AddOnPurchaseCheckoutResult
 {
     public required string SessionId { get; init; }
     public required string CheckoutUrl { get; init; }

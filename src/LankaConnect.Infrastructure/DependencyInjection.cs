@@ -423,6 +423,12 @@ public static class DependencyInjection
         // Donation Feature repository
         services.AddScoped<IDonationRepository, DonationRepository>();
 
+        // Financial Feature repositories (Collections, Sponsors, Add-ons)
+        services.AddScoped<ICollectionRepository, CollectionRepository>();
+        services.AddScoped<ISponsorRepository, SponsorRepository>();
+        services.AddScoped<IAddOnDefinitionRepository, AddOnDefinitionRepository>();
+        services.AddScoped<IAddOnPurchaseRepository, AddOnPurchaseRepository>();
+
         // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
         services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();
 

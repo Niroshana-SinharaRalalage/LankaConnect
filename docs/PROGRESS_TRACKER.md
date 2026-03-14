@@ -1,7 +1,476 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-02-28 - Phase 6A.129b Fix Missing Signup Forms Button in Email Templates ✅ DEPLOYED*
+*Last Updated: 2026-03-11 - Phase 6A.133 Email: Organizer Card Design Fix ✅ COMPLETE*
 
-## 🎯 Current Session Status - Phase 6A.129b: Fix Missing "View Signup Forms" Button in Email Templates ✅ DEPLOYED
+## 🎯 Current Session Status - Phase 6A.133 Email Organizer Card Design Fix ✅ COMPLETE
+
+### Phase 6A.133 Email: Organizer Card Design Fix - 2026-03-11
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, API verified)**
+
+**Classification**: DB template defect — simplified organizer card HTML didn't match established design pattern
+
+**Issue**: Previous migration inserted a minimal single-table organizer block (`border-radius: 8px`, `margin: 20px 0 0`) that didn't match the established nested-table card design (header section + content section, `border-radius: 12px`, `border-bottom` divider) used in registration-confirmation and other templates. Caused visual formatting issues in newsletter and event reminder emails.
+
+**Changes**:
+1. EF migration `Phase6A133Email_FixOrganizerCardDesign` — Replaces simplified organizer block with proper nested-table card structure in both `template-newsletter-notification` and `template-event-reminder`
+
+**API Verification**:
+- Newsletter sent (70e30597): Sent successfully to email group
+- Event Reminder for Christmas Dinner Dance: HtmlLen=62660 (increased from 61466), 4 recipients, only `{{UserName}}`/`{{EventLocation}}` unreplaced in text, no organizer placeholders left
+
+**Commit**: 0359d55f on develop, deploy run 22969863049 succeeded
+
+---
+
+### Phase 6A.133 Email: Template Placement Fix + Event Reminder + Collapsible Locations - 2026-03-10
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, API verified)**
+
+**Classification**: DB template defect (newsletter + event-reminder) + Repository bug + UI enhancement
+
+**3 Issues Reported (post-deployment of 2026-03-09 fix)**:
+1. **Newsletter email**: Organizer contacts rendered INSIDE Event Details card instead of as a separate card below it
+2. **Newsletter detail page**: Target Locations (84 metro areas) took too much space — needed collapsing
+3. **Event Reminder email**: Still no organizer contact section for "[NorthEastSL]" event
+
+**RCA Findings**:
+1. **Newsletter template**: Previous migration anchored on `<!-- DUAL CTA BUTTONS -->` which is INSIDE the Event Details card. Correct anchor is `<!-- CLOSING -->` which is OUTSIDE the card.
+2. **Event Reminder template**: Template may have old/broken organizer format from earlier migrations. Also `GetWithRegistrationsAsync()` (used by manual reminder trigger) was missing `.Include(e => e.OrganizerContacts)`.
+3. **Newsletter detail page**: Simple UI enhancement — wrap metro areas in existing `CollapsibleSection` component.
+
+**Changes**:
+1. EF migration `Phase6A133Email_FixTemplateOrganizerPlacement` — Fixes 2 templates:
+   - `template-newsletter-notification`: Remove organizer block from inside Event Details card, re-insert before `<!-- CLOSING -->`
+   - `template-event-reminder`: Remove any old/broken organizer blocks, insert standardized block before `<!-- CLOSING -->`
+2. `EventRepository.cs` — Added `.Include(e => e.OrganizerContacts)` to `GetWithRegistrationsAsync()` (fixes manual reminder trigger)
+3. `my-newsletters/[id]/page.tsx` — Wrapped metro areas in `CollapsibleSection` with `defaultOpen={false}`
+
+**API Verification**:
+- Newsletter sent (8230d2e9): HtmlLen=58856, only `{{UnsubscribeUrl}}` unreplaced — organizer contacts rendered
+- Event Reminder sent for NorthEastSL: HtmlLen=61466, SQL JOINs `event_organizer_contacts`, only `{{UserName}}`/`{{EventLocation}}` unreplaced in text
+- Both deployments (backend + frontend) succeeded
+
+---
+
+### Phase 6A.133 Email: Newsletter + Refund Template Fixes - 2026-03-09
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, 12 new tests passing)**
+
+**Classification**: Feature gap (newsletter) + Database template defect (refund templates)
+
+**RCA Findings**:
+1. **Event Reminder** (user-reported): NOT a bug — test event "Christmas Dinner Dance 2025" has `publishOrganizerContact=true` but zero contacts defined. Code is correct at all layers.
+2. **Newsletter emails**: Feature gap — `NewsletterEmailParams` had no organizer contact support. Job loads Event entity but never accessed `OrganizerContacts`.
+3. **Refund templates**: `template-refund-requested` had unwrapped organizer HTML (always renders). `template-refund-completed` had no organizer section at all. Code (`RefundEmailParams`) was correct.
+
+**Changes**:
+1. `NewsletterEmailParams.cs` — Added 6 organizer contact properties, `WithOrganizerContacts()`, updated `ToDictionary()`
+2. `NewsletterEmailJob.cs` — Extract organizer contacts from Event entity, call `WithOrganizerContacts()` for event-linked newsletters
+3. EF migration `Phase6A133Email_FixRemainingOrganizerTemplates` — Fixes 3 templates:
+   - `template-newsletter-notification`: Insert organizer contact block before CTA buttons
+   - `template-refund-requested`: Replace unwrapped organizer card with standardized `{{{OrganizerContactsHtml}}}` block
+   - `template-refund-completed`: Insert missing organizer contact block
+4. 12 new unit tests for `NewsletterEmailParamsTests`
+
+---
+
+## Previous Session - UI Enhancements ✅ COMPLETE
+
+### UI Enhancements - 2026-03-09
+
+**Status**: ✅ **COMPLETE (build verified, ready for staging deployment)**
+
+**Classification**: UI Enhancement — Menu simplification, event card CTA improvements, new cinematic landing page.
+
+**Changes**:
+1. **Menu Bar Simplification** (`Header.tsx`): Removed Forums/Business/Marketplace links. Anonymous users see only Events. Logged-in users see Events, My Dashboard, Create Event button (with role-based logic: EventOrganizer→create page, GeneralUser→UpgradeModal).
+2. **Event Card Button Text** (`events/page.tsx`): Changed "View Details" to "View Details / Register →" for free events and "View Details / Buy Tickets →" for paid events.
+3. **New LandingPage2** (`landing2/page.tsx`): Cinematic landing page with angled TV/cinema screen mockup (placeholder for future video clips) and scrolling event cards with 3 switchable animation modes (auto-scroll, slide-in, carousel).
+4. **Landing Page Navigation** (`page.tsx`): Added "Preview New Design" banner linking to `/landing2`.
+
+---
+
+## Previous Session - Multi-Album Redesign + Bug Fixes ✅ COMPLETE
+
+### Multi-Album Photo System Redesign - 2026-03-08/09
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging, all API endpoints verified)**
+
+**Classification**: Feature Redesign — Converted single-album photo system to multi-album system modeled after Sign-Up Lists pattern, then fixed 5 UI bugs found in user testing.
+
+**Problem**: Single-album design was inadequate. User required multiple named albums per event, manual publish control, separate email notifications, and a public carousel view with ZIP download.
+
+**Solution — Multi-Album Redesign (6 Phases)**:
+- **Phase 1 (Domain)**: Added `Name` property to PhotoAlbum, removed Close/Moderation/UploadPermission, simplified to Draft/Published only, allow photo uploads in both states
+- **Phase 2 (DB)**: EF Core migration `MultiAlbumRedesign` — added `name` column (NULLABLE→backfill→NOT NULL), composite unique index on (EventId, Name), dropped removed columns
+- **Phase 3 (Application + API)**: Rewrote commands/queries for multi-album (albumId params), new endpoints: UpdateAlbumDetails, DeleteAlbum, SendNotification, DownloadZip (streaming)
+- **Phase 4 (Frontend Infra)**: Updated TypeScript types, rewrote API repository and React Query hooks for multi-album
+- **Phase 5 (Cleanup)**: Deleted unused AlbumModerationQueue, AlbumSettingsForm components
+- **Phase 6 (Public UI)**: Created AlbumPhotoCarousel component, added "After Event Albums" section to event details with tabs/carousel/ZIP download, updated photos page for multi-album
+
+**Bug Fixes (5 issues from user testing)**:
+1. **Tab switching broken** on /photos page — useMemo priority inversion (URL param checked before local state)
+2. **Delete button non-functional** — handleDeletePhoto was a stub, never called useDeleteAlbumPhoto mutation
+3. **"After Event Albums" not collapsed** — defaultOpen={true} instead of false
+4. **Cannot edit album** — No inline edit UI despite hook existing. Added inline edit form for name/description
+5. **Low image quality** — AlbumPhotoCard used thumbnailUrl (150px) instead of mediumUrl (800px)
+
+**Files Changed**: 49+ files (8611 insertions, 4151 deletions for redesign; 201 insertions, 98 deletions for bug fixes)
+
+**API Endpoints Verified on Staging**:
+- POST /api/events/{id}/albums — Create album (name required)
+- GET /api/events/{id}/albums — List all albums
+- PUT /api/events/{id}/albums/{albumId} — Update name/description
+- DELETE /api/events/{id}/albums/{albumId} — Delete draft album
+- POST /api/events/{id}/albums/{albumId}/publish — Publish (requires photos)
+- POST /api/events/{id}/albums/{albumId}/notify — Send email notification
+- GET /api/events/{id}/albums/{albumId}/photos — Paginated photos
+- POST /api/events/{id}/albums/{albumId}/photos — Upload photo
+- DELETE /api/events/{id}/albums/{albumId}/photos/{photoId} — Delete photo
+- GET /api/events/{id}/albums/{albumId}/download — Download ZIP (streaming)
+
+**Tests**: 41 PhotoAlbum domain tests passing, full suite passing
+**Commits**: Multi-album redesign commit + fd7a6e06 (bug fixes)
+
+---
+
+## ⏸️ Previous Session - Photo Album Tab Inline Fix ✅ COMPLETE
+
+### Photo Album Manage Tab UX Fix - 2026-03-07
+
+**Status**: ✅ **COMPLETE (deployed to Azure staging)**
+
+**Commits**: ec0c7c43 (enum fix), e5fcfa07 (inline tab)
+
+---
+
+## ⏸️ Previous Session - After Event Photo Album Feature ✅ COMPLETE
+
+### After Event Photo Album Feature - 2026-03-07
+
+**Status**: ✅ **COMPLETE (deployed to staging, all 8 API endpoints verified)**
+
+**Classification**: New Feature — Comprehensive photo album system for events allowing organizers and attendees to share photos after events.
+
+**Key Capabilities**:
+- PhotoAlbum aggregate root with lifecycle (Draft → Published → Closed)
+- 3-size image processing (original, 800px medium, 150px thumbnail) with WebP conversion
+- EXIF metadata stripping for privacy (GPS, camera info, timestamps)
+- 7-day auto-deletion via BackgroundService + Azure Blob lifecycle
+- Cursor-based pagination for infinite scroll gallery
+- Moderation system (None, PostModeration, PreApproval)
+- Upload permissions (OrganizerOnly, RegisteredAttendees, AnyAuthenticated)
+- Email notification to attendees on album publish
+
+**Architecture**:
+| Layer | Files | Key Components |
+|-------|-------|----------------|
+| Domain | 13 files | PhotoAlbum aggregate, AlbumPhoto entity, 4 enums, 5 domain events, IPhotoAlbumRepository |
+| Application | 15 files | 9 commands, 3 queries, 3 DTOs, PhotoAlbumPublishedEmailHandler |
+| Infrastructure | 6 files | AlbumImageService (SixLabors.ImageSharp 3.1.12), PhotoAlbumRepository, AlbumPhotoCleanupService, EF Core config + migration |
+| API | 1 file | PhotoAlbumsController (11 endpoints at /api/events/{eventId}/album) |
+| Frontend | 10 files | Types, repository, React Query hooks (infinite scroll), 5 components, 2 pages |
+| Tests | 1 file | 104 domain unit tests (all passing, 1630 total suite) |
+
+**API Endpoints Verified on Staging**:
+1. GET /api/events/{id}/album — 204 (no album) / 200 (album exists)
+2. POST /api/events/{id}/album — 200 (create with defaults)
+3. PUT /api/events/{id}/album/settings — 200 (update permissions/moderation/description)
+4. POST /api/events/{id}/album/publish — 200 (Draft → Published)
+5. POST /api/events/{id}/album/close — 200 (Published → Closed)
+6. POST /api/events/{id}/album/photos — upload photo (multipart/form-data)
+7. GET /api/events/{id}/album/photos — 200 (paginated, cursor-based)
+8. GET /api/events/{id}/album/photos/pending — 200 (moderation queue)
+
+**Commits**: 854e4bae, df916d75
+
+---
+
+## ⏸️ Previous Session - Phase 6A.135: Newsletter Query Handlers Fix ✅ COMPLETE
+
+### Phase 6A.135: Fix EmailGroups and MetroAreas Population in Newsletter Query Handlers - 2026-03-07
+
+**Status**: ✅ **COMPLETE (deployed to staging, API verified)**
+
+**Classification**: Bug Fix — All 4 newsletter query handlers were returning empty lists for `emailGroups` and `metroAreas`, despite the data existing in the database.
+
+**Problem**: All 4 newsletter query handlers hardcoded `EmailGroups = new List<...>()` and `MetroAreas = new List<...>()` as empty lists in their DTO mappings. The `GetPublishedNewslettersQueryHandler` also lacked `IApplicationDbContext` injection entirely, making it impossible to perform any additional queries.
+
+**Solution**: Each handler was updated to look up the actual email group and metro area entities using IDs already available from repository `Include` navigation properties, then populate the DTO fields with real names and data. A batch lookup pattern was applied consistently across the three multi-newsletter handlers.
+
+**Changes**:
+
+| Handler | Change | Key Files |
+|---------|--------|-----------|
+| `GetNewsletterByIdQueryHandler` | Direct entity lookups using IDs from already-included navigation properties | `GetNewsletterByIdQueryHandler.cs` |
+| `GetNewslettersByCreatorQueryHandler` | Junction table queries + batch entity lookups for all newsletters in result set | `GetNewslettersByCreatorQueryHandler.cs` |
+| `GetNewslettersByEventQueryHandler` | Same batch pattern as creator handler | `GetNewslettersByEventQueryHandler.cs` |
+| `GetPublishedNewslettersQueryHandler` | Added `IApplicationDbContext` DI + batch lookup pattern | `GetPublishedNewslettersQueryHandler.cs` |
+
+**Files Modified**:
+- `src/LankaConnect.Application/Communications/Queries/GetNewsletterById/GetNewsletterByIdQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetNewslettersByCreator/GetNewslettersByCreatorQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetNewslettersByEvent/GetNewslettersByEventQueryHandler.cs`
+- `src/LankaConnect.Application/Communications/Queries/GetPublishedNewsletters/GetPublishedNewslettersQueryHandler.cs`
+
+**Testing**: Build succeeded. Deployed to Azure staging. API verified — `emailGroups` now returns names correctly.
+
+---
+
+## 🎯 Previous Session - Email Deliverability Improvements ✅ COMPLETE
+
+### Email Deliverability: List-Unsubscribe, SPF, DMARC, Feedback-ID — 2026-03-06
+
+**Status**: ✅ **COMPLETE (commits 95505de5, fa0bd738 on develop)**
+
+**Classification**: Infrastructure/Email Deliverability — Gmail/Yahoo compliance and spam prevention.
+
+**Problem**: Emails sent from LankaConnect (via Azure Communication Services) landing in spam, especially when sent to Google Groups. Root causes: missing List-Unsubscribe headers (Google/Yahoo 2024 bulk sender requirement), SPF record missing ACS include, DMARC with no reporting, no Feedback-ID header.
+
+**Solution**: Multi-layered fix addressing DNS, application code, and UI:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Shared | Created `ListUnsubscribeHeaderBuilder` utility (RFC 2369 + RFC 8058) | `ListUnsubscribeHeaderBuilder.cs` |
+| Shared | Added `IUnsubscribeableEmail` interface for marketing email opt-in | `IEmailParameters.cs` |
+| Shared | Implemented on `EventPublishedEmailParams`, `EventDetailsEmailParams`, `NewsletterEmailParams` | Email param files |
+| Infrastructure | Header propagation in `AzureEmailService` (custom headers → Azure SDK) | `AzureEmailService.cs` |
+| Infrastructure | Auto-detect `IUnsubscribeableEmail`, build headers in `InfrastructureTypedEmailService` | `InfrastructureTypedEmailService.cs` |
+| Infrastructure | Added `Feedback-ID` header for Google Postmaster Tools tracking | `InfrastructureTypedEmailService.cs` |
+| API | RFC 8058 POST `/api/newsletter/unsubscribe` endpoint for one-click unsubscribe | `NewsletterController.cs` |
+| Application | Per-recipient unsubscribe URL wiring in both event handlers | `EventPublishedEventHandler.cs`, `EventNotificationEmailJob.cs` |
+| DNS | Fixed SPF: added `include:spf.acsemail.azure.com` | DNS TXT record |
+| DNS | Added DMARC reporting: `rua=mailto:lankaconnect.app@gmail.com` | DNS TXT record |
+| Frontend | Google Group address warning in EmailGroupModal | `EmailGroupModal.tsx` |
+
+**Testing**: All 1520+ application tests pass. 7 new ListUnsubscribeHeaderBuilder tests. DNS verified via nslookup.
+
+**Commits**: `95505de5`, `fa0bd738`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133 Primary Toggle ✅ COMPLETE
+
+### Phase 6A.133: Primary Organizer Toggle Feature - 2026-03-06
+
+**Status**: ✅ **COMPLETE (commit 6056ad22 on develop)**
+
+**Classification**: Feature Enhancement — Added flexible primary organizer management with star toggle control.
+
+**Problem**: Previous implementation forced primary organizer assignment via `SetOrganizerContacts()` fallback (always set first organizer as primary). Users could not explicitly choose which organizer is primary, and zero-primary configurations were not allowed.
+
+**Solution**: Removed forced isPrimary fallback in domain layer. Added star toggle button in Create/Edit Event forms for flexible primary organizer control. UI respects user choice entirely, allowing zero primaries (all organizers equal).
+
+**Changes**:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Domain | Removed forced isPrimary fallback in `SetOrganizerContacts()` | `Event.cs` |
+| Frontend | Fixed `isPrimary: idx === 0` submit override in Create form | `EventCreationForm.tsx` |
+| Frontend | Fixed `isPrimary: idx === 0` submit override in Edit form | `EventEditForm.tsx` |
+| Frontend | Added star toggle button per contact card for primary control | `EventCreationForm.tsx`, `EventEditForm.tsx` |
+| Frontend | Dynamic "Primary Organizer" label (shown only if primary exists) | Event form components |
+| Tests | Updated 5 existing tests, added 1 new test for zero-primary + GetPrimaryContact fallback | Domain/Application tests |
+
+**Testing**: All 1520 tests pass (5 updated, 1 new). Staging API verified: zero primaries allowed, specific primary assignment works, primary removal succeeds.
+
+**Commits**: `6056ad22`
+
+---
+
+## 🎯 Previous Session - Phase 6A.134: Newsletter/Notification UX Refactoring ✅ COMPLETE
+
+### Phase 6A.134: Newsletter/Notification UX Refactoring - 2026-03-05
+
+**Status**: ✅ **COMPLETE (commit a5efbe40 on develop)**
+
+**Classification**: UX Refactoring — Improved newsletter/notification type clarity by deriving type from existing data, adding visual type indicators, and simplifying the create/detail UX.
+
+**Problem**: The newsletter creation form used a verbose "Publication Information" checkbox that was unclear. There was no visual distinction between newsletters and notifications in the listing. The detail page showed a complex Recipients card instead of a clean audience summary.
+
+**Solution**: Derived newsletter type (Newsletter vs Notification) from `isAnnouncementOnly` flag and event linkage from `eventId`. Added type badges, filter dropdown, and simplified audience display.
+
+**Changes**:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Frontend | New `newsletter-type-utils.ts` — derives main type from `isAnnouncementOnly` + event linkage from `eventId` | `newsletter-type-utils.ts` |
+| Frontend | New `NewsletterTypeBadge` component for visual type indicators | `NewsletterTypeBadge.tsx` |
+| Frontend | Replaced verbose Publication Information checkbox with type selector cards | `NewsletterForm.tsx` |
+| Frontend | Added type badge + event-linked indicator to newsletter cards | `NewsletterCard.tsx` |
+| Frontend | Added type filter dropdown to newsletters tab | `NewslettersTab.tsx` |
+| Frontend | Replaced Recipients card with Audience section showing email group names and metro area names | Newsletter detail page |
+| Frontend | Updated create page header | Newsletter create page |
+
+**Scope**: Frontend-only change, no backend changes.
+**Commits**: `a5efbe40`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133 UX Fix: Inline Co-Organizer Search ✅ COMPLETE
+
+### Phase 6A.133 UX Fix: Inline Co-Organizer Search - 2026-03-05
+
+**Status**: ✅ **COMPLETE (commit 35b91a0f on develop) - ALL 1517 TESTS PASS**
+
+**Classification**: UX Improvement — Consolidated co-organizer management from a confusing two-page workflow (Edit form + Event Details tab linking) into a single inline search in Create/Edit Event forms.
+
+**Problem**: Co-organizer management was split across two pages: organizer contacts were added in the Edit form, but linking them to registered users required navigating to the Event Details tab separately. This was confusing and error-prone for users.
+
+**Solution**: Replaced the heavy `CoOrganizerSearchModal` with a lightweight `CoOrganizerInlineSearch` component embedded directly in Create/Edit Event forms. Users can now search for and pre-link co-organizers at event creation time. EventDetailsTab simplified to read-only display.
+
+**Changes**:
+
+| Layer | Change | Key Files |
+|-------|--------|-----------|
+| Backend | `OrganizerContactRequest` accepts optional `LinkedUserId` | `CreateEventCommand.cs`, `UpdateEventCommand.cs` |
+| Backend | `EventOrganizerContact.Create()` accepts optional `linkedUserId` | `EventOrganizerContact.cs` |
+| Backend | `Event.SetOrganizerContacts()` passes through `linkedUserId` to pre-link contacts at creation time | `Event.cs` |
+| Frontend | New `CoOrganizerInlineSearch` component replaces `CoOrganizerSearchModal` | `CoOrganizerInlineSearch.tsx` |
+| Frontend | Inline user search in both EventCreationForm and EventEditForm | `EventCreationForm.tsx`, `EventEditForm.tsx` |
+| Frontend | EventDetailsTab simplified to read-only | `EventDetailsTab.tsx` |
+| Frontend | Dead code removed | Removed `CoOrganizerSearchModal` |
+| Tests | 6 new domain tests for pre-linked co-organizer functionality | Domain test files |
+
+**Tests**: 1517 passed, 0 failed (6 new pre-linked co-organizer domain tests)
+**Commits**: `35b91a0f`
+
+---
+
+## 🎯 Previous Session - Rich Text Formatting Fix ✅ DEPLOYED
+
+### Rich Text Formatting Fix (Events + Newsletters) - 2026-03-05
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 83acbf90) - VERIFIED**
+
+**Classification**: UI Bug Fix — Rich text formatting (headings, bullet lists, numbered lists, links, images) lost when displaying saved event descriptions and newsletter content.
+
+**Root Cause**: `@tailwindcss/typography` plugin was never installed. The `prose` CSS class used on 4 display pages was non-functional, while Tailwind's preflight CSS reset stripped browser defaults for lists (`list-style: none`), headings (`font-size: inherit`), and links (`text-decoration: inherit`). Bold/italic survived because `<strong>`/`<em>` are not affected by preflight.
+
+**Affected Pages** (all fixed by single dependency):
+- Event Details (public) — `events/[id]/page.tsx`
+- Event Details (manage) — `EventDetailsTab.tsx`
+- Newsletter View (public) — `newsletters/[id]/page.tsx`
+- Newsletter View (dashboard) — `my-newsletters/[id]/page.tsx`
+
+**Changes (6 files, 91 insertions, 22 deletions)**:
+
+| Change | File | Detail |
+|--------|------|--------|
+| Install `@tailwindcss/typography` | `package.json`, `tailwind.config.ts` | Enables `prose` class for typographic rendering |
+| Add `img` to DOMPurify whitelist | `html-utils.ts` | Azure blob images preserved on display (with safe attrs: src, alt, width, height) |
+| Fix RichTextEditor content sync | `RichTextEditor.tsx` | Re-added `content` to useEffect deps with debounce echo prevention via `lastContentRef` |
+| Add tests | `html-utils.test.ts` | 5 new tests: img sanitization, XSS attrs stripped, ordered lists, blockquotes |
+
+**Tests**: 25/25 html-utils tests pass, build succeeds
+**Commits**: `83acbf90`
+
+---
+
+## 🎯 Previous Session - Phase 6A.133: Multiple Event Organizers ✅ DEPLOYED (+ UX Fix 2026-03-05)
+
+### Phase 6A.133: Multiple Event Organizers (Co-Organizer Linking) - 2026-03-04
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit a1eb8523) - VERIFIED VIA API**
+
+**Classification**: Feature Enhancement — allows multiple registered users to co-manage a single event with equal permissions.
+
+**Problem**: Events supported only a single organizer (the creator). Co-organizers could not see the event in their "My Events" dashboard or manage it.
+
+**Solution**: Activated existing `linked_user_id` column on `event_organizer_contacts` to grant co-organizer access. All organizers (primary + co-organizers) have equal permissions.
+
+**Changes (49 files, 1818 insertions)**:
+
+| Phase | Layer | Change | Key Files |
+|-------|-------|--------|-----------|
+| 1 | Domain | `IsOrganizer()`, `Link/Unlink/BatchLink` domain methods, 24 TDD tests | `Event.cs`, `EventOrganizerContact.cs`, `EventMultiOrganizerTests.cs` |
+| 2 | Database | FK constraint + partial index on `linked_user_id` | `20260304000000_AddLinkedUserIdForeignKeyAndIndex.cs` |
+| 3 | Config | Configurable `MaxCoOrganizersPerEvent = 10` | `EventSettings.cs`, `appsettings.json`, `DependencyInjection.cs` |
+| 4 | API | User search endpoint: `GET /Users/search?query={term}` | `SearchUsersQueryHandler.cs`, `UsersController.cs` |
+| 5 | Auth | All handler auth checks updated to use `IsOrganizer()` | 6 command handlers updated |
+| 6 | DTO | Server-computed `IsCurrentUserOrganizer` on EventDto, `LinkedUserId` on OrganizerContactDto | `EventDto.cs`, `GetEventByIdQueryHandler.cs`, `GetEventsQueryHandler.cs` |
+| 7 | API | Batch link + unlink endpoints | `BatchLinkOrganizerContactsCommandHandler.cs`, `UnlinkOrganizerContactUserCommandHandler.cs` |
+| 8 | Query | My Events includes co-organized events | `EventRepository.cs` |
+| 9 | Frontend | All `organizerId === userId` replaced with `isCurrentUserOrganizer` | 9 page files updated |
+| 10 | Frontend | Co-organizer management UI (table, link/unlink buttons, search modal) | `EventDetailsTab.tsx`, `CoOrganizerSearchModal.tsx` |
+
+**API Verification**:
+- ✅ `GET /Users/search?query=sinhara` → 2 results, current user excluded
+- ✅ `GET /Events/{id}` → `isCurrentUserOrganizer: true` for organizer, `null` for unauthenticated
+- ✅ `POST /Events/{id}/organizer-contacts/link` → 200, contact linked with `linkedUserId`
+- ✅ `DELETE /Events/{id}/organizer-contacts/{contactId}/link` → 200, `linkedUserId` cleared back to null
+- ✅ `GET /Events/my-events` → `isCurrentUserOrganizer` field present on all events
+
+**Tests**: 1511 passed, 0 failed, 6 skipped (24 new multi-organizer domain tests)
+
+**Commits**: `a1eb8523`
+
+---
+
+## 🎯 Previous Session - Email Deliverability Improvements ✅ DEPLOYED
+
+### Email Deliverability Improvements (DMARC, Sender Address, Template Cleanup) - 2026-03-04
+
+**Status**: ✅ **DEPLOYED TO STAGING (commit 5c275894) - VERIFIED**
+
+**Classification**: Infrastructure + Email Quality — Improves email deliverability to prevent emails being flagged as spam (reported by Google Group recipients).
+
+**Problem**: LankaConnect emails were being flagged as spam by Google Groups. Root causes: sender address `DoNotReply@lankaconnect.app` looked suspicious, no DMARC DNS record for the domain, and email subjects/params contained unhelpful "TBA" defaults for missing location/price data.
+
+**Changes Applied**:
+
+| Area | Change | Details |
+|------|--------|---------|
+| Azure ACS | Changed sender address | `DoNotReply@lankaconnect.app` → `noreply@lankaconnect.app` |
+| Azure ACS | Created MailFrom records | New `noreply@lankaconnect.app` MailFrom in both staging and production |
+| Key Vault | Updated secrets | `azure-email-sender-address` updated in both environments |
+| DNS | Added DMARC record | `v=DMARC1; p=none;` TXT record for `lankaconnect.app` |
+| Email Params | Removed "TBA" defaults | Cleared hardcoded "TBA" from `EventCity`, `EventState`, `TicketPrice` across 7 TypedEmailParams files |
+| Email Params | Added HasLocation flag | Boolean flag for conditional subject rendering when location is available |
+| Migration | Updated email subject | `20260304175027_UpdateEventEmailSubjectWithLocationConditional` — conditionally includes location in `template-new-event-publication` subject line |
+| Tests | Added HasLocation tests | Unit tests for HasLocation logic |
+
+**Tests**: 1487 passed, 0 failed
+
+**Commits**: `5c275894`
+
+---
+
+## 🎯 Previous Session - Phase 6A.132: Multiple Organizer Contacts ✅ DEPLOYED
+
+### Phase 6A.132: Complete Multiple Organizer Contacts Feature - 2026-03-03
+
+**Status**: ✅ **DEPLOYED TO STAGING (commits 87b57364 + af1f9857) - VERIFIED VIA API**
+
+**Classification**: Feature Enhancement — completing a partially implemented feature (85% → 100%).
+
+**Problem**: Events supported only one organizer contact (scalar columns on events table). Previous agent implemented ~85% of the multiple contacts feature but left gaps causing silent email data loss, TypeScript type mismatches, no max contacts limit, and no FluentValidation validator.
+
+**Gaps Fixed**:
+- **GAP 2 (HIGH)**: Added `.Include(e => e.OrganizerContacts)` to `GetEventBySignUpListIdAsync`, `GetEventBySignUpItemIdAsync`, `GetEventsStartingInTimeWindowAsync` — prevents blank organizer contact in signup/reminder emails
+- **GAP 4 (MEDIUM)**: Enforced `MAX_ORGANIZER_CONTACTS = 10` in domain (`Event.cs`), FluentValidation validator, Zod schema (`.max(10)`), and UI button guard (disabled at 10)
+- **GAP 3 (MEDIUM)**: Created `UpdateEventOrganizerContactCommandValidator.cs` (FluentValidation MediatR pipeline)
+- **GAP 1 (HIGH)**: Added `publishOrganizerContact` and `organizerContacts` fields to `CreateEventRequest` and `UpdateEventRequest` TypeScript interfaces
+
+**Architecture**:
+- New child entity: `events.event_organizer_contacts` table (1:N from events)
+- Migration `20260301000842`: creates table, migrates data from old scalar columns, drops old columns
+- Backward-compat computed properties: `OrganizerContactName/Email/Phone` delegate to `GetPrimaryContact()`
+- Analysis doc: [MULTIPLE_ORGANIZER_CONTACTS_ANALYSIS.md](./MULTIPLE_ORGANIZER_CONTACTS_ANALYSIS.md)
+
+**Tests**: 1487 unit tests passing (61 organizer contact specific: domain, handler, validator, cancel event)
+
+**Verification** (via API):
+- ✅ `PUT /events/{id}/organizer-contact` with 2 contacts → 200 OK
+- ✅ `GET /events/{id}` → `organizerContacts` array with 2 entries, first `isPrimary: true`, `sortOrder: 0/1`
+- ✅ `PUT` with 11 contacts → `400 Bad Request` "Maximum 10 organizer contacts allowed"
+- ✅ Migration applied (new `event_organizer_contacts` table created, old columns dropped)
+- ✅ Backend deploy: GitHub Actions run 22630794995 — success
+- ✅ Frontend deploy: GitHub Actions run 22630794987 — success
+
+---
+
+## 🎯 Previous Session - Phase 6A.129b: Fix Missing "View Signup Forms" Button in Email Templates ✅ DEPLOYED
 
 ### Phase 6A.129b: Add Styled Signup Forms Button to Email Templates - 2026-02-28
 

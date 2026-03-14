@@ -118,7 +118,7 @@ public class UpdateNewsletterCommandHandlerTests
 
         // Assert
         result.IsFailure.Should().BeTrue("user should not be able to link newsletter to event they don't own");
-        result.Error.Should().Contain("You can only link newsletters to events you created");
+        result.Error.Should().Contain("You can only link newsletters to events you organize");
 
         // Verify changes were NOT committed
         _mockUnitOfWork.Verify(

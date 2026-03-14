@@ -157,6 +157,16 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     /// </summary>
     public string OrganizerContactPhone { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Phase 6A.133 Email: Pre-formatted HTML for all organizer contacts.
+    /// </summary>
+    public string OrganizerContactsHtml { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 6A.133 Email: Dynamic header text ("EVENT ORGANIZER" or "EVENT ORGANIZERS").
+    /// </summary>
+    public string OrganizerContactHeader { get; set; } = "EVENT ORGANIZER";
+
     #endregion
 
     #region Registration Contact Properties
@@ -234,6 +244,8 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { "OrganizerContactName", OrganizerContactName },
             { "OrganizerContactEmail", OrganizerContactEmail },
             { "OrganizerContactPhone", OrganizerContactPhone },
+            { "OrganizerContactsHtml", OrganizerContactsHtml },
+            { "OrganizerContactHeader", OrganizerContactHeader },
 
             // Registration contact parameters
             { "HasContactInfo", HasContactInfo },
@@ -327,6 +339,24 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
         OrganizerContactName = name ?? "Event Organizer";
         OrganizerContactEmail = email ?? string.Empty;
         OrganizerContactPhone = phone ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.133 Email: Sets all organizer contacts with pre-formatted HTML.
+    /// </summary>
+    public FreeEventRegistrationEmailParams WithOrganizerContacts(IReadOnlyList<OrganizerContactInfo> contacts)
+    {
+        if (contacts.Count > 0)
+        {
+            HasOrganizerContact = true;
+            var primary = contacts.FirstOrDefault(c => c.IsPrimary) ?? contacts[0];
+            OrganizerContactName = primary.Name;
+            OrganizerContactEmail = primary.Email ?? string.Empty;
+            OrganizerContactPhone = primary.Phone ?? string.Empty;
+        }
+        OrganizerContactsHtml = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
+        OrganizerContactHeader = OrganizerContactHtmlBuilder.BuildHeaderText(contacts.Count);
         return this;
     }
 

@@ -57,8 +57,8 @@ public class DeleteEventCommandHandler : ICommandHandler<DeleteEventCommand>
                     "DeleteEvent: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, OrganizerId={OrganizerId}, Registrations={Registrations}",
                     @event.Id, @event.Title.Value, @event.Status, @event.OrganizerId, @event.CurrentRegistrations);
 
-                // Phase 6A.59: Security fix - verify event owner
-                if (@event.OrganizerId != request.UserId)
+                // Phase 6A.59/133: Security fix - verify event organizer (primary or co-organizer)
+                if (!@event.IsOrganizer(request.UserId))
                 {
                     stopwatch.Stop();
 

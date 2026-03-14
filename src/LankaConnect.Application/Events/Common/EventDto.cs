@@ -116,13 +116,10 @@ public record EventDto
     public IReadOnlyList<EmailGroupSummaryDto> EmailGroups { get; init; } = Array.Empty<EmailGroupSummaryDto>();
 
     /// <summary>
-    /// Phase 6A.X: Event Organizer Contact Details
-    /// Optional contact information published by the event organizer
+    /// Organizer Contact Details - supports multiple contacts per event
     /// </summary>
     public bool PublishOrganizerContact { get; init; }
-    public string? OrganizerContactName { get; init; }
-    public string? OrganizerContactPhone { get; init; }
-    public string? OrganizerContactEmail { get; init; }
+    public IReadOnlyList<OrganizerContactDto> OrganizerContacts { get; init; } = Array.Empty<OrganizerContactDto>();
 
     /// <summary>
     /// Phase 6A.X: Revenue Breakdown for paid events
@@ -144,6 +141,13 @@ public record EventDto
     /// Used to show accurate "You are registered" badge (only for Confirmed status)
     /// </summary>
     public RegistrationStatus? UserRegistrationStatus { get; init; }
+
+    /// <summary>
+    /// Phase 6A.133: Server-computed organizer check for the current user.
+    /// null = unauthenticated, true = user is primary or co-organizer, false = not an organizer.
+    /// Frontend uses this instead of comparing organizerId === userId client-side.
+    /// </summary>
+    public bool? IsCurrentUserOrganizer { get; init; }
 }
 
 /// <summary>

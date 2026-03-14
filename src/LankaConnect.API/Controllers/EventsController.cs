@@ -19,6 +19,8 @@ using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
 using LankaConnect.Application.Events.Commands.UpdateRegistrationDetails;
 using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
+using LankaConnect.Application.Events.Commands.BatchLinkOrganizerContacts;
+using LankaConnect.Application.Events.Commands.UnlinkOrganizerContactUser;
 using LankaConnect.Application.Events.Commands.UpdateMaxAttendeesPerRegistration;
 using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
@@ -399,6 +401,47 @@ public class EventsController : BaseController<EventsController>
             return BadRequest("Event ID mismatch");
         }
 
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Batch link registered users to organizer contacts as co-organizers.
+    /// </summary>
+    [HttpPost("{id:guid}/organizer-contacts/link")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> BatchLinkOrganizerContacts(Guid id, [FromBody] BatchLinkRequest request)
+    {
+        Logger.LogInformation("Batch linking co-organizers for event: {EventId}, LinkCount: {LinkCount}",
+            id, request.Links?.Count ?? 0);
+
+        var links = request.Links?.Select(l => new ContactUserLink(l.ContactId, l.UserId)).ToList()
+            ?? new List<ContactUserLink>();
+
+        var command = new BatchLinkOrganizerContactsCommand(id, links);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Unlink a user from an organizer contact, removing co-organizer access.
+    /// </summary>
+    [HttpDelete("{id:guid}/organizer-contacts/{contactId:guid}/link")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UnlinkOrganizerContactUser(Guid id, Guid contactId)
+    {
+        Logger.LogInformation("Unlinking co-organizer from event: {EventId}, ContactId: {ContactId}",
+            id, contactId);
+
+        var command = new UnlinkOrganizerContactUserCommand(id, contactId);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -2501,7 +2544,7 @@ public class EventsController : BaseController<EventsController>
         if (eventResult.IsFailure)
             return HandleResult(eventResult);
 
-        if (eventResult.Value!.OrganizerId != userId)
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
         {
             Logger.LogWarning(
                 "User {UserId} attempted unauthorized form export for Event {EventId}",
@@ -2562,8 +2605,8 @@ public class EventsController : BaseController<EventsController>
             return HandleResult(eventResult);
         }
 
-        // Authorization: Only event organizer can view attendees
-        if (eventResult.Value!.OrganizerId != userId)
+        // Authorization: Only event organizer (primary or co-organizer) can view attendees — Phase 6A.133
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
         {
             Logger.LogWarning("User {UserId} attempted to access attendees for event {EventId} without authorization",
                 userId, eventId);
@@ -2608,8 +2651,8 @@ public class EventsController : BaseController<EventsController>
             return HandleResult(eventResult);
         }
 
-        // Authorization: Only event organizer can export attendees
-        if (eventResult.Value!.OrganizerId != userId)
+        // Authorization: Only event organizer (primary or co-organizer) can export attendees — Phase 6A.133
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
         {
             Logger.LogWarning("User {UserId} attempted to export attendees for event {EventId} without authorization",
                 userId, eventId);
@@ -3238,6 +3281,22 @@ public record UpdateOpenSignUpItemRequest(
 /// Issue #51: Request to update max attendees per registration
 /// </summary>
 public record UpdateMaxAttendeesPerRegistrationRequest(int MaxAttendeesPerRegistration);
+
+// ==================== PHASE 6A.133: CO-ORGANIZER REQUEST DTOS ====================
+
+/// <summary>
+/// Phase 6A.133: Batch link co-organizers request body
+/// </summary>
+public record BatchLinkRequest
+{
+    public List<BatchLinkItem>? Links { get; init; }
+}
+
+public record BatchLinkItem
+{
+    public Guid ContactId { get; init; }
+    public Guid UserId { get; init; }
+}
 
 // ==================== ADD ATTENDEES (DELTA PAYMENT) REQUEST DTOS ====================
 

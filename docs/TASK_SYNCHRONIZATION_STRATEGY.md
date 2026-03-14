@@ -3,7 +3,132 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.130: STANDALONE DONATION SYSTEM ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE
+**Date**: 2026-03-11
+**Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
+**Progress**: ✅ **COMPLETE** — 1 migration created, deployed to staging, API verified
+**Status**: ✅ **COMPLETE** — Commit 0359d55f, deploy run 22969863049 succeeded
+**Changes**: EF migration `Phase6A133Email_FixOrganizerCardDesign` (replace simplified single-table organizer block with proper nested-table card in newsletter + event-reminder templates)
+
+---
+
+## PREVIOUS SESSION - PHASE 6A.133 EMAIL: TEMPLATE PLACEMENT FIX ✅ COMPLETE
+**Date**: 2026-03-10
+**Session**: Phase 6A.133 Email — Fix organizer block placement + event reminder + collapsible locations
+**Progress**: ✅ **COMPLETE** — 2 files modified, 1 migration created, deployed to staging, API verified
+**Status**: ✅ **COMPLETE** — Commit 64ff3e96, both deployments succeeded
+**Changes**: EF migration (fix newsletter + event-reminder template organizer placement), EventRepository.GetWithRegistrationsAsync (add OrganizerContacts Include), newsletter detail page (CollapsibleSection for metro areas)
+
+---
+
+## PREVIOUS SESSION - PHASE 6A.133 EMAIL: NEWSLETTER + REFUND ORGANIZER CONTACTS ✅ COMPLETE
+**Date**: 2026-03-09
+**Session**: Phase 6A.133 Email — Add organizer contacts to newsletters + fix refund templates
+**Progress**: ✅ **COMPLETE** — 3 files modified, 1 migration + 1 test file created, deployed to staging
+**Status**: ✅ **COMPLETE** — Commit d089f7bb, 1566 application tests pass, 12 new newsletter tests
+**Changes**: NewsletterEmailParams (6 organizer properties + WithOrganizerContacts), NewsletterEmailJob (organizer contact extraction), EF migration (3 template fixes: newsletter-notification, refund-requested, refund-completed)
+
+---
+
+## PREVIOUS SESSION - UI ENHANCEMENTS ✅ COMPLETE
+**Date**: 2026-03-09
+**Session**: UI Enhancements — Menu, Event Cards, LandingPage2
+**Progress**: ✅ **COMPLETE** — Build verified, 4 files modified, 1 new page created
+**Changes**: Menu simplification (Header.tsx), event card CTA text (events/page.tsx), cinematic LandingPage2 (landing2/page.tsx), preview banner (page.tsx)
+
+---
+
+## PREVIOUS SESSION - MULTI-ALBUM REDESIGN + BUG FIXES ✅ COMPLETE
+**Date**: 2026-03-08/09
+**Session**: Multi-Album Photo System Redesign + 5 UI Bug Fixes
+**Progress**: **✅ COMPLETE** - 49+ files redesigned, 5 bugs fixed, all API endpoints verified on staging
+**Status**: ✅ **COMPLETE** - Backend + frontend deployed, 13-test API suite passed
+**Testing**: ✅ 41 PhotoAlbum domain tests passing, full suite passing
+
+**Redesign**: Converted single-album to multi-album system (Sign-Up Lists pattern).
+
+**Key Changes**:
+- Domain: Added `Name` property, removed Close/Moderation/UploadPermission, Draft+Published only
+- DB: Migration `MultiAlbumRedesign` — name column, composite unique index, dropped columns
+- Application: Rewrote for multi-album (albumId params), new: UpdateDetails, DeleteAlbum, SendNotification, DownloadZip
+- API: 12 endpoints at /api/events/{eventId}/albums (plural, multi-album)
+- Frontend: Rewritten types/repository/hooks, AlbumPhotoCarousel, multi-album tabs
+- Bug fixes: Tab switching, delete wiring, collapse default, inline edit, image quality
+
+**Commits**: Multi-album redesign + fd7a6e06 (bug fixes)
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - AFTER EVENT PHOTO ALBUM FEATURE ✅ COMPLETE (superseded by redesign)
+**Date**: 2026-03-07
+**Commits**: 854e4bae, df916d75
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.135: NEWSLETTER QUERY HANDLERS FIX ✅ COMPLETE
+**Date**: 2026-03-07
+**Session**: Phase 6A.135 — Fix EmailGroups and MetroAreas Population in Newsletter Query Handlers
+**Progress**: **✅ COMPLETE** - All 4 newsletter query handlers now return populated EmailGroups and MetroAreas
+**Status**: ✅ **COMPLETE** - Build succeeded, deployed to staging, API verified
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133 PRIMARY TOGGLE ✅ COMPLETE
+**Date**: 2026-03-06
+**Session**: Phase 6A.133 Primary Toggle
+**Progress**: **✅ COMPLETE** - Flexible primary organizer management fully implemented
+**Status**: ✅ **COMPLETE** - All 1520 tests pass (5 updated, 1 new)
+**Testing**: ✅ 1520 tests passing, 0 failed. All 3 staging API tests verified.
+**Commits**: 6056ad22
+
+**Feature**: Flexible primary organizer management with star toggle control.
+
+**Key Changes**:
+- Domain: Removed forced isPrimary fallback in `SetOrganizerContacts()` — respects user choice, allows zero primaries
+- Frontend: Fixed `isPrimary: idx === 0` submit override in Create/Edit forms
+- Frontend: Added star toggle button per contact card for primary control
+- Dynamic "Primary Organizer" label (shown only if primary exists)
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133 UX FIX: INLINE CO-ORGANIZER SEARCH ✅ COMPLETE
+**Date**: 2026-03-05
+**Session**: Phase 6A.133 UX Fix - Inline Co-Organizer Search
+**Progress**: **✅ COMPLETE** - Co-organizer workflow consolidated into inline search
+**Status**: ✅ **COMPLETE** - All 1517 tests pass (6 new pre-linked co-organizer domain tests)
+**Testing**: ✅ 1517 tests passing, 0 failed.
+**Commits**: 35b91a0f
+
+**UX Improvement**: Consolidated co-organizer management from confusing two-page workflow (Edit form + Event Details tab linking) into single inline search in Create/Edit Event forms.
+
+**Key Changes**:
+- Backend: `OrganizerContactRequest` accepts optional `LinkedUserId`, `EventOrganizerContact.Create()` and `Event.SetOrganizerContacts()` pass through `linkedUserId` to pre-link contacts at creation time
+- Frontend: New `CoOrganizerInlineSearch` replaces `CoOrganizerSearchModal`. Both Create/Edit forms have inline user search. EventDetailsTab simplified to read-only. Dead code removed.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.133: MULTIPLE EVENT ORGANIZERS ✅ DEPLOYED
+**Date**: 2026-03-04
+**Session**: Phase 6A.133 - Multiple Event Organizers (Co-Organizer Linking)
+**Progress**: **✅ COMPLETE** - All 10 phases implemented and deployed
+**Status**: 🎉 **DEPLOYED** - Verified with API tests (search, link, unlink, isCurrentUserOrganizer)
+**Deployment**: ✅ Backend + Frontend deployed (a1eb8523, both GH Actions succeeded)
+**Testing**: ✅ 1511 tests passing, 0 failed. 24 new multi-organizer domain tests.
+**Commits**: a1eb8523
+
+**Feature**: Multiple registered users can co-manage events with equal permissions. 10-phase implementation across domain, database, config, API, auth, DTO, commands, queries, and frontend layers.
+
+**Key Changes**: 49 files modified (12 new), 1818 insertions. Domain methods (IsOrganizer, Link/Unlink/BatchLink), EF migration (FK + partial index), user search API, batch link/unlink endpoints, server-computed IsCurrentUserOrganizer, frontend CoOrganizerSearchModal.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.132: COMPLETE MULTIPLE ORGANIZER CONTACTS ✅ DEPLOYED
+**Date**: 2026-03-02
+**Commits**: 87b57364, af1f9857
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHASE 6A.130: STANDALONE DONATION SYSTEM ✅ DEPLOYED
 **Date**: 2026-02-26
 **Session**: Phase 6A.130 - Complete Standalone Donation System for Events
 **Progress**: **✅ COMPLETE** - Full donation feature deployed to staging

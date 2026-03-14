@@ -338,6 +338,7 @@ export default function Home() {
       </div>
 
 
+
       {/* Main Content */}
       {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with header */}
       <section className="py-16 bg-neutral-50">

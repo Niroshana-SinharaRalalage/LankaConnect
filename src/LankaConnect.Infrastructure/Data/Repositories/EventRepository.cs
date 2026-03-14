@@ -131,6 +131,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations
                     .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
+                    .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
                     .Include(e => e.SignUpLists)
                         .ThenInclude(s => s.Items)
                             .ThenInclude(i => i.Commitments);
@@ -312,11 +313,13 @@ public class EventRepository : Repository<Event>, IEventRepository
             {
                 // Session 33: Include Registrations to populate CurrentRegistrations for dashboard
                 // Phase 6A.67 FIX: Include Images for dashboard event thumbnails
+                // Phase 6A.133: Include co-organized events (linked via OrganizerContacts)
                 var result = await _dbSet
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)
-                    .Where(e => e.OrganizerId == organizerId)
+                    .Where(e => e.OrganizerId == organizerId
+                        || e.OrganizerContacts.Any(c => c.LinkedUserId == organizerId))
                     .OrderByDescending(e => e.StartDate)
                     .ToListAsync(cancellationToken);
 
@@ -418,6 +421,8 @@ public class EventRepository : Repository<Event>, IEventRepository
     {
         return await _dbSet
             .Include(e => e.Registrations)
+            .Include(e => e.Images)  // Phase 6A.133: Load images for email template
+            .Include(e => e.OrganizerContacts) // Phase 6A.133: Include for manual reminder emails
             .FirstOrDefaultAsync(e => e.Id == eventId, cancellationToken);
     }
 
@@ -516,6 +521,8 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await _dbSet
             .AsNoTracking()
             .Include(e => e.Registrations) // Include registrations for attendee notifications
+            .Include(e => e.Images)  // Phase 6A.133: Load images for event reminder email template
+            .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for event reminder emails
             .Where(e => e.StartDate >= startTime && e.StartDate <= endTime)
             .Where(e => statuses.Contains(e.Status))
             .OrderBy(e => e.StartDate)
@@ -822,6 +829,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.Location)
             .Include(e => e.Images)      // Phase 6A.127: Load images for email
             .Include(e => e.SignUpLists)  // Phase 6A.127: Load signup lists for email URL
+            .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for signup confirmation emails
             .Where(e => e.SignUpLists.Any(sl => sl.Id == signUpListId))
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -837,6 +845,7 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.Location)
             .Include(e => e.Images)      // Phase 6A.127: Load images for email
             .Include(e => e.SignUpLists)  // Phase 6A.127: Load signup lists for email URL
+            .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for commitment update emails
             .Where(e => e.SignUpLists.Any(sl => sl.Items.Any(item => item.Id == signUpItemId)))
             .FirstOrDefaultAsync(cancellationToken);
     }

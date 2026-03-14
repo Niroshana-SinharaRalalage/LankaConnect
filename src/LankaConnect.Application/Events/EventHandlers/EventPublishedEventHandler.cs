@@ -10,6 +10,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -31,6 +32,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
     private readonly IEventFormRepository _eventFormRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
     private readonly EmailNotificationSettings _emailNotificationSettings;
     private readonly ILogger<EventPublishedEventHandler> _logger;
 
@@ -40,6 +42,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         IEventFormRepository eventFormRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
+        INewsletterSubscriberRepository newsletterSubscriberRepository,
         IOptions<EmailNotificationSettings> emailNotificationSettings,
         ILogger<EventPublishedEventHandler> logger)
     {
@@ -48,6 +51,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
         _eventFormRepository = eventFormRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
+        _newsletterSubscriberRepository = newsletterSubscriberRepository;
         _emailNotificationSettings = emailNotificationSettings.Value;
         _logger = logger;
     }
@@ -121,8 +125,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                       ?? "See Event Details";
                 var eventUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
                 var eventLocation = GetEventLocationString(@event);
-                var eventCity = @event.Location?.Address.City ?? "TBA";
-                var eventState = @event.Location?.Address.State ?? "TBA";
+                var eventCity = @event.Location?.Address.City ?? string.Empty;
+                var eventState = @event.Location?.Address.State ?? string.Empty;
+                var hasLocation = !string.IsNullOrWhiteSpace(eventCity) && !string.IsNullOrWhiteSpace(eventState);
 
                 // Organizer contact info
                 var hasOrganizerContact = @event.HasOrganizerContact();
@@ -154,6 +159,26 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         organizerContactName: hasOrganizerContact ? @event.OrganizerContactName ?? "Event Organizer" : null,
                         organizerContactEmail: hasOrganizerContact ? @event.OrganizerContactEmail : null,
                         organizerContactPhone: hasOrganizerContact ? @event.OrganizerContactPhone : null);
+
+                    // Set location flag for conditional subject rendering
+                    emailParams.HasLocation = hasLocation;
+
+                    // Set per-recipient unsubscribe URL for List-Unsubscribe header (RFC 2369/8058)
+                    var subscriber = await _newsletterSubscriberRepository.GetByEmailAsync(email, cancellationToken);
+                    if (subscriber?.UnsubscribeToken != null)
+                    {
+                        emailParams.UnsubscribeUrl = _emailUrlHelper.BuildNewsletterUnsubscribeUrl(subscriber.UnsubscribeToken);
+                    }
+
+                    // Phase 6A.133 Email: Set all organizer contacts with pre-formatted HTML
+                    if (hasOrganizerContact)
+                    {
+                        emailParams.WithOrganizerContacts(
+                            @event.OrganizerContacts
+                                .OrderBy(c => c.SortOrder)
+                                .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                                .ToList());
+                    }
 
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);

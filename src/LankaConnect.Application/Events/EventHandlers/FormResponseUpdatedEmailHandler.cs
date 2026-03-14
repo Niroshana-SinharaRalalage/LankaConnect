@@ -121,7 +121,7 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                     editFormUrl: editUrl,
                     eventStartDate: eventEntity.StartDate,
                     timeZoneId: eventEntity.TimeZoneId,
-                    eventLocation: eventEntity.Location?.ToString() ?? "TBA",
+                    eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),
                     updatedAt: domainEvent.OccurredAt
                 );
@@ -145,13 +145,11 @@ public class FormResponseUpdatedEmailHandler : INotificationHandler<DomainEventN
                     emailParams.WithEventImage(imageUrl);
                 }
 
-                if (!string.IsNullOrWhiteSpace(eventEntity.OrganizerContactName))
-                {
-                    emailParams.WithOrganizerContact(
-                        eventEntity.OrganizerContactName,
-                        eventEntity.OrganizerContactEmail,
-                        eventEntity.OrganizerContactPhone);
-                }
+                emailParams.WithOrganizerContacts(
+                    eventEntity.OrganizerContacts
+                        .OrderBy(c => c.SortOrder)
+                        .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                        .ToList());
 
                 // Phase 6A.116 Issue #4, #9: Add signup lists & forms URLs
                 if (eventEntity.SignUpLists?.Any() == true)

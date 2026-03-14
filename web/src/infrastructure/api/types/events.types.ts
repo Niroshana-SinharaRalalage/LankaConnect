@@ -231,6 +231,41 @@ export interface GroupPricingTierDto {
 }
 
 /**
+ * Organizer contact DTO - supports multiple contacts per event
+ */
+export interface OrganizerContactDto {
+  id: string;
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  isPrimary: boolean;
+  sortOrder: number;
+  /** Phase 6A.133: Linked user ID for co-organizer management */
+  linkedUserId?: string | null;
+}
+
+/**
+ * Phase 6A.133: Minimal user DTO for co-organizer search results.
+ */
+export interface UserSearchResultDto {
+  id: string;
+  displayName: string;
+  email: string;
+  profilePhotoUrl?: string | null;
+}
+
+/**
+ * Request model for creating/updating an organizer contact
+ */
+export interface OrganizerContactRequest {
+  contactName: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  isPrimary?: boolean;
+  linkedUserId?: string | null;
+}
+
+/**
  * Phase 6A.X: Revenue breakdown DTO
  * Matches backend RevenueBreakdownDto
  * Shows detailed fee breakdown for paid events
@@ -340,11 +375,9 @@ export interface EventDto {
   // Phase 6A.32: Email Groups Integration
   emailGroupIds?: string[];
 
-  // Phase 6A.X: Event Organizer Contact Details
+  // Organizer Contact Details (supports multiple contacts)
   publishOrganizerContact: boolean;
-  organizerContactName?: string | null;
-  organizerContactPhone?: string | null;
-  organizerContactEmail?: string | null;
+  organizerContacts?: OrganizerContactDto[];
 
   // Phase 6A.X: Revenue Breakdown for paid events
   /** Detailed fee breakdown (null for free events) */
@@ -360,6 +393,13 @@ export interface EventDto {
    * Used to show accurate "You are registered" badge (only for Confirmed status)
    */
   userRegistrationStatus?: RegistrationStatus | null;
+
+  /**
+   * Phase 6A.133: Server-computed organizer check for the current user.
+   * null/undefined = unauthenticated, true = user is primary or co-organizer, false = not an organizer.
+   * Frontend uses this instead of comparing organizerId === userId client-side.
+   */
+  isCurrentUserOrganizer?: boolean | null;
 }
 
 /**
@@ -666,6 +706,10 @@ export interface CreateEventRequest {
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
   showDonationSummary?: boolean;
+
+  // Phase 6A.132: Multiple organizer contacts
+  publishOrganizerContact?: boolean;
+  organizerContacts?: OrganizerContactRequest[];
 }
 
 /**
@@ -730,6 +774,10 @@ export interface UpdateEventRequest {
   donationMaxAmount?: number | null;
   donationMessage?: string | null;
   showDonationSummary?: boolean;
+
+  // Phase 6A.132: Multiple organizer contacts
+  publishOrganizerContact?: boolean;
+  organizerContacts?: OrganizerContactRequest[];
 }
 
 /**
@@ -1759,4 +1807,85 @@ export interface CreateDonationRequest {
   currency?: string | null;
   successUrl: string;
   cancelUrl: string;
+}
+
+// ==================== Photo Album Types ====================
+
+/**
+ * Album status matching backend AlbumStatus enum (string via JsonStringEnumConverter)
+ */
+export enum AlbumStatus {
+  Draft = 'Draft',
+  Published = 'Published',
+}
+
+/**
+ * Album photo status matching backend AlbumPhotoStatus enum
+ */
+export enum AlbumPhotoStatus {
+  Approved = 'Approved',
+}
+
+/**
+ * Photo album DTO matching backend PhotoAlbumDto
+ */
+export interface PhotoAlbumDto {
+  id: string;
+  eventId: string;
+  organizerId: string;
+  eventTitle: string;
+  name: string;
+  status: AlbumStatus;
+  description: string | null;
+  coverPhotoUrl: string | null;
+  retentionDays: number;
+  photoCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Album photo DTO matching backend AlbumPhotoDto
+ */
+export interface AlbumPhotoDto {
+  id: string;
+  albumId: string;
+  uploaderId: string;
+  uploaderName: string;
+  originalUrl: string;
+  thumbnailUrl: string;
+  mediumUrl: string;
+  caption: string | null;
+  status: AlbumPhotoStatus;
+  fileSizeBytes: number;
+  uploadedAt: string;
+  expiresAt: string;
+  displayOrder: number;
+}
+
+/**
+ * Paginated album photos response matching backend PaginatedAlbumPhotosResponse
+ */
+export interface PaginatedAlbumPhotosResponse {
+  photos: AlbumPhotoDto[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  totalCount: number;
+}
+
+/**
+ * Request to create a photo album
+ */
+export interface CreatePhotoAlbumRequest {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Request to update album details (name and description)
+ */
+export interface UpdateAlbumDetailsRequest {
+  name: string;
+  description?: string;
 }

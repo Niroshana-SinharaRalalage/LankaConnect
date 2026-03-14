@@ -117,7 +117,7 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
       return;
     }
 
-    if (event && event.organizerId !== user.userId && user.role !== 'Admin' && user.role !== 'AdminManager') {
+    if (event && event.isCurrentUserOrganizer !== true && user.role !== 'Admin' && user.role !== 'AdminManager') {
       router.push(`/events/${eventId}`);
     }
   }, [isAuthenticated, user, event, eventId, router]);

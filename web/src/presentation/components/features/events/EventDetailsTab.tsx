@@ -9,7 +9,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { sanitizeHtml } from '@/lib/html-utils';
 import { useRouter } from 'next/navigation';
 import {
@@ -28,6 +28,7 @@ import {
   Heart,
   CheckCircle,
   XCircle,
+  Link2,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -65,6 +66,10 @@ export function EventDetailsTab({
 
   const spotsLeft = event.capacity - event.currentRegistrations;
   const registrationPercentage = (event.currentRegistrations / event.capacity) * 100;
+
+  // Co-organizer stats (read-only display)
+  const linkedCount = event.organizerContacts?.filter(c => c.linkedUserId).length ?? 0;
+  const totalContacts = event.organizerContacts?.length ?? 0;
 
   // Issue #51: Handle saving max attendees per registration
   const handleSaveMaxAttendees = async () => {
@@ -360,53 +365,72 @@ export function EventDetailsTab({
         </CardContent>
       </Card>
 
-      {/* Phase 6A.X: Organizer Contact Section - Table Grid */}
-      {event.publishOrganizerContact && event.organizerContactName && (
+      {/* Organizer Contact Section - Read-only display */}
+      {event.organizerContacts && event.organizerContacts.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact</CardTitle>
-            <CardDescription>Event organizer's contact information</CardDescription>
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts</CardTitle>
+            <CardDescription>
+              Event organizer contact information
+              {linkedCount > 0 && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                  {linkedCount}/{totalContacts} co-organizers linked
+                </span>
+              )}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
-                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#FF7900]" />
-                  Name:
-                </span>
-                <span className="text-sm text-neutral-900">{event.organizerContactName}</span>
-              </div>
-              {event.organizerContactEmail && (
-                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
-                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-[#FF7900]" />
-                    Email:
-                  </span>
-                  <a
-                    href={`mailto:${event.organizerContactEmail}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {event.organizerContactEmail}
-                  </a>
-                </div>
-              )}
-              {event.organizerContactPhone && (
-                <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center">
-                  <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
-                    <svg className="h-4 w-4 text-[#FF7900]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    Phone:
-                  </span>
-                  <a
-                    href={`tel:${event.organizerContactPhone}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    {event.organizerContactPhone}
-                  </a>
-                </div>
-              )}
+            <div className="overflow-x-auto rounded-lg border border-neutral-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-neutral-50 border-b border-neutral-200">
+                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Email</th>
+                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Phone</th>
+                    <th className="text-left px-4 py-3 font-medium text-neutral-600">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {event.organizerContacts.map((contact, idx) => (
+                    <tr key={contact.id || idx} className="border-b border-neutral-100 hover:bg-neutral-50">
+                      <td className="px-4 py-3">
+                        <span className="font-medium text-neutral-800">{contact.contactName}</span>
+                        {contact.isPrimary && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            Primary
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">
+                        {contact.contactEmail ? (
+                          <a href={`mailto:${contact.contactEmail}`} className="text-blue-600 hover:underline">{contact.contactEmail}</a>
+                        ) : '\u2014'}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">
+                        {contact.contactPhone ? (
+                          <a href={`tel:${contact.contactPhone}`} className="text-blue-600 hover:underline">{contact.contactPhone}</a>
+                        ) : '\u2014'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {contact.linkedUserId ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            <Link2 className="h-3 w-3" />
+                            Co-Organizer
+                          </span>
+                        ) : (
+                          <span className="text-xs text-neutral-400">Contact only</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+            {event.isCurrentUserOrganizer && (
+              <p className="mt-3 text-xs text-neutral-500">
+                To add or manage co-organizers, use the Edit Event page.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}

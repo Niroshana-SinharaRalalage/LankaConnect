@@ -1,0 +1,11 @@
+using LankaConnect.Domain.Common;
+
+namespace LankaConnect.Domain.Events.DomainEvents;
+
+/// <summary>
+/// Domain event raised when a photo is uploaded to an album.
+/// </summary>
+public record PhotoUploadedToAlbumDomainEvent(Guid AlbumId, Guid PhotoId, Guid UploaderId) : IDomainEvent
+{
+    public DateTime OccurredAt { get; } = DateTime.UtcNow;
+}

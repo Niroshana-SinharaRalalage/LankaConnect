@@ -3,10 +3,13 @@
 import * as React from 'react';
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, XCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Upload, Send, Trash2, Calendar, Mail, MapPin, ExternalLink, XCircle, Users } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { NewsletterStatusBadge } from '@/presentation/components/features/newsletters/NewsletterStatusBadge';
+import { NewsletterTypeBadge } from '@/presentation/components/features/newsletters/NewsletterTypeBadge';
+import { getNewsletterMainType, isEventLinked } from '@/lib/newsletter-type-utils';
 import {
   useNewsletterById,
   usePublishNewsletter,
@@ -188,8 +191,14 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-[#8B1538] mb-2">{newsletter.title}</h1>
-            <div className="flex items-center gap-3 text-sm text-gray-600">
+            <div className="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
               <span>Created {formatDate(newsletter.createdAt)}</span>
+              <NewsletterTypeBadge type={getNewsletterMainType(newsletter)} />
+              {isEventLinked(newsletter) && (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                  Event-linked
+                </span>
+              )}
               <NewsletterStatusBadge status={newsletter.status} />
             </div>
           </div>
@@ -290,30 +299,65 @@ export default function NewsletterDetailsPage({ params }: { params: Promise<{ id
 
       {/* Metadata Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Recipient Info Card */}
+        {/* Audience Info Card */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-[#8B1538] mb-4">Recipients</h2>
-          <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-[#8B1538] mb-4">Audience</h2>
+          <div className="space-y-4">
+            {/* Email Groups with names */}
             {newsletter.emailGroups && newsletter.emailGroups.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#FF7900]" />
-                <span className="text-sm">
-                  {newsletter.emailGroups.length} Email {newsletter.emailGroups.length === 1 ? 'Group' : 'Groups'}
-                </span>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Mail className="w-4 h-4 text-[#FF7900]" />
+                  <span className="text-sm font-medium">
+                    Email Groups ({newsletter.emailGroups.length})
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 ml-6">
+                  {newsletter.emailGroups.map((group) => (
+                    <span
+                      key={group.id}
+                      className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium"
+                    >
+                      {group.name}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Location Targeting */}
             {newsletter.targetAllLocations && (
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-purple-600" />
                 <span className="text-sm">All Locations</span>
               </div>
             )}
+
+            {/* Metro Areas with names — collapsible to save space */}
             {newsletter.metroAreas && newsletter.metroAreas.length > 0 && (
+              <CollapsibleSection
+                title={`Target Locations (${newsletter.metroAreas.length})`}
+                icon={<MapPin className="w-4 h-4 text-indigo-600" />}
+                defaultOpen={false}
+              >
+                <div className="flex flex-wrap gap-2">
+                  {newsletter.metroAreas.map((metro) => (
+                    <span
+                      key={metro.id}
+                      className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium"
+                    >
+                      {metro.name}, {metro.state}
+                    </span>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* Newsletter Subscribers */}
+            {newsletter.includeNewsletterSubscribers && (
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm">
-                  {newsletter.metroAreas.length} Metro {newsletter.metroAreas.length === 1 ? 'Area' : 'Areas'}
-                </span>
+                <Users className="w-4 h-4 text-emerald-600" />
+                <span className="text-sm">Newsletter subscribers included</span>
               </div>
             )}
           </div>

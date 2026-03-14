@@ -2,7 +2,7 @@ import DOMPurify from 'dompurify';
 
 /**
  * Sanitize HTML content for safe rendering with dangerouslySetInnerHTML.
- * Allows formatting tags (p, b, i, a, ul, ol, li, h1-h3, br, strong, em)
+ * Allows formatting tags (p, b, i, a, ul, ol, li, h1-h3, br, strong, em, img)
  * but strips scripts, event handlers, and other dangerous content.
  */
 export function sanitizeHtml(html: string): string {
@@ -12,8 +12,9 @@ export function sanitizeHtml(html: string): string {
       'h1', 'h2', 'h3',
       'ul', 'ol', 'li',
       'a', 'blockquote', 'code', 'pre',
+      'img',
     ],
-    ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'src', 'alt', 'width', 'height'],
     ADD_ATTR: ['target'],
   });
 }

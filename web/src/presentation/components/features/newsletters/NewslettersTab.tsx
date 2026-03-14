@@ -7,6 +7,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { NewsletterList } from './NewsletterList';
 import { NewsletterStatus } from '@/infrastructure/api/types/newsletters.types';
+import { NewsletterMainType, getNewsletterMainType } from '@/lib/newsletter-type-utils';
 import {
   useMyNewsletters,
   usePublishNewsletter,
@@ -31,6 +32,7 @@ export function NewslettersTab() {
   // Phase 6A.74 UI Fix Issue #5: Filter state
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<'all' | NewsletterStatus>('all');
+  const [typeFilter, setTypeFilter] = React.useState<'all' | NewsletterMainType>('all');
 
   // Fetch user's newsletters
   const { data: newsletters = [], isLoading } = useMyNewsletters();
@@ -57,9 +59,14 @@ export function NewslettersTab() {
         if (newsletter.status !== statusFilter) return false;
       }
 
+      // Type filter
+      if (typeFilter !== 'all') {
+        if (getNewsletterMainType(newsletter) !== typeFilter) return false;
+      }
+
       return true;
     });
-  }, [newsletters, searchTerm, statusFilter]);
+  }, [newsletters, searchTerm, statusFilter, typeFilter]);
 
   // Handlers
   // Phase 6A.74 Part 10 Issue #2 Fix: Correct route to dashboard create page
@@ -120,7 +127,7 @@ export function NewslettersTab() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Mail className="w-6 h-6 text-[#FF7900]" />
-          <h2 className="text-2xl font-bold text-[#8B1538]">Newsletters</h2>
+          <h2 className="text-2xl font-bold text-[#8B1538]">Newsletters & Notifications</h2>
         </div>
         <Button
           onClick={handleCreateClick}
@@ -155,6 +162,17 @@ export function NewslettersTab() {
 
         {/* Status Filter - Phase 6A.74 Part 11 Issue #4 Fix */}
         <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value === 'all' ? 'all' : e.target.value as NewsletterMainType)}
+          className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          aria-label="Filter by type"
+        >
+          <option value="all">All Types</option>
+          <option value={NewsletterMainType.Newsletter}>Newsletter</option>
+          <option value={NewsletterMainType.Notification}>Notification</option>
+        </select>
+
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value === 'all' ? 'all' : e.target.value as NewsletterStatus)}
           className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -169,7 +187,7 @@ export function NewslettersTab() {
       </div>
 
       {/* Results count */}
-      {(searchTerm || statusFilter !== 'all') && (
+      {(searchTerm || statusFilter !== 'all' || typeFilter !== 'all') && (
         <div className="text-sm text-gray-600">
           Showing {filteredNewsletters.length} of {newsletters.length} newsletter{newsletters.length !== 1 ? 's' : ''}
         </div>
@@ -181,9 +199,9 @@ export function NewslettersTab() {
           newsletters={filteredNewsletters}
           isLoading={isLoading}
           emptyMessage={
-            searchTerm || statusFilter !== 'all'
+            searchTerm || statusFilter !== 'all' || typeFilter !== 'all'
               ? 'No newsletters match your filters. Try adjusting your search or filter criteria.'
-              : 'No newsletters yet. Create your first newsletter to get started!'
+              : 'No newsletters yet. Create your first newsletter or notification to get started!'
           }
           onNewsletterClick={handleNewsletterClick}
           onEditNewsletter={handleEditClick}

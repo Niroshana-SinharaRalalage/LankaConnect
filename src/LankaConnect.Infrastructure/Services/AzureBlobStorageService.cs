@@ -330,6 +330,43 @@ public class AzureBlobStorageService : IAzureBlobStorageService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Stream?> DownloadBlobStreamAsync(
+        string blobName,
+        string? containerName = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var container = containerName ?? _defaultContainerName;
+            var containerClient = _blobServiceClient.GetBlobContainerClient(container);
+            var blobClient = containerClient.GetBlobClient(blobName);
+
+            if (!await blobClient.ExistsAsync(cancellationToken))
+            {
+                _logger.LogWarning(
+                    "Blob not found for download. BlobName: {BlobName}, Container: {Container}",
+                    blobName, container);
+                return null;
+            }
+
+            var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "Blob download started. BlobName: {BlobName}, Container: {Container}, ContentLength: {ContentLength}",
+                blobName, container, response.Value.Details.ContentLength);
+
+            return response.Value.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error downloading blob {BlobName} from container {Container}",
+                blobName, containerName ?? _defaultContainerName);
+            throw;
+        }
+    }
+
     /// <summary>
     /// Sanitizes file name to remove invalid characters
     /// </summary>

@@ -18,10 +18,12 @@ public class Event : BaseEntity
     private readonly List<EventBadge> _badges = new(); // Phase 6A.25: Event badges for promotional overlays
     private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
     private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
+    private readonly List<EventOrganizerContact> _organizerContacts = new(); // Multiple organizer contacts
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_BADGES = 3; // Maximum badges per event
     private const int MAX_VIDEOS = 3; // Maximum videos per event
+    private const int MAX_ORGANIZER_CONTACTS = 10; // Phase 6A.132: Maximum organizer contacts per event
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
@@ -69,11 +71,14 @@ public class Event : BaseEntity
     // System-wide maximum for safety (prevents one registration from booking entire large event)
     public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
 
-    // Event Organizer Contact Details (Phase 6A.X): Optional contact information for event inquiries
+    // Event Organizer Contact Details: Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
-    public string? OrganizerContactName { get; private set; }
-    public string? OrganizerContactPhone { get; private set; }
-    public string? OrganizerContactEmail { get; private set; }
+    public IReadOnlyList<EventOrganizerContact> OrganizerContacts => _organizerContacts.AsReadOnly();
+
+    // Backward-compat computed properties for email handlers (delegate to primary contact)
+    public string? OrganizerContactName => GetPrimaryContact()?.ContactName;
+    public string? OrganizerContactPhone => GetPrimaryContact()?.ContactPhone;
+    public string? OrganizerContactEmail => GetPrimaryContact()?.ContactEmail;
 
     // Donation Configuration: Optional donation settings for the event
     public DonationConfiguration? DonationConfig { get; private set; }
@@ -1976,54 +1981,51 @@ public class Event : BaseEntity
     #region Organizer Contact Management
 
     /// <summary>
-    /// Sets organizer contact details for event inquiries
+    /// Sets organizer contacts for event inquiries (supports multiple contacts).
     /// Business Rules:
-    /// - If publishContact is true, contactName is required
-    /// - If publishContact is true, at least one contact method (email or phone) is required
-    /// - Email format is validated if provided
-    /// - If publishContact is false, all contact fields are cleared (privacy)
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// - If publishContact is true, at least one contact is required
+    /// - Each contact must have a name and at least one contact method (email or phone)
+    /// - Email format is validated per contact
+    /// - If publishContact is false, all contacts are cleared (privacy)
+    /// - First contact is automatically set as primary if none specified
     /// </summary>
-    /// <param name="publishContact">Whether to publish organizer contact information</param>
-    /// <param name="contactName">Organizer's display name</param>
-    /// <param name="contactPhone">Organizer's phone number (optional if email provided)</param>
-    /// <param name="contactEmail">Organizer's email address (optional if phone provided)</param>
-    public Result SetOrganizerContactDetails(
+    public Result SetOrganizerContacts(
         bool publishContact,
-        string? contactName,
-        string? contactPhone,
-        string? contactEmail)
+        List<(string name, string? email, string? phone, Guid? linkedUserId, bool isPrimary)> contacts)
     {
-        // Business Rule 1: If publishing contact, name is required
         if (publishContact)
         {
-            if (string.IsNullOrWhiteSpace(contactName))
-                return Result.Failure("Contact name is required when publishing organizer contact");
+            if (contacts == null || contacts.Count == 0)
+                return Result.Failure("At least one organizer contact is required when publishing");
 
-            // Business Rule 2: At least one contact method (email or phone) must be provided
-            var hasEmail = !string.IsNullOrWhiteSpace(contactEmail);
-            var hasPhone = !string.IsNullOrWhiteSpace(contactPhone);
+            if (contacts.Count > MAX_ORGANIZER_CONTACTS)
+                return Result.Failure($"Maximum {MAX_ORGANIZER_CONTACTS} organizer contacts allowed");
 
-            if (!hasEmail && !hasPhone)
-                return Result.Failure("At least one contact method (email or phone) is required");
+            // Validate each contact — respect isPrimary as provided (zero primaries allowed)
+            var newContacts = new List<EventOrganizerContact>();
+            for (var i = 0; i < contacts.Count; i++)
+            {
+                var (name, email, phone, linkedUserId, requestedPrimary) = contacts[i];
+                var isPrimary = requestedPrimary;
+                var contactResult = EventOrganizerContact.Create(
+                    Id, name, email, phone, isPrimary, sortOrder: i, linkedUserId: linkedUserId);
 
-            // Business Rule 3: Email validation if provided
-            if (hasEmail && !IsValidEmail(contactEmail!))
-                return Result.Failure("Invalid email format");
+                if (contactResult.IsFailure)
+                    return Result.Failure($"Contact {i + 1}: {contactResult.Error}");
 
-            // Set contact details (trimmed and normalized)
+                newContacts.Add(contactResult.Value);
+            }
+
+            // Replace all contacts
+            _organizerContacts.Clear();
+            _organizerContacts.AddRange(newContacts);
             PublishOrganizerContact = true;
-            OrganizerContactName = contactName.Trim();
-            OrganizerContactPhone = hasPhone ? contactPhone!.Trim() : null;
-            OrganizerContactEmail = hasEmail ? contactEmail!.Trim().ToLowerInvariant() : null;
         }
         else
         {
-            // Privacy: Clear all contact details when unpublishing
+            // Privacy: Clear all contacts when unpublishing
+            _organizerContacts.Clear();
             PublishOrganizerContact = false;
-            OrganizerContactName = null;
-            OrganizerContactPhone = null;
-            OrganizerContactEmail = null;
         }
 
         MarkAsUpdated();
@@ -2031,31 +2033,164 @@ public class Event : BaseEntity
     }
 
     /// <summary>
-    /// Checks if organizer contact information is published and available
-    /// Returns true only if contact is published AND has a valid contact name
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// Backward-compatible overload: sets organizer contacts without linkedUserId.
     /// </summary>
-    public bool HasOrganizerContact() =>
-        PublishOrganizerContact && !string.IsNullOrWhiteSpace(OrganizerContactName);
+    public Result SetOrganizerContacts(
+        bool publishContact,
+        List<(string name, string? email, string? phone)> contacts)
+    {
+        var contactsWithDefaults = contacts
+            .Select(c => (c.name, c.email, c.phone, (Guid?)null, false))
+            .ToList();
+        return SetOrganizerContacts(publishContact, contactsWithDefaults);
+    }
 
     /// <summary>
-    /// Validates email format using the same regex pattern as Email value object
-    /// Phase 6A.X: Event Organizer Contact Details
+    /// Gets the primary organizer contact (or first contact if none marked primary)
     /// </summary>
-    /// <param name="email">Email address to validate</param>
-    /// <returns>True if email format is valid, false otherwise</returns>
-    private static bool IsValidEmail(string email)
+    public EventOrganizerContact? GetPrimaryContact() =>
+        _organizerContacts.FirstOrDefault(c => c.IsPrimary)
+        ?? _organizerContacts.FirstOrDefault();
+
+    /// <summary>
+    /// Checks if organizer contact information is published and available
+    /// </summary>
+    public bool HasOrganizerContact() =>
+        PublishOrganizerContact && _organizerContacts.Any();
+
+    /// <summary>
+    /// Phase 6A.133: Determines if the given user is an organizer of this event.
+    /// Returns true if the user is the primary organizer (OrganizerId)
+    /// or a co-organizer (linked via OrganizerContacts.LinkedUserId).
+    /// </summary>
+    public bool IsOrganizer(Guid userId)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            return false;
+        if (userId == Guid.Empty) return false;
 
-        // RFC 5322 compliant email regex (same pattern as Email value object)
-        // Supports formats like: user@example.com, DoNotReply@7689582e-73cc-4552-b2ff-8afd9d1a6814.azurecomm.net
-        var emailRegex = new System.Text.RegularExpressions.Regex(
-            @"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$",
-            System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        // Primary organizer (original event creator)
+        if (OrganizerId == userId) return true;
 
-        return emailRegex.IsMatch(email.Trim());
+        // Co-organizer (linked via organizer contacts)
+        return _organizerContacts.Any(c => c.LinkedUserId.HasValue && c.LinkedUserId.Value == userId);
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Gets all user IDs that are organizers of this event.
+    /// Includes the primary OrganizerId and all linked co-organizer user IDs.
+    /// </summary>
+    public IReadOnlyList<Guid> GetAllOrganizerUserIds()
+    {
+        var ids = new List<Guid> { OrganizerId };
+        ids.AddRange(_organizerContacts
+            .Where(c => c.LinkedUserId.HasValue)
+            .Select(c => c.LinkedUserId!.Value)
+            .Where(id => id != OrganizerId)); // Avoid duplicates if primary is also linked
+        return ids.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Links an organizer contact to a user account, granting co-organizer access.
+    /// Business rules:
+    /// - Contact must exist on this event
+    /// - Cannot link to the primary organizer (they already have full access via OrganizerId)
+    /// - User cannot be linked to multiple contacts on the same event
+    /// </summary>
+    public Result LinkOrganizerContactToUser(Guid contactId, Guid userId)
+    {
+        if (userId == Guid.Empty)
+            return Result.Failure("User ID is required");
+
+        if (contactId == Guid.Empty)
+            return Result.Failure("Contact ID is required");
+
+        // Cannot link the primary organizer — they already have access
+        if (userId == OrganizerId)
+            return Result.Failure("The primary organizer already has full access to this event");
+
+        var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact == null)
+            return Result.Failure("Organizer contact not found");
+
+        // Check if this user is already linked to another contact on this event
+        var existingLink = _organizerContacts.FirstOrDefault(c => c.LinkedUserId == userId);
+        if (existingLink != null && existingLink.Id != contactId)
+            return Result.Failure("User is already linked to another organizer contact on this event");
+
+        var linkResult = contact.LinkToUser(userId);
+        if (linkResult.IsFailure)
+            return linkResult;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Removes the user link from an organizer contact, revoking co-organizer access.
+    /// The contact information remains, but the user loses management access.
+    /// </summary>
+    public Result UnlinkOrganizerContact(Guid contactId)
+    {
+        if (contactId == Guid.Empty)
+            return Result.Failure("Contact ID is required");
+
+        var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+        if (contact == null)
+            return Result.Failure("Organizer contact not found");
+
+        var unlinkResult = contact.UnlinkUser();
+        if (unlinkResult.IsFailure)
+            return unlinkResult;
+
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.133: Batch-links multiple organizer contacts to user accounts in one operation.
+    /// Validates all links before applying any (all-or-nothing).
+    /// </summary>
+    public Result BatchLinkOrganizerContacts(IList<(Guid contactId, Guid userId)> links)
+    {
+        if (links == null || links.Count == 0)
+            return Result.Success();
+
+        // Pre-validate: check for duplicate user IDs in the batch
+        var userIds = links.Select(l => l.userId).ToList();
+        if (userIds.Distinct().Count() != userIds.Count)
+            return Result.Failure("Batch contains duplicate user IDs — each user can only be linked once");
+
+        // Pre-validate each link before applying any
+        foreach (var (contactId, userId) in links)
+        {
+            if (userId == Guid.Empty)
+                return Result.Failure("User ID is required");
+
+            if (contactId == Guid.Empty)
+                return Result.Failure("Contact ID is required");
+
+            if (userId == OrganizerId)
+                return Result.Failure("The primary organizer already has full access to this event");
+
+            var contact = _organizerContacts.FirstOrDefault(c => c.Id == contactId);
+            if (contact == null)
+                return Result.Failure($"Organizer contact not found for contact ID {contactId}");
+
+            // Check for conflicts with existing links (not in this batch)
+            var existingLink = _organizerContacts.FirstOrDefault(c =>
+                c.LinkedUserId == userId && !links.Any(l => l.contactId == c.Id));
+            if (existingLink != null)
+                return Result.Failure($"User is already linked to another organizer contact on this event");
+        }
+
+        // All validations passed — apply all links
+        foreach (var (contactId, userId) in links)
+        {
+            var result = LinkOrganizerContactToUser(contactId, userId);
+            if (result.IsFailure)
+                return result; // Should not happen after pre-validation, but safety net
+        }
+
+        return Result.Success();
     }
 
     #endregion

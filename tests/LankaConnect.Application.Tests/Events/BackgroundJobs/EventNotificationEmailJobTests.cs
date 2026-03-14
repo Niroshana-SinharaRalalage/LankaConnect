@@ -35,6 +35,7 @@ public class EventNotificationEmailJobTests
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepository;
     private readonly Mock<IEventNotificationRecipientService> _mockRecipientService;
     private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<INewsletterSubscriberRepository> _mockNewsletterSubscriberRepository;
     private readonly Mock<ITypedEmailService> _mockTypedEmailService;
     private readonly Mock<IEmailUrlHelper> _mockEmailUrlHelper;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
@@ -49,6 +50,7 @@ public class EventNotificationEmailJobTests
         _mockRegistrationRepository = new Mock<IRegistrationRepository>();
         _mockRecipientService = new Mock<IEventNotificationRecipientService>();
         _mockUserRepository = new Mock<IUserRepository>();
+        _mockNewsletterSubscriberRepository = new Mock<INewsletterSubscriberRepository>();
         _mockTypedEmailService = new Mock<ITypedEmailService>();
         _mockEmailUrlHelper = new Mock<IEmailUrlHelper>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
@@ -66,6 +68,7 @@ public class EventNotificationEmailJobTests
             _mockRegistrationRepository.Object,
             _mockRecipientService.Object,
             _mockUserRepository.Object,
+            _mockNewsletterSubscriberRepository.Object,
             _mockTypedEmailService.Object,
             _mockEmailUrlHelper.Object,
             _mockUnitOfWork.Object,

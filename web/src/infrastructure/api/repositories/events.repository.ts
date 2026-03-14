@@ -62,6 +62,8 @@ import type {
   SubmitFormResponseRequest,
   SubmitFormResponseResult,
   UpdateFormResponseRequest,
+  // Phase 6A.133: Co-Organizer Management
+  UserSearchResultDto,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1603,6 +1605,19 @@ export class EventsRepository {
       { responseType: 'blob' as any }
     );
   }
+
+  // ==================== Phase 6A.133: Co-Organizer Management ====================
+
+  /**
+   * Search registered users by name, email, or phone for co-organizer linking.
+   * Returns max 10 results. Excludes the current user.
+   */
+  async searchUsers(query: string): Promise<UserSearchResultDto[]> {
+    return await apiClient.get<UserSearchResultDto[]>(
+      `/users/search?query=${encodeURIComponent(query)}`
+    );
+  }
+
 }
 
 /**

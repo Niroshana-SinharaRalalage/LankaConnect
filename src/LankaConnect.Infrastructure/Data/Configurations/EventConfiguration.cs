@@ -77,26 +77,25 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(EventCategory.Community);
 
-        // Phase 6A.X: Event Organizer Contact Details - Optional contact information for event inquiries
+        // Event Organizer Contact Details
         builder.Property(e => e.PublishOrganizerContact)
             .HasColumnName("publish_organizer_contact")
             .IsRequired()
             .HasDefaultValue(false);
 
-        builder.Property(e => e.OrganizerContactName)
-            .HasColumnName("organizer_contact_name")
-            .HasMaxLength(200)
-            .IsRequired(false); // Nullable - only set when PublishOrganizerContact is true
+        // Ignore backward-compat computed properties (they delegate to OrganizerContacts collection)
+        builder.Ignore(e => e.OrganizerContactName);
+        builder.Ignore(e => e.OrganizerContactPhone);
+        builder.Ignore(e => e.OrganizerContactEmail);
 
-        builder.Property(e => e.OrganizerContactPhone)
-            .HasColumnName("organizer_contact_phone")
-            .HasMaxLength(20)
-            .IsRequired(false); // Nullable - optional if email provided
+        // Multiple organizer contacts (separate table)
+        builder.HasMany(e => e.OrganizerContacts)
+            .WithOne()
+            .HasForeignKey(c => c.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Property(e => e.OrganizerContactEmail)
-            .HasColumnName("organizer_contact_email")
-            .HasMaxLength(255)
-            .IsRequired(false); // Nullable - optional if phone provided
+        builder.Navigation(e => e.OrganizerContacts)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Configure TicketPrice as JSONB for consistency with Pricing (Epic 2 Phase 2 - legacy single pricing)
         // Converted from separate columns to ToJson to resolve EF Core shared-type conflict with Pricing.AdultPrice

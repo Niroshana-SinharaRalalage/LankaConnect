@@ -48,7 +48,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
   // Check if user is the event organizer
   useEffect(() => {
-    if (event && user && event.organizerId !== user.userId) {
+    if (event && user && event.isCurrentUserOrganizer !== true) {
       // Only event organizer can edit
       const isAdmin = user.role === UserRole.Admin || user.role === UserRole.AdminManager;
       if (!isAdmin) {

@@ -23,6 +23,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     private readonly IUserRepository _userRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IApplicationDbContext _dbContext;
+    private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
     private readonly ILogger<GetEventsQueryHandler> _logger;
 
@@ -31,6 +32,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         IUserRepository userRepository,
         IRegistrationRepository registrationRepository,
         IApplicationDbContext dbContext,
+        ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventsQueryHandler> logger)
     {
@@ -38,6 +40,7 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         _userRepository = userRepository;
         _registrationRepository = registrationRepository;
         _dbContext = dbContext;
+        _currentUserService = currentUserService;
         _mapper = mapper;
         _logger = logger;
     }
@@ -118,9 +121,20 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                     events.Count, filteredList.Count);
 
                 // Step 4: Sort and map to DTOs
+                // Phase 6A.133: Compute IsCurrentUserOrganizer for each event
+                var currentUserId = _currentUserService.IsAuthenticated ? _currentUserService.UserId : Guid.Empty;
                 var result = filteredList
                     .OrderBy(e => e.StartDate)
-                    .Select(e => _mapper.Map<EventDto>(e))
+                    .Select(e =>
+                    {
+                        var dto = _mapper.Map<EventDto>(e);
+                        return dto with
+                        {
+                            IsCurrentUserOrganizer = currentUserId != Guid.Empty
+                                ? e.IsOrganizer(currentUserId)
+                                : null
+                        };
+                    })
                     .ToList();
 
                 // Step 5: Populate UserRegistrationStatus when userId provided (Phase 6A.X - Fix registration badge)

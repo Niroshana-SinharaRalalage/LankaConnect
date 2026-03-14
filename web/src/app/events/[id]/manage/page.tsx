@@ -13,6 +13,7 @@ import {
   XCircle,
   Mail,
   Heart,
+  Camera,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -40,6 +41,9 @@ import { DonationsManagementTab } from '@/presentation/components/features/event
 
 // Custom Forms Feature - Phase 6A: Import EventFormsTab
 import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
+
+// Photo Album Feature: Inline management tab
+import { PhotoAlbumManagementTab } from '@/presentation/components/features/events/PhotoAlbumManagementTab';
 
 /**
  * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
@@ -91,7 +95,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Handle Publish Event
   const handlePublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -110,7 +114,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Handle Unpublish Event
   const handleUnpublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -130,7 +134,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.59: Handle Cancel Event
   const handleCancelEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -161,7 +165,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   // Phase 6A.59: Handle Delete Event
   const handleDeleteEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -215,7 +219,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   }
 
   // Check if user is the organizer
-  const isOrganizer = event.organizerId === user?.userId;
+  const isOrganizer = event.isCurrentUserOrganizer === true;
 
   if (!isOrganizer) {
     return (
@@ -302,6 +306,16 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       icon: Mail,
       content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
     },
+    // Photo Album tab — visible for Published/Active/Completed/Archived events
+    ...(['Published', 'Active', 'Completed', 'Archived'].includes(String(event.status)) ||
+        [EventStatus.Published, EventStatus.Active, EventStatus.Completed, EventStatus.Archived].includes(event.status as EventStatus)
+      ? [{
+          id: 'album',
+          label: 'Photo Album',
+          icon: Camera,
+          content: <PhotoAlbumManagementTab eventId={id} />,
+        }]
+      : []),
   ];
 
   return (

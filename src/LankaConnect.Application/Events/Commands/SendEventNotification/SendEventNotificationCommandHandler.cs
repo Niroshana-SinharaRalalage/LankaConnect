@@ -79,9 +79,9 @@ public class SendEventNotificationCommandHandler : IRequestHandler<SendEventNoti
                     "SendEventNotification: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, OrganizerId={OrganizerId}",
                     @event.Id, @event.Title.Value, @event.Status, @event.OrganizerId);
 
-                // 2. Authorization: Verify organizer
+                // 2. Authorization: Verify organizer (primary or co-organizer) — Phase 6A.133
                 var userId = _currentUserService.UserId;
-                if (@event.OrganizerId != userId)
+                if (!@event.IsOrganizer(userId))
                 {
                     stopwatch.Stop();
 

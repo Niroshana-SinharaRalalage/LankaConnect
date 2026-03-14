@@ -30,7 +30,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidRequest_WithAllContactDetails_ShouldSucceed()
+    public async Task Handle_ValidRequest_WithSingleContact_ShouldSucceed()
     {
         // Arrange
         var @event = CreateValidEvent();
@@ -43,9 +43,10 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "John Organizer",
-            OrganizerContactPhone: "+1-555-1234",
-            OrganizerContactEmail: "john@example.com");
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("John Organizer", "john@example.com", "+1-555-1234")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -53,11 +54,42 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.PublishOrganizerContact.Should().BeTrue();
+        @event.OrganizerContacts.Should().HaveCount(1);
         @event.OrganizerContactName.Should().Be("John Organizer");
         @event.OrganizerContactPhone.Should().Be("+1-555-1234");
         @event.OrganizerContactEmail.Should().Be("john@example.com");
 
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ValidRequest_WithMultipleContacts_ShouldSucceed()
+    {
+        // Arrange
+        var @event = CreateValidEvent();
+        var eventId = @event.Id;
+
+        _mockEventRepository
+            .Setup(x => x.GetByIdAsync(eventId, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(@event);
+
+        var command = new UpdateEventOrganizerContactCommand(
+            EventId: eventId,
+            PublishOrganizerContact: true,
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Primary Contact", "primary@example.com", "+1-555-0001"),
+                new("Secondary Contact", "secondary@example.com")
+            });
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts.Should().HaveCount(2);
+        @event.OrganizerContacts[0].IsPrimary.Should().BeFalse("no contact explicitly marked primary");
+        @event.OrganizerContacts[1].IsPrimary.Should().BeFalse();
     }
 
     [Fact]
@@ -74,16 +106,16 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "Jane Organizer",
-            OrganizerContactPhone: null,
-            OrganizerContactEmail: "jane@example.com");
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Jane Organizer", "jane@example.com")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        @event.PublishOrganizerContact.Should().BeTrue();
         @event.OrganizerContactName.Should().Be("Jane Organizer");
         @event.OrganizerContactPhone.Should().BeNull();
         @event.OrganizerContactEmail.Should().Be("jane@example.com");
@@ -103,27 +135,28 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "Bob Organizer",
-            OrganizerContactPhone: "+1-555-9999",
-            OrganizerContactEmail: null);
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Bob Organizer", ContactPhone: "+1-555-9999")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        @event.PublishOrganizerContact.Should().BeTrue();
         @event.OrganizerContactName.Should().Be("Bob Organizer");
         @event.OrganizerContactPhone.Should().Be("+1-555-9999");
         @event.OrganizerContactEmail.Should().BeNull();
     }
 
     [Fact]
-    public async Task Handle_UnpublishContact_ShouldClearAllDetails()
+    public async Task Handle_UnpublishContact_ShouldClearAllContacts()
     {
         // Arrange
         var @event = CreateValidEvent();
-        @event.SetOrganizerContactDetails(true, "Existing Name", "+1-555-0000", "existing@example.com");
+        @event.SetOrganizerContacts(true,
+            new List<(string, string?, string?)> { ("Existing Name", "existing@example.com", "+1-555-0000") });
         var eventId = @event.Id;
 
         _mockEventRepository
@@ -133,9 +166,7 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: false,
-            OrganizerContactName: null,
-            OrganizerContactPhone: null,
-            OrganizerContactEmail: null);
+            Contacts: new List<OrganizerContactRequest>());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -143,9 +174,8 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         @event.PublishOrganizerContact.Should().BeFalse();
+        @event.OrganizerContacts.Should().BeEmpty();
         @event.OrganizerContactName.Should().BeNull();
-        @event.OrganizerContactPhone.Should().BeNull();
-        @event.OrganizerContactEmail.Should().BeNull();
     }
 
     [Fact]
@@ -161,9 +191,10 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "Test",
-            OrganizerContactPhone: "+1-555-0000",
-            OrganizerContactEmail: null);
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Test", ContactPhone: "+1-555-0000")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -189,9 +220,10 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: null,  // Missing name
-            OrganizerContactPhone: "+1-555-0000",
-            OrganizerContactEmail: "test@example.com");
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("", "test@example.com", "+1-555-0000")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -217,9 +249,10 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "Test Name",
-            OrganizerContactPhone: null,  // No phone
-            OrganizerContactEmail: null);  // No email
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Test Name")  // No email, no phone
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -245,9 +278,10 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "Test Name",
-            OrganizerContactPhone: null,
-            OrganizerContactEmail: "invalid-email");  // Invalid email
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("Test Name", "invalid-email")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -260,11 +294,12 @@ public class UpdateEventOrganizerContactCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UpdateExistingContact_ShouldOverwritePreviousData()
+    public async Task Handle_UpdateExistingContacts_ShouldReplaceAll()
     {
         // Arrange
         var @event = CreateValidEvent();
-        @event.SetOrganizerContactDetails(true, "Old Name", "+1-555-0000", "old@example.com");
+        @event.SetOrganizerContacts(true,
+            new List<(string, string?, string?)> { ("Old Name", "old@example.com", "+1-555-0000") });
         var eventId = @event.Id;
 
         _mockEventRepository
@@ -274,18 +309,20 @@ public class UpdateEventOrganizerContactCommandHandlerTests
         var command = new UpdateEventOrganizerContactCommand(
             EventId: eventId,
             PublishOrganizerContact: true,
-            OrganizerContactName: "New Name",
-            OrganizerContactPhone: "+1-555-9999",
-            OrganizerContactEmail: "new@example.com");
+            Contacts: new List<OrganizerContactRequest>
+            {
+                new("New Name", "new@example.com", "+1-555-9999"),
+                new("Second Contact", "second@example.com")
+            });
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        @event.OrganizerContacts.Should().HaveCount(2);
         @event.OrganizerContactName.Should().Be("New Name");
-        @event.OrganizerContactPhone.Should().Be("+1-555-9999");
-        @event.OrganizerContactEmail.Should().Be("new@example.com");
+        @event.OrganizerContacts[1].ContactName.Should().Be("Second Contact");
     }
 
     private Event CreateValidEvent()
@@ -298,9 +335,9 @@ public class UpdateEventOrganizerContactCommandHandlerTests
             descriptionResult.Value,
             DateTime.UtcNow.AddDays(30),
             DateTime.UtcNow.AddDays(30).AddHours(2),
-            Guid.NewGuid(), // organizerId
-            100, // capacity
-            null, // location
+            Guid.NewGuid(),
+            100,
+            null,
             EventCategory.Community
         );
 

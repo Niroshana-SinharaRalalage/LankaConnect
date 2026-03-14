@@ -13,6 +13,7 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -31,6 +32,7 @@ public class EventNotificationEmailJob
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventNotificationRecipientService _recipientService;
     private readonly IUserRepository _userRepository;
+    private readonly INewsletterSubscriberRepository _newsletterSubscriberRepository;
     private readonly ITypedEmailService _typedEmailService;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IUnitOfWork _unitOfWork;
@@ -43,6 +45,7 @@ public class EventNotificationEmailJob
         IRegistrationRepository registrationRepository,
         IEventNotificationRecipientService recipientService,
         IUserRepository userRepository,
+        INewsletterSubscriberRepository newsletterSubscriberRepository,
         ITypedEmailService typedEmailService,
         IEmailUrlHelper emailUrlHelper,
         IUnitOfWork unitOfWork,
@@ -54,6 +57,7 @@ public class EventNotificationEmailJob
         _registrationRepository = registrationRepository;
         _recipientService = recipientService;
         _userRepository = userRepository;
+        _newsletterSubscriberRepository = newsletterSubscriberRepository;
         _typedEmailService = typedEmailService;
         _emailUrlHelper = emailUrlHelper;
         _unitOfWork = unitOfWork;
@@ -218,6 +222,9 @@ public class EventNotificationEmailJob
                         organizerContactPhone: baseTemplateData.TryGetValue("OrganizerContactPhone", out var orgPhone) ? (string?)orgPhone : null,
                         subjectPrefix: (string)baseTemplateData["SubjectPrefix"]);
 
+                    // Set location flag for conditional subject rendering
+                    emailParams.HasLocation = (bool)baseTemplateData["HasLocation"];
+
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
 
@@ -225,6 +232,23 @@ public class EventNotificationEmailJob
                     if (hasActiveSignupForms)
                     {
                         emailParams.WithSignupForms(signupFormsUrl);
+                    }
+
+                    // Phase 6A.133 Email: Set all organizer contacts with pre-formatted HTML
+                    if (@event.HasOrganizerContact())
+                    {
+                        emailParams.WithOrganizerContacts(
+                            @event.OrganizerContacts
+                                .OrderBy(c => c.SortOrder)
+                                .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                                .ToList());
+                    }
+
+                    // Set per-recipient unsubscribe URL for List-Unsubscribe header (RFC 2369/8058)
+                    var subscriber = await _newsletterSubscriberRepository.GetByEmailAsync(email, cancellationToken);
+                    if (subscriber?.UnsubscribeToken != null)
+                    {
+                        emailParams.UnsubscribeUrl = _emailUrlHelper.BuildNewsletterUnsubscribeUrl(subscriber.UnsubscribeToken);
                     }
 
                     var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
@@ -384,8 +408,9 @@ public class EventNotificationEmailJob
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Template expects combined EventDateTime
-            { "EventCity", @event.Location?.Address.City ?? "TBA" },
-            { "EventState", @event.Location?.Address.State ?? "TBA" },
+            { "EventCity", @event.Location?.Address.City ?? string.Empty },
+            { "EventState", @event.Location?.Address.State ?? string.Empty },
+            { "HasLocation", !string.IsNullOrWhiteSpace(@event.Location?.Address.City) && !string.IsNullOrWhiteSpace(@event.Location?.Address.State) },
             { "EventUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) }, // Alias for EventDetailsUrl
             { "IsFree", isFree }, // event-published uses this name
             { "IsPaid", !isFree }, // event-published conditional

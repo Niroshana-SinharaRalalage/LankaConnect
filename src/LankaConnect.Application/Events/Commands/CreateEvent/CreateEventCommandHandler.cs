@@ -376,14 +376,16 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure(assignResult.Error);
         }
 
-        // Phase 6A.X: Set organizer contact details if provided
-        if (request.PublishOrganizerContact.GetValueOrDefault())
+        // Set organizer contacts if provided
+        if (request.PublishOrganizerContact.GetValueOrDefault() && request.OrganizerContacts?.Any() == true)
         {
-            var contactResult = eventResult.Value.SetOrganizerContactDetails(
-                publishContact: true, // Safe to use true since we're inside the GetValueOrDefault() check
-                request.OrganizerContactName,
-                request.OrganizerContactPhone,
-                request.OrganizerContactEmail);
+            var contacts = request.OrganizerContacts
+                .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId, c.IsPrimary))
+                .ToList();
+
+            var contactResult = eventResult.Value.SetOrganizerContacts(
+                publishContact: true,
+                contacts);
 
             if (contactResult.IsFailure)
                 return Result<Guid>.Failure(contactResult.Error);

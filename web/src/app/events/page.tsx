@@ -568,7 +568,7 @@ function EventCard({
             className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
             style={{ background: '#FF7900' }}
           >
-            View Details
+            {event.isFree ? 'View Details / Register →' : 'View Details / Buy Tickets →'}
           </button>
         </div>
       </CardContent>

@@ -40,6 +40,7 @@ export function EmailGroupModal({ isOpen, onClose, emailGroup }: EmailGroupModal
     allValid: boolean;
   } | null>(null);
   const [showSuccess, setShowSuccess] = React.useState(false);
+  const [groupAddresses, setGroupAddresses] = React.useState<string[]>([]);
 
   const createEmailGroup = useCreateEmailGroup();
   const updateEmailGroup = useUpdateEmailGroup();
@@ -73,8 +74,14 @@ export function EmailGroupModal({ isOpen, onClose, emailGroup }: EmailGroupModal
     if (emailAddresses.trim()) {
       const result = validateEmailAddresses(emailAddresses);
       setValidationResult(result);
+
+      // Detect Google Group / mailing list addresses
+      const groupPatterns = /@googlegroups\.com$/i;
+      const detected = result.valid.filter((e) => groupPatterns.test(e));
+      setGroupAddresses(detected);
     } else {
       setValidationResult(null);
+      setGroupAddresses([]);
     }
   }, [emailAddresses]);
 
@@ -257,6 +264,25 @@ export function EmailGroupModal({ isOpen, onClose, emailGroup }: EmailGroupModal
                           <p className="text-sm text-red-700 font-medium">Invalid email addresses:</p>
                           <p className="text-sm text-red-600 mt-1">
                             {validationResult.invalid.join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Google Group address warning */}
+                  {groupAddresses.length > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-blue-700 font-medium">
+                            Google Group address detected: {groupAddresses.join(', ')}
+                          </p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Emails sent to Google Groups may land in spam for group members due to
+                            how Google Groups forwards messages. For best deliverability, consider
+                            adding individual member email addresses instead.
                           </p>
                         </div>
                       </div>

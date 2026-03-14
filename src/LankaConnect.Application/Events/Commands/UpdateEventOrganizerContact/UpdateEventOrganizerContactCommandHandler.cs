@@ -32,8 +32,8 @@ public class UpdateEventOrganizerContactCommandHandler : ICommandHandler<UpdateE
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "UpdateEventOrganizerContact START: EventId={EventId}, PublishContact={PublishContact}, ContactName={ContactName}",
-                request.EventId, request.PublishOrganizerContact, request.OrganizerContactName);
+                "UpdateEventOrganizerContact START: EventId={EventId}, PublishContact={PublishContact}, ContactCount={ContactCount}",
+                request.EventId, request.PublishOrganizerContact, request.Contacts?.Count ?? 0);
 
             try
             {
@@ -55,12 +55,14 @@ public class UpdateEventOrganizerContactCommandHandler : ICommandHandler<UpdateE
                     "UpdateEventOrganizerContact: Event loaded - EventId={EventId}, Title={Title}, CurrentPublishContact={CurrentPublishContact}",
                     @event.Id, @event.Title.Value, @event.PublishOrganizerContact);
 
-                // Call domain method to set organizer contact details
-                var setContactResult = @event.SetOrganizerContactDetails(
+                // Call domain method to set organizer contacts
+                var contacts = (request.Contacts ?? new List<OrganizerContactRequest>())
+                    .Select(c => (c.ContactName, c.ContactEmail, c.ContactPhone, c.LinkedUserId, c.IsPrimary))
+                    .ToList();
+
+                var setContactResult = @event.SetOrganizerContacts(
                     request.PublishOrganizerContact,
-                    request.OrganizerContactName,
-                    request.OrganizerContactPhone,
-                    request.OrganizerContactEmail
+                    contacts
                 );
 
                 if (setContactResult.IsFailure)

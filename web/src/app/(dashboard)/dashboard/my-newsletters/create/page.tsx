@@ -37,9 +37,9 @@ function CreateNewsletterContent() {
 
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#8B1538] mb-2">Create Newsletter</h1>
+        <h1 className="text-3xl font-bold text-[#8B1538] mb-2">Create Newsletter or Notification</h1>
         <p className="text-gray-600">
-          Create and send newsletters to your email groups and subscribers
+          Choose a type below, then fill in the details
         </p>
       </div>
 

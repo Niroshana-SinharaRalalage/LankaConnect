@@ -108,7 +108,7 @@ export default function EditSignUpListPage() {
     }
 
     const isAuthorized = event && (
-      event.organizerId === user.userId ||
+      event.isCurrentUserOrganizer === true ||
       user.role === UserRole.Admin ||
       user.role === UserRole.AdminManager
     );
@@ -311,7 +311,7 @@ export default function EditSignUpListPage() {
   }
 
   // Authorization check
-  if (event.organizerId !== user.userId && user.role !== UserRole.Admin && user.role !== UserRole.AdminManager) {
+  if (event.isCurrentUserOrganizer !== true && user.role !== UserRole.Admin && user.role !== UserRole.AdminManager) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
         <Header />

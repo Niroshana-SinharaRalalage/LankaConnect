@@ -116,33 +116,33 @@ export function RichTextEditor({
     editable: !readonly,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      debouncedOnChange(html); // Use debounced version
+      // Track editor's own output to distinguish user edits from external prop changes
+      lastContentRef.current = html;
+      debouncedOnChange(html);
     },
   });
 
-  // Phase 6A.74 Part 14 Fix #4: Improved content sync for form reset
-  // Track if we've initialized the content (ref persists across renders)
-  const isInitializedRef = useRef<boolean>(false);
-  const lastContentRef = useRef<string>('');
+  // Track the last content set (either from editor output or external prop sync)
+  const lastContentRef = useRef<string>(content || '');
 
-  // Update editor content when prop changes (for form reset in edit mode)
-  // This handles the case where newsletter data loads after the editor initializes
+  // Sync editor content when prop changes (handles form reset and async data loading)
+  // Race condition prevention: lastContentRef tracks the editor's own onChange output,
+  // so debounced echoes from the parent are detected and skipped.
+  // Only genuinely new content (e.g., form reset with API data) triggers a sync.
   useEffect(() => {
     if (!editor) return;
 
-    // Skip if content is empty or same as what we already set
-    if (!content || content === '<p></p>' || content === lastContentRef.current) {
-      return;
-    }
+    // Skip empty/placeholder content
+    if (!content || content === '<p></p>') return;
 
-    // Always update if we haven't initialized yet, or if content truly changed
-    if (!isInitializedRef.current || content !== lastContentRef.current) {
-      console.log('[RichTextEditor] Syncing content:', content.substring(0, 100));
-      editor.commands.setContent(content, { emitUpdate: false });
-      lastContentRef.current = content;
-      isInitializedRef.current = true;
-    }
-  }, [editor]); // Phase 6A.106 Fix 1B: Removed 'content' to prevent race condition
+    // Skip if content matches what the editor already produced or what we last set
+    // This prevents the debounce race condition (parent re-renders with debounced value)
+    if (content === lastContentRef.current) return;
+
+    console.log('[RichTextEditor] Syncing external content:', content.substring(0, 100));
+    editor.commands.setContent(content, { emitUpdate: false });
+    lastContentRef.current = content;
+  }, [editor, content]);
 
   // Get character count
   const characterCount = editor?.storage.characterCount?.characters() || 0;

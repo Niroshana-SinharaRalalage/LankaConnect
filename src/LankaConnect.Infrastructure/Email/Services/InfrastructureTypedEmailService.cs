@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.DTOs;
 using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
 
@@ -66,11 +67,26 @@ public class InfrastructureTypedEmailService : ITypedEmailService
             // Convert to dictionary for template rendering
             var parameters = emailParams.ToDictionary();
 
+            // Build custom email headers for deliverability compliance
+            Dictionary<string, string>? emailHeaders = null;
+
+            // List-Unsubscribe headers for marketing emails (RFC 2369 + RFC 8058)
+            if (emailParams is IUnsubscribeableEmail unsub && !string.IsNullOrWhiteSpace(unsub.UnsubscribeUrl))
+            {
+                emailHeaders = ListUnsubscribeHeaderBuilder.BuildHeaders(unsub.UnsubscribeUrl);
+            }
+
+            // Feedback-ID header for Google Postmaster Tools reputation tracking
+            // Format: campaignType:correlationId:domain:ESP (per Google guidelines)
+            emailHeaders ??= new Dictionary<string, string>();
+            emailHeaders["Feedback-ID"] = $"{emailParams.TemplateName}:{correlationId}:lankaconnect.app:acs";
+
             // Send email via AzureEmailService directly (no bridge)
             var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
                 parameters,
+                emailHeaders,
                 cancellationToken);
 
             stopwatch.Stop();
@@ -148,12 +164,26 @@ public class InfrastructureTypedEmailService : ITypedEmailService
                 ContentId = a.ContentId
             }).ToList();
 
+            // Build custom email headers for deliverability compliance
+            Dictionary<string, string>? attachEmailHeaders = null;
+
+            // List-Unsubscribe headers for marketing emails (RFC 2369 + RFC 8058)
+            if (emailParams is IUnsubscribeableEmail unsubAttach && !string.IsNullOrWhiteSpace(unsubAttach.UnsubscribeUrl))
+            {
+                attachEmailHeaders = ListUnsubscribeHeaderBuilder.BuildHeaders(unsubAttach.UnsubscribeUrl);
+            }
+
+            // Feedback-ID header for Google Postmaster Tools reputation tracking
+            attachEmailHeaders ??= new Dictionary<string, string>();
+            attachEmailHeaders["Feedback-ID"] = $"{emailParams.TemplateName}:{correlationId}:lankaconnect.app:acs";
+
             // Send email with attachments via AzureEmailService directly (no bridge)
             var result = await _emailService.SendTemplatedEmailAsync(
                 emailParams.TemplateName,
                 emailParams.RecipientEmail,
                 parameters,
                 emailAttachments,
+                attachEmailHeaders,
                 cancellationToken);
 
             stopwatch.Stop();

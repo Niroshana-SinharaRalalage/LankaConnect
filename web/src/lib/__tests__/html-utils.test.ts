@@ -95,6 +95,44 @@ describe('HTML Utils', () => {
       expect(output).toContain('and');
       // DOMPurify might escape, remove, or normalize based on context
     });
+
+    it('should preserve img tags with safe attributes (Azure blob images)', () => {
+      const input = '<p>Check this:</p><img src="https://lcblob.blob.core.windows.net/images/photo.jpg" alt="Event photo" width="600" height="400">';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<img');
+      expect(output).toContain('src="https://lcblob.blob.core.windows.net/images/photo.jpg"');
+      expect(output).toContain('alt="Event photo"');
+      expect(output).toContain('width="600"');
+      expect(output).toContain('height="400"');
+    });
+
+    it('should strip dangerous attributes from img tags (onerror XSS)', () => {
+      const input = '<img src="x" onerror="alert(\'XSS\')">';
+      const output = sanitizeHtml(input);
+
+      expect(output).not.toContain('onerror');
+      expect(output).not.toContain('alert');
+    });
+
+    it('should preserve ordered lists', () => {
+      const input = '<ol><li>First</li><li>Second</li><li>Third</li></ol>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<ol>');
+      expect(output).toContain('<li>First</li>');
+      expect(output).toContain('<li>Second</li>');
+      expect(output).toContain('<li>Third</li>');
+      expect(output).toContain('</ol>');
+    });
+
+    it('should preserve blockquote and code tags', () => {
+      const input = '<blockquote>A quote</blockquote><pre><code>const x = 1;</code></pre>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<blockquote>A quote</blockquote>');
+      expect(output).toContain('<code>const x = 1;</code>');
+    });
   });
 
   describe('isHtmlContent', () => {

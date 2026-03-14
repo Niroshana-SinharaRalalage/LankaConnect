@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -35,6 +35,10 @@ import { DonationSection } from '@/presentation/components/features/events/Donat
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 // Donation Feature: Import donation hooks
 import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/useDonations';
+// Multi-Album: Import album hooks and carousel
+import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
+import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
+import { AlbumStatus } from '@/infrastructure/api/types/events.types';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -125,7 +129,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
 
-  const isOrganizer = event?.organizerId === user?.userId;
+  // Phase 6A.133: Use backend-computed organizer flag instead of client-side ID comparison
+  const isOrganizer = event?.isCurrentUserOrganizer === true;
 
   // Donation Feature: Public summary (when organizer enabled ShowDonationSummary)
   const { data: publicDonationSummary } = usePublicDonationSummary(
@@ -136,6 +141,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const { data: myDonations } = useMyDonations(
     isAuthenticated && event?.donationConfig?.isEnabled ? id : undefined
   );
+
+  // Multi-Album: Fetch published albums for event details carousel
+  const { data: eventAlbums } = useEventAlbums(id);
+  const publishedAlbumsWithPhotos = (eventAlbums ?? []).filter(
+    (a) => a.status === AlbumStatus.Published && a.photoCount > 0,
+  );
+  const [activeCarouselAlbumId, setActiveCarouselAlbumId] = useState<string | null>(null);
+  const activeCarouselAlbum =
+    publishedAlbumsWithPhotos.find((a) => a.id === activeCarouselAlbumId) ??
+    publishedAlbumsWithPhotos[0] ?? null;
+  const downloadZip = useDownloadAlbumZip();
 
   // Phase 6A.56 FIX: Remove _hasHydrated dependency - causes registration status "flipping"
   // The auth store now correctly restores isAuthenticated during hydration
@@ -443,7 +459,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Handle Publish Event
   const handlePublishEvent = async () => {
-    if (!event || event.organizerId !== user?.userId) {
+    if (!event || event.isCurrentUserOrganizer !== true) {
       return;
     }
 
@@ -612,7 +628,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
 
           {/* Organizer-only actions */}
-          {event && user && event.organizerId === user.userId && (
+          {event && user && event.isCurrentUserOrganizer === true && (
             <div className="flex items-center gap-3">
               {/* Publish button - only show for Draft events */}
               {event.status === EventStatus.Draft && (
@@ -1691,41 +1707,136 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 6A.X: Event Organizer Contact - Collapsible */}
-        {event && event.publishOrganizerContact && event.organizerContactName && (
+        {/* After Event Albums — shows published albums with photo carousel */}
+        {publishedAlbumsWithPhotos.length > 0 && (
+          <div className="mt-8">
+            <CollapsibleSection
+              title="After Event Albums"
+              icon={<Camera className="h-5 w-5 text-purple-600" />}
+              defaultOpen={false}
+            >
+              <div className="space-y-4">
+                {/* Album Tabs (if multiple) */}
+                {publishedAlbumsWithPhotos.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b">
+                    {publishedAlbumsWithPhotos.map((album) => (
+                      <button
+                        key={album.id}
+                        type="button"
+                        onClick={() => setActiveCarouselAlbumId(album.id)}
+                        className={`px-3 py-1.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                          activeCarouselAlbum?.id === album.id
+                            ? 'bg-white border border-b-0 border-gray-200 text-gray-900'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {album.name}
+                        <span className="ml-1.5 text-xs text-gray-400">({album.photoCount})</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Active Album Carousel */}
+                {activeCarouselAlbum && (
+                  <>
+                    {publishedAlbumsWithPhotos.length === 1 && (
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-700">
+                          {activeCarouselAlbum.name}
+                          <span className="ml-2 text-xs text-gray-400 font-normal">
+                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                          </span>
+                        </h3>
+                      </div>
+                    )}
+
+                    <AlbumPhotoCarousel
+                      eventId={id}
+                      albumId={activeCarouselAlbum.id}
+                      onPhotoClick={() => router.push(`/events/${id}/photos?album=${activeCarouselAlbum.id}`)}
+                    />
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/events/${id}/photos?album=${activeCarouselAlbum.id}`)}
+                      >
+                        View All Photos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadZip.mutateAsync({
+                            eventId: id,
+                            albumId: activeCarouselAlbum.id,
+                            albumName: activeCarouselAlbum.name,
+                          })
+                        }
+                        disabled={downloadZip.isPending}
+                      >
+                        {downloadZip.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Download className="h-4 w-4 mr-1" />
+                            Download ZIP
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
+          </div>
+        )}
+
+        {/* Event Organizer Contacts - Collapsible */}
+        {event && event.publishOrganizerContact && event.organizerContacts && event.organizerContacts.length > 0 && (
           <div className="mt-6">
             <CollapsibleSection
-              title="Event Organizer Contact"
+              title="Event Organizer Contacts"
               icon={<Users className="h-5 w-5 text-blue-600" />}
               defaultOpen={false}
             >
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-700">Name:</span>
-                  <span className="text-gray-900">{event.organizerContactName}</span>
-                </div>
-                {event.organizerContactEmail && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Email:</span>
-                    <a
-                      href={`mailto:${event.organizerContactEmail}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {event.organizerContactEmail}
-                    </a>
-                  </div>
-                )}
-                {event.organizerContactPhone && (
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-700">Phone:</span>
-                    <a
-                      href={`tel:${event.organizerContactPhone}`}
-                      className="text-blue-600 hover:underline"
-                    >
-                      {event.organizerContactPhone}
-                    </a>
-                  </div>
-                )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Name</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Email</th>
+                      <th className="text-left px-4 py-2 font-medium text-gray-600">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {event.organizerContacts.map((contact, idx) => (
+                      <tr key={contact.id || idx} className="border-b border-gray-100">
+                        <td className="px-4 py-2">
+                          <span className="font-medium text-gray-900">{contact.contactName}</span>
+                          {contact.isPrimary && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              Primary
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600">
+                          {contact.contactEmail ? (
+                            <a href={`mailto:${contact.contactEmail}`} className="text-blue-600 hover:underline">{contact.contactEmail}</a>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600">
+                          {contact.contactPhone ? (
+                            <a href={`tel:${contact.contactPhone}`} className="text-blue-600 hover:underline">{contact.contactPhone}</a>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CollapsibleSection>
           </div>

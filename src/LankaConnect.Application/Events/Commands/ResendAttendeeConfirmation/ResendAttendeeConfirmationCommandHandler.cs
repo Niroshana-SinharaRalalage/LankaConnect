@@ -70,14 +70,14 @@ public class ResendAttendeeConfirmationCommandHandler : ICommandHandler<ResendAt
                 return Result.Failure("Event not found");
             }
 
-            // 3. AUTHORIZATION: Validate organizer owns event
-            if (@event.OrganizerId != request.OrganizerId)
+            // 3. AUTHORIZATION: Validate organizer (primary or co-organizer) — Phase 6A.133
+            if (!@event.IsOrganizer(request.OrganizerId))
             {
                 stopwatch.Stop();
                 _logger.LogWarning(
-                    "ResendAttendeeConfirmation FORBIDDEN: Organizer does not own event - EventId={EventId}, OrganizerId={OrganizerId}, ActualOrganizerId={ActualOrganizerId}, Duration={ElapsedMs}ms",
+                    "ResendAttendeeConfirmation FORBIDDEN: User is not an organizer - EventId={EventId}, OrganizerId={OrganizerId}, ActualOrganizerId={ActualOrganizerId}, Duration={ElapsedMs}ms",
                     request.EventId, request.OrganizerId, @event.OrganizerId, stopwatch.ElapsedMilliseconds);
-                return Result.Failure("Not authorized - only event organizer can resend confirmations");
+                return Result.Failure("Not authorized - only event organizers can resend confirmations");
             }
 
             // 4. Validate registration belongs to event

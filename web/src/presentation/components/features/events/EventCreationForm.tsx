@@ -1,10 +1,10 @@
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, Mail, Link2, Star } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -21,7 +21,9 @@ import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { DonationConfigForm } from './DonationConfigForm';
+import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
+import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Creation Form Component
@@ -96,25 +98,61 @@ export function EventCreationForm() {
   const groupPricingTiers = watch('groupPricingTiers') || [];
   const publishOrganizerContact = watch('publishOrganizerContact');
 
-  // Phase 6A.X: Auto-populate organizer contact from user profile when checkbox is checked
+  // Dynamic organizer contacts field array
+  const { fields: contactFields, append: appendContact, remove: removeContact } = useFieldArray({
+    control,
+    name: 'organizerContacts',
+  });
+
+  // Auto-populate first organizer contact from user profile when checkbox is checked
   useEffect(() => {
     if (publishOrganizerContact && user) {
-      // Only auto-populate if fields are empty
-      const currentName = watch('organizerContactName');
-      const currentEmail = watch('organizerContactEmail');
-      const currentPhone = watch('organizerContactPhone');
-
-      if (!currentName) {
-        setValue('organizerContactName', user.fullName);
-      }
-      if (!currentEmail) {
-        setValue('organizerContactEmail', user.email);
-      }
-      if (!currentPhone && user.phoneNumber) {
-        setValue('organizerContactPhone', user.phoneNumber);
+      const currentContacts = watch('organizerContacts') || [];
+      if (currentContacts.length === 0) {
+        setValue('organizerContacts', [{
+          contactName: user.fullName || '',
+          contactEmail: user.email || '',
+          contactPhone: user.phoneNumber || '',
+          isPrimary: true,
+        }]);
       }
     }
   }, [publishOrganizerContact, user, setValue, watch]);
+
+  // Co-organizer inline search state
+  const [showCoOrgSearch, setShowCoOrgSearch] = useState(false);
+
+  // Get list of already-linked user IDs to exclude from search results
+  const linkedUserIds = useMemo(() => {
+    const contacts = watch('organizerContacts') || [];
+    return contacts
+      .map((c) => c.linkedUserId)
+      .filter((id): id is string => !!id);
+  }, [watch('organizerContacts')]);
+
+  // Handle selecting a user from inline search
+  const handleSearchUserSelected = (selectedUser: UserSearchResultDto) => {
+    appendContact({
+      contactName: selectedUser.displayName,
+      contactEmail: selectedUser.email,
+      contactPhone: '',
+      isPrimary: false,
+      linkedUserId: selectedUser.id,
+    });
+    setShowCoOrgSearch(false);
+  };
+
+  // Toggle primary organizer status for a contact
+  const handleTogglePrimary = (index: number) => {
+    const contacts = watch('organizerContacts') || [];
+    const isCurrentlyPrimary = contacts[index]?.isPrimary;
+    // Clear primary from all contacts first
+    contacts.forEach((_, i) => setValue(`organizerContacts.${i}.isPrimary`, false));
+    // If wasn't primary, set this one as primary; if was primary, leave all cleared
+    if (!isCurrentlyPrimary) {
+      setValue(`organizerContacts.${index}.isPrimary`, true);
+    }
+  };
 
   // Session 33: Track validation errors for display
   const hasErrors = Object.keys(errors).length > 0;
@@ -212,11 +250,17 @@ export function EventCreationForm() {
         emailGroupIds: data.emailGroupIds || [],
         // IsFreeEvent fix: Send explicit free event flag to backend
         isFree: data.isFree ?? false,
-        // Phase 6A.X: Event Organizer Contact Details
+        // Organizer Contact Details (multiple contacts)
         publishOrganizerContact: data.publishOrganizerContact || false,
-        organizerContactName: data.publishOrganizerContact ? data.organizerContactName : null,
-        organizerContactPhone: data.publishOrganizerContact ? data.organizerContactPhone : null,
-        organizerContactEmail: data.publishOrganizerContact ? data.organizerContactEmail : null,
+        organizerContacts: data.publishOrganizerContact
+          ? (data.organizerContacts || []).map((c, idx) => ({
+              contactName: c.contactName,
+              contactEmail: c.contactEmail || null,
+              contactPhone: c.contactPhone || null,
+              isPrimary: c.isPrimary || false, // Preserve user's choice
+              linkedUserId: c.linkedUserId || null,
+            }))
+          : [],
         // Donation Feature: Donation configuration
         donationsEnabled,
         ...(donationsEnabled && {
@@ -960,15 +1004,15 @@ export function EventCreationForm() {
         </CardContent>
       </Card>
 
-      {/* Phase 6A.X: Event Organizer Contact Details */}
+      {/* Organizer Contact Details (Multiple Contacts) */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Organizer Contact (Optional)</CardTitle>
+            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts (Optional)</CardTitle>
           </div>
           <CardDescription>
-            Publish your contact information with this event so attendees can reach you
+            Publish organizer contact information so attendees can reach you
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -981,67 +1025,146 @@ export function EventCreationForm() {
               className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="publishOrganizerContact" className="text-sm font-medium text-gray-700">
-              Publish my contact information with this event
+              Publish organizer contact information with this event
             </label>
           </div>
 
           {/* Show contact fields only when checkbox is checked */}
           {watch('publishOrganizerContact') && (
-            <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-              {/* Contact Name */}
-              <div className="space-y-2">
-                <label htmlFor="organizerContactName" className="block text-sm font-medium text-gray-700">
-                  Contact Name *
-                </label>
-                <Input
-                  id="organizerContactName"
-                  type="text"
-                  placeholder="Your full name"
-                  error={!!errors.organizerContactName}
-                  {...register('organizerContactName')}
-                />
-                {errors.organizerContactName && (
-                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactName.message}</p>
-                )}
-              </div>
+            <div className="ml-7 space-y-4">
+              {contactFields.map((field, index) => {
+                const contactLinkedUserId = watch(`organizerContacts.${index}.linkedUserId`);
+                const contactIsPrimary = watch(`organizerContacts.${index}.isPrimary`);
+                return (
+                <div key={field.id} className={`p-4 border rounded-lg space-y-3 ${contactLinkedUserId ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-700">
+                        {contactIsPrimary ? 'Primary Organizer' : `Contact ${index + 1}`}
+                      </span>
+                      {contactLinkedUserId && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                          <Link2 className="h-3 w-3" /> Linked User
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePrimary(index)}
+                        className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
+                          contactIsPrimary
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                        title={contactIsPrimary ? 'Remove primary status' : 'Set as primary organizer'}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${contactIsPrimary ? 'fill-blue-500 text-blue-500' : ''}`} />
+                        {contactIsPrimary ? 'Primary' : 'Set Primary'}
+                      </button>
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeContact(index)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Contact Email */}
-              <div className="space-y-2">
-                <label htmlFor="organizerContactEmail" className="block text-sm font-medium text-gray-700">
-                  Contact Email
-                </label>
-                <Input
-                  id="organizerContactEmail"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  error={!!errors.organizerContactEmail}
-                  {...register('organizerContactEmail')}
-                />
-                {errors.organizerContactEmail && (
-                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactEmail.message}</p>
-                )}
-              </div>
+                  {/* Contact Name */}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Name *
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Full name"
+                      error={!!errors.organizerContacts?.[index]?.contactName}
+                      {...register(`organizerContacts.${index}.contactName`)}
+                    />
+                    {errors.organizerContacts?.[index]?.contactName && (
+                      <p className="text-sm text-destructive">{errors.organizerContacts[index]?.contactName?.message}</p>
+                    )}
+                  </div>
 
-              {/* Contact Phone */}
-              <div className="space-y-2">
-                <label htmlFor="organizerContactPhone" className="block text-sm font-medium text-gray-700">
-                  Contact Phone
-                </label>
-                <Input
-                  id="organizerContactPhone"
-                  type="tel"
-                  placeholder="+1 (555) 123-4567"
-                  error={!!errors.organizerContactPhone}
-                  {...register('organizerContactPhone')}
-                />
-                {errors.organizerContactPhone && (
-                  <p className="mt-1 text-sm text-destructive">{errors.organizerContactPhone.message}</p>
-                )}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Contact Email */}
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Email
+                      </label>
+                      <Input
+                        type="email"
+                        placeholder="email@example.com"
+                        error={!!errors.organizerContacts?.[index]?.contactEmail}
+                        {...register(`organizerContacts.${index}.contactEmail`)}
+                      />
+                      {errors.organizerContacts?.[index]?.contactEmail && (
+                        <p className="text-sm text-destructive">{errors.organizerContacts[index]?.contactEmail?.message}</p>
+                      )}
+                    </div>
 
-              {/* Help Text */}
-              <p className="text-sm text-gray-600 mt-2">
-                * At least one contact method (email or phone) is required
+                    {/* Contact Phone */}
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Phone
+                      </label>
+                      <Input
+                        type="tel"
+                        placeholder="+1 (555) 123-4567"
+                        error={!!errors.organizerContacts?.[index]?.contactPhone}
+                        {...register(`organizerContacts.${index}.contactPhone`)}
+                      />
+                      {errors.organizerContacts?.[index]?.contactPhone && (
+                        <p className="text-sm text-destructive">{errors.organizerContacts[index]?.contactPhone?.message}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                );
+              })}
+
+              {/* Inline co-organizer search */}
+              {showCoOrgSearch && (
+                <CoOrganizerInlineSearch
+                  onSelectUser={handleSearchUserSelected}
+                  excludeUserIds={linkedUserIds}
+                  onClose={() => setShowCoOrgSearch(false)}
+                />
+              )}
+
+              {/* Add Contact Buttons (max 10) */}
+              {contactFields.length < 10 && !showCoOrgSearch ? (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => appendContact({ contactName: '', contactEmail: '', contactPhone: '', isPrimary: false })}
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    <span className="text-lg">+</span> Add Contact Manually
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCoOrgSearch(true)}
+                    className="flex items-center gap-2 text-sm text-[#FF7900] hover:text-[#e06d00] font-medium"
+                  >
+                    <Users className="h-4 w-4" /> Search & Add LankaConnect User
+                  </button>
+                </div>
+              ) : contactFields.length >= 10 ? (
+                <p className="text-sm text-neutral-500">Maximum 10 organizer contacts reached</p>
+              ) : null}
+
+              {/* Validation Error */}
+              {errors.organizerContacts && !Array.isArray(errors.organizerContacts) && (
+                <p className="text-sm text-destructive">{(errors.organizerContacts as any).message}</p>
+              )}
+
+              <p className="text-sm text-gray-600">
+                Each contact requires a name and at least one contact method (email or phone)
               </p>
             </div>
           )}

@@ -1,3 +1,5 @@
+using LankaConnect.Shared.Email.Helpers;
+
 namespace LankaConnect.Shared.Email.Contracts;
 
 /// <summary>
@@ -10,7 +12,7 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Sent to email groups and newsletter subscribers when an organizer manually
 /// sends event details/notifications.
 /// </summary>
-public class EventDetailsEmailParams : IEmailParameters
+public class EventDetailsEmailParams : IEmailParameters, IUnsubscribeableEmail
 {
     #region Template Selection
 
@@ -28,6 +30,12 @@ public class EventDetailsEmailParams : IEmailParameters
     /// Recipient name.
     /// </summary>
     public string RecipientName => UserName;
+
+    /// <summary>
+    /// Per-recipient unsubscribe URL for List-Unsubscribe header.
+    /// Set when recipient is a newsletter subscriber with an unsubscribe token.
+    /// </summary>
+    public string? UnsubscribeUrl { get; set; }
 
     #endregion
 
@@ -75,12 +83,17 @@ public class EventDetailsEmailParams : IEmailParameters
     /// <summary>
     /// Event city.
     /// </summary>
-    public string EventCity { get; set; } = "TBA";
+    public string EventCity { get; set; } = string.Empty;
 
     /// <summary>
     /// Event state.
     /// </summary>
-    public string EventState { get; set; } = "TBA";
+    public string EventState { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the event has location data (controls {{#if HasLocation}} conditional in subject).
+    /// </summary>
+    public bool HasLocation { get; set; }
 
     /// <summary>
     /// Event description.
@@ -176,6 +189,16 @@ public class EventDetailsEmailParams : IEmailParameters
     /// </summary>
     public string OrganizerContactPhone { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Phase 6A.133 Email: Pre-formatted HTML for all organizer contacts.
+    /// </summary>
+    public string OrganizerContactsHtml { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 6A.133 Email: Dynamic header text ("EVENT ORGANIZER" or "EVENT ORGANIZERS").
+    /// </summary>
+    public string OrganizerContactHeader { get; set; } = "EVENT ORGANIZER";
+
     #endregion
 
     #region Event Image Properties
@@ -225,6 +248,7 @@ public class EventDetailsEmailParams : IEmailParameters
             { EmailTemplateContract.Event.EventLocation, EventLocation },
             { "EventCity", EventCity },
             { "EventState", EventState },
+            { "HasLocation", HasLocation },
             { EmailTemplateContract.Event.EventDescription, EventDescription },
             { EmailTemplateContract.Event.EventDetailsUrl, EventDetailsUrl },
             { EmailTemplateContract.Event.EventUrl, EventUrl },
@@ -242,6 +266,8 @@ public class EventDetailsEmailParams : IEmailParameters
             { EmailTemplateContract.OrganizerContact.OrganizerContactName, OrganizerContactName },
             { EmailTemplateContract.OrganizerContact.OrganizerContactEmail, OrganizerContactEmail },
             { EmailTemplateContract.OrganizerContact.OrganizerContactPhone, OrganizerContactPhone },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactsHtml, OrganizerContactsHtml },
+            { EmailTemplateContract.OrganizerContact.OrganizerContactHeader, OrganizerContactHeader },
             { "SubjectPrefix", SubjectPrefix },
             { EmailTemplateContract.Common.Year, Year },
 
@@ -283,6 +309,24 @@ public class EventDetailsEmailParams : IEmailParameters
     {
         HasEventImage = !string.IsNullOrEmpty(imageUrl);
         EventImageUrl = imageUrl ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.133 Email: Sets all organizer contacts with pre-formatted HTML.
+    /// </summary>
+    public EventDetailsEmailParams WithOrganizerContacts(IReadOnlyList<OrganizerContactInfo> contacts)
+    {
+        if (contacts.Count > 0)
+        {
+            HasOrganizerContact = true;
+            var primary = contacts.FirstOrDefault(c => c.IsPrimary) ?? contacts[0];
+            OrganizerContactName = primary.Name;
+            OrganizerContactEmail = primary.Email ?? string.Empty;
+            OrganizerContactPhone = primary.Phone ?? string.Empty;
+        }
+        OrganizerContactsHtml = OrganizerContactHtmlBuilder.BuildContactListHtml(contacts);
+        OrganizerContactHeader = OrganizerContactHtmlBuilder.BuildHeaderText(contacts.Count);
         return this;
     }
 

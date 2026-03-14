@@ -12,7 +12,10 @@ import { NotificationBell } from '@/presentation/components/features/notificatio
 import { NotificationDropdown } from '@/presentation/components/features/notifications/NotificationDropdown';
 import { useUnreadNotifications } from '@/presentation/hooks/useNotifications';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
-import { User, LogOut, ChevronDown, Search, Menu, X, Loader2 } from 'lucide-react';
+import { User, LogOut, ChevronDown, Search, Menu, X, Loader2, Plus } from 'lucide-react';
+import { UserRole } from '@/infrastructure/api/types/auth.types';
+import { UpgradeModal } from '@/presentation/components/features/role-upgrade/UpgradeModal';
+import { isEventOrganizer, isAdmin } from '@/infrastructure/api/utils/role-helpers';
 
 export interface HeaderProps {
   className?: string;
@@ -36,6 +39,7 @@ export function Header({ className = '' }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState(''); // Phase 6A.59: Search input state
   const [isLoggingOut, setIsLoggingOut] = React.useState(false); // Phase 6A.X Issue #50: Loading state for logout
+  const [showUpgradeModal, setShowUpgradeModal] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement>(null);
   const searchRef = React.useRef<HTMLDivElement>(null);
 
@@ -103,31 +107,28 @@ export function Header({ className = '' }: HeaderProps) {
             >
               Events
             </Link>
-            <Link
-              href="/forums"
-              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-            >
-              Forums
-            </Link>
-            <Link
-              href="/business"
-              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-            >
-              Business
-            </Link>
-            <Link
-              href="/marketplace"
-              className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
-            >
-              Marketplace
-            </Link>
             {isAuthenticated && (
               <Link
                 href="/dashboard"
                 className="text-[#333] hover:text-[#FF7900] font-medium transition-colors"
               >
-                Dashboard
+                My Dashboard
               </Link>
+            )}
+            {isAuthenticated && user && (
+              <button
+                onClick={() => {
+                  if (user.role === UserRole.GeneralUser) {
+                    setShowUpgradeModal(true);
+                  } else if (isEventOrganizer(user.role) || isAdmin(user.role)) {
+                    router.push('/events/create');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-[#FF7900] hover:bg-[#E66D00] text-white font-semibold rounded-lg transition-all text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Create Event
+              </button>
             )}
 
             {/* Search */}
@@ -155,7 +156,7 @@ export function Header({ className = '' }: HeaderProps) {
                           setSearchValue('');
                         }
                       }}
-                      placeholder="Search events, forums, businesses..."
+                      placeholder="Search events..."
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent text-sm"
                       autoFocus
                     />
@@ -346,35 +347,30 @@ export function Header({ className = '' }: HeaderProps) {
               >
                 Events
               </Link>
-              <Link
-                href="/forums"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Forums
-              </Link>
-              <Link
-                href="/business"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Business
-              </Link>
-              <Link
-                href="/marketplace"
-                className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Marketplace
-              </Link>
               {isAuthenticated && (
                 <Link
                   href="/dashboard"
                   className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Dashboard
+                  My Dashboard
                 </Link>
+              )}
+              {isAuthenticated && user && (
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (user.role === UserRole.GeneralUser) {
+                      setShowUpgradeModal(true);
+                    } else if (isEventOrganizer(user.role) || isAdmin(user.role)) {
+                      router.push('/events/create');
+                    }
+                  }}
+                  className="flex items-center gap-2 mx-4 px-4 py-2 bg-[#FF7900] hover:bg-[#E66D00] text-white font-semibold rounded-lg transition-all text-sm justify-center"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Event
+                </button>
               )}
 
               {/* Mobile Search */}
@@ -391,7 +387,7 @@ export function Header({ className = '' }: HeaderProps) {
                         setSearchValue('');
                       }
                     }}
-                    placeholder="Search events, forums, businesses..."
+                    placeholder="Search events..."
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF7900] focus:border-transparent"
                   />
                   <button
@@ -441,6 +437,9 @@ export function Header({ className = '' }: HeaderProps) {
           </div>
         )}
       </nav>
+
+      {/* Upgrade Modal for General Users trying to create events */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
     </header>
   );
 }

@@ -270,6 +270,17 @@ public static class EmailTemplateContract
         /// Organizer's phone number.
         /// </summary>
         public const string OrganizerContactPhone = "OrganizerContactPhone";
+
+        /// <summary>
+        /// Phase 6A.133 Email: Pre-formatted HTML for all organizer contacts (multi-contact support).
+        /// Used with triple-brace {{{OrganizerContactsHtml}}} for unescaped rendering.
+        /// </summary>
+        public const string OrganizerContactsHtml = "OrganizerContactsHtml";
+
+        /// <summary>
+        /// Phase 6A.133 Email: Dynamic header text — "EVENT ORGANIZER" or "EVENT ORGANIZERS".
+        /// </summary>
+        public const string OrganizerContactHeader = "OrganizerContactHeader";
     }
 
     #endregion

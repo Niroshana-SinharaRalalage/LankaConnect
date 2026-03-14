@@ -7,6 +7,7 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
+using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -232,15 +233,12 @@ public class EventReminderJob
                         // Phase 6A.103: Add event image if available
                         emailParams.WithEventImage(eventImageUrl);
 
-                        // Phase 6A.87: Add organizer contact if available
-                        if (@event.HasOrganizerContact())
-                        {
-                            emailParams.WithOrganizerContact(
-                                name: @event.OrganizerContactName ?? "Event Organizer",
-                                email: @event.OrganizerContactEmail,
-                                phone: @event.OrganizerContactPhone
-                            );
-                        }
+                        // Phase 6A.87: Add organizer contacts if available
+                        emailParams.WithOrganizerContacts(
+                            @event.OrganizerContacts
+                                .OrderBy(c => c.SortOrder)
+                                .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                                .ToList());
 
                         // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
                         if (@event.HasSignUpLists())
@@ -445,15 +443,12 @@ public class EventReminderJob
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
 
-                    // Phase 6A.87: Add organizer contact if available
-                    if (@event.HasOrganizerContact())
-                    {
-                        emailParams.WithOrganizerContact(
-                            name: @event.OrganizerContactName ?? "Event Organizer",
-                            email: @event.OrganizerContactEmail,
-                            phone: @event.OrganizerContactPhone
-                        );
-                    }
+                    // Phase 6A.87: Add organizer contacts if available
+                    emailParams.WithOrganizerContacts(
+                        @event.OrganizerContacts
+                            .OrderBy(c => c.SortOrder)
+                            .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
+                            .ToList());
 
                     // Phase 6A.100 Fix: Add signup lists URL if event has signup lists
                     if (@event.HasSignUpLists())

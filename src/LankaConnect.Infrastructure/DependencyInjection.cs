@@ -40,6 +40,7 @@ using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Tax.Repositories;
 using LankaConnect.Domain.Support;
+using LankaConnect.Application.Events.Services;
 using Stripe;
 using Serilog;
 
@@ -405,6 +406,14 @@ public static class DependencyInjection
 
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+
+        // Phase 0: Register webhook handler services (extracted from PaymentsController)
+        services.AddScoped<IRegistrationWebhookHandler, RegistrationWebhookHandler>();
+        services.AddScoped<IAdditionWebhookHandler, AdditionWebhookHandler>();
+        services.AddScoped<IDonationWebhookHandler, DonationWebhookHandler>();
+        services.AddScoped<ICollectionWebhookHandler, CollectionWebhookHandler>();
+        services.AddScoped<ISponsorWebhookHandler, SponsorWebhookHandler>();
+        services.AddScoped<IAddOnPurchaseWebhookHandler, AddOnPurchaseWebhookHandler>();
 
         // Phase 6A.24: Ticket services for QR code and PDF generation
         services.AddScoped<IQrCodeService, QrCodeService>();

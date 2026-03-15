@@ -7,11 +7,7 @@ using LankaConnect.Domain.Payments;
 using LankaConnect.Infrastructure.Payments.Configuration;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.Repositories;
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Services;
-using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Services;
 
 namespace LankaConnect.API.Controllers;
 
@@ -19,6 +15,7 @@ namespace LankaConnect.API.Controllers;
 /// Payments controller for Stripe integration
 /// Phase 6A.4: Stripe Payment Integration - MVP
 /// Session 23 (Phase 2B): Extended for event ticket payment webhooks
+/// Phase 0: Refactored — webhook handler logic extracted into injectable services
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -29,13 +26,12 @@ public class PaymentsController : ControllerBase
     private readonly IStripeCustomerRepository _customerRepository;
     private readonly IStripeWebhookEventRepository _webhookEventRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IEventRepository _eventRepository;
-    private readonly IRegistrationRepository _registrationRepository;
-    private readonly IRegistrationAdditionRepository _additionRepository;
-    private readonly IRegistrationPaymentRepository _paymentRepository;
-    private readonly IDonationRepository _donationRepository;
-    private readonly IRevenueCalculatorService _revenueCalculatorService;
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IRegistrationWebhookHandler _registrationWebhookHandler;
+    private readonly IAdditionWebhookHandler _additionWebhookHandler;
+    private readonly IDonationWebhookHandler _donationWebhookHandler;
+    private readonly ICollectionWebhookHandler _collectionWebhookHandler;
+    private readonly ISponsorWebhookHandler _sponsorWebhookHandler;
+    private readonly IAddOnPurchaseWebhookHandler _addOnPurchaseWebhookHandler;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
 
@@ -44,13 +40,12 @@ public class PaymentsController : ControllerBase
         IStripeCustomerRepository customerRepository,
         IStripeWebhookEventRepository webhookEventRepository,
         IUserRepository userRepository,
-        IEventRepository eventRepository,
-        IRegistrationRepository registrationRepository,
-        IRegistrationAdditionRepository additionRepository,
-        IRegistrationPaymentRepository paymentRepository,
-        IDonationRepository donationRepository,
-        IRevenueCalculatorService revenueCalculatorService,
-        IUnitOfWork unitOfWork,
+        IRegistrationWebhookHandler registrationWebhookHandler,
+        IAdditionWebhookHandler additionWebhookHandler,
+        IDonationWebhookHandler donationWebhookHandler,
+        ICollectionWebhookHandler collectionWebhookHandler,
+        ISponsorWebhookHandler sponsorWebhookHandler,
+        IAddOnPurchaseWebhookHandler addOnPurchaseWebhookHandler,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
     {
@@ -58,13 +53,12 @@ public class PaymentsController : ControllerBase
         _customerRepository = customerRepository;
         _webhookEventRepository = webhookEventRepository;
         _userRepository = userRepository;
-        _eventRepository = eventRepository;
-        _registrationRepository = registrationRepository;
-        _additionRepository = additionRepository;
-        _paymentRepository = paymentRepository;
-        _donationRepository = donationRepository;
-        _revenueCalculatorService = revenueCalculatorService;
-        _unitOfWork = unitOfWork;
+        _registrationWebhookHandler = registrationWebhookHandler;
+        _additionWebhookHandler = additionWebhookHandler;
+        _donationWebhookHandler = donationWebhookHandler;
+        _collectionWebhookHandler = collectionWebhookHandler;
+        _sponsorWebhookHandler = sponsorWebhookHandler;
+        _addOnPurchaseWebhookHandler = addOnPurchaseWebhookHandler;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
     }
@@ -343,11 +337,11 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
-    /// Session 23 (Phase 2B): Handles checkout.session.completed webhook for event ticket payments
+    /// Session 23 (Phase 2B): Handles checkout.session.completed webhook for event ticket payments.
+    /// Phase 0: Thin dispatcher — routes to the appropriate webhook handler based on payment_type metadata.
     /// </summary>
     private async Task HandleCheckoutSessionCompletedAsync(Stripe.Event stripeEvent)
     {
-        // Phase 6A.52: Generate correlation ID for end-to-end tracing
         var correlationId = Guid.NewGuid();
 
         try
@@ -374,186 +368,61 @@ public class PaymentsController : ControllerBase
                 return;
             }
 
-            // Route based on payment_type metadata
-            if (session.Metadata.TryGetValue("payment_type", out var paymentType))
-            {
-                // [AddOnlyAttendees] Check if this is an addition payment
-                if (paymentType == "addition")
-                {
-                    _logger.LogInformation(
-                        "[AddOnlyAttendees] [Webhook-Route] Routing to addition handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                        correlationId, session.Id);
-                    await HandleAdditionCheckoutCompletedAsync(session, stripeEvent, correlationId);
-                    return;
-                }
-
-                // [Donation] Check if this is a standalone donation payment
-                if (paymentType == "donation")
-                {
-                    _logger.LogInformation(
-                        "[Donation] [Webhook-Route] Routing to donation handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                        correlationId, session.Id);
-                    await HandleDonationCheckoutCompletedAsync(session, stripeEvent, correlationId);
-                    return;
-                }
-            }
-
-            // Extract metadata (regular registration payment)
-            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
-                !Guid.TryParse(registrationIdStr, out var registrationId))
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.52] [Webhook-ERROR] Missing registration_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
-                !Guid.TryParse(eventIdStr, out var eventId))
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.52] [Webhook-ERROR] Missing event_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-2] Metadata extracted - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}",
-                correlationId, eventId, registrationId);
-
-            // Phase 6A.52: Log before loading registration
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-3] Loading registration - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                correlationId, registrationId);
-
-            // Phase 6A.49 FIX: Load Registration DIRECTLY with tracking enabled
-            var registration = await _registrationRepository.GetByIdAsync(registrationId);
-            if (registration == null)
-            {
-                _logger.LogError(
-                    "[Phase 6A.52] [Webhook-ERROR] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, SessionId: {SessionId}",
-                    correlationId, registrationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-4] Registration loaded - CorrelationId: {CorrelationId}, PaymentStatus: {PaymentStatus}, CurrentStripePaymentIntentId: {StripePaymentIntentId}",
-                correlationId, registration.PaymentStatus, registration.StripePaymentIntentId);
-
-            // Phase 6A.81: Log registration state BEFORE payment completion
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-State] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}, CheckoutExpiresAt: {ExpiresAt}",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus, registration.CheckoutSessionExpiresAt?.ToString("o") ?? "null");
-
-            // Verify registration belongs to the expected event (security check)
-            if (registration.EventId != eventId)
-            {
-                _logger.LogError(
-                    "[Phase 6A.52] [Webhook-ERROR] Event mismatch - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, ActualEventId: {ActualEventId}, ExpectedEventId: {ExpectedEventId}",
-                    correlationId, registrationId, registration.EventId, eventId);
-                return;
-            }
-
-            // Phase 6A.52: Log domain events BEFORE CompletePayment (with correlation ID)
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-5] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
-                correlationId, registrationId, registration.DomainEvents.Count);
-
-            // Complete payment on registration domain entity
+            // Extract primitives from Stripe objects for handler dispatch
+            var metadata = session.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+                ?? new Dictionary<string, string>();
             var paymentIntentId = session.PaymentIntentId ?? session.Id;
-            var completeResult = registration.CompletePayment(paymentIntentId);
 
-            if (completeResult.IsFailure)
+            // Route based on payment_type metadata
+            if (metadata.TryGetValue("payment_type", out var paymentType))
             {
-                _logger.LogError(
-                    "[Phase 6A.52] [Webhook-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
-                    correlationId, registrationId, completeResult.Error);
-                return;
-            }
-
-            // Phase 6A.81: Log registration state AFTER payment completion (Preliminary → Confirmed)
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-State] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Confirmed",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus);
-
-            // Phase 6A.52: Log domain events AFTER CompletePayment
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-6] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
-                correlationId, registrationId, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
-
-            // Phase 6A.51 FIX: Restore Update() call (critical for domain event dispatch)
-            _registrationRepository.Update(registration);
-
-            // Phase 6A.52: Log BEFORE CommitAsync
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-7] Before CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count}",
-                correlationId, registrationId, registration.DomainEvents.Count);
-
-            // Save changes and dispatch domain events
-            await _unitOfWork.CommitAsync();
-
-            // Phase 6A.52: Log AFTER CommitAsync
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count} (should be cleared)",
-                correlationId, registrationId, registration.DomainEvents.Count);
-
-            _logger.LogInformation(
-                "[Phase 6A.52] [Webhook-SUCCESS] Payment completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, PaymentIntentId: {PaymentIntentId}",
-                correlationId, eventId, registrationId, paymentIntentId);
-
-            // C2 Guard: Handle bundled donation in ISOLATED try-catch AFTER registration commits.
-            // If donation fails, registration is already saved — never lose registration.
-            if (session.Metadata.TryGetValue("donation_id", out var donationIdStr) &&
-                Guid.TryParse(donationIdStr, out var donationId))
-            {
-                try
+                switch (paymentType)
                 {
-                    _logger.LogInformation(
-                        "[Donation] [Webhook-Bundled-1] Processing bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}, RegistrationId: {RegistrationId}",
-                        correlationId, donationId, registrationId);
+                    case "addition":
+                        _logger.LogInformation(
+                            "[AddOnlyAttendees] [Webhook-Route] Routing to addition handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _additionWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
 
-                    var donation = await _donationRepository.GetByDonationIdAsync(donationId);
-                    if (donation == null)
-                    {
-                        _logger.LogWarning(
-                            "[Donation] [Webhook-Bundled-WARN] Bundled donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                            correlationId, donationId);
-                    }
-                    else
-                    {
-                        var donationCompleteResult = donation.CompletePayment(paymentIntentId);
-                        if (donationCompleteResult.IsFailure)
-                        {
-                            _logger.LogWarning(
-                                "[Donation] [Webhook-Bundled-WARN] Donation CompletePayment failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
-                                correlationId, donationId, donationCompleteResult.Error);
-                        }
-                        else
-                        {
-                            // Phase 6A.X FIX: Detach all non-Donation entities before second CommitAsync.
-                            // After the first CommitAsync (registration), domain event handlers may have loaded/modified
-                            // additional entities in the shared DbContext. These stale tracked entities can cause
-                            // DbUpdateException during the donation save. Same pattern as StripeWebhookEventRepository.
-                            await _unitOfWork.ClearChangeTrackerExceptAsync<Donation>();
+                    case "donation":
+                        _logger.LogInformation(
+                            "[Donation] [Webhook-Route] Routing to donation handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _donationWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
 
-                            _donationRepository.Update(donation);
-                            await _unitOfWork.CommitAsync();
+                    case "collection":
+                        _logger.LogInformation(
+                            "[Collection] [Webhook-Route] Routing to collection handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _collectionWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
 
-                            _logger.LogInformation(
-                                "[Donation] [Webhook-Bundled-SUCCESS] Bundled donation completed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}",
-                                correlationId, donationId, paymentIntentId);
-                        }
-                    }
-                }
-                catch (Exception donationEx)
-                {
-                    // C2 Guard: Never let donation failure affect registration.
-                    // Log error but return 200 OK to Stripe.
-                    _logger.LogError(donationEx,
-                        "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation (registration already committed) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, ExceptionType: {ExceptionType}, Message: {ErrorMessage}, InnerException: {InnerMessage}",
-                        correlationId, donationId, donationEx.GetType().FullName, donationEx.Message, donationEx.InnerException?.Message ?? "None");
+                    case "sponsor":
+                        _logger.LogInformation(
+                            "[Sponsor] [Webhook-Route] Routing to sponsor handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _sponsorWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
+
+                    case "add_on_purchase":
+                        _logger.LogInformation(
+                            "[AddOnPurchase] [Webhook-Route] Routing to add-on purchase handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _addOnPurchaseWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
                 }
             }
+
+            // Default: registration payment
+            await _registrationWebhookHandler.HandleCheckoutCompletedAsync(
+                session.Id, session.PaymentStatus, paymentIntentId, metadata, correlationId);
         }
         catch (Exception ex)
         {
@@ -564,341 +433,8 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
-    /// [AddOnlyAttendees] Handles checkout.session.completed for addition payments.
-    /// Completes the RegistrationAddition, merges attendees into registration,
-    /// and creates a RegistrationPayment record.
-    /// </summary>
-    private async Task HandleAdditionCheckoutCompletedAsync(Session session, Stripe.Event stripeEvent, Guid correlationId)
-    {
-        try
-        {
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-1] Processing addition payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                correlationId, session.Id);
-
-            // Extract metadata
-            if (!session.Metadata.TryGetValue("registration_addition_id", out var additionIdStr) ||
-                !Guid.TryParse(additionIdStr, out var additionId))
-            {
-                _logger.LogWarning(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing registration_addition_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
-                !Guid.TryParse(registrationIdStr, out var registrationId))
-            {
-                _logger.LogWarning(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing registration_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
-                !Guid.TryParse(eventIdStr, out var eventId))
-            {
-                _logger.LogWarning(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing event_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-2] Metadata extracted - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
-                correlationId, additionId, registrationId, eventId);
-
-            // Load the RegistrationAddition (with tracking)
-            var addition = await _additionRepository.GetByIdAsync(additionId);
-            if (addition == null)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] RegistrationAddition not found - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}",
-                    correlationId, additionId);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-3] Addition loaded - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Status: {Status}, NewAttendeesCount: {Count}",
-                correlationId, additionId, addition.Status, addition.NewAttendees.Count);
-
-            // Verify the addition is still pending
-            if (addition.Status != RegistrationAdditionStatus.Pending)
-            {
-                _logger.LogWarning(
-                    "[AddOnlyAttendees] [Webhook-Addition-WARN] Addition not in Pending status - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, CurrentStatus: {Status}",
-                    correlationId, additionId, addition.Status);
-                return;
-            }
-
-            // Load the registration (with tracking)
-            var registration = await _registrationRepository.GetByIdAsync(registrationId);
-            if (registration == null)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Registration not found - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                    correlationId, registrationId);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentAttendees: {Count}, PaymentStatus: {PaymentStatus}",
-                correlationId, registrationId, registration.Attendees.Count, registration.PaymentStatus);
-
-            // Complete payment on the addition
-            var paymentIntentId = session.PaymentIntentId ?? session.Id;
-            var completePaymentResult = addition.CompletePayment(paymentIntentId);
-            if (completePaymentResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
-                    correlationId, additionId, completePaymentResult.Error);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-5] Payment completed on addition - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, PaymentIntentId: {PaymentIntentId}",
-                correlationId, additionId, paymentIntentId);
-
-            // Get the event to determine max attendees per registration
-            var @event = await _eventRepository.GetByIdAsync(eventId);
-            var maxAttendeesPerRegistration = @event?.MaxAttendeesPerRegistration ?? 10;
-
-            // Create RegistrationPayment record for audit trail (needed for AddAttendees)
-            var paymentResult = RegistrationPayment.CreateAddition(
-                registrationId,
-                paymentIntentId,
-                addition.AdditionalAmount,
-                additionId,
-                PaymentStatus.Completed);
-
-            if (paymentResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Failed to create payment record - CorrelationId: {CorrelationId}, Error: {Error}",
-                    correlationId, paymentResult.Error);
-                addition.MarkAsFailed();
-                _additionRepository.Update(addition);
-                await _unitOfWork.CommitAsync();
-                return;
-            }
-
-            var payment = paymentResult.Value;
-            await _paymentRepository.AddAsync(payment);
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-6] Payment record created - CorrelationId: {CorrelationId}, PaymentId: {PaymentId}, Amount: {Amount}",
-                correlationId, payment.Id, addition.AdditionalAmount.Amount);
-
-            // Calculate new total price (previous total + additional amount)
-            var previousTotal = registration.TotalPrice?.Amount ?? 0m;
-            var newTotalAmount = previousTotal + addition.AdditionalAmount.Amount;
-            var newTotalPriceResult = Domain.Shared.ValueObjects.Money.Create(newTotalAmount, addition.AdditionalAmount.Currency);
-
-            if (newTotalPriceResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Failed to create new total price - CorrelationId: {CorrelationId}, Error: {Error}",
-                    correlationId, newTotalPriceResult.Error);
-                addition.MarkAsFailed();
-                _additionRepository.Update(addition);
-                await _unitOfWork.CommitAsync();
-                return;
-            }
-
-            // Merge attendees into the registration
-            var addAttendeesResult = registration.AddAttendees(
-                addition.NewAttendees,
-                newTotalPriceResult.Value,
-                payment,
-                additionId,
-                maxAttendeesPerRegistration);
-
-            if (addAttendeesResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] AddAttendees failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
-                    correlationId, registrationId, addAttendeesResult.Error);
-                // Mark addition as failed
-                addition.MarkAsFailed();
-                _additionRepository.Update(addition);
-                await _unitOfWork.CommitAsync();
-                return;
-            }
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-7] Attendees merged - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewAttendeeCount: {NewCount}, TotalAttendees: {TotalCount}",
-                correlationId, registrationId, addition.NewAttendees.Count, registration.Attendees.Count);
-
-            // Phase 6A.X FIX: Recalculate revenue breakdown for cumulative total
-            // Bug: Breakdown columns (StripeFeeAmount, PlatformCommissionAmount, OrganizerPayoutAmount)
-            // were not updated after add-attendees, causing incorrect payout display on Attendees page
-            try
-            {
-                var eventForBreakdown = await _eventRepository.GetByIdAsync(eventId);
-                if (eventForBreakdown?.Location != null)
-                {
-                    _logger.LogInformation(
-                        "[AddOnlyAttendees] [Webhook-Addition-7b] Recalculating revenue breakdown for cumulative total - CorrelationId: {CorrelationId}, NewTotalPrice: {TotalPrice}",
-                        correlationId, newTotalPriceResult.Value.Amount);
-
-                    var breakdownResult = await _revenueCalculatorService.CalculateBreakdownAsync(
-                        newTotalPriceResult.Value,
-                        eventForBreakdown.Location,
-                        CancellationToken.None);
-
-                    if (breakdownResult.IsSuccess)
-                    {
-                        registration.SetRevenueBreakdown(breakdownResult.Value);
-                        _logger.LogInformation(
-                            "[AddOnlyAttendees] [Webhook-Addition-7c] Revenue breakdown updated - CorrelationId: {CorrelationId}, GrossRevenue: {Gross}, StripeFee: {StripeFee}, PlatformCommission: {Commission}, OrganizerPayout: {Payout}",
-                            correlationId,
-                            newTotalPriceResult.Value.Amount,
-                            breakdownResult.Value.StripeFeeAmount.Amount,
-                            breakdownResult.Value.PlatformCommission.Amount,
-                            breakdownResult.Value.OrganizerPayout.Amount);
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "[AddOnlyAttendees] [Webhook-Addition-WARN] Revenue breakdown calculation failed - CorrelationId: {CorrelationId}, Error: {Error}",
-                            correlationId, breakdownResult.Error);
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "[AddOnlyAttendees] [Webhook-Addition-WARN] Event or location not found for breakdown calculation - CorrelationId: {CorrelationId}, EventId: {EventId}",
-                        correlationId, eventId);
-                }
-            }
-            catch (Exception breakdownEx)
-            {
-                // Don't fail the whole operation if breakdown calculation fails
-                _logger.LogError(breakdownEx,
-                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Exception during revenue breakdown calculation - CorrelationId: {CorrelationId}",
-                    correlationId);
-            }
-
-            // Mark addition as merged
-            var mergeResult = addition.MarkAsMerged();
-            if (mergeResult.IsFailure)
-            {
-                _logger.LogWarning(
-                    "[AddOnlyAttendees] [Webhook-Addition-WARN] MarkAsMerged failed but continuing - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
-                    correlationId, additionId, mergeResult.Error);
-            }
-
-            // Save all changes and dispatch domain events
-            _additionRepository.Update(addition);
-            _registrationRepository.Update(registration);
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-8] Before CommitAsync - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, RegistrationDomainEvents: {Count}",
-                correlationId, additionId, registration.DomainEvents.Count);
-
-            await _unitOfWork.CommitAsync();
-
-            _logger.LogInformation(
-                "[AddOnlyAttendees] [Webhook-Addition-SUCCESS] Addition completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AdditionId: {AdditionId}, PaymentIntentId: {PaymentIntentId}, NewAttendees: {NewAttendees}, TotalAttendees: {TotalAttendees}",
-                correlationId, eventId, registrationId, additionId, paymentIntentId, addition.NewAttendees.Count, registration.Attendees.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "[AddOnlyAttendees] [Webhook-Addition-ERROR] Error handling addition checkout - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// [Donation] Handles checkout.session.completed for standalone donation payments.
-    /// Completes the Donation entity and dispatches DonationCompletedEvent.
-    /// </summary>
-    private async Task HandleDonationCheckoutCompletedAsync(Session session, Stripe.Event stripeEvent, Guid correlationId)
-    {
-        try
-        {
-            _logger.LogInformation(
-                "[Donation] [Webhook-Donation-1] Processing standalone donation payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                correlationId, session.Id);
-
-            // Extract donation_id metadata
-            if (!session.Metadata.TryGetValue("donation_id", out var donationIdStr) ||
-                !Guid.TryParse(donationIdStr, out var donationId))
-            {
-                _logger.LogWarning(
-                    "[Donation] [Webhook-Donation-ERROR] Missing donation_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Donation-2] Metadata extracted - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                correlationId, donationId);
-
-            // Load the donation (with tracking)
-            var donation = await _donationRepository.GetByDonationIdAsync(donationId);
-            if (donation == null)
-            {
-                _logger.LogError(
-                    "[Donation] [Webhook-Donation-ERROR] Donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                    correlationId, donationId);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Donation-3] Donation loaded - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}, Amount: {Amount}",
-                correlationId, donationId, donation.Status, donation.Amount.Amount);
-
-            // Verify the donation is still pending (idempotency check)
-            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
-            {
-                _logger.LogWarning(
-                    "[Donation] [Webhook-Donation-WARN] Donation not in Pending status (idempotent skip) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, CurrentStatus: {Status}",
-                    correlationId, donationId, donation.Status);
-                return;
-            }
-
-            // Complete payment on the donation entity
-            var paymentIntentId = session.PaymentIntentId ?? session.Id;
-            var completeResult = donation.CompletePayment(paymentIntentId);
-
-            if (completeResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[Donation] [Webhook-Donation-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
-                    correlationId, donationId, completeResult.Error);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Donation-4] Payment completed on donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}",
-                correlationId, donationId, paymentIntentId);
-
-            // Save changes and dispatch DonationCompletedEvent
-            _donationRepository.Update(donation);
-            await _unitOfWork.CommitAsync();
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Donation-SUCCESS] Standalone donation completed successfully - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}, Amount: {Amount}",
-                correlationId, donationId, paymentIntentId, donation.Amount.Amount);
-        }
-        catch (Exception ex)
-        {
-            // Swallow donation errors: standalone donation failures should NOT return HTTP 500
-            // to Stripe (causes retry storms). Donation stays Pending; expiry cleanup handles it.
-            _logger.LogError(ex,
-                "[Donation] [Webhook-Donation-ERROR] Error handling donation checkout (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Phase 6A.81: Handles checkout.session.expired webhook to mark abandoned registrations
-    /// This is part of the Three-State Registration Lifecycle to prevent payment bypass.
-    /// When Stripe checkout expires (24h), mark registration as Abandoned to allow retry.
+    /// Phase 6A.81: Handles checkout.session.expired webhook to mark abandoned registrations/donations.
+    /// Phase 0: Thin dispatcher — routes to the appropriate webhook handler based on payment_type metadata.
     /// </summary>
     private async Task HandleCheckoutSessionExpiredAsync(Stripe.Event stripeEvent)
     {
@@ -919,122 +455,40 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.81] [Webhook-Expired-1] Processing checkout.session.expired - CorrelationId: {CorrelationId}, SessionId: {SessionId}, StripeEventId: {StripeEventId}",
                 correlationId, session.Id, stripeEvent.Id);
 
-            // [Donation] Handle standalone donation expiry (no registration_id in metadata)
-            if (session.Metadata.TryGetValue("payment_type", out var expiredPaymentType) &&
-                expiredPaymentType == "donation")
+            // Extract primitives from Stripe objects for handler dispatch
+            var metadata = session.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+                ?? new Dictionary<string, string>();
+
+            // Route based on payment_type metadata
+            if (metadata.TryGetValue("payment_type", out var paymentType))
             {
-                await HandleDonationCheckoutExpiredAsync(session, correlationId);
-                return;
-            }
-
-            // Extract metadata
-            if (!session.Metadata.TryGetValue("registration_id", out var registrationIdStr) ||
-                !Guid.TryParse(registrationIdStr, out var registrationId))
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.81] [Webhook-Expired-WARN] Missing registration_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            if (!session.Metadata.TryGetValue("event_id", out var eventIdStr) ||
-                !Guid.TryParse(eventIdStr, out var eventId))
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.81] [Webhook-Expired-WARN] Missing event_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-Expired-2] Metadata extracted - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}",
-                correlationId, eventId, registrationId);
-
-            // Load registration
-            var registration = await _registrationRepository.GetByIdAsync(registrationId);
-            if (registration == null)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.81] [Webhook-Expired-WARN] Registration not found (might already be processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                    correlationId, registrationId);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-Expired-3] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus);
-
-            // Verify registration belongs to the expected event (security check)
-            if (registration.EventId != eventId)
-            {
-                _logger.LogError(
-                    "[Phase 6A.81] [Webhook-Expired-ERROR] Event mismatch - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, ActualEventId: {ActualEventId}, ExpectedEventId: {ExpectedEventId}",
-                    correlationId, registrationId, registration.EventId, eventId);
-                return;
-            }
-
-            // Mark as abandoned (Preliminary → Abandoned)
-            var abandonResult = registration.MarkAbandoned();
-
-            if (abandonResult.IsFailure)
-            {
-                // This is expected if registration was already completed or abandoned
-                _logger.LogWarning(
-                    "[Phase 6A.81] [Webhook-Expired-INFO] MarkAbandoned failed (expected if already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
-                    correlationId, registrationId, registration.Status, abandonResult.Error);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-Expired-4] After MarkAbandoned - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Abandoned",
-                correlationId, registrationId, registration.Status, registration.PaymentStatus);
-
-            // Save changes
-            _registrationRepository.Update(registration);
-            await _unitOfWork.CommitAsync();
-
-            _logger.LogInformation(
-                "[Phase 6A.81] [Webhook-Expired-SUCCESS] Checkout session expired, registration marked as Abandoned - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AbandonedAt: {AbandonedAt}",
-                correlationId, eventId, registrationId, registration.AbandonedAt?.ToString("o") ?? "null");
-
-            // C4 Guard: If this was a combined checkout, also abandon the bundled donation.
-            // Separate try-catch so registration abandonment is preserved even if donation fails.
-            if (session.Metadata.TryGetValue("donation_id", out var donationIdStr) &&
-                Guid.TryParse(donationIdStr, out var donationId))
-            {
-                try
+                switch (paymentType)
                 {
-                    _logger.LogInformation(
-                        "[Donation] [Webhook-Expired-Donation-1] Abandoning bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                        correlationId, donationId);
+                    case "donation":
+                        await _donationWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
 
-                    var donation = await _donationRepository.GetByDonationIdAsync(donationId);
-                    if (donation != null && donation.Status == Domain.Events.Enums.DonationStatus.Pending)
-                    {
-                        donation.MarkAsAbandoned();
-                        _donationRepository.Update(donation);
-                        await _unitOfWork.CommitAsync();
+                    case "collection":
+                        await _collectionWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
 
-                        _logger.LogInformation(
-                            "[Donation] [Webhook-Expired-Donation-SUCCESS] Bundled donation abandoned - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                            correlationId, donationId);
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "[Donation] [Webhook-Expired-Donation-WARN] Donation not found or not Pending - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}",
-                            correlationId, donationId, donation?.Status.ToString() ?? "NULL");
-                    }
-                }
-                catch (Exception donationEx)
-                {
-                    // C4 Guard: Don't fail the overall expiry handling if donation cleanup fails
-                    _logger.LogError(donationEx,
-                        "[Donation] [Webhook-Expired-Donation-ERROR] Failed to abandon bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                        correlationId, donationId);
+                    case "sponsor":
+                        await _sponsorWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
+
+                    case "add_on_purchase":
+                        await _addOnPurchaseWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
                 }
             }
 
+            // Default: registration payment expiry
+            await _registrationWebhookHandler.HandleCheckoutExpiredAsync(
+                session.Id, metadata, correlationId);
         }
         catch (Exception ex)
         {
@@ -1046,64 +500,8 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
-    /// [Donation] Handles checkout.session.expired for standalone donation payments.
-    /// Marks the donation as Abandoned.
-    /// </summary>
-    private async Task HandleDonationCheckoutExpiredAsync(Session session, Guid correlationId)
-    {
-        try
-        {
-            if (!session.Metadata.TryGetValue("donation_id", out var donationIdStr) ||
-                !Guid.TryParse(donationIdStr, out var donationId))
-            {
-                _logger.LogWarning(
-                    "[Donation] [Webhook-Expired-Standalone-WARN] Missing donation_id in metadata - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
-                    correlationId, session.Id);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Expired-Standalone-1] Processing standalone donation expiry - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                correlationId, donationId);
-
-            var donation = await _donationRepository.GetByDonationIdAsync(donationId);
-            if (donation == null)
-            {
-                _logger.LogWarning(
-                    "[Donation] [Webhook-Expired-Standalone-WARN] Donation not found - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                    correlationId, donationId);
-                return;
-            }
-
-            if (donation.Status != Domain.Events.Enums.DonationStatus.Pending)
-            {
-                _logger.LogWarning(
-                    "[Donation] [Webhook-Expired-Standalone-WARN] Donation not in Pending status - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Status: {Status}",
-                    correlationId, donationId, donation.Status);
-                return;
-            }
-
-            donation.MarkAsAbandoned();
-            _donationRepository.Update(donation);
-            await _unitOfWork.CommitAsync();
-
-            _logger.LogInformation(
-                "[Donation] [Webhook-Expired-Standalone-SUCCESS] Standalone donation abandoned - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
-                correlationId, donationId);
-        }
-        catch (Exception ex)
-        {
-            // Swallow: donation expiry failure should NOT return HTTP 500 to Stripe.
-            // Donation stays Pending and can be cleaned up by background job.
-            _logger.LogError(ex,
-                "[Donation] [Webhook-Expired-Standalone-ERROR] Error handling donation expiry (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
-        }
-    }
-
-    /// <summary>
     /// Phase 6A.91: Handles charge.refunded webhook to complete refund workflow.
-    /// Transitions registration from RefundRequested to Refunded state.
+    /// Phase 0: Extracts refund info from Stripe objects and delegates to RegistrationWebhookHandler.
     /// </summary>
     private async Task HandleChargeRefundedAsync(Stripe.Event stripeEvent)
     {
@@ -1160,81 +558,16 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.91] [Webhook-Refund-2] Refund found - CorrelationId: {CorrelationId}, RefundId: {RefundId}, RefundStatus: {Status}, RefundAmount: {Amount}",
                 correlationId, latestRefund.Id, latestRefund.Status, latestRefund.Amount);
 
-            // Phase 6A.X FIX: Try to find registration via metadata first, then fallback to PaymentIntentId
-            Registration? registration = null;
+            // Extract primitives and delegate to handler (keeps Stripe SDK dependency out of Application layer)
+            var refundMetadata = latestRefund.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            // Method 1: Extract registration_id from refund metadata (we store it when creating refund)
-            if (latestRefund.Metadata != null &&
-                latestRefund.Metadata.TryGetValue("registration_id", out var registrationIdStr) &&
-                Guid.TryParse(registrationIdStr, out var registrationId))
-            {
-                _logger.LogInformation(
-                    "[Phase 6A.91] [Webhook-Refund-3a] Metadata lookup - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
-                    correlationId, registrationId);
-
-                registration = await _registrationRepository.GetByIdAsync(registrationId);
-            }
-
-            // Method 2 (FALLBACK): Use PaymentIntentId from charge if metadata is missing
-            if (registration == null && !string.IsNullOrEmpty(charge.PaymentIntentId))
-            {
-                _logger.LogInformation(
-                    "[Phase 6A.91] [Webhook-Refund-3b] Fallback to PaymentIntentId lookup - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
-                    correlationId, charge.PaymentIntentId);
-
-                registration = await _registrationRepository.GetByPaymentIntentIdAsync(charge.PaymentIntentId);
-            }
-
-            // If still not found, we cannot process the refund
-            if (registration == null)
-            {
-                _logger.LogWarning(
-                    "[Phase 6A.91] [Webhook-Refund-WARN] Registration not found by metadata or PaymentIntentId - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, PaymentIntentId: {PaymentIntentId}",
-                    correlationId, charge.Id, charge.PaymentIntentId);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.91] [Webhook-Refund-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
-                correlationId, registration.Id, registration.Status, registration.PaymentStatus);
-
-            // Complete refund (RefundRequested → Refunded)
-            var completeRefundResult = registration.CompleteRefund(latestRefund.Id);
-
-            if (completeRefundResult.IsFailure)
-            {
-                // This may be expected if refund was already processed (idempotency)
-                _logger.LogWarning(
-                    "[Phase 6A.91] [Webhook-Refund-INFO] CompleteRefund failed (may be already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
-                    correlationId, registration.Id, registration.Status, completeRefundResult.Error);
-                return;
-            }
-
-            _logger.LogInformation(
-                "[Phase 6A.91] [Webhook-Refund-5] After CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, StripeRefundId: {RefundId}, Transition: RefundRequested→Refunded",
-                correlationId, registration.Id, registration.Status, registration.PaymentStatus, latestRefund.Id);
-
-            // Phase 6A.92 FIX: Log domain events to diagnose email dispatch issue
-            _logger.LogInformation(
-                "[Phase 6A.92] [Webhook-Refund-6] Domain events after CompleteRefund - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
-                correlationId, registration.Id, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
-
-            // Save changes and dispatch RefundCompletedEvent
-            _registrationRepository.Update(registration);
-
-            _logger.LogInformation(
-                "[Phase 6A.92] [Webhook-Refund-7] Before CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
-                correlationId, registration.Id, registration.DomainEvents.Count);
-
-            await _unitOfWork.CommitAsync();
-
-            _logger.LogInformation(
-                "[Phase 6A.92] [Webhook-Refund-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count} (should be cleared after dispatch)",
-                correlationId, registration.Id, registration.DomainEvents.Count);
-
-            _logger.LogInformation(
-                "[Phase 6A.91] [Webhook-Refund-SUCCESS] Refund completed successfully - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, StripeRefundId: {RefundId}, RefundCompletedAt: {RefundCompletedAt}",
-                correlationId, registration.Id, latestRefund.Id, registration.RefundCompletedAt?.ToString("o") ?? "null");
+            await _registrationWebhookHandler.HandleChargeRefundedAsync(
+                charge.Id,
+                charge.PaymentIntentId,
+                latestRefund.Id,
+                charge.AmountRefunded,
+                refundMetadata,
+                correlationId);
         }
         catch (Exception ex)
         {

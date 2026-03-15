@@ -385,6 +385,9 @@ export interface EventDto {
 
   // Donation Feature: Donation configuration
   donationConfig?: DonationConfigurationDto | null;
+  collectionConfig?: CollectionConfigurationDto | null;
+  sponsorConfig?: SponsorConfigurationDto | null;
+  addOnConfig?: AddOnConfigurationDto | null;
 
   /**
    * Issue #2: User's registration status for this event (if user is registered)
@@ -1807,6 +1810,299 @@ export interface CreateDonationRequest {
   currency?: string | null;
   successUrl: string;
   cancelUrl: string;
+}
+
+// ==================== Collections ====================
+
+export enum CollectionStatus {
+  Pending = 'Pending',
+  Completed = 'Completed',
+  Failed = 'Failed',
+  Abandoned = 'Abandoned',
+  Refunded = 'Refunded',
+}
+
+export interface CollectionConfigurationDto {
+  isEnabled: boolean;
+  goalAmount?: number | null;
+  showProgress: boolean;
+  suggestedAmounts: number[];
+  allowCustomAmount: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  collectionMessage?: string | null;
+  showContributorCount: boolean;
+}
+
+export interface CollectionDto {
+  id: string;
+  eventId: string;
+  contributorUserId?: string | null;
+  contributorName: string;
+  contributorEmail: string;
+  contributorPhone?: string | null;
+  contributorNotes?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  stripeFeeAmount?: number | null;
+  platformCommissionAmount?: number | null;
+  organizerPayoutAmount?: number | null;
+  createdAt: string;
+  paymentCompletedAt?: string | null;
+}
+
+export interface CollectionSummaryDto {
+  totalCollections: number;
+  completedCollections: number;
+  totalAmount: number;
+  averageCollection: number;
+  currency: string;
+  goalAmount?: number | null;
+  goalProgressPercent?: number | null;
+  contributorCount: number;
+  totalStripeFees: number;
+  totalPlatformCommission: number;
+  totalOrganizerPayout: number;
+}
+
+export interface EventCollectionsResponse {
+  eventId: string;
+  eventTitle: string;
+  collections: CollectionDto[];
+  summary: CollectionSummaryDto;
+}
+
+export interface CreateCollectionRequest {
+  contributorName: string;
+  contributorEmail: string;
+  contributorPhone?: string | null;
+  contributorNotes?: string | null;
+  amount: number;
+  currency?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+// ==================== Sponsors ====================
+
+export enum SponsorType {
+  Money = 'Money',
+  Item = 'Item',
+}
+
+export enum SponsorStatus {
+  Pending = 'Pending',
+  Completed = 'Completed',
+  Failed = 'Failed',
+  Abandoned = 'Abandoned',
+  Refunded = 'Refunded',
+  RecordedItem = 'RecordedItem',
+}
+
+export interface SponsorConfigurationDto {
+  isEnabled: boolean;
+  acceptMoneySponsors: boolean;
+  acceptItemSponsors: boolean;
+  minSponsorAmount?: number | null;
+  sponsorMessage?: string | null;
+  showSponsorList: boolean;
+}
+
+export interface SponsorDto {
+  id: string;
+  eventId: string;
+  sponsorUserId?: string | null;
+  sponsorName: string;
+  sponsorEmail: string;
+  sponsorPhone?: string | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+  sponsorType: string;
+  amount?: number | null;
+  currency?: string | null;
+  status: string;
+  itemName?: string | null;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+  stripeFeeAmount?: number | null;
+  platformCommissionAmount?: number | null;
+  organizerPayoutAmount?: number | null;
+  createdAt: string;
+  paymentCompletedAt?: string | null;
+}
+
+export interface SponsorSummaryDto {
+  totalSponsors: number;
+  completedMoneySponsors: number;
+  recordedItemSponsors: number;
+  totalMoneyAmount: number;
+  currency: string;
+  itemSponsorCount: number;
+  totalStripeFees: number;
+  totalPlatformCommission: number;
+  totalOrganizerPayout: number;
+}
+
+export interface EventSponsorsResponse {
+  eventId: string;
+  eventTitle: string;
+  sponsors: SponsorDto[];
+  summary: SponsorSummaryDto;
+}
+
+export interface CreateMoneySponsorRequest {
+  sponsorName: string;
+  sponsorEmail: string;
+  sponsorPhone?: string | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+  amount: number;
+  currency?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface CreateItemSponsorRequest {
+  sponsorName: string;
+  sponsorEmail: string;
+  sponsorPhone?: string | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+  itemName: string;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+}
+
+// ==================== Add-Ons ====================
+
+export enum AddOnPurchaseStatus {
+  Pending = 'Pending',
+  Completed = 'Completed',
+  Failed = 'Failed',
+  Abandoned = 'Abandoned',
+  Refunded = 'Refunded',
+}
+
+export interface AddOnConfigurationDto {
+  isEnabled: boolean;
+  availableDuringRegistration: boolean;
+  availableStandalone: boolean;
+  addOnMessage?: string | null;
+}
+
+export interface AddOnDefinitionDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  currency: string;
+  quantityLimit?: number | null;
+  quantitySold: number;
+  remainingStock?: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface AddOnPurchaseDto {
+  id: string;
+  eventId: string;
+  addOnDefinitionId: string;
+  addOnName: string;
+  registrationId?: string | null;
+  buyerUserId?: string | null;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  currency: string;
+  status: string;
+  stripeFeeAmount?: number | null;
+  platformCommissionAmount?: number | null;
+  organizerPayoutAmount?: number | null;
+  createdAt: string;
+  paymentCompletedAt?: string | null;
+}
+
+export interface AddOnPurchaseSummaryDto {
+  totalPurchases: number;
+  completedPurchases: number;
+  totalRevenue: number;
+  currency: string;
+  totalStripeFees: number;
+  totalPlatformCommission: number;
+  totalOrganizerPayout: number;
+  totalItemsSold: number;
+}
+
+export interface EventAddOnPurchasesResponse {
+  eventId: string;
+  eventTitle: string;
+  definitions: AddOnDefinitionDto[];
+  purchases: AddOnPurchaseDto[];
+  summary: AddOnPurchaseSummaryDto;
+}
+
+export interface CreateAddOnDefinitionRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string | null;
+  quantityLimit?: number | null;
+  sortOrder: number;
+}
+
+export interface UpdateAddOnDefinitionRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string | null;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface PurchaseAddOnRequest {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  quantity: number;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+// Config update request types
+export interface UpdateCollectionConfigRequest {
+  isEnabled: boolean;
+  goalAmount?: number | null;
+  showProgress: boolean;
+  suggestedAmounts?: number[] | null;
+  allowCustomAmount: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  collectionMessage?: string | null;
+  showContributorCount: boolean;
+}
+
+export interface UpdateSponsorConfigRequest {
+  isEnabled: boolean;
+  acceptMoneySponsors: boolean;
+  acceptItemSponsors: boolean;
+  minSponsorAmount?: number | null;
+  sponsorMessage?: string | null;
+  showSponsorList: boolean;
+}
+
+export interface UpdateAddOnConfigRequest {
+  isEnabled: boolean;
+  availableDuringRegistration: boolean;
+  availableStandalone: boolean;
+  addOnMessage?: string | null;
 }
 
 // ==================== Photo Album Types ====================

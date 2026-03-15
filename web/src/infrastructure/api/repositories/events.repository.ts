@@ -1606,6 +1606,99 @@ export class EventsRepository {
     );
   }
 
+  // ==================== COLLECTIONS ====================
+
+  async createCollection(eventId: string, request: import('../types/events.types').CreateCollectionRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/collections`, request);
+  }
+
+  async getEventCollections(eventId: string): Promise<import('../types/events.types').EventCollectionsResponse> {
+    return await apiClient.get<import('../types/events.types').EventCollectionsResponse>(`${this.basePath}/${eventId}/collections`);
+  }
+
+  async getCollectionSummary(eventId: string): Promise<import('../types/events.types').CollectionSummaryDto> {
+    return await apiClient.get<import('../types/events.types').CollectionSummaryDto>(`${this.basePath}/${eventId}/collections/summary`);
+  }
+
+  async exportCollections(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/collections/export?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+  }
+
+  // ==================== SPONSORS ====================
+
+  async createMoneySponsor(eventId: string, request: import('../types/events.types').CreateMoneySponsorRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/money`, request);
+  }
+
+  async createItemSponsor(eventId: string, request: import('../types/events.types').CreateItemSponsorRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/item`, request);
+  }
+
+  async getEventSponsors(eventId: string): Promise<import('../types/events.types').EventSponsorsResponse> {
+    return await apiClient.get<import('../types/events.types').EventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors`);
+  }
+
+  async getSponsorSummary(eventId: string): Promise<import('../types/events.types').SponsorSummaryDto> {
+    return await apiClient.get<import('../types/events.types').SponsorSummaryDto>(`${this.basePath}/${eventId}/sponsors/summary`);
+  }
+
+  async exportSponsors(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/sponsors/export?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+  }
+
+  // ==================== ADD-ONS ====================
+
+  async getAddOnDefinitions(eventId: string): Promise<import('../types/events.types').AddOnDefinitionDto[]> {
+    return await apiClient.get<import('../types/events.types').AddOnDefinitionDto[]>(`${this.basePath}/${eventId}/add-ons`);
+  }
+
+  async createAddOnDefinition(eventId: string, request: import('../types/events.types').CreateAddOnDefinitionRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons`, request);
+  }
+
+  async updateAddOnDefinition(eventId: string, definitionId: string, request: import('../types/events.types').UpdateAddOnDefinitionRequest): Promise<void> {
+    return await apiClient.put<void>(`${this.basePath}/${eventId}/add-ons/${definitionId}`, request);
+  }
+
+  async purchaseAddOn(eventId: string, definitionId: string, request: import('../types/events.types').PurchaseAddOnRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);
+  }
+
+  async getEventAddOnPurchases(eventId: string): Promise<import('../types/events.types').EventAddOnPurchasesResponse> {
+    return await apiClient.get<import('../types/events.types').EventAddOnPurchasesResponse>(`${this.basePath}/${eventId}/add-ons/purchases`);
+  }
+
+  async getAddOnPurchaseSummary(eventId: string): Promise<import('../types/events.types').AddOnPurchaseSummaryDto> {
+    return await apiClient.get<import('../types/events.types').AddOnPurchaseSummaryDto>(`${this.basePath}/${eventId}/add-ons/purchases/summary`);
+  }
+
+  async exportAddOnPurchases(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/add-ons/purchases/export?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+  }
+
+  // ==================== CONFIG UPDATES ====================
+
+  async updateCollectionConfig(eventId: string, request: import('../types/events.types').UpdateCollectionConfigRequest): Promise<void> {
+    return await apiClient.put<void>(`${this.basePath}/${eventId}/collection-config`, request);
+  }
+
+  async updateSponsorConfig(eventId: string, request: import('../types/events.types').UpdateSponsorConfigRequest): Promise<void> {
+    return await apiClient.put<void>(`${this.basePath}/${eventId}/sponsor-config`, request);
+  }
+
+  async updateAddOnConfig(eventId: string, request: import('../types/events.types').UpdateAddOnConfigRequest): Promise<void> {
+    return await apiClient.put<void>(`${this.basePath}/${eventId}/add-on-config`, request);
+  }
+
   // ==================== Phase 6A.133: Co-Organizer Management ====================
 
   /**

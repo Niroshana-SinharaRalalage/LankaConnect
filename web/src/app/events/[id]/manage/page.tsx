@@ -14,6 +14,9 @@ import {
   Mail,
   Heart,
   Camera,
+  Wallet,
+  Award,
+  ShoppingBag,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -38,6 +41,11 @@ import { EventNewslettersTab } from '@/presentation/components/features/newslett
 
 // Donation Feature: Import DonationsManagementTab
 import { DonationsManagementTab } from '@/presentation/components/features/events/DonationsManagementTab';
+
+// Financial Features: Collections, Sponsors, Add-Ons
+import { CollectionsManagementTab } from '@/presentation/components/features/events/CollectionsManagementTab';
+import { SponsorsManagementTab } from '@/presentation/components/features/events/SponsorsManagementTab';
+import { AddOnsManagementTab } from '@/presentation/components/features/events/AddOnsManagementTab';
 
 // Custom Forms Feature - Phase 6A: Import EventFormsTab
 import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
@@ -300,6 +308,25 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       icon: Heart,
       content: <DonationsManagementTab eventId={id} donationConfig={event.donationConfig ?? null} />,
     },
+    // Financial tabs - conditionally visible based on config
+    ...(event.collectionConfig?.isEnabled ? [{
+      id: 'collections',
+      label: 'Collections',
+      icon: Wallet,
+      content: <CollectionsManagementTab eventId={id} collectionConfig={event.collectionConfig} />,
+    }] : []),
+    ...(event.sponsorConfig?.isEnabled ? [{
+      id: 'sponsors',
+      label: 'Sponsors',
+      icon: Award,
+      content: <SponsorsManagementTab eventId={id} sponsorConfig={event.sponsorConfig} />,
+    }] : []),
+    ...(event.addOnConfig?.isEnabled ? [{
+      id: 'addons',
+      label: 'Add-Ons',
+      icon: ShoppingBag,
+      content: <AddOnsManagementTab eventId={id} addOnConfig={event.addOnConfig} />,
+    }] : []),
     {
       id: 'communications',
       label: 'Communications',

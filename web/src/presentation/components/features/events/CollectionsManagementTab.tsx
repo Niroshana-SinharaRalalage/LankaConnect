@@ -53,7 +53,28 @@ function getCollectionStatusColor(status: string): string {
 export function CollectionsManagementTab({ eventId, collectionConfig }: CollectionsManagementTabProps) {
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: collectionsData, isLoading, error, refetch } = useEventCollections(eventId);
+  const isEnabled = collectionConfig?.isEnabled === true;
+  const { data: collectionsData, isLoading, error, refetch } = useEventCollections(eventId, isEnabled);
+
+  // Show enable prompt when feature is not configured
+  if (!isEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center mb-4">
+          <Wallet className="h-8 w-8 text-violet-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-neutral-800 mb-2">Collections Not Enabled</h3>
+        <p className="text-sm text-neutral-500 text-center max-w-md mb-4">
+          Enable the Collections feature to allow visitors to contribute funds to support your event.
+          You can set fundraising goals, suggested amounts, and track progress.
+        </p>
+        <p className="text-xs text-neutral-400 text-center max-w-sm">
+          To enable, edit your event and turn on Collections in the financial features section,
+          or use the API to configure collection settings.
+        </p>
+      </div>
+    );
+  }
 
   const handleExport = async (format: 'excel' | 'csv') => {
     try {

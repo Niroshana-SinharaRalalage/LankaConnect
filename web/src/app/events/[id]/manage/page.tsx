@@ -308,25 +308,25 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       icon: Heart,
       content: <DonationsManagementTab eventId={id} donationConfig={event.donationConfig ?? null} />,
     },
-    // Financial tabs - conditionally visible based on config
-    ...(event.collectionConfig?.isEnabled ? [{
+    // Financial tabs - always visible (show enable prompt inside tab when not configured)
+    {
       id: 'collections',
       label: 'Collections',
       icon: Wallet,
-      content: <CollectionsManagementTab eventId={id} collectionConfig={event.collectionConfig} />,
-    }] : []),
-    ...(event.sponsorConfig?.isEnabled ? [{
+      content: <CollectionsManagementTab eventId={id} collectionConfig={event.collectionConfig ?? null} />,
+    },
+    {
       id: 'sponsors',
       label: 'Sponsors',
       icon: Award,
-      content: <SponsorsManagementTab eventId={id} sponsorConfig={event.sponsorConfig} />,
-    }] : []),
-    ...(event.addOnConfig?.isEnabled ? [{
+      content: <SponsorsManagementTab eventId={id} sponsorConfig={event.sponsorConfig ?? null} />,
+    },
+    {
       id: 'addons',
       label: 'Add-Ons',
       icon: ShoppingBag,
-      content: <AddOnsManagementTab eventId={id} addOnConfig={event.addOnConfig} />,
-    }] : []),
+      content: <AddOnsManagementTab eventId={id} addOnConfig={event.addOnConfig ?? null} />,
+    },
     {
       id: 'communications',
       label: 'Communications',

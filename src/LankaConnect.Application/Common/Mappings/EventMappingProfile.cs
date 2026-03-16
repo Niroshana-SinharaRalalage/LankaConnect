@@ -75,12 +75,22 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.RevenueBreakdown, opt => opt.MapFrom(src => src.RevenueBreakdown))
             // Donation Feature: Donation configuration mapping
             .ForMember(dest => dest.DonationConfig, opt => opt.MapFrom(src => src.DonationConfig))
+            // Financial Features: Collection, Sponsor, Add-On configuration mappings
+            .ForMember(dest => dest.CollectionConfig, opt => opt.MapFrom(src => src.CollectionConfig))
+            .ForMember(dest => dest.SponsorConfig, opt => opt.MapFrom(src => src.SponsorConfig))
+            .ForMember(dest => dest.AddOnConfig, opt => opt.MapFrom(src => src.AddOnConfig))
             // Phase 6A.133: IsCurrentUserOrganizer is computed post-mapping by query handlers
             .ForMember(dest => dest.IsCurrentUserOrganizer, opt => opt.Ignore());
 
         // Donation Feature: DonationConfiguration -> DonationConfigurationDto mapping
         CreateMap<DonationConfiguration, DonationConfigurationDto>()
             .ForMember(dest => dest.SuggestedAmounts, opt => opt.MapFrom(src => src.SuggestedAmounts.ToList()));
+
+        // Financial Features: Value object -> DTO mappings
+        CreateMap<CollectionConfiguration, CollectionConfigurationDto>()
+            .ForMember(dest => dest.SuggestedAmounts, opt => opt.MapFrom(src => src.SuggestedAmounts.ToList()));
+        CreateMap<SponsorConfiguration, SponsorConfigurationDto>();
+        CreateMap<AddOnConfiguration, AddOnConfigurationDto>();
 
         // EventOrganizerContact -> OrganizerContactDto mapping
         CreateMap<EventOrganizerContact, OrganizerContactDto>();

@@ -135,6 +135,24 @@ public record EventDto
     public DonationConfigurationDto? DonationConfig { get; init; }
 
     /// <summary>
+    /// Financial Feature: Collection (crowdfunding) configuration for this event.
+    /// Null if collections have never been configured.
+    /// </summary>
+    public CollectionConfigurationDto? CollectionConfig { get; init; }
+
+    /// <summary>
+    /// Financial Feature: Sponsor configuration for this event.
+    /// Null if sponsorships have never been configured.
+    /// </summary>
+    public SponsorConfigurationDto? SponsorConfig { get; init; }
+
+    /// <summary>
+    /// Financial Feature: Add-on configuration for this event.
+    /// Null if add-ons have never been configured.
+    /// </summary>
+    public AddOnConfigurationDto? AddOnConfig { get; init; }
+
+    /// <summary>
     /// Issue #2: User's registration status for this event (if user is registered)
     /// Only populated for authenticated queries like /my-rsvps
     /// Null if user is not registered or for public event listings

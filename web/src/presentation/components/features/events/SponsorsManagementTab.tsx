@@ -55,7 +55,28 @@ function getSponsorStatusColor(status: string): string {
 export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManagementTabProps) {
   const [isExporting, setIsExporting] = useState(false);
 
-  const { data: sponsorsData, isLoading, error, refetch } = useEventSponsors(eventId);
+  const isEnabled = sponsorConfig?.isEnabled === true;
+  const { data: sponsorsData, isLoading, error, refetch } = useEventSponsors(eventId, isEnabled);
+
+  // Show enable prompt when feature is not configured
+  if (!isEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center mb-4">
+          <Award className="h-8 w-8 text-indigo-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-neutral-800 mb-2">Sponsors Not Enabled</h3>
+        <p className="text-sm text-neutral-500 text-center max-w-md mb-4">
+          Enable the Sponsors feature to accept monetary sponsorships via Stripe or record
+          item-based sponsorships for your event.
+        </p>
+        <p className="text-xs text-neutral-400 text-center max-w-sm">
+          To enable, edit your event and turn on Sponsors in the financial features section,
+          or use the API to configure sponsor settings.
+        </p>
+      </div>
+    );
+  }
 
   const handleExport = async (format: 'excel' | 'csv') => {
     try {

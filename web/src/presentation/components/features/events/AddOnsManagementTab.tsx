@@ -63,8 +63,29 @@ export function AddOnsManagementTab({ eventId, addOnConfig }: AddOnsManagementTa
   const [isExporting, setIsExporting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const { data: definitions = [], isLoading: definitionsLoading } = useAddOnDefinitions(eventId);
-  const { data: purchasesData, isLoading: purchasesLoading, error, refetch } = useEventAddOnPurchases(eventId);
+  const isEnabled = addOnConfig?.isEnabled === true;
+  const { data: definitions = [], isLoading: definitionsLoading } = useAddOnDefinitions(eventId, isEnabled);
+  const { data: purchasesData, isLoading: purchasesLoading, error, refetch } = useEventAddOnPurchases(eventId, isEnabled);
+
+  // Show enable prompt when feature is not configured
+  if (!isEnabled) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+          <ShoppingBag className="h-8 w-8 text-emerald-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-neutral-800 mb-2">Add-Ons Not Enabled</h3>
+        <p className="text-sm text-neutral-500 text-center max-w-md mb-4">
+          Enable the Add-Ons feature to sell additional items (t-shirts, meals, parking passes, etc.)
+          during registration or as standalone purchases.
+        </p>
+        <p className="text-xs text-neutral-400 text-center max-w-sm">
+          To enable, edit your event and turn on Add-Ons in the financial features section,
+          or use the API to configure add-on settings.
+        </p>
+      </div>
+    );
+  }
   const updateDefinition = useUpdateAddOnDefinition();
 
   const isLoading = definitionsLoading || purchasesLoading;

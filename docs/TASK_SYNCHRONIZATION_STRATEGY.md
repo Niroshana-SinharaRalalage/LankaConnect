@@ -3,7 +3,28 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE
+**Date**: 2026-03-15/16
+**Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6, ~135 files)
+**Progress**: ✅ **COMPLETE** — All 7 phases implemented and deployed
+**Status**: ✅ **COMPLETE** — Backend + frontend deployed to Azure staging
+
+**Phase Summary**:
+| Phase | Description | Files | Status |
+|-------|-------------|-------|--------|
+| 0 | PaymentsController webhook refactoring | ~12 | ✅ Done |
+| 1 | Domain Foundation (entities, enums, configs, events, repos) | ~30 | ✅ Done |
+| 2 | Infrastructure (EF Core, migrations, repos, Stripe) | ~20 | ✅ Done |
+| 3 | Application Layer (commands, queries, DTOs, handlers) | ~35 | ✅ Done |
+| 4 | API Layer (controllers, webhooks, config endpoints) | ~10 | ✅ Done |
+| 5 | Frontend Management (types, hooks, management tabs) | ~11 | ✅ Done |
+| 6 | Frontend Public (forms, selectors, registration integration) | ~6 | ✅ Done |
+
+**Key Commits**: f557863d, 1aef1599, c024c136, 9045036d, 0f25eea7
+
+---
+
+## PREVIOUS SESSION - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE
 **Date**: 2026-03-11
 **Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
 **Progress**: ✅ **COMPLETE** — 1 migration created, deployed to staging, API verified

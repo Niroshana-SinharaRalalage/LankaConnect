@@ -7,7 +7,23 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE (2026-03-11)
+## 🔄 CURRENT STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE (2026-03-16)
+**Date**: 2026-03-15/16
+**Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6)
+**Status**: ✅ **COMPLETE (~135 files, all deployed to staging)**
+
+**Features Added**:
+- **Collections (Event Fund)**: Fundraising with optional goal, progress tracking, suggested amounts
+- **Sponsors**: Dual-mode (money via Stripe + item-based records), organization field
+- **Add-Ons**: Purchasable items with atomic stock management, available during registration + standalone
+
+**Architecture**: Follows Donation entity blueprint — standalone entities, per-type Stripe checkout, injectable webhook handlers, CQRS with MediatR
+
+**Commits**: f557863d (Phase 1+2), 1aef1599 (Phase 0+3), c024c136 (Phase 4), 9045036d (Phase 5), 0f25eea7 (Phase 6)
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE (2026-03-11)
 **Date**: 2026-03-11
 **Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
 **Status**: ✅ **COMPLETE (commit 0359d55f on develop, deployed to staging, API verified)**

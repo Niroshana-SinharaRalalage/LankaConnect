@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-11 - Phase 6A.133 Email: Organizer Card Design Fix ✅ COMPLETE*
+*Last Updated: 2026-03-16 - Event Financial Features Expansion (Phases 0-6) ✅ COMPLETE*
 
-## 🎯 Current Session Status - Phase 6A.133 Email Organizer Card Design Fix ✅ COMPLETE
+## 🎯 Current Session Status - Event Financial Features Expansion ✅ COMPLETE
+
+### Event Financial Features Expansion — Phases 0-6 (2026-03-15/16)
+
+**Status**: ✅ **COMPLETE (all phases deployed to Azure staging)**
+
+**Scope**: Added 3 new financial capabilities — Collections (Event Fund), Sponsors (money + item), Add-Ons (purchasable items) — across 7 phases (~135 files).
+
+**Phase 0**: Refactored PaymentsController from 1305→638 lines, extracted 6 injectable webhook handler services
+**Phase 1**: Domain Foundation — 4 entities (Collection, Sponsor, AddOnDefinition, AddOnPurchase), 4 enums, 3 JSONB configs, 4 domain events, 4 repository interfaces
+**Phase 2**: Infrastructure — EF Core configs, migrations, repository implementations, atomic stock SQL, per-type Stripe checkout methods
+**Phase 3**: Application Layer — 9 command/handler pairs, 3 query/handler pairs, 13 DTOs, 6 webhook handlers, 4 domain event handlers
+**Phase 4**: API Layer — 3 new controllers (Collections, Sponsors, AddOns), EventConfigController, webhook routing for 3 new payment types
+**Phase 5**: Frontend Management — TypeScript types, 19 repository methods, 3 hook files, 3 management tab components, conditional tab rendering
+**Phase 6**: Frontend Public — CollectionSection, SponsorSection, AddOnSelector, AddOnOptionInForm, success/cancelled banners, registration flow integration
+
+**Key Commits**:
+- `f557863d` Phase 1+2: Domain + Infrastructure
+- `1aef1599` Phase 0+3: Webhook refactoring + Application layer
+- `c024c136` Phase 4: API controllers + real webhook handlers
+- `9045036d` Phase 5: Frontend management tabs
+- `0f25eea7` Phase 6: Frontend public forms
+
+**Deployments**: Backend (deploy-staging.yml) + Frontend (deploy-ui-staging.yml) both succeeded
+
+---
 
 ### Phase 6A.133 Email: Organizer Card Design Fix - 2026-03-11
 

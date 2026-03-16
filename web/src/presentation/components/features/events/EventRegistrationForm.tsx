@@ -7,9 +7,10 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto } from '@/infrastructure/api/types/events.types';
+import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 import { DonationOptionInForm } from './DonationOptionInForm';
+import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
 
 /**
@@ -37,6 +38,8 @@ interface EventRegistrationFormProps {
   maxAttendeesPerRegistration?: number;
   // Donation Feature: Optional donation configuration
   donationConfig?: DonationConfigurationDto | null;
+  // Add-On Feature: Optional add-on configuration for registration bundling
+  addOnConfig?: AddOnConfigurationDto | null;
   isProcessing: boolean;
   onSubmit: (data: AnonymousRegistrationRequest | RsvpRequest) => Promise<void>;
   error?: string | null;
@@ -55,6 +58,7 @@ export function EventRegistrationForm({
   groupPricingTiers,
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   donationConfig,
+  addOnConfig,
   isProcessing,
   onSubmit,
   error,
@@ -64,6 +68,10 @@ export function EventRegistrationForm({
 
   // Donation Feature: Donation amount state
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
+
+  // Add-On Feature: Selected add-ons state
+  const [addOnSelections, setAddOnSelections] = useState<AddOnSelection[]>([]);
+  const addOnTotal = addOnSelections.reduce((sum, s) => sum + s.unitPrice * s.quantity, 0);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -614,6 +622,15 @@ export function EventRegistrationForm({
         />
       )}
 
+      {/* Add-On Feature: Optional add-ons during registration */}
+      {addOnConfig?.isEnabled === true && addOnConfig?.availableDuringRegistration === true && (
+        <AddOnOptionInForm
+          eventId={eventId}
+          addOnConfig={addOnConfig}
+          onAddOnsChange={setAddOnSelections}
+        />
+      )}
+
       {/* Total Price with Group/Dual/Single Pricing Breakdown */}
       {!isFree && totalPrice > 0 && (
         <div className="p-4 bg-neutral-50 rounded-lg border-t-2 border-orange-500">
@@ -667,10 +684,22 @@ export function EventRegistrationForm({
             </div>
           )}
 
+          {/* Add-On Feature: Show add-on items in price breakdown */}
+          {addOnSelections.length > 0 && (
+            <div className="border-t pt-2 mb-2 space-y-1">
+              {addOnSelections.map((s) => (
+                <div key={s.definitionId} className="flex justify-between items-center text-sm text-neutral-600">
+                  <span>{s.name} x{s.quantity}</span>
+                  <span>${(s.unitPrice * s.quantity).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${(totalPrice + (donationAmount || 0)).toFixed(2)}
+              ${(totalPrice + (donationAmount || 0) + addOnTotal).toFixed(2)}
             </span>
           </div>
         </div>

@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -31,6 +31,10 @@ import { formatEventDate, formatEventTime, getTimezoneAbbreviation } from '@/pre
 import { sanitizeHtml } from '@/lib/html-utils';
 // Donation Feature: Import DonationSection for standalone donations
 import { DonationSection } from '@/presentation/components/features/events/DonationSection';
+// Financial Features: Collections, Sponsors, Add-Ons
+import { CollectionSection } from '@/presentation/components/features/events/CollectionSection';
+import { SponsorSection } from '@/presentation/components/features/events/SponsorSection';
+import { AddOnSelector } from '@/presentation/components/features/events/AddOnSelector';
 // Collapsible sections for Registration, Ticket, and Organizer
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 // Donation Feature: Import donation hooks
@@ -83,6 +87,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Session 33: Track where user came from for back navigation
   const fromPage = searchParams.get('from');
   const donationStatus = searchParams.get('donation'); // 'success' | 'cancelled' | null
+  const collectionStatus = searchParams.get('collection'); // 'success' | 'cancelled' | null
+  const sponsorStatus = searchParams.get('sponsor'); // 'success' | 'cancelled' | null
+  const addOnStatus = searchParams.get('addon'); // 'success' | 'cancelled' | null
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -927,6 +934,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
+                        addOnConfig={event.addOnConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1222,6 +1230,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           groupPricingTiers={event.groupPricingTiers}
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           donationConfig={event.donationConfig}
+                        addOnConfig={event.addOnConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1482,6 +1491,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
+                        addOnConfig={event.addOnConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1542,6 +1552,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         groupPricingTiers={event.groupPricingTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
+                        addOnConfig={event.addOnConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1616,6 +1627,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     groupPricingTiers={event.groupPricingTiers}
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     donationConfig={event.donationConfig}
+                        addOnConfig={event.addOnConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}
@@ -1695,6 +1707,90 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
+        {/* Collection Feature: Success/Cancelled Banner */}
+        {collectionStatus === 'success' && (
+          <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Wallet className="h-6 w-6 text-emerald-600" />
+              <div>
+                <h3 className="font-semibold text-emerald-800">Thank you for your contribution!</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  Your payment has been processed successfully. You will receive a confirmation email shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {collectionStatus === 'cancelled' && (
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Wallet className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800">Contribution cancelled</h3>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Your contribution was not processed. You can try again below.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sponsor Feature: Success/Cancelled Banner */}
+        {sponsorStatus === 'success' && (
+          <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Award className="h-6 w-6 text-emerald-600" />
+              <div>
+                <h3 className="font-semibold text-emerald-800">Thank you for your sponsorship!</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  Your sponsorship has been processed successfully. You will receive a confirmation email shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {sponsorStatus === 'cancelled' && (
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Award className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800">Sponsorship cancelled</h3>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Your sponsorship was not processed. You can try again below.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add-On Feature: Success/Cancelled Banner */}
+        {addOnStatus === 'success' && (
+          <div className="mt-8 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="h-6 w-6 text-emerald-600" />
+              <div>
+                <h3 className="font-semibold text-emerald-800">Purchase successful!</h3>
+                <p className="text-sm text-emerald-700 mt-0.5">
+                  Your add-on purchase has been processed. You will receive a confirmation email shortly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {addOnStatus === 'cancelled' && (
+          <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="h-6 w-6 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-800">Purchase cancelled</h3>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Your add-on purchase was not processed. You can try again below.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Donation Feature: Combined Section (summary + donate form + your donations) */}
         {event?.donationConfig?.isEnabled === true && (
           <div className="mt-8">
@@ -1703,6 +1799,36 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               donationConfig={event.donationConfig}
               publicSummary={publicDonationSummary}
               myDonations={myDonations}
+            />
+          </div>
+        )}
+
+        {/* Collection Feature: Public contribution form with goal progress */}
+        {event?.collectionConfig?.isEnabled === true && (
+          <div className="mt-8">
+            <CollectionSection
+              eventId={id}
+              collectionConfig={event.collectionConfig}
+            />
+          </div>
+        )}
+
+        {/* Sponsor Feature: Public sponsor form (money via Stripe + item submissions) */}
+        {event?.sponsorConfig?.isEnabled === true && (
+          <div className="mt-8">
+            <SponsorSection
+              eventId={id}
+              sponsorConfig={event.sponsorConfig}
+            />
+          </div>
+        )}
+
+        {/* Add-On Feature: Purchasable items with stock levels */}
+        {event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true && (
+          <div className="mt-8">
+            <AddOnSelector
+              eventId={id}
+              addOnConfig={event.addOnConfig}
             />
           </div>
         )}

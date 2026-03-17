@@ -6,17 +6,12 @@ import {
   ArrowLeft,
   Edit,
   FileText,
-  Users,
   ListChecks,
   Ban,
   Trash2,
-  XCircle,
   Mail,
-  Heart,
   Camera,
-  Wallet,
-  Award,
-  ShoppingBag,
+  Banknote,
 } from 'lucide-react';
 import { Header } from '@/presentation/components/layout/Header';
 import Footer from '@/presentation/components/layout/Footer';
@@ -30,7 +25,6 @@ import { EventStatus } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 // Phase 6A.45: Import new components
-import { AttendeeManagementTab } from '@/presentation/components/features/events/AttendeeManagementTab';
 import { EventDetailsTab } from '@/presentation/components/features/events/EventDetailsTab';
 import { SignUpListsTab } from '@/presentation/components/features/events/SignUpListsTab';
 import { UnpublishEventModal } from '@/presentation/components/features/events/UnpublishEventModal';
@@ -39,13 +33,8 @@ import { DeleteEventModal } from '@/presentation/components/features/events/Dele
 // Phase 6A.74: Import EventNewslettersTab
 import { EventNewslettersTab } from '@/presentation/components/features/newsletters/EventNewslettersTab';
 
-// Donation Feature: Import DonationsManagementTab
-import { DonationsManagementTab } from '@/presentation/components/features/events/DonationsManagementTab';
-
-// Financial Features: Collections, Sponsors, Add-Ons
-import { CollectionsManagementTab } from '@/presentation/components/features/events/CollectionsManagementTab';
-import { SponsorsManagementTab } from '@/presentation/components/features/events/SponsorsManagementTab';
-import { AddOnsManagementTab } from '@/presentation/components/features/events/AddOnsManagementTab';
+// Consolidated Attendees & Finance tab (replaces 5 separate tabs)
+import { AttendeesAndFinanceTab } from '@/presentation/components/features/events/AttendeesAndFinanceTab';
 
 // Custom Forms Feature - Phase 6A: Import EventFormsTab
 import { EventFormsTab } from '@/presentation/components/features/events/EventFormsTab';
@@ -265,6 +254,19 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   const canCancel = (isDraft || isPublished) && !isCancelled;
   const canDelete = (isDraft || isCancelled) && event.currentRegistrations === 0;
 
+  // Backward compatibility: map old tab IDs to the consolidated tab
+  const resolveTab = (tab: string | null): string => {
+    if (!tab) return 'details';
+    const legacyMap: Record<string, string> = {
+      attendees: 'attendees-finance',
+      donations: 'attendees-finance',
+      collections: 'attendees-finance',
+      sponsors: 'attendees-finance',
+      addons: 'attendees-finance',
+    };
+    return legacyMap[tab] ?? tab;
+  };
+
   // Define tabs
   const tabs: Tab[] = [
     {
@@ -285,10 +287,10 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       ),
     },
     {
-      id: 'attendees',
-      label: 'Attendees',
-      icon: Users,
-      content: <AttendeeManagementTab eventId={id} />,
+      id: 'attendees-finance',
+      label: 'Attendees & Finance',
+      icon: Banknote,
+      content: <AttendeesAndFinanceTab eventId={id} event={event} />,
     },
     {
       id: 'signups',
@@ -301,31 +303,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Signup Forms',
       icon: FileText,
       content: <EventFormsTab eventId={id} />,
-    },
-    {
-      id: 'donations',
-      label: 'Donations',
-      icon: Heart,
-      content: <DonationsManagementTab eventId={id} donationConfig={event.donationConfig ?? null} />,
-    },
-    // Financial tabs - always visible (show enable prompt inside tab when not configured)
-    {
-      id: 'collections',
-      label: 'Collections',
-      icon: Wallet,
-      content: <CollectionsManagementTab eventId={id} collectionConfig={event.collectionConfig ?? null} />,
-    },
-    {
-      id: 'sponsors',
-      label: 'Sponsors',
-      icon: Award,
-      content: <SponsorsManagementTab eventId={id} sponsorConfig={event.sponsorConfig ?? null} />,
-    },
-    {
-      id: 'addons',
-      label: 'Add-Ons',
-      icon: ShoppingBag,
-      content: <AddOnsManagementTab eventId={id} addOnConfig={event.addOnConfig ?? null} />,
     },
     {
       id: 'communications',
@@ -530,7 +507,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
       {/* Main Content - Tabbed Interface */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <TabPanel tabs={tabs} defaultTab={tabFromUrl || 'details'} />
+        <TabPanel tabs={tabs} defaultTab={resolveTab(tabFromUrl)} />
       </div>
 
       {/* Unpublish Event Modal */}

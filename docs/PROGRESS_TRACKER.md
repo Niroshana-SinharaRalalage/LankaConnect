@@ -1,7 +1,27 @@
 # LankaConnect Development Progress Tracker
 *Last Updated: 2026-03-16 - Event Financial Features Expansion (Phases 0-6) ✅ COMPLETE*
 
-## 🎯 Current Session Status - Event Financial Features Expansion ✅ COMPLETE
+## 🎯 Current Session Status - Financial Features DTO Fix (2026-03-16)
+
+### Fix: Missing EventDto Mappings for Collection/Sponsor/AddOn Configs (2026-03-16)
+
+**Status**: ✅ **DEPLOYED (backend + frontend to Azure staging)**
+
+**Root Cause Analysis**: System architect RCA identified that `EventDto.cs` was missing `CollectionConfig`, `SponsorConfig`, `AddOnConfig` properties, and `EventMappingProfile.cs` had no AutoMapper rules for them. The domain entity and EF Core JSONB columns existed, but the API response never included these fields — breaking frontend tab visibility.
+
+**Classification**: Backend API Issue (DTO mapping gap)
+
+**Backend Fixes**:
+- `EventDto.cs`: Added 3 nullable config DTO properties
+- `EventMappingProfile.cs`: Added 3 `.ForMember()` rules + 3 `CreateMap<>()` value-object-to-DTO sub-maps
+
+**Frontend Fixes**:
+- `page.tsx`: Made Collections/Sponsors/Add-Ons tabs always visible (removed conditional `?.isEnabled` gating)
+- 3 management tabs: Added "not enabled" empty states with descriptive prompts when config is null/disabled
+
+**Commit**: `9e9e4ea3` on develop
+
+---
 
 ### Event Financial Features Expansion — Phases 0-6 (2026-03-15/16)
 

@@ -7,7 +7,16 @@
 
 ---
 
-## 🔄 CURRENT STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE (2026-03-16)
+## 🔄 CURRENT STATUS - FINANCIAL FEATURES DTO FIX (2026-03-16)
+**Date**: 2026-03-16
+**Session**: Fix missing EventDto mappings for Collection/Sponsor/AddOn configs
+**Status**: ✅ **DEPLOYED (commit 9e9e4ea3, backend + frontend to staging)**
+**RCA**: EventDto missing 3 config properties + EventMappingProfile missing AutoMapper rules → API never returned config fields → frontend tabs invisible
+**Fix**: Added DTO properties + AutoMapper mappings (backend) + made tabs always visible with empty states (frontend)
+
+---
+
+## PREVIOUS STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE (2026-03-16)
 **Date**: 2026-03-15/16
 **Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6)
 **Status**: ✅ **COMPLETE (~135 files, all deployed to staging)**

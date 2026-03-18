@@ -7,7 +7,25 @@
 
 ---
 
-## 🔄 CURRENT STATUS - FINANCIAL FEATURES DTO FIX (2026-03-16)
+## 🔄 CURRENT STATUS - CONFIG FORMS FOR COLLECTIONS/SPONSORS/ADD-ONS (2026-03-18)
+**Date**: 2026-03-18
+**Session**: Add config forms for Collections, Sponsors, and Add-Ons to event create/edit pages
+**Status**: ✅ **DEPLOYED (commit 9b8d9bbc, frontend to staging)**
+**RCA**: Feature Missing (UI-Layer Gap) — Phases 0-6 built full stack but never created config forms for the 3 new financial features. DonationConfigForm.tsx existed from prior work, but no equivalent was built for Collections/Sponsors/Add-Ons. Dead-end UX: management tabs said "edit your event to enable" but edit page had no config section.
+**Fix**: Created 3 new config form components (CollectionConfigForm, SponsorConfigForm, AddOnConfigForm) following DonationConfigForm pattern. Integrated into EventCreationForm + EventEditForm with post-save API calls to existing PUT endpoints. No backend changes needed.
+
+**Files Changed (5)**:
+- NEW: `CollectionConfigForm.tsx` — goal amount, progress bar, suggested amounts, min/max, message
+- NEW: `SponsorConfigForm.tsx` — money/item types, min amount, message, public list
+- NEW: `AddOnConfigForm.tsx` — registration/standalone availability, message
+- MODIFIED: `EventCreationForm.tsx` — imports, state, JSX, post-create config API calls
+- MODIFIED: `EventEditForm.tsx` — imports, state (pre-filled from event), JSX, post-update config API calls
+
+**API Verification**: PUT `/sponsor-config` → 200, PUT `/add-on-config` → 200, GET event returns all 3 configs correctly
+
+---
+
+## PREVIOUS STATUS - FINANCIAL FEATURES DTO FIX ✅ COMPLETE (2026-03-16)
 **Date**: 2026-03-16
 **Session**: Fix missing EventDto mappings for Collection/Sponsor/AddOn configs
 **Status**: ✅ **DEPLOYED (commit 9e9e4ea3, backend + frontend to staging)**

@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-16 - Event Financial Features Expansion (Phases 0-6) ✅ COMPLETE*
+*Last Updated: 2026-03-18 - Config Forms for Collections/Sponsors/Add-Ons ✅ DEPLOYED*
 
-## 🎯 Current Session Status - Financial Features DTO Fix (2026-03-16)
+## 🎯 Current Session Status - Config Forms for Financial Features (2026-03-18)
+
+### Config Forms: Collection/Sponsor/AddOn Configuration in Event Create/Edit (2026-03-18)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: Feature Missing (UI-Layer Gap) — Phases 0-6 built full stack but never created config forms for Collections, Sponsors, and Add-Ons. DonationConfigForm.tsx existed from prior work but no equivalent was built for the 3 new financial features. Management tabs showed "edit your event to enable" but the edit page had no config section — a dead-end UX loop.
+
+**Fix**: Created 3 new config form components following the DonationConfigForm pattern, integrated into both EventCreationForm and EventEditForm:
+
+| Component | Fields | Theme |
+|-----------|--------|-------|
+| `CollectionConfigForm.tsx` | Goal amount, progress bar, suggested amounts (max 5), allow custom, min/max, message, contributor count | Wallet icon, violet |
+| `SponsorConfigForm.tsx` | Accept money/item types, min sponsor amount (conditional), message, show sponsor list | HandCoins icon, indigo |
+| `AddOnConfigForm.tsx` | Available during registration, available standalone, message | PackagePlus icon, emerald |
+
+**Architecture Decision**: Uses separate PUT endpoints (not inline with CreateEvent/UpdateEvent) via post-save `Promise.all()`. Create form only sends enabled configs; Edit form always sends all 3 to handle disable case.
+
+**Commit**: `9b8d9bbc` on develop
+
+**API Verification**:
+- `PUT /api/events/{id}/sponsor-config` → 200 OK
+- `PUT /api/events/{id}/add-on-config` → 200 OK
+- `GET /api/Events/{id}` → returns all 3 configs (collectionConfig, sponsorConfig, addOnConfig) correctly
+
+---
 
 ### Fix: Missing EventDto Mappings for Collection/Sponsor/AddOn Configs (2026-03-16)
 

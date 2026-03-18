@@ -1,6 +1,8 @@
 using LankaConnect.API.Extensions;
 using LankaConnect.Application.Events.Commands.CreateCollection;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Events.Queries.ExportCollections;
+using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventCollections;
 using MediatR;
@@ -103,6 +105,43 @@ public class CollectionsController : BaseController<CollectionsController>
         if (result.IsSuccess)
         {
             return Ok(result.Value.Summary);
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Exports collections for an event in Excel or CSV format (organizer only).
+    /// </summary>
+    [HttpGet("export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ExportCollections(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        Logger.LogInformation(
+            "ExportCollections: EventId={EventId}, Format={Format}", eventId, format);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var exportFormat = format.ToLowerInvariant() switch
+        {
+            "csv" => ExportFormat.Csv,
+            _ => ExportFormat.Excel
+        };
+
+        var result = await Mediator.Send(new ExportCollectionsQuery(eventId, exportFormat));
+
+        if (result.IsSuccess)
+        {
+            return File(
+                result.Value.FileContent,
+                result.Value.ContentType,
+                result.Value.FileName);
         }
 
         return HandleResult(result);

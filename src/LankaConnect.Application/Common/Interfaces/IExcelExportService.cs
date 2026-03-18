@@ -42,4 +42,19 @@ public interface IExcelExportService
     /// Donation Feature: Exports donations to Excel format.
     /// </summary>
     byte[] ExportDonations(EventDonationsResponse donations);
+
+    /// <summary>
+    /// Collection Feature: Exports event fund collections to Excel format.
+    /// </summary>
+    byte[] ExportCollections(EventCollectionsResponse collections);
+
+    /// <summary>
+    /// Sponsor Feature: Exports sponsorships to Excel format.
+    /// </summary>
+    byte[] ExportSponsors(EventSponsorsResponse sponsors);
+
+    /// <summary>
+    /// Add-On Feature: Exports add-on purchases to Excel format.
+    /// </summary>
+    byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases);
 }

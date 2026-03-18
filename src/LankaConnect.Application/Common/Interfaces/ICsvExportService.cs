@@ -38,4 +38,19 @@ public interface ICsvExportService
     /// Donation Feature: Exports donations to CSV format.
     /// </summary>
     byte[] ExportDonations(EventDonationsResponse donations);
+
+    /// <summary>
+    /// Collection Feature: Exports event fund collections to CSV format.
+    /// </summary>
+    byte[] ExportCollections(EventCollectionsResponse collections);
+
+    /// <summary>
+    /// Sponsor Feature: Exports sponsorships to CSV format.
+    /// </summary>
+    byte[] ExportSponsors(EventSponsorsResponse sponsors);
+
+    /// <summary>
+    /// Add-On Feature: Exports add-on purchases to CSV format.
+    /// </summary>
+    byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases);
 }

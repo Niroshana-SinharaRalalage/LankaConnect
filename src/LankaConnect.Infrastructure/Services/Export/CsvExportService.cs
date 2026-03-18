@@ -465,6 +465,163 @@ public class CsvExportService : ICsvExportService
     }
 
     /// <summary>
+    /// Collection Feature: Exports event fund collections to CSV format.
+    /// </summary>
+    public byte[] ExportCollections(EventCollectionsResponse collections)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            NewLine = "\n",
+            ShouldQuote = args => true,
+            TrimOptions = TrimOptions.Trim
+        });
+
+        csv.WriteField("Contributor Name");
+        csv.WriteField("Email");
+        csv.WriteField("Phone");
+        csv.WriteField("Amount");
+        csv.WriteField("Currency");
+        csv.WriteField("Status");
+        csv.WriteField("Notes");
+        csv.WriteField("Stripe Fee");
+        csv.WriteField("Platform Commission");
+        csv.WriteField("Organizer Payout");
+        csv.WriteField("Date");
+        csv.NextRecord();
+
+        foreach (var c in collections.Collections)
+        {
+            csv.WriteField(c.ContributorName);
+            csv.WriteField(c.ContributorEmail);
+            csv.WriteField(c.ContributorPhone ?? "");
+            csv.WriteField(c.Amount.ToString("F2"));
+            csv.WriteField(c.Currency);
+            csv.WriteField(c.Status);
+            csv.WriteField(c.ContributorNotes ?? "");
+            csv.WriteField(c.StripeFeeAmount?.ToString("F2") ?? "");
+            csv.WriteField(c.PlatformCommissionAmount?.ToString("F2") ?? "");
+            csv.WriteField(c.OrganizerPayoutAmount?.ToString("F2") ?? "");
+            csv.WriteField((c.PaymentCompletedAt ?? c.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss"));
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Sponsor Feature: Exports sponsorships to CSV format.
+    /// </summary>
+    public byte[] ExportSponsors(EventSponsorsResponse sponsors)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            NewLine = "\n",
+            ShouldQuote = args => true,
+            TrimOptions = TrimOptions.Trim
+        });
+
+        csv.WriteField("Sponsor Name");
+        csv.WriteField("Email");
+        csv.WriteField("Phone");
+        csv.WriteField("Organization");
+        csv.WriteField("Type");
+        csv.WriteField("Amount");
+        csv.WriteField("Currency");
+        csv.WriteField("Status");
+        csv.WriteField("Item Name");
+        csv.WriteField("Item Description");
+        csv.WriteField("Estimated Value");
+        csv.WriteField("Stripe Fee");
+        csv.WriteField("Platform Commission");
+        csv.WriteField("Organizer Payout");
+        csv.WriteField("Notes");
+        csv.WriteField("Date");
+        csv.NextRecord();
+
+        foreach (var s in sponsors.Sponsors)
+        {
+            csv.WriteField(s.SponsorName);
+            csv.WriteField(s.SponsorEmail);
+            csv.WriteField(s.SponsorPhone ?? "");
+            csv.WriteField(s.SponsorOrganization ?? "");
+            csv.WriteField(s.SponsorType);
+            csv.WriteField(s.Amount?.ToString("F2") ?? "");
+            csv.WriteField(s.Currency ?? "");
+            csv.WriteField(s.Status);
+            csv.WriteField(s.ItemName ?? "");
+            csv.WriteField(s.ItemDescription ?? "");
+            csv.WriteField(s.EstimatedValue?.ToString("F2") ?? "");
+            csv.WriteField(s.StripeFeeAmount?.ToString("F2") ?? "");
+            csv.WriteField(s.PlatformCommissionAmount?.ToString("F2") ?? "");
+            csv.WriteField(s.OrganizerPayoutAmount?.ToString("F2") ?? "");
+            csv.WriteField(s.SponsorNotes ?? "");
+            csv.WriteField((s.PaymentCompletedAt ?? s.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss"));
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
+    /// Add-On Feature: Exports add-on purchases to CSV format.
+    /// </summary>
+    public byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases)
+    {
+        using var memoryStream = new MemoryStream();
+        using var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            NewLine = "\n",
+            ShouldQuote = args => true,
+            TrimOptions = TrimOptions.Trim
+        });
+
+        csv.WriteField("Add-On Name");
+        csv.WriteField("Buyer Name");
+        csv.WriteField("Email");
+        csv.WriteField("Phone");
+        csv.WriteField("Quantity");
+        csv.WriteField("Unit Price");
+        csv.WriteField("Total Amount");
+        csv.WriteField("Currency");
+        csv.WriteField("Status");
+        csv.WriteField("Stripe Fee");
+        csv.WriteField("Platform Commission");
+        csv.WriteField("Organizer Payout");
+        csv.WriteField("Bundled with Registration");
+        csv.WriteField("Date");
+        csv.NextRecord();
+
+        foreach (var p in purchases.Purchases)
+        {
+            csv.WriteField(p.AddOnName);
+            csv.WriteField(p.BuyerName);
+            csv.WriteField(p.BuyerEmail);
+            csv.WriteField(p.BuyerPhone ?? "");
+            csv.WriteField(p.Quantity);
+            csv.WriteField(p.UnitPrice.ToString("F2"));
+            csv.WriteField(p.TotalAmount.ToString("F2"));
+            csv.WriteField(p.Currency);
+            csv.WriteField(p.Status);
+            csv.WriteField(p.StripeFeeAmount?.ToString("F2") ?? "");
+            csv.WriteField(p.PlatformCommissionAmount?.ToString("F2") ?? "");
+            csv.WriteField(p.OrganizerPayoutAmount?.ToString("F2") ?? "");
+            csv.WriteField(p.RegistrationId.HasValue ? "Yes" : "No");
+            csv.WriteField((p.PaymentCompletedAt ?? p.CreatedAt).ToString("yyyy-MM-dd HH:mm:ss"));
+            csv.NextRecord();
+        }
+
+        writer.Flush();
+        return memoryStream.ToArray();
+    }
+
+    /// <summary>
     /// Donation Feature: Exports donations to CSV format.
     /// </summary>
     public byte[] ExportDonations(EventDonationsResponse donations)

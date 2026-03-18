@@ -830,6 +830,221 @@ public class ExcelExportService : IExcelExportService
     }
 
     /// <summary>
+    /// Collection Feature: Exports event fund collections to Excel format.
+    /// </summary>
+    public byte[] ExportCollections(EventCollectionsResponse collections)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Collections");
+
+        var headers = new[] { "Contributor Name", "Email", "Phone", "Amount", "Currency", "Status", "Notes", "Stripe Fee", "Platform Commission", "Organizer Payout", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            sheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        int rowIndex = 2;
+        foreach (var c in collections.Collections)
+        {
+            int col = 1;
+            sheet.Cell(rowIndex, col++).Value = c.ContributorName;
+            sheet.Cell(rowIndex, col++).Value = c.ContributorEmail;
+            sheet.Cell(rowIndex, col++).Value = c.ContributorPhone ?? "";
+
+            var amountCell = sheet.Cell(rowIndex, col++);
+            amountCell.Value = c.Amount;
+            amountCell.Style.NumberFormat.Format = "#,##0.00";
+
+            sheet.Cell(rowIndex, col++).Value = c.Currency;
+            sheet.Cell(rowIndex, col++).Value = c.Status;
+            sheet.Cell(rowIndex, col++).Value = c.ContributorNotes ?? "";
+
+            var feeCell = sheet.Cell(rowIndex, col++);
+            if (c.StripeFeeAmount.HasValue) { feeCell.Value = c.StripeFeeAmount.Value; feeCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { feeCell.Value = "—"; }
+
+            var commCell = sheet.Cell(rowIndex, col++);
+            if (c.PlatformCommissionAmount.HasValue) { commCell.Value = c.PlatformCommissionAmount.Value; commCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { commCell.Value = "—"; }
+
+            var payoutCell = sheet.Cell(rowIndex, col++);
+            if (c.OrganizerPayoutAmount.HasValue) { payoutCell.Value = c.OrganizerPayoutAmount.Value; payoutCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { payoutCell.Value = "—"; }
+
+            var dateCell = sheet.Cell(rowIndex, col++);
+            dateCell.Value = c.PaymentCompletedAt ?? c.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+
+            rowIndex++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Sponsor Feature: Exports sponsorships to Excel format.
+    /// </summary>
+    public byte[] ExportSponsors(EventSponsorsResponse sponsors)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Sponsors");
+
+        var headers = new[] { "Sponsor Name", "Email", "Phone", "Organization", "Type", "Amount", "Currency", "Status", "Item Name", "Item Description", "Estimated Value", "Stripe Fee", "Platform Commission", "Organizer Payout", "Notes", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            sheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        int rowIndex = 2;
+        foreach (var s in sponsors.Sponsors)
+        {
+            int col = 1;
+            sheet.Cell(rowIndex, col++).Value = s.SponsorName;
+            sheet.Cell(rowIndex, col++).Value = s.SponsorEmail;
+            sheet.Cell(rowIndex, col++).Value = s.SponsorPhone ?? "";
+            sheet.Cell(rowIndex, col++).Value = s.SponsorOrganization ?? "";
+            sheet.Cell(rowIndex, col++).Value = s.SponsorType;
+
+            if (s.Amount.HasValue)
+            {
+                var amountCell = sheet.Cell(rowIndex, col);
+                amountCell.Value = s.Amount.Value;
+                amountCell.Style.NumberFormat.Format = "#,##0.00";
+            }
+            else { sheet.Cell(rowIndex, col).Value = "—"; }
+            col++;
+
+            sheet.Cell(rowIndex, col++).Value = s.Currency ?? "";
+            sheet.Cell(rowIndex, col++).Value = s.Status;
+            sheet.Cell(rowIndex, col++).Value = s.ItemName ?? "";
+            sheet.Cell(rowIndex, col++).Value = s.ItemDescription ?? "";
+
+            if (s.EstimatedValue.HasValue)
+            {
+                var evCell = sheet.Cell(rowIndex, col);
+                evCell.Value = s.EstimatedValue.Value;
+                evCell.Style.NumberFormat.Format = "#,##0.00";
+            }
+            else { sheet.Cell(rowIndex, col).Value = "—"; }
+            col++;
+
+            var feeCell = sheet.Cell(rowIndex, col++);
+            if (s.StripeFeeAmount.HasValue) { feeCell.Value = s.StripeFeeAmount.Value; feeCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { feeCell.Value = "—"; }
+
+            var commCell = sheet.Cell(rowIndex, col++);
+            if (s.PlatformCommissionAmount.HasValue) { commCell.Value = s.PlatformCommissionAmount.Value; commCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { commCell.Value = "—"; }
+
+            var payoutCell = sheet.Cell(rowIndex, col++);
+            if (s.OrganizerPayoutAmount.HasValue) { payoutCell.Value = s.OrganizerPayoutAmount.Value; payoutCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { payoutCell.Value = "—"; }
+
+            sheet.Cell(rowIndex, col++).Value = s.SponsorNotes ?? "";
+
+            var dateCell = sheet.Cell(rowIndex, col++);
+            dateCell.Value = s.PaymentCompletedAt ?? s.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+
+            rowIndex++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
+    /// Add-On Feature: Exports add-on purchases to Excel format.
+    /// </summary>
+    public byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases)
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Add-On Purchases");
+
+        var headers = new[] { "Add-On Name", "Buyer Name", "Email", "Phone", "Quantity", "Unit Price", "Total Amount", "Currency", "Status", "Stripe Fee", "Platform Commission", "Organizer Payout", "Bundled with Registration", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+        {
+            sheet.Cell(1, i + 1).Value = headers[i];
+        }
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+        int rowIndex = 2;
+        foreach (var p in purchases.Purchases)
+        {
+            int col = 1;
+            sheet.Cell(rowIndex, col++).Value = p.AddOnName;
+            sheet.Cell(rowIndex, col++).Value = p.BuyerName;
+            sheet.Cell(rowIndex, col++).Value = p.BuyerEmail;
+            sheet.Cell(rowIndex, col++).Value = p.BuyerPhone ?? "";
+            sheet.Cell(rowIndex, col++).Value = p.Quantity;
+
+            var upCell = sheet.Cell(rowIndex, col++);
+            upCell.Value = p.UnitPrice;
+            upCell.Style.NumberFormat.Format = "#,##0.00";
+
+            var taCell = sheet.Cell(rowIndex, col++);
+            taCell.Value = p.TotalAmount;
+            taCell.Style.NumberFormat.Format = "#,##0.00";
+
+            sheet.Cell(rowIndex, col++).Value = p.Currency;
+            sheet.Cell(rowIndex, col++).Value = p.Status;
+
+            var feeCell = sheet.Cell(rowIndex, col++);
+            if (p.StripeFeeAmount.HasValue) { feeCell.Value = p.StripeFeeAmount.Value; feeCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { feeCell.Value = "—"; }
+
+            var commCell = sheet.Cell(rowIndex, col++);
+            if (p.PlatformCommissionAmount.HasValue) { commCell.Value = p.PlatformCommissionAmount.Value; commCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { commCell.Value = "—"; }
+
+            var payoutCell = sheet.Cell(rowIndex, col++);
+            if (p.OrganizerPayoutAmount.HasValue) { payoutCell.Value = p.OrganizerPayoutAmount.Value; payoutCell.Style.NumberFormat.Format = "#,##0.00"; }
+            else { payoutCell.Value = "—"; }
+
+            sheet.Cell(rowIndex, col++).Value = p.RegistrationId.HasValue ? "Yes" : "No";
+
+            var dateCell = sheet.Cell(rowIndex, col++);
+            dateCell.Value = p.PaymentCompletedAt ?? p.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+
+            rowIndex++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    /// <summary>
     /// Donation Feature: Exports donations to Excel format.
     /// </summary>
     public byte[] ExportDonations(EventDonationsResponse donations)

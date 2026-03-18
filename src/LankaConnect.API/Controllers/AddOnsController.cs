@@ -3,6 +3,8 @@ using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.PurchaseAddOn;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
+using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
 using MediatR;
@@ -206,6 +208,47 @@ public class AddOnsController : BaseController<AddOnsController>
         if (result.IsSuccess)
         {
             return Ok(result.Value.Summary);
+        }
+
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Export
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Exports add-on purchases for an event in Excel or CSV format (organizer only).
+    /// </summary>
+    [HttpGet("purchases/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ExportAddOnPurchases(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        Logger.LogInformation(
+            "ExportAddOnPurchases: EventId={EventId}, Format={Format}", eventId, format);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var exportFormat = format.ToLowerInvariant() switch
+        {
+            "csv" => ExportFormat.Csv,
+            _ => ExportFormat.Excel
+        };
+
+        var result = await Mediator.Send(new ExportAddOnPurchasesQuery(eventId, exportFormat));
+
+        if (result.IsSuccess)
+        {
+            return File(
+                result.Value.FileContent,
+                result.Value.ContentType,
+                result.Value.FileName);
         }
 
         return HandleResult(result);

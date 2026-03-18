@@ -666,4 +666,44 @@ public class CsvExportService : ICsvExportService
         writer.Flush();
         return memoryStream.ToArray();
     }
+
+    /// <summary>
+    /// Exports all financial data as a ZIP archive containing 5 CSV files.
+    /// Reuses individual CSV export methods to generate each file.
+    /// </summary>
+    public byte[] ExportAllFinancialsZip(AllFinancialsData data)
+    {
+        using var zipStream = new MemoryStream();
+        using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            // 1. Attendees CSV
+            var attendeesBytes = ExportEventAttendees(data.Attendees);
+            AddToZip(archive, "attendees.csv", attendeesBytes);
+
+            // 2. Donations CSV
+            var donationsBytes = ExportDonations(data.Donations);
+            AddToZip(archive, "donations.csv", donationsBytes);
+
+            // 3. Collections CSV
+            var collectionsBytes = ExportCollections(data.Collections);
+            AddToZip(archive, "collections.csv", collectionsBytes);
+
+            // 4. Sponsors CSV
+            var sponsorsBytes = ExportSponsors(data.Sponsors);
+            AddToZip(archive, "sponsors.csv", sponsorsBytes);
+
+            // 5. Add-On Purchases CSV
+            var addOnsBytes = ExportAddOnPurchases(data.AddOnPurchases);
+            AddToZip(archive, "addon_purchases.csv", addOnsBytes);
+        }
+
+        return zipStream.ToArray();
+    }
+
+    private static void AddToZip(ZipArchive archive, string fileName, byte[] content)
+    {
+        var entry = archive.CreateEntry(fileName, CompressionLevel.Optimal);
+        using var entryStream = entry.Open();
+        entryStream.Write(content, 0, content.Length);
+    }
 }

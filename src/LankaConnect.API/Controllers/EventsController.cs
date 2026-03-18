@@ -2696,6 +2696,62 @@ public class EventsController : BaseController<EventsController>
         );
     }
 
+    /// <summary>
+    /// Export all financial data for an event (organizer only).
+    /// Excel: Multi-sheet workbook (Attendees, Donations, Collections, Sponsors, Add-Ons).
+    /// CSV: ZIP archive containing 5 CSV files.
+    /// </summary>
+    [HttpGet("{eventId:guid}/export-all")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ExportAllFinancials(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation("User {UserId} requesting export-all for event {EventId} in format {Format}",
+            userId, eventId, format);
+
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+                return NotFound();
+            return HandleResult(eventResult);
+        }
+
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
+        {
+            Logger.LogWarning("User {UserId} attempted to export-all for event {EventId} without authorization",
+                userId, eventId);
+            return Forbid();
+        }
+
+        var exportFormat = format.ToLowerInvariant() switch
+        {
+            "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
+            _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
+        };
+
+        var result = await Mediator.Send(
+            new LankaConnect.Application.Events.Queries.ExportAllFinancials.ExportAllFinancialsQuery(
+                eventId, exportFormat));
+
+        if (result.IsFailure)
+            return HandleResult(result);
+
+        var contentType = result.Value.ContentType == "application/zip"
+            ? "application/zip"
+            : result.Value.ContentType;
+
+        return File(result.Value.FileContent, contentType, result.Value.FileName);
+    }
+
     #endregion
 
     #region Communication

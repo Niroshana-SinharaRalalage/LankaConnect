@@ -57,4 +57,10 @@ public interface IExcelExportService
     /// Add-On Feature: Exports add-on purchases to Excel format.
     /// </summary>
     byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases);
+
+    /// <summary>
+    /// Exports all financial data as a multi-sheet Excel workbook.
+    /// Sheets: Attendees, Donations, Collections, Sponsors, Add-On Purchases.
+    /// </summary>
+    byte[] ExportAllFinancials(AllFinancialsData data);
 }

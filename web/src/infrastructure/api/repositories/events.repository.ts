@@ -1685,6 +1685,13 @@ export class EventsRepository {
     );
   }
 
+  async exportAllFinancials(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
+    return await apiClient.get<Blob>(
+      `${this.basePath}/${eventId}/export-all?format=${format}`,
+      { responseType: 'blob' as any }
+    );
+  }
+
   // ==================== CONFIG UPDATES ====================
 
   async updateCollectionConfig(eventId: string, request: import('../types/events.types').UpdateCollectionConfigRequest): Promise<void> {

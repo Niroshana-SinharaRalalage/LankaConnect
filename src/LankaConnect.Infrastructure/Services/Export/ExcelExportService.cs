@@ -1102,4 +1102,181 @@ public class ExcelExportService : IExcelExportService
         workbook.SaveAs(stream);
         return stream.ToArray();
     }
+
+    /// <summary>
+    /// Exports all financial data as a multi-sheet Excel workbook.
+    /// Reuses individual sheet-creation logic from existing export methods.
+    /// </summary>
+    public byte[] ExportAllFinancials(AllFinancialsData data)
+    {
+        using var workbook = new XLWorkbook();
+
+        // Sheet 1: Attendees (reuse existing registration sheet logic)
+        CreateRegistrationsSheet(workbook, data.Attendees);
+
+        // Sheet 2: Donations
+        CreateDonationsSheet(workbook, data.Donations);
+
+        // Sheet 3: Collections
+        CreateCollectionsSheet(workbook, data.Collections);
+
+        // Sheet 4: Sponsors
+        CreateSponsorsSheet(workbook, data.Sponsors);
+
+        // Sheet 5: Add-On Purchases
+        CreateAddOnPurchasesSheet(workbook, data.AddOnPurchases);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    private static void CreateDonationsSheet(IXLWorkbook workbook, EventDonationsResponse donations)
+    {
+        var sheet = workbook.Worksheets.Add("Donations");
+
+        var headers = new[] { "Donor Name", "Email", "Phone", "Amount", "Currency", "Status", "Notes", "Date", "Bundled" };
+        for (int i = 0; i < headers.Length; i++)
+            sheet.Cell(1, i + 1).Value = headers[i];
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var d in donations.Donations)
+        {
+            int col = 1;
+            sheet.Cell(row, col++).Value = d.DonorName;
+            sheet.Cell(row, col++).Value = d.DonorEmail;
+            sheet.Cell(row, col++).Value = d.DonorPhone ?? "";
+            sheet.Cell(row, col++).Value = d.Amount;
+            sheet.Cell(row, col++).Value = d.Currency;
+            sheet.Cell(row, col++).Value = d.Status;
+            sheet.Cell(row, col++).Value = d.DonorNotes ?? "";
+            var dateCell = sheet.Cell(row, col++);
+            dateCell.Value = d.PaymentCompletedAt ?? d.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            sheet.Cell(row, col++).Value = d.IsBundled ? "Yes" : "No";
+            row++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+    }
+
+    private static void CreateCollectionsSheet(IXLWorkbook workbook, EventCollectionsResponse collections)
+    {
+        var sheet = workbook.Worksheets.Add("Collections");
+
+        var headers = new[] { "Contributor Name", "Email", "Phone", "Amount", "Currency", "Status", "Notes", "Stripe Fee", "Platform Commission", "Organizer Payout", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+            sheet.Cell(1, i + 1).Value = headers[i];
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var c in collections.Collections)
+        {
+            int col = 1;
+            sheet.Cell(row, col++).Value = c.ContributorName;
+            sheet.Cell(row, col++).Value = c.ContributorEmail;
+            sheet.Cell(row, col++).Value = c.ContributorPhone ?? "";
+            var amtCell = sheet.Cell(row, col++); amtCell.Value = c.Amount; amtCell.Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(row, col++).Value = c.Currency;
+            sheet.Cell(row, col++).Value = c.Status;
+            sheet.Cell(row, col++).Value = c.ContributorNotes ?? "";
+            var feeCell = sheet.Cell(row, col++);
+            if (c.StripeFeeAmount.HasValue) { feeCell.Value = c.StripeFeeAmount.Value; feeCell.Style.NumberFormat.Format = "#,##0.00"; } else { feeCell.Value = "—"; }
+            var commCell = sheet.Cell(row, col++);
+            if (c.PlatformCommissionAmount.HasValue) { commCell.Value = c.PlatformCommissionAmount.Value; commCell.Style.NumberFormat.Format = "#,##0.00"; } else { commCell.Value = "—"; }
+            var payoutCell = sheet.Cell(row, col++);
+            if (c.OrganizerPayoutAmount.HasValue) { payoutCell.Value = c.OrganizerPayoutAmount.Value; payoutCell.Style.NumberFormat.Format = "#,##0.00"; } else { payoutCell.Value = "—"; }
+            var dateCell = sheet.Cell(row, col++);
+            dateCell.Value = c.PaymentCompletedAt ?? c.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            row++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+    }
+
+    private static void CreateSponsorsSheet(IXLWorkbook workbook, EventSponsorsResponse sponsors)
+    {
+        var sheet = workbook.Worksheets.Add("Sponsors");
+
+        var headers = new[] { "Sponsor Name", "Email", "Phone", "Organization", "Type", "Amount", "Currency", "Status", "Item Name", "Item Description", "Estimated Value", "Notes", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+            sheet.Cell(1, i + 1).Value = headers[i];
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var s in sponsors.Sponsors)
+        {
+            int col = 1;
+            sheet.Cell(row, col++).Value = s.SponsorName;
+            sheet.Cell(row, col++).Value = s.SponsorEmail;
+            sheet.Cell(row, col++).Value = s.SponsorPhone ?? "";
+            sheet.Cell(row, col++).Value = s.SponsorOrganization ?? "";
+            sheet.Cell(row, col++).Value = s.SponsorType;
+            var amtCell2 = sheet.Cell(row, col++);
+            if (s.Amount.HasValue) { amtCell2.Value = s.Amount.Value; amtCell2.Style.NumberFormat.Format = "#,##0.00"; } else { amtCell2.Value = "—"; }
+            sheet.Cell(row, col++).Value = s.Currency ?? "";
+            sheet.Cell(row, col++).Value = s.Status;
+            sheet.Cell(row, col++).Value = s.ItemName ?? "";
+            sheet.Cell(row, col++).Value = s.ItemDescription ?? "";
+            var estCell = sheet.Cell(row, col++);
+            if (s.EstimatedValue.HasValue) { estCell.Value = s.EstimatedValue.Value; estCell.Style.NumberFormat.Format = "#,##0.00"; } else { estCell.Value = "—"; }
+            sheet.Cell(row, col++).Value = s.SponsorNotes ?? "";
+            var dateCell = sheet.Cell(row, col++);
+            dateCell.Value = s.PaymentCompletedAt ?? s.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            row++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+    }
+
+    private static void CreateAddOnPurchasesSheet(IXLWorkbook workbook, EventAddOnPurchasesResponse purchases)
+    {
+        var sheet = workbook.Worksheets.Add("Add-On Purchases");
+
+        var headers = new[] { "Add-On Name", "Buyer Name", "Email", "Phone", "Quantity", "Unit Price", "Total Amount", "Currency", "Status", "Bundled with Registration", "Date" };
+        for (int i = 0; i < headers.Length; i++)
+            sheet.Cell(1, i + 1).Value = headers[i];
+
+        var headerRange = sheet.Range(1, 1, 1, headers.Length);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightBlue;
+
+        int row = 2;
+        foreach (var p in purchases.Purchases)
+        {
+            int col = 1;
+            sheet.Cell(row, col++).Value = p.AddOnName;
+            sheet.Cell(row, col++).Value = p.BuyerName;
+            sheet.Cell(row, col++).Value = p.BuyerEmail;
+            sheet.Cell(row, col++).Value = p.BuyerPhone ?? "";
+            sheet.Cell(row, col++).Value = p.Quantity;
+            var upCell = sheet.Cell(row, col++); upCell.Value = p.UnitPrice; upCell.Style.NumberFormat.Format = "#,##0.00";
+            var taCell = sheet.Cell(row, col++); taCell.Value = p.TotalAmount; taCell.Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(row, col++).Value = p.Currency;
+            sheet.Cell(row, col++).Value = p.Status;
+            sheet.Cell(row, col++).Value = p.RegistrationId.HasValue ? "Yes" : "No";
+            var dateCell = sheet.Cell(row, col++);
+            dateCell.Value = p.PaymentCompletedAt ?? p.CreatedAt;
+            dateCell.Style.DateFormat.Format = "yyyy-mm-dd hh:mm:ss";
+            row++;
+        }
+
+        sheet.Columns().AdjustToContents();
+        sheet.SheetView.FreezeRows(1);
+    }
 }

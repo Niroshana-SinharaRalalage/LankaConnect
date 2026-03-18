@@ -53,4 +53,10 @@ public interface ICsvExportService
     /// Add-On Feature: Exports add-on purchases to CSV format.
     /// </summary>
     byte[] ExportAddOnPurchases(EventAddOnPurchasesResponse purchases);
+
+    /// <summary>
+    /// Exports all financial data as a ZIP archive containing 5 CSV files.
+    /// Files: attendees.csv, donations.csv, collections.csv, sponsors.csv, addon_purchases.csv.
+    /// </summary>
+    byte[] ExportAllFinancialsZip(AllFinancialsData data);
 }

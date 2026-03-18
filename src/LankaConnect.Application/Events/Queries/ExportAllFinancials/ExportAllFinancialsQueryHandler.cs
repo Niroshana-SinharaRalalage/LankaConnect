@@ -53,25 +53,17 @@ public class ExportAllFinancialsQueryHandler : IQueryHandler<ExportAllFinancials
 
             try
             {
-                // Fetch all 5 data sources in parallel
-                var attendeesTask = _mediator.Send(
+                // Fetch all 5 data sources sequentially (DbContext is not thread-safe)
+                var attendeesResult = await _mediator.Send(
                     new GetEventAttendeesQuery(request.EventId), cancellationToken);
-                var donationsTask = _mediator.Send(
+                var donationsResult = await _mediator.Send(
                     new GetEventDonationsQuery(request.EventId), cancellationToken);
-                var collectionsTask = _mediator.Send(
+                var collectionsResult = await _mediator.Send(
                     new GetEventCollectionsQuery(request.EventId), cancellationToken);
-                var sponsorsTask = _mediator.Send(
+                var sponsorsResult = await _mediator.Send(
                     new GetEventSponsorsQuery(request.EventId), cancellationToken);
-                var addOnsTask = _mediator.Send(
+                var addOnsResult = await _mediator.Send(
                     new GetEventAddOnPurchasesQuery(request.EventId), cancellationToken);
-
-                await Task.WhenAll(attendeesTask, donationsTask, collectionsTask, sponsorsTask, addOnsTask);
-
-                var attendeesResult = await attendeesTask;
-                var donationsResult = await donationsTask;
-                var collectionsResult = await collectionsTask;
-                var sponsorsResult = await sponsorsTask;
-                var addOnsResult = await addOnsTask;
 
                 // Check for failures
                 if (attendeesResult.IsFailure)

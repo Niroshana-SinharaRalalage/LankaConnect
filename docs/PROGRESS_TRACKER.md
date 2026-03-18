@@ -1,7 +1,57 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-18 - Config Forms for Collections/Sponsors/Add-Ons ✅ DEPLOYED*
+*Last Updated: 2026-03-18 - All 4 Phases COMPLETE: Config Forms + Tab Consolidation + Individual Exports + Combined Export All*
 
-## 🎯 Current Session Status - Config Forms for Financial Features (2026-03-18)
+## 🎯 Current Session Status - All Financial Feature Phases Complete (2026-03-18)
+
+### Phase 3: Combined "Export All Financial Data" (2026-03-18)
+
+**Status**: ✅ **DEPLOYED & VERIFIED (backend + frontend to Azure staging)**
+
+**Classification**: Feature — Multi-sheet Excel and ZIP'd CSV export combining all 5 financial data sources (Attendees, Donations, Collections, Sponsors, Add-Ons) into a single download.
+
+**New Files (3)**:
+- `ExportAllFinancialsQuery.cs` + `ExportAllFinancialsQueryHandler.cs` — fetches 5 data sources sequentially via MediatR
+- `AllFinancialsData.cs` — DTO aggregating all 5 response types
+
+**Modified Files (7)**:
+- `IExcelExportService.cs` / `ICsvExportService.cs`: +1 method each (ExportAllFinancials / ExportAllFinancialsZip)
+- `ExcelExportService.cs`: 5-sheet workbook (Registrations, Donations, Collections, Sponsors, Add-On Purchases)
+- `CsvExportService.cs`: ZIP archive with 5 CSV files
+- `EventsController.cs`: `GET /api/events/{id}/export-all?format=excel|csv`
+- `events.repository.ts`: `exportAllFinancials()` method
+- `AttendeesAndFinanceTab.tsx`: "Export All (CSV)" and "Export All (Excel)" buttons in tab header
+
+**Commits**: `db33f506` (initial), `c60f2a04` (DbContext concurrency fix — sequential queries)
+
+**API Verification** (event `40b297c9`):
+- `GET /export-all?format=excel` → HTTP 200, 10,663 bytes, 5 sheets confirmed
+- `GET /export-all?format=csv` → HTTP 200, 1,178 bytes ZIP, 5 CSVs confirmed (attendees.csv, donations.csv, collections.csv, sponsors.csv, addon_purchases.csv)
+- All Phase 2 individual exports still pass (regression OK)
+- All existing exports (attendees, donations) still pass (regression OK)
+
+---
+
+### Phase 2: Export Endpoints for Collections, Sponsors, Add-On Purchases (2026-03-18)
+
+**Status**: ✅ **DEPLOYED (backend to Azure staging)**
+
+**Classification**: Feature Missing (Export gap) — Collections, Sponsors, and Add-Ons management tabs had Export buttons but no backend endpoints (404). This phase adds Excel and CSV export support for all 3 financial features, cloning the existing ExportDonations pattern.
+
+**New Files (6)**:
+- `ExportCollectionsQuery.cs` + `ExportCollectionsQueryHandler.cs`
+- `ExportSponsorsQuery.cs` + `ExportSponsorsQueryHandler.cs`
+- `ExportAddOnPurchasesQuery.cs` + `ExportAddOnPurchasesQueryHandler.cs`
+
+**Modified Files (7)**:
+- `IExcelExportService.cs` / `ICsvExportService.cs`: +3 methods each
+- `ExcelExportService.cs` / `CsvExportService.cs`: implementations with full revenue breakdown columns
+- `CollectionsController.cs`: `GET /api/events/{id}/collections/export?format=excel|csv`
+- `SponsorsController.cs`: `GET /api/events/{id}/sponsors/export?format=excel|csv`
+- `AddOnsController.cs`: `GET /api/events/{id}/add-ons/purchases/export?format=excel|csv`
+
+**Commit**: `417cd435` on develop
+
+---
 
 ### Config Forms: Collection/Sponsor/AddOn Configuration in Event Create/Edit (2026-03-18)
 

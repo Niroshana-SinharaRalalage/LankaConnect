@@ -23,6 +23,9 @@ import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { DonationConfigForm } from './DonationConfigForm';
+import { CollectionConfigForm } from './CollectionConfigForm';
+import { SponsorConfigForm } from './SponsorConfigForm';
+import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
@@ -58,6 +61,31 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(event.donationConfig?.maxAmount ?? null);
   const [donationMessage, setDonationMessage] = useState(event.donationConfig?.donationMessage ?? '');
   const [showDonationSummary, setShowDonationSummary] = useState(event.donationConfig?.showDonationSummary ?? false);
+
+  // Collection (Event Fund) configuration state (pre-filled from event)
+  const [collectionsEnabled, setCollectionsEnabled] = useState(event.collectionConfig?.isEnabled ?? false);
+  const [collectionGoalAmount, setCollectionGoalAmount] = useState<number | null>(event.collectionConfig?.goalAmount ?? null);
+  const [collectionShowProgress, setCollectionShowProgress] = useState(event.collectionConfig?.showProgress ?? false);
+  const [collectionSuggestedAmounts, setCollectionSuggestedAmounts] = useState<number[]>(event.collectionConfig?.suggestedAmounts ?? []);
+  const [collectionAllowCustom, setCollectionAllowCustom] = useState(event.collectionConfig?.allowCustomAmount ?? true);
+  const [collectionMinAmount, setCollectionMinAmount] = useState<number | null>(event.collectionConfig?.minAmount ?? null);
+  const [collectionMaxAmount, setCollectionMaxAmount] = useState<number | null>(event.collectionConfig?.maxAmount ?? null);
+  const [collectionMessage, setCollectionMessage] = useState(event.collectionConfig?.collectionMessage ?? '');
+  const [showContributorCount, setShowContributorCount] = useState(event.collectionConfig?.showContributorCount ?? false);
+
+  // Sponsor configuration state (pre-filled from event)
+  const [sponsorsEnabled, setSponsorsEnabled] = useState(event.sponsorConfig?.isEnabled ?? false);
+  const [acceptMoneySponsors, setAcceptMoneySponsors] = useState(event.sponsorConfig?.acceptMoneySponsors ?? true);
+  const [acceptItemSponsors, setAcceptItemSponsors] = useState(event.sponsorConfig?.acceptItemSponsors ?? true);
+  const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(event.sponsorConfig?.minSponsorAmount ?? null);
+  const [sponsorMessage, setSponsorMessage] = useState(event.sponsorConfig?.sponsorMessage ?? '');
+  const [showSponsorList, setShowSponsorList] = useState(event.sponsorConfig?.showSponsorList ?? false);
+
+  // Add-On configuration state (pre-filled from event)
+  const [addOnsEnabled, setAddOnsEnabled] = useState(event.addOnConfig?.isEnabled ?? false);
+  const [addOnAvailableDuringRegistration, setAddOnAvailableDuringRegistration] = useState(event.addOnConfig?.availableDuringRegistration ?? true);
+  const [addOnAvailableStandalone, setAddOnAvailableStandalone] = useState(event.addOnConfig?.availableStandalone ?? true);
+  const [addOnMessage, setAddOnMessage] = useState(event.addOnConfig?.addOnMessage ?? '');
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
@@ -473,6 +501,42 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
       await eventsRepository.updateEvent(event.id, eventData);
       console.log('✅ Event updated successfully!');
+
+      // Post-update: Save financial config forms via separate API calls
+      // ALWAYS send all 3 (unlike Create) to allow disabling previously-enabled configs
+      try {
+        await Promise.all([
+          eventsRepository.updateCollectionConfig(event.id, {
+            isEnabled: collectionsEnabled,
+            goalAmount: collectionsEnabled ? collectionGoalAmount : null,
+            showProgress: collectionsEnabled ? collectionShowProgress : false,
+            suggestedAmounts: collectionsEnabled && collectionSuggestedAmounts.length > 0 ? collectionSuggestedAmounts : null,
+            allowCustomAmount: collectionsEnabled ? collectionAllowCustom : false,
+            minAmount: collectionsEnabled ? collectionMinAmount : null,
+            maxAmount: collectionsEnabled ? collectionMaxAmount : null,
+            collectionMessage: collectionsEnabled ? (collectionMessage || null) : null,
+            showContributorCount: collectionsEnabled ? showContributorCount : false,
+          }),
+          eventsRepository.updateSponsorConfig(event.id, {
+            isEnabled: sponsorsEnabled,
+            acceptMoneySponsors: sponsorsEnabled ? acceptMoneySponsors : false,
+            acceptItemSponsors: sponsorsEnabled ? acceptItemSponsors : false,
+            minSponsorAmount: sponsorsEnabled ? minSponsorAmount : null,
+            sponsorMessage: sponsorsEnabled ? (sponsorMessage || null) : null,
+            showSponsorList: sponsorsEnabled ? showSponsorList : false,
+          }),
+          eventsRepository.updateAddOnConfig(event.id, {
+            isEnabled: addOnsEnabled,
+            availableDuringRegistration: addOnsEnabled ? addOnAvailableDuringRegistration : false,
+            availableStandalone: addOnsEnabled ? addOnAvailableStandalone : false,
+            addOnMessage: addOnsEnabled ? (addOnMessage || null) : null,
+          }),
+        ]);
+        console.log('✅ Financial config forms saved successfully');
+      } catch (configErr) {
+        console.error('⚠️ Some financial configs failed to save:', configErr);
+        // Continue to cache invalidation and redirect — main event data was saved
+      }
 
       // Invalidate React Query cache to refresh event data
       await queryClient.invalidateQueries({ queryKey: eventKeys.detail(event.id) });
@@ -1424,6 +1488,56 @@ export function EventEditForm({ event }: EventEditFormProps) {
         onDonationMessageChange={setDonationMessage}
         showDonationSummary={showDonationSummary}
         onShowDonationSummaryChange={setShowDonationSummary}
+      />
+
+      {/* Collection (Event Fund) Configuration */}
+      <CollectionConfigForm
+        isEnabled={collectionsEnabled}
+        onEnabledChange={setCollectionsEnabled}
+        goalAmount={collectionGoalAmount}
+        onGoalAmountChange={setCollectionGoalAmount}
+        showProgress={collectionShowProgress}
+        onShowProgressChange={setCollectionShowProgress}
+        suggestedAmounts={collectionSuggestedAmounts}
+        onSuggestedAmountsChange={setCollectionSuggestedAmounts}
+        allowCustomAmount={collectionAllowCustom}
+        onAllowCustomAmountChange={setCollectionAllowCustom}
+        minAmount={collectionMinAmount}
+        onMinAmountChange={setCollectionMinAmount}
+        maxAmount={collectionMaxAmount}
+        onMaxAmountChange={setCollectionMaxAmount}
+        collectionMessage={collectionMessage}
+        onCollectionMessageChange={setCollectionMessage}
+        showContributorCount={showContributorCount}
+        onShowContributorCountChange={setShowContributorCount}
+      />
+
+      {/* Sponsor Configuration */}
+      <SponsorConfigForm
+        isEnabled={sponsorsEnabled}
+        onEnabledChange={setSponsorsEnabled}
+        acceptMoneySponsors={acceptMoneySponsors}
+        onAcceptMoneySponsorsChange={setAcceptMoneySponsors}
+        acceptItemSponsors={acceptItemSponsors}
+        onAcceptItemSponsorsChange={setAcceptItemSponsors}
+        minSponsorAmount={minSponsorAmount}
+        onMinSponsorAmountChange={setMinSponsorAmount}
+        sponsorMessage={sponsorMessage}
+        onSponsorMessageChange={setSponsorMessage}
+        showSponsorList={showSponsorList}
+        onShowSponsorListChange={setShowSponsorList}
+      />
+
+      {/* Add-On Configuration */}
+      <AddOnConfigForm
+        isEnabled={addOnsEnabled}
+        onEnabledChange={setAddOnsEnabled}
+        availableDuringRegistration={addOnAvailableDuringRegistration}
+        onAvailableDuringRegistrationChange={setAddOnAvailableDuringRegistration}
+        availableStandalone={addOnAvailableStandalone}
+        onAvailableStandaloneChange={setAddOnAvailableStandalone}
+        addOnMessage={addOnMessage}
+        onAddOnMessageChange={setAddOnMessage}
       />
 
       {/* Note about Media */}

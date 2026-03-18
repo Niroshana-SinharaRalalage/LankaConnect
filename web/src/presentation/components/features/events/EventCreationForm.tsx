@@ -21,7 +21,11 @@ import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { DonationConfigForm } from './DonationConfigForm';
+import { CollectionConfigForm } from './CollectionConfigForm';
+import { SponsorConfigForm } from './SponsorConfigForm';
+import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
@@ -51,6 +55,31 @@ export function EventCreationForm() {
   const [donationMaxAmount, setDonationMaxAmount] = useState<number | null>(null);
   const [donationMessage, setDonationMessage] = useState('');
   const [showDonationSummary, setShowDonationSummary] = useState(false);
+
+  // Collection (Event Fund) configuration state
+  const [collectionsEnabled, setCollectionsEnabled] = useState(false);
+  const [collectionGoalAmount, setCollectionGoalAmount] = useState<number | null>(null);
+  const [collectionShowProgress, setCollectionShowProgress] = useState(false);
+  const [collectionSuggestedAmounts, setCollectionSuggestedAmounts] = useState<number[]>([]);
+  const [collectionAllowCustom, setCollectionAllowCustom] = useState(true);
+  const [collectionMinAmount, setCollectionMinAmount] = useState<number | null>(null);
+  const [collectionMaxAmount, setCollectionMaxAmount] = useState<number | null>(null);
+  const [collectionMessage, setCollectionMessage] = useState('');
+  const [showContributorCount, setShowContributorCount] = useState(false);
+
+  // Sponsor configuration state
+  const [sponsorsEnabled, setSponsorsEnabled] = useState(false);
+  const [acceptMoneySponsors, setAcceptMoneySponsors] = useState(true);
+  const [acceptItemSponsors, setAcceptItemSponsors] = useState(true);
+  const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(null);
+  const [sponsorMessage, setSponsorMessage] = useState('');
+  const [showSponsorList, setShowSponsorList] = useState(false);
+
+  // Add-On configuration state
+  const [addOnsEnabled, setAddOnsEnabled] = useState(false);
+  const [addOnAvailableDuringRegistration, setAddOnAvailableDuringRegistration] = useState(true);
+  const [addOnAvailableStandalone, setAddOnAvailableStandalone] = useState(true);
+  const [addOnMessage, setAddOnMessage] = useState('');
 
   // Phase 6A.106 Part 3: Azure image upload for rich text editor
   const { mutateAsync: uploadImage } = useContentImageUpload();
@@ -334,6 +363,60 @@ export function EventCreationForm() {
       console.log('⏳ Sending request to API...');
       const eventId = await createEventMutation.mutateAsync(eventData);
       console.log('✅ Event created successfully! ID:', eventId);
+
+      // Post-create: Save financial config forms via separate API calls
+      // Only send for ENABLED configs (disabled is the default for new events)
+      const configPromises: Promise<void>[] = [];
+
+      if (collectionsEnabled) {
+        configPromises.push(
+          eventsRepository.updateCollectionConfig(eventId, {
+            isEnabled: true,
+            goalAmount: collectionGoalAmount,
+            showProgress: collectionShowProgress,
+            suggestedAmounts: collectionSuggestedAmounts.length > 0 ? collectionSuggestedAmounts : null,
+            allowCustomAmount: collectionAllowCustom,
+            minAmount: collectionMinAmount,
+            maxAmount: collectionMaxAmount,
+            collectionMessage: collectionMessage || null,
+            showContributorCount: showContributorCount,
+          })
+        );
+      }
+
+      if (sponsorsEnabled) {
+        configPromises.push(
+          eventsRepository.updateSponsorConfig(eventId, {
+            isEnabled: true,
+            acceptMoneySponsors,
+            acceptItemSponsors,
+            minSponsorAmount: minSponsorAmount,
+            sponsorMessage: sponsorMessage || null,
+            showSponsorList,
+          })
+        );
+      }
+
+      if (addOnsEnabled) {
+        configPromises.push(
+          eventsRepository.updateAddOnConfig(eventId, {
+            isEnabled: true,
+            availableDuringRegistration: addOnAvailableDuringRegistration,
+            availableStandalone: addOnAvailableStandalone,
+            addOnMessage: addOnMessage || null,
+          })
+        );
+      }
+
+      if (configPromises.length > 0) {
+        try {
+          await Promise.all(configPromises);
+          console.log('✅ Financial config forms saved successfully');
+        } catch (configErr) {
+          console.error('⚠️ Some financial configs failed to save:', configErr);
+          // Non-blocking — event was created, configs can be set later from manage page
+        }
+      }
 
       // Phase 6A.41: Redirect to manage page for seamless event setup workflow
       // User can immediately upload images, configure sign-ups, and publish
@@ -1187,6 +1270,56 @@ export function EventCreationForm() {
         onDonationMessageChange={setDonationMessage}
         showDonationSummary={showDonationSummary}
         onShowDonationSummaryChange={setShowDonationSummary}
+      />
+
+      {/* Collection (Event Fund) Configuration */}
+      <CollectionConfigForm
+        isEnabled={collectionsEnabled}
+        onEnabledChange={setCollectionsEnabled}
+        goalAmount={collectionGoalAmount}
+        onGoalAmountChange={setCollectionGoalAmount}
+        showProgress={collectionShowProgress}
+        onShowProgressChange={setCollectionShowProgress}
+        suggestedAmounts={collectionSuggestedAmounts}
+        onSuggestedAmountsChange={setCollectionSuggestedAmounts}
+        allowCustomAmount={collectionAllowCustom}
+        onAllowCustomAmountChange={setCollectionAllowCustom}
+        minAmount={collectionMinAmount}
+        onMinAmountChange={setCollectionMinAmount}
+        maxAmount={collectionMaxAmount}
+        onMaxAmountChange={setCollectionMaxAmount}
+        collectionMessage={collectionMessage}
+        onCollectionMessageChange={setCollectionMessage}
+        showContributorCount={showContributorCount}
+        onShowContributorCountChange={setShowContributorCount}
+      />
+
+      {/* Sponsor Configuration */}
+      <SponsorConfigForm
+        isEnabled={sponsorsEnabled}
+        onEnabledChange={setSponsorsEnabled}
+        acceptMoneySponsors={acceptMoneySponsors}
+        onAcceptMoneySponsorsChange={setAcceptMoneySponsors}
+        acceptItemSponsors={acceptItemSponsors}
+        onAcceptItemSponsorsChange={setAcceptItemSponsors}
+        minSponsorAmount={minSponsorAmount}
+        onMinSponsorAmountChange={setMinSponsorAmount}
+        sponsorMessage={sponsorMessage}
+        onSponsorMessageChange={setSponsorMessage}
+        showSponsorList={showSponsorList}
+        onShowSponsorListChange={setShowSponsorList}
+      />
+
+      {/* Add-On Configuration */}
+      <AddOnConfigForm
+        isEnabled={addOnsEnabled}
+        onEnabledChange={setAddOnsEnabled}
+        availableDuringRegistration={addOnAvailableDuringRegistration}
+        onAvailableDuringRegistrationChange={setAddOnAvailableDuringRegistration}
+        availableStandalone={addOnAvailableStandalone}
+        onAvailableStandaloneChange={setAddOnAvailableStandalone}
+        addOnMessage={addOnMessage}
+        onAddOnMessageChange={setAddOnMessage}
       />
 
       {/* Note about Media */}

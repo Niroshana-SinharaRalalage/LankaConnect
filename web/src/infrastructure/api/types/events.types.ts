@@ -1752,6 +1752,19 @@ export interface PublicDonationSummaryDto {
 }
 
 /**
+ * Public-facing collection summary (no PII).
+ * Returned by GET /api/events/{eventId}/collections/public-summary
+ */
+export interface PublicCollectionSummaryDto {
+  totalAmount: number;
+  goalAmount?: number | null;
+  goalProgressPercent?: number | null;
+  completedCollections: number;
+  contributorCount: number;
+  currency: string;
+}
+
+/**
  * Individual donation record.
  */
 export interface DonationDto {

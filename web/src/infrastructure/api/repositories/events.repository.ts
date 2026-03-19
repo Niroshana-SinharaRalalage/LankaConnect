@@ -1627,6 +1627,29 @@ export class EventsRepository {
     );
   }
 
+  async getPublicCollectionSummary(
+    eventId: string
+  ): Promise<import('../types/events.types').PublicCollectionSummaryDto | null> {
+    try {
+      return await apiClient.get<import('../types/events.types').PublicCollectionSummaryDto>(
+        `${this.basePath}/${eventId}/collections/public-summary`
+      );
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getMyCollections(
+    eventId: string
+  ): Promise<import('../types/events.types').CollectionDto[]> {
+    return await apiClient.get<import('../types/events.types').CollectionDto[]>(
+      `${this.basePath}/${eventId}/collections/mine`
+    );
+  }
+
   // ==================== SPONSORS ====================
 
   async createMoneySponsor(eventId: string, request: import('../types/events.types').CreateMoneySponsorRequest): Promise<string> {
@@ -1649,6 +1672,14 @@ export class EventsRepository {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/sponsors/export?format=${format}`,
       { responseType: 'blob' as any }
+    );
+  }
+
+  async getMySponsors(
+    eventId: string
+  ): Promise<import('../types/events.types').SponsorDto[]> {
+    return await apiClient.get<import('../types/events.types').SponsorDto[]>(
+      `${this.basePath}/${eventId}/sponsors/mine`
     );
   }
 

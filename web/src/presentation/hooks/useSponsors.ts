@@ -5,6 +5,7 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import type {
   EventSponsorsResponse,
   SponsorSummaryDto,
+  SponsorDto,
   CreateMoneySponsorRequest,
   CreateItemSponsorRequest,
 } from '@/infrastructure/api/types/events.types';
@@ -13,6 +14,7 @@ export const sponsorKeys = {
   all: ['sponsors'] as const,
   byEvent: (eventId: string) => [...sponsorKeys.all, 'event', eventId] as const,
   summary: (eventId: string) => [...sponsorKeys.all, 'summary', eventId] as const,
+  mine: (eventId: string) => [...sponsorKeys.all, 'mine', eventId] as const,
 };
 
 export function useEventSponsors(eventId: string | undefined, enabled = true) {
@@ -31,6 +33,19 @@ export function useSponsorSummary(eventId: string | undefined, enabled = true) {
     queryFn: () => eventsRepository.getSponsorSummary(eventId!),
     enabled: !!eventId && enabled,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches the authenticated user's own sponsorships for an event.
+ */
+export function useMySponsors(eventId: string | undefined, enabled = true) {
+  return useQuery<SponsorDto[]>({
+    queryKey: sponsorKeys.mine(eventId || ''),
+    queryFn: () => eventsRepository.getMySponsors(eventId!),
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

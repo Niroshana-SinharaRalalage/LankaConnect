@@ -6,27 +6,22 @@ import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSect
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useCreateCollection } from '@/presentation/hooks/useCollections';
-import type { CollectionConfigurationDto } from '@/infrastructure/api/types/events.types';
+import type { CollectionConfigurationDto, CollectionDto, PublicCollectionSummaryDto } from '@/infrastructure/api/types/events.types';
 
 interface CollectionSectionProps {
   eventId: string;
   collectionConfig: CollectionConfigurationDto;
   /** Public collection summary -- goal progress, contributor count */
-  publicSummary?: {
-    totalAmount: number;
-    goalAmount?: number | null;
-    goalProgressPercent?: number | null;
-    completedCollections: number;
-    contributorCount: number;
-    currency: string;
-  } | null;
+  publicSummary?: PublicCollectionSummaryDto | null;
+  /** Logged-in user's own contributions for this event */
+  myCollections?: CollectionDto[] | null;
 }
 
 /**
  * Public standalone collection (fundraising contribution) UI shown on event details page.
  * Allows any visitor to contribute at any time when collections are enabled.
  */
-export function CollectionSection({ eventId, collectionConfig, publicSummary }: CollectionSectionProps) {
+export function CollectionSection({ eventId, collectionConfig, publicSummary, myCollections }: CollectionSectionProps) {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(
     collectionConfig.suggestedAmounts.length > 0 ? collectionConfig.suggestedAmounts[0] : null
   );
@@ -298,6 +293,38 @@ export function CollectionSection({ eventId, collectionConfig, publicSummary }: 
                 : 'Select an amount'}
           </Button>
         </form>
+
+      {/* Your Contributions */}
+      {myCollections && myCollections.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-neutral-200">
+          <h4 className="text-sm font-semibold text-neutral-700 mb-2">Your Contributions</h4>
+          <div className="space-y-2">
+            {myCollections.map((collection) => (
+              <div key={collection.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-violet-100">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-neutral-900">
+                    ${collection.amount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    collection.status === 'Completed'
+                      ? 'bg-green-100 text-green-700'
+                      : collection.status === 'Pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-neutral-100 text-neutral-600'
+                  }`}>
+                    {collection.status}
+                  </span>
+                  <span className="text-xs text-neutral-500">
+                    {new Date(collection.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </CollapsibleSection>
   );
 }

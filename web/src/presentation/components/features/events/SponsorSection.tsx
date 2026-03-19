@@ -6,20 +6,21 @@ import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSect
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useCreateMoneySponsor, useCreateItemSponsor } from '@/presentation/hooks/useSponsors';
-import type { SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
+import type { SponsorConfigurationDto, SponsorDto } from '@/infrastructure/api/types/events.types';
 
 type SponsorMode = 'money' | 'item';
 
 interface SponsorSectionProps {
   eventId: string;
   sponsorConfig: SponsorConfigurationDto;
+  mySponsors?: SponsorDto[] | null;
 }
 
 /**
  * Public-facing sponsor form shown on the event details page.
  * Supports dual-mode: Money sponsors (Stripe checkout) and Item sponsors (form submission).
  */
-export function SponsorSection({ eventId, sponsorConfig }: SponsorSectionProps) {
+export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSectionProps) {
   const defaultMode: SponsorMode = sponsorConfig.acceptMoneySponsors ? 'money' : 'item';
   const showToggle = sponsorConfig.acceptMoneySponsors && sponsorConfig.acceptItemSponsors;
 
@@ -356,6 +357,47 @@ export function SponsorSection({ eventId, sponsorConfig }: SponsorSectionProps) 
           </Button>
         )}
       </form>
+
+      {/* Your Sponsorships */}
+      {mySponsors && mySponsors.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-neutral-200">
+          <h4 className="text-sm font-semibold text-neutral-700 mb-2">Your Sponsorships</h4>
+          <div className="space-y-2">
+            {mySponsors.map((sponsor) => (
+              <div key={sponsor.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-indigo-100">
+                <div className="flex items-center gap-3">
+                  {sponsor.sponsorType === 'Money' ? (
+                    <span className="text-sm font-semibold text-neutral-900">
+                      ${(sponsor.amount ?? 0).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-neutral-900">
+                      {sponsor.itemName || 'Item'}
+                    </span>
+                  )}
+                  <span className="text-xs text-neutral-500">
+                    ({sponsor.sponsorType === 'Money' ? 'Monetary' : 'Item'})
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    sponsor.status === 'Completed' || sponsor.status === 'RecordedItem'
+                      ? 'bg-green-100 text-green-700'
+                      : sponsor.status === 'Pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-neutral-100 text-neutral-600'
+                  }`}>
+                    {sponsor.status === 'RecordedItem' ? 'Recorded' : sponsor.status}
+                  </span>
+                  <span className="text-xs text-neutral-500">
+                    {new Date(sponsor.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </CollapsibleSection>
   );
 }

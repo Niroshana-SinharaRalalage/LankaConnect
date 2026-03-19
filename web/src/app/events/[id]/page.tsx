@@ -39,6 +39,10 @@ import { AddOnSelector } from '@/presentation/components/features/events/AddOnSe
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 // Donation Feature: Import donation hooks
 import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/useDonations';
+// Collection Feature: Import collection hooks
+import { usePublicCollectionSummary, useMyCollections } from '@/presentation/hooks/useCollections';
+// Sponsor Feature: Import sponsor hooks
+import { useMySponsors } from '@/presentation/hooks/useSponsors';
 // Multi-Album: Import album hooks and carousel
 import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
 import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
@@ -147,6 +151,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Donation Feature: My donations (logged-in user's own donations for this event)
   const { data: myDonations } = useMyDonations(
     isAuthenticated && event?.donationConfig?.isEnabled ? id : undefined
+  );
+
+  // Collection Feature: Public summary (goal progress, contributor count)
+  const { data: publicCollectionSummary } = usePublicCollectionSummary(
+    event?.collectionConfig?.isEnabled ? id : undefined
+  );
+
+  // Collection Feature: My collections (logged-in user's own contributions)
+  const { data: myCollections } = useMyCollections(
+    isAuthenticated && event?.collectionConfig?.isEnabled ? id : undefined
+  );
+
+  // Sponsor Feature: My sponsors (logged-in user's own sponsorships for this event)
+  const { data: mySponsors } = useMySponsors(
+    isAuthenticated && event?.sponsorConfig?.isEnabled ? id : undefined
   );
 
   // Multi-Album: Fetch published albums for event details carousel
@@ -1809,6 +1828,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <CollectionSection
               eventId={id}
               collectionConfig={event.collectionConfig}
+              publicSummary={publicCollectionSummary}
+              myCollections={myCollections}
             />
           </div>
         )}
@@ -1819,6 +1840,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <SponsorSection
               eventId={id}
               sponsorConfig={event.sponsorConfig}
+              mySponsors={mySponsors}
             />
           </div>
         )}

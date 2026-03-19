@@ -10,9 +10,9 @@
 ## 🔄 CURRENT STATUS - FINANCIAL FEATURES ISSUES FIX (2026-03-19)
 **Date**: 2026-03-19
 **Session**: Fix 5 user-reported issues with financial features
-**Status**: ✅ **DEPLOYED (backend `e0c6ab7b` + frontend `ae962a8d` to staging)**
-**RCA**: 5 issues — (1) Sub-tabs hidden, (2) No CRUD form for add-on items, (3) No "My Sponsorships" display, (4) No "My Contributions" display, (5) "No add-ons" empty state
-**Fix**: Backend: 3 new API endpoints (sponsors/mine, collections/mine, collections/public-summary). Frontend: hooks, types, repository methods, "Your Sponsorships"/"Your Contributions" sections, inline add-on CRUD form with create/edit.
+**Status**: ✅ **ALL 5 ISSUES DEPLOYED (backend `e0c6ab7b` + frontend `ae962a8d`, `7dd743f3` to staging)**
+**RCA**: 5 issues — (1) Config summaries missing from manage page, (2) No CRUD form for add-on items, (3) No "My Sponsorships" display, (4) No "My Contributions" display, (5) "No add-ons" empty state + no guidance
+**Fix**: Backend: 3 new API endpoints. Frontend: hooks, types, repository methods, "Your Sponsorships"/"Your Contributions" sections, inline add-on CRUD form, 3 config summary cards on manage page (Collection/Sponsor/Add-On), blue guidance callout in AddOnConfigForm.
 
 ---
 

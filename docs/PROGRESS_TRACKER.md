@@ -1,18 +1,30 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-19 - Financial Features Issues Fix: My Sponsorships, My Contributions, Add-On CRUD, Backend API Endpoints*
+*Last Updated: 2026-03-19 - Financial Features Issues Fix: Config Summaries on Manage Page + Add-On Guidance*
 
 ## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19)
+
+### Config Summaries + Add-On Guidance (2026-03-19, commit `7dd743f3`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UI Feature Missing — Manage page Event Details tab showed only Donation Configuration summary; Collection/Sponsor/Add-On configs were missing. Add-On config form had no guidance for creating items.
+
+**Changes** (2 files, +360/-1 lines):
+- `EventDetailsTab.tsx`: Added 3 config summary cards (Collection, Sponsor, Add-On) between Donation Config and Media sections. Each card shows enabled/disabled status + all config fields matching the Donation Config pattern. Added `Wallet`, `HandCoins`, `PackagePlus` icon imports.
+- `AddOnConfigForm.tsx`: Added blue info callout directing organizers to Manage page > Attendees & Finance > Add-Ons tab to create add-on items. Added `Info` icon import.
+
+---
 
 ### Issues 1-5: Financial Features UX Fixes (2026-03-19)
 
 **Status**: ✅ **DEPLOYED (backend + frontend to Azure staging)**
 
 **Classification**: Bug Fix / Feature Gap — 5 issues reported by user after financial features deployment:
-1. Financial features not visible in manage page (sub-tabs hidden) — addressed via tab consolidation
+1. Financial config summaries not visible on manage page — **FIXED: 3 config summary cards added (commit `7dd743f3`)**
 2. Add-On config has no CRUD form for creating items — **FIXED: inline create/edit form**
 3. No "My Sponsorships" on event details page — **FIXED: backend endpoint + frontend UI**
 4. No "My Contributions" for collections on event details page — **FIXED: backend endpoint + frontend UI**
-5. "No add-ons available" (consequence of Issue 2) — **FIXED: CRUD form lets organizers create add-ons**
+5. "No add-ons available" (consequence of Issue 2) — **FIXED: CRUD form + guidance callout**
 
 **Backend Changes** (commit `e0c6ab7b`):
 - `SponsorsController.cs`: Added `GET /sponsors/mine` [Authorize] endpoint + ISponsorRepository DI

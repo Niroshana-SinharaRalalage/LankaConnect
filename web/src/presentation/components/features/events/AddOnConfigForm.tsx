@@ -1,6 +1,6 @@
 'use client';
 
-import { PackagePlus } from 'lucide-react';
+import { PackagePlus, Info } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 
 interface AddOnConfigFormProps {
@@ -62,6 +62,16 @@ export function AddOnConfigForm({
 
         {isEnabled && (
           <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            {/* Guidance: direct organizer to create add-on items */}
+            <div className="flex gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-blue-700">
+                <strong>Next step:</strong> After saving, go to the{' '}
+                <strong>Manage page</strong> &gt; <strong>Attendees &amp; Finance</strong> &gt;{' '}
+                <strong>Add-Ons</strong> tab to create your add-on items (meals, t-shirts, gift bags, event packages, etc.).
+              </p>
+            </div>
+
             {/* Availability Options */}
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">

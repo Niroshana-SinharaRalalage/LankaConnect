@@ -7,7 +7,16 @@
 
 ---
 
-## 🔄 CURRENT STATUS - CONFIG FORMS FOR COLLECTIONS/SPONSORS/ADD-ONS (2026-03-18)
+## 🔄 CURRENT STATUS - FINANCIAL FEATURES ISSUES FIX (2026-03-19)
+**Date**: 2026-03-19
+**Session**: Fix 5 user-reported issues with financial features
+**Status**: ✅ **DEPLOYED (backend `e0c6ab7b` + frontend `ae962a8d` to staging)**
+**RCA**: 5 issues — (1) Sub-tabs hidden, (2) No CRUD form for add-on items, (3) No "My Sponsorships" display, (4) No "My Contributions" display, (5) "No add-ons" empty state
+**Fix**: Backend: 3 new API endpoints (sponsors/mine, collections/mine, collections/public-summary). Frontend: hooks, types, repository methods, "Your Sponsorships"/"Your Contributions" sections, inline add-on CRUD form with create/edit.
+
+---
+
+## PREVIOUS STATUS - CONFIG FORMS FOR COLLECTIONS/SPONSORS/ADD-ONS (2026-03-18)
 **Date**: 2026-03-18
 **Session**: Add config forms for Collections, Sponsors, and Add-Ons to event create/edit pages
 **Status**: ✅ **DEPLOYED (commit 9b8d9bbc, frontend to staging)**

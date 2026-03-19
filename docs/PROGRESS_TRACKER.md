@@ -1,7 +1,39 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-18 - All 4 Phases COMPLETE: Config Forms + Tab Consolidation + Individual Exports + Combined Export All*
+*Last Updated: 2026-03-19 - Financial Features Issues Fix: My Sponsorships, My Contributions, Add-On CRUD, Backend API Endpoints*
 
-## 🎯 Current Session Status - All Financial Feature Phases Complete (2026-03-18)
+## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19)
+
+### Issues 1-5: Financial Features UX Fixes (2026-03-19)
+
+**Status**: ✅ **DEPLOYED (backend + frontend to Azure staging)**
+
+**Classification**: Bug Fix / Feature Gap — 5 issues reported by user after financial features deployment:
+1. Financial features not visible in manage page (sub-tabs hidden) — addressed via tab consolidation
+2. Add-On config has no CRUD form for creating items — **FIXED: inline create/edit form**
+3. No "My Sponsorships" on event details page — **FIXED: backend endpoint + frontend UI**
+4. No "My Contributions" for collections on event details page — **FIXED: backend endpoint + frontend UI**
+5. "No add-ons available" (consequence of Issue 2) — **FIXED: CRUD form lets organizers create add-ons**
+
+**Backend Changes** (commit `e0c6ab7b`):
+- `SponsorsController.cs`: Added `GET /sponsors/mine` [Authorize] endpoint + ISponsorRepository DI
+- `CollectionsController.cs`: Added `GET /collections/mine` [Authorize] + `GET /collections/public-summary` [AllowAnonymous] + ICollectionRepository DI + PublicCollectionSummaryResponse DTO
+
+**Frontend Changes** (commit `ae962a8d`, 8 files, +462/-32 lines):
+- `events.types.ts`: Added `PublicCollectionSummaryDto` interface
+- `events.repository.ts`: Added `getPublicCollectionSummary`, `getMyCollections`, `getMySponsors` methods
+- `useSponsors.ts`: Added `useMySponsors` hook + `mine` query key
+- `useCollections.ts`: Added `useMyCollections`, `usePublicCollectionSummary` hooks + query keys
+- `SponsorSection.tsx`: Added "Your Sponsorships" section (money/item display, status badges, dates)
+- `CollectionSection.tsx`: Added "Your Contributions" section + `PublicCollectionSummaryDto` type + goal progress
+- `page.tsx` (event details): Wired all new hooks with auth/config guards, passed props to sections
+- `AddOnsManagementTab.tsx`: Added inline create/edit form (name, description, price, quantity limit, sort order), "+ Create Add-On" button, Edit (pencil) button per row
+
+**API Verification** (event `40b297c9`):
+- `GET /sponsors/mine` → HTTP 200
+- `GET /collections/mine` → HTTP 200
+- `GET /collections/public-summary` → HTTP 200 (returns totalAmount, goalAmount, goalProgressPercent, contributorCount)
+
+---
 
 ### Phase 3: Combined "Export All Financial Data" (2026-03-18)
 

@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Queries.ExportCollections;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventCollections;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +21,15 @@ namespace LankaConnect.API.Controllers;
 [Produces("application/json")]
 public class CollectionsController : BaseController<CollectionsController>
 {
+    private readonly ICollectionRepository _collectionRepository;
+
     public CollectionsController(
         IMediator mediator,
-        ILogger<CollectionsController> logger)
+        ILogger<CollectionsController> logger,
+        ICollectionRepository collectionRepository)
         : base(mediator, logger)
     {
+        _collectionRepository = collectionRepository;
     }
 
     /// <summary>
@@ -148,6 +153,108 @@ public class CollectionsController : BaseController<CollectionsController>
     }
 
     /// <summary>
+    /// Gets public collection summary for an event (anyone can call).
+    /// Only returns data if collections are enabled.
+    /// Returns: total amount, goal progress, contributor count.
+    /// </summary>
+    [HttpGet("public-summary")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicCollectionSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicCollectionSummary(Guid eventId)
+    {
+        Logger.LogInformation("GetPublicCollectionSummary: EventId={EventId}", eventId);
+
+        try
+        {
+            var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
+            if (eventResult.IsFailure)
+                return NotFound(new { Error = "Event not found" });
+
+            var eventDto = eventResult.Value!;
+
+            if (eventDto.CollectionConfig == null || !eventDto.CollectionConfig.IsEnabled)
+            {
+                return NotFound(new { Error = "Collections are not available for this event" });
+            }
+
+            var collectionsResult = await Mediator.Send(new GetEventCollectionsQuery(eventId));
+            if (collectionsResult.IsFailure)
+                return NotFound(new { Error = "Could not load collections" });
+
+            var summary = collectionsResult.Value.Summary;
+
+            return Ok(new PublicCollectionSummaryResponse
+            {
+                TotalAmount = summary.TotalAmount,
+                GoalAmount = summary.GoalAmount,
+                GoalProgressPercent = summary.GoalProgressPercent,
+                CompletedCollections = summary.CompletedCollections,
+                ContributorCount = summary.ContributorCount,
+                Currency = summary.Currency ?? "USD",
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "GetPublicCollectionSummary FAILED: EventId={EventId}", eventId);
+            return StatusCode(500, new { Error = "Failed to retrieve collection summary" });
+        }
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's own collections for an event.
+    /// Returns individual contribution line items for the logged-in user.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<CollectionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyCollections(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "GetMyCollections: EventId={EventId}, UserId={UserId}", eventId, userId);
+
+        try
+        {
+            var collections = await _collectionRepository.GetByUserIdAndEventIdAsync(userId, eventId);
+
+            var collectionDtos = collections.Select(c => new CollectionDto
+            {
+                Id = c.Id,
+                EventId = c.EventId,
+                ContributorUserId = c.ContributorUserId,
+                ContributorName = c.ContributorName,
+                ContributorEmail = c.ContributorEmail,
+                ContributorPhone = c.ContributorPhone,
+                ContributorNotes = c.ContributorNotes,
+                Amount = c.Amount.Amount,
+                Currency = c.Amount.Currency.ToString(),
+                Status = c.Status.ToString(),
+                StripeFeeAmount = c.StripeFeeAmount?.Amount,
+                PlatformCommissionAmount = c.PlatformCommissionAmount?.Amount,
+                OrganizerPayoutAmount = c.OrganizerPayoutAmount?.Amount,
+                CreatedAt = c.CreatedAt,
+                PaymentCompletedAt = c.PaymentCompletedAt,
+            }).ToList();
+
+            Logger.LogInformation(
+                "GetMyCollections: Found {Count} contributions for UserId={UserId}, EventId={EventId}",
+                collectionDtos.Count, userId, eventId);
+
+            return Ok(collectionDtos);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "GetMyCollections FAILED: EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+            return StatusCode(500, new { Error = "Failed to retrieve your contributions" });
+        }
+    }
+
+    /// <summary>
     /// Verifies that the authenticated user is the organizer of the specified event.
     /// Returns null if authorized, or an IActionResult (Forbid/NotFound) if not.
     /// </summary>
@@ -174,6 +281,19 @@ public class CollectionsController : BaseController<CollectionsController>
 
         return null; // Authorized
     }
+}
+
+/// <summary>
+/// Public-facing collection summary response (no PII, no individual contributor details).
+/// </summary>
+public class PublicCollectionSummaryResponse
+{
+    public decimal TotalAmount { get; init; }
+    public decimal? GoalAmount { get; init; }
+    public decimal? GoalProgressPercent { get; init; }
+    public int CompletedCollections { get; init; }
+    public int ContributorCount { get; init; }
+    public string Currency { get; init; } = "USD";
 }
 
 /// <summary>

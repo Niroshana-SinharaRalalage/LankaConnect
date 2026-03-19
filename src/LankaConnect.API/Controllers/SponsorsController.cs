@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportSponsors;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsors;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,15 @@ namespace LankaConnect.API.Controllers;
 [Produces("application/json")]
 public class SponsorsController : BaseController<SponsorsController>
 {
+    private readonly ISponsorRepository _sponsorRepository;
+
     public SponsorsController(
         IMediator mediator,
-        ILogger<SponsorsController> logger)
+        ILogger<SponsorsController> logger,
+        ISponsorRepository sponsorRepository)
         : base(mediator, logger)
     {
+        _sponsorRepository = sponsorRepository;
     }
 
     /// <summary>
@@ -187,6 +192,63 @@ public class SponsorsController : BaseController<SponsorsController>
         }
 
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's own sponsorships for an event.
+    /// Returns individual sponsor line items for the logged-in user.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<SponsorDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMySponsors(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "GetMySponsors: EventId={EventId}, UserId={UserId}", eventId, userId);
+
+        try
+        {
+            var sponsors = await _sponsorRepository.GetByUserIdAndEventIdAsync(userId, eventId);
+
+            var sponsorDtos = sponsors.Select(s => new SponsorDto
+            {
+                Id = s.Id,
+                EventId = s.EventId,
+                SponsorUserId = s.SponsorUserId,
+                SponsorName = s.SponsorName,
+                SponsorEmail = s.SponsorEmail,
+                SponsorPhone = s.SponsorPhone,
+                SponsorOrganization = s.SponsorOrganization,
+                SponsorNotes = s.SponsorNotes,
+                SponsorType = s.Type.ToString(),
+                Amount = s.Amount?.Amount,
+                Currency = s.Amount?.Currency.ToString(),
+                Status = s.Status.ToString(),
+                StripeFeeAmount = s.StripeFeeAmount?.Amount,
+                PlatformCommissionAmount = s.PlatformCommissionAmount?.Amount,
+                OrganizerPayoutAmount = s.OrganizerPayoutAmount?.Amount,
+                ItemName = s.ItemName,
+                ItemDescription = s.ItemDescription,
+                EstimatedValue = s.EstimatedValue,
+                CreatedAt = s.CreatedAt,
+                PaymentCompletedAt = s.PaymentCompletedAt,
+            }).ToList();
+
+            Logger.LogInformation(
+                "GetMySponsors: Found {Count} sponsorships for UserId={UserId}, EventId={EventId}",
+                sponsorDtos.Count, userId, eventId);
+
+            return Ok(sponsorDtos);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "GetMySponsors FAILED: EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+            return StatusCode(500, new { Error = "Failed to retrieve your sponsorships" });
+        }
     }
 
     /// <summary>

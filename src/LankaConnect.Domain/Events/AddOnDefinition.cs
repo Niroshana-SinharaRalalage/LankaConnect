@@ -80,8 +80,8 @@ public class AddOnDefinition : BaseEntity
         if (price == null)
             return Result<AddOnDefinition>.Failure("Add-on price is required");
 
-        if (price.Amount <= 0)
-            return Result<AddOnDefinition>.Failure("Add-on price must be greater than zero");
+        if (price.Amount < 0)
+            return Result<AddOnDefinition>.Failure("Add-on price cannot be negative");
 
         if (quantityLimit.HasValue && quantityLimit.Value <= 0)
             return Result<AddOnDefinition>.Failure("Quantity limit must be greater than zero");
@@ -124,8 +124,8 @@ public class AddOnDefinition : BaseEntity
         if (price == null)
             return Result.Failure("Add-on price is required");
 
-        if (price.Amount <= 0)
-            return Result.Failure("Add-on price must be greater than zero");
+        if (price.Amount < 0)
+            return Result.Failure("Add-on price cannot be negative");
 
         if (quantityLimit.HasValue && quantityLimit.Value <= 0)
             return Result.Failure("Quantity limit must be greater than zero");

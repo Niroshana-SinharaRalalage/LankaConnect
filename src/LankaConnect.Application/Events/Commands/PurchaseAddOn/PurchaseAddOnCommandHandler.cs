@@ -146,7 +146,39 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
 
                 var purchase = purchaseResult.Value;
 
-                // 8. Create Stripe Checkout session
+                // 8a. FREE ADD-ON BYPASS: Skip Stripe for $0 add-ons, immediately complete
+                if (totalAmount == 0)
+                {
+                    _logger.LogInformation(
+                        "PurchaseAddOn FREE: DefinitionId={DefinitionId}, Quantity={Quantity} — Skipping Stripe checkout for free add-on",
+                        request.AddOnDefinitionId, request.Quantity);
+
+                    var completeResult = purchase.CompletePayment("free_addon_no_payment_required");
+                    if (completeResult.IsFailure)
+                    {
+                        await RestoreStockSafely(request.AddOnDefinitionId, request.Quantity, cancellationToken);
+                        stockReserved = false;
+                        return Result<string>.Failure(completeResult.Error);
+                    }
+
+                    // Set zero revenue breakdown for free add-ons
+                    var zeroMoney = Money.Zero(unitPrice.Currency);
+                    purchase.SetRevenueBreakdown(zeroMoney, zeroMoney, zeroMoney);
+
+                    await _addOnPurchaseRepository.AddAsync(purchase, cancellationToken);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
+                    stopwatch.Stop();
+
+                    _logger.LogInformation(
+                        "PurchaseAddOn FREE COMPLETE: PurchaseId={PurchaseId}, EventId={EventId}, DefinitionId={DefinitionId}, Quantity={Quantity}, Duration={ElapsedMs}ms",
+                        purchase.Id, request.EventId, request.AddOnDefinitionId, request.Quantity, stopwatch.ElapsedMilliseconds);
+
+                    // Return success URL directly (no checkout redirect needed)
+                    return Result<string>.Success(request.SuccessUrl);
+                }
+
+                // 8b. Create Stripe Checkout session (paid add-ons only)
                 var checkoutRequest = new CreateAddOnPurchaseCheckoutSessionRequest
                 {
                     EventId = request.EventId,

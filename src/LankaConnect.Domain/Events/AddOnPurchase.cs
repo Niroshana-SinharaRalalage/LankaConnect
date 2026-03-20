@@ -156,8 +156,8 @@ public class AddOnPurchase : BaseEntity
         if (unitPrice == null)
             return Result<AddOnPurchase>.Failure("Unit price is required");
 
-        if (unitPrice.Amount <= 0)
-            return Result<AddOnPurchase>.Failure("Unit price must be greater than zero");
+        if (unitPrice.Amount < 0)
+            return Result<AddOnPurchase>.Failure("Unit price cannot be negative");
 
         // Calculate total amount
         var totalAmountResult = Money.Create(unitPrice.Amount * quantity, unitPrice.Currency);

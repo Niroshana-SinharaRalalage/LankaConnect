@@ -1,7 +1,23 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-20 - Add-On Definition CRUD Embedded in Event Create/Edit Pages*
+*Last Updated: 2026-03-20 - Fix nested form bug causing add-on creation to redirect to login*
 
 ## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19/20)
+
+### Fix: Nested Form Bug in AddOnDefinitionEditor (2026-03-20, commit `c558a97b`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UI Bug — Nested `<form>` elements (HTML spec violation)
+
+**Root Cause**: `AddOnDefinitionEditor` rendered a `<form>` inside `EventEditForm`'s outer `<form>`. HTML forbids nested forms — browser ignores the inner `<form>`, so clicking "Create Add-On" (type=submit) triggered the outer form submission instead, causing a page redirect to login. The add-on API call never executed.
+
+**Fix** (1 file, +6/-7 lines):
+- Replaced `<form>` with `<div>` to eliminate nested form violation
+- Changed submit button from `type="submit"` to `type="button"` with explicit `onClick={handleFormSubmit}`
+- Updated `handleFormSubmit` signature to accept optional event parameter
+- Removed HTML5 `required` attributes (JS validation already handles this)
+
+---
 
 ### Add-On Definition CRUD in Create/Edit Pages (2026-03-20, commit `61b3ef70`)
 

@@ -69,6 +69,7 @@ export function AddOnDefinitionEditor({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const [formIsFree, setFormIsFree] = useState(false);
   const [formPrice, setFormPrice] = useState('');
   const [formQuantityLimit, setFormQuantityLimit] = useState('');
   const [formSortOrder, setFormSortOrder] = useState('0');
@@ -104,6 +105,7 @@ export function AddOnDefinitionEditor({
   const resetForm = () => {
     setFormName('');
     setFormDescription('');
+    setFormIsFree(false);
     setFormPrice('');
     setFormQuantityLimit('');
     setFormSortOrder('0');
@@ -121,7 +123,8 @@ export function AddOnDefinitionEditor({
     setEditingId(def.id);
     setFormName(def.name);
     setFormDescription(def.description || '');
-    setFormPrice(String(def.price));
+    setFormIsFree(def.price === 0);
+    setFormPrice(def.price === 0 ? '' : String(def.price));
     setFormQuantityLimit(def.quantityLimit != null ? String(def.quantityLimit) : '');
     setFormSortOrder(String(def.sortOrder));
     setFormError(null);
@@ -143,7 +146,7 @@ export function AddOnDefinitionEditor({
       return;
     }
 
-    const price = parseFloat(formPrice);
+    const price = formIsFree ? 0 : (formPrice.trim() === '' ? 0 : parseFloat(formPrice));
     if (isNaN(price) || price < 0) {
       setFormError('Price must be a valid number ($0 or more).');
       return;
@@ -329,12 +332,25 @@ export function AddOnDefinitionEditor({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formPrice}
+                    value={formIsFree ? '0.00' : formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
                     placeholder="0.00"
                     className="pl-7"
+                    disabled={formIsFree}
                   />
                 </div>
+                <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formIsFree}
+                    onChange={(e) => {
+                      setFormIsFree(e.target.checked);
+                      if (e.target.checked) setFormPrice('');
+                    }}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                  />
+                  <span className="text-xs text-neutral-600">Free add-on (no charge)</span>
+                </label>
               </div>
             </div>
             <div>
@@ -448,9 +464,13 @@ export function AddOnDefinitionEditor({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-semibold text-neutral-800">
-                        {formatCurrency(def.price, def.currency)}
-                      </span>
+                      {def.price === 0 ? (
+                        <Badge style={{ backgroundColor: '#10B981' }}>Free</Badge>
+                      ) : (
+                        <span className="font-semibold text-neutral-800">
+                          {formatCurrency(def.price, def.currency)}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {def.quantityLimit != null ? (

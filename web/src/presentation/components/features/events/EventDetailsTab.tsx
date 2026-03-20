@@ -39,7 +39,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { type EventDto } from '@/infrastructure/api/types/events.types';
+import { type EventDto, type AddOnDefinitionDto } from '@/infrastructure/api/types/events.types';
+import { useAddOnDefinitions } from '@/presentation/hooks/useAddOns';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDateTime } from '@/presentation/lib/utils/date-formatter';
 
@@ -60,6 +61,7 @@ export function EventDetailsTab({
 }: EventDetailsTabProps) {
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
+  const { data: addOnDefinitions = [] } = useAddOnDefinitions(event.id, event.addOnConfig?.isEnabled === true);
 
   // Issue #51: State for editing max attendees per registration
   const [isEditingMaxAttendees, setIsEditingMaxAttendees] = useState(false);
@@ -862,7 +864,7 @@ export function EventDetailsTab({
                     </div>
                   </div>
                   {event.addOnConfig.addOnMessage && (
-                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start border-b pb-3">
                       <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                         <Mail className="h-4 w-4 text-[#FF7900]" />
                         Add-On Message:
@@ -872,6 +874,39 @@ export function EventDetailsTab({
                       </span>
                     </div>
                   )}
+                  {/* Add-On Items Summary */}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <PackagePlus className="h-4 w-4 text-[#FF7900]" />
+                      Add-On Items:
+                    </span>
+                    {addOnDefinitions.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {addOnDefinitions.map((def: AddOnDefinitionDto) => (
+                          <div key={def.id} className="flex items-center gap-2 text-sm">
+                            <span className="text-neutral-800">{def.name}</span>
+                            <span className="text-neutral-400">—</span>
+                            {def.price === 0 ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0">
+                                Free
+                              </Badge>
+                            ) : (
+                              <span className="text-neutral-600 font-medium">
+                                ${def.price.toFixed(2)}
+                              </span>
+                            )}
+                            {!def.isActive && (
+                              <Badge className="bg-neutral-100 text-neutral-500 border border-neutral-200 text-[10px] px-1.5 py-0">
+                                Inactive
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-neutral-400 italic">No add-on items defined yet</span>
+                    )}
+                  </div>
                 </>
               )}
             </div>

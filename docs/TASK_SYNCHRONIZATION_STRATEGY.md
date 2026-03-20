@@ -3,7 +3,25 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - FINANCIAL FEATURES ISSUES FIX ✅ COMPLETE
+**Date**: 2026-03-19
+**Session**: Fix 5 user-reported issues with financial features + nested form bug
+**Progress**: ✅ **COMPLETE** — All fixes deployed to Azure staging
+**Status**: ✅ **COMPLETE** — Backend `e0c6ab7b` + frontend `ae962a8d`, `7dd743f3`, `61b3ef70`, `c558a97b` deployed
+
+**Fixes Applied**:
+| # | Issue | Fix | Commit |
+|---|-------|-----|--------|
+| 1 | Config summaries missing from manage page | Added Collection/Sponsor/Add-On config cards to EventDetailsTab | `7dd743f3` |
+| 2 | No add-on CRUD on create/edit pages | Created shared AddOnDefinitionEditor with dual-mode (local/live) | `61b3ef70` |
+| 3 | No "My Sponsorships" display | Added Your Sponsorships section on public event page | `ae962a8d` |
+| 4 | No "My Contributions" display | Added Your Contributions section on public event page | `ae962a8d` |
+| 5 | No add-on guidance | Embedded inline CRUD replaces guidance banner | `61b3ef70` |
+| 6 | Nested form bug (add-on create → login redirect) | Replaced `<form>` with `<div>` + explicit onClick handler | `c558a97b` |
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE
 **Date**: 2026-03-15/16
 **Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6, ~135 files)
 **Progress**: ✅ **COMPLETE** — All 7 phases implemented and deployed

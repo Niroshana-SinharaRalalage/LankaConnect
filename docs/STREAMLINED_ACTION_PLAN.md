@@ -7,7 +7,16 @@
 
 ---
 
-## 🔄 CURRENT STATUS - FINANCIAL FEATURES ISSUES FIX (2026-03-19)
+## 🔄 CURRENT STATUS - FREE ADD-ON SUPPORT (2026-03-20)
+**Date**: 2026-03-20
+**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass
+**Status**: ⚠️ **FRONTEND DEPLOYED (`1e145014`), BACKEND BLOCKED — Azure credentials expired (commit `c07fc125` pushed but not deployed)**
+**Fix**: Domain: `<= 0` → `< 0` in AddOnDefinition + AddOnPurchase. Handler: free add-on bypass skips Stripe, immediately completes. Frontend: free checkbox, "Free" badge, item details on manage page.
+**Blocker**: `AZURE_CREDENTIALS_STAGING` GitHub secret expired. Refresh credentials then re-run deploy-staging.yml.
+
+---
+
+## PREVIOUS STATUS - FINANCIAL FEATURES ISSUES FIX (2026-03-19)
 **Date**: 2026-03-19
 **Session**: Fix 5 user-reported issues with financial features
 **Status**: ✅ **ALL 5 ISSUES + UX IMPROVEMENT + NESTED FORM FIX DEPLOYED (backend `e0c6ab7b` + frontend `ae962a8d`, `7dd743f3`, `61b3ef70`, `c558a97b` to staging)**

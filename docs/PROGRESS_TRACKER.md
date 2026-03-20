@@ -1,7 +1,34 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-20 - Fix nested form bug causing add-on creation to redirect to login*
+*Last Updated: 2026-03-20 - Free add-on support (domain validation fix + purchase handler bypass)*
 
-## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19/20)
+## 🎯 Current Session Status - Free Add-On Support (2026-03-20)
+
+### Fix: Allow Free Add-Ons ($0 Price) — Backend Domain Fix (2026-03-20, commit `c07fc125`)
+
+**Status**: ⚠️ **CODE PUSHED, BACKEND DEPLOYMENT BLOCKED (Azure credentials expired)**
+
+**Classification**: Backend Domain Validation Bug — `AddOnDefinition` rejected `price = 0`
+
+**Root Cause**: `AddOnDefinition.Create()` and `UpdateDetails()` used `price.Amount <= 0` validation, rejecting $0 prices. The `Money` value object already supports zero (`Money.Zero()` factory exists), so this was an inconsistency in the add-on domain entity.
+
+**Fix** (3 files, backend only):
+| File | Change |
+|------|--------|
+| `AddOnDefinition.cs` | `<= 0` → `< 0` in both `Create()` (L83) and `UpdateDetails()` (L127) |
+| `AddOnPurchase.cs` | `<= 0` → `< 0` in `CreateInternal()` (L159) |
+| `PurchaseAddOnCommandHandler.cs` | Added free add-on bypass: if total = $0, skip Stripe checkout, immediately complete purchase with zero revenue breakdown |
+
+**Deployment Blocker**: `AZURE_CREDENTIALS_STAGING` GitHub secret expired. Workflow builds successfully (0 errors) but cannot authenticate to Azure for Docker push/deploy. User must refresh the secret.
+
+### UX: Free Add-On Checkbox + Add-On Items on Manage Page (2026-03-20, commit `1e145014`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Changes** (2 files):
+- `AddOnDefinitionEditor.tsx`: Added "Free add-on (no charge)" checkbox, disabled price field when checked, shows "Free" badge for $0 items
+- `EventDetailsTab.tsx`: Add-On Configuration card now fetches and shows add-on item details (name, price, active/inactive)
+
+---
 
 ### Fix: Nested Form Bug in AddOnDefinitionEditor (2026-03-20, commit `c558a97b`)
 

@@ -1538,6 +1538,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
         onAvailableStandaloneChange={setAddOnAvailableStandalone}
         addOnMessage={addOnMessage}
         onAddOnMessageChange={setAddOnMessage}
+        eventId={event.id}
       />
 
       {/* Note about Media */}

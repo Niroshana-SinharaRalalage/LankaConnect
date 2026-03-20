@@ -80,6 +80,7 @@ export function EventCreationForm() {
   const [addOnAvailableDuringRegistration, setAddOnAvailableDuringRegistration] = useState(true);
   const [addOnAvailableStandalone, setAddOnAvailableStandalone] = useState(true);
   const [addOnMessage, setAddOnMessage] = useState('');
+  const [pendingAddOnDefinitions, setPendingAddOnDefinitions] = useState<import('./AddOnDefinitionEditor').PendingAddOnDefinition[]>([]);
 
   // Phase 6A.106 Part 3: Azure image upload for rich text editor
   const { mutateAsync: uploadImage } = useContentImageUpload();
@@ -415,6 +416,28 @@ export function EventCreationForm() {
         } catch (configErr) {
           console.error('⚠️ Some financial configs failed to save:', configErr);
           // Non-blocking — event was created, configs can be set later from manage page
+        }
+      }
+
+      // Create pending add-on definitions (queued during local-mode editing)
+      if (addOnsEnabled && pendingAddOnDefinitions.length > 0) {
+        try {
+          await Promise.all(
+            pendingAddOnDefinitions.map((def) =>
+              eventsRepository.createAddOnDefinition(eventId, {
+                name: def.name,
+                description: def.description,
+                price: def.price,
+                currency: def.currency,
+                quantityLimit: def.quantityLimit,
+                sortOrder: def.sortOrder,
+              })
+            )
+          );
+          console.log(`✅ ${pendingAddOnDefinitions.length} add-on definitions created`);
+        } catch (defErr) {
+          console.error('⚠️ Some add-on definitions failed to save:', defErr);
+          // Non-blocking — definitions can be added later from manage page
         }
       }
 
@@ -1320,6 +1343,8 @@ export function EventCreationForm() {
         onAvailableStandaloneChange={setAddOnAvailableStandalone}
         addOnMessage={addOnMessage}
         onAddOnMessageChange={setAddOnMessage}
+        pendingDefinitions={pendingAddOnDefinitions}
+        onPendingDefinitionsChange={setPendingAddOnDefinitions}
       />
 
       {/* Note about Media */}

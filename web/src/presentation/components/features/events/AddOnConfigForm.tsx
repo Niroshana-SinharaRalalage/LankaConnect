@@ -1,7 +1,8 @@
 'use client';
 
-import { PackagePlus, Info } from 'lucide-react';
+import { PackagePlus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
+import { AddOnDefinitionEditor, type PendingAddOnDefinition } from './AddOnDefinitionEditor';
 
 interface AddOnConfigFormProps {
   /** Whether add-ons are enabled */
@@ -16,6 +17,11 @@ interface AddOnConfigFormProps {
   /** Custom add-on message (optional) */
   addOnMessage: string;
   onAddOnMessageChange: (message: string) => void;
+  /** Event ID — if provided, editor operates in live mode (API calls) */
+  eventId?: string;
+  /** Local mode: pending definitions managed by parent */
+  pendingDefinitions?: PendingAddOnDefinition[];
+  onPendingDefinitionsChange?: (definitions: PendingAddOnDefinition[]) => void;
 }
 
 /**
@@ -31,6 +37,9 @@ export function AddOnConfigForm({
   onAvailableStandaloneChange,
   addOnMessage,
   onAddOnMessageChange,
+  eventId,
+  pendingDefinitions,
+  onPendingDefinitionsChange,
 }: AddOnConfigFormProps) {
   const showAvailabilityWarning = isEnabled && !availableDuringRegistration && !availableStandalone;
 
@@ -62,16 +71,6 @@ export function AddOnConfigForm({
 
         {isEnabled && (
           <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            {/* Guidance: direct organizer to create add-on items */}
-            <div className="flex gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-700">
-                <strong>Next step:</strong> After saving, go to the{' '}
-                <strong>Manage page</strong> &gt; <strong>Attendees &amp; Finance</strong> &gt;{' '}
-                <strong>Add-Ons</strong> tab to create your add-on items (meals, t-shirts, gift bags, event packages, etc.).
-              </p>
-            </div>
-
             {/* Availability Options */}
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">
@@ -137,6 +136,13 @@ export function AddOnConfigForm({
               />
               <p className="text-xs text-gray-500">{addOnMessage.length}/500 characters</p>
             </div>
+
+            {/* Add-On Definition Editor (inline CRUD) */}
+            <AddOnDefinitionEditor
+              eventId={eventId}
+              pendingDefinitions={pendingDefinitions}
+              onPendingDefinitionsChange={onPendingDefinitionsChange}
+            />
           </div>
         )}
       </CardContent>

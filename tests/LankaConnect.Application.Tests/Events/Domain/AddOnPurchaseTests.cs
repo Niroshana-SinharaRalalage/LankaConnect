@@ -236,11 +236,26 @@ public class AddOnPurchaseTests
         result.Error.Should().Contain("Unit price");
     }
 
+    [Fact]
+    public void Create_WithZeroUnitPrice_ShouldSucceed()
+    {
+        // Free add-ons ($0 price) are a legitimate business case
+        var unitPrice = new Money(0m, Currency.USD);
+
+        var result = AddOnPurchase.Create(
+            ValidEventId, ValidAddOnDefinitionId, ValidBuyerUserId,
+            ValidBuyerName, ValidBuyerEmail, ValidBuyerPhone,
+            ValidQuantity, unitPrice);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.UnitPrice.Amount.Should().Be(0m);
+        result.Value.TotalAmount.Amount.Should().Be(0m);
+    }
+
     [Theory]
-    [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-99.99)]
-    public void Create_WithZeroOrNegativeUnitPrice_ShouldFail(decimal priceAmount)
+    public void Create_WithNegativeUnitPrice_ShouldFail(decimal priceAmount)
     {
         var unitPrice = new Money(priceAmount, Currency.USD);
 
@@ -250,7 +265,7 @@ public class AddOnPurchaseTests
             ValidQuantity, unitPrice);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Unit price");
+        result.Error.Should().Contain("Unit price cannot be negative");
     }
 
     #endregion

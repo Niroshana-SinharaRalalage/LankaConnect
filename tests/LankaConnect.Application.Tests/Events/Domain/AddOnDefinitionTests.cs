@@ -238,17 +238,17 @@ public class AddOnDefinitionTests
     }
 
     [Fact]
-    public void Create_WithZeroPrice_ShouldFail()
+    public void Create_WithZeroPrice_ShouldSucceed()
     {
-        // Arrange
+        // Arrange — free add-ons ($0 price) are a legitimate business case
         var zeroPrice = Money.Create(0m, Currency.USD).Value;
 
         // Act
         var result = AddOnDefinition.Create(ValidEventId, ValidName, ValidDescription, zeroPrice, 10);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("price must be greater than zero");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Price.Amount.Should().Be(0m);
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public class AddOnDefinitionTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("price must be greater than zero");
+        result.Error.Should().Contain("price cannot be negative");
     }
 
     [Fact]
@@ -416,9 +416,9 @@ public class AddOnDefinitionTests
     }
 
     [Fact]
-    public void UpdateDetails_WithZeroPrice_ShouldFail()
+    public void UpdateDetails_WithZeroPrice_ShouldSucceed()
     {
-        // Arrange
+        // Arrange — free add-ons ($0 price) are a legitimate business case
         var addOn = CreateValidAddOn();
         var zeroPrice = Money.Create(0m, Currency.USD).Value;
 
@@ -426,8 +426,7 @@ public class AddOnDefinitionTests
         var result = addOn.UpdateDetails(ValidName, ValidDescription, zeroPrice, 10, 0);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("price must be greater than zero");
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -442,7 +441,7 @@ public class AddOnDefinitionTests
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("price must be greater than zero");
+        result.Error.Should().Contain("price cannot be negative");
     }
 
     [Fact]

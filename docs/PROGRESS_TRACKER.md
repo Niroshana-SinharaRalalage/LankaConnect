@@ -1,7 +1,24 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-19 - Financial Features Issues Fix: Config Summaries on Manage Page + Add-On Guidance*
+*Last Updated: 2026-03-20 - Add-On Definition CRUD Embedded in Event Create/Edit Pages*
 
-## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19)
+## 🎯 Current Session Status - Financial Features Issues Fix (2026-03-19/20)
+
+### Add-On Definition CRUD in Create/Edit Pages (2026-03-20, commit `61b3ef70`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UX Improvement — Add-on item creation was only available on the Manage page. User requested it be available directly on the event create/edit pages, consistent with how Donations/Collections/Sponsors work.
+
+**Changes** (5 files modified, 1 new, +578/-398 lines):
+- **NEW: `AddOnDefinitionEditor.tsx`** — Shared dual-mode component:
+  - **Live mode** (edit page): CRUD via API hooks when eventId exists
+  - **Local mode** (create page): definitions queued in React state, created via Promise.all post-save
+- **`AddOnConfigForm.tsx`**: Added `eventId`, `pendingDefinitions`, `onPendingDefinitionsChange` props. Embedded editor. Removed guidance banner.
+- **`EventCreationForm.tsx`**: Added `pendingAddOnDefinitions` state. Post-create: loops and creates each definition via API.
+- **`EventEditForm.tsx`**: Passes `eventId={event.id}` to AddOnConfigForm for live-mode editing.
+- **`AddOnsManagementTab.tsx`**: Replaced ~250 lines of inline CRUD with `<AddOnDefinitionEditor eventId={eventId} />`.
+
+---
 
 ### Config Summaries + Add-On Guidance (2026-03-19, commit `7dd743f3`)
 

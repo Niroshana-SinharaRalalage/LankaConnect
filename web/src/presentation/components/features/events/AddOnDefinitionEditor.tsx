@@ -133,8 +133,8 @@ export function AddOnDefinitionEditor({
     resetForm();
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault();
     setFormError(null);
 
     const name = formName.trim();
@@ -302,7 +302,7 @@ export function AddOnDefinitionEditor({
       <CardContent>
         {/* Inline Create/Edit Form */}
         {showForm && (
-          <form onSubmit={handleFormSubmit} className="mb-4 p-4 bg-neutral-50 border border-neutral-200 rounded-lg space-y-3">
+          <div className="mb-4 p-4 bg-neutral-50 border border-neutral-200 rounded-lg space-y-3">
             <h4 className="text-sm font-semibold text-neutral-700">
               {editingId ? 'Edit Add-On' : 'New Add-On'}
             </h4>
@@ -316,7 +316,6 @@ export function AddOnDefinitionEditor({
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g., Event T-Shirt, Lunch Package"
-                  required
                 />
               </div>
               <div>
@@ -334,7 +333,6 @@ export function AddOnDefinitionEditor({
                     onChange={(e) => setFormPrice(e.target.value)}
                     placeholder="0.00"
                     className="pl-7"
-                    required
                   />
                 </div>
               </div>
@@ -391,9 +389,10 @@ export function AddOnDefinitionEditor({
 
             <div className="flex items-center gap-2 pt-1">
               <Button
-                type="submit"
+                type="button"
                 size="sm"
                 disabled={formSubmitting}
+                onClick={handleFormSubmit}
                 style={{ background: '#7C3AED' }}
               >
                 {formSubmitting
@@ -412,7 +411,7 @@ export function AddOnDefinitionEditor({
                 Cancel
               </Button>
             </div>
-          </form>
+          </div>
         )}
 
         {definitions.length === 0 && !showForm ? (

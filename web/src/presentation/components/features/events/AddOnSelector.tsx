@@ -192,7 +192,7 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
                     {/* Price & Stock */}
                     <div className="flex items-center justify-between mt-3">
                       <span className="text-lg font-semibold text-emerald-700">
-                        {formatPrice(definition.price, definition.currency)}
+                        {definition.price === 0 ? 'Free' : formatPrice(definition.price, definition.currency)}
                       </span>
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -220,7 +220,7 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
                       variant={isSelected ? 'outline' : 'default'}
                       style={!isSelected && !soldOut ? { background: '#059669' } : undefined}
                     >
-                      {isSelected ? 'Cancel' : soldOut ? 'Sold Out' : 'Purchase'}
+                      {isSelected ? 'Cancel' : soldOut ? 'Sold Out' : definition.price === 0 ? 'Get Free' : 'Purchase'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -304,7 +304,7 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
                         <div className="flex items-center justify-between py-2 px-3 bg-emerald-100 rounded-lg">
                           <span className="text-sm font-medium text-neutral-700">Total</span>
                           <span className="text-lg font-bold text-emerald-800">
-                            {formatPrice(selectedDefinition.price * quantity, selectedDefinition.currency)}
+                            {selectedDefinition.price === 0 ? 'Free' : formatPrice(selectedDefinition.price * quantity, selectedDefinition.currency)}
                           </span>
                         </div>
 
@@ -323,7 +323,7 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
                             className="flex-1"
                             style={{ background: '#059669' }}
                           >
-                            {purchaseAddOn.isPending ? 'Processing...' : 'Buy Now'}
+                            {purchaseAddOn.isPending ? 'Processing...' : selectedDefinition.price === 0 ? 'Get Now' : 'Buy Now'}
                           </Button>
                           <Button
                             type="button"

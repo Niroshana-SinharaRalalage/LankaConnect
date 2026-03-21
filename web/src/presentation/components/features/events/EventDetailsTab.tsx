@@ -874,37 +874,66 @@ export function EventDetailsTab({
                       </span>
                     </div>
                   )}
-                  {/* Add-On Items Summary */}
-                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
-                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  {/* Add-On Items Table */}
+                  <div className="pt-1">
+                    <div className="flex items-center gap-2 mb-3">
                       <PackagePlus className="h-4 w-4 text-[#FF7900]" />
-                      Add-On Items:
-                    </span>
+                      <span className="text-sm font-semibold text-neutral-700">Add-On Items</span>
+                    </div>
                     {addOnDefinitions.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {addOnDefinitions.map((def: AddOnDefinitionDto) => (
-                          <div key={def.id} className="flex items-center gap-2 text-sm">
-                            <span className="text-neutral-800">{def.name}</span>
-                            <span className="text-neutral-400">—</span>
-                            {def.price === 0 ? (
-                              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-1.5 py-0">
-                                Free
-                              </Badge>
-                            ) : (
-                              <span className="text-neutral-600 font-medium">
-                                ${def.price.toFixed(2)}
-                              </span>
-                            )}
-                            {!def.isActive && (
-                              <Badge className="bg-neutral-100 text-neutral-500 border border-neutral-200 text-[10px] px-1.5 py-0">
-                                Inactive
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
+                      <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-neutral-50 border-b border-neutral-200">
+                              <th className="text-left px-4 py-2 font-semibold text-neutral-600">Name</th>
+                              <th className="text-right px-4 py-2 font-semibold text-neutral-600">Price</th>
+                              <th className="text-center px-4 py-2 font-semibold text-neutral-600">Stock</th>
+                              <th className="text-center px-4 py-2 font-semibold text-neutral-600">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {addOnDefinitions.map((def: AddOnDefinitionDto, idx: number) => (
+                              <tr key={def.id} className={idx < addOnDefinitions.length - 1 ? 'border-b border-neutral-100' : ''}>
+                                <td className="px-4 py-2.5">
+                                  <span className="text-neutral-800 font-medium">{def.name}</span>
+                                  {def.description && (
+                                    <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{def.description}</p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  {def.price === 0 ? (
+                                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                      Free
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-neutral-700 font-medium">${def.price.toFixed(2)}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-neutral-600">
+                                  {def.quantityLimit != null ? (
+                                    <span>{def.quantitySold}/{def.quantityLimit}</span>
+                                  ) : (
+                                    <span className="text-neutral-400">Unlimited</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {def.isActive ? (
+                                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                      Active
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-neutral-100 text-neutral-500 border border-neutral-200 text-xs px-2 py-0.5">
+                                      Inactive
+                                    </Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
-                      <span className="text-sm text-neutral-400 italic">No add-on items defined yet</span>
+                      <p className="text-sm text-neutral-400 italic pl-6">No add-on items defined yet</p>
                     )}
                   </div>
                 </>

@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - FINANCIAL FEATURES ISSUES FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
+**Date**: 2026-03-21
+**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass + frontend UX
+**Progress**: ✅ **COMPLETE** — All fixes deployed and API-verified on staging
+**Status**: ✅ **COMPLETE** — Backend `60d91e0b` + frontend `1e145014` deployed. API tests: create free add-on ✅, update to free ✅, list free items ✅. All 1,888 tests pass.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - FINANCIAL FEATURES ISSUES FIX ✅ COMPLETE
 **Date**: 2026-03-19
 **Session**: Fix 5 user-reported issues with financial features + nested form bug
 **Progress**: ✅ **COMPLETE** — All fixes deployed to Azure staging

@@ -1,11 +1,11 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-20 - Free add-on support (domain validation fix + purchase handler bypass)*
+*Last Updated: 2026-03-21 - Free add-on support verified on staging*
 
-## 🎯 Current Session Status - Free Add-On Support (2026-03-20)
+## 🎯 Current Session Status - Free Add-On Support (2026-03-21)
 
-### Fix: Allow Free Add-Ons ($0 Price) — Backend Domain Fix (2026-03-20, commit `c07fc125`)
+### Fix: Allow Free Add-Ons ($0 Price) — Backend Domain Fix (2026-03-20, commits `c07fc125`, `60d91e0b`)
 
-**Status**: ⚠️ **CODE PUSHED, BACKEND DEPLOYMENT BLOCKED (Azure credentials expired)**
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
 
 **Classification**: Backend Domain Validation Bug — `AddOnDefinition` rejected `price = 0`
 
@@ -18,7 +18,11 @@
 | `AddOnPurchase.cs` | `<= 0` → `< 0` in `CreateInternal()` (L159) |
 | `PurchaseAddOnCommandHandler.cs` | Added free add-on bypass: if total = $0, skip Stripe checkout, immediately complete purchase with zero revenue breakdown |
 
-**Deployment Blocker**: `AZURE_CREDENTIALS_STAGING` GitHub secret expired. Workflow builds successfully (0 errors) but cannot authenticate to Azure for Docker push/deploy. User must refresh the secret.
+**API Verification (2026-03-21)**:
+- ✅ POST `api/events/{id}/add-ons` with `price: 0` → 200 OK, returned new definition ID
+- ✅ PUT `api/events/{id}/add-ons/{defId}` with `price: 0` → 200 OK, updated existing paid add-on to free
+- ✅ GET `api/events/{id}/add-ons` → Returns correct definitions with `price: 0` for free items
+- All 1,888 unit tests pass (commit `60d91e0b`)
 
 ### UX: Free Add-On Checkbox + Add-On Items on Manage Page (2026-03-20, commit `1e145014`)
 

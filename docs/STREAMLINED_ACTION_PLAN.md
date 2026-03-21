@@ -7,12 +7,12 @@
 
 ---
 
-## 🔄 CURRENT STATUS - FREE ADD-ON SUPPORT (2026-03-20)
-**Date**: 2026-03-20
+## ✅ PREVIOUS STATUS - FREE ADD-ON SUPPORT (2026-03-21)
+**Date**: 2026-03-20 → 2026-03-21
 **Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass
-**Status**: ⚠️ **FRONTEND DEPLOYED (`1e145014`), BACKEND BLOCKED — Azure credentials expired (commit `c07fc125` pushed but not deployed)**
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (backend `60d91e0b`, frontend `1e145014`)
 **Fix**: Domain: `<= 0` → `< 0` in AddOnDefinition + AddOnPurchase. Handler: free add-on bypass skips Stripe, immediately completes. Frontend: free checkbox, "Free" badge, item details on manage page.
-**Blocker**: `AZURE_CREDENTIALS_STAGING` GitHub secret expired. Refresh credentials then re-run deploy-staging.yml.
+**API Verification**: POST create (price=0) ✅ | PUT update (price=0) ✅ | GET list (shows free items) ✅ | All 1,888 tests pass ✅
 
 ---
 

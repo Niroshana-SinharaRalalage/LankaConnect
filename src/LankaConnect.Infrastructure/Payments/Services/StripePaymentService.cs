@@ -757,6 +757,312 @@ public class StripePaymentService : IStripePaymentService
         }
     }
 
+    /// <summary>
+    /// Creates a Stripe Checkout session for an event fund collection contribution.
+    /// </summary>
+    public async Task<Result<CollectionCheckoutResult>> CreateCollectionCheckoutSessionAsync(
+        CreateCollectionCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Collection] Creating collection checkout session - EventId={EventId}, CollectionId={CollectionId}, Amount={Amount} {Currency}",
+                request.EventId, request.CollectionId, request.Amount, request.Currency);
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"Contribution: {request.EventTitle}",
+                                Description = "Event fund contribution",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["collection_id"] = request.CollectionId.ToString(),
+                                    ["payment_type"] = "collection"
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["collection_id"] = request.CollectionId.ToString(),
+                    ["payment_type"] = "collection"
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["collection_id"] = request.CollectionId.ToString(),
+                        ["payment_type"] = "collection"
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[Collection] Created checkout session - SessionId={SessionId}, CollectionId={CollectionId}, ExpiresAt={ExpiresAt}",
+                session.Id, request.CollectionId, session.ExpiresAt);
+
+            return Result<CollectionCheckoutResult>.Success(new CollectionCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Collection] Stripe error creating collection checkout - CollectionId={CollectionId}, Error={Error}",
+                request.CollectionId, ex.Message);
+            return Result<CollectionCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Collection] Error creating collection checkout - CollectionId={CollectionId}",
+                request.CollectionId);
+            return Result<CollectionCheckoutResult>.Failure("Failed to create collection payment session");
+        }
+    }
+
+    /// <summary>
+    /// Creates a Stripe Checkout session for a money sponsorship.
+    /// </summary>
+    public async Task<Result<SponsorCheckoutResult>> CreateSponsorCheckoutSessionAsync(
+        CreateSponsorCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Sponsor] Creating sponsor checkout session - EventId={EventId}, SponsorId={SponsorId}, Amount={Amount} {Currency}",
+                request.EventId, request.SponsorId, request.Amount, request.Currency);
+
+            var productName = string.IsNullOrWhiteSpace(request.SponsorOrganization)
+                ? $"Sponsorship: {request.EventTitle}"
+                : $"Sponsorship ({request.SponsorOrganization}): {request.EventTitle}";
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = productName,
+                                Description = "Event sponsorship contribution",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["sponsor_id"] = request.SponsorId.ToString(),
+                                    ["payment_type"] = "sponsor"
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["sponsor_id"] = request.SponsorId.ToString(),
+                    ["payment_type"] = "sponsor"
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["sponsor_id"] = request.SponsorId.ToString(),
+                        ["payment_type"] = "sponsor"
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[Sponsor] Created checkout session - SessionId={SessionId}, SponsorId={SponsorId}, ExpiresAt={ExpiresAt}",
+                session.Id, request.SponsorId, session.ExpiresAt);
+
+            return Result<SponsorCheckoutResult>.Success(new SponsorCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[Sponsor] Stripe error creating sponsor checkout - SponsorId={SponsorId}, Error={Error}",
+                request.SponsorId, ex.Message);
+            return Result<SponsorCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Sponsor] Error creating sponsor checkout - SponsorId={SponsorId}",
+                request.SponsorId);
+            return Result<SponsorCheckoutResult>.Failure("Failed to create sponsor payment session");
+        }
+    }
+
+    /// <summary>
+    /// Creates a Stripe Checkout session for an add-on purchase.
+    /// UnitPrice is already snapshotted on the AddOnPurchase entity (M3: price snapshot at checkout creation).
+    /// </summary>
+    public async Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnPurchaseCheckoutSessionAsync(
+        CreateAddOnPurchaseCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnPurchase] Creating add-on purchase checkout session - EventId={EventId}, PurchaseId={PurchaseId}, AddOn={AddOnName}, Qty={Quantity}, UnitPrice={UnitPrice}, Total={TotalAmount} {Currency}",
+                request.EventId, request.AddOnPurchaseId, request.AddOnName,
+                request.Quantity, request.UnitPrice, request.TotalAmount, request.Currency);
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = $"{request.AddOnName} - {request.EventTitle}",
+                                Description = $"Add-on purchase ({request.Quantity}x)",
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["add_on_purchase_id"] = request.AddOnPurchaseId.ToString(),
+                                    ["add_on_definition_id"] = request.AddOnDefinitionId.ToString(),
+                                    ["payment_type"] = "add_on_purchase"
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.UnitPrice, request.Currency)
+                        },
+                        Quantity = request.Quantity
+                    }
+                },
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["add_on_purchase_id"] = request.AddOnPurchaseId.ToString(),
+                    ["add_on_definition_id"] = request.AddOnDefinitionId.ToString(),
+                    ["payment_type"] = "add_on_purchase"
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["add_on_purchase_id"] = request.AddOnPurchaseId.ToString(),
+                        ["add_on_definition_id"] = request.AddOnDefinitionId.ToString(),
+                        ["payment_type"] = "add_on_purchase"
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[AddOnPurchase] Created checkout session - SessionId={SessionId}, PurchaseId={PurchaseId}, ExpiresAt={ExpiresAt}",
+                session.Id, request.AddOnPurchaseId, session.ExpiresAt);
+
+            return Result<AddOnPurchaseCheckoutResult>.Success(new AddOnPurchaseCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnPurchase] Stripe error creating add-on purchase checkout - PurchaseId={PurchaseId}, Error={Error}",
+                request.AddOnPurchaseId, ex.Message);
+            return Result<AddOnPurchaseCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnPurchase] Error creating add-on purchase checkout - PurchaseId={PurchaseId}",
+                request.AddOnPurchaseId);
+            return Result<AddOnPurchaseCheckoutResult>.Failure("Failed to create add-on purchase payment session");
+        }
+    }
+
     #region Not Implemented Methods (Cultural Intelligence - Future)
 
     // These methods are part of IStripePaymentService for Cultural Intelligence billing

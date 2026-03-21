@@ -7,7 +7,68 @@
 
 ---
 
-## 🔄 CURRENT STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE (2026-03-11)
+## ✅ PREVIOUS STATUS - FREE ADD-ON SUPPORT (2026-03-21)
+**Date**: 2026-03-20 → 2026-03-21
+**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (backend `60d91e0b`, frontend `1e145014`)
+**Fix**: Domain: `<= 0` → `< 0` in AddOnDefinition + AddOnPurchase. Handler: free add-on bypass skips Stripe, immediately completes. Frontend: free checkbox, "Free" badge, item details on manage page.
+**API Verification**: POST create (price=0) ✅ | PUT update (price=0) ✅ | GET list (shows free items) ✅ | All 1,888 tests pass ✅
+
+---
+
+## PREVIOUS STATUS - FINANCIAL FEATURES ISSUES FIX (2026-03-19)
+**Date**: 2026-03-19
+**Session**: Fix 5 user-reported issues with financial features
+**Status**: ✅ **ALL 5 ISSUES + UX IMPROVEMENT + NESTED FORM FIX DEPLOYED (backend `e0c6ab7b` + frontend `ae962a8d`, `7dd743f3`, `61b3ef70`, `c558a97b` to staging)**
+**RCA**: 5 issues — (1) Config summaries missing from manage page, (2) No CRUD form for add-on items, (3) No "My Sponsorships" display, (4) No "My Contributions" display, (5) "No add-ons" empty state + no guidance
+**Fix**: Backend: 3 new API endpoints. Frontend: hooks, types, repository methods, "Your Sponsorships"/"Your Contributions" sections, inline add-on CRUD form, 3 config summary cards on manage page (Collection/Sponsor/Add-On), shared AddOnDefinitionEditor component embedded in create/edit pages with dual-mode (local queue for create, live API for edit).
+
+---
+
+## PREVIOUS STATUS - CONFIG FORMS FOR COLLECTIONS/SPONSORS/ADD-ONS (2026-03-18)
+**Date**: 2026-03-18
+**Session**: Add config forms for Collections, Sponsors, and Add-Ons to event create/edit pages
+**Status**: ✅ **DEPLOYED (commit 9b8d9bbc, frontend to staging)**
+**RCA**: Feature Missing (UI-Layer Gap) — Phases 0-6 built full stack but never created config forms for the 3 new financial features. DonationConfigForm.tsx existed from prior work, but no equivalent was built for Collections/Sponsors/Add-Ons. Dead-end UX: management tabs said "edit your event to enable" but edit page had no config section.
+**Fix**: Created 3 new config form components (CollectionConfigForm, SponsorConfigForm, AddOnConfigForm) following DonationConfigForm pattern. Integrated into EventCreationForm + EventEditForm with post-save API calls to existing PUT endpoints. No backend changes needed.
+
+**Files Changed (5)**:
+- NEW: `CollectionConfigForm.tsx` — goal amount, progress bar, suggested amounts, min/max, message
+- NEW: `SponsorConfigForm.tsx` — money/item types, min amount, message, public list
+- NEW: `AddOnConfigForm.tsx` — registration/standalone availability, message
+- MODIFIED: `EventCreationForm.tsx` — imports, state, JSX, post-create config API calls
+- MODIFIED: `EventEditForm.tsx` — imports, state (pre-filled from event), JSX, post-update config API calls
+
+**API Verification**: PUT `/sponsor-config` → 200, PUT `/add-on-config` → 200, GET event returns all 3 configs correctly
+
+---
+
+## PREVIOUS STATUS - FINANCIAL FEATURES DTO FIX ✅ COMPLETE (2026-03-16)
+**Date**: 2026-03-16
+**Session**: Fix missing EventDto mappings for Collection/Sponsor/AddOn configs
+**Status**: ✅ **DEPLOYED (commit 9e9e4ea3, backend + frontend to staging)**
+**RCA**: EventDto missing 3 config properties + EventMappingProfile missing AutoMapper rules → API never returned config fields → frontend tabs invisible
+**Fix**: Added DTO properties + AutoMapper mappings (backend) + made tabs always visible with empty states (frontend)
+
+---
+
+## PREVIOUS STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE (2026-03-16)
+**Date**: 2026-03-15/16
+**Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6)
+**Status**: ✅ **COMPLETE (~135 files, all deployed to staging)**
+
+**Features Added**:
+- **Collections (Event Fund)**: Fundraising with optional goal, progress tracking, suggested amounts
+- **Sponsors**: Dual-mode (money via Stripe + item-based records), organization field
+- **Add-Ons**: Purchasable items with atomic stock management, available during registration + standalone
+
+**Architecture**: Follows Donation entity blueprint — standalone entities, per-type Stripe checkout, injectable webhook handlers, CQRS with MediatR
+
+**Commits**: f557863d (Phase 1+2), 1aef1599 (Phase 0+3), c024c136 (Phase 4), 9045036d (Phase 5), 0f25eea7 (Phase 6)
+
+---
+
+## PREVIOUS STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE (2026-03-11)
 **Date**: 2026-03-11
 **Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
 **Status**: ✅ **COMPLETE (commit 0359d55f on develop, deployed to staging, API verified)**

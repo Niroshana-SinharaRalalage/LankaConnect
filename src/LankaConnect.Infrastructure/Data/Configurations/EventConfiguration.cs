@@ -143,6 +143,26 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             // SuggestedAmounts is a List<decimal> — EF Core handles this automatically in JSONB
         });
 
+        // Collection Configuration: JSONB value object (C5 Guard: flat primitives only)
+        builder.OwnsOne(e => e.CollectionConfig, collectionConfig =>
+        {
+            collectionConfig.ToJson("collection_config");
+
+            // SuggestedAmounts is a List<decimal> — EF Core handles this automatically in JSONB
+        });
+
+        // Sponsor Configuration: JSONB value object (C5 Guard: flat primitives only)
+        builder.OwnsOne(e => e.SponsorConfig, sponsorConfig =>
+        {
+            sponsorConfig.ToJson("sponsor_config");
+        });
+
+        // Add-On Configuration: JSONB value object (C5 Guard: flat primitives only)
+        builder.OwnsOne(e => e.AddOnConfig, addOnConfig =>
+        {
+            addOnConfig.ToJson("add_on_config");
+        });
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

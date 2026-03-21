@@ -29,6 +29,9 @@ import {
   CheckCircle,
   XCircle,
   Link2,
+  Wallet,
+  HandCoins,
+  PackagePlus,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
@@ -36,7 +39,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { type EventDto } from '@/infrastructure/api/types/events.types';
+import { type EventDto, type AddOnDefinitionDto } from '@/infrastructure/api/types/events.types';
+import { useAddOnDefinitions } from '@/presentation/hooks/useAddOns';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDateTime } from '@/presentation/lib/utils/date-formatter';
 
@@ -57,6 +61,7 @@ export function EventDetailsTab({
 }: EventDetailsTabProps) {
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
+  const { data: addOnDefinitions = [] } = useAddOnDefinitions(event.id, event.addOnConfig?.isEnabled === true);
 
   // Issue #51: State for editing max attendees per registration
   const [isEditingMaxAttendees, setIsEditingMaxAttendees] = useState(false);
@@ -523,6 +528,414 @@ export function EventDetailsTab({
                       </span>
                     </div>
                   )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Collection Configuration Section */}
+      {event.collectionConfig && (
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ color: '#8B1538' }}>Collection Configuration</CardTitle>
+            <CardDescription>Event fund collection settings for this event</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-[#FF7900]" />
+                  Status:
+                </span>
+                <div className="flex items-center gap-2">
+                  {event.collectionConfig.isEnabled ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700 font-medium">Collections enabled</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-500">Collections disabled</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              {event.collectionConfig.isEnabled && (
+                <>
+                  {event.collectionConfig.goalAmount != null && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Goal Amount:
+                      </span>
+                      <Badge className="bg-rose-50 text-rose-700 border border-rose-200 w-fit">
+                        ${event.collectionConfig.goalAmount.toFixed(2)}
+                      </Badge>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Show Progress:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.collectionConfig.showProgress ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {event.collectionConfig.suggestedAmounts && event.collectionConfig.suggestedAmounts.length > 0 && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Suggested Amounts:
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {event.collectionConfig.suggestedAmounts.map((amount: number) => (
+                          <Badge key={amount} className="bg-rose-50 text-rose-700 border border-rose-200">
+                            ${amount.toFixed(2)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Custom Amount:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.collectionConfig.allowCustomAmount ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Allowed</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">Not allowed</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {(event.collectionConfig.minAmount || event.collectionConfig.maxAmount) && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Amount Range:
+                      </span>
+                      <span className="text-sm text-neutral-700">
+                        {event.collectionConfig.minAmount ? `$${event.collectionConfig.minAmount.toFixed(2)}` : 'No min'}
+                        {' — '}
+                        {event.collectionConfig.maxAmount ? `$${event.collectionConfig.maxAmount.toFixed(2)}` : 'No max'}
+                      </span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Show Contributor Count:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.collectionConfig.showContributorCount ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {event.collectionConfig.collectionMessage && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-[#FF7900]" />
+                        Collection Message:
+                      </span>
+                      <span className="text-sm text-neutral-600 italic">
+                        &ldquo;{event.collectionConfig.collectionMessage}&rdquo;
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sponsor Configuration Section */}
+      {event.sponsorConfig && (
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ color: '#8B1538' }}>Sponsor Configuration</CardTitle>
+            <CardDescription>Sponsorship settings for this event</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <HandCoins className="h-4 w-4 text-[#FF7900]" />
+                  Status:
+                </span>
+                <div className="flex items-center gap-2">
+                  {event.sponsorConfig.isEnabled ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700 font-medium">Sponsors enabled</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-500">Sponsors disabled</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              {event.sponsorConfig.isEnabled && (
+                <>
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Accept Money Sponsors:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.sponsorConfig.acceptMoneySponsors ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Accept Item Sponsors:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.sponsorConfig.acceptItemSponsors ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {event.sponsorConfig.minSponsorAmount != null && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-[#FF7900]" />
+                        Min Sponsor Amount:
+                      </span>
+                      <Badge className="bg-rose-50 text-rose-700 border border-rose-200 w-fit">
+                        ${event.sponsorConfig.minSponsorAmount.toFixed(2)}
+                      </Badge>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Show Sponsor List:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.sponsorConfig.showSponsorList ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">No</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {event.sponsorConfig.sponsorMessage && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-[#FF7900]" />
+                        Sponsor Message:
+                      </span>
+                      <span className="text-sm text-neutral-600 italic">
+                        &ldquo;{event.sponsorConfig.sponsorMessage}&rdquo;
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add-On Configuration Section */}
+      {event.addOnConfig && (
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ color: '#8B1538' }}>Add-On Configuration</CardTitle>
+            <CardDescription>Add-on settings for this event</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <PackagePlus className="h-4 w-4 text-[#FF7900]" />
+                  Status:
+                </span>
+                <div className="flex items-center gap-2">
+                  {event.addOnConfig.isEnabled ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      <span className="text-sm text-emerald-700 font-medium">Add-ons enabled</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-neutral-400" />
+                      <span className="text-sm text-neutral-500">Add-ons disabled</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              {event.addOnConfig.isEnabled && (
+                <>
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      During Registration:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.addOnConfig.availableDuringRegistration ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Available</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">Not available</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
+                    <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-[#FF7900]" />
+                      Standalone Purchase:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {event.addOnConfig.availableStandalone ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
+                          <span className="text-sm text-neutral-700">Available</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-neutral-400" />
+                          <span className="text-sm text-neutral-500">Not available</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {event.addOnConfig.addOnMessage && (
+                    <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start border-b pb-3">
+                      <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-[#FF7900]" />
+                        Add-On Message:
+                      </span>
+                      <span className="text-sm text-neutral-600 italic">
+                        &ldquo;{event.addOnConfig.addOnMessage}&rdquo;
+                      </span>
+                    </div>
+                  )}
+                  {/* Add-On Items Table */}
+                  <div className="pt-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <PackagePlus className="h-4 w-4 text-[#FF7900]" />
+                      <span className="text-sm font-semibold text-neutral-700">Add-On Items</span>
+                    </div>
+                    {addOnDefinitions.length > 0 ? (
+                      <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-neutral-50 border-b border-neutral-200">
+                              <th className="text-left px-4 py-2 font-semibold text-neutral-600">Name</th>
+                              <th className="text-right px-4 py-2 font-semibold text-neutral-600">Price</th>
+                              <th className="text-center px-4 py-2 font-semibold text-neutral-600">Stock</th>
+                              <th className="text-center px-4 py-2 font-semibold text-neutral-600">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {addOnDefinitions.map((def: AddOnDefinitionDto, idx: number) => (
+                              <tr key={def.id} className={idx < addOnDefinitions.length - 1 ? 'border-b border-neutral-100' : ''}>
+                                <td className="px-4 py-2.5">
+                                  <span className="text-neutral-800 font-medium">{def.name}</span>
+                                  {def.description && (
+                                    <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{def.description}</p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-right">
+                                  {def.price === 0 ? (
+                                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                      Free
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-neutral-700 font-medium">${def.price.toFixed(2)}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-neutral-600">
+                                  {def.quantityLimit != null ? (
+                                    <span>{def.quantitySold}/{def.quantityLimit}</span>
+                                  ) : (
+                                    <span className="text-neutral-400">Unlimited</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2.5 text-center">
+                                  {def.isActive ? (
+                                    <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                      Active
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-neutral-100 text-neutral-500 border border-neutral-200 text-xs px-2 py-0.5">
+                                      Inactive
+                                    </Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-neutral-400 italic pl-6">No add-on items defined yet</p>
+                    )}
+                  </div>
                 </>
               )}
             </div>

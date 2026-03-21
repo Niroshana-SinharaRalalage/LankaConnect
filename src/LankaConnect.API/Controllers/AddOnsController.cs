@@ -1,0 +1,333 @@
+using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
+using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
+using LankaConnect.Application.Events.Commands.PurchaseAddOn;
+using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
+using LankaConnect.Application.Events.Queries.ExportEventAttendees;
+using LankaConnect.Application.Events.Queries.GetEventById;
+using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace LankaConnect.API.Controllers;
+
+/// <summary>
+/// Add-On Feature: REST endpoints for event add-on definitions and purchases.
+/// Route: api/events/{eventId}/add-ons
+/// </summary>
+[ApiController]
+[Route("api/events/{eventId}/add-ons")]
+[Produces("application/json")]
+public class AddOnsController : BaseController<AddOnsController>
+{
+    public AddOnsController(
+        IMediator mediator,
+        ILogger<AddOnsController> logger)
+        : base(mediator, logger)
+    {
+    }
+
+    // ──────────────────────────────────────────────
+    // Organizer CRUD for add-on definitions
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets all add-on definitions for an event (public).
+    /// Returns only the definitions list, not purchases or summary.
+    /// </summary>
+    [HttpGet]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<AddOnDefinitionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetAddOnDefinitions(Guid eventId)
+    {
+        Logger.LogInformation("GetAddOnDefinitions: EventId={EventId}", eventId);
+
+        var result = await Mediator.Send(new GetEventAddOnPurchasesQuery(eventId));
+
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value.Definitions);
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Creates a new add-on definition for an event (organizer only).
+    /// Returns the new definition ID.
+    /// </summary>
+    [HttpPost]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateAddOnDefinition(
+        Guid eventId,
+        [FromBody] CreateAddOnDefinitionRequest request)
+    {
+        Logger.LogInformation(
+            "CreateAddOnDefinition: EventId={EventId}, Name={Name}, Price={Price}",
+            eventId, request.Name, request.Price);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var command = new CreateAddOnDefinitionCommand(
+            EventId: eventId,
+            Name: request.Name,
+            Description: request.Description,
+            Price: request.Price,
+            Currency: request.Currency ?? "USD",
+            QuantityLimit: request.QuantityLimit,
+            SortOrder: request.SortOrder);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Updates an existing add-on definition (organizer only).
+    /// Can also be used to deactivate a definition by setting IsActive = false.
+    /// </summary>
+    [HttpPut("{definitionId}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpdateAddOnDefinition(
+        Guid eventId,
+        Guid definitionId,
+        [FromBody] UpdateAddOnDefinitionRequest request)
+    {
+        Logger.LogInformation(
+            "UpdateAddOnDefinition: EventId={EventId}, DefinitionId={DefinitionId}, Name={Name}, IsActive={IsActive}",
+            eventId, definitionId, request.Name, request.IsActive);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var command = new UpdateAddOnDefinitionCommand(
+            EventId: eventId,
+            DefinitionId: definitionId,
+            Name: request.Name,
+            Description: request.Description,
+            Price: request.Price,
+            Currency: request.Currency ?? "USD",
+            QuantityLimit: request.QuantityLimit,
+            SortOrder: request.SortOrder,
+            IsActive: request.IsActive);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Buyer purchase endpoint
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Purchases an add-on for an event.
+    /// Returns a Stripe checkout URL for payment.
+    /// Anonymous users can purchase without authentication.
+    /// </summary>
+    [HttpPost("{definitionId}/purchase")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> PurchaseAddOn(
+        Guid eventId,
+        Guid definitionId,
+        [FromBody] PurchaseAddOnRequest request)
+    {
+        Logger.LogInformation(
+            "PurchaseAddOn: EventId={EventId}, DefinitionId={DefinitionId}, BuyerEmail={BuyerEmail}, Quantity={Quantity}",
+            eventId, definitionId, request.BuyerEmail, request.Quantity);
+
+        var userId = User.Identity?.IsAuthenticated == true
+            ? User.TryGetUserId()
+            : null;
+
+        var command = new PurchaseAddOnCommand(
+            EventId: eventId,
+            AddOnDefinitionId: definitionId,
+            BuyerName: request.BuyerName,
+            BuyerEmail: request.BuyerEmail,
+            BuyerPhone: request.BuyerPhone,
+            Quantity: request.Quantity,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Organizer views
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets all add-on purchases for an event (organizer only).
+    /// Returns full response with definitions, purchases, and summary.
+    /// </summary>
+    [HttpGet("purchases")]
+    [Authorize]
+    [ProducesResponseType(typeof(EventAddOnPurchasesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAddOnPurchases(Guid eventId)
+    {
+        Logger.LogInformation("GetAddOnPurchases: EventId={EventId}", eventId);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var result = await Mediator.Send(new GetEventAddOnPurchasesQuery(eventId));
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Gets add-on purchase summary for an event (organizer only).
+    /// </summary>
+    [HttpGet("purchases/summary")]
+    [Authorize]
+    [ProducesResponseType(typeof(AddOnPurchaseSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAddOnPurchaseSummary(Guid eventId)
+    {
+        Logger.LogInformation("GetAddOnPurchaseSummary: EventId={EventId}", eventId);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var result = await Mediator.Send(new GetEventAddOnPurchasesQuery(eventId));
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value.Summary);
+        }
+
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Export
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Exports add-on purchases for an event in Excel or CSV format (organizer only).
+    /// </summary>
+    [HttpGet("purchases/export")]
+    [Authorize]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ExportAddOnPurchases(
+        Guid eventId,
+        [FromQuery] string format = "excel")
+    {
+        Logger.LogInformation(
+            "ExportAddOnPurchases: EventId={EventId}, Format={Format}", eventId, format);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var exportFormat = format.ToLowerInvariant() switch
+        {
+            "csv" => ExportFormat.Csv,
+            _ => ExportFormat.Excel
+        };
+
+        var result = await Mediator.Send(new ExportAddOnPurchasesQuery(eventId, exportFormat));
+
+        if (result.IsSuccess)
+        {
+            return File(
+                result.Value.FileContent,
+                result.Value.ContentType,
+                result.Value.FileName);
+        }
+
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Authorization helper
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that the authenticated user is the organizer of the specified event.
+    /// Returns null if authorized, or an IActionResult (Forbid/NotFound) if not.
+    /// </summary>
+    private async Task<IActionResult?> VerifyOrganizerAsync(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        var eventResult = await Mediator.Send(new GetEventByIdQuery(eventId));
+        if (eventResult.IsFailure)
+        {
+            Logger.LogWarning(
+                "AddOns authorization failed: Event not found - EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+            return NotFound(new { Error = "Event not found" });
+        }
+
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
+        {
+            Logger.LogWarning(
+                "User {UserId} attempted to access add-ons for event {EventId} without authorization (organizer: {OrganizerId})",
+                userId, eventId, eventResult.Value.OrganizerId);
+            return Forbid();
+        }
+
+        return null; // Authorized
+    }
+}
+
+// ──────────────────────────────────────────────
+// Request DTOs
+// ──────────────────────────────────────────────
+
+/// <summary>
+/// Request body for creating an add-on definition.
+/// </summary>
+public class CreateAddOnDefinitionRequest
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Price { get; init; }
+    public string? Currency { get; init; }
+    public int? QuantityLimit { get; init; }
+    public int SortOrder { get; init; }
+}
+
+/// <summary>
+/// Request body for updating an add-on definition.
+/// Set IsActive = false to soft-delete/deactivate.
+/// </summary>
+public class UpdateAddOnDefinitionRequest
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public decimal Price { get; init; }
+    public string? Currency { get; init; }
+    public int? QuantityLimit { get; init; }
+    public int SortOrder { get; init; }
+    public bool IsActive { get; init; } = true;
+}
+
+/// <summary>
+/// Request body for purchasing an add-on.
+/// </summary>
+public class PurchaseAddOnRequest
+{
+    public required string BuyerName { get; init; }
+    public required string BuyerEmail { get; init; }
+    public string? BuyerPhone { get; init; }
+    public int Quantity { get; init; } = 1;
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+}

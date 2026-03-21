@@ -1,7 +1,235 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-11 - Phase 6A.133 Email: Organizer Card Design Fix ✅ COMPLETE*
+*Last Updated: 2026-03-21 - Free add-on support verified on staging*
 
-## 🎯 Current Session Status - Phase 6A.133 Email Organizer Card Design Fix ✅ COMPLETE
+## 🎯 Current Session Status - Free Add-On Support (2026-03-21)
+
+### Fix: Allow Free Add-Ons ($0 Price) — Backend Domain Fix (2026-03-20, commits `c07fc125`, `60d91e0b`)
+
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
+
+**Classification**: Backend Domain Validation Bug — `AddOnDefinition` rejected `price = 0`
+
+**Root Cause**: `AddOnDefinition.Create()` and `UpdateDetails()` used `price.Amount <= 0` validation, rejecting $0 prices. The `Money` value object already supports zero (`Money.Zero()` factory exists), so this was an inconsistency in the add-on domain entity.
+
+**Fix** (3 files, backend only):
+| File | Change |
+|------|--------|
+| `AddOnDefinition.cs` | `<= 0` → `< 0` in both `Create()` (L83) and `UpdateDetails()` (L127) |
+| `AddOnPurchase.cs` | `<= 0` → `< 0` in `CreateInternal()` (L159) |
+| `PurchaseAddOnCommandHandler.cs` | Added free add-on bypass: if total = $0, skip Stripe checkout, immediately complete purchase with zero revenue breakdown |
+
+**API Verification (2026-03-21)**:
+- ✅ POST `api/events/{id}/add-ons` with `price: 0` → 200 OK, returned new definition ID
+- ✅ PUT `api/events/{id}/add-ons/{defId}` with `price: 0` → 200 OK, updated existing paid add-on to free
+- ✅ GET `api/events/{id}/add-ons` → Returns correct definitions with `price: 0` for free items
+- All 1,888 unit tests pass (commit `60d91e0b`)
+
+### UX: Free Add-On Checkbox + Add-On Items on Manage Page (2026-03-20, commit `1e145014`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Changes** (2 files):
+- `AddOnDefinitionEditor.tsx`: Added "Free add-on (no charge)" checkbox, disabled price field when checked, shows "Free" badge for $0 items
+- `EventDetailsTab.tsx`: Add-On Configuration card now fetches and shows add-on item details (name, price, active/inactive)
+
+---
+
+### Fix: Nested Form Bug in AddOnDefinitionEditor (2026-03-20, commit `c558a97b`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UI Bug — Nested `<form>` elements (HTML spec violation)
+
+**Root Cause**: `AddOnDefinitionEditor` rendered a `<form>` inside `EventEditForm`'s outer `<form>`. HTML forbids nested forms — browser ignores the inner `<form>`, so clicking "Create Add-On" (type=submit) triggered the outer form submission instead, causing a page redirect to login. The add-on API call never executed.
+
+**Fix** (1 file, +6/-7 lines):
+- Replaced `<form>` with `<div>` to eliminate nested form violation
+- Changed submit button from `type="submit"` to `type="button"` with explicit `onClick={handleFormSubmit}`
+- Updated `handleFormSubmit` signature to accept optional event parameter
+- Removed HTML5 `required` attributes (JS validation already handles this)
+
+---
+
+### Add-On Definition CRUD in Create/Edit Pages (2026-03-20, commit `61b3ef70`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UX Improvement — Add-on item creation was only available on the Manage page. User requested it be available directly on the event create/edit pages, consistent with how Donations/Collections/Sponsors work.
+
+**Changes** (5 files modified, 1 new, +578/-398 lines):
+- **NEW: `AddOnDefinitionEditor.tsx`** — Shared dual-mode component:
+  - **Live mode** (edit page): CRUD via API hooks when eventId exists
+  - **Local mode** (create page): definitions queued in React state, created via Promise.all post-save
+- **`AddOnConfigForm.tsx`**: Added `eventId`, `pendingDefinitions`, `onPendingDefinitionsChange` props. Embedded editor. Removed guidance banner.
+- **`EventCreationForm.tsx`**: Added `pendingAddOnDefinitions` state. Post-create: loops and creates each definition via API.
+- **`EventEditForm.tsx`**: Passes `eventId={event.id}` to AddOnConfigForm for live-mode editing.
+- **`AddOnsManagementTab.tsx`**: Replaced ~250 lines of inline CRUD with `<AddOnDefinitionEditor eventId={eventId} />`.
+
+---
+
+### Config Summaries + Add-On Guidance (2026-03-19, commit `7dd743f3`)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: UI Feature Missing — Manage page Event Details tab showed only Donation Configuration summary; Collection/Sponsor/Add-On configs were missing. Add-On config form had no guidance for creating items.
+
+**Changes** (2 files, +360/-1 lines):
+- `EventDetailsTab.tsx`: Added 3 config summary cards (Collection, Sponsor, Add-On) between Donation Config and Media sections. Each card shows enabled/disabled status + all config fields matching the Donation Config pattern. Added `Wallet`, `HandCoins`, `PackagePlus` icon imports.
+- `AddOnConfigForm.tsx`: Added blue info callout directing organizers to Manage page > Attendees & Finance > Add-Ons tab to create add-on items. Added `Info` icon import.
+
+---
+
+### Issues 1-5: Financial Features UX Fixes (2026-03-19)
+
+**Status**: ✅ **DEPLOYED (backend + frontend to Azure staging)**
+
+**Classification**: Bug Fix / Feature Gap — 5 issues reported by user after financial features deployment:
+1. Financial config summaries not visible on manage page — **FIXED: 3 config summary cards added (commit `7dd743f3`)**
+2. Add-On config has no CRUD form for creating items — **FIXED: inline create/edit form**
+3. No "My Sponsorships" on event details page — **FIXED: backend endpoint + frontend UI**
+4. No "My Contributions" for collections on event details page — **FIXED: backend endpoint + frontend UI**
+5. "No add-ons available" (consequence of Issue 2) — **FIXED: CRUD form + guidance callout**
+
+**Backend Changes** (commit `e0c6ab7b`):
+- `SponsorsController.cs`: Added `GET /sponsors/mine` [Authorize] endpoint + ISponsorRepository DI
+- `CollectionsController.cs`: Added `GET /collections/mine` [Authorize] + `GET /collections/public-summary` [AllowAnonymous] + ICollectionRepository DI + PublicCollectionSummaryResponse DTO
+
+**Frontend Changes** (commit `ae962a8d`, 8 files, +462/-32 lines):
+- `events.types.ts`: Added `PublicCollectionSummaryDto` interface
+- `events.repository.ts`: Added `getPublicCollectionSummary`, `getMyCollections`, `getMySponsors` methods
+- `useSponsors.ts`: Added `useMySponsors` hook + `mine` query key
+- `useCollections.ts`: Added `useMyCollections`, `usePublicCollectionSummary` hooks + query keys
+- `SponsorSection.tsx`: Added "Your Sponsorships" section (money/item display, status badges, dates)
+- `CollectionSection.tsx`: Added "Your Contributions" section + `PublicCollectionSummaryDto` type + goal progress
+- `page.tsx` (event details): Wired all new hooks with auth/config guards, passed props to sections
+- `AddOnsManagementTab.tsx`: Added inline create/edit form (name, description, price, quantity limit, sort order), "+ Create Add-On" button, Edit (pencil) button per row
+
+**API Verification** (event `40b297c9`):
+- `GET /sponsors/mine` → HTTP 200
+- `GET /collections/mine` → HTTP 200
+- `GET /collections/public-summary` → HTTP 200 (returns totalAmount, goalAmount, goalProgressPercent, contributorCount)
+
+---
+
+### Phase 3: Combined "Export All Financial Data" (2026-03-18)
+
+**Status**: ✅ **DEPLOYED & VERIFIED (backend + frontend to Azure staging)**
+
+**Classification**: Feature — Multi-sheet Excel and ZIP'd CSV export combining all 5 financial data sources (Attendees, Donations, Collections, Sponsors, Add-Ons) into a single download.
+
+**New Files (3)**:
+- `ExportAllFinancialsQuery.cs` + `ExportAllFinancialsQueryHandler.cs` — fetches 5 data sources sequentially via MediatR
+- `AllFinancialsData.cs` — DTO aggregating all 5 response types
+
+**Modified Files (7)**:
+- `IExcelExportService.cs` / `ICsvExportService.cs`: +1 method each (ExportAllFinancials / ExportAllFinancialsZip)
+- `ExcelExportService.cs`: 5-sheet workbook (Registrations, Donations, Collections, Sponsors, Add-On Purchases)
+- `CsvExportService.cs`: ZIP archive with 5 CSV files
+- `EventsController.cs`: `GET /api/events/{id}/export-all?format=excel|csv`
+- `events.repository.ts`: `exportAllFinancials()` method
+- `AttendeesAndFinanceTab.tsx`: "Export All (CSV)" and "Export All (Excel)" buttons in tab header
+
+**Commits**: `db33f506` (initial), `c60f2a04` (DbContext concurrency fix — sequential queries)
+
+**API Verification** (event `40b297c9`):
+- `GET /export-all?format=excel` → HTTP 200, 10,663 bytes, 5 sheets confirmed
+- `GET /export-all?format=csv` → HTTP 200, 1,178 bytes ZIP, 5 CSVs confirmed (attendees.csv, donations.csv, collections.csv, sponsors.csv, addon_purchases.csv)
+- All Phase 2 individual exports still pass (regression OK)
+- All existing exports (attendees, donations) still pass (regression OK)
+
+---
+
+### Phase 2: Export Endpoints for Collections, Sponsors, Add-On Purchases (2026-03-18)
+
+**Status**: ✅ **DEPLOYED (backend to Azure staging)**
+
+**Classification**: Feature Missing (Export gap) — Collections, Sponsors, and Add-Ons management tabs had Export buttons but no backend endpoints (404). This phase adds Excel and CSV export support for all 3 financial features, cloning the existing ExportDonations pattern.
+
+**New Files (6)**:
+- `ExportCollectionsQuery.cs` + `ExportCollectionsQueryHandler.cs`
+- `ExportSponsorsQuery.cs` + `ExportSponsorsQueryHandler.cs`
+- `ExportAddOnPurchasesQuery.cs` + `ExportAddOnPurchasesQueryHandler.cs`
+
+**Modified Files (7)**:
+- `IExcelExportService.cs` / `ICsvExportService.cs`: +3 methods each
+- `ExcelExportService.cs` / `CsvExportService.cs`: implementations with full revenue breakdown columns
+- `CollectionsController.cs`: `GET /api/events/{id}/collections/export?format=excel|csv`
+- `SponsorsController.cs`: `GET /api/events/{id}/sponsors/export?format=excel|csv`
+- `AddOnsController.cs`: `GET /api/events/{id}/add-ons/purchases/export?format=excel|csv`
+
+**Commit**: `417cd435` on develop
+
+---
+
+### Config Forms: Collection/Sponsor/AddOn Configuration in Event Create/Edit (2026-03-18)
+
+**Status**: ✅ **DEPLOYED (frontend to Azure staging)**
+
+**Classification**: Feature Missing (UI-Layer Gap) — Phases 0-6 built full stack but never created config forms for Collections, Sponsors, and Add-Ons. DonationConfigForm.tsx existed from prior work but no equivalent was built for the 3 new financial features. Management tabs showed "edit your event to enable" but the edit page had no config section — a dead-end UX loop.
+
+**Fix**: Created 3 new config form components following the DonationConfigForm pattern, integrated into both EventCreationForm and EventEditForm:
+
+| Component | Fields | Theme |
+|-----------|--------|-------|
+| `CollectionConfigForm.tsx` | Goal amount, progress bar, suggested amounts (max 5), allow custom, min/max, message, contributor count | Wallet icon, violet |
+| `SponsorConfigForm.tsx` | Accept money/item types, min sponsor amount (conditional), message, show sponsor list | HandCoins icon, indigo |
+| `AddOnConfigForm.tsx` | Available during registration, available standalone, message | PackagePlus icon, emerald |
+
+**Architecture Decision**: Uses separate PUT endpoints (not inline with CreateEvent/UpdateEvent) via post-save `Promise.all()`. Create form only sends enabled configs; Edit form always sends all 3 to handle disable case.
+
+**Commit**: `9b8d9bbc` on develop
+
+**API Verification**:
+- `PUT /api/events/{id}/sponsor-config` → 200 OK
+- `PUT /api/events/{id}/add-on-config` → 200 OK
+- `GET /api/Events/{id}` → returns all 3 configs (collectionConfig, sponsorConfig, addOnConfig) correctly
+
+---
+
+### Fix: Missing EventDto Mappings for Collection/Sponsor/AddOn Configs (2026-03-16)
+
+**Status**: ✅ **DEPLOYED (backend + frontend to Azure staging)**
+
+**Root Cause Analysis**: System architect RCA identified that `EventDto.cs` was missing `CollectionConfig`, `SponsorConfig`, `AddOnConfig` properties, and `EventMappingProfile.cs` had no AutoMapper rules for them. The domain entity and EF Core JSONB columns existed, but the API response never included these fields — breaking frontend tab visibility.
+
+**Classification**: Backend API Issue (DTO mapping gap)
+
+**Backend Fixes**:
+- `EventDto.cs`: Added 3 nullable config DTO properties
+- `EventMappingProfile.cs`: Added 3 `.ForMember()` rules + 3 `CreateMap<>()` value-object-to-DTO sub-maps
+
+**Frontend Fixes**:
+- `page.tsx`: Made Collections/Sponsors/Add-Ons tabs always visible (removed conditional `?.isEnabled` gating)
+- 3 management tabs: Added "not enabled" empty states with descriptive prompts when config is null/disabled
+
+**Commit**: `9e9e4ea3` on develop
+
+---
+
+### Event Financial Features Expansion — Phases 0-6 (2026-03-15/16)
+
+**Status**: ✅ **COMPLETE (all phases deployed to Azure staging)**
+
+**Scope**: Added 3 new financial capabilities — Collections (Event Fund), Sponsors (money + item), Add-Ons (purchasable items) — across 7 phases (~135 files).
+
+**Phase 0**: Refactored PaymentsController from 1305→638 lines, extracted 6 injectable webhook handler services
+**Phase 1**: Domain Foundation — 4 entities (Collection, Sponsor, AddOnDefinition, AddOnPurchase), 4 enums, 3 JSONB configs, 4 domain events, 4 repository interfaces
+**Phase 2**: Infrastructure — EF Core configs, migrations, repository implementations, atomic stock SQL, per-type Stripe checkout methods
+**Phase 3**: Application Layer — 9 command/handler pairs, 3 query/handler pairs, 13 DTOs, 6 webhook handlers, 4 domain event handlers
+**Phase 4**: API Layer — 3 new controllers (Collections, Sponsors, AddOns), EventConfigController, webhook routing for 3 new payment types
+**Phase 5**: Frontend Management — TypeScript types, 19 repository methods, 3 hook files, 3 management tab components, conditional tab rendering
+**Phase 6**: Frontend Public — CollectionSection, SponsorSection, AddOnSelector, AddOnOptionInForm, success/cancelled banners, registration flow integration
+
+**Key Commits**:
+- `f557863d` Phase 1+2: Domain + Infrastructure
+- `1aef1599` Phase 0+3: Webhook refactoring + Application layer
+- `c024c136` Phase 4: API controllers + real webhook handlers
+- `9045036d` Phase 5: Frontend management tabs
+- `0f25eea7` Phase 6: Frontend public forms
+
+**Deployments**: Backend (deploy-staging.yml) + Frontend (deploy-ui-staging.yml) both succeeded
+
+---
 
 ### Phase 6A.133 Email: Organizer Card Design Fix - 2026-03-11
 

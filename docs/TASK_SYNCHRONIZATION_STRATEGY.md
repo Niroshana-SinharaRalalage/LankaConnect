@@ -3,7 +3,54 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
+**Date**: 2026-03-21
+**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass + frontend UX
+**Progress**: ✅ **COMPLETE** — All fixes deployed and API-verified on staging
+**Status**: ✅ **COMPLETE** — Backend `60d91e0b` + frontend `1e145014` deployed. API tests: create free add-on ✅, update to free ✅, list free items ✅. All 1,888 tests pass.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - FINANCIAL FEATURES ISSUES FIX ✅ COMPLETE
+**Date**: 2026-03-19
+**Session**: Fix 5 user-reported issues with financial features + nested form bug
+**Progress**: ✅ **COMPLETE** — All fixes deployed to Azure staging
+**Status**: ✅ **COMPLETE** — Backend `e0c6ab7b` + frontend `ae962a8d`, `7dd743f3`, `61b3ef70`, `c558a97b` deployed
+
+**Fixes Applied**:
+| # | Issue | Fix | Commit |
+|---|-------|-----|--------|
+| 1 | Config summaries missing from manage page | Added Collection/Sponsor/Add-On config cards to EventDetailsTab | `7dd743f3` |
+| 2 | No add-on CRUD on create/edit pages | Created shared AddOnDefinitionEditor with dual-mode (local/live) | `61b3ef70` |
+| 3 | No "My Sponsorships" display | Added Your Sponsorships section on public event page | `ae962a8d` |
+| 4 | No "My Contributions" display | Added Your Contributions section on public event page | `ae962a8d` |
+| 5 | No add-on guidance | Embedded inline CRUD replaces guidance banner | `61b3ef70` |
+| 6 | Nested form bug (add-on create → login redirect) | Replaced `<form>` with `<div>` + explicit onClick handler | `c558a97b` |
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - EVENT FINANCIAL FEATURES EXPANSION ✅ COMPLETE
+**Date**: 2026-03-15/16
+**Session**: Event Financial Features Expansion — Collections, Sponsors, Add-Ons (Phases 0-6, ~135 files)
+**Progress**: ✅ **COMPLETE** — All 7 phases implemented and deployed
+**Status**: ✅ **COMPLETE** — Backend + frontend deployed to Azure staging
+
+**Phase Summary**:
+| Phase | Description | Files | Status |
+|-------|-------------|-------|--------|
+| 0 | PaymentsController webhook refactoring | ~12 | ✅ Done |
+| 1 | Domain Foundation (entities, enums, configs, events, repos) | ~30 | ✅ Done |
+| 2 | Infrastructure (EF Core, migrations, repos, Stripe) | ~20 | ✅ Done |
+| 3 | Application Layer (commands, queries, DTOs, handlers) | ~35 | ✅ Done |
+| 4 | API Layer (controllers, webhooks, config endpoints) | ~10 | ✅ Done |
+| 5 | Frontend Management (types, hooks, management tabs) | ~11 | ✅ Done |
+| 6 | Frontend Public (forms, selectors, registration integration) | ~6 | ✅ Done |
+
+**Key Commits**: f557863d, 1aef1599, c024c136, 9045036d, 0f25eea7
+
+---
+
+## PREVIOUS SESSION - PHASE 6A.133 EMAIL: ORGANIZER CARD DESIGN FIX ✅ COMPLETE
 **Date**: 2026-03-11
 **Session**: Phase 6A.133 Email — Replace simplified organizer card with proper nested-table card design
 **Progress**: ✅ **COMPLETE** — 1 migration created, deployed to staging, API verified

@@ -18,6 +18,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Foreign keys

@@ -18,6 +18,7 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Foreign keys

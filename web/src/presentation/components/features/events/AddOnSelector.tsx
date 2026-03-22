@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { ShoppingBag, RefreshCw, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { ShoppingBag, RefreshCw, ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, Clock } from 'lucide-react';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Card, CardContent } from '@/presentation/components/ui/Card';
-import { useAddOnDefinitions, usePurchaseAddOnCart } from '@/presentation/hooks/useAddOns';
+import { useAddOnDefinitions, usePurchaseAddOnCart, useMyAddOnPurchases } from '@/presentation/hooks/useAddOns';
 import type { AddOnConfigurationDto, AddOnDefinitionDto } from '@/infrastructure/api/types/events.types';
 
 interface CartItem {
@@ -19,10 +20,13 @@ interface AddOnSelectorProps {
   addOnConfig: AddOnConfigurationDto;
 }
 
+const STORAGE_KEY_PREFIX = 'lc_addon_email_';
+
 /**
  * Public-facing add-on selector with cart support.
  * Users can add quantities to multiple add-ons and checkout all at once.
  * Free items complete immediately; paid items go to a single Stripe checkout.
+ * Shows "My Add-Ons" section for returning buyers.
  */
 export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -31,9 +35,39 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
   const [buyerEmail, setBuyerEmail] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [savedEmail, setSavedEmail] = useState<string | null>(null);
+  const [lookupEmail, setLookupEmail] = useState('');
+  const [showLookup, setShowLookup] = useState(false);
+
+  const searchParams = useSearchParams();
 
   const { data: definitions, isLoading, isError, refetch } = useAddOnDefinitions(eventId);
   const purchaseCart = usePurchaseAddOnCart();
+  const { data: myPurchases, isLoading: myPurchasesLoading, refetch: refetchMyPurchases } = useMyAddOnPurchases(
+    eventId,
+    savedEmail,
+    !!savedEmail
+  );
+
+  // On mount, check localStorage for saved buyer email
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${eventId}`);
+      if (stored) {
+        setSavedEmail(stored);
+      }
+    } catch {
+      // localStorage not available
+    }
+  }, [eventId]);
+
+  // After successful purchase redirect, refetch purchases
+  useEffect(() => {
+    const addonParam = searchParams.get('addon');
+    if (addonParam === 'success' && savedEmail) {
+      refetchMyPurchases();
+    }
+  }, [searchParams, savedEmail, refetchMyPurchases]);
 
   // Filter active definitions and sort by sortOrder
   const activeDefinitions = useMemo(
@@ -150,6 +184,13 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
     }
 
     try {
+      // Save buyer email to localStorage for "My Add-Ons" section
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${eventId}`, buyerEmail.trim().toLowerCase());
+      } catch {
+        // localStorage not available
+      }
+
       const checkoutUrl = await purchaseCart.mutateAsync({
         eventId,
         request: {
@@ -165,6 +206,9 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
         },
       });
 
+      // Update saved email for immediate "My Add-Ons" display
+      setSavedEmail(buyerEmail.trim().toLowerCase());
+
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
@@ -172,6 +216,26 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
       setError(err?.response?.data?.detail || 'Failed to process purchase. Please try again.');
     }
   };
+
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (lookupEmail.trim()) {
+      const email = lookupEmail.trim().toLowerCase();
+      try {
+        localStorage.setItem(`${STORAGE_KEY_PREFIX}${eventId}`, email);
+      } catch {
+        // localStorage not available
+      }
+      setSavedEmail(email);
+      setShowLookup(false);
+    }
+  };
+
+  // Filter to only show completed/pending (not abandoned/failed)
+  const visiblePurchases = useMemo(() => {
+    if (!myPurchases) return [];
+    return myPurchases.filter((p) => p.status === 'Completed' || p.status === 'Pending');
+  }, [myPurchases]);
 
   return (
     <CollapsibleSection
@@ -482,6 +546,122 @@ export function AddOnSelector({ eventId, addOnConfig }: AddOnSelectorProps) {
             </div>
           )}
         </>
+      )}
+
+      {/* ─── My Add-Ons Section ─── */}
+      {!isLoading && !isError && (
+        <div className="mt-6 pt-6 border-t border-neutral-200">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-neutral-900 flex items-center gap-2">
+              <Package className="h-5 w-5 text-emerald-600" />
+              My Add-Ons
+            </h4>
+            {!savedEmail && !showLookup && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLookup(true)}
+              >
+                Look up my purchases
+              </Button>
+            )}
+            {savedEmail && (
+              <button
+                type="button"
+                className="text-xs text-neutral-400 hover:text-neutral-600"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem(`${STORAGE_KEY_PREFIX}${eventId}`);
+                  } catch { /* ignore */ }
+                  setSavedEmail(null);
+                  setShowLookup(false);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Email Lookup Form */}
+          {showLookup && !savedEmail && (
+            <form onSubmit={handleLookup} className="flex gap-2 mb-4">
+              <Input
+                type="email"
+                value={lookupEmail}
+                onChange={(e) => setLookupEmail(e.target.value)}
+                placeholder="Enter the email you used to purchase"
+                required
+                className="flex-1"
+              />
+              <Button type="submit" size="sm" style={{ background: '#059669' }}>
+                Look Up
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowLookup(false)}>
+                Cancel
+              </Button>
+            </form>
+          )}
+
+          {/* Purchases List */}
+          {savedEmail && myPurchasesLoading && (
+            <div className="flex items-center justify-center py-4">
+              <RefreshCw className="h-4 w-4 text-emerald-600 animate-spin" />
+              <span className="ml-2 text-sm text-neutral-500">Loading your purchases...</span>
+            </div>
+          )}
+
+          {savedEmail && !myPurchasesLoading && visiblePurchases.length === 0 && (
+            <p className="text-sm text-neutral-400 py-2">
+              No purchases found for {savedEmail}.
+            </p>
+          )}
+
+          {savedEmail && !myPurchasesLoading && visiblePurchases.length > 0 && (
+            <div className="space-y-2">
+              {visiblePurchases.map((purchase) => (
+                <div
+                  key={purchase.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    purchase.status === 'Completed'
+                      ? 'bg-emerald-50/50 border-emerald-200'
+                      : 'bg-amber-50/50 border-amber-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {purchase.status === 'Completed' ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                    )}
+                    <div>
+                      <span className="text-sm font-medium text-neutral-900">
+                        {purchase.addOnName}
+                      </span>
+                      <span className="text-xs text-neutral-500 ml-2">
+                        x{purchase.quantity}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-neutral-700">
+                      {purchase.totalAmount === 0 ? 'Free' : `$${purchase.totalAmount.toFixed(2)}`}
+                    </span>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        purchase.status === 'Completed'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {purchase.status === 'Completed' ? 'Purchased' : 'Pending Payment'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </CollapsibleSection>
   );

@@ -1713,6 +1713,12 @@ export class EventsRepository {
     return await apiClient.get<import('../types/events.types').AddOnPurchaseSummaryDto>(`${this.basePath}/${eventId}/add-ons/purchases/summary`);
   }
 
+  async getMyAddOnPurchases(eventId: string, email: string): Promise<import('../types/events.types').AddOnPurchaseDto[]> {
+    return await apiClient.get<import('../types/events.types').AddOnPurchaseDto[]>(
+      `${this.basePath}/${eventId}/add-ons/my-purchases?email=${encodeURIComponent(email)}`
+    );
+  }
+
   async exportAddOnPurchases(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/add-ons/purchases/export?format=${format}`,

@@ -2,6 +2,7 @@ using LankaConnect.API.Extensions;
 using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.PurchaseAddOn;
+using LankaConnect.Application.Events.Commands.PurchaseAddOnCart;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
@@ -157,6 +158,46 @@ public class AddOnsController : BaseController<AddOnsController>
             BuyerEmail: request.BuyerEmail,
             BuyerPhone: request.BuyerPhone,
             Quantity: request.Quantity,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Purchases multiple add-ons in a single cart checkout.
+    /// Creates one Stripe session with N line items (one per add-on).
+    /// Free items complete immediately; only paid items go to Stripe.
+    /// Returns: checkout URL if any paid items, or success URL if all free.
+    /// </summary>
+    [HttpPost("purchase-cart")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> PurchaseAddOnCart(
+        Guid eventId,
+        [FromBody] PurchaseAddOnCartRequest request)
+    {
+        Logger.LogInformation(
+            "PurchaseAddOnCart: EventId={EventId}, BuyerEmail={BuyerEmail}, ItemCount={ItemCount}",
+            eventId, request.BuyerEmail, request.Items?.Count ?? 0);
+
+        var userId = User.Identity?.IsAuthenticated == true
+            ? User.TryGetUserId()
+            : null;
+
+        var cartItems = request.Items?.Select(i => new AddOnCartItem(
+            i.AddOnDefinitionId,
+            i.Quantity)).ToList() ?? new List<AddOnCartItem>();
+
+        var command = new PurchaseAddOnCartCommand(
+            EventId: eventId,
+            Items: cartItems,
+            BuyerName: request.BuyerName,
+            BuyerEmail: request.BuyerEmail,
+            BuyerPhone: request.BuyerPhone,
             SuccessUrl: request.SuccessUrl,
             CancelUrl: request.CancelUrl,
             UserId: userId);
@@ -330,4 +371,26 @@ public class PurchaseAddOnRequest
     public int Quantity { get; init; } = 1;
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
+}
+
+/// <summary>
+/// Request body for purchasing multiple add-ons in a cart.
+/// </summary>
+public class PurchaseAddOnCartRequest
+{
+    public required string BuyerName { get; init; }
+    public required string BuyerEmail { get; init; }
+    public string? BuyerPhone { get; init; }
+    public required List<PurchaseAddOnCartItemRequest> Items { get; init; }
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+}
+
+/// <summary>
+/// Single item in a cart purchase request.
+/// </summary>
+public class PurchaseAddOnCartItemRequest
+{
+    public Guid AddOnDefinitionId { get; init; }
+    public int Quantity { get; init; } = 1;
 }

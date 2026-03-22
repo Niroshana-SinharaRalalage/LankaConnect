@@ -1063,6 +1063,111 @@ public class StripePaymentService : IStripePaymentService
         }
     }
 
+    /// <summary>
+    /// Creates a Stripe Checkout session with multiple add-on line items (cart purchase).
+    /// Each line item maps to a distinct AddOnDefinition with its own quantity and price.
+    /// All paid purchases share the same checkout session ID.
+    /// </summary>
+    public async Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnCartCheckoutSessionAsync(
+        CreateAddOnCartCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnCart] Creating cart checkout session - EventId={EventId}, LineItemCount={LineItemCount}",
+                request.EventId, request.Items.Count);
+
+            var lineItems = request.Items.Select(item => new SessionLineItemOptions
+            {
+                PriceData = new SessionLineItemPriceDataOptions
+                {
+                    Currency = item.Currency.ToLower(),
+                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    {
+                        Name = $"{item.Name} - {request.EventTitle}",
+                        Description = !string.IsNullOrEmpty(item.Description)
+                            ? item.Description
+                            : $"Add-on purchase ({item.Quantity}x)",
+                        Metadata = new Dictionary<string, string>
+                        {
+                            ["event_id"] = request.EventId.ToString(),
+                            ["add_on_purchase_id"] = item.AddOnPurchaseId.ToString(),
+                            ["add_on_definition_id"] = item.AddOnDefinitionId.ToString(),
+                            ["payment_type"] = "add_on_purchase"
+                        }
+                    },
+                    UnitAmount = ConvertToStripeAmount(item.UnitPrice, item.Currency)
+                },
+                Quantity = item.Quantity
+            }).ToList();
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = lineItems,
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["payment_type"] = "add_on_purchase",
+                    ["cart_item_count"] = request.Items.Count.ToString(),
+                    ["purchase_ids"] = string.Join(",", request.Items.Select(i => i.AddOnPurchaseId))
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["payment_type"] = "add_on_purchase",
+                        ["cart_item_count"] = request.Items.Count.ToString(),
+                        ["purchase_ids"] = string.Join(",", request.Items.Select(i => i.AddOnPurchaseId))
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[AddOnCart] Created cart checkout session - SessionId={SessionId}, EventId={EventId}, LineItems={LineItemCount}, ExpiresAt={ExpiresAt}",
+                session.Id, request.EventId, request.Items.Count, session.ExpiresAt);
+
+            return Result<AddOnPurchaseCheckoutResult>.Success(new AddOnPurchaseCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnCart] Stripe error creating cart checkout - EventId={EventId}, Error={Error}",
+                request.EventId, ex.Message);
+            return Result<AddOnPurchaseCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnCart] Error creating cart checkout - EventId={EventId}",
+                request.EventId);
+            return Result<AddOnPurchaseCheckoutResult>.Failure("Failed to create cart payment session");
+        }
+    }
+
     #region Not Implemented Methods (Cultural Intelligence - Future)
 
     // These methods are part of IStripePaymentService for Cultural Intelligence billing

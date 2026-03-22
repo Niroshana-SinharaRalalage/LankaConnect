@@ -12,6 +12,14 @@ public interface IAddOnPurchaseRepository : IRepository<AddOnPurchase>
         string sessionId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets ALL purchases sharing the same checkout session (cart purchases).
+    /// Used by webhook handler to complete/expire all purchases in a cart.
+    /// </summary>
+    Task<IReadOnlyList<AddOnPurchase>> GetAllByCheckoutSessionIdAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AddOnPurchase>> GetByEventIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default);

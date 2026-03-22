@@ -71,6 +71,52 @@ public class AddOnPurchaseRepository : Repository<AddOnPurchase>, IAddOnPurchase
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<AddOnPurchase>> GetAllByCheckoutSessionIdAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetAllByCheckoutSessionId"))
+        using (LogContext.PushProperty("EntityType", "AddOnPurchase"))
+        using (LogContext.PushProperty("SessionId", sessionId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetAllByCheckoutSessionIdAsync START: SessionId={SessionId}",
+                sessionId);
+
+            try
+            {
+                var purchases = await _dbSet
+                    .Where(p => p.StripeCheckoutSessionId == sessionId)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetAllByCheckoutSessionIdAsync COMPLETE: SessionId={SessionId}, Count={Count}, Duration={ElapsedMs}ms",
+                    sessionId,
+                    purchases.Count,
+                    stopwatch.ElapsedMilliseconds);
+
+                return purchases;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetAllByCheckoutSessionIdAsync FAILED: SessionId={SessionId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    sessionId,
+                    stopwatch.ElapsedMilliseconds,
+                    ex.Message);
+
+                throw;
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AddOnPurchase>> GetByEventIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)

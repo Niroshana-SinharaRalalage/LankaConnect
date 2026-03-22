@@ -60,6 +60,11 @@ public interface IStripePaymentService
     Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnPurchaseCheckoutSessionAsync(
         CreateAddOnPurchaseCheckoutSessionRequest request,
         CancellationToken cancellationToken = default);
+
+    // Add-On Cart Feature: Create checkout session with multiple add-on line items
+    Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnCartCheckoutSessionAsync(
+        CreateAddOnCartCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -668,4 +673,32 @@ public class AddOnPurchaseCheckoutResult
     public required string SessionId { get; init; }
     public required string CheckoutUrl { get; init; }
     public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Request to create a Stripe Checkout session for a multi-item add-on cart.
+/// Creates N line items in a single Stripe session.
+/// </summary>
+public class CreateAddOnCartCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public required string EventTitle { get; init; }
+    public required List<AddOnCartCheckoutLineItem> Items { get; init; }
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Single line item in an add-on cart checkout session.
+/// </summary>
+public class AddOnCartCheckoutLineItem
+{
+    public Guid AddOnPurchaseId { get; init; }
+    public Guid AddOnDefinitionId { get; init; }
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public int Quantity { get; init; }
+    public decimal UnitPrice { get; init; }
+    public string Currency { get; init; } = "USD";
 }

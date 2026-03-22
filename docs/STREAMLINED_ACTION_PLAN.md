@@ -7,6 +7,15 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - YOUR ADD-ONS AUTH-BASED DISPLAY FIX (2026-03-22)
+**Date**: 2026-03-22
+**Session**: Fix "My Add-Ons" to use auth-based /mine endpoint (like "Your Sponsorships")
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commit `485dd1ab`)
+**RCA**: UX pattern mismatch — built email-based localStorage lookup for add-on purchases, but the established pattern ("Your Sponsorships", "Your Contributions") uses JWT auth + auto-display. User couldn't see purchases because email lookup was never triggered.
+**Fix**: (1) Backend: new `GET /add-ons/mine` [Authorize] endpoint using `User.GetUserId()`, (2) Frontend: `useMyAddOnPurchasesMine` hook, event page wiring, AddOnSelector accepts `myAddOnPurchases` prop, renders "Your Add-Ons" auto-display for logged-in users. Removed all localStorage/email lookup code.
+
+---
+
 ## ✅ PREVIOUS STATUS - DB ID COLUMN FIX + FREE ADD-ON FIXES (2026-03-21)
 **Date**: 2026-03-21
 **Session**: Fix critical DB column casing bug + free add-on owned entity bug + UX improvements

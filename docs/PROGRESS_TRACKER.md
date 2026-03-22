@@ -1,7 +1,34 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-21 - Critical DB fix + Free add-on owned entity fix*
+*Last Updated: 2026-03-22 - Fix "Your Add-Ons" auth-based display (like "Your Sponsorships")*
 
-## 🎯 Current Session Status (2026-03-21)
+## 🎯 Current Session Status (2026-03-22)
+
+### Fix: Replace Email-Based Add-On Lookup with Auth-Based /mine Endpoint (commit `485dd1ab`)
+
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
+
+**Classification**: UX/Feature Gap — Add-on purchases used email-based localStorage lookup instead of following the established JWT auth-based "Your Sponsorships" pattern.
+
+**Root Cause**: "My Add-Ons" section was built with localStorage email lookup + "Look up my purchases" button, requiring manual email entry. The existing "Your Sponsorships" pattern auto-displays for logged-in users via JWT auth without any user input.
+
+**Fix** (5 files: 1 backend, 4 frontend):
+| File | Change |
+|------|--------|
+| `AddOnsController.cs` | Added `GET /add-ons/mine` `[Authorize]` endpoint using `User.GetUserId()` + inline DTO mapping (mirrors SponsorsController.GetMySponsors) |
+| `events.repository.ts` | Added `getMyAddOnPurchasesMine(eventId)` calling `/add-ons/mine` |
+| `useAddOns.ts` | Added `useMyAddOnPurchasesMine` hook with `mine` query key |
+| `page.tsx` | Imported hook, calls when `isAuthenticated && addOnConfig.isEnabled`, passes `myAddOnPurchases` prop |
+| `AddOnSelector.tsx` | Replaced email lookup with `myAddOnPurchases` prop, renders "Your Add-Ons" section like "Your Sponsorships" |
+
+**Removed**: localStorage email save/read, `STORAGE_KEY_PREFIX`, `savedEmail`/`lookupEmail`/`showLookup` state, `handleLookup`, email lookup form UI, `useSearchParams` dependency.
+
+**API Verification**:
+- ✅ `GET /add-ons/mine` without auth → 401 Unauthorized
+- ✅ `GET /add-ons/mine` with auth → 200 OK, returns purchases array
+
+---
+
+## Previous Session (2026-03-21)
 
 ### Fix: PostgreSQL "column id does not exist" — Financial Tables Id Column Casing (commit `d6ef4433`)
 

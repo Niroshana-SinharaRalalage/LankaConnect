@@ -2089,6 +2089,20 @@ export interface PurchaseAddOnRequest {
   cancelUrl: string;
 }
 
+export interface PurchaseAddOnCartItemRequest {
+  addOnDefinitionId: string;
+  quantity: number;
+}
+
+export interface PurchaseAddOnCartRequest {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  items: PurchaseAddOnCartItemRequest[];
+  successUrl: string;
+  cancelUrl: string;
+}
+
 // Config update request types
 export interface UpdateCollectionConfigRequest {
   isEnabled: boolean;

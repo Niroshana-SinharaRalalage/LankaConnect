@@ -1701,6 +1701,10 @@ export class EventsRepository {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);
   }
 
+  async purchaseAddOnCart(eventId: string, request: import('../types/events.types').PurchaseAddOnCartRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/purchase-cart`, request);
+  }
+
   async getEventAddOnPurchases(eventId: string): Promise<import('../types/events.types').EventAddOnPurchasesResponse> {
     return await apiClient.get<import('../types/events.types').EventAddOnPurchasesResponse>(`${this.basePath}/${eventId}/add-ons/purchases`);
   }

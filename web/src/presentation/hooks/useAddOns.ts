@@ -9,6 +9,7 @@ import type {
   CreateAddOnDefinitionRequest,
   UpdateAddOnDefinitionRequest,
   PurchaseAddOnRequest,
+  PurchaseAddOnCartRequest,
 } from '@/infrastructure/api/types/events.types';
 
 export const addOnKeys = {
@@ -75,6 +76,18 @@ export function usePurchaseAddOn() {
   return useMutation({
     mutationFn: (data: { eventId: string; definitionId: string; request: PurchaseAddOnRequest }) =>
       eventsRepository.purchaseAddOn(data.eventId, data.definitionId, data.request),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: addOnKeys.purchases(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: addOnKeys.definitions(variables.eventId) });
+    },
+  });
+}
+
+export function usePurchaseAddOnCart() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; request: PurchaseAddOnCartRequest }) =>
+      eventsRepository.purchaseAddOnCart(data.eventId, data.request),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: addOnKeys.purchases(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: addOnKeys.definitions(variables.eventId) });

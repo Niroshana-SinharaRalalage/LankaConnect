@@ -235,6 +235,11 @@ export function DonationSection({ eventId, donationConfig, publicSummary, myDona
             </div>
           )}
 
+          {/* Non-refundable disclaimer */}
+          <p className="text-xs text-gray-500 italic">
+            Donations are non-refundable and will not be included in registration cancellation refunds.
+          </p>
+
           {/* Submit Button */}
           <Button
             type="submit"

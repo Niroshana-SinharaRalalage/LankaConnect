@@ -744,18 +744,29 @@ public class EventsController : BaseController<EventsController>
     /// If true, deletes all sign-up commitments and restores remaining quantities.
     /// If false (default), keeps sign-up commitments intact.
     /// </param>
+    /// <param name="deleteFormResponses">
+    /// If true, deletes all form submissions for this event. If false (default), keeps them.
+    /// </param>
+    /// <param name="refundAddOnPurchases">
+    /// If true, refunds all completed add-on purchases via Stripe. If false (default), keeps them.
+    /// </param>
     [HttpDelete("{id:guid}/rsvp")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CancelRsvp(Guid id, [FromQuery] bool deleteSignUpCommitments = false)
+    public async Task<IActionResult> CancelRsvp(
+        Guid id,
+        [FromQuery] bool deleteSignUpCommitments = false,
+        [FromQuery] bool deleteFormResponses = false,
+        [FromQuery] bool refundAddOnPurchases = false)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}",
-            userId, id, deleteSignUpCommitments);
+        Logger.LogInformation(
+            "User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}, DeleteFormResponses={DeleteFormResponses}, RefundAddOnPurchases={RefundAddOnPurchases}",
+            userId, id, deleteSignUpCommitments, deleteFormResponses, refundAddOnPurchases);
 
-        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments);
+        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments, deleteFormResponses, refundAddOnPurchases);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);

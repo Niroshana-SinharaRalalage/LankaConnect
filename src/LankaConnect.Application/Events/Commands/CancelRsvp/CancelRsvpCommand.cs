@@ -15,5 +15,7 @@ namespace LankaConnect.Application.Events.Commands.CancelRsvp;
 public record CancelRsvpCommand(
     Guid EventId,
     Guid UserId,
-    bool DeleteSignUpCommitments = false
+    bool DeleteSignUpCommitments = false,
+    bool DeleteFormResponses = false,
+    bool RefundAddOnPurchases = false
 ) : ICommand;

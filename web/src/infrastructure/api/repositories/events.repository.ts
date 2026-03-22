@@ -358,12 +358,24 @@ export class EventsRepository {
    * Cancel RSVP
    * Removes registration and frees up capacity
    * Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
+   * Cancellation enhancement: Added deleteFormResponses and refundAddOnPurchases parameters
    * @param eventId - The event ID
-   * @param deleteSignUpCommitments - If true, deletes sign-up commitments and restores remaining quantities
+   * @param options - Cancellation options (all default to false)
    */
-  async cancelRsvp(eventId: string, deleteSignUpCommitments: boolean = false): Promise<void> {
-    const params = deleteSignUpCommitments ? '?deleteSignUpCommitments=true' : '';
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${params}`);
+  async cancelRsvp(
+    eventId: string,
+    options: {
+      deleteSignUpCommitments?: boolean;
+      deleteFormResponses?: boolean;
+      refundAddOnPurchases?: boolean;
+    } = {}
+  ): Promise<void> {
+    const params = new URLSearchParams();
+    if (options.deleteSignUpCommitments) params.append('deleteSignUpCommitments', 'true');
+    if (options.deleteFormResponses) params.append('deleteFormResponses', 'true');
+    if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
+    const queryString = params.toString();
+    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }
 
   /**

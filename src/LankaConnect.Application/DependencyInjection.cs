@@ -56,6 +56,9 @@ public static class DependencyInjection
         // Phase 6A.92: Register shared refund service
         services.AddScoped<IRegistrationRefundService, RegistrationRefundService>();
 
+        // Cancellation enhancement: Register add-on refund service
+        services.AddScoped<IAddOnRefundService, AddOnRefundService>();
+
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer
         // The actual implementations should be registered in the Infrastructure DependencyInjection

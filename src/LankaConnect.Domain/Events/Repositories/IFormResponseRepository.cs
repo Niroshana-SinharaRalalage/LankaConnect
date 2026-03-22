@@ -45,4 +45,11 @@ public interface IFormResponseRepository : IRepository<FormResponse>
     /// </summary>
     Task<(IReadOnlyList<FormResponse> Responses, int TotalCount)> GetPaginatedAsync(
         Guid formId, int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all FormResponses for a specific user across all forms in an event.
+    /// Used during cancellation to delete all user form submissions.
+    /// </summary>
+    Task<IReadOnlyList<FormResponse>> GetByEventAndUserAsync(
+        Guid eventId, Guid userId, CancellationToken cancellationToken = default);
 }

@@ -6,6 +6,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -16,6 +17,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IRegistrationRefundService _refundService;
+    private readonly IFormResponseRepository _formResponseRepository;
+    private readonly IAddOnRefundService _addOnRefundService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
@@ -23,12 +26,16 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IRegistrationRefundService refundService,
+        IFormResponseRepository formResponseRepository,
+        IAddOnRefundService addOnRefundService,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _refundService = refundService;
+        _formResponseRepository = formResponseRepository;
+        _addOnRefundService = addOnRefundService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -43,8 +50,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}",
-                request.EventId, request.UserId, request.DeleteSignUpCommitments);
+                "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}, DeleteFormResponses={DeleteFormResponses}, RefundAddOnPurchases={RefundAddOnPurchases}",
+                request.EventId, request.UserId, request.DeleteSignUpCommitments, request.DeleteFormResponses, request.RefundAddOnPurchases);
 
             try
             {
@@ -149,6 +156,94 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         _logger.LogInformation(
                             "CancelRsvp: User chose to keep sign-up commitments - EventId={EventId}, UserId={UserId}",
                             request.EventId, request.UserId);
+                    }
+
+                    // Cancellation enhancement: Handle form response deletion (non-blocking)
+                    if (request.DeleteFormResponses)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Deleting form responses - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var formResponses = await _formResponseRepository.GetByEventAndUserAsync(
+                                request.EventId, request.UserId, cancellationToken);
+
+                            if (formResponses.Count > 0)
+                            {
+                                foreach (var response in formResponses)
+                                {
+                                    response.RaiseDeletedEvent();
+                                    _formResponseRepository.Remove(response);
+                                }
+
+                                _logger.LogInformation(
+                                    "CancelRsvp: Deleted {Count} form responses - EventId={EventId}, UserId={UserId}",
+                                    formResponses.Count, request.EventId, request.UserId);
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "CancelRsvp: No form responses found to delete - EventId={EventId}, UserId={UserId}",
+                                    request.EventId, request.UserId);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Non-blocking: log error but don't prevent cancellation
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to delete form responses (non-blocking) - EventId={EventId}, UserId={UserId}, Error={ErrorMessage}",
+                                request.EventId, request.UserId, ex.Message);
+                        }
+                    }
+
+                    // Cancellation enhancement: Handle add-on purchase refunds (non-blocking)
+                    if (request.RefundAddOnPurchases)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding add-on purchases - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var metadata = new Dictionary<string, string>
+                            {
+                                ["event_id"] = request.EventId.ToString(),
+                                ["user_id"] = request.UserId.ToString(),
+                                ["refund_type"] = "user_cancellation_add_on_refund"
+                            };
+
+                            var addOnRefundResult = await _addOnRefundService.RefundUserPurchasesAsync(
+                                request.UserId,
+                                request.EventId,
+                                "requested_by_customer",
+                                metadata,
+                                cancellationToken);
+
+                            if (addOnRefundResult.IsFailure)
+                            {
+                                _logger.LogWarning(
+                                    "CancelRsvp: Add-on refund failed (non-blocking) - EventId={EventId}, UserId={UserId}, Error={Error}",
+                                    request.EventId, request.UserId, addOnRefundResult.Error);
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "CancelRsvp: Add-on refunds processed - EventId={EventId}, UserId={UserId}, Refunded={Refunded}, Failed={Failed}, TotalAmount=${TotalAmount}",
+                                    request.EventId, request.UserId,
+                                    addOnRefundResult.Value.PurchasesRefunded,
+                                    addOnRefundResult.Value.PurchasesFailed,
+                                    addOnRefundResult.Value.TotalAmountRefunded);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Non-blocking: log error but don't prevent cancellation
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund add-on purchases (non-blocking) - EventId={EventId}, UserId={UserId}, Error={ErrorMessage}",
+                                request.EventId, request.UserId, ex.Message);
+                        }
                     }
 
                     // Phase 6A.81 Part 3: Different handling for Preliminary vs Confirmed registrations
@@ -264,8 +359,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                     stopwatch.Stop();
 
                     _logger.LogInformation(
-                        "CancelRsvp COMPLETE: EventId={EventId}, UserId={UserId}, RegId={RegId}, DeletedCommitments={DeletedCommitments}, Duration={ElapsedMs}ms",
-                        request.EventId, request.UserId, registration.Id, request.DeleteSignUpCommitments, stopwatch.ElapsedMilliseconds);
+                        "CancelRsvp COMPLETE: EventId={EventId}, UserId={UserId}, RegId={RegId}, DeletedCommitments={DeletedCommitments}, DeletedFormResponses={DeletedFormResponses}, RefundedAddOns={RefundedAddOns}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, registration.Id, request.DeleteSignUpCommitments, request.DeleteFormResponses, request.RefundAddOnPurchases, stopwatch.ElapsedMilliseconds);
 
                     return Result.Success();
                 }

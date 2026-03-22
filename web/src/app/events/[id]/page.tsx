@@ -109,6 +109,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [showAddAttendeesModal, setShowAddAttendeesModal] = useState(false);
   // Phase 6A.28: User choice for deleting signup commitments
   const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
+  // Cancellation enhancement: User choice for deleting form responses
+  const [deleteFormResponses, setDeleteFormResponses] = useState(false);
+  // Cancellation enhancement: User choice for refunding add-on purchases
+  const [refundAddOnPurchases, setRefundAddOnPurchases] = useState(false);
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
@@ -1152,6 +1156,59 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </label>
                           </div>
 
+                          {/* Cancellation enhancement: User choice for form response deletion */}
+                          {activeForms.length > 0 && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={deleteFormResponses}
+                                  onChange={(e) => setDeleteFormResponses(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Also delete my form submissions
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {deleteFormResponses
+                                      ? "Your sign-up form responses will be permanently deleted."
+                                      : "Your form submissions will be kept even after cancellation (default)."}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Cancellation enhancement: User choice for add-on purchase refund */}
+                          {(() => {
+                            const completedAddOnPurchases = myAddOnPurchases?.filter((p: any) => p.status === 'Completed') || [];
+                            if (completedAddOnPurchases.length === 0) return null;
+                            const totalAddOnAmount = completedAddOnPurchases.reduce((sum: number, p: any) => sum + (p.totalAmount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundAddOnPurchases}
+                                    onChange={(e) => setRefundAddOnPurchases(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my add-on purchases (${totalAddOnAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundAddOnPurchases
+                                        ? `${completedAddOnPurchases.length} add-on purchase(s) totaling $${totalAddOnAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your add-on purchases will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
                           {/* Phase 6A.93: Notification about two emails for paid registrations */}
                           {isPaidRegistration && (
                             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1176,6 +1233,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </div>
                           )}
 
+                          {/* Non-refundable financial items disclaimer */}
+                          {(() => {
+                            const completedDonations = myDonations?.filter((d: any) => d.status === 'Completed') || [];
+                            const completedCollections = myCollections?.filter((c: any) => c.status === 'Completed') || [];
+                            const completedSponsors = mySponsors?.filter((s: any) => s.sponsorType === 'Money' && s.status === 'Completed') || [];
+                            const totalNonRefundable =
+                              completedDonations.reduce((sum: number, d: any) => sum + (d.amount ?? 0), 0) +
+                              completedCollections.reduce((sum: number, c: any) => sum + (c.amount ?? 0), 0) +
+                              completedSponsors.reduce((sum: number, s: any) => sum + (s.amount ?? 0), 0);
+
+                            if (totalNonRefundable <= 0) return null;
+
+                            return (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <svg className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                  </svg>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-amber-800">
+                                      Non-refundable payments (${totalNonRefundable.toFixed(2)})
+                                    </p>
+                                    <ul className="text-xs text-amber-700 mt-1 space-y-0.5">
+                                      {completedDonations.length > 0 && (
+                                        <li>Donations: ${completedDonations.reduce((s: number, d: any) => s + (d.amount ?? 0), 0).toFixed(2)}</li>
+                                      )}
+                                      {completedCollections.length > 0 && (
+                                        <li>Contributions: ${completedCollections.reduce((s: number, c: any) => s + (c.amount ?? 0), 0).toFixed(2)}</li>
+                                      )}
+                                      {completedSponsors.length > 0 && (
+                                        <li>Sponsorships: ${completedSponsors.reduce((s: number, sp: any) => s + (sp.amount ?? 0), 0).toFixed(2)}</li>
+                                      )}
+                                    </ul>
+                                    <p className="text-xs text-amber-600 mt-1">
+                                      These will not be refunded when you cancel your registration.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Action buttons */}
                           <div className="flex gap-2">
                             <Button
@@ -1187,6 +1286,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 setCancelError(null);
                                 setIsCancelling(false);
                                 setDeleteSignUpCommitments(false);
+                                setDeleteFormResponses(false);
+                                setRefundAddOnPurchases(false);
                               }}
                             >
                               Keep Registration
@@ -1203,10 +1304,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               }}
                               onClick={async () => {
                                 try {
-                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments);
+                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments, 'DeleteFormResponses:', deleteFormResponses, 'RefundAddOnPurchases:', refundAddOnPurchases);
                                   setIsCancelling(true);
                                   setCancelError(null);
-                                  await eventsRepository.cancelRsvp(id, deleteSignUpCommitments);
+                                  await eventsRepository.cancelRsvp(id, {
+                                    deleteSignUpCommitments,
+                                    deleteFormResponses,
+                                    refundAddOnPurchases,
+                                  });
                                   console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
                                   window.location.reload();
                                 } catch (error: any) {
@@ -2251,7 +2356,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         onConfirm={async () => {
           try {
             console.log('[PaymentPending] Cancelling pending registration');
-            await eventsRepository.cancelRsvp(id, false);
+            await eventsRepository.cancelRsvp(id, {});
             console.log('[PaymentPending] Successfully cancelled - reloading page');
             window.location.reload();
           } catch (error: any) {

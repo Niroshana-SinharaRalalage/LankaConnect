@@ -1719,6 +1719,12 @@ export class EventsRepository {
     );
   }
 
+  async getMyAddOnPurchasesMine(eventId: string): Promise<import('../types/events.types').AddOnPurchaseDto[]> {
+    return await apiClient.get<import('../types/events.types').AddOnPurchaseDto[]>(
+      `${this.basePath}/${eventId}/add-ons/mine`
+    );
+  }
+
   async exportAddOnPurchases(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/add-ons/purchases/export?format=${format}`,

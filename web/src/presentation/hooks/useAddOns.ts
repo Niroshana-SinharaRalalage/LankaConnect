@@ -19,6 +19,7 @@ export const addOnKeys = {
   purchases: (eventId: string) => [...addOnKeys.all, 'purchases', eventId] as const,
   summary: (eventId: string) => [...addOnKeys.all, 'summary', eventId] as const,
   myPurchases: (eventId: string, email: string) => [...addOnKeys.all, 'myPurchases', eventId, email] as const,
+  mine: (eventId: string) => [...addOnKeys.all, 'mine', eventId] as const,
 };
 
 export function useAddOnDefinitions(eventId: string | undefined, enabled = true) {
@@ -91,6 +92,19 @@ export function useMyAddOnPurchases(eventId: string | undefined, email: string |
     queryFn: () => eventsRepository.getMyAddOnPurchases(eventId!, email!),
     enabled: !!eventId && !!email && enabled,
     staleTime: 30 * 1000, // 30 seconds — refresh more frequently after purchase
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Fetches the authenticated user's own add-on purchases for an event.
+ */
+export function useMyAddOnPurchasesMine(eventId: string | undefined, enabled = true) {
+  return useQuery<AddOnPurchaseDto[]>({
+    queryKey: addOnKeys.mine(eventId || ''),
+    queryFn: () => eventsRepository.getMyAddOnPurchasesMine(eventId!),
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 }

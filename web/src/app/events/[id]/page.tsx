@@ -43,6 +43,8 @@ import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/u
 import { usePublicCollectionSummary, useMyCollections } from '@/presentation/hooks/useCollections';
 // Sponsor Feature: Import sponsor hooks
 import { useMySponsors } from '@/presentation/hooks/useSponsors';
+// Add-On Feature: Import add-on hooks
+import { useMyAddOnPurchasesMine } from '@/presentation/hooks/useAddOns';
 // Multi-Album: Import album hooks and carousel
 import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
 import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
@@ -166,6 +168,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Sponsor Feature: My sponsors (logged-in user's own sponsorships for this event)
   const { data: mySponsors } = useMySponsors(
     isAuthenticated && event?.sponsorConfig?.isEnabled ? id : undefined
+  );
+
+  // Add-On Feature: My add-on purchases (logged-in user's own purchases for this event)
+  const { data: myAddOnPurchases } = useMyAddOnPurchasesMine(
+    isAuthenticated && event?.addOnConfig?.isEnabled ? id : undefined
   );
 
   // Multi-Album: Fetch published albums for event details carousel
@@ -1851,6 +1858,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <AddOnSelector
               eventId={id}
               addOnConfig={event.addOnConfig}
+              myAddOnPurchases={myAddOnPurchases}
             />
           </div>
         )}

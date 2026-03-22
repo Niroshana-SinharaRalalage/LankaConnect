@@ -9,6 +9,7 @@ using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
 using LankaConnect.Application.Events.Queries.GetMyAddOnPurchases;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,11 +25,18 @@ namespace LankaConnect.API.Controllers;
 [Produces("application/json")]
 public class AddOnsController : BaseController<AddOnsController>
 {
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
+
     public AddOnsController(
         IMediator mediator,
-        ILogger<AddOnsController> logger)
+        ILogger<AddOnsController> logger,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        IAddOnDefinitionRepository addOnDefinitionRepository)
         : base(mediator, logger)
     {
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _addOnDefinitionRepository = addOnDefinitionRepository;
     }
 
     // ──────────────────────────────────────────────
@@ -233,6 +241,64 @@ public class AddOnsController : BaseController<AddOnsController>
 
         var result = await Mediator.Send(new GetMyAddOnPurchasesQuery(eventId, email));
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's own add-on purchases for an event.
+    /// Returns individual purchase line items for the logged-in user.
+    /// Mirrors the /sponsors/mine pattern for consistent UX.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<AddOnPurchaseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyAddOns(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "GetMyAddOns: EventId={EventId}, UserId={UserId}", eventId, userId);
+
+        try
+        {
+            var purchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(userId, eventId);
+
+            // Build definition name lookup
+            var definitions = await _addOnDefinitionRepository.GetByEventIdAsync(eventId);
+            var definitionLookup = definitions.ToDictionary(d => d.Id, d => d.Name);
+
+            var purchaseDtos = purchases.Select(p => new AddOnPurchaseDto
+            {
+                Id = p.Id,
+                EventId = p.EventId,
+                AddOnDefinitionId = p.AddOnDefinitionId,
+                AddOnName = definitionLookup.TryGetValue(p.AddOnDefinitionId, out var name) ? name : "Unknown",
+                RegistrationId = p.RegistrationId,
+                BuyerUserId = p.BuyerUserId,
+                BuyerName = p.BuyerName,
+                BuyerEmail = p.BuyerEmail,
+                BuyerPhone = p.BuyerPhone,
+                Quantity = p.Quantity,
+                UnitPrice = p.UnitPrice.Amount,
+                TotalAmount = p.TotalAmount.Amount,
+                Currency = p.UnitPrice.Currency.ToString(),
+                Status = p.Status.ToString(),
+                CreatedAt = p.CreatedAt,
+                PaymentCompletedAt = p.PaymentCompletedAt
+            }).ToList();
+
+            Logger.LogInformation(
+                "GetMyAddOns: Found {Count} purchases for UserId={UserId}, EventId={EventId}",
+                purchaseDtos.Count, userId, eventId);
+
+            return Ok(purchaseDtos);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "GetMyAddOns FAILED: EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+            return StatusCode(500, new { Error = "Failed to retrieve your add-on purchases" });
+        }
     }
 
     // ──────────────────────────────────────────────

@@ -44,4 +44,13 @@ public interface IAddOnPurchaseRepository : IRepository<AddOnPurchase>
     Task<IReadOnlyList<AddOnPurchase>> GetExpiredPendingPurchasesAsync(
         DateTime cutoffTime,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all purchases for a specific buyer email and event (public lookup).
+    /// Returns completed and pending purchases so buyers can see their order status.
+    /// </summary>
+    Task<IReadOnlyList<AddOnPurchase>> GetByBuyerEmailAndEventIdAsync(
+        string buyerEmail,
+        Guid eventId,
+        CancellationToken cancellationToken = default);
 }

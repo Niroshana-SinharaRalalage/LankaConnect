@@ -8,6 +8,7 @@ using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
+using LankaConnect.Application.Events.Queries.GetMyAddOnPurchases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -203,6 +204,34 @@ public class AddOnsController : BaseController<AddOnsController>
             UserId: userId);
 
         var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Public buyer lookup
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets add-on purchases for a specific buyer email (public).
+    /// Allows buyers to see their purchase history on the event details page.
+    /// Only returns Completed and Pending purchases.
+    /// </summary>
+    [HttpGet("my-purchases")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<AddOnPurchaseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetMyAddOnPurchases(Guid eventId, [FromQuery] string email)
+    {
+        Logger.LogInformation(
+            "GetMyAddOnPurchases: EventId={EventId}, BuyerEmail={BuyerEmail}",
+            eventId, email);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new { Error = "Email parameter is required" });
+        }
+
+        var result = await Mediator.Send(new GetMyAddOnPurchasesQuery(eventId, email));
         return HandleResult(result);
     }
 

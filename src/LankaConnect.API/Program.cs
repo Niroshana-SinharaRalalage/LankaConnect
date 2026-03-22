@@ -487,6 +487,16 @@ try
                 TimeZone = TimeZoneInfo.Utc
             });
 
+        // Cleanup Abandoned Add-On Purchases Job - Runs hourly to mark expired Pending add-on purchases as Abandoned and restore stock
+        recurringJobManager.AddOrUpdate<CleanupAbandonedAddOnPurchasesJob>(
+            "cleanup-abandoned-addon-purchases-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
         logger.LogInformation("Hangfire recurring jobs registered successfully");
     }
 

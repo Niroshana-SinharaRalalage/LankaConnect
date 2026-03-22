@@ -405,4 +405,53 @@ public class AddOnPurchaseRepository : Repository<AddOnPurchase>, IAddOnPurchase
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AddOnPurchase>> GetByBuyerEmailAndEventIdAsync(
+        string buyerEmail,
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetByBuyerEmailAndEventId"))
+        using (LogContext.PushProperty("EntityType", "AddOnPurchase"))
+        using (LogContext.PushProperty("BuyerEmail", buyerEmail))
+        using (LogContext.PushProperty("EventId", eventId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetByBuyerEmailAndEventIdAsync START: BuyerEmail={BuyerEmail}, EventId={EventId}",
+                buyerEmail, eventId);
+
+            try
+            {
+                var normalizedEmail = buyerEmail.Trim().ToLowerInvariant();
+
+                var purchases = await _dbSet
+                    .AsNoTracking()
+                    .Where(p => p.BuyerEmail == normalizedEmail && p.EventId == eventId
+                                && (p.Status == AddOnPurchaseStatus.Completed || p.Status == AddOnPurchaseStatus.Pending))
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByBuyerEmailAndEventIdAsync COMPLETE: BuyerEmail={BuyerEmail}, EventId={EventId}, Count={Count}, Duration={ElapsedMs}ms",
+                    buyerEmail, eventId, purchases.Count, stopwatch.ElapsedMilliseconds);
+
+                return purchases;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByBuyerEmailAndEventIdAsync FAILED: BuyerEmail={BuyerEmail}, EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    buyerEmail, eventId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
+    }
 }

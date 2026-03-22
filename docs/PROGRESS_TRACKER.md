@@ -1,7 +1,35 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-21 - Free add-on support verified on staging*
+*Last Updated: 2026-03-21 - Critical DB fix + Free add-on owned entity fix*
 
-## 🎯 Current Session Status - Free Add-On Support (2026-03-21)
+## 🎯 Current Session Status (2026-03-21)
+
+### Fix: PostgreSQL "column id does not exist" — Financial Tables Id Column Casing (commit `d6ef4433`)
+
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
+
+**Classification**: Database/Infrastructure Bug — Raw SQL used lowercase `id` but DB column was PascalCase `"Id"`
+
+**Root Cause**: Migration `AddCollectionsSponsorAddOnsTables` created 4 tables with PascalCase `"Id"` column (EF Core default). The 4 entity configs were missing `.HasColumnName("id")`. Raw SQL in `TryReserveStockAsync` used lowercase `id` which PostgreSQL couldn't find.
+
+**Fix** (4 config files + 1 EF migration):
+- Added `.HasColumnName("id")` to AddOnDefinition, AddOnPurchase, Collection, Sponsor configs
+- Migration renames `"Id"` → `id` in all 4 tables
+
+**API Verification**: Paid add-on purchase ✅ (Stripe checkout URL) | Free add-on purchase ✅ (success URL)
+
+### Fix: Free Add-On EF Core Owned Entity Error (commit `0c97b6dc`)
+
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
+
+**Classification**: Application Layer Bug — EF Core owned entities cannot share object references
+
+**Root Cause**: `Money.Zero()` was called once and passed to all 3 revenue breakdown fields. EF Core requires each owned entity to be a distinct instance.
+
+**Fix**: Call `Money.Zero()` 3 times to create 3 separate instances.
+
+---
+
+## Previous Session - Free Add-On Support (2026-03-21)
 
 ### Fix: Allow Free Add-Ons ($0 Price) — Backend Domain Fix (2026-03-20, commits `c07fc125`, `60d91e0b`)
 

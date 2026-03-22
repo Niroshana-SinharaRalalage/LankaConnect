@@ -7,12 +7,12 @@
 
 ---
 
-## ✅ PREVIOUS STATUS - FREE ADD-ON SUPPORT (2026-03-21)
-**Date**: 2026-03-20 → 2026-03-21
-**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass
-**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (backend `60d91e0b`, frontend `1e145014`)
-**Fix**: Domain: `<= 0` → `< 0` in AddOnDefinition + AddOnPurchase. Handler: free add-on bypass skips Stripe, immediately completes. Frontend: free checkbox, "Free" badge, item details on manage page.
-**API Verification**: POST create (price=0) ✅ | PUT update (price=0) ✅ | GET list (shows free items) ✅ | All 1,888 tests pass ✅
+## ✅ PREVIOUS STATUS - DB ID COLUMN FIX + FREE ADD-ON FIXES (2026-03-21)
+**Date**: 2026-03-21
+**Session**: Fix critical DB column casing bug + free add-on owned entity bug + UX improvements
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commits `d6ef4433`, `0c97b6dc`, `23e0dadd`, `44d334f6`)
+**Fixes**: (1) PostgreSQL "column id does not exist" — 4 financial tables had PascalCase `"Id"` but raw SQL used lowercase `id`. (2) Free add-on `Money.Zero()` shared instance caused EF Core owned entity error. (3) Public page: "Free"/"Get Free"/"Get Now" for $0 items. (4) Manage page: tabular add-on items.
+**API Verification**: Paid purchase → Stripe URL ✅ | Free purchase → success URL ✅ | All 1,888 tests pass ✅
 
 ---
 

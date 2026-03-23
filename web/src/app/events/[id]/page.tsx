@@ -720,76 +720,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
               {/* Quick Navigation Bar — anchor links to sections below */}
               <div className="flex flex-wrap gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('registration')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  Register
-                </button>
-
-                {event?.donationConfig?.isEnabled === true && (
+                {[
+                  { id: 'registration', label: 'Register', icon: <Users className="h-3.5 w-3.5" />, show: true },
+                  { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
+                  { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
+                  { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
+                  { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
+                  { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
+                  { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
+                ].filter(btn => btn.show).map(btn => (
                   <button
+                    key={btn.id}
                     type="button"
-                    onClick={() => document.getElementById('donations')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 transition-colors"
+                    onClick={() => document.getElementById(btn.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border text-neutral-700 bg-white hover:text-white hover:border-transparent transition-colors"
+                    style={{ borderColor: '#FF7900' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FF7900'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = ''; }}
                   >
-                    <Heart className="h-3.5 w-3.5" />
-                    Donate
+                    {btn.icon}
+                    {btn.label}
                   </button>
-                )}
-
-                {event?.collectionConfig?.isEnabled === true && (
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('collections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                  >
-                    <Wallet className="h-3.5 w-3.5" />
-                    Contribute
-                  </button>
-                )}
-
-                {event?.sponsorConfig?.isEnabled === true && (
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('sponsors')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                  >
-                    <Award className="h-3.5 w-3.5" />
-                    Sponsor
-                  </button>
-                )}
-
-                {event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true && (
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('add-ons')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
-                  >
-                    <ShoppingBag className="h-3.5 w-3.5" />
-                    Add-Ons
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('signup-lists')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
-                >
-                  <List className="h-3.5 w-3.5" />
-                  Signup Lists
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('signup-forms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
-                >
-                  <ClipboardList className="h-3.5 w-3.5" />
-                  Signup Forms
-                </button>
+                ))}
               </div>
 
               <div

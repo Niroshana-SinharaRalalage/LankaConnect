@@ -7,6 +7,14 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - CANCELLATION FLOW ENHANCEMENTS (2026-03-22)
+**Date**: 2026-03-22
+**Session**: Cancellation flow enhancements — form deletion, add-on refunds, non-refundable disclaimers
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commit `5ff0fc87`)
+**Changes**: (1) Non-refundable disclaimers on Donation/Collection/Sponsor forms + amounts breakdown in cancel dialog, (2) Opt-in form response deletion during cancellation (new `GetByEventAndUserAsync` repo method, non-blocking handler logic), (3) Opt-in add-on purchase refund during cancellation (new `AddOnRefundService` — Stripe refund + domain transition + stock restore, partial failure tolerant). Frontend: 3 new checkboxes in cancel dialog, `cancelRsvp()` uses options object pattern. All opt-in, non-blocking (failures logged but don't prevent registration cancellation).
+
+---
+
 ## ✅ PREVIOUS STATUS - YOUR ADD-ONS AUTH-BASED DISPLAY FIX (2026-03-22)
 **Date**: 2026-03-22
 **Session**: Fix "My Add-Ons" to use auth-based /mine endpoint (like "Your Sponsorships")

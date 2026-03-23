@@ -1,9 +1,52 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-22 - Fix "Your Add-Ons" auth-based display (like "Your Sponsorships")*
+*Last Updated: 2026-03-22 - Cancellation flow enhancements (form deletion, add-on refunds, non-refundable disclaimers)*
 
 ## 🎯 Current Session Status (2026-03-22)
 
-### Fix: Replace Email-Based Add-On Lookup with Auth-Based /mine Endpoint (commit `485dd1ab`)
+### Cancellation Flow Enhancements (commit `5ff0fc87`)
+
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
+
+**Classification**: Feature Enhancement — 3 cancellation flow improvements
+
+**Changes** (14 files: 7 backend, 7 frontend):
+
+**Phase 1 — Non-refundable messaging:**
+| File | Change |
+|------|--------|
+| `DonationSection.tsx` | Added non-refundable disclaimer above submit button |
+| `CollectionSection.tsx` | Added non-refundable disclaimer above submit button |
+| `SponsorSection.tsx` | Added non-refundable disclaimer for money sponsorships |
+| `page.tsx` | Added non-refundable amounts breakdown (donations + contributions + sponsorships) in cancellation dialog |
+
+**Phase 2 — Sign-up form deletion on cancellation:**
+| File | Change |
+|------|--------|
+| `CancelRsvpCommand.cs` | Added `DeleteFormResponses` parameter |
+| `IFormResponseRepository.cs` | Added `GetByEventAndUserAsync` method |
+| `FormResponseRepository.cs` | Implemented `GetByEventAndUserAsync` with tracking + logging |
+| `CancelRsvpCommandHandler.cs` | Added form response deletion block (non-blocking try-catch) |
+| `EventsController.cs` | Added `deleteFormResponses` query parameter |
+| `events.repository.ts` | Updated `cancelRsvp()` to use options object with all 3 params |
+| `page.tsx` | Added "Delete my form submissions" checkbox |
+
+**Phase 3 — Add-on purchase refund on cancellation:**
+| File | Change |
+|------|--------|
+| `IAddOnRefundService.cs` | New service interface for add-on refund orchestration |
+| `AddOnRefundService.cs` | New service: Stripe refund → MarkAsRefunded → TryRestoreStock (partial failure tolerant) |
+| `DependencyInjection.cs` | Registered `IAddOnRefundService` as scoped |
+| `CancelRsvpCommandHandler.cs` | Added add-on refund block (non-blocking try-catch) |
+| `EventsController.cs` | Added `refundAddOnPurchases` query parameter |
+| `page.tsx` | Added "Refund my add-on purchases ($X.XX)" checkbox |
+
+**API Verification**:
+- ✅ `DELETE /events/{id}/rsvp?deleteFormResponses=false&refundAddOnPurchases=false` with dummy ID → 400 "Event not found" (params accepted)
+- ✅ Backend deploys clean, frontend deploys clean
+
+---
+
+### Previous: Fix "Your Add-Ons" Auth-Based Display (commit `485dd1ab`)
 
 **Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
 

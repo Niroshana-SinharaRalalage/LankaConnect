@@ -8,7 +8,6 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
@@ -130,18 +129,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
   const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
 
-  // Phase 6A.113: Detect URL hash for tab navigation (e.g., #signup-forms from email links)
-  const [activeTab, setActiveTab] = useState<string>('signup-lists');
-
-  useEffect(() => {
-    // Check URL hash on mount (e.g., /events/123#signup-forms)
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.substring(1); // Remove #
-      if (hash === 'signup-forms' || hash === 'signup-lists') {
-        setActiveTab(hash);
-      }
-    }
-  }, []);
+  // Phase 6A.113: Tab navigation removed — signup lists and forms are now separate
+  // CollapsibleSections with id anchors. Hash-based scrolling handled by the
+  // existing useEffect at line ~318 (scrolls to any element by id from URL hash).
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -728,6 +718,80 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <RegistrationBadge registrationStatus={registrationDetails?.status as any} compact={false} />
               </div>
 
+              {/* Quick Navigation Bar — anchor links to sections below */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('registration')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Register
+                </button>
+
+                {event?.donationConfig?.isEnabled === true && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('donations')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100 transition-colors"
+                  >
+                    <Heart className="h-3.5 w-3.5" />
+                    Donate
+                  </button>
+                )}
+
+                {event?.collectionConfig?.isEnabled === true && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('collections')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  >
+                    <Wallet className="h-3.5 w-3.5" />
+                    Contribute
+                  </button>
+                )}
+
+                {event?.sponsorConfig?.isEnabled === true && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('sponsors')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <Award className="h-3.5 w-3.5" />
+                    Sponsor
+                  </button>
+                )}
+
+                {event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('add-ons')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    Add-Ons
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('signup-lists')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                >
+                  <List className="h-3.5 w-3.5" />
+                  Signup Lists
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('signup-forms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Signup Forms
+                </button>
+              </div>
+
               <div
                 className="prose prose-lg max-w-none text-neutral-600 leading-relaxed prose-a:text-orange-600 prose-a:underline hover:prose-a:text-orange-700"
                 dangerouslySetInnerHTML={{
@@ -859,7 +923,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
 
         {/* Registration Section — outside Event Details card */}
-        <div className="mt-8">
+        <div id="registration" className="mt-8">
           <CollapsibleSection
             title={isCancelled
                 ? 'Event Cancelled'
@@ -1932,7 +1996,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Donation Feature: Combined Section (summary + donate form + your donations) */}
         {event?.donationConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="donations" className="mt-8">
             <DonationSection
               eventId={id}
               donationConfig={event.donationConfig}
@@ -1944,7 +2008,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Collection Feature: Public contribution form with goal progress */}
         {event?.collectionConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="collections" className="mt-8">
             <CollectionSection
               eventId={id}
               collectionConfig={event.collectionConfig}
@@ -1956,7 +2020,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Sponsor Feature: Public sponsor form (money via Stripe + item submissions) */}
         {event?.sponsorConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="sponsors" className="mt-8">
             <SponsorSection
               eventId={id}
               sponsorConfig={event.sponsorConfig}
@@ -1967,7 +2031,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Add-On Feature: Purchasable items with stock levels */}
         {event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true && (
-          <div className="mt-8">
+          <div id="add-ons" className="mt-8">
             <AddOnSelector
               eventId={id}
               addOnConfig={event.addOnConfig}
@@ -2111,131 +2175,126 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 7.X: Signup Lists & Forms Tabbed Interface */}
-        {/* Issue #4 Fix: Add id="sign-ups" anchor for newsletter link navigation */}
-        <div id="sign-ups" className="mt-8">
-          <TabPanel
-            tabs={[
-              {
-                id: 'signup-lists',
-                label: 'Signup Lists',
-                icon: List,
-                content: (
-                  <SignUpManagementSection
-                    eventId={id}
-                    userId={user?.userId}
-                    isOrganizer={false}
-                  />
-                ),
-              },
-              {
-                id: 'signup-forms',
-                label: 'Signup Forms',
-                icon: ClipboardList,
-                content: !isLoadingForms && activeForms.length > 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                      Fill out forms to provide additional information for this event
-                    </p>
-                    {activeForms.map((form) => {
-                      // Phase 6A.128b Fix: For authenticated users, API is the single source of truth.
-                      // localStorage token is ONLY used for anonymous users (no JWT to identify them).
-                      // Previous bug: stale localStorage tokens caused "You already responded" to persist
-                      // even after the response was deleted from the database.
-                      const storageKey = `form_response_token_${id}_${form.id}`;
-                      const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
-                      const userResponse = userFormResponses[form.id];
-                      const hasUserResponse = userResponse !== null && userResponse !== undefined;
-                      const hasResponded = isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
+        {/* Signup Lists Section — CollapsibleSection (replaces old TabPanel) */}
+        {/* Backward compat: hidden anchor for email links using #sign-ups */}
+        <div id="sign-ups" className="sr-only" aria-hidden="true" />
+        <div id="signup-lists" className="mt-8">
+          <CollapsibleSection
+            title="Signup Lists"
+            icon={<List className="h-5 w-5 text-indigo-600" />}
+            defaultOpen={false}
+          >
+            <SignUpManagementSection
+              eventId={id}
+              userId={user?.userId}
+              isOrganizer={false}
+            />
+          </CollapsibleSection>
+        </div>
 
-                      const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
-                      const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+        {/* Signup Forms Section — CollapsibleSection */}
+        <div id="signup-forms" className="mt-8">
+          <CollapsibleSection
+            title="Signup Forms"
+            description="Fill out forms to provide additional information for this event"
+            icon={<ClipboardList className="h-5 w-5 text-violet-600" />}
+            defaultOpen={false}
+          >
+            {!isLoadingForms && activeForms.length > 0 ? (
+              <div className="space-y-4">
+                {activeForms.map((form) => {
+                  // Phase 6A.128b Fix: For authenticated users, API is the single source of truth.
+                  const storageKey = `form_response_token_${id}_${form.id}`;
+                  const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
+                  const userResponse = userFormResponses[form.id];
+                  const hasUserResponse = userResponse !== null && userResponse !== undefined;
+                  const hasResponded = isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
 
-                      return (
-                        <Card key={form.id} className="border border-gray-200">
-                          <CardContent className="pt-6">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                  {form.title}
-                                </h3>
-                                {form.description && (
-                                  <p className="text-sm text-gray-600 mb-3">
-                                    {form.description}
-                                  </p>
-                                )}
-                                <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                                  {hasResponded && (
-                                    <span className="flex items-center gap-1 text-green-600 font-medium">
-                                      <CheckCircle className="h-4 w-4" />
-                                      You already responded
-                                    </span>
-                                  )}
-                                  {form.responseCount > 0 && (
-                                    <span className="flex items-center gap-1">
-                                      <Users className="h-4 w-4" />
-                                      {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
-                                    </span>
-                                  )}
-                                  {form.responseDeadline && (
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
-                                      Due: {new Date(form.responseDeadline).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                  {form.maxResponses != null && form.maxResponses > 0 && (
-                                    <span className="flex items-center gap-1 text-orange-600">
-                                      <AlertCircle className="h-4 w-4" />
-                                      {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex-shrink-0 flex gap-2">
-                                <Button
-                                  onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
-                                  disabled={isFormFull || isDeadlinePassed}
-                                  variant={hasResponded ? 'outline' : 'default'}
-                                  className="w-full sm:w-auto"
-                                >
-                                  {isFormFull
-                                    ? 'Form Full'
-                                    : isDeadlinePassed
-                                    ? 'Deadline Passed'
-                                    : hasResponded
-                                    ? 'Edit Your Response'
-                                    : 'Fill Out Form'}
-                                </Button>
-                                {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
-                                {hasResponded && !isFormFull && !isDeadlinePassed && (
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setDeletingFormId(form.id);
-                                      setShowFormDeleteConfirm(true);
-                                    }}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete response</span>
-                                  </Button>
-                                )}
-                              </div>
+                  const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
+                  const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+
+                  return (
+                    <Card key={form.id} className="border border-gray-200">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {form.title}
+                            </h3>
+                            {form.description && (
+                              <p className="text-sm text-gray-600 mb-3">
+                                {form.description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                              {hasResponded && (
+                                <span className="flex items-center gap-1 text-green-600 font-medium">
+                                  <CheckCircle className="h-4 w-4" />
+                                  You already responded
+                                </span>
+                              )}
+                              {form.responseCount > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-4 w-4" />
+                                  {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {form.responseDeadline && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Due: {new Date(form.responseDeadline).toLocaleDateString()}
+                                </span>
+                              )}
+                              {form.maxResponses != null && form.maxResponses > 0 && (
+                                <span className="flex items-center gap-1 text-orange-600">
+                                  <AlertCircle className="h-4 w-4" />
+                                  {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
+                                </span>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>No signup forms available for this event yet.</p>
-                  </div>
-                ),
-              },
-            ]}
-            defaultTab={activeTab}
-          />
+                          </div>
+                          <div className="flex-shrink-0 flex gap-2">
+                            <Button
+                              onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
+                              disabled={isFormFull || isDeadlinePassed}
+                              variant={hasResponded ? 'outline' : 'default'}
+                              className="w-full sm:w-auto"
+                            >
+                              {isFormFull
+                                ? 'Form Full'
+                                : isDeadlinePassed
+                                ? 'Deadline Passed'
+                                : hasResponded
+                                ? 'Edit Your Response'
+                                : 'Fill Out Form'}
+                            </Button>
+                            {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
+                            {hasResponded && !isFormFull && !isDeadlinePassed && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setDeletingFormId(form.id);
+                                  setShowFormDeleteConfirm(true);
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete response</span>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No signup forms available for this event yet.</p>
+              </div>
+            )}
+          </CollapsibleSection>
         </div>
       </div>
 

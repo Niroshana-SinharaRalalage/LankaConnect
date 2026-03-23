@@ -8,6 +8,7 @@ namespace LankaConnect.Domain.Events.DomainEvents;
 /// - Sending refund completion confirmation email to user
 /// - Notifying event organizer that refund is complete
 /// - Updating any financial reports or dashboards
+/// Phase 6A.135: Added AddOnRefundAmount so completion email shows combined total.
 /// </summary>
 public record RefundCompletedEvent(
     Guid EventId,
@@ -16,7 +17,8 @@ public record RefundCompletedEvent(
     string ContactEmail,
     string StripeRefundId,
     decimal RefundAmount,
-    DateTime RefundCompletedAt
+    DateTime RefundCompletedAt,
+    decimal AddOnRefundAmount = 0m
 ) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;

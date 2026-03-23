@@ -58,6 +58,13 @@ public class Registration : BaseEntity
     public DateTime? RefundCompletedAt { get; private set; }
 
     /// <summary>
+    /// Phase 6A.135: Add-on refund amount persisted during RequestRefund so that
+    /// CompleteRefund (triggered by Stripe webhook) can include it in RefundCompletedEvent.
+    /// Without persistence, the webhook handler has no way to know the add-on amount.
+    /// </summary>
+    public decimal? AddOnRefundAmount { get; private set; }
+
+    /// <summary>
     /// Stripe Refund ID returned by Stripe when refund is processed.
     /// Used for reconciliation and customer support.
     /// </summary>
@@ -472,6 +479,8 @@ public class Registration : BaseEntity
         // State transition: Confirmed → RefundRequested
         Status = RegistrationStatus.RefundRequested;
         RefundRequestedAt = DateTime.UtcNow;
+        // Phase 6A.135: Persist add-on refund amount so CompleteRefund (webhook) can include it
+        AddOnRefundAmount = additionalRefundAmount > 0 ? additionalRefundAmount : null;
         MarkAsUpdated();
 
         // Raise domain event for email notification
@@ -560,6 +569,7 @@ public class Registration : BaseEntity
         MarkAsUpdated();
 
         // Raise domain event for email notification
+        // Phase 6A.135: Include persisted AddOnRefundAmount so completion email shows combined total
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
         RaiseDomainEvent(new RefundCompletedEvent(
             EventId,
@@ -568,7 +578,8 @@ public class Registration : BaseEntity
             contactEmail,
             stripeRefundId,
             TotalPrice?.Amount ?? 0m,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            AddOnRefundAmount ?? 0m));
 
         return Result.Success();
     }

@@ -99,10 +99,13 @@ public class AddOnRefundService : IAddOnRefundService
                         }
 
                         // Step 2a: Call Stripe refund
+                        // Phase 6A.135: Use purchase.Id as RegistrationId so the idempotency key
+                        // ($"refund_{PaymentIntentId}") is unique per PaymentIntent.
+                        // Previously RegistrationId=Guid.Empty caused global idempotency collision.
                         var refundRequest = new CreateRefundRequest
                         {
                             PaymentIntentId = purchase.StripePaymentIntentId!,
-                            RegistrationId = Guid.Empty, // Not a registration refund
+                            RegistrationId = purchase.Id, // Use purchase ID for metadata tracking
                             AmountInCents = null, // Full refund
                             Reason = reason,
                             Metadata = new Dictionary<string, string>(metadata)

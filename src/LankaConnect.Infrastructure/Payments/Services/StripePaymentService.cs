@@ -329,10 +329,12 @@ public class StripePaymentService : IStripePaymentService
                 refundOptions.Amount = request.AmountInCents.Value;
             }
 
-            // Use RegistrationId as idempotency key to prevent duplicate refunds
+            // Phase 6A.135: Use PaymentIntentId as idempotency key to prevent duplicate refunds.
+            // Previously used RegistrationId which caused ALL add-on refunds (RegistrationId=Guid.Empty)
+            // to share the same idempotency key, silently deduplicating at the Stripe API level.
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"refund_{request.RegistrationId}"
+                IdempotencyKey = $"refund_{request.PaymentIntentId}"
             };
 
             // Phase 6A.94: Log just before Stripe API call

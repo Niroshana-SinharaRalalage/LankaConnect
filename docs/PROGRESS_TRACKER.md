@@ -1,9 +1,41 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-22 - Cancellation flow enhancements (form deletion, add-on refunds, non-refundable disclaimers)*
+*Last Updated: 2026-03-23 - Fix refund email amount + partial failure feedback*
 
-## 🎯 Current Session Status (2026-03-22)
+## 🎯 Current Session Status (2026-03-23)
 
-### Cancellation Flow Enhancements (commit `5ff0fc87`)
+### Fix: Refund Email Amount + Cancellation Partial Failure Feedback (commit `09b40093`)
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Classification**: Bug Fix + Enhancement — Refund email missing add-on amounts + silent failure on cancellation optional actions
+
+**Root Cause (Fix A)**: `Registration.RequestRefund()` raised `RefundRequestedEvent` with only `TotalPrice.Amount` (ticket price). Add-on refunds happened AFTER in separate try-catch and raised no domain events. Email showed only ticket price.
+
+**Fix A — Refund email includes add-on refund total** (9 backend files):
+| File | Change |
+|------|--------|
+| `RefundRequestedEvent.cs` | Added `AddOnRefundAmount` field (default 0m) |
+| `Registration.cs` | `RequestRefund()` accepts `additionalRefundAmount`, includes in domain event |
+| `IRegistrationRefundService.cs` | Added `additionalRefundAmount` parameter |
+| `RegistrationRefundService.cs` | Passes `additionalRefundAmount` through to `RequestRefund()` |
+| `CancelRsvpCommandHandler.cs` | Reordered: add-on refunds run BEFORE registration refund; passes total to `ProcessRefundAsync` |
+| `RefundRequestedEventHandler.cs` | Calculates `totalRefundAmount = RefundAmount + AddOnRefundAmount` for email |
+| `EventCancellationEmailJob.cs` | Explicit `additionalRefundAmount: 0m` for event-level cancellations |
+| `EventCancellationEmailJobAutoRefundTests.cs` | Updated mock setups for new parameter |
+| `EventsControllerSecurityTests.cs` | Updated mock for new `Result<CancelRsvpResult>` return type |
+
+**Fix B — Cancellation returns structured result with partial failure details** (4 backend + 3 frontend files):
+| File | Change |
+|------|--------|
+| `CancelRsvpCommand.cs` | Changed from `ICommand` to `ICommand<CancelRsvpResult>` with result record |
+| `CancelRsvpCommandHandler.cs` | Returns `Result<CancelRsvpResult>` tracking each optional action's success/failure + warnings |
+| `events.types.ts` | Added `CancelRsvpResult` TypeScript interface |
+| `events.repository.ts` | `cancelRsvp()` returns `CancelRsvpResult | null` |
+| `page.tsx` | Shows alert with warnings before page reload on partial failures |
+
+---
+
+### Previous: Cancellation Flow Enhancements (commit `5ff0fc87`)
 
 **Status**: ✅ **DEPLOYED & VERIFIED ON STAGING**
 

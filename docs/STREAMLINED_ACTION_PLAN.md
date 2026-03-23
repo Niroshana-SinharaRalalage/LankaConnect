@@ -7,6 +7,15 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - REFUND EMAIL FIX + PARTIAL FAILURE FEEDBACK (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Fix refund email showing only ticket price (missing add-on refund amounts) + return partial failure details to frontend
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `09b40093`)
+**Fix A (Bug)**: Refund email now includes add-on refund total. Added `AddOnRefundAmount` to `RefundRequestedEvent`, `additionalRefundAmount` parameter through `RequestRefund()` → `ProcessRefundAsync()` → `RefundRequestedEventHandler` chain. Reordered `CancelRsvpCommandHandler` to process add-on refunds BEFORE registration refund.
+**Fix B (Enhancement)**: `CancelRsvpCommand` changed from `ICommand` to `ICommand<CancelRsvpResult>`. Returns structured result with success/failure status for each optional action + warnings list. Frontend shows alert with warnings before page reload.
+
+---
+
 ## ✅ PREVIOUS STATUS - CANCELLATION FLOW ENHANCEMENTS (2026-03-22)
 **Date**: 2026-03-22
 **Session**: Cancellation flow enhancements — form deletion, add-on refunds, non-refundable disclaimers

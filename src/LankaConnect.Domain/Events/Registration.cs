@@ -188,13 +188,8 @@ public class Registration : BaseEntity
 
         registration._attendees.AddRange(attendeeList);
 
-        // Phase 6A.81 DIAGNOSTIC: Log registration creation (debugging EF Core default value issue)
-        // This log should show Status=Preliminary for paid events BEFORE database save
-        Console.WriteLine(
-            $"[Registration.CreateWithAttendees] Created registration: " +
-            $"Id={registration.Id}, Status={registration.Status} (int: {(int)registration.Status}), " +
-            $"PaymentStatus={registration.PaymentStatus}, isPaidEvent={isPaidEvent}, " +
-            $"TotalPrice={totalPrice?.Amount}, ExpiresAt={expiresAt?.ToString("o") ?? "null"}");
+        // Phase 6A.136: Removed Console.WriteLine diagnostic logging from domain entity.
+        // Registration creation is traced via structured logging in the command handler.
 
         return Result<Registration>.Success(registration);
     }
@@ -261,9 +256,6 @@ public class Registration : BaseEntity
         // Already confirmed - no action needed
         if (Status == RegistrationStatus.Confirmed)
         {
-            Console.WriteLine(
-                $"[Registration.Confirm] Registration already confirmed. " +
-                $"RegistrationId={Id}, EventId={EventId}");
             return Result.Success();
         }
 
@@ -274,22 +266,11 @@ public class Registration : BaseEntity
         // 3. It bypasses the Three-State Lifecycle (Preliminary → Confirmed via CompletePayment)
         if (PaymentStatus == PaymentStatus.Pending)
         {
-            Console.WriteLine(
-                $"[Registration.Confirm] BLOCKED: Cannot confirm with PaymentStatus=Pending. " +
-                $"RegistrationId={Id}, EventId={EventId}, CurrentStatus={Status}. " +
-                $"Use CompletePayment() for paid events.");
-
             return Result.Failure(
                 $"Cannot confirm registration with PaymentStatus=Pending. " +
                 $"For paid events, use CompletePayment() after payment succeeds via Stripe webhook. " +
                 $"RegistrationId={Id}, EventId={EventId}");
         }
-
-        // Log successful confirmation
-        Console.WriteLine(
-            $"[Registration.Confirm] Confirming registration. " +
-            $"RegistrationId={Id}, EventId={EventId}, " +
-            $"FromStatus={Status}, PaymentStatus={PaymentStatus}");
 
         Status = RegistrationStatus.Confirmed;
         MarkAsUpdated();

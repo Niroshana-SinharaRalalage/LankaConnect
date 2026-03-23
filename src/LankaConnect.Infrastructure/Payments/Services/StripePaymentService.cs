@@ -514,7 +514,9 @@ public class StripePaymentService : IStripePaymentService
     {
         // For zero-decimal currencies (e.g., JPY), don't multiply by 100
         // For now, we only support USD and LKR which are both 2-decimal currencies
-        return (long)(amount * 100);
+        // Phase 6A.136: Use Math.Round to prevent fractional cent truncation.
+        // (long) cast truncates: (long)(19.994999 * 100) = 1999 instead of 2000.
+        return (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
     }
 
     /// <summary>

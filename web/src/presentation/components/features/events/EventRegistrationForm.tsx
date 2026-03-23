@@ -684,24 +684,33 @@ export function EventRegistrationForm({
             </div>
           )}
 
-          {/* Add-On Feature: Show add-on items in price breakdown */}
+          {/* Phase 6A.136: Registration checkout total — ticket + donation only.
+              Add-ons are purchased separately after registration completes. */}
+          <div className="flex justify-between items-center border-t pt-3">
+            <span className="text-base font-medium text-neutral-700">Total</span>
+            <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
+              ${(totalPrice + (donationAmount || 0)).toFixed(2)}
+            </span>
+          </div>
+
+          {/* Add-On Feature: Show add-on items separately with explanation */}
           {addOnSelections.length > 0 && (
-            <div className="border-t pt-2 mb-2 space-y-1">
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+              <p className="text-xs font-medium text-blue-700">
+                Add-ons will be purchased separately after registration:
+              </p>
               {addOnSelections.map((s) => (
-                <div key={s.definitionId} className="flex justify-between items-center text-sm text-neutral-600">
+                <div key={s.definitionId} className="flex justify-between items-center text-sm text-blue-600">
                   <span>{s.name} x{s.quantity}</span>
                   <span>${(s.unitPrice * s.quantity).toFixed(2)}</span>
                 </div>
               ))}
+              <div className="flex justify-between items-center text-sm font-medium text-blue-700 border-t border-blue-200 pt-1">
+                <span>Add-ons subtotal</span>
+                <span>${addOnTotal.toFixed(2)}</span>
+              </div>
             </div>
           )}
-
-          <div className="flex justify-between items-center border-t pt-3">
-            <span className="text-base font-medium text-neutral-700">Total</span>
-            <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${(totalPrice + (donationAmount || 0) + addOnTotal).toFixed(2)}
-            </span>
-          </div>
         </div>
       )}
 

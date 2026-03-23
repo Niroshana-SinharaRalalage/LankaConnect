@@ -243,6 +243,17 @@ public class PaymentsController : ControllerBase
             HttpContext.Request.ContentType,
             HttpContext.Request.ContentLength);
 
+        // Phase 6A.136: Reject oversized webhook bodies before reading into memory.
+        // Stripe webhooks are typically < 10KB. This prevents DoS via large payloads.
+        const long maxWebhookBodySize = 65536; // 64KB
+        if (HttpContext.Request.ContentLength > maxWebhookBodySize)
+        {
+            _logger.LogWarning(
+                "[Phase 6A.136] Webhook body too large: ContentLength={ContentLength}, MaxAllowed={MaxAllowed}",
+                HttpContext.Request.ContentLength, maxWebhookBodySize);
+            return BadRequest("Webhook body too large");
+        }
+
         var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
         var signatureHeader = Request.Headers["Stripe-Signature"].ToString();
 

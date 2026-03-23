@@ -443,7 +443,7 @@ public class Registration : BaseEntity
     /// - Cannot request refund after event has started (validated in command handler)
     /// - Raises RefundRequestedEvent for email notification
     /// </summary>
-    public Result RequestRefund()
+    public Result RequestRefund(decimal additionalRefundAmount = 0m)
     {
         // Validation: Must be Confirmed status
         if (Status != RegistrationStatus.Confirmed)
@@ -483,7 +483,8 @@ public class Registration : BaseEntity
             contactEmail,
             StripePaymentIntentId,
             TotalPrice?.Amount ?? 0m,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            additionalRefundAmount));
 
         return Result.Success();
     }

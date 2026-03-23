@@ -64,6 +64,8 @@ import type {
   UpdateFormResponseRequest,
   // Phase 6A.133: Co-Organizer Management
   UserSearchResultDto,
+  // Cancellation result
+  CancelRsvpResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -369,13 +371,13 @@ export class EventsRepository {
       deleteFormResponses?: boolean;
       refundAddOnPurchases?: boolean;
     } = {}
-  ): Promise<void> {
+  ): Promise<CancelRsvpResult | null> {
     const params = new URLSearchParams();
     if (options.deleteSignUpCommitments) params.append('deleteSignUpCommitments', 'true');
     if (options.deleteFormResponses) params.append('deleteFormResponses', 'true');
     if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
     const queryString = params.toString();
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
+    return await apiClient.delete<CancelRsvpResult | null>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }
 
   /**

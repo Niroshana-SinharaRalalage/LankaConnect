@@ -40,6 +40,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount = 0m,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -85,7 +86,7 @@ public class RegistrationRefundService : IRegistrationRefundService
             {
                 // NEW PATH: Refund each payment individually
                 return await ProcessMultiplePaymentRefundsAsync(
-                    registration, completedPayments, reason, metadata, stopwatch, cancellationToken);
+                    registration, completedPayments, reason, metadata, additionalRefundAmount, stopwatch, cancellationToken);
             }
             else if (!string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
             {
@@ -95,7 +96,7 @@ public class RegistrationRefundService : IRegistrationRefundService
                     "[RefundService] No RegistrationPayments found, using legacy StripePaymentIntentId - RegId={RegId}",
                     registration.Id);
                 return await ProcessLegacySinglePaymentRefundAsync(
-                    registration, reason, metadata, stopwatch, cancellationToken);
+                    registration, reason, metadata, additionalRefundAmount, stopwatch, cancellationToken);
             }
             else
             {
@@ -127,6 +128,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         List<RegistrationPayment> completedPayments,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount,
         Stopwatch stopwatch,
         CancellationToken cancellationToken)
     {
@@ -232,7 +234,7 @@ public class RegistrationRefundService : IRegistrationRefundService
 
         // Transition registration state to RefundRequested
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund();
+        var requestResult = registration.RequestRefund(additionalRefundAmount);
 
         if (requestResult.IsFailure)
         {
@@ -245,8 +247,8 @@ public class RegistrationRefundService : IRegistrationRefundService
         {
             _logger.LogInformation(
                 "[RefundService] RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}, " +
-                "StatusBefore={StatusBefore}, StatusAfter={StatusAfter}",
-                registration.Id, statusBefore, registration.Status);
+                "StatusBefore={StatusBefore}, StatusAfter={StatusAfter}, AdditionalRefundAmount=${AdditionalRefundAmount}",
+                registration.Id, statusBefore, registration.Status, additionalRefundAmount);
         }
 
         stopwatch.Stop();
@@ -271,6 +273,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount,
         Stopwatch stopwatch,
         CancellationToken cancellationToken)
     {
@@ -311,7 +314,7 @@ public class RegistrationRefundService : IRegistrationRefundService
 
         // Transition registration state
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund();
+        var requestResult = registration.RequestRefund(additionalRefundAmount);
 
         if (requestResult.IsFailure)
         {
@@ -322,8 +325,8 @@ public class RegistrationRefundService : IRegistrationRefundService
         else
         {
             _logger.LogInformation(
-                "[RefundService] LEGACY: RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}",
-                registration.Id);
+                "[RefundService] LEGACY: RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}, AdditionalRefundAmount=${AdditionalRefundAmount}",
+                registration.Id, additionalRefundAmount);
         }
 
         stopwatch.Stop();

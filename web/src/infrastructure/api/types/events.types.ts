@@ -433,6 +433,22 @@ export interface RsvpDto {
 }
 
 /**
+ * Result of a cancellation operation, including details about optional actions.
+ * Enables the frontend to show what succeeded and what failed.
+ */
+export interface CancelRsvpResult {
+  registrationCancelled: boolean;
+  commitmentsDeleted?: boolean | null;
+  formResponsesDeleted?: boolean | null;
+  formResponsesDeletedCount?: number | null;
+  addOnRefundsProcessed?: boolean | null;
+  addOnRefundedCount?: number | null;
+  addOnFailedCount?: number | null;
+  addOnRefundTotal?: number | null;
+  warnings?: string[] | null;
+}
+
+/**
  * Waiting list entry DTO
  */
 export interface WaitingListEntryDto {

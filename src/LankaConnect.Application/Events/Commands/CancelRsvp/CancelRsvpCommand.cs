@@ -18,4 +18,20 @@ public record CancelRsvpCommand(
     bool DeleteSignUpCommitments = false,
     bool DeleteFormResponses = false,
     bool RefundAddOnPurchases = false
-) : ICommand;
+) : ICommand<CancelRsvpResult>;
+
+/// <summary>
+/// Result of a cancellation operation, including details about optional actions.
+/// Enables the frontend to show what succeeded and what failed.
+/// </summary>
+public record CancelRsvpResult(
+    bool RegistrationCancelled,
+    bool? CommitmentsDeleted,
+    bool? FormResponsesDeleted,
+    int? FormResponsesDeletedCount,
+    bool? AddOnRefundsProcessed,
+    int? AddOnRefundedCount,
+    int? AddOnFailedCount,
+    decimal? AddOnRefundTotal,
+    List<string>? Warnings
+);

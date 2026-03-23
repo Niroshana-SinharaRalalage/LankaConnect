@@ -26,12 +26,14 @@ public interface IRegistrationRefundService
     /// <param name="registration">The registration to refund (must have completed payment)</param>
     /// <param name="reason">Stripe refund reason (e.g., "requested_by_customer", "event_cancelled")</param>
     /// <param name="metadata">Additional metadata to attach to the Stripe refund</param>
+    /// <param name="additionalRefundAmount">Additional refund amount (e.g., add-on purchases) to include in the refund email total</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result containing RefundResult on success, or error message on failure</returns>
     Task<Result<RefundResult>> ProcessRefundAsync(
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount = 0m,
         CancellationToken cancellationToken = default);
 }
 

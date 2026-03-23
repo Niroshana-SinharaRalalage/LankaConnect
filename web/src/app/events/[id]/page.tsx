@@ -1307,12 +1307,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments, 'DeleteFormResponses:', deleteFormResponses, 'RefundAddOnPurchases:', refundAddOnPurchases);
                                   setIsCancelling(true);
                                   setCancelError(null);
-                                  await eventsRepository.cancelRsvp(id, {
+                                  const cancelResult = await eventsRepository.cancelRsvp(id, {
                                     deleteSignUpCommitments,
                                     deleteFormResponses,
                                     refundAddOnPurchases,
                                   });
-                                  console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
+                                  console.log('[CancelRsvp] Successfully cancelled registration', cancelResult);
+
+                                  // Show warnings for partial failures before reloading
+                                  if (cancelResult?.warnings && cancelResult.warnings.length > 0) {
+                                    const warningMsg = cancelResult.warnings.join('\n');
+                                    console.warn('[CancelRsvp] Partial failures:', warningMsg);
+                                    alert(`Registration cancelled, but some actions had issues:\n\n${warningMsg}`);
+                                  }
+
                                   window.location.reload();
                                 } catch (error: any) {
                                   console.error('[CancelRsvp] Failed to cancel registration:', error);

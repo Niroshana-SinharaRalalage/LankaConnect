@@ -92,6 +92,13 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
 
                 // Phase 6A.87: Use typed email parameters for compile-time safety
                 // Phase 6A.87++ Fix: Pass PaymentIntentId for reference number in email
+                // Cancellation enhancement: Include add-on refund amount in email total
+                var totalRefundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+
+                _logger.LogInformation(
+                    "[RefundEmail] Composing refund email - RegistrationRefund=${RegistrationRefund}, AddOnRefund=${AddOnRefund}, TotalRefund=${TotalRefund}",
+                    domainEvent.RefundAmount, domainEvent.AddOnRefundAmount, totalRefundAmount);
+
                 var emailParams = RefundEmailParams.CreateRequest(
                     userId: userId,
                     userName: userName,
@@ -102,8 +109,8 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate,
                     timeZoneId: @event.TimeZoneId,
-                    refundAmount: domainEvent.RefundAmount,
-                    originalAmount: domainEvent.RefundAmount,  // Same as refund for full refunds
+                    refundAmount: totalRefundAmount,
+                    originalAmount: totalRefundAmount,  // Same as refund for full refunds
                     refundReason: "Registration Cancellation",
                     requestedAt: DateTime.UtcNow,
                     paymentIntentId: domainEvent.PaymentIntentId  // Phase 6A.87++ Fix: Reference number

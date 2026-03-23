@@ -233,8 +233,10 @@ public class RegistrationRefundService : IRegistrationRefundService
         }
 
         // Transition registration state to RefundRequested
+        // Phase 6A.136C: Pass first StripeRefundId to prevent withdrawal race condition
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund(additionalRefundAmount);
+        var firstRefundId = refundIds.Count > 0 ? refundIds[0] : null;
+        var requestResult = registration.RequestRefund(additionalRefundAmount, firstRefundId);
 
         if (requestResult.IsFailure)
         {
@@ -313,8 +315,9 @@ public class RegistrationRefundService : IRegistrationRefundService
             registration.Id, stripeResult.Value.RefundId);
 
         // Transition registration state
+        // Phase 6A.136C: Pass StripeRefundId to prevent withdrawal race condition
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund(additionalRefundAmount);
+        var requestResult = registration.RequestRefund(additionalRefundAmount, stripeResult.Value.RefundId);
 
         if (requestResult.IsFailure)
         {

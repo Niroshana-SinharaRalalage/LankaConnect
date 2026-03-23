@@ -332,9 +332,11 @@ public class StripePaymentService : IStripePaymentService
             // Phase 6A.135: Use PaymentIntentId as idempotency key to prevent duplicate refunds.
             // Previously used RegistrationId which caused ALL add-on refunds (RegistrationId=Guid.Empty)
             // to share the same idempotency key, silently deduplicating at the Stripe API level.
+            // Phase 6A.136C: Include amount to allow partial refunds on the same PaymentIntent
+            // (e.g., refund $10 then refund $5 are distinct operations).
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"refund_{request.PaymentIntentId}"
+                IdempotencyKey = $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}"
             };
 
             // Phase 6A.94: Log just before Stripe API call

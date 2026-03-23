@@ -431,7 +431,7 @@ public class Registration : BaseEntity
     /// - Cannot request refund after event has started (validated in command handler)
     /// - Raises RefundRequestedEvent for email notification
     /// </summary>
-    public Result RequestRefund(decimal additionalRefundAmount = 0m)
+    public Result RequestRefund(decimal additionalRefundAmount = 0m, string? stripeRefundId = null)
     {
         // Validation: Must be Confirmed status
         if (Status != RegistrationStatus.Confirmed)
@@ -462,6 +462,12 @@ public class Registration : BaseEntity
         RefundRequestedAt = DateTime.UtcNow;
         // Phase 6A.135: Persist add-on refund amount so CompleteRefund (webhook) can include it
         AddOnRefundAmount = additionalRefundAmount > 0 ? additionalRefundAmount : null;
+        // Phase 6A.136C: Store StripeRefundId immediately when refund is initiated at Stripe.
+        // This prevents the race condition where a user withdraws after Stripe has already processed the refund.
+        if (!string.IsNullOrWhiteSpace(stripeRefundId))
+        {
+            StripeRefundId = stripeRefundId;
+        }
         MarkAsUpdated();
 
         // Raise domain event for email notification
@@ -497,6 +503,17 @@ public class Registration : BaseEntity
             return Result.Failure(
                 $"Cannot withdraw refund request for registration with status {Status}. " +
                 $"Only RefundRequested registrations can be withdrawn. RegistrationId={Id}");
+        }
+
+        // Phase 6A.136C: Guard against withdrawal after Stripe has already processed the refund.
+        // StripeRefundId is set in RequestRefund when the refund is initiated at Stripe.
+        // Once Stripe has the refund, it cannot be cancelled — withdrawal would leave the domain
+        // in Confirmed state while the money is already refunded at Stripe.
+        if (!string.IsNullOrWhiteSpace(StripeRefundId))
+        {
+            return Result.Failure(
+                $"Cannot withdraw refund request — the refund has already been submitted to Stripe " +
+                $"(RefundId: {StripeRefundId}). The refund will complete automatically. RegistrationId={Id}");
         }
 
         // State transition: RefundRequested → Confirmed

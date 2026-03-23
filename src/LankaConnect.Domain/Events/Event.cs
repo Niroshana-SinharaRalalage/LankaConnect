@@ -109,6 +109,12 @@ public class Event : BaseEntity
         .Where(r => r.Status == RegistrationStatus.Confirmed)
         .Sum(r => r.GetAttendeeCount());
 
+    // Phase 6A.136C: Reserved capacity includes Preliminary (awaiting payment) to prevent overbooking.
+    // Use this for capacity checks instead of CurrentRegistrations.
+    public int ReservedCapacity => _registrations
+        .Where(r => r.Status == RegistrationStatus.Confirmed || r.Status == RegistrationStatus.Preliminary)
+        .Sum(r => r.GetAttendeeCount());
+
     // EF Core constructor
     private Event() 
     {
@@ -625,7 +631,8 @@ public class Event : BaseEntity
 
     public bool HasCapacityFor(int quantity)
     {
-        return CurrentRegistrations + quantity <= Capacity;
+        // Phase 6A.136C: Use ReservedCapacity (includes Preliminary) to prevent overbooking
+        return ReservedCapacity + quantity <= Capacity;
     }
 
     public void Complete()
@@ -1548,7 +1555,8 @@ public class Event : BaseEntity
     /// </summary>
     public bool IsAtCapacity()
     {
-        return CurrentRegistrations >= Capacity;
+        // Phase 6A.136C: Use ReservedCapacity (includes Preliminary) to prevent overbooking
+        return ReservedCapacity >= Capacity;
     }
 
     /// <summary>

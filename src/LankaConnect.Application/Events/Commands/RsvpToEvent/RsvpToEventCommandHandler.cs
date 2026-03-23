@@ -350,8 +350,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
-            // Set checkout session ID on registration
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value);
+            // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -359,7 +359,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             if (bundledDonation != null)
             {
                 var donationSessionResult = bundledDonation.SetStripeCheckoutSession(
-                    checkoutResult.Value,
+                    checkoutResult.Value.SessionId,
                     DateTime.UtcNow.AddHours(24));
 
                 if (donationSessionResult.IsFailure)
@@ -375,8 +375,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             // Save changes with checkout session ID
             await _unitOfWork.CommitAsync(cancellationToken);
 
-            // Return checkout session URL for frontend to redirect
-            return Result<string?>.Success(checkoutResult.Value);
+            // Return checkout URL for frontend to redirect
+            return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
         }
 
         // Free event handling

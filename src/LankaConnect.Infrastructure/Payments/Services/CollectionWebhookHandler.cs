@@ -89,11 +89,14 @@ public class CollectionWebhookHandler : ICollectionWebhookHandler
         }
         catch (Exception ex)
         {
-            // Swallow collection errors: failures should NOT return HTTP 500
-            // to Stripe (causes retry storms). Collection stays Pending; expiry cleanup handles it.
-            _logger.LogError(ex,
-                "[Collection] [Webhook-Collection-ERROR] Error handling collection checkout (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
+            // Phase 6A.136D: Swallow collection errors to prevent Stripe retry storms (HTTP 500 → retries).
+            // Collection stays Pending; expiry cleanup handles it.
+            // CRITICAL level for monitoring/alerting on persistent issues.
+            _logger.LogCritical(ex,
+                "[Collection] [Webhook-Collection-CRITICAL] Error handling collection checkout (swallowed to prevent retry storm) - " +
+                "CorrelationId: {CorrelationId}, SessionId: {SessionId}, Type: {ExceptionType}, Message: {Message}. " +
+                "ACTION REQUIRED: Collection remains in Pending state, verify expiry cleanup will handle it.",
+                correlationId, sessionId, ex.GetType().FullName, ex.Message);
         }
     }
 

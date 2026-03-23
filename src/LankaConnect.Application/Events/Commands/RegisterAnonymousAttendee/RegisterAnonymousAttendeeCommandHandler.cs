@@ -406,8 +406,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
-            // Set checkout session ID on registration
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value);
+            // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -415,7 +415,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (bundledDonation != null)
             {
                 var donationSessionResult = bundledDonation.SetStripeCheckoutSession(
-                    checkoutResult.Value,
+                    checkoutResult.Value.SessionId,
                     DateTime.UtcNow.AddHours(24));
 
                 if (donationSessionResult.IsFailure)
@@ -437,8 +437,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 "HandleMultiAttendeeRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}, HasDonation={HasDonation}, Duration={ElapsedMs}ms",
                 @event.Id, registration.Id, registration.TotalPrice!.Amount, bundledDonation != null, stopwatch.ElapsedMilliseconds);
 
-            // Return checkout session URL for frontend to redirect
-            return Result<string?>.Success(checkoutResult.Value);
+            // Return checkout URL for frontend to redirect
+            return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
         }
 
         // Free event handling
@@ -736,8 +736,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
-            // Set checkout session ID on registration
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value);
+            // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -748,10 +748,10 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
             _logger.LogInformation(
                 "HandleLegacyRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, CheckoutSessionId={SessionId}, Amount={Amount}, Quantity={Quantity}, Duration={ElapsedMs}ms",
-                @event.Id, registration.Id, checkoutResult.Value, registration.TotalPrice!.Amount, request.Quantity, stopwatch.ElapsedMilliseconds);
+                @event.Id, registration.Id, checkoutResult.Value.SessionId, registration.TotalPrice!.Amount, request.Quantity, stopwatch.ElapsedMilliseconds);
 
-            // Return checkout session URL for frontend to redirect
-            return Result<string?>.Success(checkoutResult.Value);
+            // Return checkout URL for frontend to redirect
+            return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
         }
 
         // FREE event - save and return null (no payment needed)

@@ -28,7 +28,8 @@ public interface IStripePaymentService
     Task<Result<StripeWebhookEvent>> ProcessWebhookAsync(string payload, string signature, CancellationToken cancellationToken = default);
 
     // Session 23: Event ticket payment integration
-    Task<Result<string>> CreateEventCheckoutSessionAsync(CreateEventCheckoutSessionRequest request, CancellationToken cancellationToken = default);
+    // Phase 6A.136D: Changed from Result<string> (URL) to Result<EventCheckoutResult> (ID + URL)
+    Task<Result<EventCheckoutResult>> CreateEventCheckoutSessionAsync(CreateEventCheckoutSessionRequest request, CancellationToken cancellationToken = default);
 
     // Phase 6A.81 Part 3: Retrieve checkout URL from existing session
     Task<Result<string>> GetCheckoutSessionUrlAsync(string sessionId, CancellationToken cancellationToken = default);
@@ -546,6 +547,23 @@ public class CreateAdditionCheckoutSessionRequest
     /// Optional additional metadata.
     /// </summary>
     public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.136D: Result of creating an event registration checkout session.
+/// Replaces the previous Result&lt;string&gt; that only returned the URL.
+/// </summary>
+public class EventCheckoutResult
+{
+    /// <summary>
+    /// The Stripe Checkout Session ID (starts with cs_).
+    /// </summary>
+    public required string SessionId { get; init; }
+
+    /// <summary>
+    /// The checkout URL to redirect the user to.
+    /// </summary>
+    public required string CheckoutUrl { get; init; }
 }
 
 /// <summary>

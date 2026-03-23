@@ -102,11 +102,14 @@ public class DonationWebhookHandler : IDonationWebhookHandler
         }
         catch (Exception ex)
         {
-            // Swallow donation errors: standalone donation failures should NOT return HTTP 500
-            // to Stripe (causes retry storms). Donation stays Pending; expiry cleanup handles it.
-            _logger.LogError(ex,
-                "[Donation] [Webhook-Donation-ERROR] Error handling donation checkout (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
+            // Phase 6A.136D: Swallow donation errors to prevent Stripe retry storms (HTTP 500 → retries).
+            // Donation stays Pending; expiry cleanup handles it.
+            // CRITICAL level for DB failures so monitoring/alerting catches persistent issues.
+            _logger.LogCritical(ex,
+                "[Donation] [Webhook-Donation-CRITICAL] Error handling donation checkout (swallowed to prevent retry storm) - " +
+                "CorrelationId: {CorrelationId}, DonationId: {DonationId}, Type: {ExceptionType}, Message: {Message}. " +
+                "ACTION REQUIRED: Donation remains in Pending state, verify expiry cleanup will handle it.",
+                correlationId, metadata.GetValueOrDefault("donation_id", "unknown"), ex.GetType().FullName, ex.Message);
         }
     }
 

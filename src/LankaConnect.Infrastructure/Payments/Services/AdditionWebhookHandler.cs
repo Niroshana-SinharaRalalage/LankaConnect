@@ -52,14 +52,28 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
             "[AddOnlyAttendees] [Webhook-Addition-1] Processing addition payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
             correlationId, sessionId);
 
-        // Extract metadata
+        // Extract metadata with Phase 6A.136D fallback to session ID lookup
         if (!metadata.TryGetValue("registration_addition_id", out var additionIdStr) ||
             !Guid.TryParse(additionIdStr, out var additionId))
         {
             _logger.LogWarning(
-                "[AddOnlyAttendees] [Webhook-Addition-ERROR] Missing registration_addition_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                "[AddOnlyAttendees] [Webhook-Addition-WARN] Missing registration_addition_id in metadata, attempting session ID fallback - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
                 correlationId, sessionId);
-            return;
+
+            // Phase 6A.136D: Fallback — lookup RegistrationAddition by Stripe session ID
+            var fallbackAddition = await _additionRepository.GetByCheckoutSessionIdAsync(sessionId, ct);
+            if (fallbackAddition == null)
+            {
+                _logger.LogError(
+                    "[AddOnlyAttendees] [Webhook-Addition-ERROR] Fallback failed - no RegistrationAddition for SessionId - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, sessionId);
+                return;
+            }
+
+            additionId = fallbackAddition.Id;
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-1b] Fallback succeeded - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, SessionId: {SessionId}",
+                correlationId, additionId, sessionId);
         }
 
         if (!metadata.TryGetValue("registration_id", out var registrationIdStr) ||

@@ -44,7 +44,7 @@ public class StripePaymentService : IStripePaymentService
     /// Session 23: Creates a Stripe Checkout session for event ticket purchase
     /// Returns the checkout session URL for frontend redirect
     /// </summary>
-    public async Task<Result<string>> CreateEventCheckoutSessionAsync(
+    public async Task<Result<EventCheckoutResult>> CreateEventCheckoutSessionAsync(
         CreateEventCheckoutSessionRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -64,14 +64,14 @@ public class StripePaymentService : IStripePaymentService
                 // Get or create Stripe customer for authenticated user
                 if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
                 {
-                    return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                    return Result<EventCheckoutResult>.Failure("Invalid or missing user_id in request metadata");
                 }
 
                 stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
 
                 if (stripeCustomerId == null)
                 {
-                    return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                    return Result<EventCheckoutResult>.Failure("Failed to create or retrieve Stripe customer");
                 }
             }
             else
@@ -152,18 +152,22 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
-            // Return the checkout session URL (not ID) for frontend redirect
-            return Result<string>.Success(session.Url);
+            // Phase 6A.136D: Return both session ID and URL
+            return Result<EventCheckoutResult>.Success(new EventCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url
+            });
         }
         catch (StripeException ex)
         {
             _logger.LogError(ex, "Stripe error creating event checkout session for Event {EventId}", request.EventId);
-            return Result<string>.Failure($"Payment processing error: {ex.Message}");
+            return Result<EventCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event checkout session for Event {EventId}", request.EventId);
-            return Result<string>.Failure("Failed to create payment session");
+            return Result<EventCheckoutResult>.Failure("Failed to create payment session");
         }
     }
 

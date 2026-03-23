@@ -276,4 +276,62 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
             "[AddOnlyAttendees] [Webhook-Addition-SUCCESS] Addition completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, AdditionId: {AdditionId}, PaymentIntentId: {PaymentIntentId}, NewAttendees: {NewAttendees}, TotalAttendees: {TotalAttendees}",
             correlationId, eventId, registrationId, additionId, paymentIntentId, addition.NewAttendees.Count, registration.Attendees.Count);
     }
+
+    /// <summary>
+    /// Phase 6A.136 Issue #2: Handles checkout.session.expired for addition payments.
+    /// Marks the RegistrationAddition as Abandoned to prevent Pending entities from leaking.
+    /// </summary>
+    public async Task HandleCheckoutExpiredAsync(
+        string sessionId,
+        Dictionary<string, string> metadata,
+        Guid correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136] [Webhook-Addition-Expired-1] Processing addition session expiry - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                correlationId, sessionId);
+
+            if (!metadata.TryGetValue("registration_addition_id", out var additionIdStr) ||
+                !Guid.TryParse(additionIdStr, out var additionId))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136] [Webhook-Addition-Expired-WARN] Missing registration_addition_id - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    correlationId, sessionId);
+                return;
+            }
+
+            var addition = await _additionRepository.GetByIdAsync(additionId);
+            if (addition == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136] [Webhook-Addition-Expired-WARN] RegistrationAddition not found - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}",
+                    correlationId, additionId);
+                return;
+            }
+
+            var abandonResult = addition.MarkAsAbandoned();
+            if (abandonResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136] [Webhook-Addition-Expired-WARN] MarkAsAbandoned failed - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
+                    correlationId, additionId, abandonResult.Error);
+                return;
+            }
+
+            _additionRepository.Update(addition);
+            await _unitOfWork.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "[Phase 6A.136] [Webhook-Addition-Expired-SUCCESS] Addition marked as Abandoned - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}",
+                correlationId, additionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 6A.136] [Webhook-Addition-Expired-ERROR] Error handling addition expiry - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                correlationId, sessionId);
+        }
+    }
 }

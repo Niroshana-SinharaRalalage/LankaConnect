@@ -306,6 +306,13 @@ public class PaymentsController : ControllerBase
                     await HandleChargeRefundedAsync(stripeEvent);
                     break;
 
+                // Phase 6A.136 Issue #3: Log payment failures for observability.
+                // The checkout session remains active — user can retry payment.
+                // Registration.FailPayment() is NOT called here because the session may still succeed.
+                case "payment_intent.payment_failed":
+                    HandlePaymentIntentFailed(stripeEvent);
+                    break;
+
                 default:
                     _logger.LogInformation("Unhandled webhook event type {EventType}, skipping", stripeEvent.Type);
                     break;
@@ -494,6 +501,15 @@ public class PaymentsController : ControllerBase
                         await _addOnPurchaseWebhookHandler.HandleCheckoutExpiredAsync(
                             session.Id, metadata, correlationId);
                         return;
+
+                    // Phase 6A.136 Issue #2: Handle addition session expiry
+                    case "addition":
+                        _logger.LogInformation(
+                            "[Phase 6A.136] [Webhook-Expired-Route] Routing to addition expiry handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _additionWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
                 }
             }
 
@@ -507,6 +523,43 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.81] [Webhook-Expired-ERROR] Error handling checkout.session.expired webhook - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
                 correlationId, ex.GetType().FullName, ex.Message);
             throw; // Re-throw to trigger outer catch block with HTTP 500
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.136 Issue #3: Logs payment_intent.payment_failed for observability.
+    /// The checkout session remains open for retry — we do NOT call FailPayment() here.
+    /// If the session ultimately expires, checkout.session.expired will handle cleanup.
+    /// </summary>
+    private void HandlePaymentIntentFailed(Stripe.Event stripeEvent)
+    {
+        try
+        {
+            var paymentIntent = stripeEvent.Data.Object as Stripe.PaymentIntent;
+            if (paymentIntent == null)
+            {
+                _logger.LogWarning("[Phase 6A.136] payment_intent.payment_failed: PaymentIntent data is null");
+                return;
+            }
+
+            var metadata = paymentIntent.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
+                ?? new Dictionary<string, string>();
+            metadata.TryGetValue("payment_type", out var paymentType);
+            metadata.TryGetValue("registration_id", out var registrationId);
+
+            _logger.LogWarning(
+                "[Phase 6A.136] [Payment-Failed] PaymentIntent failed - PaymentIntentId: {PaymentIntentId}, " +
+                "PaymentType: {PaymentType}, RegistrationId: {RegistrationId}, " +
+                "LastError: {LastError}, FailureCode: {FailureCode}",
+                paymentIntent.Id,
+                paymentType ?? "registration",
+                registrationId ?? "unknown",
+                paymentIntent.LastPaymentError?.Message ?? "none",
+                paymentIntent.LastPaymentError?.Code ?? "none");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Phase 6A.136] Error handling payment_intent.payment_failed webhook");
         }
     }
 
@@ -572,6 +625,47 @@ public class PaymentsController : ControllerBase
             // Extract primitives and delegate to handler (keeps Stripe SDK dependency out of Application layer)
             var refundMetadata = latestRefund.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
+            // Phase 6A.136 Issue #1: Route charge.refunded by payment_type metadata.
+            // Previously ALL refunds went to RegistrationWebhookHandler regardless of payment type.
+            // Check refund metadata first, then charge metadata for payment_type.
+            var chargeMetadata = charge.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            string? refundPaymentType = null;
+            refundMetadata?.TryGetValue("refund_type", out refundPaymentType);
+            if (string.IsNullOrEmpty(refundPaymentType))
+            {
+                chargeMetadata?.TryGetValue("payment_type", out refundPaymentType);
+            }
+
+            if (!string.IsNullOrEmpty(refundPaymentType))
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.136] [Webhook-Refund-Route] Routing charge.refunded by type - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}",
+                    correlationId, refundPaymentType);
+
+                switch (refundPaymentType)
+                {
+                    case "add_on_cancellation":
+                    case "add_on_purchase":
+                        // Add-on refunds are handled inline by AddOnRefundService (marks entity as refunded).
+                        // The webhook arriving here is expected — log and acknowledge.
+                        _logger.LogInformation(
+                            "[Phase 6A.136] [Webhook-Refund-AddOn] Add-on refund acknowledged - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, RefundId: {RefundId}",
+                            correlationId, charge.Id, latestRefund.Id);
+                        return;
+
+                    case "donation":
+                    case "collection":
+                    case "sponsor":
+                        // Phase 6A.136: Log non-registration refunds. Domain state update for these
+                        // payment types is a Phase E enhancement (dedicated refund services).
+                        _logger.LogWarning(
+                            "[Phase 6A.136] [Webhook-Refund-NonReg] Non-registration refund received but no handler yet - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}, ChargeId: {ChargeId}, RefundId: {RefundId}",
+                            correlationId, refundPaymentType, charge.Id, latestRefund.Id);
+                        return;
+                }
+            }
+
+            // Default: registration payment refund
             await _registrationWebhookHandler.HandleChargeRefundedAsync(
                 charge.Id,
                 charge.PaymentIntentId,

@@ -22,4 +22,14 @@ public interface IAdditionWebhookHandler
         Dictionary<string, string> metadata,
         Guid correlationId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Phase 6A.136 Issue #2: Handles checkout.session.expired for addition payments.
+    /// Marks the RegistrationAddition as Abandoned to prevent leaking Pending entities.
+    /// </summary>
+    Task HandleCheckoutExpiredAsync(
+        string sessionId,
+        Dictionary<string, string> metadata,
+        Guid correlationId,
+        CancellationToken ct = default);
 }

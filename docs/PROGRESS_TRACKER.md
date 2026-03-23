@@ -1,9 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-23 - Fix refund email amount + partial failure feedback*
+*Last Updated: 2026-03-23 - Phase 6A.135: Fix add-on refund idempotency collision*
 
 ## 🎯 Current Session Status (2026-03-23)
 
-### Fix: Refund Email Amount + Cancellation Partial Failure Feedback (commit `09b40093`)
+### Fix: Add-On Refund Idempotency Collision + RefundCompleted Email (commit `adc64339`)
+
+**Status**: ✅ **DEPLOYED TO STAGING**
+
+**Classification**: Critical Bug Fix — Add-on refunds silently failing due to Stripe idempotency key collision
+
+**Root Cause**: `StripePaymentService` used `IdempotencyKey = $"refund_{request.RegistrationId}"`. `AddOnRefundService` passed `RegistrationId = Guid.Empty` for all add-on refunds, causing ALL add-on refunds globally to share key `refund_00000000-...`. Stripe silently returned cached result from the first-ever add-on refund instead of creating new ones. Result: `addOnRefundTotal` always $0, emails showed ticket-only amount.
+
+**Fixes** (7 backend files + 1 test file + 1 migration):
+| File | Change |
+|------|--------|
+| `StripePaymentService.cs` | P0: Idempotency key changed to `$"refund_{request.PaymentIntentId}"` (unique per payment) |
+| `AddOnRefundService.cs` | P1: Changed `RegistrationId = Guid.Empty` to `purchase.Id` |
+| `Registration.cs` | P2: Added `AddOnRefundAmount` property, persisted in `RequestRefund()` |
+| `RefundCompletedEvent.cs` | P3: Added `AddOnRefundAmount` field (default 0m) |
+| `RefundCompletedEventHandler.cs` | P4: Calculates combined total for completion email |
+| Migration `Phase6A135_*` | P5: Adds nullable `AddOnRefundAmount` column to registrations |
+| `EventCancellationEmailJobAutoRefundTests.cs` | Fixed mock callback signatures |
+
+**Test Results**: 1888/1888 application tests pass
+
+---
+
+### Previous: Refund Email Amount + Cancellation Partial Failure Feedback (commit `09b40093`)
 
 **Status**: ✅ **DEPLOYED TO STAGING**
 

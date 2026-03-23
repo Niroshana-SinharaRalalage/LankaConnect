@@ -7,6 +7,14 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - ADD-ON REFUND IDEMPOTENCY FIX (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Phase 6A.135 — Fix add-on refund idempotency collision + RefundCompleted email amount
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `adc64339`)
+**RCA**: `StripePaymentService` used `RegistrationId` for idempotency key. `AddOnRefundService` passed `Guid.Empty` → ALL add-on refunds globally shared same key → Stripe silently deduplicated → `addOnRefundTotal` always $0. Fix: (1) Key uses `PaymentIntentId`, (2) Persist `AddOnRefundAmount` on Registration entity, (3) `RefundCompletedEvent` carries add-on amount, (4) Completion email handler calculates combined total.
+
+---
+
 ## ✅ PREVIOUS STATUS - REFUND EMAIL FIX + PARTIAL FAILURE FEEDBACK (2026-03-23)
 **Date**: 2026-03-23
 **Session**: Fix refund email showing only ticket price (missing add-on refund amounts) + return partial failure details to frontend

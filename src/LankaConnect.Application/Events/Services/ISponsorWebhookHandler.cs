@@ -24,4 +24,14 @@ public interface ISponsorWebhookHandler
         Dictionary<string, string> metadata,
         Guid correlationId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Phase 6A.136E: Handles charge.refunded for sponsor payments.
+    /// Marks the sponsor as Refunded when Stripe processes a refund.
+    /// </summary>
+    Task HandleChargeRefundedAsync(
+        string paymentIntentId,
+        string refundId,
+        Guid correlationId,
+        CancellationToken ct = default);
 }

@@ -169,4 +169,52 @@ public class DonationWebhookHandler : IDonationWebhookHandler
                 correlationId, ex.GetType().FullName, ex.Message);
         }
     }
+
+    /// <inheritdoc />
+    public async Task HandleChargeRefundedAsync(
+        string paymentIntentId,
+        string refundId,
+        Guid correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Donation-Refund-1] Processing donation refund - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}, RefundId: {RefundId}",
+                correlationId, paymentIntentId, refundId);
+
+            var donation = await _donationRepository.FindFirstAsync(
+                d => d.StripePaymentIntentId == paymentIntentId, ct);
+
+            if (donation == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Donation-Refund-WARN] Donation not found for PaymentIntentId - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, paymentIntentId);
+                return;
+            }
+
+            var refundResult = donation.MarkAsRefunded();
+            if (refundResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Donation-Refund-WARN] MarkAsRefunded failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
+                    correlationId, donation.Id, refundResult.Error);
+                return;
+            }
+
+            _donationRepository.Update(donation);
+            await _unitOfWork.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Donation-Refund-SUCCESS] Donation marked as refunded - CorrelationId: {CorrelationId}, DonationId: {DonationId}, RefundId: {RefundId}",
+                correlationId, donation.Id, refundId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "[Phase 6A.136E] [Webhook-Donation-Refund-CRITICAL] Error handling donation refund (swallowed) - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, paymentIntentId);
+        }
+    }
 }

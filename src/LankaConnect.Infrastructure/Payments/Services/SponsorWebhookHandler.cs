@@ -160,4 +160,52 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
                 correlationId, ex.GetType().FullName, ex.Message);
         }
     }
+
+    /// <inheritdoc />
+    public async Task HandleChargeRefundedAsync(
+        string paymentIntentId,
+        string refundId,
+        Guid correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Sponsor-Refund-1] Processing sponsor refund - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}, RefundId: {RefundId}",
+                correlationId, paymentIntentId, refundId);
+
+            var sponsor = await _sponsorRepository.FindFirstAsync(
+                s => s.StripePaymentIntentId == paymentIntentId, ct);
+
+            if (sponsor == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Sponsor-Refund-WARN] Sponsor not found for PaymentIntentId - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, paymentIntentId);
+                return;
+            }
+
+            var refundResult = sponsor.MarkAsRefunded();
+            if (refundResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Sponsor-Refund-WARN] MarkAsRefunded failed - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, Error: {Error}",
+                    correlationId, sponsor.Id, refundResult.Error);
+                return;
+            }
+
+            _sponsorRepository.Update(sponsor);
+            await _unitOfWork.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Sponsor-Refund-SUCCESS] Sponsor marked as refunded - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                correlationId, sponsor.Id, refundId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "[Phase 6A.136E] [Webhook-Sponsor-Refund-CRITICAL] Error handling sponsor refund (swallowed) - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, paymentIntentId);
+        }
+    }
 }

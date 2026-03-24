@@ -654,13 +654,21 @@ public class PaymentsController : ControllerBase
                         return;
 
                     case "donation":
+                        // Phase 6A.136E: Route to dedicated donation refund handler
+                        await _donationWebhookHandler.HandleChargeRefundedAsync(
+                            charge.PaymentIntentId, latestRefund.Id, correlationId);
+                        return;
+
                     case "collection":
+                        // Phase 6A.136E: Route to dedicated collection refund handler
+                        await _collectionWebhookHandler.HandleChargeRefundedAsync(
+                            charge.PaymentIntentId, latestRefund.Id, correlationId);
+                        return;
+
                     case "sponsor":
-                        // Phase 6A.136: Log non-registration refunds. Domain state update for these
-                        // payment types is a Phase E enhancement (dedicated refund services).
-                        _logger.LogWarning(
-                            "[Phase 6A.136] [Webhook-Refund-NonReg] Non-registration refund received but no handler yet - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}, ChargeId: {ChargeId}, RefundId: {RefundId}",
-                            correlationId, refundPaymentType, charge.Id, latestRefund.Id);
+                        // Phase 6A.136E: Route to dedicated sponsor refund handler
+                        await _sponsorWebhookHandler.HandleChargeRefundedAsync(
+                            charge.PaymentIntentId, latestRefund.Id, correlationId);
                         return;
                 }
             }

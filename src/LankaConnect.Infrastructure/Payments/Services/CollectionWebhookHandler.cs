@@ -147,4 +147,52 @@ public class CollectionWebhookHandler : ICollectionWebhookHandler
                 correlationId, ex.GetType().FullName, ex.Message);
         }
     }
+
+    /// <inheritdoc />
+    public async Task HandleChargeRefundedAsync(
+        string paymentIntentId,
+        string refundId,
+        Guid correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Collection-Refund-1] Processing collection refund - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}, RefundId: {RefundId}",
+                correlationId, paymentIntentId, refundId);
+
+            var collection = await _collectionRepository.FindFirstAsync(
+                c => c.StripePaymentIntentId == paymentIntentId, ct);
+
+            if (collection == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Collection-Refund-WARN] Collection not found for PaymentIntentId - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, paymentIntentId);
+                return;
+            }
+
+            var refundResult = collection.MarkAsRefunded();
+            if (refundResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Collection-Refund-WARN] MarkAsRefunded failed - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, Error: {Error}",
+                    correlationId, collection.Id, refundResult.Error);
+                return;
+            }
+
+            _collectionRepository.Update(collection);
+            await _unitOfWork.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Collection-Refund-SUCCESS] Collection marked as refunded - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, RefundId: {RefundId}",
+                correlationId, collection.Id, refundId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "[Phase 6A.136E] [Webhook-Collection-Refund-CRITICAL] Error handling collection refund (swallowed) - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, paymentIntentId);
+        }
+    }
 }

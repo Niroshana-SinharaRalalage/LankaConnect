@@ -1,9 +1,52 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-23 - Phase 6A.135: Fix add-on refund idempotency collision*
+*Last Updated: 2026-03-23 - Phase 6A.136: Comprehensive Payment Processing Audit (20-issue fix)*
 
 ## 🎯 Current Session Status (2026-03-23)
 
-### Fix: Add-On Refund Idempotency Collision + RefundCompleted Email (commit `adc64339`)
+### Phase 6A.136: Comprehensive Payment Processing Audit — 5-Phase Fix
+
+**Status**: ✅ **DEPLOYED TO STAGING** (commits `a88ccd92` → `47ce646b`)
+
+**Classification**: Comprehensive audit of payment processing (Stripe checkout, webhooks, refunds, emails, calculations). Identified 20 issues, fixed 17, deferred 1, skipped 2 (already handled).
+
+**Phase B — Webhook Routing** (`a88ccd92`):
+| Fix | Description |
+|-----|-------------|
+| #7 | Addition checkout expiry handler (was missing → Preliminary additions never cleaned up) |
+| #8 | charge.refunded routing by payment_type metadata (was no-op for non-registration payments) |
+| #9 | payment_intent.payment_failed handler with logging |
+
+**Phase C — Race Conditions & Idempotency** (`d0030af2`):
+| Fix | Description |
+|-----|-------------|
+| #10 | Capacity counting now includes Preliminary registrations (was only counting Confirmed → overselling) |
+| #11 | Refund withdrawal blocked when StripeRefundId exists (prevents domain/Stripe state divergence) |
+| #13 | Stripe refund idempotency key uses PaymentIntentId+Amount (was RegistrationId → collisions for same-user refunds) |
+
+**Phase D — Data Integrity & Webhook Resilience** (`ce3df58a`):
+| Fix | Description |
+|-----|-------------|
+| #14 | StripeCheckoutSessionId stores session ID not URL (was storing full URL) |
+| #16 | Addition webhook fallback lookup by sessionId when metadata missing |
+| #17 | Swallowed donation/collection webhook errors upgraded to LogCritical with ACTION REQUIRED |
+
+**Phase E — Refund Handlers for Non-Registration Payments** (`3258a6b6`):
+| Fix | Description |
+|-----|-------------|
+| #3/#4/#5 | Donation, Collection, Sponsor refund webhook handlers (were no-op → Stripe refunds not reflected in DB) |
+
+**Phase F — URL Allowlist & Expiry Alignment** (`47ce646b`):
+| Fix | Description |
+|-----|-------------|
+| #18 | Open redirect prevention via AllowedRedirectOrigins config on success/cancel URLs |
+| #20 | Checkout expiry uses Stripe session.ExpiresAt instead of hardcoded 24h |
+
+**Deferred**: #15 (receipt emails for collections/sponsors — requires DB template migrations)
+**Skipped**: #6 (Money.Amount already has private set), #12 (handler-level idempotency sufficient), #19 (metadata lookup works reliably)
+
+---
+
+### Previous: Add-On Refund Idempotency Collision + RefundCompleted Email (commit `adc64339`)
 
 **Status**: ✅ **DEPLOYED TO STAGING**
 

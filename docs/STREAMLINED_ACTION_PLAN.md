@@ -7,6 +7,20 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - COMPREHENSIVE PAYMENT AUDIT (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Phase 6A.136 — Comprehensive payment processing audit (20 issues, 17 fixed across 5 phases)
+**Status**: ✅ **DEPLOYED TO STAGING** (commits `a88ccd92` → `47ce646b`)
+**Scope**: Full audit of Stripe checkout, webhooks, refunds, emails, and calculations. 5 phased commits:
+- **136B** (`a88ccd92`): Webhook routing — addition expiry, charge.refunded by payment_type, payment_failed handler
+- **136C** (`d0030af2`): Race conditions — capacity counts Preliminary, refund withdrawal guard, idempotency key fix
+- **136D** (`ce3df58a`): Data integrity — session ID not URL, addition fallback lookup, LogCritical for swallowed errors
+- **136E** (`3258a6b6`): Refund handlers for donation/collection/sponsor (were no-op)
+- **136F** (`47ce646b`): URL allowlist (open redirect prevention) + expiry alignment with Stripe session
+**Deferred**: #15 (receipt emails for collections/sponsors — needs DB template migrations)
+
+---
+
 ## ✅ PREVIOUS STATUS - ADD-ON REFUND IDEMPOTENCY FIX (2026-03-23)
 **Date**: 2026-03-23
 **Session**: Phase 6A.135 — Fix add-on refund idempotency collision + RefundCompleted email amount

@@ -33,6 +33,13 @@ public class StripeOptions
     public string Currency { get; set; } = "USD";
 
     /// <summary>
+    /// Phase 6A.136F: Allowed origins for checkout success/cancel redirect URLs.
+    /// Prevents open redirect attacks. Example: ["https://lankaconnect.com", "http://localhost:3000"]
+    /// If empty, all URLs are allowed (not recommended for production).
+    /// </summary>
+    public List<string> AllowedRedirectOrigins { get; set; } = new();
+
+    /// <summary>
     /// Pricing tiers configuration
     /// </summary>
     public PricingTiers PricingTiers { get; set; } = new();

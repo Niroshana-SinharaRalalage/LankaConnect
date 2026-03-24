@@ -407,7 +407,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
             // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId);
+            // Phase 6A.136F: Pass Stripe expiry to align with actual session lifetime
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId, checkoutResult.Value.ExpiresAt);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -737,7 +738,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
             // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId);
+            // Phase 6A.136F: Pass Stripe expiry to align with actual session lifetime
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId, checkoutResult.Value.ExpiresAt);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 

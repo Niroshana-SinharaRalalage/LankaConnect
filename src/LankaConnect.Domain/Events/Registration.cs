@@ -313,7 +313,7 @@ public class Registration : BaseEntity
     /// <summary>
     /// Sets the Stripe Checkout Session ID when payment session is created
     /// </summary>
-    public Result SetStripeCheckoutSession(string sessionId)
+    public Result SetStripeCheckoutSession(string sessionId, DateTime? stripeExpiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return Result.Failure("Session ID cannot be empty");
@@ -322,6 +322,11 @@ public class Registration : BaseEntity
             return Result.Failure($"Cannot set checkout session for payment with status {PaymentStatus}");
 
         StripeCheckoutSessionId = sessionId;
+        // Phase 6A.136F: Use Stripe's actual ExpiresAt instead of local calculation to prevent drift
+        if (stripeExpiresAt.HasValue)
+        {
+            CheckoutSessionExpiresAt = stripeExpiresAt.Value;
+        }
         MarkAsUpdated();
         return Result.Success();
     }

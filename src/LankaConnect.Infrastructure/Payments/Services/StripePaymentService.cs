@@ -55,6 +55,15 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
+            // Phase 6A.136F: Validate redirect URLs against allowlist
+            var successUrlValidation = ValidateRedirectUrl(request.SuccessUrl, "SuccessUrl");
+            if (successUrlValidation.IsFailure)
+                return Result<EventCheckoutResult>.Failure(successUrlValidation.Error);
+
+            var cancelUrlValidation = ValidateRedirectUrl(request.CancelUrl, "CancelUrl");
+            if (cancelUrlValidation.IsFailure)
+                return Result<EventCheckoutResult>.Failure(cancelUrlValidation.Error);
+
             // Phase 6A.44: Handle both authenticated and anonymous registrations
             string? stripeCustomerId = null;
             bool isAnonymous = request.Metadata?.ContainsKey("anonymous") == true;
@@ -153,10 +162,12 @@ public class StripePaymentService : IStripePaymentService
                 request.RegistrationId);
 
             // Phase 6A.136D: Return both session ID and URL
+            // Phase 6A.136F: Include Stripe's actual ExpiresAt to prevent expiry drift
             return Result<EventCheckoutResult>.Success(new EventCheckoutResult
             {
                 SessionId = session.Id,
-                CheckoutUrl = session.Url
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
             });
         }
         catch (StripeException ex)
@@ -523,6 +534,37 @@ public class StripePaymentService : IStripePaymentService
         // Phase 6A.136: Use Math.Round to prevent fractional cent truncation.
         // (long) cast truncates: (long)(19.994999 * 100) = 1999 instead of 2000.
         return (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Phase 6A.136F: Validates that a redirect URL belongs to an allowed origin.
+    /// Prevents open redirect attacks via checkout success/cancel URLs.
+    /// </summary>
+    private Result ValidateRedirectUrl(string url, string urlType)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure($"{urlType} URL cannot be empty");
+
+        if (_stripeOptions.AllowedRedirectOrigins.Count == 0)
+        {
+            // No allowlist configured — permit all (dev/test environments)
+            return Result.Success();
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return Result.Failure($"{urlType} URL is not a valid absolute URL: {url}");
+
+        var origin = $"{uri.Scheme}://{uri.Host}" + (uri.IsDefaultPort ? "" : $":{uri.Port}");
+        if (_stripeOptions.AllowedRedirectOrigins.Any(allowed =>
+                origin.Equals(allowed, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Result.Success();
+        }
+
+        _logger.LogWarning(
+            "[Phase 6A.136F] Rejected redirect URL with disallowed origin - UrlType: {UrlType}, Url: {Url}, Origin: {Origin}",
+            urlType, url, origin);
+        return Result.Failure($"{urlType} URL origin '{origin}' is not in the allowed origins list");
     }
 
     /// <summary>

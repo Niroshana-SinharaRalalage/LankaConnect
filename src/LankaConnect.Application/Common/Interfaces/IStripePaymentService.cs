@@ -564,6 +564,12 @@ public class EventCheckoutResult
     /// The checkout URL to redirect the user to.
     /// </summary>
     public required string CheckoutUrl { get; init; }
+
+    /// <summary>
+    /// Phase 6A.136F: When the Stripe checkout session expires (from Stripe's response).
+    /// Use this instead of local DateTime.UtcNow.AddHours(24) to prevent drift.
+    /// </summary>
+    public DateTime? ExpiresAt { get; init; }
 }
 
 /// <summary>

@@ -252,6 +252,37 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Financial Breakdown Properties (Phase 6A.137C)
+
+    /// <summary>
+    /// Whether the payment includes a financial breakdown (ticket + donation).
+    /// Controls {{#if HasFinancialBreakdown}} conditional in template.
+    /// </summary>
+    public bool HasFinancialBreakdown { get; set; } = false;
+
+    /// <summary>
+    /// Whether the registration includes a bundled donation.
+    /// Controls {{#if HasDonation}} conditional in template.
+    /// </summary>
+    public bool HasDonation { get; set; } = false;
+
+    /// <summary>
+    /// Ticket subtotal (AmountPaid minus donation, formatted as "140.00").
+    /// </summary>
+    public string TicketSubtotal { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bundled donation amount formatted as "25.00".
+    /// </summary>
+    public string DonationAmount { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Currency code (e.g., "USD") for the financial breakdown.
+    /// </summary>
+    public string BreakdownCurrency { get; set; } = "USD";
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -317,7 +348,14 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
             // Event image parameters
             { "HasEventImage", HasEventImage },
-            { "EventImageUrl", EventImageUrl }
+            { "EventImageUrl", EventImageUrl },
+
+            // Phase 6A.137C: Financial breakdown parameters
+            { "HasFinancialBreakdown", HasFinancialBreakdown },
+            { "HasDonation", HasDonation },
+            { "TicketSubtotal", TicketSubtotal },
+            { "DonationAmount", DonationAmount },
+            { "BreakdownCurrency", BreakdownCurrency }
         };
 
         return dict;
@@ -505,6 +543,23 @@ public class TicketConfirmationEmailParams : IEmailParameters
     {
         HasSignupForms = !string.IsNullOrWhiteSpace(url);
         SignupFormsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137C: Sets financial breakdown showing ticket + donation itemization.
+    /// Only applicable when registration includes a bundled donation.
+    /// </summary>
+    public TicketConfirmationEmailParams WithFinancialBreakdown(
+        decimal ticketSubtotal,
+        decimal donationAmount,
+        string currency)
+    {
+        HasFinancialBreakdown = true;
+        HasDonation = donationAmount > 0;
+        TicketSubtotal = ticketSubtotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        DonationAmount = donationAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        BreakdownCurrency = currency;
         return this;
     }
 

@@ -31,6 +31,7 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IUserRepository> _userRepository;
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IRegistrationRepository> _registrationRepository;
+    private readonly Mock<IDonationRepository> _donationRepository;
     private readonly Mock<IEventFormRepository> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
@@ -43,6 +44,7 @@ public class PaymentCompletedEventHandlerTests
         _userRepository = new Mock<IUserRepository>();
         _eventRepository = new Mock<IEventRepository>();
         _registrationRepository = new Mock<IRegistrationRepository>();
+        _donationRepository = new Mock<IDonationRepository>();
         _eventFormRepository = new Mock<IEventFormRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
@@ -92,6 +94,7 @@ public class PaymentCompletedEventHandlerTests
             _userRepository.Object,
             _eventRepository.Object,
             _registrationRepository.Object,
+            _donationRepository.Object,
             _eventFormRepository.Object,
             _emailUrlHelper.Object,
             _logger.Object);

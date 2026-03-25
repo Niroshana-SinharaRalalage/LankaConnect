@@ -30,6 +30,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IDonationRepository _donationRepository;
     private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
@@ -40,6 +41,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IDonationRepository donationRepository,
         IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<PaymentCompletedEventHandler> logger)
@@ -49,6 +51,7 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _userRepository = userRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _donationRepository = donationRepository;
         _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
@@ -268,6 +271,35 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                             .OrderBy(c => c.SortOrder)
                             .Select(c => new OrganizerContactInfo(c.ContactName, c.ContactEmail, c.ContactPhone, c.IsPrimary))
                             .ToList());
+                }
+
+                // Phase 6A.137C: Load bundled donation for financial breakdown
+                try
+                {
+                    var bundledDonation = await _donationRepository.GetByRegistrationIdAsync(
+                        registration.Id, cancellationToken);
+
+                    if (bundledDonation != null && bundledDonation.Amount.Amount > 0)
+                    {
+                        var donationAmount = bundledDonation.Amount.Amount;
+                        var ticketSubtotal = domainEvent.AmountPaid - donationAmount;
+
+                        typedParams.WithFinancialBreakdown(
+                            ticketSubtotal: ticketSubtotal > 0 ? ticketSubtotal : domainEvent.AmountPaid,
+                            donationAmount: donationAmount,
+                            currency: bundledDonation.Amount.Currency.ToString());
+
+                        _logger.LogInformation(
+                            "[Phase 6A.137C] [PaymentEmail-BREAKDOWN] Financial breakdown loaded - CorrelationId: {CorrelationId}, TicketSubtotal={TicketSubtotal}, DonationAmount={DonationAmount}",
+                            correlationId, ticketSubtotal, donationAmount);
+                    }
+                }
+                catch (Exception donationEx)
+                {
+                    _logger.LogWarning(donationEx,
+                        "[Phase 6A.137C] [PaymentEmail-BREAKDOWN-WARN] Failed to load bundled donation - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                        correlationId, registration.Id);
+                    // Non-critical: email still sends without breakdown
                 }
 
                 // Phase 6A.100: Validate parameters

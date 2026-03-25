@@ -1,7 +1,36 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-25 - Phase 6A.137A: Fix my-rsvps API crash & registration badge*
+*Last Updated: 2026-03-25 - Phase 6A.137B: Implement 4 receipt/confirmation emails*
 
 ## 🎯 Current Session Status (2026-03-25)
+
+### Phase 6A.137B: Implement 4 Receipt/Confirmation Emails
+
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `193f5e14`)
+
+**Classification**: Feature Gap — 4 event handlers had TODO placeholders instead of actual email sending for add-on purchases, collection contributions, monetary sponsors, and item sponsors.
+
+| Handler | Email Type | Template Name | Params Class |
+|---------|-----------|---------------|--------------|
+| `AddOnPurchaseCompletedEventHandler` | Add-on purchase receipt | `template-addon-purchase-receipt` | `AddOnPurchaseReceiptEmailParams` |
+| `CollectionCompletedEventHandler` | Collection contribution receipt | `template-collection-receipt` | `CollectionReceiptEmailParams` |
+| `SponsorPaymentCompletedEventHandler` | Monetary sponsor confirmation | `template-sponsor-confirmation` | `SponsorConfirmationEmailParams` |
+| `ItemSponsorRecordedEventHandler` | Item sponsor acknowledgment | `template-sponsor-confirmation` | `SponsorConfirmationEmailParams` |
+
+**New Files**:
+- `AddOnPurchaseReceiptEmailParams.cs` — typed email params with factory `Create()`
+- `CollectionReceiptEmailParams.cs` — typed email params with factory `Create()`
+- `SponsorConfirmationEmailParams.cs` — handles both money + item sponsors via `CreateForMoneySponsor()` / `CreateForItemSponsor()`
+- EF Core migration `Phase6A137B_AddReceiptEmailTemplates` — 3 new HTML email templates with `WHERE NOT EXISTS` guard
+
+**Contract Constants Added**: `EmailTemplateContract.AddOnPurchase`, `.Collection`, `.Sponsor` sections
+
+**Note**: `DonationCompletedEventHandler` already sends emails since Phase 6A.130 — no changes needed.
+
+**Remaining Phase 6A.137 work**: B2 (4 refund emails), C (email financial breakdown), D (add-on bundling), E (collection/sponsor bundling)
+
+---
+
+## ✅ PREVIOUS STATUS - MY-RSVPS API CRASH FIX (2026-03-25)
 
 ### Phase 6A.137A: Fix my-rsvps API Crash & Registration Badge
 

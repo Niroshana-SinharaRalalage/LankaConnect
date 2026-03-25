@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - RECEIPT/CONFIRMATION EMAILS ✅ COMPLETE
+**Date**: 2026-03-25
+**Session**: Phase 6A.137B — Implement 4 receipt/confirmation emails (add-on, collection, sponsor money, sponsor item)
+**Progress**: ✅ **COMPLETE** — All handlers updated, migration created, deployed and API-verified on staging
+**Status**: ✅ **COMPLETE** — Commit `193f5e14` deployed. 3 new TypedEmailParams classes, 3 new email templates, 4 handlers updated. Build: 0 errors. Staging: my-rsvps 200 OK, event detail shows userRegistrationStatus.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
 **Date**: 2026-03-21
 **Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass + frontend UX
 **Progress**: ✅ **COMPLETE** — All fixes deployed and API-verified on staging

@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-23 - Phase 6A.136: Comprehensive Payment Processing Audit (20-issue fix)*
+*Last Updated: 2026-03-25 - Phase 6A.137A: Fix my-rsvps API crash & registration badge*
 
-## 🎯 Current Session Status (2026-03-23)
+## 🎯 Current Session Status (2026-03-25)
+
+### Phase 6A.137A: Fix my-rsvps API Crash & Registration Badge
+
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `61466b88`)
+
+**Classification**: CRITICAL BUG — `GET /api/events/my-rsvps` returned HTTP 400 for all authenticated users, breaking the "You are registered" badge on event detail pages.
+
+**Root Cause**: `ToDictionary(r => r.EventId, r => r.Status)` in `GetMyRegisteredEventsQueryHandler` throws `ArgumentException` when a user has multiple registrations (e.g., Preliminary + Confirmed) for the same event. The DB unique constraint explicitly excludes `Preliminary`, allowing duplicate registrations to coexist.
+
+| Fix | Description |
+|-----|-------------|
+| #1 | Replace `ToDictionary` with `GroupBy` + priority-based status selection in `GetMyRegisteredEventsQueryHandler` (lines 113, 168) |
+| #2 | Fix same `ToDictionary` bug in `GetEventsQueryHandler` (line 156) |
+| #3 | Populate `UserRegistrationStatus` in `GetEventByIdQueryHandler` for authenticated users (was never set) |
+| #4 | Add Preliminary/RefundRequested/Waitlisted badge variants to `RegistrationBadge.tsx` (amber/orange/blue) |
+
+**API Verification**:
+- `GET /api/events/my-rsvps` → 200 OK (was 400) — returns 6 events with `userRegistrationStatus: "Confirmed"`
+- `GET /api/events/{id}` → returns `userRegistrationStatus: "Confirmed"` (was null)
+
+**Remaining Phase 6A.137 work** (B through E): 9 missing receipt/refund emails, registration email financial breakdown, add-on bundling, collection/sponsor bundling
+
+---
+
+## ✅ PREVIOUS STATUS - COMPREHENSIVE PAYMENT AUDIT (2026-03-23)
 
 ### Phase 6A.136: Comprehensive Payment Processing Audit — 5-Phase Fix
 

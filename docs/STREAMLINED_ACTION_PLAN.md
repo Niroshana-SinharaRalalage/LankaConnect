@@ -7,6 +7,16 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - MY-RSVPS API CRASH FIX (2026-03-25)
+**Date**: 2026-03-25
+**Session**: Phase 6A.137A — Fix my-rsvps API crash & registration badge
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `61466b88`)
+**RCA**: `ToDictionary(r => r.EventId, r => r.Status)` in `GetMyRegisteredEventsQueryHandler` crashes with `ArgumentException` when user has duplicate registrations (Preliminary + Confirmed). DB unique constraint excludes Preliminary, allowing coexistence.
+**Fixes**: (1) Replace ToDictionary with GroupBy in 3 handlers, (2) Populate UserRegistrationStatus in GetEventByIdQueryHandler, (3) Add Preliminary/RefundRequested/Waitlisted badge variants to RegistrationBadge.tsx
+**Remaining**: Phase 6A.137 B-E (9 email gaps, email breakdown, add-on bundling, collection/sponsor bundling)
+
+---
+
 ## ✅ PREVIOUS STATUS - COMPREHENSIVE PAYMENT AUDIT (2026-03-23)
 **Date**: 2026-03-23
 **Session**: Phase 6A.136 — Comprehensive payment processing audit (20 issues, 17 fixed across 5 phases)

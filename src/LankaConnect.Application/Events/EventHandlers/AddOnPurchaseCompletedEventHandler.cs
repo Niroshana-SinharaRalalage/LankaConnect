@@ -2,6 +2,9 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -95,11 +98,58 @@ public class AddOnPurchaseCompletedEventHandler
                                     capturedEventId);
                             }
 
-                            // TODO: Create email template and TypedEmailParams for add-on purchase receipts
-                            _logger.LogInformation(
-                                "AddOnPurchaseCompleted EMAIL PLACEHOLDER: Would send receipt to {Email} for purchase {PurchaseId} on event '{EventTitle}', Quantity={Quantity}, TotalAmount={TotalAmount} {Currency}",
-                                capturedBuyerEmail, capturedPurchaseId, eventTitle,
-                                capturedQuantity, capturedTotalAmount, capturedCurrency);
+                            // Phase 6A.137B: Resolve add-on definition name
+                            var addOnName = $"Add-On #{capturedAddOnDefinitionId:N}"; // fallback
+                            try
+                            {
+                                var addOnDefRepo = scope.ServiceProvider.GetRequiredService<IAddOnDefinitionRepository>();
+                                var addOnDef = await addOnDefRepo.GetByIdAsync(capturedAddOnDefinitionId, CancellationToken.None);
+                                if (addOnDef != null)
+                                    addOnName = addOnDef.Name;
+                            }
+                            catch (Exception defEx)
+                            {
+                                _logger.LogWarning(defEx,
+                                    "AddOnPurchaseCompleted EMAIL: Failed to load add-on definition name for DefinitionId={DefinitionId}, using fallback",
+                                    capturedAddOnDefinitionId);
+                            }
+
+                            // Phase 6A.137B: Build event details URL from configuration
+                            var baseUrl = configuration["Application:FrontendBaseUrl"]
+                                ?? configuration["FrontendBaseUrl"]
+                                ?? "https://lankaconnect.com";
+                            var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                            // Phase 6A.137B: Send add-on purchase receipt email
+                            var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                            var emailParams = AddOnPurchaseReceiptEmailParams.Create(
+                                buyerName: capturedBuyerName,
+                                buyerEmail: capturedBuyerEmail,
+                                eventTitle: eventTitle,
+                                addOnName: addOnName,
+                                quantity: capturedQuantity,
+                                unitPrice: capturedUnitPrice,
+                                totalAmount: capturedTotalAmount,
+                                currency: capturedCurrency,
+                                paymentDate: capturedPaymentDate,
+                                paymentIntentId: capturedPaymentIntentId,
+                                eventDetailsUrl: eventDetailsUrl
+                            );
+
+                            var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                            if (result.Success)
+                            {
+                                _logger.LogInformation(
+                                    "AddOnPurchaseCompleted EMAIL SENT: Email={Email}, PurchaseId={PurchaseId}, AddOnName={AddOnName}, EventTitle={EventTitle}",
+                                    capturedBuyerEmail, capturedPurchaseId, addOnName, eventTitle);
+                            }
+                            else
+                            {
+                                _logger.LogError(
+                                    "AddOnPurchaseCompleted EMAIL FAILED: Email={Email}, PurchaseId={PurchaseId}, Errors={Errors}",
+                                    capturedBuyerEmail, capturedPurchaseId, string.Join(", ", result.Errors));
+                            }
                         }
                         catch (Exception ex)
                         {

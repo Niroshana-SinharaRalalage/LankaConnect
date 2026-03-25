@@ -90,6 +90,11 @@ public static class EmailTemplateContract
         public const string AddOnPurchaseReceipt = "template-addon-purchase-receipt";
         public const string CollectionReceipt = "template-collection-receipt";
         public const string SponsorConfirmation = "template-sponsor-confirmation";
+
+        // Phase 6A.137B2: Financial Refund Templates
+        public const string DonationRefund = "template-donation-refund";
+        public const string CollectionRefund = "template-collection-refund";
+        public const string SponsorRefund = "template-sponsor-refund";
     }
 
     #endregion
@@ -1012,6 +1017,68 @@ public static class EmailTemplateContract
         public const string EstimatedValue = "EstimatedValue";
         public const string HasEstimatedValue = "HasEstimatedValue";
         public const string RecordedAt = "RecordedAt";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Donation Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for donation refund email.
+    /// Template: template-donation-refund
+    /// </summary>
+    public static class DonationRefund
+    {
+        public const string DonorName = "DonorName";
+        public const string DonorEmail = "DonorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string DonationAmount = "DonationAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Collection Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for collection refund email.
+    /// Template: template-collection-refund
+    /// </summary>
+    public static class CollectionRefund
+    {
+        public const string ContributorName = "ContributorName";
+        public const string ContributorEmail = "ContributorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string ContributionAmount = "ContributionAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Sponsor Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for sponsor refund email.
+    /// Template: template-sponsor-refund
+    /// </summary>
+    public static class SponsorRefund
+    {
+        public const string SponsorName = "SponsorName";
+        public const string SponsorEmail = "SponsorEmail";
+        public const string SponsorOrganization = "SponsorOrganization";
+        public const string HasOrganization = "HasOrganization";
+        public const string EventTitle = "EventTitle";
+        public const string Amount = "Amount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
         public const string EventDetailsUrl = "EventDetailsUrl";
     }
 

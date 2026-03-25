@@ -1,7 +1,12 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Payments.Services;
@@ -10,20 +15,24 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// Phase 4: Handles Stripe webhook events for money sponsor payments.
 /// Follows DonationWebhookHandler pattern.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (sponsor stays Pending; expiry cleanup handles it).
+/// Phase 6A.137B2: Added refund email notification via fire-and-forget.
 /// </summary>
 public class SponsorWebhookHandler : ISponsorWebhookHandler
 {
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SponsorWebhookHandler> _logger;
 
     public SponsorWebhookHandler(
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         ILogger<SponsorWebhookHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -200,6 +209,80 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
             _logger.LogInformation(
                 "[Phase 6A.136E] [Webhook-Sponsor-Refund-SUCCESS] Sponsor marked as refunded - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                 correlationId, sponsor.Id, refundId);
+
+            // Phase 6A.137B2: Fire-and-forget refund notification email
+            var capturedSponsorName = sponsor.SponsorName;
+            var capturedSponsorEmail = sponsor.SponsorEmail;
+            var capturedSponsorOrganization = sponsor.SponsorOrganization;
+            var capturedEventId = sponsor.EventId;
+            var capturedSponsorId = sponsor.Id;
+            var capturedAmount = sponsor.Amount?.Amount ?? 0;
+            var capturedCurrency = sponsor.Amount?.Currency.ToString() ?? "USD";
+            var capturedRefundedAt = sponsor.RefundedAt ?? DateTime.UtcNow;
+            var capturedPaymentIntentId = sponsor.StripePaymentIntentId ?? paymentIntentId;
+            var capturedScopeFactory = _scopeFactory;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = capturedScopeFactory.CreateScope();
+                    var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
+                    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+                    var eventTitle = $"Event {capturedEventId:N}";
+                    try
+                    {
+                        var @event = await eventRepository.GetByIdAsync(capturedEventId, trackChanges: false, CancellationToken.None);
+                        if (@event != null)
+                            eventTitle = @event.Title.Value;
+                    }
+                    catch (Exception titleEx)
+                    {
+                        _logger.LogWarning(titleEx,
+                            "[Phase 6A.137B2] Sponsor refund email: Failed to load event title for EventId={EventId}",
+                            capturedEventId);
+                    }
+
+                    var baseUrl = configuration["Application:FrontendBaseUrl"]
+                        ?? configuration["FrontendBaseUrl"]
+                        ?? "https://lankaconnect.com";
+                    var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                    var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                    var emailParams = SponsorRefundEmailParams.Create(
+                        sponsorName: capturedSponsorName,
+                        sponsorEmail: capturedSponsorEmail,
+                        sponsorOrganization: capturedSponsorOrganization,
+                        eventTitle: eventTitle,
+                        amount: capturedAmount,
+                        currency: capturedCurrency,
+                        refundedAt: capturedRefundedAt,
+                        paymentIntentId: capturedPaymentIntentId,
+                        eventDetailsUrl: eventDetailsUrl);
+
+                    var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                    if (result.Success)
+                    {
+                        _logger.LogInformation(
+                            "[Phase 6A.137B2] Sponsor refund EMAIL SENT: Email={Email}, SponsorId={SponsorId}, EventTitle={EventTitle}",
+                            capturedSponsorEmail, capturedSponsorId, eventTitle);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "[Phase 6A.137B2] Sponsor refund EMAIL FAILED: Email={Email}, SponsorId={SponsorId}, Errors={Errors}",
+                            capturedSponsorEmail, capturedSponsorId, string.Join(", ", result.Errors));
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx,
+                        "[Phase 6A.137B2] Sponsor refund EMAIL EXCEPTION: Email={Email}, SponsorId={SponsorId}",
+                        capturedSponsorEmail, capturedSponsorId);
+                }
+            }, CancellationToken.None);
         }
         catch (Exception ex)
         {

@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -109,8 +110,8 @@ public class GetMyRegisteredEventsQueryHandler : IQueryHandler<GetMyRegisteredEv
                         return Result<IReadOnlyList<EventDto>>.Failure(eventsResult.Error);
                     }
 
-                    // Filter to only registered events and populate registration status
-                    var regStatusMap = registrations.ToDictionary(r => r.EventId, r => r.Status);
+                    // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
+                    var regStatusMap = BuildRegistrationStatusMap(registrations);
                     var filteredEvents = eventsResult.Value
                         .Where(e => registeredEventIds.Contains(e.Id))
                         .Select(e => e with { UserRegistrationStatus = regStatusMap.GetValueOrDefault(e.Id) })
@@ -164,8 +165,8 @@ public class GetMyRegisteredEventsQueryHandler : IQueryHandler<GetMyRegisteredEv
                     return Result<IReadOnlyList<EventDto>>.Failure(allEventsResult.Error);
                 }
 
-                // Filter to registered events and populate registration status
-                var registrationMap = allRegistrations.ToDictionary(r => r.EventId, r => r.Status);
+                // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
+                var registrationMap = BuildRegistrationStatusMap(allRegistrations);
                 var registeredEvents = allEventsResult.Value
                     .Where(e => eventIds.Contains(e.Id))
                     .Select(e => e with { UserRegistrationStatus = registrationMap.GetValueOrDefault(e.Id) })
@@ -201,4 +202,34 @@ public class GetMyRegisteredEventsQueryHandler : IQueryHandler<GetMyRegisteredEv
             || !string.IsNullOrWhiteSpace(request.State)
             || (request.MetroAreaIds != null && request.MetroAreaIds.Any());
     }
+
+    /// <summary>
+    /// Phase 6A.137: Build a registration status map that handles duplicate registrations per event.
+    /// When a user has multiple registrations for the same event (e.g., Preliminary + Confirmed),
+    /// picks the highest-priority status. This prevents the ToDictionary ArgumentException crash.
+    /// </summary>
+    private static Dictionary<Guid, RegistrationStatus> BuildRegistrationStatusMap(
+        IReadOnlyList<Registration> registrations)
+    {
+        return registrations
+            .GroupBy(r => r.EventId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(r => GetStatusPriority(r.Status)).First().Status);
+    }
+
+    /// <summary>
+    /// Phase 6A.137: Status priority for deduplication (lower = higher priority).
+    /// Confirmed is highest priority since it represents a completed registration.
+    /// </summary>
+    private static int GetStatusPriority(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Confirmed => 0,
+        RegistrationStatus.CheckedIn => 1,
+        RegistrationStatus.Attended => 2,
+        RegistrationStatus.Waitlisted => 3,
+        RegistrationStatus.RefundRequested => 4,
+        RegistrationStatus.Preliminary => 5,
+        _ => 6
+    };
 }

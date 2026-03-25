@@ -151,9 +151,12 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                             request.UserId.Value,
                             cancellationToken);
 
-                        // Create lookup: EventId -> RegistrationStatus
+                        // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
                         var registrationStatusMap = userRegistrations
-                            .ToDictionary(r => r.EventId, r => r.Status);
+                            .GroupBy(r => r.EventId)
+                            .ToDictionary(
+                                g => g.Key,
+                                g => g.OrderBy(r => GetStatusPriority(r.Status)).First().Status);
 
                         _logger.LogInformation(
                             "GetEvents: User has {RegistrationCount} registrations",
@@ -694,4 +697,19 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
         return filteredEvents;
     }
+
+    /// <summary>
+    /// Phase 6A.137: Status priority for deduplication (lower = higher priority).
+    /// Confirmed is highest priority since it represents a completed registration.
+    /// </summary>
+    private static int GetStatusPriority(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Confirmed => 0,
+        RegistrationStatus.CheckedIn => 1,
+        RegistrationStatus.Attended => 2,
+        RegistrationStatus.Waitlisted => 3,
+        RegistrationStatus.RefundRequested => 4,
+        RegistrationStatus.Preliminary => 5,
+        _ => 6
+    };
 }

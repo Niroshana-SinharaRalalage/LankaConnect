@@ -828,6 +828,18 @@ export interface RsvpRequest {
   donorName?: string | null;
   donorPhone?: string | null;
   donorNotes?: string | null;
+
+  // Phase 6A.137D: Add-ons bundled with registration checkout
+  addOnSelections?: AddOnSelectionRequest[];
+}
+
+/**
+ * Phase 6A.137D: Add-on selection during registration.
+ * Matches backend AddOnSelectionDto.
+ */
+export interface AddOnSelectionRequest {
+  definitionId: string;
+  quantity: number;
 }
 
 /**

@@ -400,6 +400,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           donorName: (data as any).donorName ?? undefined,
           donorPhone: (data as any).donorPhone ?? undefined,
           donorNotes: (data as any).donorNotes ?? undefined,
+          // Phase 6A.137D: Include add-on selections for bundled checkout
+          addOnSelections: (data as any).addOnSelections ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment

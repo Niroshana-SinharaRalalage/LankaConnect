@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - RECEIPT/CONFIRMATION EMAILS ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - COLLECTION/SPONSOR BUNDLING ✅ COMPLETE
+**Date**: 2026-03-26
+**Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
+**Progress**: ✅ **COMPLETE** — Extended RsvpToEventCommand, handler, webhook; created CollectionOptionInForm.tsx & SponsorOptionInForm.tsx; integrated into registration form with price breakdown
+**Status**: ✅ **COMPLETE** — Commit `cea19564`. 8 new tests (1903 total). Remaining 6A.137 work: B2 (4 refund emails), C (email breakdown), D (add-on bundling).
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - RECEIPT/CONFIRMATION EMAILS ✅ COMPLETE
 **Date**: 2026-03-25
 **Session**: Phase 6A.137B — Implement 4 receipt/confirmation emails (add-on, collection, sponsor money, sponsor item)
 **Progress**: ✅ **COMPLETE** — All handlers updated, migration created, deployed and API-verified on staging

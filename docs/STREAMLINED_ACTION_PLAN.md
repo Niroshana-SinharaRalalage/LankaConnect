@@ -7,13 +7,22 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - COLLECTION/SPONSOR BUNDLING (2026-03-26)
+**Date**: 2026-03-26
+**Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
+**Status**: ✅ **COMPLETE** (commit `cea19564`)
+**Scope**: Extended RsvpToEventCommand with collection/sponsor fields, added handling in handler and webhook, created CollectionOptionInForm.tsx and SponsorOptionInForm.tsx, integrated into registration form with price breakdown. 8 new tests (1903 total).
+**Remaining**: Phase 6A.137 B2 (4 refund emails), C (email breakdown), D (add-on bundling)
+
+---
+
 ## ✅ PREVIOUS STATUS - RECEIPT/CONFIRMATION EMAILS (2026-03-25)
 **Date**: 2026-03-25
 **Session**: Phase 6A.137B — Implement 4 receipt/confirmation emails
 **Status**: ✅ **DEPLOYED TO STAGING** (commit `193f5e14`)
 **Scope**: Replace TODO placeholders in 4 event handlers with actual email sending. Created 3 TypedEmailParams classes, added contract constants, created EF Core migration for 3 new email templates.
 **Handlers updated**: AddOnPurchaseCompleted, CollectionCompleted, SponsorPaymentCompleted, ItemSponsorRecorded
-**Remaining**: Phase 6A.137 B2 (4 refund emails), C (email breakdown), D (add-on bundling), E (collection/sponsor bundling)
+**Remaining**: Phase 6A.137 B2 (4 refund emails), C (email breakdown), D (add-on bundling)
 
 ---
 

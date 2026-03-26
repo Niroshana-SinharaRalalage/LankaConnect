@@ -1,7 +1,31 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-25 - Phase 6A.137B: Implement 4 receipt/confirmation emails*
+*Last Updated: 2026-03-26 - Phase 6A.137E: Bundle collections & sponsors with registration checkout*
 
-## 🎯 Current Session Status (2026-03-25)
+## 🎯 Current Session Status (2026-03-26)
+
+### Phase 6A.137E: Bundle Collections & Sponsors with Registration Checkout
+
+**Status**: ✅ **COMPLETE** (commit `cea19564`)
+
+**Classification**: Feature — Bundle collection contributions and sponsor selections into the event registration checkout flow, so attendees can complete everything in a single form submission.
+
+**Changes**:
+| Area | Description |
+|------|-------------|
+| Backend Command | Extended `RsvpToEventCommand` with collection/sponsor fields |
+| Backend Handler | Added collection/sponsor handling in `RsvpToEventCommandHandler` |
+| Webhook | Updated Stripe webhook to process bundled collection/sponsor payments |
+| Frontend Component | Created `CollectionOptionInForm.tsx` — inline collection contribution in registration form |
+| Frontend Component | Created `SponsorOptionInForm.tsx` — inline sponsor selection in registration form |
+| Frontend Integration | Integrated both components into registration form with unified price breakdown |
+
+**Tests**: 8 new tests added (1903 total)
+
+**Remaining Phase 6A.137 work**: B2 (4 refund emails), C (email financial breakdown), D (add-on bundling)
+
+---
+
+## ✅ PREVIOUS STATUS - RECEIPT/CONFIRMATION EMAILS (2026-03-25)
 
 ### Phase 6A.137B: Implement 4 Receipt/Confirmation Emails
 
@@ -26,7 +50,7 @@
 
 **Note**: `DonationCompletedEventHandler` already sends emails since Phase 6A.130 — no changes needed.
 
-**Remaining Phase 6A.137 work**: B2 (4 refund emails), C (email financial breakdown), D (add-on bundling), E (collection/sponsor bundling)
+**Remaining Phase 6A.137 work**: B2 (4 refund emails), C (email financial breakdown), D (add-on bundling)
 
 ---
 
@@ -51,7 +75,7 @@
 - `GET /api/events/my-rsvps` → 200 OK (was 400) — returns 6 events with `userRegistrationStatus: "Confirmed"`
 - `GET /api/events/{id}` → returns `userRegistrationStatus: "Confirmed"` (was null)
 
-**Remaining Phase 6A.137 work** (B through E): 9 missing receipt/refund emails, registration email financial breakdown, add-on bundling, collection/sponsor bundling
+**Remaining Phase 6A.137 work** (B2 through D): 4 refund emails, registration email financial breakdown, add-on bundling
 
 ---
 

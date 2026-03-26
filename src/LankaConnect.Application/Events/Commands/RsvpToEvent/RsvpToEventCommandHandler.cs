@@ -14,12 +14,15 @@ namespace LankaConnect.Application.Events.Commands.RsvpToEvent;
 // Session 23: Updated to support Stripe payment integration for paid events
 // Phase 6A.X: Added revenue breakdown calculation for paid registrations
 // Phase 6A.137D: Added add-on bundling during registration checkout
+// Phase 6A.137E: Added collection and sponsorship bundling during registration checkout
 public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, string?>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IDonationRepository _donationRepository;
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
@@ -30,6 +33,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         IDonationRepository donationRepository,
         IAddOnDefinitionRepository addOnDefinitionRepository,
         IAddOnPurchaseRepository addOnPurchaseRepository,
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
@@ -39,6 +44,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         _donationRepository = donationRepository;
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _addOnPurchaseRepository = addOnPurchaseRepository;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
@@ -324,6 +331,135 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             }
         }
 
+        // Phase 6A.137E: Handle optional collection (event fund) contribution during registration
+        // C2 Guard: Collection failures are isolated — registration succeeds even if collection fails
+        Collection? bundledCollection = null;
+        if (request.CollectionAmount.HasValue && request.CollectionAmount.Value > 0 && @event.AreCollectionsEnabled())
+        {
+            try
+            {
+                var validateResult = @event.ValidateCollectionAmount(request.CollectionAmount.Value);
+                if (validateResult.IsSuccess)
+                {
+                    var currency = registration.TotalPrice?.Currency
+                        ?? @event.Pricing?.Currency
+                        ?? Domain.Shared.Enums.Currency.USD;
+
+                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    if (amountResult.IsSuccess)
+                    {
+                        var collectionResult = Collection.Create(
+                            @event.Id,
+                            request.UserId,
+                            request.Attendees?.FirstOrDefault()?.Name ?? "Contributor",
+                            request.Email!,
+                            request.PhoneNumber,
+                            request.CollectionNotes,
+                            amountResult.Value);
+
+                        if (collectionResult.IsSuccess)
+                        {
+                            bundledCollection = collectionResult.Value;
+
+                            // Calculate revenue breakdown
+                            try
+                            {
+                                var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(
+                                    amountResult.Value, @event.Location, cancellationToken);
+                                if (breakdown.IsSuccess)
+                                {
+                                    bundledCollection.SetRevenueBreakdown(
+                                        breakdown.Value.StripeFeeAmount,
+                                        breakdown.Value.PlatformCommission,
+                                        breakdown.Value.OrganizerPayout);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Exception calculating collection revenue breakdown");
+                            }
+
+                            _logger.LogInformation(
+                                "Bundled collection created - CollectionId={CollectionId}, Amount={Amount}",
+                                bundledCollection.Id, request.CollectionAmount.Value);
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Collection validation failed during registration - Error={Error}", validateResult.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "HandleMultiAttendeeRsvp: Collection processing failed - EventId={EventId}. Registration will continue without collection.",
+                    @event.Id);
+                bundledCollection = null;
+            }
+        }
+
+        // Phase 6A.137E: Handle optional money sponsorship during registration
+        // C2 Guard: Sponsor failures are isolated — registration succeeds even if sponsor fails
+        Sponsor? bundledSponsor = null;
+        if (request.SponsorAmount.HasValue && request.SponsorAmount.Value > 0 && @event.AreSponsorsEnabled())
+        {
+            try
+            {
+                var currency = registration.TotalPrice?.Currency
+                    ?? @event.Pricing?.Currency
+                    ?? Domain.Shared.Enums.Currency.USD;
+
+                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                if (amountResult.IsSuccess)
+                {
+                    var sponsorResult = Sponsor.CreateMoneySponsor(
+                        @event.Id,
+                        request.UserId,
+                        request.Attendees?.FirstOrDefault()?.Name ?? "Sponsor",
+                        request.Email!,
+                        request.PhoneNumber,
+                        request.SponsorOrganization,
+                        request.SponsorNotes,
+                        amountResult.Value);
+
+                    if (sponsorResult.IsSuccess)
+                    {
+                        bundledSponsor = sponsorResult.Value;
+
+                        // Calculate revenue breakdown
+                        try
+                        {
+                            var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(
+                                amountResult.Value, @event.Location, cancellationToken);
+                            if (breakdown.IsSuccess)
+                            {
+                                bundledSponsor.SetRevenueBreakdown(
+                                    breakdown.Value.StripeFeeAmount,
+                                    breakdown.Value.PlatformCommission,
+                                    breakdown.Value.OrganizerPayout);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Exception calculating sponsor revenue breakdown");
+                        }
+
+                        _logger.LogInformation(
+                            "Bundled money sponsor created - SponsorId={SponsorId}, Amount={Amount}",
+                            bundledSponsor.Id, request.SponsorAmount.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "HandleMultiAttendeeRsvp: Sponsor processing failed - EventId={EventId}. Registration will continue without sponsor.",
+                    @event.Id);
+                bundledSponsor = null;
+            }
+        }
+
         // Check if event requires payment
         if (!@event.IsFree())
         {
@@ -349,8 +485,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 }
             };
 
-            // Build multi-line-item checkout when donation or add-ons are bundled
-            var hasLineItems = bundledDonation != null || bundledAddOns.Count > 0;
+            // Build multi-line-item checkout when donation, add-ons, collection, or sponsor are bundled
+            var hasLineItems = bundledDonation != null || bundledAddOns.Count > 0
+                || bundledCollection != null || bundledSponsor != null;
             if (hasLineItems)
             {
                 var currency = registration.TotalPrice.Currency.ToString();
@@ -401,6 +538,36 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                     checkoutRequest.Metadata["addon_purchase_ids"] = addOnIds;
                 }
 
+                // Phase 6A.137E: Add collection line item
+                if (bundledCollection != null)
+                {
+                    lineItems.Add(new CheckoutLineItem
+                    {
+                        Name = $"Event Fund Contribution: {@event.Title.Value}",
+                        Description = "Collection contribution",
+                        Amount = bundledCollection.Amount.Amount,
+                        Currency = currency
+                    });
+                    totalAmount += bundledCollection.Amount.Amount;
+                    checkoutRequest.Metadata["collection_id"] = bundledCollection.Id.ToString();
+                }
+
+                // Phase 6A.137E: Add sponsor line item
+                if (bundledSponsor != null)
+                {
+                    lineItems.Add(new CheckoutLineItem
+                    {
+                        Name = $"Sponsorship: {@event.Title.Value}",
+                        Description = request.SponsorOrganization != null
+                            ? $"Sponsored by {request.SponsorOrganization}"
+                            : "Money sponsorship",
+                        Amount = bundledSponsor.Amount!.Amount,
+                        Currency = currency
+                    });
+                    totalAmount += bundledSponsor.Amount!.Amount;
+                    checkoutRequest.Metadata["sponsor_id"] = bundledSponsor.Id.ToString();
+                }
+
                 checkoutRequest.LineItems = lineItems;
                 checkoutRequest.Amount = totalAmount;
             }
@@ -448,6 +615,40 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 }
 
                 await _addOnPurchaseRepository.AddAsync(addOn, cancellationToken);
+            }
+
+            // Phase 6A.137E: Set checkout session on bundled collection and persist
+            if (bundledCollection != null)
+            {
+                var collectionSessionResult = bundledCollection.SetStripeCheckoutSession(
+                    checkoutResult.Value.SessionId,
+                    addOnExpiresAt);
+
+                if (collectionSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRsvp: Failed to set checkout session on bundled collection - CollectionId={CollectionId}, Error={Error}",
+                        bundledCollection.Id, collectionSessionResult.Error);
+                }
+
+                await _collectionRepository.AddAsync(bundledCollection, cancellationToken);
+            }
+
+            // Phase 6A.137E: Set checkout session on bundled sponsor and persist
+            if (bundledSponsor != null)
+            {
+                var sponsorSessionResult = bundledSponsor.SetStripeCheckoutSession(
+                    checkoutResult.Value.SessionId,
+                    addOnExpiresAt);
+
+                if (sponsorSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRsvp: Failed to set checkout session on bundled sponsor - SponsorId={SponsorId}, Error={Error}",
+                        bundledSponsor.Id, sponsorSessionResult.Error);
+                }
+
+                await _sponsorRepository.AddAsync(bundledSponsor, cancellationToken);
             }
 
             // Save changes with checkout session ID

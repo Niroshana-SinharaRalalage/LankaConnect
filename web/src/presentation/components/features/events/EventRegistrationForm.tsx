@@ -7,10 +7,12 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto } from '@/infrastructure/api/types/events.types';
+import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto, CollectionConfigurationDto, SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
 import { DonationOptionInForm } from './DonationOptionInForm';
 import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
+import { CollectionOptionInForm } from './CollectionOptionInForm';
+import { SponsorOptionInForm } from './SponsorOptionInForm';
 import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
 
 /**
@@ -40,6 +42,9 @@ interface EventRegistrationFormProps {
   donationConfig?: DonationConfigurationDto | null;
   // Add-On Feature: Optional add-on configuration for registration bundling
   addOnConfig?: AddOnConfigurationDto | null;
+  // Phase 6A.137E: Collection/sponsor configuration for registration bundling
+  collectionConfig?: CollectionConfigurationDto | null;
+  sponsorConfig?: SponsorConfigurationDto | null;
   isProcessing: boolean;
   onSubmit: (data: AnonymousRegistrationRequest | RsvpRequest) => Promise<void>;
   error?: string | null;
@@ -59,6 +64,8 @@ export function EventRegistrationForm({
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   donationConfig,
   addOnConfig,
+  collectionConfig,
+  sponsorConfig,
   isProcessing,
   onSubmit,
   error,
@@ -72,6 +79,13 @@ export function EventRegistrationForm({
   // Add-On Feature: Selected add-ons state
   const [addOnSelections, setAddOnSelections] = useState<AddOnSelection[]>([]);
   const addOnTotal = addOnSelections.reduce((sum, s) => sum + s.unitPrice * s.quantity, 0);
+
+  // Phase 6A.137E: Collection/sponsor state
+  const [collectionAmount, setCollectionAmount] = useState<number | null>(null);
+  const [collectionNotes, setCollectionNotes] = useState<string | null>(null);
+  const [sponsorAmount, setSponsorAmount] = useState<number | null>(null);
+  const [sponsorOrganization, setSponsorOrganization] = useState<string | null>(null);
+  const [sponsorNotes, setSponsorNotes] = useState<string | null>(null);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -326,6 +340,17 @@ export function EventRegistrationForm({
         // Phase 6A.137D: Include add-on selections for bundled checkout
         ...(addOnSelectionsPayload.length > 0 && {
           addOnSelections: addOnSelectionsPayload,
+        }),
+        // Phase 6A.137E: Include collection contribution for bundled checkout
+        ...(collectionAmount && collectionAmount > 0 && {
+          collectionAmount,
+          collectionNotes: collectionNotes || undefined,
+        }),
+        // Phase 6A.137E: Include sponsor amount for bundled checkout
+        ...(sponsorAmount && sponsorAmount > 0 && {
+          sponsorAmount,
+          sponsorOrganization: sponsorOrganization || undefined,
+          sponsorNotes: sponsorNotes || undefined,
         }),
       };
 
@@ -640,6 +665,29 @@ export function EventRegistrationForm({
         />
       )}
 
+      {/* Phase 6A.137E: Optional collection contribution during registration */}
+      {collectionConfig?.isEnabled === true && (
+        <CollectionOptionInForm
+          collectionConfig={collectionConfig}
+          onCollectionChange={(amount, notes) => {
+            setCollectionAmount(amount);
+            setCollectionNotes(notes);
+          }}
+        />
+      )}
+
+      {/* Phase 6A.137E: Optional money sponsorship during registration */}
+      {sponsorConfig?.isEnabled === true && sponsorConfig?.acceptMoneySponsors === true && (
+        <SponsorOptionInForm
+          sponsorConfig={sponsorConfig}
+          onSponsorChange={(amount, org, notes) => {
+            setSponsorAmount(amount);
+            setSponsorOrganization(org);
+            setSponsorNotes(notes);
+          }}
+        />
+      )}
+
       {/* Total Price with Group/Dual/Single Pricing Breakdown */}
       {!isFree && totalPrice > 0 && (
         <div className="p-4 bg-neutral-50 rounded-lg border-t-2 border-orange-500">
@@ -693,8 +741,8 @@ export function EventRegistrationForm({
             </div>
           )}
 
-          {/* Phase 6A.137D: Registration checkout total — ticket + donation + add-ons.
-              Add-ons are now bundled with registration in a single Stripe checkout. */}
+          {/* Phase 6A.137D: Registration checkout total — ticket + donation + add-ons + collection + sponsor.
+              All financial items are bundled with registration in a single Stripe checkout. */}
           {addOnSelections.length > 0 && (
             <div className="mt-3 space-y-1">
               {addOnSelections.map((s) => (
@@ -705,10 +753,27 @@ export function EventRegistrationForm({
               ))}
             </div>
           )}
+
+          {/* Phase 6A.137E: Collection contribution in price breakdown */}
+          {collectionAmount && collectionAmount > 0 && (
+            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
+              <span>Collection contribution</span>
+              <span>${collectionAmount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* Phase 6A.137E: Sponsorship in price breakdown */}
+          {sponsorAmount && sponsorAmount > 0 && (
+            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
+              <span>Sponsorship</span>
+              <span>${sponsorAmount.toFixed(2)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${(totalPrice + (donationAmount || 0) + addOnTotal).toFixed(2)}
+              ${(totalPrice + (donationAmount || 0) + addOnTotal + (collectionAmount || 0) + (sponsorAmount || 0)).toFixed(2)}
             </span>
           </div>
         </div>

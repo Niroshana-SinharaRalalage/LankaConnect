@@ -831,6 +831,15 @@ export interface RsvpRequest {
 
   // Phase 6A.137D: Add-ons bundled with registration checkout
   addOnSelections?: AddOnSelectionRequest[];
+
+  // Phase 6A.137E: Collection (event fund) contribution during registration
+  collectionAmount?: number | null;
+  collectionNotes?: string | null;
+
+  // Phase 6A.137E: Money sponsorship during registration
+  sponsorAmount?: number | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
 }
 
 /**

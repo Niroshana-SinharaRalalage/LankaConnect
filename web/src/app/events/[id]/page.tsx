@@ -402,6 +402,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           donorNotes: (data as any).donorNotes ?? undefined,
           // Phase 6A.137D: Include add-on selections for bundled checkout
           addOnSelections: (data as any).addOnSelections ?? undefined,
+          // Phase 6A.137E: Include collection/sponsor for bundled checkout
+          collectionAmount: (data as any).collectionAmount ?? undefined,
+          collectionNotes: (data as any).collectionNotes ?? undefined,
+          sponsorAmount: (data as any).sponsorAmount ?? undefined,
+          sponsorOrganization: (data as any).sponsorOrganization ?? undefined,
+          sponsorNotes: (data as any).sponsorNotes ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment
@@ -983,6 +989,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                        collectionConfig={event.collectionConfig}
+                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1388,6 +1396,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                          collectionConfig={event.collectionConfig}
+                          sponsorConfig={event.sponsorConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1649,6 +1659,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                        collectionConfig={event.collectionConfig}
+                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1710,6 +1722,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                        collectionConfig={event.collectionConfig}
+                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1785,6 +1799,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                    collectionConfig={event.collectionConfig}
+                    sponsorConfig={event.sponsorConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}

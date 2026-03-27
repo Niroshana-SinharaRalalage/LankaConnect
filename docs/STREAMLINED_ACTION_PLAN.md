@@ -7,12 +7,19 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - REGISTRATION BUNDLING FIXES (2026-03-27)
+**Date**: 2026-03-27
+**Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements
+**Status**: ✅ **COMPLETE** (commit `f544806e`)
+**Scope**: F1a: 6 missing fields in RsvpRequest DTO for authenticated registration. F1b: Anonymous registration bundling (~120 lines). F2: Add-on partial refund for bundled purchases + idempotency fix. F3: PaymentCompletedEventHandler loads bundled items for email breakdown. F4: SponsorOptionInForm validation error. F4b: Price breakdown section headers + filter qty=0. F5: Collection/sponsor refund in CancelRsvpCommandHandler with UI checkboxes. 15 files changed. Tests: 1903/1903 (App), 146/148 (Domain).
+
+---
+
 ## ✅ PREVIOUS STATUS - COLLECTION/SPONSOR BUNDLING (2026-03-26)
 **Date**: 2026-03-26
 **Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
 **Status**: ✅ **COMPLETE** (commit `cea19564`)
 **Scope**: Extended RsvpToEventCommand with collection/sponsor fields, added handling in handler and webhook, created CollectionOptionInForm.tsx and SponsorOptionInForm.tsx, integrated into registration form with price breakdown. 8 new tests (1903 total).
-**Remaining**: Phase 6A.137 B2 (4 refund emails), C (email breakdown), D (add-on bundling)
 
 ---
 

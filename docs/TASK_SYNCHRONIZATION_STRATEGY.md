@@ -3,11 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - COLLECTION/SPONSOR BUNDLING ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - REGISTRATION BUNDLING FIXES ✅ COMPLETE
+**Date**: 2026-03-27
+**Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements
+**Progress**: ✅ **COMPLETE** — F1a/F1b: Authenticated + anonymous registration bundling. F2: Add-on partial refund fix. F3: Email financial breakdown with bundled items. F4/F4b: Sponsor validation + price breakdown display. F5: Collection/sponsor refund with UI checkboxes.
+**Status**: ✅ **COMPLETE** — Commit `f544806e`. 15 files changed. Tests: 1903/1903 (Application), 146/148 (Domain, 2 pre-existing). Deployment in progress.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - COLLECTION/SPONSOR BUNDLING ✅ COMPLETE
 **Date**: 2026-03-26
 **Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
 **Progress**: ✅ **COMPLETE** — Extended RsvpToEventCommand, handler, webhook; created CollectionOptionInForm.tsx & SponsorOptionInForm.tsx; integrated into registration form with price breakdown
-**Status**: ✅ **COMPLETE** — Commit `cea19564`. 8 new tests (1903 total). Remaining 6A.137 work: B2 (4 refund emails), C (email breakdown), D (add-on bundling).
+**Status**: ✅ **COMPLETE** — Commit `cea19564`. 8 new tests (1903 total).
 
 ---
 

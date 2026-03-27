@@ -1,7 +1,34 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-26 - Phase 6A.137E: Bundle collections & sponsors with registration checkout*
+*Last Updated: 2026-03-27 - Phase 6A.137F: Registration bundling fixes, anonymous registration, refund improvements*
 
-## 🎯 Current Session Status (2026-03-26)
+## 🎯 Current Session Status (2026-03-27)
+
+### Phase 6A.137F: Registration Bundling Fixes & Anonymous Registration Support
+
+**Status**: ✅ **COMPLETE** (commit `f544806e`)
+
+**Classification**: Bug fixes + Feature — Fix authenticated and anonymous registration bundling, add-on refund handling, email financial breakdown, sponsor form validation, price breakdown display, and collection/sponsor refund with UI checkboxes.
+
+**Changes**:
+| Sub-phase | Area | Description |
+|-----------|------|-------------|
+| F1a | Backend DTO | Added 6 missing fields to `RsvpRequest` DTO + controller mapping for authenticated registration |
+| F1b | Backend Handler | Added 6 fields to `AnonymousRegistrationRequest` + full bundling logic in anonymous handler (~120 lines) |
+| F2 | Refund Service | Fixed add-on refund to use partial refund for bundled purchases, fixed idempotency key, treat `charge_already_refunded` as success |
+| F3 | Webhook Handler | Updated `PaymentCompletedEventHandler` to load all bundled items (add-ons/collections/sponsors) for correct email financial breakdown |
+| F4 | Frontend Component | Fixed `SponsorOptionInForm` silent nulling with visible validation error |
+| F4b | Frontend Display | Fixed price breakdown display with section headers, filter qty=0 add-ons |
+| F5 | Cancellation | Added collection/sponsor refund to `CancelRsvpCommandHandler` with UI checkboxes |
+
+**Files Changed (15)**: EventsController.cs, CancelRsvpCommand.cs, CancelRsvpCommandHandler.cs, RegisterAnonymousAttendeeCommand.cs, RegisterAnonymousAttendeeCommandHandler.cs, PaymentCompletedEventHandler.cs, AddOnRefundService.cs, StripePaymentService.cs, TicketConfirmationEmailParams.cs, PaymentCompletedEventHandlerTests.cs, page.tsx, events.repository.ts, events.types.ts, EventRegistrationForm.tsx, SponsorOptionInForm.tsx
+
+**Tests**: 1903/1903 passed (Application), 146/148 (Domain, 2 pre-existing)
+
+**Deployment**: In progress to Azure staging
+
+---
+
+## ✅ PREVIOUS STATUS - COLLECTION/SPONSOR BUNDLING (2026-03-26)
 
 ### Phase 6A.137E: Bundle Collections & Sponsors with Registration Checkout
 
@@ -20,8 +47,6 @@
 | Frontend Integration | Integrated both components into registration form with unified price breakdown |
 
 **Tests**: 8 new tests added (1903 total)
-
-**Remaining Phase 6A.137 work**: B2 (4 refund emails), C (email financial breakdown), D (add-on bundling)
 
 ---
 

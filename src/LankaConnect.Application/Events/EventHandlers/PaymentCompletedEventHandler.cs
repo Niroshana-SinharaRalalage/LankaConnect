@@ -31,6 +31,10 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IDonationRepository _donationRepository;
+    // Phase 6A.137F: Add-on, collection, sponsor repos for email financial breakdown
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<PaymentCompletedEventHandler> _logger;
@@ -42,6 +46,10 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IDonationRepository donationRepository,
+        // Phase 6A.137F: Inject bundling repos
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
         IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<PaymentCompletedEventHandler> logger)
@@ -52,6 +60,9 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _donationRepository = donationRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
         _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
@@ -273,31 +284,129 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                             .ToList());
                 }
 
-                // Phase 6A.137C: Load bundled donation for financial breakdown
+                // Phase 6A.137C/F: Load all bundled items for comprehensive financial breakdown
                 try
                 {
+                    decimal donationTotal = 0m;
+                    decimal addOnTotal = 0m;
+                    decimal collectionTotal = 0m;
+                    decimal sponsorTotal = 0m;
+
+                    // Load bundled donation
                     var bundledDonation = await _donationRepository.GetByRegistrationIdAsync(
                         registration.Id, cancellationToken);
-
                     if (bundledDonation != null && bundledDonation.Amount.Amount > 0)
                     {
-                        var donationAmount = bundledDonation.Amount.Amount;
-                        var ticketSubtotal = domainEvent.AmountPaid - donationAmount;
+                        donationTotal = bundledDonation.Amount.Amount;
+                    }
 
+                    // Phase 6A.137F: Load bundled add-ons by checkout session ID
+                    try
+                    {
+                        IReadOnlyList<AddOnPurchase>? addOnPurchases = null;
+                        if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
+                        {
+                            addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId, cancellationToken);
+                        }
+                        var completedAddOns = addOnPurchases?
+                            .Where(p => p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Completed)
+                            .ToList();
+
+                        if (completedAddOns != null && completedAddOns.Count > 0)
+                        {
+                            addOnTotal = completedAddOns.Sum(p => p.TotalAmount.Amount);
+
+                            // Build HTML rows for add-on breakdown
+                            var addOnHtml = string.Join("", completedAddOns.Select((p, i) =>
+                                $"<tr><td style=\"padding:4px 0;\">Add-on {i + 1} (x{p.Quantity})</td>" +
+                                $"<td style=\"padding:4px 0;text-align:right;\">${p.TotalAmount.Amount:F2}</td></tr>"));
+
+                            typedParams.WithAddOnBreakdown(addOnHtml, addOnTotal);
+
+                            _logger.LogInformation(
+                                "[Phase 6A.137F] Add-on breakdown loaded - CorrelationId: {CorrelationId}, Count={Count}, Total={Total}",
+                                correlationId, completedAddOns.Count, addOnTotal);
+                        }
+                    }
+                    catch (Exception addOnEx)
+                    {
+                        _logger.LogWarning(addOnEx,
+                            "[Phase 6A.137F] Failed to load bundled add-ons - CorrelationId: {CorrelationId}",
+                            correlationId);
+                    }
+
+                    // Phase 6A.137F: Load bundled collection by checkout session ID
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
+                        {
+                            var bundledCollection = await _collectionRepository.GetByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId, cancellationToken);
+
+                            if (bundledCollection != null && bundledCollection.Amount.Amount > 0)
+                            {
+                                collectionTotal = bundledCollection.Amount.Amount;
+                                typedParams.WithCollectionBreakdown(collectionTotal);
+
+                                _logger.LogInformation(
+                                    "[Phase 6A.137F] Collection breakdown loaded - CorrelationId: {CorrelationId}, Amount={Amount}",
+                                    correlationId, collectionTotal);
+                            }
+                        }
+                    }
+                    catch (Exception collectionEx)
+                    {
+                        _logger.LogWarning(collectionEx,
+                            "[Phase 6A.137F] Failed to load bundled collection - CorrelationId: {CorrelationId}",
+                            correlationId);
+                    }
+
+                    // Phase 6A.137F: Load bundled sponsor by checkout session ID
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
+                        {
+                            var bundledSponsor = await _sponsorRepository.GetByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId, cancellationToken);
+
+                            if (bundledSponsor != null && bundledSponsor.Amount != null && bundledSponsor.Amount.Amount > 0)
+                            {
+                                sponsorTotal = bundledSponsor.Amount.Amount;
+                                typedParams.WithSponsorBreakdown(sponsorTotal);
+
+                                _logger.LogInformation(
+                                    "[Phase 6A.137F] Sponsor breakdown loaded - CorrelationId: {CorrelationId}, Amount={Amount}",
+                                    correlationId, sponsorTotal);
+                            }
+                        }
+                    }
+                    catch (Exception sponsorEx)
+                    {
+                        _logger.LogWarning(sponsorEx,
+                            "[Phase 6A.137F] Failed to load bundled sponsor - CorrelationId: {CorrelationId}",
+                            correlationId);
+                    }
+
+                    // Calculate correct ticket subtotal (total paid minus all bundled items)
+                    var ticketSubtotal = domainEvent.AmountPaid - donationTotal - addOnTotal - collectionTotal - sponsorTotal;
+
+                    if (donationTotal > 0 || addOnTotal > 0 || collectionTotal > 0 || sponsorTotal > 0)
+                    {
                         typedParams.WithFinancialBreakdown(
                             ticketSubtotal: ticketSubtotal > 0 ? ticketSubtotal : domainEvent.AmountPaid,
-                            donationAmount: donationAmount,
-                            currency: bundledDonation.Amount.Currency.ToString());
+                            donationAmount: donationTotal,
+                            currency: bundledDonation?.Amount.Currency.ToString() ?? "USD");
 
                         _logger.LogInformation(
-                            "[Phase 6A.137C] [PaymentEmail-BREAKDOWN] Financial breakdown loaded - CorrelationId: {CorrelationId}, TicketSubtotal={TicketSubtotal}, DonationAmount={DonationAmount}",
-                            correlationId, ticketSubtotal, donationAmount);
+                            "[Phase 6A.137F] [PaymentEmail-BREAKDOWN] Full financial breakdown - CorrelationId: {CorrelationId}, TicketSubtotal={TicketSubtotal}, Donation={Donation}, AddOns={AddOns}, Collection={Collection}, Sponsor={Sponsor}",
+                            correlationId, ticketSubtotal, donationTotal, addOnTotal, collectionTotal, sponsorTotal);
                     }
                 }
-                catch (Exception donationEx)
+                catch (Exception breakdownEx)
                 {
-                    _logger.LogWarning(donationEx,
-                        "[Phase 6A.137C] [PaymentEmail-BREAKDOWN-WARN] Failed to load bundled donation - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    _logger.LogWarning(breakdownEx,
+                        "[Phase 6A.137F] [PaymentEmail-BREAKDOWN-WARN] Failed to load financial breakdown - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
                         correlationId, registration.Id);
                     // Non-critical: email still sends without breakdown
                 }

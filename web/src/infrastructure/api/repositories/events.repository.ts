@@ -370,12 +370,17 @@ export class EventsRepository {
       deleteSignUpCommitments?: boolean;
       deleteFormResponses?: boolean;
       refundAddOnPurchases?: boolean;
+      // Phase 6A.137F: Collection and sponsor refund options
+      refundCollections?: boolean;
+      refundSponsors?: boolean;
     } = {}
   ): Promise<CancelRsvpResult | null> {
     const params = new URLSearchParams();
     if (options.deleteSignUpCommitments) params.append('deleteSignUpCommitments', 'true');
     if (options.deleteFormResponses) params.append('deleteFormResponses', 'true');
     if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
+    if (options.refundCollections) params.append('refundCollections', 'true');
+    if (options.refundSponsors) params.append('refundSponsors', 'true');
     const queryString = params.toString();
     return await apiClient.delete<CancelRsvpResult | null>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }

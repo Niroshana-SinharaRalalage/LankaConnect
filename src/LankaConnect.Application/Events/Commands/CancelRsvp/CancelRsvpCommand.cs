@@ -17,7 +17,10 @@ public record CancelRsvpCommand(
     Guid UserId,
     bool DeleteSignUpCommitments = false,
     bool DeleteFormResponses = false,
-    bool RefundAddOnPurchases = false
+    bool RefundAddOnPurchases = false,
+    // Phase 6A.137F: Collection and sponsor refund flags
+    bool RefundCollections = false,
+    bool RefundSponsors = false
 ) : ICommand<CancelRsvpResult>;
 
 /// <summary>
@@ -33,5 +36,10 @@ public record CancelRsvpResult(
     int? AddOnRefundedCount,
     int? AddOnFailedCount,
     decimal? AddOnRefundTotal,
-    List<string>? Warnings
+    // Phase 6A.137F: Collection and sponsor refund results
+    bool? CollectionRefundProcessed = null,
+    decimal? CollectionRefundAmount = null,
+    bool? SponsorRefundProcessed = null,
+    decimal? SponsorRefundAmount = null,
+    List<string>? Warnings = null
 );

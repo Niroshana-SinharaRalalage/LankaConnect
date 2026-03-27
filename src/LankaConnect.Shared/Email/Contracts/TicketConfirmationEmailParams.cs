@@ -283,6 +283,53 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Add-On Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes bundled add-on purchases.
+    /// </summary>
+    public bool HasAddOns { get; set; } = false;
+
+    /// <summary>
+    /// Pre-rendered HTML rows for add-on line items (e.g., "T-Shirt x2 — $30.00").
+    /// </summary>
+    public string AddOnBreakdownHtml { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Total add-on amount formatted as "30.00".
+    /// </summary>
+    public string AddOnTotal { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Collection Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes a bundled collection contribution.
+    /// </summary>
+    public bool HasCollection { get; set; } = false;
+
+    /// <summary>
+    /// Collection contribution amount formatted as "10.00".
+    /// </summary>
+    public string CollectionBreakdownAmount { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Sponsor Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes a bundled sponsorship.
+    /// </summary>
+    public bool HasSponsor { get; set; } = false;
+
+    /// <summary>
+    /// Sponsorship amount formatted as "25.00".
+    /// </summary>
+    public string SponsorBreakdownAmount { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -355,7 +402,16 @@ public class TicketConfirmationEmailParams : IEmailParameters
             { "HasDonation", HasDonation },
             { "TicketSubtotal", TicketSubtotal },
             { "DonationAmount", DonationAmount },
-            { "BreakdownCurrency", BreakdownCurrency }
+            { "BreakdownCurrency", BreakdownCurrency },
+
+            // Phase 6A.137F: Add-on, collection, sponsor breakdown parameters
+            { "HasAddOns", HasAddOns },
+            { "AddOnBreakdownHtml", AddOnBreakdownHtml },
+            { "AddOnTotal", AddOnTotal },
+            { "HasCollection", HasCollection },
+            { "CollectionBreakdownAmount", CollectionBreakdownAmount },
+            { "HasSponsor", HasSponsor },
+            { "SponsorBreakdownAmount", SponsorBreakdownAmount }
         };
 
         return dict;
@@ -560,6 +616,40 @@ public class TicketConfirmationEmailParams : IEmailParameters
         TicketSubtotal = ticketSubtotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         DonationAmount = donationAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         BreakdownCurrency = currency;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets add-on breakdown in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithAddOnBreakdown(string addOnBreakdownHtml, decimal addOnTotal)
+    {
+        HasFinancialBreakdown = true;
+        HasAddOns = true;
+        AddOnBreakdownHtml = addOnBreakdownHtml;
+        AddOnTotal = addOnTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets collection contribution in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithCollectionBreakdown(decimal collectionAmount)
+    {
+        HasFinancialBreakdown = true;
+        HasCollection = true;
+        CollectionBreakdownAmount = collectionAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets sponsorship in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithSponsorBreakdown(decimal sponsorAmount)
+    {
+        HasFinancialBreakdown = true;
+        HasSponsor = true;
+        SponsorBreakdownAmount = sponsorAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         return this;
     }
 

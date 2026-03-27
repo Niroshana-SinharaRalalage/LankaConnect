@@ -102,11 +102,17 @@ public class AddOnRefundService : IAddOnRefundService
                         // Phase 6A.135: Use purchase.Id as RegistrationId so the idempotency key
                         // ($"refund_{PaymentIntentId}") is unique per PaymentIntent.
                         // Previously RegistrationId=Guid.Empty caused global idempotency collision.
+                        // Phase 6A.137F: Use partial refund for bundled purchases (shared PaymentIntent)
+                        // Standalone purchases (own PaymentIntent) use full refund (null = refund entire PI)
+                        var refundAmountInCents = purchase.IsBundled
+                            ? (long?)(long)(purchase.TotalAmount.Amount * 100)
+                            : (long?)null;
+
                         var refundRequest = new CreateRefundRequest
                         {
                             PaymentIntentId = purchase.StripePaymentIntentId!,
                             RegistrationId = purchase.Id, // Use purchase ID for metadata tracking
-                            AmountInCents = null, // Full refund
+                            AmountInCents = refundAmountInCents,
                             Reason = reason,
                             Metadata = new Dictionary<string, string>(metadata)
                             {

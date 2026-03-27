@@ -445,6 +445,11 @@ export interface CancelRsvpResult {
   addOnRefundedCount?: number | null;
   addOnFailedCount?: number | null;
   addOnRefundTotal?: number | null;
+  // Phase 6A.137F: Collection and sponsor refund results
+  collectionRefundProcessed?: boolean | null;
+  collectionRefundAmount?: number | null;
+  sponsorRefundProcessed?: boolean | null;
+  sponsorRefundAmount?: number | null;
   warnings?: string[] | null;
 }
 

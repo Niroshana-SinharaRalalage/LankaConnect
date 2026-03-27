@@ -20,18 +20,22 @@ export function SponsorOptionInForm({ sponsorConfig, onSponsorChange }: SponsorO
   const [amount, setAmount] = useState('');
   const [organization, setOrganization] = useState('');
   const [notes, setNotes] = useState('');
+  // Phase 6A.137F: Visible validation error instead of silent nulling (Bug 2)
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleAmountChange = (value: string) => {
     setAmount(value);
     const parsed = parseFloat(value);
     const effectiveAmount = parsed > 0 ? parsed : null;
 
-    // Validate against min
+    // Phase 6A.137F: Show visible error when amount is below minimum instead of silently nulling
     if (effectiveAmount !== null && sponsorConfig.minSponsorAmount && effectiveAmount < sponsorConfig.minSponsorAmount) {
+      setValidationError(`Minimum sponsorship amount is $${sponsorConfig.minSponsorAmount.toFixed(2)}`);
       onSponsorChange(null, organization || null, notes || null);
       return;
     }
 
+    setValidationError(null);
     onSponsorChange(effectiveAmount, organization || null, notes || null);
   };
 
@@ -73,9 +77,13 @@ export function SponsorOptionInForm({ sponsorConfig, onSponsorChange }: SponsorO
             value={amount}
             onChange={(e) => handleAmountChange(e.target.value)}
             placeholder={`Sponsorship amount${sponsorConfig.minSponsorAmount ? ` (min $${sponsorConfig.minSponsorAmount})` : ''}`}
-            className="pl-7 text-sm h-9"
+            className={`pl-7 text-sm h-9 ${validationError ? 'border-red-500 focus:ring-red-500' : ''}`}
           />
         </div>
+        {/* Phase 6A.137F: Visible validation error message */}
+        {validationError && (
+          <p className="text-xs text-red-600 mt-1">{validationError}</p>
+        )}
 
         {/* Organization (optional) */}
         <Input

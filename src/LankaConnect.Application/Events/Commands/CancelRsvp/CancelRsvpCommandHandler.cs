@@ -19,6 +19,10 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     private readonly IRegistrationRefundService _refundService;
     private readonly IFormResponseRepository _formResponseRepository;
     private readonly IAddOnRefundService _addOnRefundService;
+    // Phase 6A.137F: Collection and sponsor refund support
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
+    private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
@@ -28,6 +32,10 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         IRegistrationRefundService refundService,
         IFormResponseRepository formResponseRepository,
         IAddOnRefundService addOnRefundService,
+        // Phase 6A.137F: Inject collection/sponsor refund dependencies
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
+        IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
@@ -36,6 +44,9 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         _refundService = refundService;
         _formResponseRepository = formResponseRepository;
         _addOnRefundService = addOnRefundService;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
+        _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -283,6 +294,142 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         }
                     }
 
+                    // Phase 6A.137F: Handle collection refund
+                    bool? collectionRefundProcessed = null;
+                    decimal? collectionRefundAmount = null;
+
+                    if (request.RefundCollections)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding collection contribution - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var collections = await _collectionRepository.GetByUserIdAndEventIdAsync(
+                                request.UserId, request.EventId, cancellationToken);
+
+                            var refundableCollection = collections?.FirstOrDefault(c =>
+                                c.Status == CollectionStatus.Completed &&
+                                !string.IsNullOrEmpty(c.StripePaymentIntentId));
+
+                            if (refundableCollection != null)
+                            {
+                                var refundAmountInCents = (long)(refundableCollection.Amount.Amount * 100);
+                                var refundRequest = new CreateRefundRequest
+                                {
+                                    PaymentIntentId = refundableCollection.StripePaymentIntentId!,
+                                    RegistrationId = refundableCollection.Id,
+                                    AmountInCents = refundAmountInCents,
+                                    Reason = "requested_by_customer",
+                                    Metadata = new Dictionary<string, string>
+                                    {
+                                        ["collection_id"] = refundableCollection.Id.ToString(),
+                                        ["refund_type"] = "user_cancellation_collection_refund"
+                                    }
+                                };
+
+                                var stripeResult = await _stripePaymentService.CreateRefundAsync(refundRequest);
+                                if (stripeResult.IsSuccess)
+                                {
+                                    refundableCollection.MarkAsRefunded();
+                                    _collectionRepository.Update(refundableCollection);
+                                    collectionRefundProcessed = true;
+                                    collectionRefundAmount = refundableCollection.Amount.Amount;
+
+                                    _logger.LogInformation(
+                                        "CancelRsvp: Collection refund succeeded - CollectionId={CollectionId}, Amount=${Amount}",
+                                        refundableCollection.Id, collectionRefundAmount);
+                                }
+                                else
+                                {
+                                    collectionRefundProcessed = false;
+                                    warnings.Add($"Collection refund failed: {stripeResult.Error}");
+                                    _logger.LogWarning(
+                                        "CancelRsvp: Collection refund failed - CollectionId={CollectionId}, Error={Error}",
+                                        refundableCollection.Id, stripeResult.Error);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            collectionRefundProcessed = false;
+                            warnings.Add($"Collection refund error: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund collection (non-blocking) - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+                        }
+                    }
+
+                    // Phase 6A.137F: Handle sponsor refund
+                    bool? sponsorRefundProcessed = null;
+                    decimal? sponsorRefundAmount = null;
+
+                    if (request.RefundSponsors)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding sponsorship - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var sponsors = await _sponsorRepository.GetByUserIdAndEventIdAsync(
+                                request.UserId, request.EventId, cancellationToken);
+
+                            // Only refund money sponsors that have been completed
+                            var refundableSponsor = sponsors?.FirstOrDefault(s =>
+                                s.Type == SponsorType.Money &&
+                                s.Status == SponsorStatus.Completed &&
+                                !string.IsNullOrEmpty(s.StripePaymentIntentId));
+
+                            if (refundableSponsor != null && refundableSponsor.Amount != null)
+                            {
+                                var refundAmountInCents = (long)(refundableSponsor.Amount.Amount * 100);
+                                var refundRequest = new CreateRefundRequest
+                                {
+                                    PaymentIntentId = refundableSponsor.StripePaymentIntentId!,
+                                    RegistrationId = refundableSponsor.Id,
+                                    AmountInCents = refundAmountInCents,
+                                    Reason = "requested_by_customer",
+                                    Metadata = new Dictionary<string, string>
+                                    {
+                                        ["sponsor_id"] = refundableSponsor.Id.ToString(),
+                                        ["refund_type"] = "user_cancellation_sponsor_refund"
+                                    }
+                                };
+
+                                var stripeResult = await _stripePaymentService.CreateRefundAsync(refundRequest);
+                                if (stripeResult.IsSuccess)
+                                {
+                                    refundableSponsor.MarkAsRefunded();
+                                    _sponsorRepository.Update(refundableSponsor);
+                                    sponsorRefundProcessed = true;
+                                    sponsorRefundAmount = refundableSponsor.Amount.Amount;
+
+                                    _logger.LogInformation(
+                                        "CancelRsvp: Sponsor refund succeeded - SponsorId={SponsorId}, Amount=${Amount}",
+                                        refundableSponsor.Id, sponsorRefundAmount);
+                                }
+                                else
+                                {
+                                    sponsorRefundProcessed = false;
+                                    warnings.Add($"Sponsor refund failed: {stripeResult.Error}");
+                                    _logger.LogWarning(
+                                        "CancelRsvp: Sponsor refund failed - SponsorId={SponsorId}, Error={Error}",
+                                        refundableSponsor.Id, stripeResult.Error);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            sponsorRefundProcessed = false;
+                            warnings.Add($"Sponsor refund error: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund sponsor (non-blocking) - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+                        }
+                    }
+
                     // Phase 6A.81 Part 3: Different handling for Preliminary vs Confirmed registrations
                     if (registration.Status == RegistrationStatus.Preliminary)
                     {
@@ -405,6 +552,11 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         AddOnRefundedCount: addOnRefundsProcessed.HasValue ? addOnRefundedCount : null,
                         AddOnFailedCount: addOnRefundsProcessed.HasValue ? addOnFailedCount : null,
                         AddOnRefundTotal: addOnRefundsProcessed.HasValue ? addOnRefundTotal : null,
+                        // Phase 6A.137F: Include collection/sponsor refund results
+                        CollectionRefundProcessed: collectionRefundProcessed,
+                        CollectionRefundAmount: collectionRefundAmount,
+                        SponsorRefundProcessed: sponsorRefundProcessed,
+                        SponsorRefundAmount: sponsorRefundAmount,
                         Warnings: warnings.Count > 0 ? warnings : null));
                 }
             }

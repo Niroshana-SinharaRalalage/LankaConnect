@@ -32,6 +32,10 @@ public class PaymentCompletedEventHandlerTests
     private readonly Mock<IEventRepository> _eventRepository;
     private readonly Mock<IRegistrationRepository> _registrationRepository;
     private readonly Mock<IDonationRepository> _donationRepository;
+    // Phase 6A.137F: Add-on, collection, sponsor repos for financial breakdown
+    private readonly Mock<IAddOnPurchaseRepository> _addOnPurchaseRepository;
+    private readonly Mock<ICollectionRepository> _collectionRepository;
+    private readonly Mock<ISponsorRepository> _sponsorRepository;
     private readonly Mock<IEventFormRepository> _eventFormRepository;
     private readonly Mock<IEmailUrlHelper> _emailUrlHelper;
     private readonly Mock<ILogger<PaymentCompletedEventHandler>> _logger;
@@ -45,6 +49,9 @@ public class PaymentCompletedEventHandlerTests
         _eventRepository = new Mock<IEventRepository>();
         _registrationRepository = new Mock<IRegistrationRepository>();
         _donationRepository = new Mock<IDonationRepository>();
+        _addOnPurchaseRepository = new Mock<IAddOnPurchaseRepository>();
+        _collectionRepository = new Mock<ICollectionRepository>();
+        _sponsorRepository = new Mock<ISponsorRepository>();
         _eventFormRepository = new Mock<IEventFormRepository>();
         _emailUrlHelper = new Mock<IEmailUrlHelper>();
         _logger = new Mock<ILogger<PaymentCompletedEventHandler>>();
@@ -95,6 +102,9 @@ public class PaymentCompletedEventHandlerTests
             _eventRepository.Object,
             _registrationRepository.Object,
             _donationRepository.Object,
+            _addOnPurchaseRepository.Object,
+            _collectionRepository.Object,
+            _sponsorRepository.Object,
             _eventFormRepository.Object,
             _emailUrlHelper.Object,
             _logger.Object);

@@ -351,7 +351,9 @@ public class StripePaymentService : IStripePaymentService
             // (e.g., refund $10 then refund $5 are distinct operations).
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}"
+                // Phase 6A.137F: Include RegistrationId to prevent idempotency collisions
+                // for bundled purchases sharing the same PaymentIntent and amount
+                IdempotencyKey = $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}_{request.RegistrationId}"
             };
 
             // Phase 6A.94: Log just before Stripe API call
@@ -403,12 +405,22 @@ public class StripePaymentService : IStripePaymentService
                 stopwatch.ElapsedMilliseconds);
 
             // Handle specific error cases with clear messaging
+            // Phase 6A.137F: Treat charge_already_refunded as idempotent success.
+            // The money IS refunded (which is our goal). Returning Failure causes the caller
+            // to report "failed" when the refund actually succeeded.
             if (ex.StripeError?.Code == "charge_already_refunded")
             {
                 _logger.LogWarning(
-                    "[Phase 6A.94] Charge already refunded - PaymentIntentId={PaymentIntentId}. This is expected if refund was previously processed.",
+                    "[Phase 6A.137F] Charge already refunded (idempotent success) - PaymentIntentId={PaymentIntentId}",
                     request.PaymentIntentId);
-                return Result<StripeRefundResult>.Failure("This payment has already been refunded.");
+                return Result<StripeRefundResult>.Success(new StripeRefundResult
+                {
+                    RefundId = "already_refunded",
+                    Status = "succeeded",
+                    AmountRefunded = request.AmountInCents ?? 0,
+                    Currency = "usd",
+                    CreatedAt = DateTime.UtcNow
+                });
             }
 
             if (ex.StripeError?.Code == "insufficient_funds")

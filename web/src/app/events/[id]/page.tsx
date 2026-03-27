@@ -112,6 +112,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [deleteFormResponses, setDeleteFormResponses] = useState(false);
   // Cancellation enhancement: User choice for refunding add-on purchases
   const [refundAddOnPurchases, setRefundAddOnPurchases] = useState(false);
+  // Phase 6A.137F: User choice for refunding collections and sponsors
+  const [refundCollections, setRefundCollections] = useState(false);
+  const [refundSponsors, setRefundSponsors] = useState(false);
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
@@ -1259,15 +1262,68 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </div>
                           )}
 
-                          {/* Non-refundable financial items disclaimer */}
+                          {/* Phase 6A.137F: Collection refund checkbox */}
+                          {(() => {
+                            const completedCollections = myCollections?.filter((c: any) => c.status === 'Completed') || [];
+                            if (completedCollections.length === 0) return null;
+                            const totalCollectionAmount = completedCollections.reduce((sum: number, c: any) => sum + (c.amount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundCollections}
+                                    onChange={(e) => setRefundCollections(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my collection contribution (${totalCollectionAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundCollections
+                                        ? `$${totalCollectionAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your collection contribution will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Phase 6A.137F: Sponsor refund checkbox */}
+                          {(() => {
+                            const completedSponsors = mySponsors?.filter((s: any) => s.sponsorType === 'Money' && s.status === 'Completed') || [];
+                            if (completedSponsors.length === 0) return null;
+                            const totalSponsorAmount = completedSponsors.reduce((sum: number, s: any) => sum + (s.amount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundSponsors}
+                                    onChange={(e) => setRefundSponsors(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my sponsorship (${totalSponsorAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundSponsors
+                                        ? `$${totalSponsorAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your sponsorship will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Non-refundable financial items disclaimer (donations only) */}
                           {(() => {
                             const completedDonations = myDonations?.filter((d: any) => d.status === 'Completed') || [];
-                            const completedCollections = myCollections?.filter((c: any) => c.status === 'Completed') || [];
-                            const completedSponsors = mySponsors?.filter((s: any) => s.sponsorType === 'Money' && s.status === 'Completed') || [];
-                            const totalNonRefundable =
-                              completedDonations.reduce((sum: number, d: any) => sum + (d.amount ?? 0), 0) +
-                              completedCollections.reduce((sum: number, c: any) => sum + (c.amount ?? 0), 0) +
-                              completedSponsors.reduce((sum: number, s: any) => sum + (s.amount ?? 0), 0);
+                            const totalNonRefundable = completedDonations.reduce((sum: number, d: any) => sum + (d.amount ?? 0), 0);
 
                             if (totalNonRefundable <= 0) return null;
 
@@ -1279,21 +1335,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   </svg>
                                   <div className="flex-1">
                                     <p className="text-xs font-medium text-amber-800">
-                                      Non-refundable payments (${totalNonRefundable.toFixed(2)})
+                                      Non-refundable: Donations (${totalNonRefundable.toFixed(2)})
                                     </p>
-                                    <ul className="text-xs text-amber-700 mt-1 space-y-0.5">
-                                      {completedDonations.length > 0 && (
-                                        <li>Donations: ${completedDonations.reduce((s: number, d: any) => s + (d.amount ?? 0), 0).toFixed(2)}</li>
-                                      )}
-                                      {completedCollections.length > 0 && (
-                                        <li>Contributions: ${completedCollections.reduce((s: number, c: any) => s + (c.amount ?? 0), 0).toFixed(2)}</li>
-                                      )}
-                                      {completedSponsors.length > 0 && (
-                                        <li>Sponsorships: ${completedSponsors.reduce((s: number, sp: any) => s + (sp.amount ?? 0), 0).toFixed(2)}</li>
-                                      )}
-                                    </ul>
                                     <p className="text-xs text-amber-600 mt-1">
-                                      These will not be refunded when you cancel your registration.
+                                      Donations are voluntary and will not be refunded.
                                     </p>
                                   </div>
                                 </div>
@@ -1330,13 +1375,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               }}
                               onClick={async () => {
                                 try {
-                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments, 'DeleteFormResponses:', deleteFormResponses, 'RefundAddOnPurchases:', refundAddOnPurchases);
+                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments, 'DeleteFormResponses:', deleteFormResponses, 'RefundAddOnPurchases:', refundAddOnPurchases, 'RefundCollections:', refundCollections, 'RefundSponsors:', refundSponsors);
                                   setIsCancelling(true);
                                   setCancelError(null);
                                   const cancelResult = await eventsRepository.cancelRsvp(id, {
                                     deleteSignUpCommitments,
                                     deleteFormResponses,
                                     refundAddOnPurchases,
+                                    refundCollections,
+                                    refundSponsors,
                                   });
                                   console.log('[CancelRsvp] Successfully cancelled registration', cancelResult);
 

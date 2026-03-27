@@ -733,40 +733,57 @@ export function EventRegistrationForm({
             </div>
           )}
 
-          {/* Donation Feature: Show donation amount in price breakdown */}
+          {/* Phase 6A.137F: Donation section with clear label */}
           {donationAmount && donationAmount > 0 && (
-            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
-              <span>Donation (voluntary)</span>
-              <span>${donationAmount.toFixed(2)}</span>
+            <div className="border-t pt-2 mt-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Donation</span>
+              <div className="flex justify-between items-center text-sm text-neutral-600 mt-1">
+                <span>Voluntary donation</span>
+                <span>${donationAmount.toFixed(2)}</span>
+              </div>
             </div>
           )}
 
-          {/* Phase 6A.137D: Registration checkout total — ticket + donation + add-ons + collection + sponsor.
-              All financial items are bundled with registration in a single Stripe checkout. */}
-          {addOnSelections.length > 0 && (
-            <div className="mt-3 space-y-1">
-              {addOnSelections.map((s) => (
-                <div key={s.definitionId} className="flex justify-between items-center text-sm text-neutral-600">
-                  <span>{s.name} x{s.quantity}</span>
-                  <span>${(s.unitPrice * s.quantity).toFixed(2)}</span>
-                </div>
-              ))}
+          {/* Phase 6A.137F: Add-ons section — only show items with quantity > 0 (Bug 7) */}
+          {addOnSelections.filter(s => s.quantity > 0).length > 0 && (
+            <div className="border-t pt-2 mt-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Add-ons</span>
+              <div className="mt-1 space-y-1">
+                {addOnSelections.filter(s => s.quantity > 0).map((s) => (
+                  <div key={s.definitionId} className="flex justify-between items-center text-sm text-neutral-600">
+                    <span>{s.name} x{s.quantity}</span>
+                    <span>${(s.unitPrice * s.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                {addOnSelections.filter(s => s.quantity > 0).length > 1 && (
+                  <div className="flex justify-between items-center text-xs text-neutral-500 pt-1">
+                    <span>Add-ons subtotal</span>
+                    <span>${addOnTotal.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Phase 6A.137E: Collection contribution in price breakdown */}
+          {/* Phase 6A.137F: Collection contribution section */}
           {collectionAmount && collectionAmount > 0 && (
-            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
-              <span>Collection contribution</span>
-              <span>${collectionAmount.toFixed(2)}</span>
+            <div className="border-t pt-2 mt-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Collection</span>
+              <div className="flex justify-between items-center text-sm text-neutral-600 mt-1">
+                <span>Event contribution</span>
+                <span>${collectionAmount.toFixed(2)}</span>
+              </div>
             </div>
           )}
 
-          {/* Phase 6A.137E: Sponsorship in price breakdown */}
+          {/* Phase 6A.137F: Sponsorship section */}
           {sponsorAmount && sponsorAmount > 0 && (
-            <div className="flex justify-between items-center text-sm text-neutral-600 border-t pt-2 mb-2">
-              <span>Sponsorship</span>
-              <span>${sponsorAmount.toFixed(2)}</span>
+            <div className="border-t pt-2 mt-2">
+              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Sponsorship</span>
+              <div className="flex justify-between items-center text-sm text-neutral-600 mt-1">
+                <span>Event sponsorship</span>
+                <span>${sponsorAmount.toFixed(2)}</span>
+              </div>
             </div>
           )}
 

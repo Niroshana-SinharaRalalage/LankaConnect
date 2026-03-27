@@ -125,7 +125,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [cancelPendingError, setCancelPendingError] = useState<string | null>(null);
   const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
   // Phase 6A.91 Fix: Track when user wants to re-register after abandoned checkout
-  const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
+  // Phase 6A.137F: retryAfterAbandoned removed — abandoned/incomplete states now show form directly
   // Phase 6A.93 Fix: Track when user wants to re-register while refund is in progress
   const [retryAfterRefund, setRetryAfterRefund] = useState(false);
   // Phase 6A.109: Track form response deletion
@@ -1682,145 +1682,66 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </div>
                 ) : isAbandoned ? (
-                  // Phase 6A.81: Abandoned state - checkout session expired, user can retry
-                  // Phase 6A.91 Fix: Show registration form when user clicks "Register Again"
-                  retryAfterAbandoned ? (
-                    // User clicked "Register Again" - show the registration form
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Your previous checkout expired. Complete the form below to get a new payment link.
-                        </p>
-                      </div>
-                      <EventRegistrationForm
-                        eventId={id}
-                        spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        collectionConfig={event.collectionConfig}
-                        sponsorConfig={event.sponsorConfig}
-                        isProcessing={isProcessing}
-                        onSubmit={handleRegistration}
-                        error={error}
-                      />
+                  // Phase 6A.137F Fix: Skip "Checkout Session Expired" banner — show registration form directly.
+                  // Users were stuck in a loop: expired → banner → "Register Again" → expired again.
+                  // Now the form is shown immediately so users can re-register without an extra click.
+                  <div className="space-y-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Your previous checkout session expired. Complete the form below to get a new payment link.
+                      </p>
                     </div>
-                  ) : (
-                    // Show "Checkout Session Expired" banner with "Register Again" button
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Checkout Session Expired
-                          </h3>
-                        </div>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                          Your previous checkout session expired after 24 hours without payment completion.
-                        </p>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                          You can register again to get a new checkout link and complete your registration.
-                        </p>
-
-                        <Button
-                          className="w-full mt-3"
-                          onClick={() => {
-                            // Phase 6A.91 Fix: Show registration form instead of reloading
-                            console.log('[Abandoned] User clicked Register Again - showing registration form');
-                            setRetryAfterAbandoned(true);
-                          }}
-                        >
-                          Register Again
-                        </Button>
-                      </div>
-                    </div>
-                  )
+                    <EventRegistrationForm
+                      eventId={id}
+                      spotsLeft={spotsLeft}
+                      isFree={event.isFree}
+                      ticketPrice={event.ticketPriceAmount ?? undefined}
+                      hasDualPricing={event.hasDualPricing}
+                      adultPrice={event.adultPriceAmount ?? undefined}
+                      childPrice={event.childPriceAmount ?? undefined}
+                      childAgeLimit={event.childAgeLimit ?? undefined}
+                      hasGroupPricing={event.hasGroupPricing}
+                      groupPricingTiers={event.groupPricingTiers}
+                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                      donationConfig={event.donationConfig}
+                      addOnConfig={event.addOnConfig}
+                      collectionConfig={event.collectionConfig}
+                      sponsorConfig={event.sponsorConfig}
+                      isProcessing={isProcessing}
+                      onSubmit={handleRegistration}
+                      error={error}
+                    />
+                  </div>
                 ) : isPaymentIncomplete ? (
-                  // Phase 6A.X: Handle legacy/inconsistent data - Confirmed status but Pending payment
-                  // This is an edge case where registration was marked Confirmed but payment was never completed
-                  // Treat similar to isAbandoned - allow user to register again
-                  retryAfterAbandoned ? (
-                    // User clicked "Register Again" - show the registration form
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Your previous registration had incomplete payment. Complete the form below to create a new registration.
-                        </p>
-                      </div>
-                      <EventRegistrationForm
-                        eventId={id}
-                        spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        collectionConfig={event.collectionConfig}
-                        sponsorConfig={event.sponsorConfig}
-                        isProcessing={isProcessing}
-                        onSubmit={handleRegistration}
-                        error={error}
-                      />
+                  // Phase 6A.137F Fix: Show registration form directly for incomplete payments too.
+                  // Same rationale as isAbandoned — skip the banner, let users re-register immediately.
+                  <div className="space-y-4">
+                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg mb-4">
+                      <p className="text-sm text-orange-800 dark:text-orange-200">
+                        Your previous registration had incomplete payment. Complete the form below to get a new payment link.
+                      </p>
                     </div>
-                  ) : (
-                    // Show "Payment Incomplete" banner with "Register Again" button
-                    <div className="space-y-4">
-                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                          <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
-                            Payment Incomplete
-                          </h3>
-                        </div>
-                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                          We found an existing registration for you, but payment was never completed.
-                          {checkoutExpired && ' The checkout session has expired.'}
-                        </p>
-                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                          Please register again to get a new payment link and complete your registration.
-                        </p>
-
-                        {/* Show previous registration details */}
-                        {registrationDetails && (
-                          <div className="mb-4 p-3 bg-orange-100 dark:bg-orange-900/30 rounded text-xs">
-                            <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Previous Registration:</p>
-                            <p className="text-orange-800 dark:text-orange-300">
-                              Amount: {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount?.toFixed(2)}
-                            </p>
-                            {registrationDetails.contactEmail && (
-                              <p className="text-orange-800 dark:text-orange-300">
-                                Email: {registrationDetails.contactEmail}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        <Button
-                          className="w-full mt-3"
-                          onClick={() => {
-                            console.log('[PaymentIncomplete] User clicked Register Again - showing registration form');
-                            setRetryAfterAbandoned(true);
-                          }}
-                        >
-                          Register Again
-                        </Button>
-                      </div>
-                    </div>
-                  )
+                    <EventRegistrationForm
+                      eventId={id}
+                      spotsLeft={spotsLeft}
+                      isFree={event.isFree}
+                      ticketPrice={event.ticketPriceAmount ?? undefined}
+                      hasDualPricing={event.hasDualPricing}
+                      adultPrice={event.adultPriceAmount ?? undefined}
+                      childPrice={event.childPriceAmount ?? undefined}
+                      childAgeLimit={event.childAgeLimit ?? undefined}
+                      hasGroupPricing={event.hasGroupPricing}
+                      groupPricingTiers={event.groupPricingTiers}
+                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                      donationConfig={event.donationConfig}
+                      addOnConfig={event.addOnConfig}
+                      collectionConfig={event.collectionConfig}
+                      sponsorConfig={event.sponsorConfig}
+                      isProcessing={isProcessing}
+                      onSubmit={handleRegistration}
+                      error={error}
+                    />
+                  </div>
                 ) : hasStarted ? (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">

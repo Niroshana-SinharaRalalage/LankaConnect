@@ -7,6 +7,14 @@
 
 ---
 
+## ✅ PREVIOUS STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX (2026-03-28)
+**Date**: 2026-03-28
+**Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display
+**Status**: ✅ **COMPLETE** (commit `66b4552c`)
+**Scope**: Fix A: Corrected TicketSubtotal calculation (AmountPaid IS ticket-only, don't subtract). Fix B: EF Core migration adds add-on/collection/sponsor Handlebars sections to email template. Fix C: Added 5 financial fields to RegistrationDetailsDto, both query handlers (auth+anon) load bundled items, TypeScript types updated, payment success page shows full breakdown. 9 files changed. Tests: 1903/1903 (App), 0 build errors.
+
+---
+
 ## ✅ PREVIOUS STATUS - REGISTRATION BUNDLING FIXES (2026-03-27)
 **Date**: 2026-03-27
 **Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements

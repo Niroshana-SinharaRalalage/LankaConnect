@@ -3,11 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - REGISTRATION BUNDLING FIXES ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX ✅ COMPLETE
+**Date**: 2026-03-28
+**Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display
+**Progress**: ✅ **COMPLETE** — Fix A: Corrected TicketSubtotal (AmountPaid IS ticket-only). Fix B: EF Core migration adds add-on/collection/sponsor sections to email. Fix C: 5 financial fields in RegistrationDetailsDto, both query handlers load bundled items, TypeScript types + payment success page breakdown UI.
+**Status**: ✅ **COMPLETE** — Commit `66b4552c`. 9 files changed. Tests: 1903/1903 (Application). Backend + UI deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - REGISTRATION BUNDLING FIXES ✅ COMPLETE
 **Date**: 2026-03-27
 **Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements
 **Progress**: ✅ **COMPLETE** — F1a/F1b: Authenticated + anonymous registration bundling. F2: Add-on partial refund fix. F3: Email financial breakdown with bundled items. F4/F4b: Sponsor validation + price breakdown display. F5: Collection/sponsor refund with UI checkboxes.
-**Status**: ✅ **COMPLETE** — Commit `f544806e`. 15 files changed. Tests: 1903/1903 (Application), 146/148 (Domain, 2 pre-existing). Deployment in progress.
+**Status**: ✅ **COMPLETE** — Commit `f544806e`. 15 files changed. Tests: 1903/1903 (Application), 146/148 (Domain, 2 pre-existing).
 
 ---
 

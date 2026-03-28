@@ -1,7 +1,36 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-27 - Phase 6A.137F: Registration bundling fixes, anonymous registration, refund improvements*
+*Last Updated: 2026-03-28 - Phase 6A.137F-Fix: Email breakdown + payment success page financial display*
 
-## 🎯 Current Session Status (2026-03-27)
+## 🎯 Current Session Status (2026-03-28)
+
+### Phase 6A.137F-Fix: Fix Email Breakdown + Payment Success Page Financial Display
+
+**Status**: ✅ **COMPLETE** (commit `66b4552c`)
+
+**Classification**: Bug fix — Corrected email financial breakdown calculation (TicketSubtotal was computed incorrectly by subtracting bundled items from ticket-only AmountPaid), added missing email template sections for add-ons/collections/sponsors, and added full financial breakdown to payment success page.
+
+**Root Cause**: `Registration.TotalPrice.Amount` is ticket-only, NOT the Stripe grand total. `PaymentCompletedEventHandler` subtracted bundled items from this ticket-only value, producing a negative/wrong TicketSubtotal.
+
+**Changes**:
+| Fix | Area | Description |
+|-----|------|-------------|
+| A | Email Handler | Fixed TicketSubtotal = AmountPaid (ticket-only), compute GrandTotal by addition |
+| B | EF Core Migration | Added `{{#if HasAddOns}}`, `{{#if HasCollection}}`, `{{#if HasSponsor}}` sections to email template via REGEXP_REPLACE |
+| C1 | DTO | Added 5 financial fields to `RegistrationDetailsDto` (DonationAmount, AddOnTotal, CollectionTotal, SponsorTotal, GrandTotal) |
+| C2 | Query Handler | `GetUserRegistrationForEventQueryHandler` loads bundled items from repositories for completed registrations |
+| C3 | Query Handler | `GetRegistrationByIdQueryHandler` (anonymous path) same financial loading logic |
+| C4 | TypeScript | Added 5 fields to `RegistrationDetailsDto` interface in events.types.ts |
+| C5 | Payment Success Page | Full financial breakdown UI (tickets, donation, add-ons, collection, sponsorship, grand total) |
+
+**Files Changed (9)**: PaymentCompletedEventHandler.cs, RegistrationDetailsDto.cs, GetUserRegistrationForEventQueryHandler.cs, GetRegistrationByIdQueryHandler.cs, AppDbContextModelSnapshot.cs, Migration (2 files), page.tsx, events.types.ts
+
+**Tests**: 1903/1903 passed (Application), 0 errors on dotnet build, 0 errors on TypeScript
+
+**Deployment**: ✅ Backend + UI deployed to Azure staging successfully
+
+---
+
+## ✅ PREVIOUS STATUS - REGISTRATION BUNDLING FIXES (2026-03-27)
 
 ### Phase 6A.137F: Registration Bundling Fixes & Anonymous Registration Support
 

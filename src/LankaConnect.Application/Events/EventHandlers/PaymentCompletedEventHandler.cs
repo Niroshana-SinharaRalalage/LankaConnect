@@ -388,19 +388,26 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                             correlationId);
                     }
 
-                    // Calculate correct ticket subtotal (total paid minus all bundled items)
-                    var ticketSubtotal = domainEvent.AmountPaid - donationTotal - addOnTotal - collectionTotal - sponsorTotal;
+                    // Phase 6A.137F-Fix: domainEvent.AmountPaid IS the ticket subtotal
+                    // (sourced from Registration.TotalPrice.Amount which is ticket-only).
+                    // Do NOT subtract bundled items — they are separate line items, not included in AmountPaid.
+                    var ticketSubtotal = domainEvent.AmountPaid;
+                    var grandTotal = ticketSubtotal + donationTotal + addOnTotal + collectionTotal + sponsorTotal;
 
                     if (donationTotal > 0 || addOnTotal > 0 || collectionTotal > 0 || sponsorTotal > 0)
                     {
                         typedParams.WithFinancialBreakdown(
-                            ticketSubtotal: ticketSubtotal > 0 ? ticketSubtotal : domainEvent.AmountPaid,
+                            ticketSubtotal: ticketSubtotal,
                             donationAmount: donationTotal,
                             currency: bundledDonation?.Amount.Currency.ToString() ?? "USD");
 
+                        // Override AmountPaid to show the grand total (ticket + all bundled items)
+                        // so the email header reflects the actual Stripe charge
+                        typedParams.AmountPaid = grandTotal;
+
                         _logger.LogInformation(
-                            "[Phase 6A.137F] [PaymentEmail-BREAKDOWN] Full financial breakdown - CorrelationId: {CorrelationId}, TicketSubtotal={TicketSubtotal}, Donation={Donation}, AddOns={AddOns}, Collection={Collection}, Sponsor={Sponsor}",
-                            correlationId, ticketSubtotal, donationTotal, addOnTotal, collectionTotal, sponsorTotal);
+                            "[Phase 6A.137F-Fix] [PaymentEmail-BREAKDOWN] Full financial breakdown - CorrelationId: {CorrelationId}, TicketSubtotal={TicketSubtotal}, Donation={Donation}, AddOns={AddOns}, Collection={Collection}, Sponsor={Sponsor}, GrandTotal={GrandTotal}",
+                            correlationId, ticketSubtotal, donationTotal, addOnTotal, collectionTotal, sponsorTotal, grandTotal);
                     }
                 }
                 catch (Exception breakdownEx)

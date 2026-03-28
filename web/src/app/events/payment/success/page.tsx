@@ -149,16 +149,59 @@ function PaymentSuccessContent() {
                         })}
                       </span>
                     </div>
-                    {/* Phase 6A.24 FIX: Show actual amount paid from registration, not base ticket price */}
-                    {/* Use registrationDetails.totalPriceAmount for accurate total (group pricing etc) */}
+                    {/* Phase 6A.137F-Fix: Full financial breakdown for bundled checkout items */}
                     {(registrationDetails?.totalPriceAmount || event.ticketPriceAmount) && (
-                      <div className="flex justify-between border-t pt-2 mt-2">
-                        <span className="text-muted-foreground font-semibold">Amount Paid:</span>
-                        <span className="font-bold text-green-600">
-                          ${registrationDetails?.totalPriceAmount
-                            ? registrationDetails.totalPriceAmount.toFixed(2)
-                            : event.ticketPriceAmount?.toFixed(2)}
-                        </span>
+                      <div className="border-t pt-2 mt-2 space-y-1">
+                        {/* Show ticket price as labeled line when bundled items exist */}
+                        {registrationDetails?.grandTotal ? (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Tickets:</span>
+                              <span className="font-medium">
+                                ${registrationDetails.totalPriceAmount?.toFixed(2)}
+                              </span>
+                            </div>
+                            {registrationDetails.donationAmount != null && registrationDetails.donationAmount > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Donation:</span>
+                                <span className="font-medium">${registrationDetails.donationAmount.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {registrationDetails.addOnTotal != null && registrationDetails.addOnTotal > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Add-ons:</span>
+                                <span className="font-medium">${registrationDetails.addOnTotal.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {registrationDetails.collectionTotal != null && registrationDetails.collectionTotal > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Collection:</span>
+                                <span className="font-medium">${registrationDetails.collectionTotal.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {registrationDetails.sponsorTotal != null && registrationDetails.sponsorTotal > 0 && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Sponsorship:</span>
+                                <span className="font-medium">${registrationDetails.sponsorTotal.toFixed(2)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t pt-1 mt-1">
+                              <span className="text-muted-foreground font-semibold">Total Paid:</span>
+                              <span className="font-bold text-green-600">
+                                ${registrationDetails.grandTotal.toFixed(2)}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground font-semibold">Amount Paid:</span>
+                            <span className="font-bold text-green-600">
+                              ${registrationDetails?.totalPriceAmount
+                                ? registrationDetails.totalPriceAmount.toFixed(2)
+                                : event.ticketPriceAmount?.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                     {/* Phase 6A.44 Fix: Show actual attendee count from registration details */}

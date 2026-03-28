@@ -948,6 +948,14 @@ export interface RegistrationDetailsDto {
   stripeCheckoutUrl?: string | null;
   /** Timestamp when the Stripe checkout session expires (24 hours from creation). Used for countdown timer in UI. */
   checkoutSessionExpiresAt?: string | null;
+
+  // Phase 6A.137F-Fix: Financial breakdown for bundled checkout items
+  donationAmount?: number | null;
+  addOnTotal?: number | null;
+  collectionTotal?: number | null;
+  sponsorTotal?: number | null;
+  /** Grand total = totalPriceAmount (tickets) + donationAmount + addOnTotal + collectionTotal + sponsorTotal */
+  grandTotal?: number | null;
 }
 
 /**

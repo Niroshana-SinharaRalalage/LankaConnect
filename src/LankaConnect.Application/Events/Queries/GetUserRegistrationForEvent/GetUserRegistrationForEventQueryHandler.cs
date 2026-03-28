@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -14,15 +15,27 @@ public class GetUserRegistrationForEventQueryHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IStripePaymentService _stripePaymentService;
+    private readonly IDonationRepository _donationRepository;
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly ILogger<GetUserRegistrationForEventQueryHandler> _logger;
 
     public GetUserRegistrationForEventQueryHandler(
         IApplicationDbContext context,
         IStripePaymentService stripePaymentService,
+        IDonationRepository donationRepository,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
         ILogger<GetUserRegistrationForEventQueryHandler> logger)
     {
         _context = context;
         _stripePaymentService = stripePaymentService;
+        _donationRepository = donationRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
         _logger = logger;
     }
 
@@ -141,6 +154,109 @@ public class GetUserRegistrationForEventQueryHandler
                         _logger.LogWarning(
                             "[Phase 6A.81-Part3] Failed to retrieve checkout URL - RegistrationId={RegistrationId}, Error={Error}",
                             registration.Id, checkoutUrlResult.Error);
+                    }
+                }
+
+                // Phase 6A.137F-Fix: Load bundled financial items for completed registrations
+                if (registration != null &&
+                    registration.PaymentStatus == PaymentStatus.Completed &&
+                    !string.IsNullOrWhiteSpace(registration.StripeCheckoutSessionId))
+                {
+                    try
+                    {
+                        decimal donationAmount = 0m;
+                        decimal addOnTotal = 0m;
+                        decimal collectionTotal = 0m;
+                        decimal sponsorTotal = 0m;
+
+                        // Load bundled donation by registration ID
+                        try
+                        {
+                            var donation = await _donationRepository.GetByRegistrationIdAsync(
+                                registration.Id, cancellationToken);
+                            if (donation != null && donation.Amount.Amount > 0)
+                                donationAmount = donation.Amount.Amount;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex,
+                                "[Phase 6A.137F-Fix] Failed to load donation - RegistrationId={RegistrationId}",
+                                registration.Id);
+                        }
+
+                        // Load bundled add-ons by checkout session ID
+                        try
+                        {
+                            var addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId!, cancellationToken);
+                            var completedAddOns = addOnPurchases?
+                                .Where(p => p.Status == AddOnPurchaseStatus.Completed)
+                                .ToList();
+                            if (completedAddOns != null && completedAddOns.Count > 0)
+                                addOnTotal = completedAddOns.Sum(p => p.TotalAmount.Amount);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex,
+                                "[Phase 6A.137F-Fix] Failed to load add-ons - RegistrationId={RegistrationId}",
+                                registration.Id);
+                        }
+
+                        // Load bundled collection by checkout session ID
+                        try
+                        {
+                            var collection = await _collectionRepository.GetByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId!, cancellationToken);
+                            if (collection != null && collection.Amount.Amount > 0)
+                                collectionTotal = collection.Amount.Amount;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex,
+                                "[Phase 6A.137F-Fix] Failed to load collection - RegistrationId={RegistrationId}",
+                                registration.Id);
+                        }
+
+                        // Load bundled sponsor by checkout session ID
+                        try
+                        {
+                            var sponsor = await _sponsorRepository.GetByCheckoutSessionIdAsync(
+                                registration.StripeCheckoutSessionId!, cancellationToken);
+                            if (sponsor != null && sponsor.Amount != null && sponsor.Amount.Amount > 0)
+                                sponsorTotal = sponsor.Amount.Amount;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex,
+                                "[Phase 6A.137F-Fix] Failed to load sponsor - RegistrationId={RegistrationId}",
+                                registration.Id);
+                        }
+
+                        // Compute grand total: tickets + all bundled items
+                        var ticketAmount = registration.TotalPriceAmount ?? 0m;
+                        var grandTotal = ticketAmount + donationAmount + addOnTotal + collectionTotal + sponsorTotal;
+
+                        if (donationAmount > 0 || addOnTotal > 0 || collectionTotal > 0 || sponsorTotal > 0)
+                        {
+                            registration = registration with
+                            {
+                                DonationAmount = donationAmount > 0 ? donationAmount : null,
+                                AddOnTotal = addOnTotal > 0 ? addOnTotal : null,
+                                CollectionTotal = collectionTotal > 0 ? collectionTotal : null,
+                                SponsorTotal = sponsorTotal > 0 ? sponsorTotal : null,
+                                GrandTotal = grandTotal
+                            };
+
+                            _logger.LogInformation(
+                                "[Phase 6A.137F-Fix] Financial breakdown loaded - RegistrationId={RegistrationId}, Tickets={Tickets}, Donation={Donation}, AddOns={AddOns}, Collection={Collection}, Sponsor={Sponsor}, GrandTotal={GrandTotal}",
+                                registration.Id, ticketAmount, donationAmount, addOnTotal, collectionTotal, sponsorTotal, grandTotal);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex,
+                            "[Phase 6A.137F-Fix] Failed to load financial breakdown - RegistrationId={RegistrationId}",
+                            registration.Id);
                     }
                 }
 

@@ -300,11 +300,17 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                         donationTotal = bundledDonation.Amount.Amount;
                     }
 
-                    // Phase 6A.137F: Load bundled add-ons by checkout session ID
+                    // Phase 6A.137F-Fix2: Load add-ons by user+event (catches bundled + standalone),
+                    // fall back to checkout session ID for anonymous users
                     try
                     {
                         IReadOnlyList<AddOnPurchase>? addOnPurchases = null;
-                        if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
+                        if (domainEvent.UserId.HasValue && domainEvent.UserId.Value != Guid.Empty)
+                        {
+                            addOnPurchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
+                                domainEvent.UserId.Value, domainEvent.EventId, cancellationToken);
+                        }
+                        else if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
                         {
                             addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
                                 registration.StripeCheckoutSessionId, cancellationToken);

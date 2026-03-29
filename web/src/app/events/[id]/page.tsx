@@ -1238,30 +1238,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             );
                           })()}
 
-                          {/* Phase 6A.93: Notification about two emails for paid registrations */}
-                          {isPaidRegistration && (
-                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <div className="flex items-start gap-2">
-                                <svg
-                                  className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                                  />
-                                </svg>
-                                <p className="text-xs text-blue-800">
-                                  You will receive <strong>two emails</strong>: one confirming your cancellation, and another with refund details.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-
                           {/* Phase 6A.137F: Collection refund checkbox */}
                           {(() => {
                             const completedCollections = myCollections?.filter((c: any) => c.status === 'Completed') || [];
@@ -1345,6 +1321,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               </div>
                             );
                           })()}
+
+                          {/* Phase 6A.93: Notification about two emails for paid registrations */}
+                          {isPaidRegistration && (
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <svg
+                                  className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                <p className="text-xs text-blue-800">
+                                  You will receive <strong>two emails</strong>: one confirming your cancellation, and another with refund details.
+                                </p>
+                              </div>
+                            </div>
+                          )}
 
                           {/* Action buttons */}
                           <div className="flex gap-2">

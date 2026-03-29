@@ -184,11 +184,11 @@ public class GetUserRegistrationForEventQueryHandler
                                 registration.Id);
                         }
 
-                        // Load bundled add-ons by checkout session ID
+                        // Load add-ons by user+event (catches both bundled and standalone purchases)
                         try
                         {
-                            var addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
-                                registration.StripeCheckoutSessionId!, cancellationToken);
+                            var addOnPurchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
+                                request.UserId, request.EventId, cancellationToken);
                             var completedAddOns = addOnPurchases?
                                 .Where(p => p.Status == AddOnPurchaseStatus.Completed)
                                 .ToList();

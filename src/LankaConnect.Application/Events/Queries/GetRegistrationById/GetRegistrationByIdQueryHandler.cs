@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -131,11 +132,21 @@ public class GetRegistrationByIdQueryHandler
                                 registration.Id);
                         }
 
-                        // Load bundled add-ons by checkout session ID
+                        // Load add-ons: prefer user+event query (catches bundled + standalone),
+                        // fall back to checkout session ID for anonymous users without userId
                         try
                         {
-                            var addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
-                                registration.StripeCheckoutSessionId!, cancellationToken);
+                            IReadOnlyList<AddOnPurchase>? addOnPurchases = null;
+                            if (registration.UserId.HasValue && registration.UserId.Value != Guid.Empty)
+                            {
+                                addOnPurchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
+                                    registration.UserId.Value, registration.EventId, cancellationToken);
+                            }
+                            else
+                            {
+                                addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
+                                    registration.StripeCheckoutSessionId!, cancellationToken);
+                            }
                             var completedAddOns = addOnPurchases?
                                 .Where(p => p.Status == AddOnPurchaseStatus.Completed)
                                 .ToList();

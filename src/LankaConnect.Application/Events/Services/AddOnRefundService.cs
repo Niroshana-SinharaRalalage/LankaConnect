@@ -80,101 +80,122 @@ public class AddOnRefundService : IAddOnRefundService
                 int failed = 0;
                 decimal totalAmountRefunded = 0m;
 
-                // Step 2: Process each refundable purchase
-                foreach (var readOnlyPurchase in refundablePurchases)
+                // Phase 6A.137F-Fix2: Group bundled purchases by PaymentIntentId.
+                // Bundled purchases share a single PaymentIntent (Stripe charge).
+                // Issuing individual refunds per purchase causes charge_already_refunded errors
+                // because the 1st refund may consume the full charge. Instead, issue ONE partial
+                // refund per PaymentIntent for the combined amount of all add-on purchases in that group.
+                var groupedByPI = refundablePurchases
+                    .GroupBy(p => p.StripePaymentIntentId!)
+                    .ToList();
+
+                foreach (var piGroup in groupedByPI)
                 {
+                    var paymentIntentId = piGroup.Key;
+                    var purchasesInGroup = piGroup.ToList();
+                    var isBundledGroup = purchasesInGroup.Any(p => p.IsBundled);
+                    var groupTotal = purchasesInGroup.Sum(p => p.TotalAmount.Amount);
+
                     try
                     {
-                        // Re-fetch with tracking so EF Core can persist status change
-                        var purchase = await _purchaseRepository.GetByIdAsync(
-                            readOnlyPurchase.Id, cancellationToken);
-
-                        if (purchase == null)
-                        {
-                            _logger.LogWarning(
-                                "AddOnRefundService: Could not re-fetch purchase with tracking - PurchaseId={PurchaseId}",
-                                readOnlyPurchase.Id);
-                            failed++;
-                            continue;
-                        }
-
-                        // Step 2a: Call Stripe refund
-                        // Phase 6A.135: Use purchase.Id as RegistrationId so the idempotency key
-                        // ($"refund_{PaymentIntentId}") is unique per PaymentIntent.
-                        // Previously RegistrationId=Guid.Empty caused global idempotency collision.
-                        // Phase 6A.137F: Use partial refund for bundled purchases (shared PaymentIntent)
-                        // Standalone purchases (own PaymentIntent) use full refund (null = refund entire PI)
-                        var refundAmountInCents = purchase.IsBundled
-                            ? (long?)(long)(purchase.TotalAmount.Amount * 100)
+                        // Step 2a: Call Stripe refund — one call per PaymentIntent group
+                        // Bundled: partial refund for combined add-on amount (other items on same PI are not refunded here)
+                        // Standalone: full refund (null = refund entire PI)
+                        var refundAmountInCents = isBundledGroup
+                            ? (long?)(long)(groupTotal * 100)
                             : (long?)null;
 
                         var refundRequest = new CreateRefundRequest
                         {
-                            PaymentIntentId = purchase.StripePaymentIntentId!,
-                            RegistrationId = purchase.Id, // Use purchase ID for metadata tracking
+                            PaymentIntentId = paymentIntentId,
+                            RegistrationId = purchasesInGroup.First().Id, // Use first purchase ID for idempotency
                             AmountInCents = refundAmountInCents,
                             Reason = reason,
                             Metadata = new Dictionary<string, string>(metadata)
                             {
-                                ["add_on_purchase_id"] = purchase.Id.ToString(),
-                                ["refund_type"] = "add_on_cancellation"
+                                ["add_on_purchase_ids"] = string.Join(",", purchasesInGroup.Select(p => p.Id)),
+                                ["refund_type"] = "add_on_cancellation",
+                                ["purchase_count"] = purchasesInGroup.Count.ToString()
                             }
                         };
+
+                        _logger.LogInformation(
+                            "AddOnRefundService: Issuing {RefundType} refund for {Count} purchases - PaymentIntentId={PaymentIntentId}, Amount={Amount}",
+                            isBundledGroup ? "partial" : "full", purchasesInGroup.Count, paymentIntentId, groupTotal);
 
                         var stripeResult = await _stripePaymentService.CreateRefundAsync(refundRequest);
 
                         if (stripeResult.IsFailure)
                         {
                             _logger.LogError(
-                                "AddOnRefundService: Stripe refund failed - PurchaseId={PurchaseId}, PaymentIntentId={PaymentIntentId}, Error={Error}",
-                                purchase.Id, purchase.StripePaymentIntentId, stripeResult.Error);
-                            failed++;
+                                "AddOnRefundService: Stripe refund failed - PaymentIntentId={PaymentIntentId}, PurchaseCount={Count}, Error={Error}",
+                                paymentIntentId, purchasesInGroup.Count, stripeResult.Error);
+                            failed += purchasesInGroup.Count;
                             continue;
                         }
 
                         _logger.LogInformation(
-                            "AddOnRefundService: Stripe refund created - PurchaseId={PurchaseId}, RefundId={RefundId}, Status={Status}",
-                            purchase.Id, stripeResult.Value.RefundId, stripeResult.Value.Status);
+                            "AddOnRefundService: Stripe refund created - PaymentIntentId={PaymentIntentId}, RefundId={RefundId}, Status={Status}, PurchaseCount={Count}",
+                            paymentIntentId, stripeResult.Value.RefundId, stripeResult.Value.Status, purchasesInGroup.Count);
 
-                        // Step 2b: Mark purchase as refunded (domain transition)
-                        var markResult = purchase.MarkAsRefunded();
-                        if (markResult.IsFailure)
+                        // Step 2b: Mark all purchases in group as refunded + restore stock
+                        foreach (var readOnlyPurchase in purchasesInGroup)
                         {
-                            _logger.LogError(
-                                "AddOnRefundService: Domain transition failed - PurchaseId={PurchaseId}, Error={Error}",
-                                purchase.Id, markResult.Error);
-                            failed++;
-                            continue;
+                            try
+                            {
+                                var purchase = await _purchaseRepository.GetByIdAsync(
+                                    readOnlyPurchase.Id, cancellationToken);
+
+                                if (purchase == null)
+                                {
+                                    _logger.LogWarning(
+                                        "AddOnRefundService: Could not re-fetch purchase with tracking - PurchaseId={PurchaseId}",
+                                        readOnlyPurchase.Id);
+                                    failed++;
+                                    continue;
+                                }
+
+                                var markResult = purchase.MarkAsRefunded();
+                                if (markResult.IsFailure)
+                                {
+                                    _logger.LogError(
+                                        "AddOnRefundService: Domain transition failed - PurchaseId={PurchaseId}, Error={Error}",
+                                        purchase.Id, markResult.Error);
+                                    failed++;
+                                    continue;
+                                }
+
+                                _purchaseRepository.Update(purchase);
+
+                                // Restore stock
+                                var stockRestored = await _definitionRepository.TryRestoreStockAsync(
+                                    purchase.AddOnDefinitionId, purchase.Quantity, cancellationToken);
+
+                                if (!stockRestored)
+                                {
+                                    _logger.LogWarning(
+                                        "AddOnRefundService: Stock restore failed (non-fatal) - PurchaseId={PurchaseId}, DefinitionId={DefinitionId}",
+                                        purchase.Id, purchase.AddOnDefinitionId);
+                                }
+
+                                refunded++;
+                                totalAmountRefunded += purchase.TotalAmount.Amount;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "AddOnRefundService: Error marking purchase as refunded - PurchaseId={PurchaseId}",
+                                    readOnlyPurchase.Id);
+                                failed++;
+                            }
                         }
-
-                        _purchaseRepository.Update(purchase);
-
-                        // Step 2c: Restore stock
-                        var stockRestored = await _definitionRepository.TryRestoreStockAsync(
-                            purchase.AddOnDefinitionId, purchase.Quantity, cancellationToken);
-
-                        if (!stockRestored)
-                        {
-                            _logger.LogWarning(
-                                "AddOnRefundService: Stock restore failed (non-fatal) - PurchaseId={PurchaseId}, DefinitionId={DefinitionId}, Quantity={Quantity}",
-                                purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
-                        }
-                        else
-                        {
-                            _logger.LogInformation(
-                                "AddOnRefundService: Stock restored - PurchaseId={PurchaseId}, DefinitionId={DefinitionId}, Quantity={Quantity}",
-                                purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
-                        }
-
-                        refunded++;
-                        totalAmountRefunded += purchase.TotalAmount.Amount;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex,
-                            "AddOnRefundService: Unexpected error processing purchase - PurchaseId={PurchaseId}, Error={ErrorMessage}",
-                            readOnlyPurchase.Id, ex.Message);
-                        failed++;
+                            "AddOnRefundService: Unexpected error processing PI group - PaymentIntentId={PaymentIntentId}, PurchaseCount={Count}",
+                            paymentIntentId, purchasesInGroup.Count);
+                        failed += purchasesInGroup.Count;
                     }
                 }
 

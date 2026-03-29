@@ -25,6 +25,7 @@ public interface IAddOnRefundService
         Guid eventId,
         string reason,
         Dictionary<string, string> metadata,
+        Guid? registrationId = null,
         CancellationToken cancellationToken = default);
 }
 

@@ -230,7 +230,9 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     }
 
                     // Cancellation enhancement: Handle add-on purchase refunds BEFORE registration refund
-                    // so the add-on total can be included in the refund email
+                    // so the add-on total can be included in the refund email.
+                    // Phase 6A.137F-Fix3: Pass registrationId to scope refunds to current registration only,
+                    // excluding orphaned purchases from previous cancelled registrations.
                     decimal addOnRefundTotal = 0m;
                     int addOnRefundedCount = 0;
                     int addOnFailedCount = 0;
@@ -241,8 +243,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         try
                         {
                             _logger.LogInformation(
-                                "CancelRsvp: Refunding add-on purchases - EventId={EventId}, UserId={UserId}",
-                                request.EventId, request.UserId);
+                                "CancelRsvp: Refunding add-on purchases - EventId={EventId}, UserId={UserId}, RegistrationId={RegistrationId}",
+                                request.EventId, request.UserId, registration.Id);
 
                             var addOnMetadata = new Dictionary<string, string>
                             {
@@ -256,6 +258,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                                 request.EventId,
                                 "requested_by_customer",
                                 addOnMetadata,
+                                registration.Id,
                                 cancellationToken);
 
                             if (addOnRefundResult.IsFailure)

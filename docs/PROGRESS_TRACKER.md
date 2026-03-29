@@ -1,7 +1,29 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-28 - Phase 6A.137F-Fix: Email breakdown + payment success page financial display*
+*Last Updated: 2026-03-29 - Phase 6A.137F-Fix2: Add-on refund grouping, cancel dialog UX, add-on query fix*
 
-## 🎯 Current Session Status (2026-03-28)
+## 🎯 Current Session Status (2026-03-29)
+
+### Phase 6A.137F-Fix2: Add-On Refund Grouping, Cancel Dialog UX, Add-On Query Fix
+
+**Status**: ✅ **COMPLETE** (commit `ee21e92f`)
+
+**Classification**: Bug fix — Fixed 5 bugs: cancel dialog notification repositioning, add-on refund grouped by PaymentIntentId to prevent charge_already_refunded errors, add-on query changed from CheckoutSessionId to UserIdAndEventId (fixes add-ons missing from payment success page and confirmation email), and Stripe API call reduction via grouping.
+
+**Changes**:
+| Fix | Area | Description |
+|-----|------|-------------|
+| Bug 1 | Cancel Dialog UX | Repositioned "two emails" notification from between checkboxes to after Non-refundable section |
+| Bug 2 | AddOnRefundService | Rewrote to group add-on refunds by PaymentIntentId — prevents `charge_already_refunded` errors for bundled purchases sharing same PI |
+| Bug 3/4 | Query Handlers | Changed add-on query from `GetAllByCheckoutSessionIdAsync` to `GetByUserIdAndEventIdAsync` in GetUserRegistrationForEventQueryHandler, GetRegistrationByIdQueryHandler, and PaymentCompletedEventHandler — fixes add-ons not showing in payment success page and confirmation email |
+| Bug 5 | Performance | Reduced Stripe API calls by grouping refunds per PaymentIntent (N calls → 1 per PI group) |
+
+**API Verification**: Both `/my-registration` and `/registrations/{id}` endpoints return all 5 financial breakdown fields correctly including addOnTotal.
+
+**Deployment**: ✅ Backend deployed to Azure staging successfully
+
+---
+
+## ✅ PREVIOUS STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX (2026-03-28)
 
 ### Phase 6A.137F-Fix: Fix Email Breakdown + Payment Success Page Financial Display
 

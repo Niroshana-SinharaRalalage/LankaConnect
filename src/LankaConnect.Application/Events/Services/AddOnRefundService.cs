@@ -37,6 +37,7 @@ public class AddOnRefundService : IAddOnRefundService
         Guid eventId,
         string reason,
         Dictionary<string, string> metadata,
+        Guid? registrationId = null,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "RefundUserAddOnPurchases"))
@@ -55,10 +56,16 @@ public class AddOnRefundService : IAddOnRefundService
                 var purchases = await _purchaseRepository.GetByUserIdAndEventIdAsync(
                     userId, eventId, cancellationToken);
 
-                // Filter to only Completed purchases with a Stripe PaymentIntentId
+                // Filter to only Completed purchases with a Stripe PaymentIntentId.
+                // Phase 6A.137F-Fix3: When registrationId is provided, scope to current registration's
+                // bundled purchases + standalone purchases (no RegistrationId). This excludes orphaned
+                // purchases from previous cancelled registrations that would cause charge_already_refunded errors.
                 var refundablePurchases = purchases
                     .Where(p => p.Status == AddOnPurchaseStatus.Completed
                              && !string.IsNullOrEmpty(p.StripePaymentIntentId))
+                    .Where(p => registrationId == null
+                             || p.RegistrationId == registrationId  // Bundled: matches current registration
+                             || !p.RegistrationId.HasValue)         // Standalone: no registration link
                     .ToList();
 
                 if (refundablePurchases.Count == 0)

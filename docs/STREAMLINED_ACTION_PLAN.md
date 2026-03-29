@@ -7,6 +7,14 @@
 
 ---
 
+## ✅ CURRENT STATUS - ADD-ON REFUND GROUPING + QUERY FIX (2026-03-29)
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
+**Status**: ✅ **COMPLETE** (commit `ee21e92f`)
+**Scope**: Bug 1: Repositioned "two emails" notification in cancel dialog. Bug 2: Rewrote AddOnRefundService to group refunds by PaymentIntentId (prevents charge_already_refunded). Bug 3/4: Changed add-on query from GetAllByCheckoutSessionIdAsync to GetByUserIdAndEventIdAsync in 3 handlers (fixes add-ons missing from payment success page + confirmation email). Bug 5: Reduced Stripe API calls via PI grouping. API verified: /my-registration and /registrations/{id} return all 5 financial fields including addOnTotal.
+
+---
+
 ## ✅ PREVIOUS STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX (2026-03-28)
 **Date**: 2026-03-28
 **Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display

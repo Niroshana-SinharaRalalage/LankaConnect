@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - ADD-ON REFUND GROUPING + QUERY FIX ✅ COMPLETE
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
+**Progress**: ✅ **COMPLETE** — Bug 1: Cancel dialog notification repositioned. Bug 2: AddOnRefundService rewritten to group by PaymentIntentId. Bug 3/4: Add-on query changed from CheckoutSessionId to UserIdAndEventId in 3 handlers. Bug 5: Stripe API call reduction via PI grouping.
+**Status**: ✅ **COMPLETE** — Commit `ee21e92f`. API verified: /my-registration and /registrations/{id} return all 5 financial fields including addOnTotal. Backend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX ✅ COMPLETE
 **Date**: 2026-03-28
 **Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display
 **Progress**: ✅ **COMPLETE** — Fix A: Corrected TicketSubtotal (AmountPaid IS ticket-only). Fix B: EF Core migration adds add-on/collection/sponsor sections to email. Fix C: 5 financial fields in RegistrationDetailsDto, both query handlers load bundled items, TypeScript types + payment success page breakdown UI.

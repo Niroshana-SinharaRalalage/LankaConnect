@@ -1211,7 +1211,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                           {/* Cancellation enhancement: User choice for add-on purchase refund */}
                           {(() => {
-                            const completedAddOnPurchases = myAddOnPurchases?.filter((p: any) => p.status === 'Completed') || [];
+                            // Phase 6A.137F-Fix4: Scope to current registration only — excludes orphaned purchases from previous registrations
+                            const completedAddOnPurchases = myAddOnPurchases?.filter((p: any) => p.status === 'Completed' && p.registrationId === registrationDetails?.id) || [];
                             if (completedAddOnPurchases.length === 0) return null;
                             const totalAddOnAmount = completedAddOnPurchases.reduce((sum: number, p: any) => sum + (p.totalAmount ?? 0), 0);
                             return (

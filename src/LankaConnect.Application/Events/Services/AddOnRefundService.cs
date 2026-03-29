@@ -57,15 +57,14 @@ public class AddOnRefundService : IAddOnRefundService
                     userId, eventId, cancellationToken);
 
                 // Filter to only Completed purchases with a Stripe PaymentIntentId.
-                // Phase 6A.137F-Fix3: When registrationId is provided, scope to current registration's
-                // bundled purchases + standalone purchases (no RegistrationId). This excludes orphaned
-                // purchases from previous cancelled registrations that would cause charge_already_refunded errors.
+                // Phase 6A.137F-Fix4: When registrationId is provided, scope ONLY to current registration's
+                // bundled purchases. Removes the `!p.RegistrationId.HasValue` fallback that incorrectly
+                // included standalone purchases from old sessions and orphaned purchases from deleted registrations.
                 var refundablePurchases = purchases
                     .Where(p => p.Status == AddOnPurchaseStatus.Completed
                              && !string.IsNullOrEmpty(p.StripePaymentIntentId))
                     .Where(p => registrationId == null
-                             || p.RegistrationId == registrationId  // Bundled: matches current registration
-                             || !p.RegistrationId.HasValue)         // Standalone: no registration link
+                             || p.RegistrationId == registrationId)
                     .ToList();
 
                 if (refundablePurchases.Count == 0)

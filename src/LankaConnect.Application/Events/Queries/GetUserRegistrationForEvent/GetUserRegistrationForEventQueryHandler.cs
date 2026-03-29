@@ -189,8 +189,11 @@ public class GetUserRegistrationForEventQueryHandler
                         {
                             var addOnPurchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
                                 request.UserId, request.EventId, cancellationToken);
+                            // Phase 6A.137F-Fix4: Include Pending bundled add-ons (defense-in-depth)
                             var completedAddOns = addOnPurchases?
-                                .Where(p => p.Status == AddOnPurchaseStatus.Completed)
+                                .Where(p => p.Status == AddOnPurchaseStatus.Completed
+                                         || (p.Status == AddOnPurchaseStatus.Pending
+                                             && p.RegistrationId == registration.Id))
                                 .ToList();
                             if (completedAddOns != null && completedAddOns.Count > 0)
                                 addOnTotal = completedAddOns.Sum(p => p.TotalAmount.Amount);

@@ -123,6 +123,30 @@ export class PhotoAlbumRepository {
   }
 
   /**
+   * Upload a video to an album with a thumbnail image
+   */
+  async uploadVideo(
+    eventId: string,
+    albumId: string,
+    videoFile: File,
+    thumbnailFile: File,
+    caption?: string,
+    durationSeconds?: number,
+  ): Promise<AlbumPhotoDto> {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    formData.append('thumbnail', thumbnailFile);
+    if (caption) formData.append('caption', caption);
+    if (durationSeconds != null) formData.append('durationSeconds', String(durationSeconds));
+
+    return await apiClient.post<AlbumPhotoDto>(
+      `${this.albumPath(eventId, albumId)}/videos`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  }
+
+  /**
    * Delete a photo from an album
    */
   async deletePhoto(eventId: string, albumId: string, photoId: string): Promise<void> {

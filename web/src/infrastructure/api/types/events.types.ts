@@ -2200,6 +2200,12 @@ export enum AlbumPhotoStatus {
 }
 
 /**
+ * Album media type discriminator matching backend AlbumMediaType enum.
+ * Uses string values to match JsonStringEnumConverter output.
+ */
+export type AlbumMediaType = 'Photo' | 'Video';
+
+/**
  * Photo album DTO matching backend PhotoAlbumDto
  */
 export interface PhotoAlbumDto {
@@ -2231,7 +2237,9 @@ export interface AlbumPhotoDto {
   mediumUrl: string;
   caption: string | null;
   status: AlbumPhotoStatus;
+  mediaType: AlbumMediaType;
   fileSizeBytes: number;
+  durationSeconds: number | null;
   uploadedAt: string;
   expiresAt: string;
   displayOrder: number;

@@ -101,7 +101,7 @@ public class PhotoAlbum : BaseEntity
             return Result.Failure("Album is already published");
 
         if (PhotoCount == 0)
-            return Result.Failure("Upload at least one photo before publishing");
+            return Result.Failure("Upload at least one photo or video before publishing");
 
         Status = AlbumStatus.Published;
         PublishedAt = DateTime.UtcNow;
@@ -178,6 +178,49 @@ public class PhotoAlbum : BaseEntity
     }
 
     /// <summary>
+    /// Add a video to the album.
+    /// Videos have no medium-size variant — only original + thumbnail.
+    /// </summary>
+    public Result<AlbumPhoto> AddVideo(
+        Guid uploaderId,
+        string uploaderName,
+        string originalUrl,
+        string originalBlobName,
+        string thumbnailUrl,
+        string thumbnailBlobName,
+        string? caption,
+        long fileSizeBytes,
+        long? durationSeconds = null)
+    {
+        if (_photos.Count >= MAX_PHOTOS)
+            return Result<AlbumPhoto>.Failure($"Album has reached the maximum of {MAX_PHOTOS} items");
+
+        var displayOrder = _photos.Count + 1;
+
+        try
+        {
+            var video = AlbumPhoto.CreateVideo(
+                Id, uploaderId, uploaderName,
+                originalUrl, originalBlobName,
+                thumbnailUrl, thumbnailBlobName,
+                caption, fileSizeBytes, displayOrder, RetentionDays,
+                durationSeconds);
+
+            _photos.Add(video);
+            PhotoCount++;
+
+            MarkAsUpdated();
+            RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, video.Id, uploaderId));
+
+            return Result<AlbumPhoto>.Success(video);
+        }
+        catch (ArgumentException ex)
+        {
+            return Result<AlbumPhoto>.Failure(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Remove a photo from the album.
     /// Returns the removed photo so caller can clean up blob storage.
     /// </summary>
@@ -238,7 +281,7 @@ public class PhotoAlbum : BaseEntity
         if (photo == null)
             return Result.Failure($"Photo with ID {photoId} not found in this album");
 
-        CoverPhotoUrl = photo.MediumUrl;
+        CoverPhotoUrl = photo.MediumUrl ?? photo.ThumbnailUrl;
         MarkAsUpdated();
         return Result.Success();
     }

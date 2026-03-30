@@ -7,7 +7,15 @@
 
 ---
 
-## ✅ CURRENT STATUS - ADD-ON REFUND GROUPING + QUERY FIX (2026-03-29)
+## ✅ CURRENT STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX (2026-03-29)
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
+**Status**: ✅ **COMPLETE** (commit `4a71e561`)
+**Scope**: Root cause: moved all bundled item completion (donation, add-ons, collection, sponsor) BEFORE CommitAsync in RegistrationWebhookHandler, removed ClearChangeTrackerExceptAsync calls. Defense-in-depth: include Pending bundled add-ons in PaymentCompletedEventHandler, GetRegistrationByIdQueryHandler, GetUserRegistrationForEventQueryHandler. Fixed AddOnRefundService: removed !p.RegistrationId.HasValue fallback. Frontend: scoped cancel dialog add-ons by registrationId. EF Core migration: added Registration FK to add_on_purchases with SetNull, cleaned orphans. Bugs fixed: (1) add-ons not shown on payment success page, (2) add-ons show $0.00 in confirmation email, (3) cancel shows "X failed to refund" + takes ~1 minute, (4) orphaned purchases inflating refund counts.
+
+---
+
+## ✅ PREVIOUS STATUS - ADD-ON REFUND GROUPING + QUERY FIX (2026-03-29)
 **Date**: 2026-03-29
 **Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
 **Status**: ✅ **COMPLETE** (commit `ee21e92f`)

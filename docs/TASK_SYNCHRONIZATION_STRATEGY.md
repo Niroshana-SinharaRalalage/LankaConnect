@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - ADD-ON REFUND GROUPING + QUERY FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX ✅ COMPLETE
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
+**Progress**: ✅ **COMPLETE** — Root cause: moved all bundled item completion BEFORE CommitAsync in RegistrationWebhookHandler, removed ClearChangeTrackerExceptAsync. Defense-in-depth: include Pending add-ons in 3 query/event handlers. Fixed AddOnRefundService fallback. Frontend: scoped cancel dialog by registrationId. EF Core migration: Registration FK on add_on_purchases + orphan cleanup.
+**Status**: ✅ **COMPLETE** — Commit `4a71e561`. 4 bugs fixed: (1) add-ons missing from payment success, (2) $0.00 in email, (3) cancel "X failed to refund" + slow, (4) orphaned purchases inflating refunds. Backend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - ADD-ON REFUND GROUPING + QUERY FIX ✅ COMPLETE
 **Date**: 2026-03-29
 **Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
 **Progress**: ✅ **COMPLETE** — Bug 1: Cancel dialog notification repositioned. Bug 2: AddOnRefundService rewritten to group by PaymentIntentId. Bug 3/4: Add-on query changed from CheckoutSessionId to UserIdAndEventId in 3 handlers. Bug 5: Stripe API call reduction via PI grouping.

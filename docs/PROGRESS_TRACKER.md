@@ -1,7 +1,29 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-29 - Phase 6A.137F-Fix2: Add-on refund grouping, cancel dialog UX, add-on query fix*
+*Last Updated: 2026-03-29 - Phase 6A.137F-Fix4: Bundled add-on race condition root cause fix*
 
 ## 🎯 Current Session Status (2026-03-29)
+
+### Phase 6A.137F-Fix4: Bundled Add-On Race Condition Root Cause Fix
+
+**Status**: ✅ **COMPLETE** (commit `4a71e561`)
+
+**Classification**: Bug fix — Root cause fix for bundled add-on race condition in RegistrationWebhookHandler, plus defense-in-depth query fixes, AddOnRefundService cleanup, frontend cancel dialog scoping, and EF Core migration for Registration FK on add_on_purchases.
+
+**Changes**:
+| Fix | Area | Description |
+|-----|------|-------------|
+| Bug 1 | Add-ons not shown on payment success page | Root cause: bundled add-on completion ran AFTER CommitAsync in RegistrationWebhookHandler — moved all bundled item completion (donation, add-ons, collection, sponsor) BEFORE CommitAsync, removed ClearChangeTrackerExceptAsync calls |
+| Bug 2 | Add-ons show $0.00 in confirmation email | Same root cause — single CommitAsync now persists all bundled items atomically before email event fires |
+| Bug 3 | Cancel shows "X failed to refund" + takes ~1 minute | Fixed AddOnRefundService: removed `!p.RegistrationId.HasValue` fallback that matched orphaned purchases from previous registrations |
+| Bug 4 | Orphaned purchases inflating refund counts | EF Core migration adds Registration FK to add_on_purchases with SetNull, cleaned existing orphans |
+| Defense | Query Handlers | Include Pending bundled add-ons in PaymentCompletedEventHandler, GetRegistrationByIdQueryHandler, GetUserRegistrationForEventQueryHandler |
+| Frontend | Cancel Dialog | Scoped cancel dialog add-ons by registrationId to prevent showing orphaned purchases |
+
+**Deployment**: ✅ Backend deployed to Azure staging successfully
+
+---
+
+## ✅ PREVIOUS STATUS - ADD-ON REFUND GROUPING + QUERY FIX (2026-03-29)
 
 ### Phase 6A.137F-Fix2: Add-On Refund Grouping, Cancel Dialog UX, Add-On Query Fix
 

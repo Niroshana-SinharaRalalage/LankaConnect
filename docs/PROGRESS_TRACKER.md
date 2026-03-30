@@ -1,7 +1,43 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-29 - Phase 6A.137F-Fix4: Bundled add-on race condition root cause fix*
+*Last Updated: 2026-03-30 - Phase 6A.138: Photo Album Video Upload Support*
 
-## 🎯 Current Session Status (2026-03-29)
+## 🎯 Current Session Status (2026-03-30)
+
+### Phase 6A.138: Photo Album Video Upload Support
+
+**Status**: ✅ **COMPLETE** (commit `493757bb`)
+
+**Classification**: Feature — Full-stack video upload support for event photo albums. Previously only images (JPEG, PNG, GIF, WebP, 10MB) were supported; now videos (MP4, WebM, MOV, 100MB) can be uploaded alongside photos.
+
+**Changes**:
+| # | Layer | File | Change |
+|---|-------|------|--------|
+| 1 | Domain | `AlbumMediaType.cs` (NEW) | `Photo = 1, Video = 2` enum |
+| 2 | Domain | `AlbumPhoto.cs` | Added `MediaType`, `DurationSeconds`, `IsVideo`; nullable `MediumUrl`/`MediumBlobName`; `CreateVideo()` factory |
+| 3 | Domain | `PhotoAlbum.cs` | Added `AddVideo()` method; updated publish message; `SetCoverPhoto` handles null MediumUrl |
+| 4 | Infra | `PhotoAlbumConfiguration.cs` | MediaType string conversion + default, DurationSeconds optional, MediumUrl/MediumBlobName nullable |
+| 5 | Infra | EF Migration (auto-generated) | `media_type`, `duration_seconds` columns; nullable medium fields |
+| 6 | Infra | `AlbumImageService.cs` | Video validation (100MB, magic numbers), `ProcessAndUploadVideoAsync`, nullable medium delete |
+| 7 | App | `IAlbumImageService.cs` | `ValidateAlbumVideo()`, `ProcessAndUploadVideoAsync()`, nullable `DeletePhotoAsync` |
+| 8 | App | `AlbumPhotoDto.cs` | Added `MediaType`, `DurationSeconds` fields |
+| 9 | App | `UploadAlbumVideoCommand.cs` (NEW) | Full command + handler for video upload pipeline |
+| 10 | App | `UploadAlbumPhotoCommand.cs` | Updated MapToDto with MediaType + DurationSeconds |
+| 11 | App | `GetAlbumPhotosQuery.cs` | Updated MapToDto with MediaType + DurationSeconds |
+| 12 | App | `DeletePhotoAlbumCommand.cs` | Null check for MediumBlobName before deletion |
+| 13 | API | `PhotoAlbumsController.cs` | `POST /albums/{albumId}/videos` endpoint (100MB limit) |
+| 14 | Frontend | `events.types.ts` | `AlbumMediaType` type, new DTO fields |
+| 15 | Frontend | `photoAlbum.repository.ts` | `uploadVideo()` method |
+| 16 | Frontend | `usePhotoAlbum.ts` | `useUploadAlbumVideo()` hook |
+| 17 | Frontend | `AlbumPhotoUploader.tsx` | Video acceptance, per-type size validation, auto-thumbnail generation |
+| 18 | Frontend | `AlbumPhotoCard.tsx` | Play icon overlay, duration badge, video thumbnail display |
+| 19 | Frontend | `AlbumGallery.tsx` | Lightbox video player, updated text for "photos and videos" |
+
+**Deployment**: ✅ Backend + Frontend deployed to Azure staging
+**API Verification**: ✅ Video upload returns `mediaType: "Video"`, `durationSeconds: 10`. GET photos returns both Photo and Video items correctly.
+
+---
+
+## ✅ PREVIOUS STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX (2026-03-29)
 
 ### Phase 6A.137F-Fix4: Bundled Add-On Race Condition Root Cause Fix
 

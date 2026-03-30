@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT ✅ COMPLETE
+**Date**: 2026-03-30
+**Session**: Phase 6A.138 — Photo Album Video Upload Support
+**Progress**: ✅ **COMPLETE** — Full-stack video upload: AlbumMediaType enum, AlbumPhoto entity (MediaType, DurationSeconds, nullable MediumUrl/MediumBlobName), PhotoAlbum.AddVideo(), video validation (100MB, MP4/WebM/MOV magic numbers), ProcessAndUploadVideoAsync, UploadAlbumVideoCommand, POST /albums/{albumId}/videos endpoint, frontend uploader with auto-thumbnail generation, gallery cards with play icon overlay + duration badge, lightbox video player. 19 files changed.
+**Status**: ✅ **COMPLETE** — Commit `493757bb`. Backend + frontend deployed to Azure staging. API verified: video upload returns mediaType:"Video" + durationSeconds, GET photos returns both Photo and Video items.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX ✅ COMPLETE
 **Date**: 2026-03-29
 **Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
 **Progress**: ✅ **COMPLETE** — Root cause: moved all bundled item completion BEFORE CommitAsync in RegistrationWebhookHandler, removed ClearChangeTrackerExceptAsync. Defense-in-depth: include Pending add-ons in 3 query/event handlers. Fixed AddOnRefundService fallback. Frontend: scoped cancel dialog by registrationId. EF Core migration: Registration FK on add_on_purchases + orphan cleanup.

@@ -123,7 +123,9 @@ export class PhotoAlbumRepository {
   }
 
   /**
-   * Upload a video to an album with a thumbnail image
+   * Upload a video to an album with a thumbnail image.
+   * Uses 5-minute timeout (videos up to 100 MB need more than the default 30s).
+   * Supports optional onUploadProgress callback for progress indicators.
    */
   async uploadVideo(
     eventId: string,
@@ -132,6 +134,7 @@ export class PhotoAlbumRepository {
     thumbnailFile: File,
     caption?: string,
     durationSeconds?: number,
+    onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void,
   ): Promise<AlbumPhotoDto> {
     const formData = new FormData();
     formData.append('video', videoFile);
@@ -142,7 +145,11 @@ export class PhotoAlbumRepository {
     return await apiClient.post<AlbumPhotoDto>(
       `${this.albumPath(eventId, albumId)}/videos`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 5 * 60 * 1000, // 5 minutes for large video uploads
+        onUploadProgress,
+      },
     );
   }
 

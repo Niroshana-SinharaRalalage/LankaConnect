@@ -7,7 +7,15 @@
 
 ---
 
-## ✅ CURRENT STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX (2026-03-29)
+## ✅ CURRENT STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT (2026-03-30)
+**Date**: 2026-03-30
+**Session**: Phase 6A.138 — Photo Album Video Upload Support
+**Status**: ✅ **COMPLETE** (commit `493757bb`)
+**Scope**: Full-stack video upload for event photo albums. Domain: AlbumMediaType enum, AlbumPhoto entity (MediaType, DurationSeconds, nullable MediumUrl), PhotoAlbum.AddVideo(). Infrastructure: Video validation (100MB, MP4/WebM/MOV magic numbers), ProcessAndUploadVideoAsync, nullable medium delete. Application: UploadAlbumVideoCommand + handler, updated DTOs and MapToDto. API: POST /albums/{albumId}/videos endpoint. Frontend: Video acceptance in uploader with auto-thumbnail generation, play icon overlay + duration badge in gallery cards, lightbox video player. 19 files changed. Backend + frontend deployed. API verified: video upload returns mediaType:"Video" + durationSeconds.
+
+---
+
+## ✅ PREVIOUS STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX (2026-03-29)
 **Date**: 2026-03-29
 **Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
 **Status**: ✅ **COMPLETE** (commit `4a71e561`)

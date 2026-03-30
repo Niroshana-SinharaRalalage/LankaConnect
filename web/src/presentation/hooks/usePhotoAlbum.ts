@@ -210,6 +210,7 @@ export function useUploadAlbumVideo() {
       thumbnailFile,
       caption,
       durationSeconds,
+      onUploadProgress,
     }: {
       eventId: string;
       albumId: string;
@@ -217,7 +218,8 @@ export function useUploadAlbumVideo() {
       thumbnailFile: File;
       caption?: string;
       durationSeconds?: number;
-    }) => photoAlbumRepository.uploadVideo(eventId, albumId, videoFile, thumbnailFile, caption, durationSeconds),
+      onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void;
+    }) => photoAlbumRepository.uploadVideo(eventId, albumId, videoFile, thumbnailFile, caption, durationSeconds, onUploadProgress),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.albumId) });
       queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });

@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-03-30
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -105,6 +105,8 @@
 | 6A.133 | Multiple Event Organizers (Co-Organizer Linking) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-04 |
 | 6A.133 UX | Inline Co-Organizer Search (UX Fix) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-05 |
 | 6A.134 | Newsletter/Notification UX Refactoring | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-05 |
+| 6A.135-137F | Registration Bundling + Add-On Fixes | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-25 to 2026-03-29 |
+| 6A.138 | Photo Album Video Upload Support | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-29 |
 
 ---
 

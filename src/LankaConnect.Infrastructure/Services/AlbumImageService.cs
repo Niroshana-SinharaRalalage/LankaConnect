@@ -274,7 +274,14 @@ public class AlbumImageService : IAlbumImageService
                 return Result.Failure($"Video file type '{extension}' is not allowed. Allowed: {string.Join(", ", AllowedVideoExtensions)}");
 
             if (!IsValidVideoMagicNumber(videoData))
+            {
+                // Log first 32 bytes hex dump for diagnostics
+                var hexDump = BitConverter.ToString(videoData, 0, Math.Min(32, videoData.Length));
+                _logger.LogWarning(
+                    "Video magic number validation failed for {FileName} ({Size} bytes). First 32 bytes: {HexDump}",
+                    fileName, videoData.Length, hexDump);
                 return Result.Failure("File content does not match a supported video format");
+            }
 
             return Result.Success();
         }
@@ -302,17 +309,13 @@ public class AlbumImageService : IAlbumImageService
 
         try
         {
-            // 1. Validate video file
-            var validationResult = ValidateAlbumVideo(videoData, videoFileName);
-            if (!validationResult.IsSuccess)
-                return Result<AlbumVideoUploadResult>.Failure(validationResult.Errors);
-
-            // 2. Validate thumbnail image
+            // Note: Video validation is done by the command handler before calling this method.
+            // We only validate the thumbnail here since it's generated client-side.
             var thumbValidation = ValidateAlbumPhoto(thumbnailData, thumbnailFileName);
             if (!thumbValidation.IsSuccess)
                 return Result<AlbumVideoUploadResult>.Failure($"Thumbnail validation failed: {thumbValidation.Error}");
 
-            // 3. Process thumbnail: strip EXIF, resize to 150x150, convert to WebP
+            // Process thumbnail: strip EXIF, resize to 150x150, convert to WebP
             byte[] processedThumbnail;
             using (var image = Image.Load(thumbnailData))
             {
@@ -387,10 +390,27 @@ public class AlbumImageService : IAlbumImageService
         if (StartsWith(data, WebmMagic))
             return true;
 
-        // MP4/MOV: 'ftyp' at offset 4
-        if (data.Length >= 8 && data[4] == FtypMagic[0] && data[5] == FtypMagic[1] &&
-            data[6] == FtypMagic[2] && data[7] == FtypMagic[3])
-            return true;
+        // MP4/MOV: Walk ISO BMFF box structure to find 'ftyp' box.
+        // The ftyp box is usually first but some encoders insert 'free', 'wide',
+        // 'skip', or 'pdin' boxes before it. Scan up to 4096 bytes.
+        int offset = 0;
+        int limit = Math.Min(data.Length, 4096);
+        while (offset + 8 <= limit)
+        {
+            // Box size is big-endian uint32 at offset
+            uint boxSize = (uint)(data[offset] << 24 | data[offset + 1] << 16 |
+                                   data[offset + 2] << 8 | data[offset + 3]);
+
+            // Check box type at offset+4 for 'ftyp'
+            if (data[offset + 4] == FtypMagic[0] && data[offset + 5] == FtypMagic[1] &&
+                data[offset + 6] == FtypMagic[2] && data[offset + 7] == FtypMagic[3])
+                return true;
+
+            // Invalid box size — avoid infinite loop
+            if (boxSize < 8) break;
+
+            offset += (int)boxSize;
+        }
 
         return false;
     }

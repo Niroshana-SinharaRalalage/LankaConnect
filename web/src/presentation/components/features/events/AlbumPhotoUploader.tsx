@@ -49,6 +49,8 @@ interface QueuedFile {
   error?: string;
   isVideo: boolean;
   durationSeconds?: number;
+  /** Upload progress 0-100 (for videos) */
+  uploadProgress?: number;
 }
 
 function isVideoFile(file: File): boolean {
@@ -57,8 +59,32 @@ function isVideoFile(file: File): boolean {
 
 function getErrorMessage(error: unknown): string {
   if (error && typeof error === 'object') {
-    const err = error as { response?: { data?: { detail?: string } }; message?: string };
-    if (err.response?.data?.detail) return err.response.data.detail;
+    const err = error as {
+      code?: string;
+      response?: { status?: number; data?: string | { detail?: string; title?: string } };
+      message?: string;
+    };
+
+    // Timeout or aborted request
+    if (err.code === 'ECONNABORTED' || err.code === 'ERR_CANCELED') {
+      return 'Upload timed out. The file may be too large for your connection speed. Please try again.';
+    }
+
+    // Network error (no response received)
+    if (err.code === 'ERR_NETWORK' || !err.response) {
+      return 'Network error. Please check your connection and try again.';
+    }
+
+    // Server returned an error — extract detail from ProblemDetails or plain string
+    if (err.response?.data) {
+      if (typeof err.response.data === 'object' && err.response.data.detail) {
+        return err.response.data.detail;
+      }
+      if (typeof err.response.data === 'string' && err.response.data.length > 0 && err.response.data.length < 500) {
+        return err.response.data;
+      }
+    }
+
     if (err.message) return err.message;
   }
   return 'Upload failed. Please try again.';
@@ -287,12 +313,22 @@ export function AlbumPhotoUploader({ eventId, albumId, onUploadComplete }: Album
 
           const thumbnailFile = new File([thumbnailBlob], 'thumbnail.jpg', { type: 'image/jpeg' });
 
+          // Track upload progress for large video files
+          const itemId = item.id;
           await uploadVideoMutation.mutateAsync({
             eventId,
             albumId,
             videoFile: item.file,
             thumbnailFile,
             durationSeconds,
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+                setQueue((prev) =>
+                  prev.map((f) => (f.id === itemId ? { ...f, uploadProgress: percent } : f)),
+                );
+              }
+            },
           });
         } else {
           await uploadPhotoMutation.mutateAsync({
@@ -471,9 +507,19 @@ export function AlbumPhotoUploader({ eventId, albumId, onUploadComplete }: Album
                 </div>
 
                 {/* Status Icon */}
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 flex items-center gap-1.5">
                   {item.status === 'uploading' && (
-                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                    <>
+                      <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                      {item.isVideo && item.uploadProgress != null && item.uploadProgress < 100 && (
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 tabular-nums w-8 text-right">
+                          {item.uploadProgress}%
+                        </span>
+                      )}
+                      {item.isVideo && item.uploadProgress === 100 && (
+                        <span className="text-xs text-blue-500 dark:text-blue-400">Processing...</span>
+                      )}
+                    </>
                   )}
                   {item.status === 'done' && (
                     <CheckCircle2 className="w-5 h-5 text-green-500" />

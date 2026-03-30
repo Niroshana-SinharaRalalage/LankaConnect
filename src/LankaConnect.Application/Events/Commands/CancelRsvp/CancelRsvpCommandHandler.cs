@@ -475,13 +475,26 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                             ["refund_type"] = "user_initiated_cancellation"
                         };
 
+                        // Phase 6A.137F-Fix5: Combine ALL successful bundled item refund amounts
+                        // so the refund email shows the correct total (ticket + add-ons + collection + sponsor).
+                        // Only include amounts from SUCCESSFUL refunds to avoid inflated totals.
+                        var totalAdditionalRefund = addOnRefundTotal
+                            + (collectionRefundProcessed == true ? collectionRefundAmount ?? 0m : 0m)
+                            + (sponsorRefundProcessed == true ? sponsorRefundAmount ?? 0m : 0m);
+
+                        _logger.LogInformation(
+                            "CancelRsvp: Combined additional refund total - AddOns=${AddOnTotal}, Collection=${CollectionAmount}, Sponsor=${SponsorAmount}, TotalAdditional=${TotalAdditional}",
+                            addOnRefundTotal,
+                            collectionRefundProcessed == true ? collectionRefundAmount ?? 0m : 0m,
+                            sponsorRefundProcessed == true ? sponsorRefundAmount ?? 0m : 0m,
+                            totalAdditionalRefund);
+
                         // Use shared refund service - handles Stripe call and RequestRefund() transition
-                        // Pass addOnRefundTotal so the refund email includes the combined total
                         var refundResult = await _refundService.ProcessRefundAsync(
                             registration,
                             "requested_by_customer",
                             metadata,
-                            addOnRefundTotal,
+                            totalAdditionalRefund,
                             cancellationToken);
 
                         if (refundResult.IsFailure)

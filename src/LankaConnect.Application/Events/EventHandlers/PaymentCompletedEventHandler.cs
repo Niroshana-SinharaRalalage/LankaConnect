@@ -315,13 +315,14 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                             addOnPurchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
                                 registration.StripeCheckoutSessionId, cancellationToken);
                         }
-                        // Phase 6A.137F-Fix4: Include Pending bundled add-ons as defense-in-depth.
-                        // After Fix4, bundled items are Completed before CommitAsync, but this safety net
-                        // handles edge cases where timing might still be an issue.
+                        // Phase 6A.137F-Fix5: Scope add-ons to current registration only.
+                        // Previous filter included Completed add-ons from ALL registrations (including
+                        // old cancelled ones), contaminating the email with $0.00 entries.
+                        // Now filters by RegistrationId first, then includes both Completed and Pending.
                         var completedAddOns = addOnPurchases?
-                            .Where(p => p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Completed
-                                     || (p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Pending
-                                         && p.RegistrationId == registration.Id))
+                            .Where(p => p.RegistrationId == registration.Id
+                                     && (p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Completed
+                                         || p.Status == Domain.Events.Enums.AddOnPurchaseStatus.Pending))
                             .ToList();
 
                         if (completedAddOns != null && completedAddOns.Count > 0)

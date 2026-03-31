@@ -169,11 +169,14 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                             "GetEvents: User has {RegistrationCount} registrations",
                             userRegistrations.Count);
 
-                        // Populate UserRegistrationStatus for each event
+                        // Populate UserRegistrationStatus for each event.
+                        // IMPORTANT: Cannot use GetValueOrDefault() because RegistrationStatus is a non-nullable
+                        // enum where default(RegistrationStatus) = Preliminary = 0. GetValueOrDefault would
+                        // return Preliminary for events with no registration, causing false "Payment Processing..." badges.
                         result = result
                             .Select(e => e with
                             {
-                                UserRegistrationStatus = registrationStatusMap.GetValueOrDefault(e.Id)
+                                UserRegistrationStatus = registrationStatusMap.TryGetValue(e.Id, out var status) ? status : null
                             })
                             .ToList();
 

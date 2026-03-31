@@ -161,8 +161,8 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                         var registrationStatusMap = userRegistrations
                             .Where(r => r.Status != RegistrationStatus.Abandoned
                                      && !(r.Status == RegistrationStatus.Preliminary
-                                          && r.CheckoutSessionExpiresAt.HasValue
-                                          && r.CheckoutSessionExpiresAt.Value < utcNowForFilter))
+                                          && (!r.CheckoutSessionExpiresAt.HasValue
+                                              || r.CheckoutSessionExpiresAt.Value < utcNowForFilter)))
                             .GroupBy(r => r.EventId)
                             .ToDictionary(
                                 g => g.Key,

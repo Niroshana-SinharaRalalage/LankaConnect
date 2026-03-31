@@ -85,14 +85,23 @@ async function forwardRequest(
     // Get Content-Type to detect multipart/form-data
     const contentType = request.headers.get('content-type');
     const isMultipart = contentType?.includes('multipart/form-data');
+    const contentLength = request.headers.get('content-length');
 
     // Get request body if present
-    // CRITICAL: For multipart/form-data, stream body as-is to preserve binary data and boundary
+    // CRITICAL: For multipart/form-data, read body as ArrayBuffer to preserve binary data
+    // and forward with Content-Length. Streaming (ReadableStream) omits Content-Length
+    // which can cause 400 errors on the backend for large uploads (>30MB).
     let body: BodyInit | undefined;
     if (method !== 'GET' && method !== 'DELETE') {
       if (isMultipart) {
-        // Stream multipart body as-is (don't read as text - corrupts binary data)
-        body = request.body ?? undefined;
+        // Read multipart body as ArrayBuffer — preserves binary data and allows
+        // forwarding Content-Length so backend can properly parse multipart form
+        try {
+          body = await request.arrayBuffer();
+        } catch (e) {
+          console.error('[Proxy] Failed to read multipart body:', e);
+          body = undefined;
+        }
       } else {
         // For JSON, read as text
         try {
@@ -136,6 +145,13 @@ async function forwardRequest(
       headers['Authorization'] = authHeader;
     }
 
+    // Forward Content-Length for multipart uploads (critical for large video uploads)
+    // When body is ArrayBuffer, fetch() doesn't auto-set Content-Length from the browser's original header
+    // Backend needs Content-Length to properly parse multipart form data for large files
+    if (isMultipart && contentLength) {
+      headers['Content-Length'] = contentLength;
+    }
+
     // Forward cookies
     if (cookieHeader) {
       headers['Cookie'] = cookieHeader;
@@ -155,6 +171,8 @@ async function forwardRequest(
       contentType,
       isMultipart,
       hasBody: !!body,
+      bodySize: body instanceof ArrayBuffer ? body.byteLength : (typeof body === 'string' ? body.length : 'N/A'),
+      contentLength,
       isAuthRefresh,
       hasRefreshToken,
     });
@@ -170,12 +188,6 @@ async function forwardRequest(
       // Add buffer for network overhead: 10 minutes total
       signal: AbortSignal.timeout(600000), // 10 minutes
     };
-
-    // Only add duplex for multipart/form-data streaming
-    if (isMultipart && body) {
-      // @ts-ignore - duplex is required for streaming request bodies but not in TS types yet
-      fetchOptions.duplex = 'half';
-    }
 
     // Make request to backend
     const response = await fetch(targetUrl, fetchOptions);

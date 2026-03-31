@@ -152,11 +152,17 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                             cancellationToken);
 
                         // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
-                        // Phase 6A.137F-Fix5: Filter out Abandoned registrations (expired checkouts that never completed).
-                        // These are noise — showing "Payment Processing..." for long-expired checkout sessions.
+                        // Phase 6A.137F-Fix5: Filter out noise registrations before status badge lookup:
+                        // 1. Abandoned — expired checkouts that were formally marked abandoned
+                        // 2. Expired Preliminary — checkout session expired but never marked Abandoned
+                        //    (no background cleanup job exists yet; these show stale "Payment Processing...")
                         // Keep Cancelled and Refunded visible as meaningful terminal states.
+                        var utcNowForFilter = DateTime.UtcNow;
                         var registrationStatusMap = userRegistrations
-                            .Where(r => r.Status != RegistrationStatus.Abandoned)
+                            .Where(r => r.Status != RegistrationStatus.Abandoned
+                                     && !(r.Status == RegistrationStatus.Preliminary
+                                          && r.CheckoutSessionExpiresAt.HasValue
+                                          && r.CheckoutSessionExpiresAt.Value < utcNowForFilter))
                             .GroupBy(r => r.EventId)
                             .ToDictionary(
                                 g => g.Key,

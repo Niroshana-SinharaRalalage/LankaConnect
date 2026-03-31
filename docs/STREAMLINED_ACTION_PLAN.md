@@ -7,7 +7,23 @@
 
 ---
 
-## ✅ CURRENT STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT (2026-03-30)
+## ✅ CURRENT STATUS - VIDEO UPLOAD TIMEOUT FIX (2026-03-30)
+**Date**: 2026-03-30
+**Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
+**Status**: ✅ **COMPLETE** (commit `d0a718c6`)
+**Scope**: Root cause: Axios 30s default timeout too short for large video uploads (77 MB takes ~31s server-side). Fix: 5-minute timeout for video uploads, upload progress indicator with percentage, improved error messages (timeout/network/ProblemDetails), hardened backend ISO BMFF box scanning for ftyp (scan first 4096 bytes), hex dump logging on validation failure, removed duplicate validation.
+
+---
+
+## ✅ PREVIOUS STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES (2026-03-30)
+**Date**: 2026-03-30
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card bug fixes
+**Status**: ✅ **COMPLETE** (commit `68cbc045`)
+**Scope**: 3 bugs fixed: (1) CancelRsvpCommandHandler now combines add-on + collection + sponsor refund amounts into totalAdditionalRefund (was only passing addOnRefundTotal, showing $150 instead of ~$220). (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId (was loading all user+event purchases, showing $0.00 for 4/5 add-ons). (3) GetEventsQueryHandler filters out Abandoned registrations before status GroupBy (was showing stale "Payment Processing..." badges from expired checkouts). 3 files changed.
+
+---
+
+## ✅ PREVIOUS STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT (2026-03-30)
 **Date**: 2026-03-30
 **Session**: Phase 6A.138 — Photo Album Video Upload Support
 **Status**: ✅ **COMPLETE** (commit `493757bb`)

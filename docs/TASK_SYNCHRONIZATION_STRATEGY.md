@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - VIDEO UPLOAD TIMEOUT FIX ✅ COMPLETE
+**Date**: 2026-03-30
+**Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
+**Progress**: ✅ **COMPLETE** — Root cause: Axios 30s timeout too short for large video uploads (77 MB takes ~31s server-side). Frontend: 5-minute timeout for video uploads, upload progress indicator, improved error messages. Backend: hardened ISO BMFF ftyp scanning, hex dump logging, removed duplicate validation.
+**Status**: ✅ **COMPLETE** — Commit `d0a718c6`. Backend + frontend deployed to Azure staging. 77 MB video verified: HTTP 200.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES ✅ COMPLETE
+**Date**: 2026-03-30
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card bug fixes
+**Progress**: ✅ **COMPLETE** — 3 bugs fixed: (1) CancelRsvpCommandHandler combines all successful refund amounts (add-ons + collection + sponsor) for ProcessRefundAsync. (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId. (3) GetEventsQueryHandler excludes Abandoned registrations from status lookup.
+**Status**: ✅ **COMPLETE** — Commit `68cbc045`. 3 files changed. Backend pushed to develop, deploying to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT ✅ COMPLETE
 **Date**: 2026-03-30
 **Session**: Phase 6A.138 — Photo Album Video Upload Support
 **Progress**: ✅ **COMPLETE** — Full-stack video upload: AlbumMediaType enum, AlbumPhoto entity (MediaType, DurationSeconds, nullable MediumUrl/MediumBlobName), PhotoAlbum.AddVideo(), video validation (100MB, MP4/WebM/MOV magic numbers), ProcessAndUploadVideoAsync, UploadAlbumVideoCommand, POST /albums/{albumId}/videos endpoint, frontend uploader with auto-thumbnail generation, gallery cards with play icon overlay + duration badge, lightbox video player. 19 files changed.

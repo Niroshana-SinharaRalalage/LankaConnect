@@ -1,7 +1,24 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-30 - Phase 6A.138: Photo Album Video Upload Support*
+*Last Updated: 2026-03-30 - Phase 6A.138-Fix: Video Upload Timeout Fix for Large Files*
 
 ## 🎯 Current Session Status (2026-03-30)
+
+### Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Bug Fixes
+
+**Status**: ✅ **COMPLETE** (commit `68cbc045`)
+
+**Classification**: Bug fix — Fixed 3 bugs: (1) refund email showed $150 instead of ~$220 because CancelRsvpCommandHandler only passed addOnRefundTotal, missing collection and sponsor refund amounts; (2) confirmation email showed $0.00 for 4 of 5 add-ons because PaymentCompletedEventHandler loaded all user+event add-on purchases instead of scoping to current registration; (3) event cards showed stale "Payment Processing..." badges because GetEventsQueryHandler included Abandoned registrations in status lookup.
+
+**Changes**:
+| # | File | Fix |
+|---|------|-----|
+| 1 | `CancelRsvpCommandHandler.cs` | Combined all successful refund amounts (add-ons + collection + sponsor) into totalAdditionalRefund for ProcessRefundAsync |
+| 2 | `PaymentCompletedEventHandler.cs` | Filtered add-on purchases by `RegistrationId == registration.Id` for both Completed and Pending statuses |
+| 3 | `GetEventsQueryHandler.cs` | Filtered out `RegistrationStatus.Abandoned` before GroupBy, keeping Cancelled/Refunded as meaningful terminal states |
+
+**Deployment**: ✅ Backend pushed to develop, deploying to Azure staging
+
+---
 
 ### Phase 6A.138: Photo Album Video Upload Support
 
@@ -34,6 +51,25 @@
 
 **Deployment**: ✅ Backend + Frontend deployed to Azure staging
 **API Verification**: ✅ Video upload returns `mediaType: "Video"`, `durationSeconds: 10`. GET photos returns both Photo and Video items correctly.
+
+### Phase 6A.138-Fix: Video Upload Timeout Fix for Large Files
+
+**Status**: ✅ **COMPLETE** (commit `d0a718c6`)
+
+**Classification**: Bug fix — Axios 30-second default timeout was too short for large video uploads (77 MB file takes ~31s server-side processing alone). Frontend aborted request, server returned 400.
+
+**Changes**:
+| Fix | Area | Description |
+|-----|------|-------------|
+| Primary | Frontend Repository | Added 5-minute timeout for video upload calls + onUploadProgress callback |
+| UX | Frontend Uploader | Upload percentage indicator + "Processing..." state for video uploads |
+| UX | Frontend Uploader | Improved error extraction: handles timeout, network errors, ProblemDetails, plain string responses |
+| Hardening | Backend AlbumImageService | Walk ISO BMFF box structure to find ftyp within first 4096 bytes (not just offset 4) |
+| Observability | Backend AlbumImageService | Hex dump logging on magic number validation failure |
+| Cleanup | Backend AlbumImageService | Removed duplicate video validation in ProcessAndUploadVideoAsync |
+
+**Deployment**: ✅ Backend + Frontend deployed to Azure staging
+**API Verification**: ✅ 77 MB video uploads successfully (HTTP 200, 31s) — previously failed with 400 due to timeout
 
 ---
 

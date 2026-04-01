@@ -179,7 +179,7 @@ async function forwardRequest(
       headers,
       body,
       credentials: 'include', // Important: include cookies
-      // CRITICAL: Large file uploads (videos up to 100MB) need longer timeout
+      // CRITICAL: Large file uploads (videos up to 500MB) need longer timeout
       // Backend has 5-minute timeout for video uploads, proxy needs at least as long
       // Add buffer for network overhead: 10 minutes total
       signal: AbortSignal.timeout(600000), // 10 minutes

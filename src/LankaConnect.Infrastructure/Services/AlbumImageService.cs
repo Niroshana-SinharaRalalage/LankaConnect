@@ -21,7 +21,7 @@ public class AlbumImageService : IAlbumImageService
 
     private const string CONTAINER_NAME = "event-albums";
     private const int MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB (images)
-    private const int MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB (videos)
+    private const int MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB (videos)
     private const int THUMBNAIL_SIZE = 150;
     private const int MEDIUM_MAX_WIDTH = 800;
     private const int THUMBNAIL_QUALITY = 80;

@@ -5,6 +5,12 @@ const nextConfig = {
   // This creates a minimal production build with only necessary files
   // Required for Azure Container Apps deployment
   output: 'standalone',
+  // Allow large file uploads (videos up to 500 MB) through Server Actions
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '520mb', // 500 MB video + overhead
+    },
+  },
   images: {
     remotePatterns: [
       {

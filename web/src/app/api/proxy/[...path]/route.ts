@@ -88,20 +88,16 @@ async function forwardRequest(
     const contentLength = request.headers.get('content-length');
 
     // Get request body if present
-    // CRITICAL: For multipart/form-data, read body as ArrayBuffer to preserve binary data
-    // and forward with Content-Length. Streaming (ReadableStream) omits Content-Length
-    // which can cause 400 errors on the backend for large uploads (>30MB).
+    // CRITICAL: For multipart/form-data, STREAM the body (don't buffer into memory).
+    // Buffering via arrayBuffer() causes OOM for large videos (67+ MB) because the entire
+    // file is loaded into Node.js heap. Instead, stream the ReadableStream body directly
+    // and forward Content-Length from the browser's original request header.
     let body: BodyInit | undefined;
     if (method !== 'GET' && method !== 'DELETE') {
       if (isMultipart) {
-        // Read multipart body as ArrayBuffer — preserves binary data and allows
-        // forwarding Content-Length so backend can properly parse multipart form
-        try {
-          body = await request.arrayBuffer();
-        } catch (e) {
-          console.error('[Proxy] Failed to read multipart body:', e);
-          body = undefined;
-        }
+        // Stream multipart body directly — avoids OOM for large uploads (up to 500 MB)
+        // Content-Length is forwarded from the browser's request header (set below)
+        body = request.body ?? undefined;
       } else {
         // For JSON, read as text
         try {
@@ -171,7 +167,7 @@ async function forwardRequest(
       contentType,
       isMultipart,
       hasBody: !!body,
-      bodySize: body instanceof ArrayBuffer ? body.byteLength : (typeof body === 'string' ? body.length : 'N/A'),
+      bodySize: typeof body === 'string' ? body.length : (contentLength || 'streaming'),
       contentLength,
       isAuthRefresh,
       hasRefreshToken,
@@ -188,6 +184,12 @@ async function forwardRequest(
       // Add buffer for network overhead: 10 minutes total
       signal: AbortSignal.timeout(600000), // 10 minutes
     };
+
+    // REQUIRED for streaming request bodies (ReadableStream) in Node.js fetch
+    if (isMultipart && body) {
+      // @ts-ignore - duplex is required for streaming but not in TS types yet
+      fetchOptions.duplex = 'half';
+    }
 
     // Make request to backend
     const response = await fetch(targetUrl, fetchOptions);

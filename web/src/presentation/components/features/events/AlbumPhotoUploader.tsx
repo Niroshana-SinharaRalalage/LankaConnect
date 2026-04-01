@@ -4,7 +4,7 @@
  * AlbumPhotoUploader Component
  *
  * Multi-file drag-and-drop upload widget for event photo albums.
- * Supports both photos and videos. Photos: up to 10 MB each. Videos: up to 100 MB each.
+ * Supports both photos and videos. Photos: up to 10 MB each. Videos: up to 500 MB each.
  * Batch selection (up to 10 files), sequential upload with per-file
  * progress indicators, and proper error handling with backend error messages.
  * Videos auto-generate a thumbnail from the first frame via <canvas>.
@@ -26,7 +26,7 @@ export interface AlbumPhotoUploaderProps {
 }
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
 const MAX_FILES = 10;
 
 const ACCEPTED_TYPES = {
@@ -414,7 +414,7 @@ export function AlbumPhotoUploader({ eventId, albumId, onUploadComplete }: Album
                 : 'Drag & drop photos or videos here, or click to select'}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              JPG, PNG, GIF, WebP (max 10 MB) or MP4, WebM, MOV (max 100 MB) — up to {MAX_FILES}{' '}
+              JPG, PNG, GIF, WebP (max 10 MB) or MP4, WebM, MOV (max 500 MB) — up to {MAX_FILES}{' '}
               at a time
             </p>
           </div>

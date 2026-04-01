@@ -124,7 +124,7 @@ export class PhotoAlbumRepository {
 
   /**
    * Upload a video to an album with a thumbnail image.
-   * Uses 5-minute timeout (videos up to 100 MB need more than the default 30s).
+   * Uses 10-minute timeout (videos up to 500 MB need more than the default 30s).
    * Supports optional onUploadProgress callback for progress indicators.
    */
   async uploadVideo(
@@ -147,7 +147,7 @@ export class PhotoAlbumRepository {
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 5 * 60 * 1000, // 5 minutes for large video uploads
+        timeout: 10 * 60 * 1000, // 10 minutes for large video uploads (up to 500 MB)
         onUploadProgress,
       },
     );

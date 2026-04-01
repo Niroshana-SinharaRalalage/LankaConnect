@@ -258,7 +258,7 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     /// </summary>
     /// <param name="eventId">The event ID (for route consistency).</param>
     /// <param name="albumId">The album ID to upload to.</param>
-    /// <param name="video">The video file to upload (MP4, WebM, or MOV, max 100 MB).</param>
+    /// <param name="video">The video file to upload (MP4, WebM, or MOV, max 500 MB).</param>
     /// <param name="thumbnail">A thumbnail image for the video (JPEG, PNG, GIF, or WebP, max 10 MB).</param>
     /// <param name="caption">Optional caption for the video.</param>
     /// <param name="durationSeconds">Optional video duration in seconds.</param>
@@ -269,7 +269,7 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
     [ProducesResponseType(typeof(AlbumPhotoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB for video uploads
+    [RequestSizeLimit(500L * 1024 * 1024)] // 500 MB for video uploads
     public async Task<IActionResult> UploadAlbumVideo(
         Guid eventId, Guid albumId,
         IFormFile video, IFormFile thumbnail,

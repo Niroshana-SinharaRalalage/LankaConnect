@@ -52,11 +52,11 @@ try
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
-    // Configure FormOptions for large file uploads (videos up to 100MB)
+    // Configure FormOptions for large file uploads (videos up to 500MB)
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     {
-        options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100MB
-        options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB
+        options.MultipartBodyLengthLimit = 500L * 1024 * 1024; // 500MB
+        options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB (form field values, not files)
         options.MultipartHeadersLengthLimit = 100 * 1024 * 1024; // 100MB
     });
 

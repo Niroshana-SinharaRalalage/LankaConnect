@@ -7,7 +7,15 @@
 
 ---
 
-## ✅ CURRENT STATUS - VIDEO UPLOAD TIMEOUT FIX (2026-03-30)
+## 🔄 CURRENT STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT (2026-04-01)
+**Date**: 2026-04-01
+**Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
+**Status**: 🔄 **DEPLOYING** (commit `c49d57c4`)
+**Scope**: Two issues: (1) Bug: 67+ MB video uploads returned 500 because proxy buffered entire body via arrayBuffer() causing OOM in Node.js. Fix: stream body via ReadableStream with explicit Content-Length forwarding. (2) Feature: video size limit increased from 100 MB to 500 MB across all layers (frontend, backend controller, Kestrel, FormOptions, backend service). Axios timeout increased to 10 min.
+
+---
+
+## ✅ PREVIOUS STATUS - VIDEO UPLOAD TIMEOUT FIX (2026-03-30)
 **Date**: 2026-03-30
 **Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
 **Status**: ✅ **COMPLETE** (commit `d0a718c6`)

@@ -1,7 +1,39 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-31 - Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Badge Fixes*
+*Last Updated: 2026-04-01 - Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit*
 
-## 🎯 Current Session Status (2026-03-31)
+## 🎯 Current Session Status (2026-04-01)
+
+### Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
+
+**Status**: 🔄 **DEPLOYING** (commit `c49d57c4`)
+
+**Classification**: Bug fix + Feature enhancement — Two issues:
+1. **Bug (Critical)**: 67+ MB video uploads returned HTTP 500 because Next.js proxy buffered entire body via `arrayBuffer()` causing OOM. Fixed: stream body via ReadableStream with explicit Content-Length forwarding.
+2. **Feature**: Video size limit increased from 100 MB to 500 MB across all layers.
+
+**Root Cause Analysis**:
+- Proxy `await request.arrayBuffer()` allocated ~135-200 MB for a 67 MB upload (original + copy)
+- Node.js heap (~512 MB) in Docker container couldn't handle this
+- `serverActions.bodySizeLimit` in next.config.js only applies to Server Actions, NOT Route Handlers
+
+**Changes**:
+| # | Layer | File | Change |
+|---|-------|------|--------|
+| 1 | Proxy | `route.ts` | Stream body via ReadableStream instead of buffering ArrayBuffer |
+| 2 | Proxy | `route.ts` | Forward Content-Length header, re-add duplex: 'half' for streaming |
+| 3 | Frontend | `AlbumPhotoUploader.tsx` | MAX_VIDEO_SIZE: 100→500 MB, updated dropzone text |
+| 4 | Frontend | `photoAlbum.repository.ts` | Axios timeout: 5→10 min for 500 MB uploads |
+| 5 | Frontend | `next.config.js` | bodySizeLimit: 110→520 MB |
+| 6 | Backend | `PhotoAlbumsController.cs` | RequestSizeLimit: 100→500 MB |
+| 7 | Backend | `AlbumImageService.cs` | MAX_VIDEO_SIZE_BYTES: 100→500 MB |
+| 8 | Backend | `Program.cs` | FormOptions.MultipartBodyLengthLimit: 100→500 MB |
+| 9 | Backend | `appsettings.Staging.json` | Kestrel MaxRequestBodySize: 104857600→524288000 |
+| 10 | Backend | `appsettings.Production.json` | Kestrel MaxRequestBodySize: 104857600→524288000 |
+
+**Deployment**: 🔄 Backend + Frontend deploying to Azure staging
+**Verification**: Pending — test with 67+ MB video through staging UI
+
+---
 
 ### Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Badge Fixes
 

@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - VIDEO UPLOAD TIMEOUT FIX ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT 🔄 DEPLOYING
+**Date**: 2026-04-01
+**Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
+**Progress**: 🔄 **DEPLOYING** — Two issues: (1) Bug: Proxy buffered entire body via arrayBuffer() → OOM for 67+ MB uploads → HTTP 500. Fix: stream via ReadableStream + explicit Content-Length. (2) Feature: video size limit 100 MB → 500 MB across all layers (frontend, backend, Kestrel, FormOptions).
+**Status**: 🔄 **DEPLOYING** — Commit `c49d57c4`. Backend + frontend deploying to Azure staging. Pending verification with large video upload.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - VIDEO UPLOAD TIMEOUT FIX ✅ COMPLETE
 **Date**: 2026-03-30
 **Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
 **Progress**: ✅ **COMPLETE** — Root cause: Axios 30s timeout too short for large video uploads (77 MB takes ~31s server-side). Frontend: 5-minute timeout for video uploads, upload progress indicator, improved error messages. Backend: hardened ISO BMFF ftyp scanning, hex dump logging, removed duplicate validation.

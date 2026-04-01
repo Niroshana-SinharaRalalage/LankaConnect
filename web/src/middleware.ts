@@ -71,8 +71,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico, robots.txt, sitemap.xml (static files)
+     * - api/proxy (API proxy routes — excludes middleware body buffering for large uploads)
      * - Files with extensions (.js, .css, .png, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\..*$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api/proxy|.*\\..*$).*)',
   ],
 };

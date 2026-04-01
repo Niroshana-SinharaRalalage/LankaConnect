@@ -152,14 +152,18 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                             cancellationToken);
 
                         // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
-                        // Phase 6A.137F-Fix5: Filter out noise registrations before status badge lookup.
-                        // Preliminary and Abandoned are transient states that should not show on event cards:
-                        // - Preliminary = checkout in progress or expired; user sees "Payment Processing..." noise
+                        // Phase 6A.137F-Fix5: Filter out transient/terminal states from event listing badges.
+                        // Only show badges for active registrations (Confirmed, CheckedIn, Attended, Waitlisted).
+                        // Filtered states:
+                        // - Preliminary = checkout in progress or expired
                         // - Abandoned = expired checkout formally marked
-                        // Keep Cancelled, Refunded, RefundRequested visible as meaningful states.
+                        // - RefundRequested = refund in progress; webhook may never complete (metadata bug)
+                        // - Cancelled, Refunded = terminal states, user no longer registered
                         var registrationStatusMap = userRegistrations
-                            .Where(r => r.Status != RegistrationStatus.Abandoned
-                                     && r.Status != RegistrationStatus.Preliminary)
+                            .Where(r => r.Status == RegistrationStatus.Confirmed
+                                     || r.Status == RegistrationStatus.CheckedIn
+                                     || r.Status == RegistrationStatus.Attended
+                                     || r.Status == RegistrationStatus.Waitlisted)
                             .GroupBy(r => r.EventId)
                             .ToDictionary(
                                 g => g.Key,

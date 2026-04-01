@@ -146,9 +146,12 @@ public class RegistrationRefundService : IRegistrationRefundService
             {
                 var amountInCents = (long)(payment.Amount.Amount * 100);
 
-                // Add payment-specific metadata
+                // Add payment-specific metadata including registration_id for webhook lookup.
+                // Phase 6A.137F-Fix5f: registration_id was missing, causing charge.refunded webhook
+                // to fail silently (couldn't find registration → stuck in RefundRequested forever).
                 var paymentMetadata = new Dictionary<string, string>(metadata ?? new Dictionary<string, string>())
                 {
+                    ["registration_id"] = registration.Id.ToString(),
                     ["payment_id"] = payment.Id.ToString(),
                     ["payment_type"] = payment.Type.ToString()
                 };

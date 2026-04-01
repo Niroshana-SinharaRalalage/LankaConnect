@@ -1,22 +1,27 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-03-30 - Phase 6A.138-Fix: Video Upload Timeout Fix for Large Files*
+*Last Updated: 2026-03-31 - Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Badge Fixes*
 
-## 🎯 Current Session Status (2026-03-30)
+## 🎯 Current Session Status (2026-03-31)
 
-### Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Bug Fixes
+### Phase 6A.137F-Fix5: Refund Email, Confirmation Email, and Event Card Badge Fixes
 
-**Status**: ✅ **COMPLETE** (commit `68cbc045`)
+**Status**: ✅ **COMPLETE & VERIFIED** (commits `68cbc045` → `393a2e38`)
 
-**Classification**: Bug fix — Fixed 3 bugs: (1) refund email showed $150 instead of ~$220 because CancelRsvpCommandHandler only passed addOnRefundTotal, missing collection and sponsor refund amounts; (2) confirmation email showed $0.00 for 4 of 5 add-ons because PaymentCompletedEventHandler loaded all user+event add-on purchases instead of scoping to current registration; (3) event cards showed stale "Payment Processing..." badges because GetEventsQueryHandler included Abandoned registrations in status lookup.
+**Classification**: Bug fix — Fixed 3 bugs + 1 hidden root cause:
+
+1. **Refund email $150→$220**: CancelRsvpCommandHandler only passed addOnRefundTotal, missing collection and sponsor amounts. Now combines all successful refund amounts with conditional guards.
+2. **Confirmation email $0.00 add-ons**: PaymentCompletedEventHandler loaded all user+event add-on purchases instead of scoping to current registration. Now filters by RegistrationId.
+3. **Stale "Payment Processing..." badges**: GetEventsQueryHandler showed Preliminary badges for all events because `Dictionary.GetValueOrDefault()` returns `default(RegistrationStatus) = Preliminary (0)` for missing keys. Fixed with `TryGetValue` + null fallback. Also filters Abandoned and stale Preliminary from badge lookup.
 
 **Changes**:
 | # | File | Fix |
 |---|------|-----|
-| 1 | `CancelRsvpCommandHandler.cs` | Combined all successful refund amounts (add-ons + collection + sponsor) into totalAdditionalRefund for ProcessRefundAsync |
-| 2 | `PaymentCompletedEventHandler.cs` | Filtered add-on purchases by `RegistrationId == registration.Id` for both Completed and Pending statuses |
-| 3 | `GetEventsQueryHandler.cs` | Filtered out `RegistrationStatus.Abandoned` before GroupBy, keeping Cancelled/Refunded as meaningful terminal states |
+| 1 | `CancelRsvpCommandHandler.cs` | Combined all successful refund amounts (add-ons + collection + sponsor) into totalAdditionalRefund |
+| 2 | `PaymentCompletedEventHandler.cs` | Filtered add-on purchases by `RegistrationId == registration.Id` for both Completed and Pending |
+| 3 | `GetEventsQueryHandler.cs` | Fixed GetValueOrDefault enum default bug + filtered Abandoned/Preliminary from badge lookup |
 
-**Deployment**: ✅ Backend pushed to develop, deploying to Azure staging
+**Verification**: ✅ API tested — 5 Confirmed + 1 RefundRequested badges correct, 39 stale Preliminary badges removed
+**Deployment**: ✅ Backend deployed to Azure staging (deploy-staging.yml succeeded)
 
 ---
 

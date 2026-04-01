@@ -15,11 +15,11 @@
 
 ---
 
-## ✅ PREVIOUS STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES (2026-03-30)
-**Date**: 2026-03-30
-**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card bug fixes
-**Status**: ✅ **COMPLETE** (commit `68cbc045`)
-**Scope**: 3 bugs fixed: (1) CancelRsvpCommandHandler now combines add-on + collection + sponsor refund amounts into totalAdditionalRefund (was only passing addOnRefundTotal, showing $150 instead of ~$220). (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId (was loading all user+event purchases, showing $0.00 for 4/5 add-ons). (3) GetEventsQueryHandler filters out Abandoned registrations before status GroupBy (was showing stale "Payment Processing..." badges from expired checkouts). 3 files changed.
+## ✅ PREVIOUS STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES (2026-03-31)
+**Date**: 2026-03-31
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card badge fixes
+**Status**: ✅ **COMPLETE & VERIFIED** (commits `68cbc045` → `393a2e38`)
+**Scope**: 3 bugs + 1 hidden root cause fixed: (1) CancelRsvpCommandHandler now combines add-on + collection + sponsor successful refund amounts into totalAdditionalRefund (was only passing addOnRefundTotal, showing $150 instead of ~$220). (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId (was loading all user+event purchases, showing $0.00 for 4/5 add-ons). (3) GetEventsQueryHandler: CRITICAL — Dictionary.GetValueOrDefault() returned default(RegistrationStatus)=Preliminary(0) for missing keys, causing ALL events to show "Payment Processing..." badge. Fixed with TryGetValue + null fallback. Also filters Abandoned and stale Preliminary from badge lookup. API verified: 5 Confirmed + 1 RefundRequested correct, 39 false Preliminary badges removed.
 
 ---
 

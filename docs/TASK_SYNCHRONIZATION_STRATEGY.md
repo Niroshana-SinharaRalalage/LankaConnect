@@ -11,11 +11,11 @@
 
 ---
 
-## ⏸️ PREVIOUS SESSION STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES ✅ COMPLETE
-**Date**: 2026-03-30
-**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card bug fixes
-**Progress**: ✅ **COMPLETE** — 3 bugs fixed: (1) CancelRsvpCommandHandler combines all successful refund amounts (add-ons + collection + sponsor) for ProcessRefundAsync. (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId. (3) GetEventsQueryHandler excludes Abandoned registrations from status lookup.
-**Status**: ✅ **COMPLETE** — Commit `68cbc045`. 3 files changed. Backend pushed to develop, deploying to Azure staging.
+## ⏸️ PREVIOUS SESSION STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES ✅ VERIFIED
+**Date**: 2026-03-31
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card badge fixes
+**Progress**: ✅ **COMPLETE & VERIFIED** — 3 bugs + 1 hidden root cause: (1) CancelRsvpCommandHandler combines all successful refund amounts. (2) PaymentCompletedEventHandler filters add-ons by RegistrationId. (3) GetEventsQueryHandler: Fixed Dictionary.GetValueOrDefault() returning default enum Preliminary(0) for missing keys — used TryGetValue + null fallback. Also filters Abandoned + stale Preliminary.
+**Status**: ✅ **VERIFIED** — Commits `68cbc045` → `393a2e38`. API tested: 5 Confirmed + 1 RefundRequested correct, 39 false Preliminary badges removed.
 
 ---
 

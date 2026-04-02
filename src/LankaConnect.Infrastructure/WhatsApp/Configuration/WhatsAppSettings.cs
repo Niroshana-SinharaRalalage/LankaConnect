@@ -9,6 +9,13 @@ public class WhatsAppSettings
     public const string SectionName = "WhatsAppSettings";
 
     /// <summary>
+    /// Azure Communication Services connection string.
+    /// Shared with EmailSettings.AzureConnectionString — same ACS resource.
+    /// If empty, falls back to EmailSettings:AzureConnectionString via DI.
+    /// </summary>
+    public string ConnectionString { get; set; } = string.Empty;
+
+    /// <summary>
     /// ACS WhatsApp channel registration ID from Azure portal.
     /// </summary>
     public string ChannelRegistrationId { get; set; } = string.Empty;

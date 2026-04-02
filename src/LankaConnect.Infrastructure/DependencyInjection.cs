@@ -42,6 +42,7 @@ using LankaConnect.Domain.Tax.Repositories;
 using LankaConnect.Domain.Support;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.Infrastructure.WhatsApp.Services;
 using Stripe;
 using Serilog;
 
@@ -159,6 +160,10 @@ public static class DependencyInjection
         services.AddScoped<IWhatsAppMessageRepository, WhatsAppMessageRepository>();
         services.AddScoped<IWhatsAppTemplateRepository, WhatsAppTemplateRepository>();
         services.AddScoped<IUserWhatsAppPreferencesRepository, UserWhatsAppPreferencesRepository>();
+        services.AddScoped<IWhatsAppSendStrategy, AcsWhatsAppStrategy>();
+        services.AddScoped<IWhatsAppService, WhatsAppService>();
+        services.AddScoped<IPhoneVerificationService, SmsPhoneVerificationService>();
+        services.AddScoped<IWhatsAppWebhookProcessor, WhatsAppWebhookProcessor>();
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();

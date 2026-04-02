@@ -1982,7 +1982,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* After Event Albums — shows published albums with photo carousel */}
         {publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) && (
-          <div id="albums" className="mt-8">
+          <div id="albums" className="mt-8 scroll-mt-20">
             <CollapsibleSection
               title="After Event Albums"
               icon={<Camera className="h-5 w-5 text-purple-600" />}

@@ -16,6 +16,7 @@ public class UserWhatsAppPreferencesConfiguration : IEntityTypeConfiguration<Use
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Configure UserId with foreign key to Users table

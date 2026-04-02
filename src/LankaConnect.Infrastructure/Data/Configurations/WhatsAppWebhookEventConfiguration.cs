@@ -16,6 +16,7 @@ public class WhatsAppWebhookEventConfiguration : IEntityTypeConfiguration<WhatsA
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(e => e.EventType)

@@ -17,6 +17,7 @@ public class WhatsAppMessageRecordConfiguration : IEntityTypeConfiguration<Whats
 
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Phone number properties

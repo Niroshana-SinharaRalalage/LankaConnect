@@ -1,9 +1,58 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-01 - Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit*
+*Last Updated: 2026-04-02 - Phase 7A.1: WhatsApp Integration Foundation*
 
-## 🎯 Current Session Status (2026-04-01)
+## 🎯 Current Session Status (2026-04-02)
 
-### Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
+### Phase 7A.1: WhatsApp Integration Foundation
+
+**Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
+
+**Classification**: New Feature — WhatsApp as parallel notification channel via Azure Communication Services Advanced Messaging.
+
+**Scope**: Complete foundation layer with feature flag OFF (zero behavior change on deploy). 30 files, ~12,000 lines.
+
+**Domain Layer** (16 new files):
+| # | Type | File | Description |
+|---|------|------|-------------|
+| 1 | Enum | `WhatsAppNotificationType.cs` | 9 notification types (EventRegistration through Payment) |
+| 2 | Enum | `WhatsAppTemplateStatus.cs` | Pending, Approved, Rejected |
+| 3 | Enum | `WhatsAppTemplateCategory.cs` | Utility, Marketing |
+| 4 | Entity | `WhatsAppMessageRecord.cs` | Private setters, Create() factory, MarkAsSent/Delivered/Read/Failed |
+| 5 | Entity | `WhatsAppTemplate.cs` | Create/MarkApproved/MarkRejected, enum Status/Category |
+| 6 | Entity | `UserWhatsAppPreferences.cs` | E.164 validation, crypto verification, ShouldNotify(enum), lockout |
+| 7 | Entity | `WhatsAppWebhookEvent.cs` | Raw ACS webhook payload persistence |
+| 8 | Event | `WhatsAppMessageSentEvent.cs` | Domain event for message sent |
+| 9 | Event | `WhatsAppPhoneVerifiedEvent.cs` | Domain event for phone verified |
+| 10 | Repo | `IWhatsAppMessageRepository.cs` | CRUD + dedup + metrics |
+| 11 | Repo | `IWhatsAppTemplateRepository.cs` | Template registry |
+| 12 | Repo | `IUserWhatsAppPreferencesRepository.cs` | User preferences |
+
+**Infrastructure Layer** (11 new files + 3 modified):
+| # | Type | File | Description |
+|---|------|------|-------------|
+| 1 | Config | `WhatsAppMessageRecordConfiguration.cs` | communications schema, 8 indexes |
+| 2 | Config | `WhatsAppTemplateConfiguration.cs` | Unique template_name, enum conversions |
+| 3 | Config | `UserWhatsAppPreferencesConfiguration.cs` | FK users CASCADE, TimeOnly, partial index |
+| 4 | Config | `WhatsAppWebhookEventConfiguration.cs` | JSONB payload, processed index |
+| 5 | Migration | `Phase7A_WhatsAppIntegration.cs` | 4 tables + 14 seeded templates |
+| 6 | Repo | `WhatsAppMessageRepository.cs` | Structured Serilog logging |
+| 7 | Repo | `WhatsAppTemplateRepository.cs` | Template queries |
+| 8 | Repo | `UserWhatsAppPreferencesRepository.cs` | Preference queries |
+| 9 | Settings | `WhatsAppSettings.cs` | Feature flag, ACS config |
+| 10 | Contract | `WhatsAppTemplateContract.cs` | 14 template names + parameter constants |
+| 11 | Modified | `AppDbContext.cs` | 4 DbSets + configuredEntityTypes |
+| 12 | Modified | `DependencyInjection.cs` | 3 scoped repos + settings binding |
+| 13 | Modified | `appsettings.json` | WhatsAppSettings section |
+
+**Tests**: 77 unit tests (17 MessageRecord + 15 Template + 45 Preferences) — all passing.
+
+**Architect Fixes**: C1 (private setters), C2 (no null singleton), C5 (audit-only FKs), D2-D8 (enums, crypto codes, lockout, JSONB comments, shared ACS connection string).
+
+**Remaining Phases**: 7A.2 (Send Infrastructure) → 7A.3 (Event Handlers) → 7A.4 (Frontend) → 7A.5 (Admin+Go-Live)
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
 
 **Status**: ✅ **DEPLOYED** (commits `c49d57c4` → `9040baa5`)
 

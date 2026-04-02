@@ -7,10 +7,18 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ALBUM UI FIXES (2026-04-01)
+## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.1 (2026-04-02)
+**Date**: 2026-04-02
+**Session**: Phase 7A.1 — WhatsApp Integration Foundation
+**Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
+**Scope**: Complete domain + infrastructure foundation for WhatsApp as parallel notification channel. 4 domain entities, 3 enums, 2 domain events, 3 repository interfaces, 4 EF configs, 3 repo implementations, EF migration (4 tables + 14 seeded templates), WhatsAppSettings, WhatsAppTemplateContract, 77 unit tests. Feature flag OFF — zero behavior change. Next: Phase 7A.2 (Send Infrastructure).
+
+---
+
+## ✅ PREVIOUS STATUS - ALBUM UI FIXES (2026-04-01)
 **Date**: 2026-04-01
 **Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
-**Status**: 🔄 **DEPLOYING** (commit `726b24c4`)
+**Status**: ✅ **DEPLOYED** (commit `726b24c4`)
 **Scope**: Three album UI fixes: (1) Added "Albums" quick-nav pill button with scroll targeting. (2) Gated "After Event Albums" section on (isUserRegistered || isOrganizer) — was visible to all visitors. (3) Changed "N photos" to "N items" since albums contain both photos and videos.
 
 ---

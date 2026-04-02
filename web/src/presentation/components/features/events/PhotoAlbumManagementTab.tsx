@@ -442,7 +442,7 @@ export function PhotoAlbumManagementTab({ eventId }: PhotoAlbumManagementTabProp
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <Image className="h-4 w-4" />
-                        {activeAlbum.photoCount} {activeAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                        {activeAlbum.photoCount} {activeAlbum.photoCount === 1 ? 'item' : 'items'}
                       </span>
                       <span>{activeAlbum.retentionDays}-day retention</span>
                     </div>

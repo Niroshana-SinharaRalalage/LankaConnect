@@ -739,6 +739,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
                   { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
                   { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
+                  { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
                 ].filter(btn => btn.show).map(btn => (
                   <button
                     key={btn.id}
@@ -1980,8 +1981,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* After Event Albums — shows published albums with photo carousel */}
-        {publishedAlbumsWithPhotos.length > 0 && (
-          <div className="mt-8">
+        {publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) && (
+          <div id="albums" className="mt-8">
             <CollapsibleSection
               title="After Event Albums"
               icon={<Camera className="h-5 w-5 text-purple-600" />}
@@ -2017,7 +2018,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <h3 className="text-sm font-medium text-gray-700">
                           {activeCarouselAlbum.name}
                           <span className="ml-2 text-xs text-gray-400 font-normal">
-                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'item' : 'items'}
                           </span>
                         </h3>
                       </div>

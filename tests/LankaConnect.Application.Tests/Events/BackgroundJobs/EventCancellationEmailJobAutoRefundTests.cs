@@ -206,6 +206,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.Is<Registration>(r => r.Id == registrationId),
                 "event_cancelled",
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<RefundResult>.Success(new RefundResult(refundId, 25.00m)));
 
@@ -228,6 +229,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.Is<Registration>(r => r.Id == registrationId),
                 "event_cancelled",
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
@@ -271,7 +273,7 @@ public class EventCancellationEmailJobAutoRefundTests
 
         // Assert - Refund service should never be called for free events
         _mockRefundService.Verify(
-            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -311,8 +313,9 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.IsAny<Registration>(),
                 "event_cancelled",
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Registration reg, string reason, Dictionary<string, string> metadata, CancellationToken ct) =>
+            .ReturnsAsync((Registration reg, string reason, Dictionary<string, string> metadata, decimal addOnAmount, CancellationToken ct) =>
                 Result<RefundResult>.Success(new RefundResult($"re_test_{reg.Id}", reg.TotalPrice?.Amount ?? 0)));
 
         _mockUnitOfWork
@@ -330,7 +333,7 @@ public class EventCancellationEmailJobAutoRefundTests
 
         // Assert - Refund service should be called 3 times (once per paid registration)
         _mockRefundService.Verify(
-            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
             Times.Exactly(3));
 
         // Phase 6A.93: No longer verify Update() - entities are tracked by EF Core, so changes are detected automatically
@@ -368,6 +371,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.Is<Registration>(r => r.Id == reg1.Id),
                 "event_cancelled",
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<RefundResult>.Failure("Charge has already been refunded"));
 
@@ -377,6 +381,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.Is<Registration>(r => r.Id == reg2.Id),
                 "event_cancelled",
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<RefundResult>.Success(new RefundResult("re_test_2", 35.00m)));
 
@@ -395,7 +400,7 @@ public class EventCancellationEmailJobAutoRefundTests
 
         // Assert - Both refunds should be attempted
         _mockRefundService.Verify(
-            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), "event_cancelled", It.IsAny<Dictionary<string, string>>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
 
         // Phase 6A.93: No longer verify Update() - entities are tracked by EF Core, so changes are detected automatically
@@ -447,7 +452,7 @@ public class EventCancellationEmailJobAutoRefundTests
 
         // Assert - Refund service should not be called for registration without PaymentIntentId
         _mockRefundService.Verify(
-            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -466,7 +471,7 @@ public class EventCancellationEmailJobAutoRefundTests
 
         // Assert
         _mockRefundService.Verify(
-            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()),
+            x => x.ProcessRefundAsync(It.IsAny<Registration>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()),
             Times.Never);
         _mockTypedEmailService.Verify(
             x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
@@ -505,8 +510,9 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.IsAny<Registration>(),
                 It.IsAny<string>(),
                 It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<decimal>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Registration, string, Dictionary<string, string>, CancellationToken>((reg, reason, metadata, _) => capturedMetadata = metadata)
+            .Callback<Registration, string, Dictionary<string, string>, decimal, CancellationToken>((reg, reason, metadata, _, __) => capturedMetadata = metadata)
             .ReturnsAsync(Result<RefundResult>.Success(new RefundResult("re_test", 50.00m)));
 
         _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);

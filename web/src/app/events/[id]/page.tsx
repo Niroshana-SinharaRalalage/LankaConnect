@@ -8,7 +8,6 @@ import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { TabPanel, type Tab } from '@/presentation/components/ui/TabPanel';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
@@ -43,6 +42,8 @@ import { usePublicDonationSummary, useMyDonations } from '@/presentation/hooks/u
 import { usePublicCollectionSummary, useMyCollections } from '@/presentation/hooks/useCollections';
 // Sponsor Feature: Import sponsor hooks
 import { useMySponsors } from '@/presentation/hooks/useSponsors';
+// Add-On Feature: Import add-on hooks
+import { useMyAddOnPurchasesMine } from '@/presentation/hooks/useAddOns';
 // Multi-Album: Import album hooks and carousel
 import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
 import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
@@ -107,6 +108,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [showAddAttendeesModal, setShowAddAttendeesModal] = useState(false);
   // Phase 6A.28: User choice for deleting signup commitments
   const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
+  // Cancellation enhancement: User choice for deleting form responses
+  const [deleteFormResponses, setDeleteFormResponses] = useState(false);
+  // Cancellation enhancement: User choice for refunding add-on purchases
+  const [refundAddOnPurchases, setRefundAddOnPurchases] = useState(false);
+  // Phase 6A.137F: User choice for refunding collections and sponsors
+  const [refundCollections, setRefundCollections] = useState(false);
+  const [refundSponsors, setRefundSponsors] = useState(false);
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
@@ -117,25 +125,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [cancelPendingError, setCancelPendingError] = useState<string | null>(null);
   const [paymentLinkError, setPaymentLinkError] = useState<string | null>(null);
   // Phase 6A.91 Fix: Track when user wants to re-register after abandoned checkout
-  const [retryAfterAbandoned, setRetryAfterAbandoned] = useState(false);
+  // Phase 6A.137F: retryAfterAbandoned removed — abandoned/incomplete states now show form directly
   // Phase 6A.93 Fix: Track when user wants to re-register while refund is in progress
   const [retryAfterRefund, setRetryAfterRefund] = useState(false);
   // Phase 6A.109: Track form response deletion
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
   const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
 
-  // Phase 6A.113: Detect URL hash for tab navigation (e.g., #signup-forms from email links)
-  const [activeTab, setActiveTab] = useState<string>('signup-lists');
-
-  useEffect(() => {
-    // Check URL hash on mount (e.g., /events/123#signup-forms)
-    if (typeof window !== 'undefined') {
-      const hash = window.location.hash.substring(1); // Remove #
-      if (hash === 'signup-forms' || hash === 'signup-lists') {
-        setActiveTab(hash);
-      }
-    }
-  }, []);
+  // Phase 6A.113: Tab navigation removed — signup lists and forms are now separate
+  // CollapsibleSections with id anchors. Hash-based scrolling handled by the
+  // existing useEffect at line ~318 (scrolls to any element by id from URL hash).
 
   // Fetch event details
   const { data: event, isLoading, error: fetchError } = useEventById(id);
@@ -166,6 +165,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Sponsor Feature: My sponsors (logged-in user's own sponsorships for this event)
   const { data: mySponsors } = useMySponsors(
     isAuthenticated && event?.sponsorConfig?.isEnabled ? id : undefined
+  );
+
+  // Add-On Feature: My add-on purchases (logged-in user's own purchases for this event)
+  const { data: myAddOnPurchases } = useMyAddOnPurchasesMine(
+    isAuthenticated && event?.addOnConfig?.isEnabled ? id : undefined
   );
 
   // Multi-Album: Fetch published albums for event details carousel
@@ -399,6 +403,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           donorName: (data as any).donorName ?? undefined,
           donorPhone: (data as any).donorPhone ?? undefined,
           donorNotes: (data as any).donorNotes ?? undefined,
+          // Phase 6A.137D: Include add-on selections for bundled checkout
+          addOnSelections: (data as any).addOnSelections ?? undefined,
+          // Phase 6A.137E: Include collection/sponsor for bundled checkout
+          collectionAmount: (data as any).collectionAmount ?? undefined,
+          collectionNotes: (data as any).collectionNotes ?? undefined,
+          sponsorAmount: (data as any).sponsorAmount ?? undefined,
+          sponsorOrganization: (data as any).sponsorOrganization ?? undefined,
+          sponsorNotes: (data as any).sponsorNotes ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment
@@ -717,6 +729,33 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <RegistrationBadge registrationStatus={registrationDetails?.status as any} compact={false} />
               </div>
 
+              {/* Quick Navigation Bar — anchor links to sections below */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {[
+                  { id: 'registration', label: 'Register', icon: <Users className="h-3.5 w-3.5" />, show: true },
+                  { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
+                  { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
+                  { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
+                  { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
+                  { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
+                  { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
+                  { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
+                ].filter(btn => btn.show).map(btn => (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    onClick={() => document.getElementById(btn.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border text-neutral-700 bg-white hover:text-white hover:border-transparent transition-colors"
+                    style={{ borderColor: '#FF7900' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FF7900'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = ''; }}
+                  >
+                    {btn.icon}
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+
               <div
                 className="prose prose-lg max-w-none text-neutral-600 leading-relaxed prose-a:text-orange-600 prose-a:underline hover:prose-a:text-orange-700"
                 dangerouslySetInnerHTML={{
@@ -848,7 +887,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         </Card>
 
         {/* Registration Section — outside Event Details card */}
-        <div className="mt-8">
+        <div id="registration" className="mt-8">
           <CollapsibleSection
             title={isCancelled
                 ? 'Event Cancelled'
@@ -954,6 +993,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                        collectionConfig={event.collectionConfig}
+                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1145,6 +1186,144 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </label>
                           </div>
 
+                          {/* Cancellation enhancement: User choice for form response deletion */}
+                          {activeForms.length > 0 && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={deleteFormResponses}
+                                  onChange={(e) => setDeleteFormResponses(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Also delete my form submissions
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {deleteFormResponses
+                                      ? "Your sign-up form responses will be permanently deleted."
+                                      : "Your form submissions will be kept even after cancellation (default)."}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+
+                          {/* Cancellation enhancement: User choice for add-on purchase refund */}
+                          {(() => {
+                            // Phase 6A.137F-Fix4: Scope to current registration only — excludes orphaned purchases from previous registrations
+                            const completedAddOnPurchases = myAddOnPurchases?.filter((p: any) => p.status === 'Completed' && p.registrationId === registrationDetails?.id) || [];
+                            if (completedAddOnPurchases.length === 0) return null;
+                            const totalAddOnAmount = completedAddOnPurchases.reduce((sum: number, p: any) => sum + (p.totalAmount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundAddOnPurchases}
+                                    onChange={(e) => setRefundAddOnPurchases(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my add-on purchases (${totalAddOnAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundAddOnPurchases
+                                        ? `${completedAddOnPurchases.length} add-on purchase(s) totaling $${totalAddOnAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your add-on purchases will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Phase 6A.137F: Collection refund checkbox */}
+                          {(() => {
+                            const completedCollections = myCollections?.filter((c: any) => c.status === 'Completed') || [];
+                            if (completedCollections.length === 0) return null;
+                            const totalCollectionAmount = completedCollections.reduce((sum: number, c: any) => sum + (c.amount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundCollections}
+                                    onChange={(e) => setRefundCollections(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my collection contribution (${totalCollectionAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundCollections
+                                        ? `$${totalCollectionAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your collection contribution will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Phase 6A.137F: Sponsor refund checkbox */}
+                          {(() => {
+                            const completedSponsors = mySponsors?.filter((s: any) => s.sponsorType === 'Money' && s.status === 'Completed') || [];
+                            if (completedSponsors.length === 0) return null;
+                            const totalSponsorAmount = completedSponsors.reduce((sum: number, s: any) => sum + (s.amount ?? 0), 0);
+                            return (
+                              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={refundSponsors}
+                                    onChange={(e) => setRefundSponsors(e.target.checked)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Also refund my sponsorship (${totalSponsorAmount.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {refundSponsors
+                                        ? `$${totalSponsorAmount.toFixed(2)} will be refunded to your original payment method.`
+                                        : "Your sponsorship will not be refunded (default)."}
+                                    </p>
+                                  </div>
+                                </label>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Non-refundable financial items disclaimer (donations only) */}
+                          {(() => {
+                            const completedDonations = myDonations?.filter((d: any) => d.status === 'Completed') || [];
+                            const totalNonRefundable = completedDonations.reduce((sum: number, d: any) => sum + (d.amount ?? 0), 0);
+
+                            if (totalNonRefundable <= 0) return null;
+
+                            return (
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <svg className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                  </svg>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-amber-800">
+                                      Non-refundable: Donations (${totalNonRefundable.toFixed(2)})
+                                    </p>
+                                    <p className="text-xs text-amber-600 mt-1">
+                                      Donations are voluntary and will not be refunded.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Phase 6A.93: Notification about two emails for paid registrations */}
                           {isPaidRegistration && (
                             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1180,6 +1359,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 setCancelError(null);
                                 setIsCancelling(false);
                                 setDeleteSignUpCommitments(false);
+                                setDeleteFormResponses(false);
+                                setRefundAddOnPurchases(false);
                               }}
                             >
                               Keep Registration
@@ -1196,11 +1377,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               }}
                               onClick={async () => {
                                 try {
-                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments);
+                                  console.log('[CancelRsvp] User confirmed cancellation, DeleteSignUpCommitments:', deleteSignUpCommitments, 'DeleteFormResponses:', deleteFormResponses, 'RefundAddOnPurchases:', refundAddOnPurchases, 'RefundCollections:', refundCollections, 'RefundSponsors:', refundSponsors);
                                   setIsCancelling(true);
                                   setCancelError(null);
-                                  await eventsRepository.cancelRsvp(id, deleteSignUpCommitments);
-                                  console.log('[CancelRsvp] Successfully cancelled registration - reloading page');
+                                  const cancelResult = await eventsRepository.cancelRsvp(id, {
+                                    deleteSignUpCommitments,
+                                    deleteFormResponses,
+                                    refundAddOnPurchases,
+                                    refundCollections,
+                                    refundSponsors,
+                                  });
+                                  console.log('[CancelRsvp] Successfully cancelled registration', cancelResult);
+
+                                  // Show warnings for partial failures before reloading
+                                  if (cancelResult?.warnings && cancelResult.warnings.length > 0) {
+                                    const warningMsg = cancelResult.warnings.join('\n');
+                                    console.warn('[CancelRsvp] Partial failures:', warningMsg);
+                                    alert(`Registration cancelled, but some actions had issues:\n\n${warningMsg}`);
+                                  }
+
                                   window.location.reload();
                                 } catch (error: any) {
                                   console.error('[CancelRsvp] Failed to cancel registration:', error);
@@ -1250,6 +1445,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                          collectionConfig={event.collectionConfig}
+                          sponsorConfig={event.sponsorConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1487,141 +1684,66 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     )}
                   </div>
                 ) : isAbandoned ? (
-                  // Phase 6A.81: Abandoned state - checkout session expired, user can retry
-                  // Phase 6A.91 Fix: Show registration form when user clicks "Register Again"
-                  retryAfterAbandoned ? (
-                    // User clicked "Register Again" - show the registration form
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Your previous checkout expired. Complete the form below to get a new payment link.
-                        </p>
-                      </div>
-                      <EventRegistrationForm
-                        eventId={id}
-                        spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        isProcessing={isProcessing}
-                        onSubmit={handleRegistration}
-                        error={error}
-                      />
+                  // Phase 6A.137F Fix: Skip "Checkout Session Expired" banner — show registration form directly.
+                  // Users were stuck in a loop: expired → banner → "Register Again" → expired again.
+                  // Now the form is shown immediately so users can re-register without an extra click.
+                  <div className="space-y-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        Your previous checkout session expired. Complete the form below to get a new payment link.
+                      </p>
                     </div>
-                  ) : (
-                    // Show "Checkout Session Expired" banner with "Register Again" button
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertCircle className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Checkout Session Expired
-                          </h3>
-                        </div>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                          Your previous checkout session expired after 24 hours without payment completion.
-                        </p>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 mb-3">
-                          You can register again to get a new checkout link and complete your registration.
-                        </p>
-
-                        <Button
-                          className="w-full mt-3"
-                          onClick={() => {
-                            // Phase 6A.91 Fix: Show registration form instead of reloading
-                            console.log('[Abandoned] User clicked Register Again - showing registration form');
-                            setRetryAfterAbandoned(true);
-                          }}
-                        >
-                          Register Again
-                        </Button>
-                      </div>
-                    </div>
-                  )
+                    <EventRegistrationForm
+                      eventId={id}
+                      spotsLeft={spotsLeft}
+                      isFree={event.isFree}
+                      ticketPrice={event.ticketPriceAmount ?? undefined}
+                      hasDualPricing={event.hasDualPricing}
+                      adultPrice={event.adultPriceAmount ?? undefined}
+                      childPrice={event.childPriceAmount ?? undefined}
+                      childAgeLimit={event.childAgeLimit ?? undefined}
+                      hasGroupPricing={event.hasGroupPricing}
+                      groupPricingTiers={event.groupPricingTiers}
+                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                      donationConfig={event.donationConfig}
+                      addOnConfig={event.addOnConfig}
+                      collectionConfig={event.collectionConfig}
+                      sponsorConfig={event.sponsorConfig}
+                      isProcessing={isProcessing}
+                      onSubmit={handleRegistration}
+                      error={error}
+                    />
+                  </div>
                 ) : isPaymentIncomplete ? (
-                  // Phase 6A.X: Handle legacy/inconsistent data - Confirmed status but Pending payment
-                  // This is an edge case where registration was marked Confirmed but payment was never completed
-                  // Treat similar to isAbandoned - allow user to register again
-                  retryAfterAbandoned ? (
-                    // User clicked "Register Again" - show the registration form
-                    <div className="space-y-4">
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Your previous registration had incomplete payment. Complete the form below to create a new registration.
-                        </p>
-                      </div>
-                      <EventRegistrationForm
-                        eventId={id}
-                        spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        isProcessing={isProcessing}
-                        onSubmit={handleRegistration}
-                        error={error}
-                      />
+                  // Phase 6A.137F Fix: Show registration form directly for incomplete payments too.
+                  // Same rationale as isAbandoned — skip the banner, let users re-register immediately.
+                  <div className="space-y-4">
+                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg mb-4">
+                      <p className="text-sm text-orange-800 dark:text-orange-200">
+                        Your previous registration had incomplete payment. Complete the form below to get a new payment link.
+                      </p>
                     </div>
-                  ) : (
-                    // Show "Payment Incomplete" banner with "Register Again" button
-                    <div className="space-y-4">
-                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
-                          <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                          <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100">
-                            Payment Incomplete
-                          </h3>
-                        </div>
-                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                          We found an existing registration for you, but payment was never completed.
-                          {checkoutExpired && ' The checkout session has expired.'}
-                        </p>
-                        <p className="text-sm text-orange-800 dark:text-orange-200 mb-3">
-                          Please register again to get a new payment link and complete your registration.
-                        </p>
-
-                        {/* Show previous registration details */}
-                        {registrationDetails && (
-                          <div className="mb-4 p-3 bg-orange-100 dark:bg-orange-900/30 rounded text-xs">
-                            <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Previous Registration:</p>
-                            <p className="text-orange-800 dark:text-orange-300">
-                              Amount: {registrationDetails.totalPriceCurrency} {registrationDetails.totalPriceAmount?.toFixed(2)}
-                            </p>
-                            {registrationDetails.contactEmail && (
-                              <p className="text-orange-800 dark:text-orange-300">
-                                Email: {registrationDetails.contactEmail}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        <Button
-                          className="w-full mt-3"
-                          onClick={() => {
-                            console.log('[PaymentIncomplete] User clicked Register Again - showing registration form');
-                            setRetryAfterAbandoned(true);
-                          }}
-                        >
-                          Register Again
-                        </Button>
-                      </div>
-                    </div>
-                  )
+                    <EventRegistrationForm
+                      eventId={id}
+                      spotsLeft={spotsLeft}
+                      isFree={event.isFree}
+                      ticketPrice={event.ticketPriceAmount ?? undefined}
+                      hasDualPricing={event.hasDualPricing}
+                      adultPrice={event.adultPriceAmount ?? undefined}
+                      childPrice={event.childPriceAmount ?? undefined}
+                      childAgeLimit={event.childAgeLimit ?? undefined}
+                      hasGroupPricing={event.hasGroupPricing}
+                      groupPricingTiers={event.groupPricingTiers}
+                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
+                      donationConfig={event.donationConfig}
+                      addOnConfig={event.addOnConfig}
+                      collectionConfig={event.collectionConfig}
+                      sponsorConfig={event.sponsorConfig}
+                      isProcessing={isProcessing}
+                      onSubmit={handleRegistration}
+                      error={error}
+                    />
+                  </div>
                 ) : hasStarted ? (
                   <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
@@ -1647,6 +1769,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
+                    collectionConfig={event.collectionConfig}
+                    sponsorConfig={event.sponsorConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}
@@ -1812,7 +1936,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Donation Feature: Combined Section (summary + donate form + your donations) */}
         {event?.donationConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="donations" className="mt-8">
             <DonationSection
               eventId={id}
               donationConfig={event.donationConfig}
@@ -1824,7 +1948,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Collection Feature: Public contribution form with goal progress */}
         {event?.collectionConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="collections" className="mt-8">
             <CollectionSection
               eventId={id}
               collectionConfig={event.collectionConfig}
@@ -1836,7 +1960,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Sponsor Feature: Public sponsor form (money via Stripe + item submissions) */}
         {event?.sponsorConfig?.isEnabled === true && (
-          <div className="mt-8">
+          <div id="sponsors" className="mt-8">
             <SponsorSection
               eventId={id}
               sponsorConfig={event.sponsorConfig}
@@ -1847,17 +1971,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Add-On Feature: Purchasable items with stock levels */}
         {event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true && (
-          <div className="mt-8">
+          <div id="add-ons" className="mt-8">
             <AddOnSelector
               eventId={id}
               addOnConfig={event.addOnConfig}
+              myAddOnPurchases={myAddOnPurchases}
             />
           </div>
         )}
 
         {/* After Event Albums — shows published albums with photo carousel */}
-        {publishedAlbumsWithPhotos.length > 0 && (
-          <div className="mt-8">
+        {publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) && (
+          <div id="albums" className="mt-8 scroll-mt-20">
             <CollapsibleSection
               title="After Event Albums"
               icon={<Camera className="h-5 w-5 text-purple-600" />}
@@ -1893,7 +2018,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <h3 className="text-sm font-medium text-gray-700">
                           {activeCarouselAlbum.name}
                           <span className="ml-2 text-xs text-gray-400 font-normal">
-                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'photo' : 'photos'}
+                            {activeCarouselAlbum.photoCount} {activeCarouselAlbum.photoCount === 1 ? 'item' : 'items'}
                           </span>
                         </h3>
                       </div>
@@ -1990,131 +2115,126 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Phase 7.X: Signup Lists & Forms Tabbed Interface */}
-        {/* Issue #4 Fix: Add id="sign-ups" anchor for newsletter link navigation */}
-        <div id="sign-ups" className="mt-8">
-          <TabPanel
-            tabs={[
-              {
-                id: 'signup-lists',
-                label: 'Signup Lists',
-                icon: List,
-                content: (
-                  <SignUpManagementSection
-                    eventId={id}
-                    userId={user?.userId}
-                    isOrganizer={false}
-                  />
-                ),
-              },
-              {
-                id: 'signup-forms',
-                label: 'Signup Forms',
-                icon: ClipboardList,
-                content: !isLoadingForms && activeForms.length > 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                      Fill out forms to provide additional information for this event
-                    </p>
-                    {activeForms.map((form) => {
-                      // Phase 6A.128b Fix: For authenticated users, API is the single source of truth.
-                      // localStorage token is ONLY used for anonymous users (no JWT to identify them).
-                      // Previous bug: stale localStorage tokens caused "You already responded" to persist
-                      // even after the response was deleted from the database.
-                      const storageKey = `form_response_token_${id}_${form.id}`;
-                      const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
-                      const userResponse = userFormResponses[form.id];
-                      const hasUserResponse = userResponse !== null && userResponse !== undefined;
-                      const hasResponded = isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
+        {/* Signup Lists Section — CollapsibleSection (replaces old TabPanel) */}
+        {/* Backward compat: hidden anchor for email links using #sign-ups */}
+        <div id="sign-ups" className="sr-only" aria-hidden="true" />
+        <div id="signup-lists" className="mt-8">
+          <CollapsibleSection
+            title="Signup Lists"
+            icon={<List className="h-5 w-5 text-indigo-600" />}
+            defaultOpen={false}
+          >
+            <SignUpManagementSection
+              eventId={id}
+              userId={user?.userId}
+              isOrganizer={false}
+            />
+          </CollapsibleSection>
+        </div>
 
-                      const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
-                      const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+        {/* Signup Forms Section — CollapsibleSection */}
+        <div id="signup-forms" className="mt-8">
+          <CollapsibleSection
+            title="Signup Forms"
+            description="Fill out forms to provide additional information for this event"
+            icon={<ClipboardList className="h-5 w-5 text-violet-600" />}
+            defaultOpen={false}
+          >
+            {!isLoadingForms && activeForms.length > 0 ? (
+              <div className="space-y-4">
+                {activeForms.map((form) => {
+                  // Phase 6A.128b Fix: For authenticated users, API is the single source of truth.
+                  const storageKey = `form_response_token_${id}_${form.id}`;
+                  const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
+                  const userResponse = userFormResponses[form.id];
+                  const hasUserResponse = userResponse !== null && userResponse !== undefined;
+                  const hasResponded = isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
 
-                      return (
-                        <Card key={form.id} className="border border-gray-200">
-                          <CardContent className="pt-6">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                  {form.title}
-                                </h3>
-                                {form.description && (
-                                  <p className="text-sm text-gray-600 mb-3">
-                                    {form.description}
-                                  </p>
-                                )}
-                                <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-                                  {hasResponded && (
-                                    <span className="flex items-center gap-1 text-green-600 font-medium">
-                                      <CheckCircle className="h-4 w-4" />
-                                      You already responded
-                                    </span>
-                                  )}
-                                  {form.responseCount > 0 && (
-                                    <span className="flex items-center gap-1">
-                                      <Users className="h-4 w-4" />
-                                      {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
-                                    </span>
-                                  )}
-                                  {form.responseDeadline && (
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
-                                      Due: {new Date(form.responseDeadline).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                  {form.maxResponses != null && form.maxResponses > 0 && (
-                                    <span className="flex items-center gap-1 text-orange-600">
-                                      <AlertCircle className="h-4 w-4" />
-                                      {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex-shrink-0 flex gap-2">
-                                <Button
-                                  onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
-                                  disabled={isFormFull || isDeadlinePassed}
-                                  variant={hasResponded ? 'outline' : 'default'}
-                                  className="w-full sm:w-auto"
-                                >
-                                  {isFormFull
-                                    ? 'Form Full'
-                                    : isDeadlinePassed
-                                    ? 'Deadline Passed'
-                                    : hasResponded
-                                    ? 'Edit Your Response'
-                                    : 'Fill Out Form'}
-                                </Button>
-                                {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
-                                {hasResponded && !isFormFull && !isDeadlinePassed && (
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setDeletingFormId(form.id);
-                                      setShowFormDeleteConfirm(true);
-                                    }}
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete response</span>
-                                  </Button>
-                                )}
-                              </div>
+                  const isFormFull = form.maxResponses != null && form.maxResponses > 0 && form.responseCount >= form.maxResponses;
+                  const isDeadlinePassed = form.responseDeadline != null && new Date(form.responseDeadline) < new Date();
+
+                  return (
+                    <Card key={form.id} className="border border-gray-200">
+                      <CardContent className="pt-6">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              {form.title}
+                            </h3>
+                            {form.description && (
+                              <p className="text-sm text-gray-600 mb-3">
+                                {form.description}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
+                              {hasResponded && (
+                                <span className="flex items-center gap-1 text-green-600 font-medium">
+                                  <CheckCircle className="h-4 w-4" />
+                                  You already responded
+                                </span>
+                              )}
+                              {form.responseCount > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Users className="h-4 w-4" />
+                                  {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {form.responseDeadline && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  Due: {new Date(form.responseDeadline).toLocaleDateString()}
+                                </span>
+                              )}
+                              {form.maxResponses != null && form.maxResponses > 0 && (
+                                <span className="flex items-center gap-1 text-orange-600">
+                                  <AlertCircle className="h-4 w-4" />
+                                  {form.maxResponses - form.responseCount} spot{(form.maxResponses - form.responseCount) !== 1 ? 's' : ''} left
+                                </span>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>No signup forms available for this event yet.</p>
-                  </div>
-                ),
-              },
-            ]}
-            defaultTab={activeTab}
-          />
+                          </div>
+                          <div className="flex-shrink-0 flex gap-2">
+                            <Button
+                              onClick={() => router.push(`/events/${id}/forms/${form.id}`)}
+                              disabled={isFormFull || isDeadlinePassed}
+                              variant={hasResponded ? 'outline' : 'default'}
+                              className="w-full sm:w-auto"
+                            >
+                              {isFormFull
+                                ? 'Form Full'
+                                : isDeadlinePassed
+                                ? 'Deadline Passed'
+                                : hasResponded
+                                ? 'Edit Your Response'
+                                : 'Fill Out Form'}
+                            </Button>
+                            {/* Phase 6A.106-110 Fix: Delete button for BOTH anonymous and logged-in users */}
+                            {hasResponded && !isFormFull && !isDeadlinePassed && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => {
+                                  setDeletingFormId(form.id);
+                                  setShowFormDeleteConfirm(true);
+                                }}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete response</span>
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p>No signup forms available for this event yet.</p>
+              </div>
+            )}
+          </CollapsibleSection>
         </div>
       </div>
 
@@ -2243,7 +2363,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         onConfirm={async () => {
           try {
             console.log('[PaymentPending] Cancelling pending registration');
-            await eventsRepository.cancelRsvp(id, false);
+            await eventsRepository.cancelRsvp(id, {});
             console.log('[PaymentPending] Successfully cancelled - reloading page');
             window.location.reload();
           } catch (error: any) {

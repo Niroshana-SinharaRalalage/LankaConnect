@@ -2,6 +2,8 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,11 +96,40 @@ public class SponsorPaymentCompletedEventHandler
                                     capturedEventId);
                             }
 
-                            // TODO: Create email template and TypedEmailParams for sponsor payment confirmations
-                            _logger.LogInformation(
-                                "SponsorPaymentCompleted EMAIL PLACEHOLDER: Would send confirmation to {Email} for sponsor {SponsorId} on event '{EventTitle}', Amount={Amount} {Currency}, Organization={Organization}",
-                                capturedSponsorEmail, capturedSponsorId, eventTitle,
-                                capturedAmount, capturedCurrency, capturedSponsorOrganization ?? "(none)");
+                            // Phase 6A.137B: Build event details URL from configuration
+                            var baseUrl = configuration["Application:FrontendBaseUrl"]
+                                ?? configuration["FrontendBaseUrl"]
+                                ?? "https://lankaconnect.com";
+                            var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                            // Phase 6A.137B: Send monetary sponsor confirmation email
+                            var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                            var emailParams = SponsorConfirmationEmailParams.CreateForMoneySponsor(
+                                sponsorName: capturedSponsorName,
+                                sponsorEmail: capturedSponsorEmail,
+                                sponsorOrganization: capturedSponsorOrganization,
+                                eventTitle: eventTitle,
+                                amount: capturedAmount,
+                                currency: capturedCurrency,
+                                paymentDate: capturedPaymentDate,
+                                paymentIntentId: capturedPaymentIntentId,
+                                eventDetailsUrl: eventDetailsUrl
+                            );
+
+                            var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                            if (result.Success)
+                            {
+                                _logger.LogInformation(
+                                    "SponsorPaymentCompleted EMAIL SENT: Email={Email}, SponsorId={SponsorId}, EventTitle={EventTitle}, Organization={Organization}",
+                                    capturedSponsorEmail, capturedSponsorId, eventTitle, capturedSponsorOrganization ?? "(none)");
+                            }
+                            else
+                            {
+                                _logger.LogError(
+                                    "SponsorPaymentCompleted EMAIL FAILED: Email={Email}, SponsorId={SponsorId}, Errors={Errors}",
+                                    capturedSponsorEmail, capturedSponsorId, string.Join(", ", result.Errors));
+                            }
                         }
                         catch (Exception ex)
                         {

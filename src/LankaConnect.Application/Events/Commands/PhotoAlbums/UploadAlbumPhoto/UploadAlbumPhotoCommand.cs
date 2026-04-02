@@ -176,10 +176,12 @@ public class UploadAlbumPhotoCommandHandler : ICommandHandler<UploadAlbumPhotoCo
             UploaderName = photo.UploaderName,
             OriginalUrl = photo.OriginalUrl,
             ThumbnailUrl = photo.ThumbnailUrl,
-            MediumUrl = photo.MediumUrl,
+            MediumUrl = photo.MediumUrl ?? string.Empty,
             Caption = photo.Caption,
             Status = photo.Status,
+            MediaType = photo.MediaType,
             FileSizeBytes = photo.FileSizeBytes,
+            DurationSeconds = photo.DurationSeconds,
             UploadedAt = photo.UploadedAt,
             ExpiresAt = photo.ExpiresAt,
             DisplayOrder = photo.DisplayOrder

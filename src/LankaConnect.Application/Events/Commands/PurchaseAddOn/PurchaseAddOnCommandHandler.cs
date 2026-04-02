@@ -162,8 +162,11 @@ public class PurchaseAddOnCommandHandler : ICommandHandler<PurchaseAddOnCommand,
                     }
 
                     // Set zero revenue breakdown for free add-ons
-                    var zeroMoney = Money.Zero(unitPrice.Currency);
-                    purchase.SetRevenueBreakdown(zeroMoney, zeroMoney, zeroMoney);
+                    // Each Money must be a distinct instance — EF Core owned entities cannot share references
+                    purchase.SetRevenueBreakdown(
+                        Money.Zero(unitPrice.Currency),
+                        Money.Zero(unitPrice.Currency),
+                        Money.Zero(unitPrice.Currency));
 
                     await _addOnPurchaseRepository.AddAsync(purchase, cancellationToken);
                     await _unitOfWork.CommitAsync(cancellationToken);

@@ -110,11 +110,11 @@ public class AlbumPhotoConfiguration : IEntityTypeConfiguration<AlbumPhoto>
 
         builder.Property(p => p.MediumUrl)
             .HasColumnType("text")
-            .IsRequired();
+            .IsRequired(false);  // Nullable — videos have no medium variant
 
         builder.Property(p => p.MediumBlobName)
             .HasColumnType("text")
-            .IsRequired();
+            .IsRequired(false);  // Nullable — videos have no medium variant
 
         builder.Property(p => p.Caption)
             .HasMaxLength(500);
@@ -125,8 +125,17 @@ public class AlbumPhotoConfiguration : IEntityTypeConfiguration<AlbumPhoto>
             .IsRequired()
             .HasDefaultValue(AlbumPhotoStatus.Approved);
 
+        builder.Property(p => p.MediaType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(AlbumMediaType.Photo);
+
         builder.Property(p => p.FileSizeBytes)
             .IsRequired();
+
+        builder.Property(p => p.DurationSeconds)
+            .IsRequired(false);
 
         builder.Property(p => p.UploadedAt)
             .HasColumnType("timestamp with time zone")

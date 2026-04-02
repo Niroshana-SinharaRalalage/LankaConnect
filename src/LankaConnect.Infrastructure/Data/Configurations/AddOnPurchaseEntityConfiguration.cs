@@ -18,6 +18,7 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Foreign keys
@@ -205,5 +206,14 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
             .WithMany()
             .HasForeignKey(p => p.AddOnDefinitionId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Phase 6A.137F-Fix4: Add Registration FK with SetNull on delete.
+        // Previously missing — caused orphaned add-on purchases when registrations were deleted,
+        // which inflated refund counts and caused charge_already_refunded errors.
+        builder.HasOne<Registration>()
+            .WithMany()
+            .HasForeignKey(p => p.RegistrationId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

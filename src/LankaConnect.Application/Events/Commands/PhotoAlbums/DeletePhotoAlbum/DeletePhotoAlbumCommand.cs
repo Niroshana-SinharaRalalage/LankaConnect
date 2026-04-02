@@ -63,7 +63,8 @@ public class DeletePhotoAlbumCommandHandler : ICommandHandler<DeletePhotoAlbumCo
                 {
                     await _blobStorageService.DeleteFileAsync(photo.OriginalBlobName, cancellationToken: cancellationToken);
                     await _blobStorageService.DeleteFileAsync(photo.ThumbnailBlobName, cancellationToken: cancellationToken);
-                    await _blobStorageService.DeleteFileAsync(photo.MediumBlobName, cancellationToken: cancellationToken);
+                    if (!string.IsNullOrEmpty(photo.MediumBlobName))
+                        await _blobStorageService.DeleteFileAsync(photo.MediumBlobName, cancellationToken: cancellationToken);
                 }
                 catch (Exception ex)
                 {

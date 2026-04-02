@@ -58,6 +58,13 @@ public class Registration : BaseEntity
     public DateTime? RefundCompletedAt { get; private set; }
 
     /// <summary>
+    /// Phase 6A.135: Add-on refund amount persisted during RequestRefund so that
+    /// CompleteRefund (triggered by Stripe webhook) can include it in RefundCompletedEvent.
+    /// Without persistence, the webhook handler has no way to know the add-on amount.
+    /// </summary>
+    public decimal? AddOnRefundAmount { get; private set; }
+
+    /// <summary>
     /// Stripe Refund ID returned by Stripe when refund is processed.
     /// Used for reconciliation and customer support.
     /// </summary>
@@ -181,13 +188,8 @@ public class Registration : BaseEntity
 
         registration._attendees.AddRange(attendeeList);
 
-        // Phase 6A.81 DIAGNOSTIC: Log registration creation (debugging EF Core default value issue)
-        // This log should show Status=Preliminary for paid events BEFORE database save
-        Console.WriteLine(
-            $"[Registration.CreateWithAttendees] Created registration: " +
-            $"Id={registration.Id}, Status={registration.Status} (int: {(int)registration.Status}), " +
-            $"PaymentStatus={registration.PaymentStatus}, isPaidEvent={isPaidEvent}, " +
-            $"TotalPrice={totalPrice?.Amount}, ExpiresAt={expiresAt?.ToString("o") ?? "null"}");
+        // Phase 6A.136: Removed Console.WriteLine diagnostic logging from domain entity.
+        // Registration creation is traced via structured logging in the command handler.
 
         return Result<Registration>.Success(registration);
     }
@@ -254,9 +256,6 @@ public class Registration : BaseEntity
         // Already confirmed - no action needed
         if (Status == RegistrationStatus.Confirmed)
         {
-            Console.WriteLine(
-                $"[Registration.Confirm] Registration already confirmed. " +
-                $"RegistrationId={Id}, EventId={EventId}");
             return Result.Success();
         }
 
@@ -267,22 +266,11 @@ public class Registration : BaseEntity
         // 3. It bypasses the Three-State Lifecycle (Preliminary → Confirmed via CompletePayment)
         if (PaymentStatus == PaymentStatus.Pending)
         {
-            Console.WriteLine(
-                $"[Registration.Confirm] BLOCKED: Cannot confirm with PaymentStatus=Pending. " +
-                $"RegistrationId={Id}, EventId={EventId}, CurrentStatus={Status}. " +
-                $"Use CompletePayment() for paid events.");
-
             return Result.Failure(
                 $"Cannot confirm registration with PaymentStatus=Pending. " +
                 $"For paid events, use CompletePayment() after payment succeeds via Stripe webhook. " +
                 $"RegistrationId={Id}, EventId={EventId}");
         }
-
-        // Log successful confirmation
-        Console.WriteLine(
-            $"[Registration.Confirm] Confirming registration. " +
-            $"RegistrationId={Id}, EventId={EventId}, " +
-            $"FromStatus={Status}, PaymentStatus={PaymentStatus}");
 
         Status = RegistrationStatus.Confirmed;
         MarkAsUpdated();
@@ -325,7 +313,7 @@ public class Registration : BaseEntity
     /// <summary>
     /// Sets the Stripe Checkout Session ID when payment session is created
     /// </summary>
-    public Result SetStripeCheckoutSession(string sessionId)
+    public Result SetStripeCheckoutSession(string sessionId, DateTime? stripeExpiresAt = null)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return Result.Failure("Session ID cannot be empty");
@@ -334,6 +322,11 @@ public class Registration : BaseEntity
             return Result.Failure($"Cannot set checkout session for payment with status {PaymentStatus}");
 
         StripeCheckoutSessionId = sessionId;
+        // Phase 6A.136F: Use Stripe's actual ExpiresAt instead of local calculation to prevent drift
+        if (stripeExpiresAt.HasValue)
+        {
+            CheckoutSessionExpiresAt = stripeExpiresAt.Value;
+        }
         MarkAsUpdated();
         return Result.Success();
     }
@@ -443,7 +436,7 @@ public class Registration : BaseEntity
     /// - Cannot request refund after event has started (validated in command handler)
     /// - Raises RefundRequestedEvent for email notification
     /// </summary>
-    public Result RequestRefund()
+    public Result RequestRefund(decimal additionalRefundAmount = 0m, string? stripeRefundId = null)
     {
         // Validation: Must be Confirmed status
         if (Status != RegistrationStatus.Confirmed)
@@ -472,6 +465,14 @@ public class Registration : BaseEntity
         // State transition: Confirmed → RefundRequested
         Status = RegistrationStatus.RefundRequested;
         RefundRequestedAt = DateTime.UtcNow;
+        // Phase 6A.135: Persist add-on refund amount so CompleteRefund (webhook) can include it
+        AddOnRefundAmount = additionalRefundAmount > 0 ? additionalRefundAmount : null;
+        // Phase 6A.136C: Store StripeRefundId immediately when refund is initiated at Stripe.
+        // This prevents the race condition where a user withdraws after Stripe has already processed the refund.
+        if (!string.IsNullOrWhiteSpace(stripeRefundId))
+        {
+            StripeRefundId = stripeRefundId;
+        }
         MarkAsUpdated();
 
         // Raise domain event for email notification
@@ -483,7 +484,8 @@ public class Registration : BaseEntity
             contactEmail,
             StripePaymentIntentId,
             TotalPrice?.Amount ?? 0m,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            additionalRefundAmount));
 
         return Result.Success();
     }
@@ -506,6 +508,17 @@ public class Registration : BaseEntity
             return Result.Failure(
                 $"Cannot withdraw refund request for registration with status {Status}. " +
                 $"Only RefundRequested registrations can be withdrawn. RegistrationId={Id}");
+        }
+
+        // Phase 6A.136C: Guard against withdrawal after Stripe has already processed the refund.
+        // StripeRefundId is set in RequestRefund when the refund is initiated at Stripe.
+        // Once Stripe has the refund, it cannot be cancelled — withdrawal would leave the domain
+        // in Confirmed state while the money is already refunded at Stripe.
+        if (!string.IsNullOrWhiteSpace(StripeRefundId))
+        {
+            return Result.Failure(
+                $"Cannot withdraw refund request — the refund has already been submitted to Stripe " +
+                $"(RefundId: {StripeRefundId}). The refund will complete automatically. RegistrationId={Id}");
         }
 
         // State transition: RefundRequested → Confirmed
@@ -559,6 +572,7 @@ public class Registration : BaseEntity
         MarkAsUpdated();
 
         // Raise domain event for email notification
+        // Phase 6A.135: Include persisted AddOnRefundAmount so completion email shows combined total
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
         RaiseDomainEvent(new RefundCompletedEvent(
             EventId,
@@ -567,7 +581,8 @@ public class Registration : BaseEntity
             contactEmail,
             stripeRefundId,
             TotalPrice?.Amount ?? 0m,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            AddOnRefundAmount ?? 0m));
 
         return Result.Success();
     }

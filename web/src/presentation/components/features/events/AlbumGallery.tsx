@@ -178,7 +178,7 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
       <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          Photos are available for {album.retentionDays} days after upload.
+          Photos and videos are available for {album.retentionDays} days after upload.
         </p>
       </div>
 
@@ -262,10 +262,10 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
       {!isLoading && !isError && allPhotos.length === 0 && (
         <div className="text-center py-16">
           <ImageIcon className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No photos yet</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No photos or videos yet</p>
           {canUpload && (
             <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
-              Be the first to upload a photo!
+              Be the first to upload!
             </p>
           )}
         </div>
@@ -326,14 +326,25 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
               </>
             )}
 
-            {/* Main Image */}
+            {/* Main Image or Video */}
             {lightboxPhoto && (
               <div className="w-full h-full flex flex-col items-center justify-center p-12">
-                <img
-                  src={lightboxPhoto.originalUrl}
-                  alt={lightboxPhoto.caption || `Photo by ${lightboxPhoto.uploaderName}`}
-                  className="max-w-full max-h-[calc(90vh-10rem)] object-contain"
-                />
+                {lightboxPhoto.mediaType === 'Video' ? (
+                  <video
+                    key={lightboxPhoto.id}
+                    src={lightboxPhoto.originalUrl}
+                    controls
+                    autoPlay
+                    className="max-w-full max-h-[calc(90vh-10rem)] object-contain bg-black"
+                    aria-label={lightboxPhoto.caption || `Video by ${lightboxPhoto.uploaderName}`}
+                  />
+                ) : (
+                  <img
+                    src={lightboxPhoto.originalUrl}
+                    alt={lightboxPhoto.caption || `Photo by ${lightboxPhoto.uploaderName}`}
+                    className="max-w-full max-h-[calc(90vh-10rem)] object-contain"
+                  />
+                )}
 
                 {/* Photo Info */}
                 <div className="mt-4 text-center">
@@ -361,8 +372,8 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
       <ConfirmDialog
         open={deletePhotoId !== null}
         onOpenChange={(open) => { if (!open) setDeletePhotoId(null); }}
-        title="Delete Photo"
-        description="Are you sure you want to delete this photo? This action cannot be undone."
+        title="Delete Item"
+        description="Are you sure you want to delete this item? This action cannot be undone."
         confirmLabel="Delete"
         variant="danger"
         onConfirm={confirmDeletePhoto}
@@ -373,9 +384,9 @@ export function AlbumGallery({ eventId, album, isOrganizer, canUpload }: AlbumGa
       <ConfirmDialog
         open={showBulkDeleteDialog}
         onOpenChange={setShowBulkDeleteDialog}
-        title="Delete Selected Photos"
-        description={`Are you sure you want to delete ${selectedPhotoIds.size} photo${selectedPhotoIds.size === 1 ? '' : 's'}? This action cannot be undone.`}
-        confirmLabel={`Delete ${selectedPhotoIds.size} Photo${selectedPhotoIds.size === 1 ? '' : 's'}`}
+        title="Delete Selected Items"
+        description={`Are you sure you want to delete ${selectedPhotoIds.size} item${selectedPhotoIds.size === 1 ? '' : 's'}? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedPhotoIds.size} Item${selectedPhotoIds.size === 1 ? '' : 's'}`}
         variant="danger"
         onConfirm={confirmBulkDelete}
         isLoading={bulkDeleteMutation.isPending}

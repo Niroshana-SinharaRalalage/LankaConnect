@@ -433,6 +433,27 @@ export interface RsvpDto {
 }
 
 /**
+ * Result of a cancellation operation, including details about optional actions.
+ * Enables the frontend to show what succeeded and what failed.
+ */
+export interface CancelRsvpResult {
+  registrationCancelled: boolean;
+  commitmentsDeleted?: boolean | null;
+  formResponsesDeleted?: boolean | null;
+  formResponsesDeletedCount?: number | null;
+  addOnRefundsProcessed?: boolean | null;
+  addOnRefundedCount?: number | null;
+  addOnFailedCount?: number | null;
+  addOnRefundTotal?: number | null;
+  // Phase 6A.137F: Collection and sponsor refund results
+  collectionRefundProcessed?: boolean | null;
+  collectionRefundAmount?: number | null;
+  sponsorRefundProcessed?: boolean | null;
+  sponsorRefundAmount?: number | null;
+  warnings?: string[] | null;
+}
+
+/**
  * Waiting list entry DTO
  */
 export interface WaitingListEntryDto {
@@ -812,6 +833,27 @@ export interface RsvpRequest {
   donorName?: string | null;
   donorPhone?: string | null;
   donorNotes?: string | null;
+
+  // Phase 6A.137D: Add-ons bundled with registration checkout
+  addOnSelections?: AddOnSelectionRequest[];
+
+  // Phase 6A.137E: Collection (event fund) contribution during registration
+  collectionAmount?: number | null;
+  collectionNotes?: string | null;
+
+  // Phase 6A.137E: Money sponsorship during registration
+  sponsorAmount?: number | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+}
+
+/**
+ * Phase 6A.137D: Add-on selection during registration.
+ * Matches backend AddOnSelectionDto.
+ */
+export interface AddOnSelectionRequest {
+  definitionId: string;
+  quantity: number;
 }
 
 /**
@@ -906,6 +948,14 @@ export interface RegistrationDetailsDto {
   stripeCheckoutUrl?: string | null;
   /** Timestamp when the Stripe checkout session expires (24 hours from creation). Used for countdown timer in UI. */
   checkoutSessionExpiresAt?: string | null;
+
+  // Phase 6A.137F-Fix: Financial breakdown for bundled checkout items
+  donationAmount?: number | null;
+  addOnTotal?: number | null;
+  collectionTotal?: number | null;
+  sponsorTotal?: number | null;
+  /** Grand total = totalPriceAmount (tickets) + donationAmount + addOnTotal + collectionTotal + sponsorTotal */
+  grandTotal?: number | null;
 }
 
 /**
@@ -2089,6 +2139,20 @@ export interface PurchaseAddOnRequest {
   cancelUrl: string;
 }
 
+export interface PurchaseAddOnCartItemRequest {
+  addOnDefinitionId: string;
+  quantity: number;
+}
+
+export interface PurchaseAddOnCartRequest {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  items: PurchaseAddOnCartItemRequest[];
+  successUrl: string;
+  cancelUrl: string;
+}
+
 // Config update request types
 export interface UpdateCollectionConfigRequest {
   isEnabled: boolean;
@@ -2136,6 +2200,12 @@ export enum AlbumPhotoStatus {
 }
 
 /**
+ * Album media type discriminator matching backend AlbumMediaType enum.
+ * Uses string values to match JsonStringEnumConverter output.
+ */
+export type AlbumMediaType = 'Photo' | 'Video';
+
+/**
  * Photo album DTO matching backend PhotoAlbumDto
  */
 export interface PhotoAlbumDto {
@@ -2167,7 +2237,9 @@ export interface AlbumPhotoDto {
   mediumUrl: string;
   caption: string | null;
   status: AlbumPhotoStatus;
+  mediaType: AlbumMediaType;
   fileSizeBytes: number;
+  durationSeconds: number | null;
   uploadedAt: string;
   expiresAt: string;
   displayOrder: number;

@@ -197,6 +197,37 @@ export function useUploadAlbumPhoto() {
 }
 
 /**
+ * useUploadAlbumVideo — Upload a video with thumbnail to an album
+ */
+export function useUploadAlbumVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      albumId,
+      videoFile,
+      thumbnailFile,
+      caption,
+      durationSeconds,
+      onUploadProgress,
+    }: {
+      eventId: string;
+      albumId: string;
+      videoFile: File;
+      thumbnailFile: File;
+      caption?: string;
+      durationSeconds?: number;
+      onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void;
+    }) => photoAlbumRepository.uploadVideo(eventId, albumId, videoFile, thumbnailFile, caption, durationSeconds, onUploadProgress),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: albumKeys.photos(variables.albumId) });
+      queryClient.invalidateQueries({ queryKey: albumKeys.byEvent(variables.eventId) });
+    },
+  });
+}
+
+/**
  * useDeleteAlbumPhoto — Delete a photo from an album
  */
 export function useDeleteAlbumPhoto() {

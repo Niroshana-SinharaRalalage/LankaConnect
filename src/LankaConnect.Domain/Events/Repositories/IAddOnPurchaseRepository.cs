@@ -12,6 +12,14 @@ public interface IAddOnPurchaseRepository : IRepository<AddOnPurchase>
         string sessionId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets ALL purchases sharing the same checkout session (cart purchases).
+    /// Used by webhook handler to complete/expire all purchases in a cart.
+    /// </summary>
+    Task<IReadOnlyList<AddOnPurchase>> GetAllByCheckoutSessionIdAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AddOnPurchase>> GetByEventIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default);
@@ -35,5 +43,14 @@ public interface IAddOnPurchaseRepository : IRepository<AddOnPurchase>
 
     Task<IReadOnlyList<AddOnPurchase>> GetExpiredPendingPurchasesAsync(
         DateTime cutoffTime,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all purchases for a specific buyer email and event (public lookup).
+    /// Returns completed and pending purchases so buyers can see their order status.
+    /// </summary>
+    Task<IReadOnlyList<AddOnPurchase>> GetByBuyerEmailAndEventIdAsync(
+        string buyerEmail,
+        Guid eventId,
         CancellationToken cancellationToken = default);
 }

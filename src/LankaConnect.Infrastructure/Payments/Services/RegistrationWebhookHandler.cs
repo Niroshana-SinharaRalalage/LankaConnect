@@ -1,6 +1,7 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 
@@ -9,12 +10,18 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// <summary>
 /// Phase 0: Handles Stripe webhook events for registration payments.
 /// Extracted from PaymentsController for separation of concerns.
+/// Phase 6A.137D: Extended to handle bundled add-on purchases.
+/// Phase 6A.137E: Extended to handle bundled collections and sponsors.
 /// </summary>
 public class RegistrationWebhookHandler : IRegistrationWebhookHandler
 {
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IDonationRepository _donationRepository;
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RegistrationWebhookHandler> _logger;
 
@@ -22,12 +29,20 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
         IRegistrationRepository registrationRepository,
         IEventRepository eventRepository,
         IDonationRepository donationRepository,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        IAddOnDefinitionRepository addOnDefinitionRepository,
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
         ILogger<RegistrationWebhookHandler> logger)
     {
         _registrationRepository = registrationRepository;
         _eventRepository = eventRepository;
         _donationRepository = donationRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _addOnDefinitionRepository = addOnDefinitionRepository;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -97,54 +112,13 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
             return;
         }
 
-        // Phase 6A.52: Log domain events BEFORE CompletePayment (with correlation ID)
-        _logger.LogInformation(
-            "[Phase 6A.52] [Webhook-5] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
-            correlationId, registrationId, registration.DomainEvents.Count);
+        // Phase 6A.137F-Fix4: Complete ALL bundled items BEFORE CommitAsync so that
+        // PaymentCompletedEvent (dispatched inline by CommitAsync) sees them as Completed.
+        // Previous approach completed bundled items AFTER CommitAsync, causing a race condition
+        // where email handler and payment success queries found add-ons still in Pending status.
 
-        // Complete payment on registration domain entity
-        var completeResult = registration.CompletePayment(paymentIntentId);
-
-        if (completeResult.IsFailure)
-        {
-            _logger.LogError(
-                "[Phase 6A.52] [Webhook-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
-                correlationId, registrationId, completeResult.Error);
-            return;
-        }
-
-        // Phase 6A.81: Log registration state AFTER payment completion (Preliminary -> Confirmed)
-        _logger.LogInformation(
-            "[Phase 6A.81] [Webhook-State] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Confirmed",
-            correlationId, registrationId, registration.Status, registration.PaymentStatus);
-
-        // Phase 6A.52: Log domain events AFTER CompletePayment
-        _logger.LogInformation(
-            "[Phase 6A.52] [Webhook-6] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
-            correlationId, registrationId, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
-
-        // Phase 6A.51 FIX: Restore Update() call (critical for domain event dispatch)
-        _registrationRepository.Update(registration);
-
-        // Phase 6A.52: Log BEFORE CommitAsync
-        _logger.LogInformation(
-            "[Phase 6A.52] [Webhook-7] Before CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count}",
-            correlationId, registrationId, registration.DomainEvents.Count);
-
-        // Save changes and dispatch domain events
-        await _unitOfWork.CommitAsync();
-
-        // Phase 6A.52: Log AFTER CommitAsync
-        _logger.LogInformation(
-            "[Phase 6A.52] [Webhook-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count} (should be cleared)",
-            correlationId, registrationId, registration.DomainEvents.Count);
-
-        _logger.LogInformation(
-            "[Phase 6A.52] [Webhook-SUCCESS] Payment completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, PaymentIntentId: {PaymentIntentId}",
-            correlationId, eventId, registrationId, paymentIntentId);
-
-        // C2 Guard: Handle bundled donation in ISOLATED try-catch AFTER registration commits.
-        // If donation fails, registration is already saved — never lose registration.
+        // C2 Guard: Handle bundled donation in ISOLATED try-catch.
+        // If donation fails, registration payment still completes.
         if (metadata.TryGetValue("donation_id", out var donationIdStr) &&
             Guid.TryParse(donationIdStr, out var donationId))
         {
@@ -172,27 +146,222 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
                     }
                     else
                     {
-                        // Phase 6A.X FIX: Detach all non-Donation entities before second CommitAsync.
-                        await _unitOfWork.ClearChangeTrackerExceptAsync<Domain.Events.Donation>();
-
                         _donationRepository.Update(donation);
-                        await _unitOfWork.CommitAsync();
 
                         _logger.LogInformation(
-                            "[Donation] [Webhook-Bundled-SUCCESS] Bundled donation completed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, PaymentIntentId: {PaymentIntentId}",
-                            correlationId, donationId, paymentIntentId);
+                            "[Donation] [Webhook-Bundled-SUCCESS] Bundled donation marked completed (will persist with single CommitAsync) - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
+                            correlationId, donationId);
                     }
                 }
             }
             catch (Exception donationEx)
             {
                 // C2 Guard: Never let donation failure affect registration.
-                // Log error but return 200 OK to Stripe.
                 _logger.LogError(donationEx,
-                    "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation (registration already committed) - CorrelationId: {CorrelationId}, DonationId: {DonationId}, ExceptionType: {ExceptionType}, Message: {ErrorMessage}, InnerException: {InnerMessage}",
+                    "[Donation] [Webhook-Bundled-ERROR] Failed to process bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}, ExceptionType: {ExceptionType}, Message: {ErrorMessage}, InnerException: {InnerMessage}",
                     correlationId, donationId, donationEx.GetType().FullName, donationEx.Message, donationEx.InnerException?.Message ?? "None");
             }
         }
+
+        // Phase 6A.137D: C2 Guard: Handle bundled add-on purchases in ISOLATED try-catch.
+        if (metadata.TryGetValue("addon_purchase_ids", out var addOnPurchaseIdsStr) &&
+            !string.IsNullOrWhiteSpace(addOnPurchaseIdsStr))
+        {
+            try
+            {
+                var addOnIds = addOnPurchaseIdsStr.Split(',')
+                    .Select(s => Guid.TryParse(s.Trim(), out var id) ? id : (Guid?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToList();
+
+                _logger.LogInformation(
+                    "[AddOn] [Webhook-Bundled-1] Processing {Count} bundled add-on purchase(s) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    addOnIds.Count, correlationId, registrationId);
+
+                var completedCount = 0;
+                foreach (var addOnPurchaseId in addOnIds)
+                {
+                    try
+                    {
+                        var purchase = await _addOnPurchaseRepository.GetByIdAsync(addOnPurchaseId);
+                        if (purchase == null)
+                        {
+                            _logger.LogWarning(
+                                "[AddOn] [Webhook-Bundled-WARN] Add-on purchase not found - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}",
+                                correlationId, addOnPurchaseId);
+                            continue;
+                        }
+
+                        if (purchase.Status != AddOnPurchaseStatus.Pending)
+                        {
+                            _logger.LogWarning(
+                                "[AddOn] [Webhook-Bundled-WARN] Add-on purchase not Pending (idempotent skip) - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Status: {Status}",
+                                correlationId, addOnPurchaseId, purchase.Status);
+                            continue;
+                        }
+
+                        var completeAddOnResult = purchase.CompletePayment(paymentIntentId);
+                        if (completeAddOnResult.IsFailure)
+                        {
+                            _logger.LogWarning(
+                                "[AddOn] [Webhook-Bundled-WARN] Add-on CompletePayment failed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Error: {Error}",
+                                correlationId, addOnPurchaseId, completeAddOnResult.Error);
+                            continue;
+                        }
+
+                        _addOnPurchaseRepository.Update(purchase);
+                        completedCount++;
+
+                        _logger.LogInformation(
+                            "[AddOn] [Webhook-Bundled-2] Add-on payment completed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}",
+                            correlationId, addOnPurchaseId);
+                    }
+                    catch (Exception addOnItemEx)
+                    {
+                        _logger.LogError(addOnItemEx,
+                            "[AddOn] [Webhook-Bundled-ERROR] Failed to process individual add-on (continuing) - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}",
+                            correlationId, addOnPurchaseId);
+                    }
+                }
+
+                _logger.LogInformation(
+                    "[AddOn] [Webhook-Bundled-SUCCESS] {CompletedCount} bundled add-on purchase(s) marked completed (will persist with single CommitAsync) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    completedCount, correlationId, registrationId);
+            }
+            catch (Exception addOnEx)
+            {
+                // C2 Guard: Never let add-on failure affect registration.
+                _logger.LogError(addOnEx,
+                    "[AddOn] [Webhook-Bundled-ERROR] Failed to process bundled add-ons - CorrelationId: {CorrelationId}, AddOnPurchaseIds: {Ids}",
+                    correlationId, addOnPurchaseIdsStr);
+            }
+        }
+
+        // Phase 6A.137E: C2 Guard: Handle bundled collection in ISOLATED try-catch.
+        if (metadata.TryGetValue("collection_id", out var collectionIdStr) &&
+            Guid.TryParse(collectionIdStr, out var collectionId))
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "[Collection] [Webhook-Bundled-1] Processing bundled collection - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}",
+                    correlationId, collectionId);
+
+                var collection = await _collectionRepository.GetByIdAsync(collectionId);
+                if (collection != null && collection.Status == CollectionStatus.Pending)
+                {
+                    var collectionCompleteResult = collection.CompletePayment(paymentIntentId);
+                    if (collectionCompleteResult.IsSuccess)
+                    {
+                        _collectionRepository.Update(collection);
+
+                        _logger.LogInformation(
+                            "[Collection] [Webhook-Bundled-SUCCESS] Bundled collection marked completed (will persist with single CommitAsync) - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}",
+                            correlationId, collectionId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[Collection] [Webhook-Bundled-WARN] CompletePayment failed - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, Error: {Error}",
+                            correlationId, collectionId, collectionCompleteResult.Error);
+                    }
+                }
+            }
+            catch (Exception collectionEx)
+            {
+                _logger.LogError(collectionEx,
+                    "[Collection] [Webhook-Bundled-ERROR] Failed to process bundled collection - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}",
+                    correlationId, collectionId);
+            }
+        }
+
+        // Phase 6A.137E: C2 Guard: Handle bundled sponsor in ISOLATED try-catch.
+        if (metadata.TryGetValue("sponsor_id", out var sponsorIdStr) &&
+            Guid.TryParse(sponsorIdStr, out var sponsorId))
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "[Sponsor] [Webhook-Bundled-1] Processing bundled sponsor - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}",
+                    correlationId, sponsorId);
+
+                var sponsor = await _sponsorRepository.GetByIdAsync(sponsorId);
+                if (sponsor != null && sponsor.Status == SponsorStatus.Pending)
+                {
+                    var sponsorCompleteResult = sponsor.CompletePayment(paymentIntentId);
+                    if (sponsorCompleteResult.IsSuccess)
+                    {
+                        _sponsorRepository.Update(sponsor);
+
+                        _logger.LogInformation(
+                            "[Sponsor] [Webhook-Bundled-SUCCESS] Bundled sponsor marked completed (will persist with single CommitAsync) - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}",
+                            correlationId, sponsorId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[Sponsor] [Webhook-Bundled-WARN] CompletePayment failed - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, Error: {Error}",
+                            correlationId, sponsorId, sponsorCompleteResult.Error);
+                    }
+                }
+            }
+            catch (Exception sponsorEx)
+            {
+                _logger.LogError(sponsorEx,
+                    "[Sponsor] [Webhook-Bundled-ERROR] Failed to process bundled sponsor - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}",
+                    correlationId, sponsorId);
+            }
+        }
+
+        // Phase 6A.52: Log domain events BEFORE CompletePayment (with correlation ID)
+        _logger.LogInformation(
+            "[Phase 6A.52] [Webhook-5] Before CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}",
+            correlationId, registrationId, registration.DomainEvents.Count);
+
+        // Complete payment on registration domain entity
+        // This adds PaymentCompletedEvent which triggers email handler inline during CommitAsync
+        var completeResult = registration.CompletePayment(paymentIntentId);
+
+        if (completeResult.IsFailure)
+        {
+            _logger.LogError(
+                "[Phase 6A.52] [Webhook-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
+                correlationId, registrationId, completeResult.Error);
+            return;
+        }
+
+        // Phase 6A.81: Log registration state AFTER payment completion (Preliminary -> Confirmed)
+        _logger.LogInformation(
+            "[Phase 6A.81] [Webhook-State] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Confirmed",
+            correlationId, registrationId, registration.Status, registration.PaymentStatus);
+
+        // Phase 6A.52: Log domain events AFTER CompletePayment
+        _logger.LogInformation(
+            "[Phase 6A.52] [Webhook-6] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
+            correlationId, registrationId, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
+
+        // Phase 6A.51 FIX: Restore Update() call (critical for domain event dispatch)
+        _registrationRepository.Update(registration);
+
+        // Phase 6A.52: Log BEFORE CommitAsync
+        _logger.LogInformation(
+            "[Phase 6A.137F-Fix4] [Webhook-7] Before SINGLE CommitAsync (registration + all bundled items) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count}",
+            correlationId, registrationId, registration.DomainEvents.Count);
+
+        // Phase 6A.137F-Fix4: SINGLE CommitAsync persists registration + all bundled items together.
+        // PaymentCompletedEvent is dispatched INLINE by CommitAsync — email handler will now see
+        // all bundled items as Completed because they were marked before this commit.
+        await _unitOfWork.CommitAsync();
+
+        // Phase 6A.52: Log AFTER CommitAsync
+        _logger.LogInformation(
+            "[Phase 6A.52] [Webhook-8] After CommitAsync - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents: {Count} (should be cleared)",
+            correlationId, registrationId, registration.DomainEvents.Count);
+
+        _logger.LogInformation(
+            "[Phase 6A.52] [Webhook-SUCCESS] Payment completed successfully - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}, PaymentIntentId: {PaymentIntentId}",
+            correlationId, eventId, registrationId, paymentIntentId);
     }
 
     /// <inheritdoc />
@@ -307,6 +476,117 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
                 _logger.LogError(donationEx,
                     "[Donation] [Webhook-Expired-Donation-ERROR] Failed to abandon bundled donation - CorrelationId: {CorrelationId}, DonationId: {DonationId}",
                     correlationId, donationId);
+            }
+        }
+
+        // Phase 6A.137D: C4 Guard: Abandon bundled add-on purchases and restore stock.
+        if (metadata.TryGetValue("addon_purchase_ids", out var addOnPurchaseIdsStr) &&
+            !string.IsNullOrWhiteSpace(addOnPurchaseIdsStr))
+        {
+            try
+            {
+                var addOnIds = addOnPurchaseIdsStr.Split(',')
+                    .Select(s => Guid.TryParse(s.Trim(), out var id) ? id : (Guid?)null)
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .ToList();
+
+                _logger.LogInformation(
+                    "[AddOn] [Webhook-Expired-AddOn-1] Abandoning {Count} bundled add-on purchase(s) - CorrelationId: {CorrelationId}",
+                    addOnIds.Count, correlationId);
+
+                var abandonedCount = 0;
+                foreach (var addOnPurchaseId in addOnIds)
+                {
+                    try
+                    {
+                        var purchase = await _addOnPurchaseRepository.GetByIdAsync(addOnPurchaseId);
+                        if (purchase == null || purchase.Status != AddOnPurchaseStatus.Pending)
+                            continue;
+
+                        purchase.MarkAsAbandoned();
+
+                        // Restore reserved stock
+                        await _addOnDefinitionRepository.TryRestoreStockAsync(
+                            purchase.AddOnDefinitionId, purchase.Quantity, ct);
+
+                        _addOnPurchaseRepository.Update(purchase);
+                        abandonedCount++;
+                    }
+                    catch (Exception addOnItemEx)
+                    {
+                        _logger.LogError(addOnItemEx,
+                            "[AddOn] [Webhook-Expired-AddOn-ERROR] Failed to abandon individual add-on - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}",
+                            correlationId, addOnPurchaseId);
+                    }
+                }
+
+                if (abandonedCount > 0)
+                {
+                    await _unitOfWork.CommitAsync();
+
+                    _logger.LogInformation(
+                        "[AddOn] [Webhook-Expired-AddOn-SUCCESS] {Count} bundled add-on purchase(s) abandoned, stock restored - CorrelationId: {CorrelationId}",
+                        abandonedCount, correlationId);
+                }
+            }
+            catch (Exception addOnEx)
+            {
+                _logger.LogError(addOnEx,
+                    "[AddOn] [Webhook-Expired-AddOn-ERROR] Failed to abandon bundled add-ons - CorrelationId: {CorrelationId}, Ids: {Ids}",
+                    correlationId, addOnPurchaseIdsStr);
+            }
+        }
+
+        // Phase 6A.137E: C4 Guard: Abandon bundled collection.
+        if (metadata.TryGetValue("collection_id", out var expCollectionIdStr) &&
+            Guid.TryParse(expCollectionIdStr, out var expCollectionId))
+        {
+            try
+            {
+                var collection = await _collectionRepository.GetByIdAsync(expCollectionId);
+                if (collection != null && collection.Status == CollectionStatus.Pending)
+                {
+                    collection.MarkAsAbandoned();
+                    _collectionRepository.Update(collection);
+                    await _unitOfWork.CommitAsync();
+
+                    _logger.LogInformation(
+                        "[Collection] [Webhook-Expired-SUCCESS] Bundled collection abandoned - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}",
+                        correlationId, expCollectionId);
+                }
+            }
+            catch (Exception collectionEx)
+            {
+                _logger.LogError(collectionEx,
+                    "[Collection] [Webhook-Expired-ERROR] Failed to abandon bundled collection - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}",
+                    correlationId, expCollectionId);
+            }
+        }
+
+        // Phase 6A.137E: C4 Guard: Abandon bundled sponsor.
+        if (metadata.TryGetValue("sponsor_id", out var expSponsorIdStr) &&
+            Guid.TryParse(expSponsorIdStr, out var expSponsorId))
+        {
+            try
+            {
+                var sponsor = await _sponsorRepository.GetByIdAsync(expSponsorId);
+                if (sponsor != null && sponsor.Status == SponsorStatus.Pending)
+                {
+                    sponsor.MarkAsAbandoned();
+                    _sponsorRepository.Update(sponsor);
+                    await _unitOfWork.CommitAsync();
+
+                    _logger.LogInformation(
+                        "[Sponsor] [Webhook-Expired-SUCCESS] Bundled sponsor abandoned - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}",
+                        correlationId, expSponsorId);
+                }
+            }
+            catch (Exception sponsorEx)
+            {
+                _logger.LogError(sponsorEx,
+                    "[Sponsor] [Webhook-Expired-ERROR] Failed to abandon bundled sponsor - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}",
+                    correlationId, expSponsorId);
             }
         }
     }

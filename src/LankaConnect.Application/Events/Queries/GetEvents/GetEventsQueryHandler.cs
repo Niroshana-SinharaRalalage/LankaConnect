@@ -151,19 +151,36 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                             request.UserId.Value,
                             cancellationToken);
 
-                        // Create lookup: EventId -> RegistrationStatus
+                        // Phase 6A.137: Fix duplicate key crash — GroupBy picks highest-priority status per event
+                        // Phase 6A.137F-Fix5: Filter out transient/terminal states from event listing badges.
+                        // Only show badges for active registrations (Confirmed, CheckedIn, Attended, Waitlisted).
+                        // Filtered states:
+                        // - Preliminary = checkout in progress or expired
+                        // - Abandoned = expired checkout formally marked
+                        // - RefundRequested = refund in progress; webhook may never complete (metadata bug)
+                        // - Cancelled, Refunded = terminal states, user no longer registered
                         var registrationStatusMap = userRegistrations
-                            .ToDictionary(r => r.EventId, r => r.Status);
+                            .Where(r => r.Status == RegistrationStatus.Confirmed
+                                     || r.Status == RegistrationStatus.CheckedIn
+                                     || r.Status == RegistrationStatus.Attended
+                                     || r.Status == RegistrationStatus.Waitlisted)
+                            .GroupBy(r => r.EventId)
+                            .ToDictionary(
+                                g => g.Key,
+                                g => g.OrderBy(r => GetStatusPriority(r.Status)).First().Status);
 
                         _logger.LogInformation(
                             "GetEvents: User has {RegistrationCount} registrations",
                             userRegistrations.Count);
 
-                        // Populate UserRegistrationStatus for each event
+                        // Populate UserRegistrationStatus for each event.
+                        // IMPORTANT: Cannot use GetValueOrDefault() because RegistrationStatus is a non-nullable
+                        // enum where default(RegistrationStatus) = Preliminary = 0. GetValueOrDefault would
+                        // return Preliminary for events with no registration, causing false "Payment Processing..." badges.
                         result = result
                             .Select(e => e with
                             {
-                                UserRegistrationStatus = registrationStatusMap.GetValueOrDefault(e.Id)
+                                UserRegistrationStatus = registrationStatusMap.TryGetValue(e.Id, out var status) ? status : null
                             })
                             .ToList();
 
@@ -694,4 +711,19 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
         return filteredEvents;
     }
+
+    /// <summary>
+    /// Phase 6A.137: Status priority for deduplication (lower = higher priority).
+    /// Confirmed is highest priority since it represents a completed registration.
+    /// </summary>
+    private static int GetStatusPriority(RegistrationStatus status) => status switch
+    {
+        RegistrationStatus.Confirmed => 0,
+        RegistrationStatus.CheckedIn => 1,
+        RegistrationStatus.Attended => 2,
+        RegistrationStatus.Waitlisted => 3,
+        RegistrationStatus.RefundRequested => 4,
+        RegistrationStatus.Preliminary => 5,
+        _ => 6
+    };
 }

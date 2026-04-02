@@ -188,7 +188,7 @@ function DashboardContent() {
   // Session 30: Cancel registration handler for dashboard
   const handleCancelRegistration = async (eventId: string): Promise<void> => {
     try {
-      await eventsRepository.cancelRsvp(eventId);
+      await eventsRepository.cancelRsvp(eventId, {});
       // Reload registered events after successful cancellation
       const events = await eventsRepository.getUserRsvps();
       setRegisteredEvents(events);

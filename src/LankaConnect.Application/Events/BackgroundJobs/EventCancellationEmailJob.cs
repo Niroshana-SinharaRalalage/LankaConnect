@@ -484,6 +484,7 @@ public class EventCancellationEmailJob
                     registration,
                     "event_cancelled",
                     metadata,
+                    additionalRefundAmount: 0m,
                     CancellationToken.None);
 
                 singleRefundStopwatch.Stop();

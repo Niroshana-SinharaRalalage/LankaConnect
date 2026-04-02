@@ -64,6 +64,8 @@ import type {
   UpdateFormResponseRequest,
   // Phase 6A.133: Co-Organizer Management
   UserSearchResultDto,
+  // Cancellation result
+  CancelRsvpResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -358,12 +360,29 @@ export class EventsRepository {
    * Cancel RSVP
    * Removes registration and frees up capacity
    * Phase 6A.28: Added deleteSignUpCommitments parameter for user choice
+   * Cancellation enhancement: Added deleteFormResponses and refundAddOnPurchases parameters
    * @param eventId - The event ID
-   * @param deleteSignUpCommitments - If true, deletes sign-up commitments and restores remaining quantities
+   * @param options - Cancellation options (all default to false)
    */
-  async cancelRsvp(eventId: string, deleteSignUpCommitments: boolean = false): Promise<void> {
-    const params = deleteSignUpCommitments ? '?deleteSignUpCommitments=true' : '';
-    await apiClient.delete<void>(`${this.basePath}/${eventId}/rsvp${params}`);
+  async cancelRsvp(
+    eventId: string,
+    options: {
+      deleteSignUpCommitments?: boolean;
+      deleteFormResponses?: boolean;
+      refundAddOnPurchases?: boolean;
+      // Phase 6A.137F: Collection and sponsor refund options
+      refundCollections?: boolean;
+      refundSponsors?: boolean;
+    } = {}
+  ): Promise<CancelRsvpResult | null> {
+    const params = new URLSearchParams();
+    if (options.deleteSignUpCommitments) params.append('deleteSignUpCommitments', 'true');
+    if (options.deleteFormResponses) params.append('deleteFormResponses', 'true');
+    if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
+    if (options.refundCollections) params.append('refundCollections', 'true');
+    if (options.refundSponsors) params.append('refundSponsors', 'true');
+    const queryString = params.toString();
+    return await apiClient.delete<CancelRsvpResult | null>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }
 
   /**
@@ -472,7 +491,19 @@ export class EventsRepository {
    */
   async getRegistrationById(registrationId: string): Promise<RegistrationDetailsDto | null> {
     try {
-      return await apiClient.get<RegistrationDetailsDto>(`${this.basePath}/registrations/${registrationId}`);
+      const response = await apiClient.get<any>(`${this.basePath}/registrations/${registrationId}`);
+
+      // Backend returns Result<T> wrapper, unwrap it
+      if (response && response.isSuccess && response.value) {
+        return response.value as RegistrationDetailsDto;
+      }
+
+      // If response is already the DTO (for backward compatibility)
+      if (response && response.id && response.eventId) {
+        return response as RegistrationDetailsDto;
+      }
+
+      return null;
     } catch (error) {
       console.error('Failed to get registration by ID:', error);
       return null;
@@ -1701,12 +1732,28 @@ export class EventsRepository {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);
   }
 
+  async purchaseAddOnCart(eventId: string, request: import('../types/events.types').PurchaseAddOnCartRequest): Promise<string> {
+    return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/purchase-cart`, request);
+  }
+
   async getEventAddOnPurchases(eventId: string): Promise<import('../types/events.types').EventAddOnPurchasesResponse> {
     return await apiClient.get<import('../types/events.types').EventAddOnPurchasesResponse>(`${this.basePath}/${eventId}/add-ons/purchases`);
   }
 
   async getAddOnPurchaseSummary(eventId: string): Promise<import('../types/events.types').AddOnPurchaseSummaryDto> {
     return await apiClient.get<import('../types/events.types').AddOnPurchaseSummaryDto>(`${this.basePath}/${eventId}/add-ons/purchases/summary`);
+  }
+
+  async getMyAddOnPurchases(eventId: string, email: string): Promise<import('../types/events.types').AddOnPurchaseDto[]> {
+    return await apiClient.get<import('../types/events.types').AddOnPurchaseDto[]>(
+      `${this.basePath}/${eventId}/add-ons/my-purchases?email=${encodeURIComponent(email)}`
+    );
+  }
+
+  async getMyAddOnPurchasesMine(eventId: string): Promise<import('../types/events.types').AddOnPurchaseDto[]> {
+    return await apiClient.get<import('../types/events.types').AddOnPurchaseDto[]>(
+      `${this.basePath}/${eventId}/add-ons/mine`
+    );
   }
 
   async exportAddOnPurchases(eventId: string, format: 'csv' | 'excel' = 'excel'): Promise<Blob> {

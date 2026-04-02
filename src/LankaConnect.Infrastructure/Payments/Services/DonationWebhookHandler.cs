@@ -1,6 +1,11 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Payments.Services;
@@ -9,20 +14,24 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// Phase 0: Handles Stripe webhook events for standalone donation payments.
 /// Extracted from PaymentsController for separation of concerns.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (donation stays Pending; expiry cleanup handles it).
+/// Phase 6A.137B2: Added refund email notification via fire-and-forget.
 /// </summary>
 public class DonationWebhookHandler : IDonationWebhookHandler
 {
     private readonly IDonationRepository _donationRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DonationWebhookHandler> _logger;
 
     public DonationWebhookHandler(
         IDonationRepository donationRepository,
         IUnitOfWork unitOfWork,
+        IServiceScopeFactory scopeFactory,
         ILogger<DonationWebhookHandler> logger)
     {
         _donationRepository = donationRepository;
         _unitOfWork = unitOfWork;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -102,11 +111,14 @@ public class DonationWebhookHandler : IDonationWebhookHandler
         }
         catch (Exception ex)
         {
-            // Swallow donation errors: standalone donation failures should NOT return HTTP 500
-            // to Stripe (causes retry storms). Donation stays Pending; expiry cleanup handles it.
-            _logger.LogError(ex,
-                "[Donation] [Webhook-Donation-ERROR] Error handling donation checkout (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
-                correlationId, ex.GetType().FullName, ex.Message);
+            // Phase 6A.136D: Swallow donation errors to prevent Stripe retry storms (HTTP 500 → retries).
+            // Donation stays Pending; expiry cleanup handles it.
+            // CRITICAL level for DB failures so monitoring/alerting catches persistent issues.
+            _logger.LogCritical(ex,
+                "[Donation] [Webhook-Donation-CRITICAL] Error handling donation checkout (swallowed to prevent retry storm) - " +
+                "CorrelationId: {CorrelationId}, DonationId: {DonationId}, Type: {ExceptionType}, Message: {Message}. " +
+                "ACTION REQUIRED: Donation remains in Pending state, verify expiry cleanup will handle it.",
+                correlationId, metadata.GetValueOrDefault("donation_id", "unknown"), ex.GetType().FullName, ex.Message);
         }
     }
 
@@ -164,6 +176,126 @@ public class DonationWebhookHandler : IDonationWebhookHandler
             _logger.LogError(ex,
                 "[Donation] [Webhook-Expired-Standalone-ERROR] Error handling donation expiry (swallowed) - CorrelationId: {CorrelationId}, Type: {ExceptionType}, Message: {Message}",
                 correlationId, ex.GetType().FullName, ex.Message);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task HandleChargeRefundedAsync(
+        string paymentIntentId,
+        string refundId,
+        Guid correlationId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Donation-Refund-1] Processing donation refund - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}, RefundId: {RefundId}",
+                correlationId, paymentIntentId, refundId);
+
+            var donation = await _donationRepository.FindFirstAsync(
+                d => d.StripePaymentIntentId == paymentIntentId, ct);
+
+            if (donation == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Donation-Refund-WARN] Donation not found for PaymentIntentId - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, paymentIntentId);
+                return;
+            }
+
+            var refundResult = donation.MarkAsRefunded();
+            if (refundResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.136E] [Webhook-Donation-Refund-WARN] MarkAsRefunded failed - CorrelationId: {CorrelationId}, DonationId: {DonationId}, Error: {Error}",
+                    correlationId, donation.Id, refundResult.Error);
+                return;
+            }
+
+            _donationRepository.Update(donation);
+            await _unitOfWork.CommitAsync(ct);
+
+            _logger.LogInformation(
+                "[Phase 6A.136E] [Webhook-Donation-Refund-SUCCESS] Donation marked as refunded - CorrelationId: {CorrelationId}, DonationId: {DonationId}, RefundId: {RefundId}",
+                correlationId, donation.Id, refundId);
+
+            // Phase 6A.137B2: Fire-and-forget refund notification email
+            var capturedDonorName = donation.DonorName;
+            var capturedDonorEmail = donation.DonorEmail;
+            var capturedEventId = donation.EventId;
+            var capturedDonationId = donation.Id;
+            var capturedAmount = donation.Amount.Amount;
+            var capturedCurrency = donation.Amount.Currency.ToString();
+            var capturedRefundedAt = donation.RefundedAt ?? DateTime.UtcNow;
+            var capturedPaymentIntentId = donation.StripePaymentIntentId ?? paymentIntentId;
+            var capturedScopeFactory = _scopeFactory;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = capturedScopeFactory.CreateScope();
+                    var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
+                    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+                    var eventTitle = $"Event {capturedEventId:N}";
+                    try
+                    {
+                        var @event = await eventRepository.GetByIdAsync(capturedEventId, trackChanges: false, CancellationToken.None);
+                        if (@event != null)
+                            eventTitle = @event.Title.Value;
+                    }
+                    catch (Exception titleEx)
+                    {
+                        _logger.LogWarning(titleEx,
+                            "[Phase 6A.137B2] Donation refund email: Failed to load event title for EventId={EventId}",
+                            capturedEventId);
+                    }
+
+                    var baseUrl = configuration["Application:FrontendBaseUrl"]
+                        ?? configuration["FrontendBaseUrl"]
+                        ?? "https://lankaconnect.com";
+                    var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                    var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                    var emailParams = DonationRefundEmailParams.Create(
+                        donorName: capturedDonorName,
+                        donorEmail: capturedDonorEmail,
+                        eventTitle: eventTitle,
+                        donationAmount: capturedAmount,
+                        currency: capturedCurrency,
+                        refundedAt: capturedRefundedAt,
+                        paymentIntentId: capturedPaymentIntentId,
+                        eventDetailsUrl: eventDetailsUrl);
+
+                    var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                    if (result.Success)
+                    {
+                        _logger.LogInformation(
+                            "[Phase 6A.137B2] Donation refund EMAIL SENT: Email={Email}, DonationId={DonationId}, EventTitle={EventTitle}",
+                            capturedDonorEmail, capturedDonationId, eventTitle);
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "[Phase 6A.137B2] Donation refund EMAIL FAILED: Email={Email}, DonationId={DonationId}, Errors={Errors}",
+                            capturedDonorEmail, capturedDonationId, string.Join(", ", result.Errors));
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx,
+                        "[Phase 6A.137B2] Donation refund EMAIL EXCEPTION: Email={Email}, DonationId={DonationId}",
+                        capturedDonorEmail, capturedDonationId);
+                }
+            }, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex,
+                "[Phase 6A.136E] [Webhook-Donation-Refund-CRITICAL] Error handling donation refund (swallowed) - CorrelationId: {CorrelationId}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, paymentIntentId);
         }
     }
 }

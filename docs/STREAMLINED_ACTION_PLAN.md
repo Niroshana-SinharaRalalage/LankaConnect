@@ -7,12 +7,160 @@
 
 ---
 
-## ✅ PREVIOUS STATUS - FREE ADD-ON SUPPORT (2026-03-21)
-**Date**: 2026-03-20 → 2026-03-21
-**Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass
-**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (backend `60d91e0b`, frontend `1e145014`)
-**Fix**: Domain: `<= 0` → `< 0` in AddOnDefinition + AddOnPurchase. Handler: free add-on bypass skips Stripe, immediately completes. Frontend: free checkbox, "Free" badge, item details on manage page.
-**API Verification**: POST create (price=0) ✅ | PUT update (price=0) ✅ | GET list (shows free items) ✅ | All 1,888 tests pass ✅
+## 🔄 CURRENT STATUS - ALBUM UI FIXES (2026-04-01)
+**Date**: 2026-04-01
+**Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
+**Status**: 🔄 **DEPLOYING** (commit `726b24c4`)
+**Scope**: Three album UI fixes: (1) Added "Albums" quick-nav pill button with scroll targeting. (2) Gated "After Event Albums" section on (isUserRegistered || isOrganizer) — was visible to all visitors. (3) Changed "N photos" to "N items" since albums contain both photos and videos.
+
+---
+
+## ✅ PREVIOUS STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT (2026-04-01)
+**Date**: 2026-04-01
+**Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
+**Status**: ✅ **DEPLOYED** (commits `c49d57c4` → `9040baa5`)
+**Scope**: Two issues: (1) Bug: 67+ MB video uploads returned 500 because proxy buffered entire body via arrayBuffer() causing OOM in Node.js. Fix: stream body via ReadableStream with explicit Content-Length forwarding. (2) Feature: video size limit increased from 100 MB to 500 MB across all layers (frontend, backend controller, Kestrel, FormOptions, backend service). Axios timeout increased to 10 min.
+
+---
+
+## ✅ PREVIOUS STATUS - VIDEO UPLOAD TIMEOUT FIX (2026-03-30)
+**Date**: 2026-03-30
+**Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
+**Status**: ✅ **COMPLETE** (commit `d0a718c6`)
+**Scope**: Root cause: Axios 30s default timeout too short for large video uploads (77 MB takes ~31s server-side). Fix: 5-minute timeout for video uploads, upload progress indicator with percentage, improved error messages (timeout/network/ProblemDetails), hardened backend ISO BMFF box scanning for ftyp (scan first 4096 bytes), hex dump logging on validation failure, removed duplicate validation.
+
+---
+
+## ✅ PREVIOUS STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES (2026-03-31)
+**Date**: 2026-03-31
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card badge fixes
+**Status**: ✅ **COMPLETE & VERIFIED** (commits `68cbc045` → `393a2e38`)
+**Scope**: 3 bugs + 1 hidden root cause fixed: (1) CancelRsvpCommandHandler now combines add-on + collection + sponsor successful refund amounts into totalAdditionalRefund (was only passing addOnRefundTotal, showing $150 instead of ~$220). (2) PaymentCompletedEventHandler filters add-on purchases by RegistrationId (was loading all user+event purchases, showing $0.00 for 4/5 add-ons). (3) GetEventsQueryHandler: CRITICAL — Dictionary.GetValueOrDefault() returned default(RegistrationStatus)=Preliminary(0) for missing keys, causing ALL events to show "Payment Processing..." badge. Fixed with TryGetValue + null fallback. Also filters Abandoned and stale Preliminary from badge lookup. API verified: 5 Confirmed + 1 RefundRequested correct, 39 false Preliminary badges removed.
+
+---
+
+## ✅ PREVIOUS STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT (2026-03-30)
+**Date**: 2026-03-30
+**Session**: Phase 6A.138 — Photo Album Video Upload Support
+**Status**: ✅ **COMPLETE** (commit `493757bb`)
+**Scope**: Full-stack video upload for event photo albums. Domain: AlbumMediaType enum, AlbumPhoto entity (MediaType, DurationSeconds, nullable MediumUrl), PhotoAlbum.AddVideo(). Infrastructure: Video validation (100MB, MP4/WebM/MOV magic numbers), ProcessAndUploadVideoAsync, nullable medium delete. Application: UploadAlbumVideoCommand + handler, updated DTOs and MapToDto. API: POST /albums/{albumId}/videos endpoint. Frontend: Video acceptance in uploader with auto-thumbnail generation, play icon overlay + duration badge in gallery cards, lightbox video player. 19 files changed. Backend + frontend deployed. API verified: video upload returns mediaType:"Video" + durationSeconds.
+
+---
+
+## ✅ PREVIOUS STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX (2026-03-29)
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
+**Status**: ✅ **COMPLETE** (commit `4a71e561`)
+**Scope**: Root cause: moved all bundled item completion (donation, add-ons, collection, sponsor) BEFORE CommitAsync in RegistrationWebhookHandler, removed ClearChangeTrackerExceptAsync calls. Defense-in-depth: include Pending bundled add-ons in PaymentCompletedEventHandler, GetRegistrationByIdQueryHandler, GetUserRegistrationForEventQueryHandler. Fixed AddOnRefundService: removed !p.RegistrationId.HasValue fallback. Frontend: scoped cancel dialog add-ons by registrationId. EF Core migration: added Registration FK to add_on_purchases with SetNull, cleaned orphans. Bugs fixed: (1) add-ons not shown on payment success page, (2) add-ons show $0.00 in confirmation email, (3) cancel shows "X failed to refund" + takes ~1 minute, (4) orphaned purchases inflating refund counts.
+
+---
+
+## ✅ PREVIOUS STATUS - ADD-ON REFUND GROUPING + QUERY FIX (2026-03-29)
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
+**Status**: ✅ **COMPLETE** (commit `ee21e92f`)
+**Scope**: Bug 1: Repositioned "two emails" notification in cancel dialog. Bug 2: Rewrote AddOnRefundService to group refunds by PaymentIntentId (prevents charge_already_refunded). Bug 3/4: Changed add-on query from GetAllByCheckoutSessionIdAsync to GetByUserIdAndEventIdAsync in 3 handlers (fixes add-ons missing from payment success page + confirmation email). Bug 5: Reduced Stripe API calls via PI grouping. API verified: /my-registration and /registrations/{id} return all 5 financial fields including addOnTotal.
+
+---
+
+## ✅ PREVIOUS STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX (2026-03-28)
+**Date**: 2026-03-28
+**Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display
+**Status**: ✅ **COMPLETE** (commit `66b4552c`)
+**Scope**: Fix A: Corrected TicketSubtotal calculation (AmountPaid IS ticket-only, don't subtract). Fix B: EF Core migration adds add-on/collection/sponsor Handlebars sections to email template. Fix C: Added 5 financial fields to RegistrationDetailsDto, both query handlers (auth+anon) load bundled items, TypeScript types updated, payment success page shows full breakdown. 9 files changed. Tests: 1903/1903 (App), 0 build errors.
+
+---
+
+## ✅ PREVIOUS STATUS - REGISTRATION BUNDLING FIXES (2026-03-27)
+**Date**: 2026-03-27
+**Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements
+**Status**: ✅ **COMPLETE** (commit `f544806e`)
+**Scope**: F1a: 6 missing fields in RsvpRequest DTO for authenticated registration. F1b: Anonymous registration bundling (~120 lines). F2: Add-on partial refund for bundled purchases + idempotency fix. F3: PaymentCompletedEventHandler loads bundled items for email breakdown. F4: SponsorOptionInForm validation error. F4b: Price breakdown section headers + filter qty=0. F5: Collection/sponsor refund in CancelRsvpCommandHandler with UI checkboxes. 15 files changed. Tests: 1903/1903 (App), 146/148 (Domain).
+
+---
+
+## ✅ PREVIOUS STATUS - COLLECTION/SPONSOR BUNDLING (2026-03-26)
+**Date**: 2026-03-26
+**Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
+**Status**: ✅ **COMPLETE** (commit `cea19564`)
+**Scope**: Extended RsvpToEventCommand with collection/sponsor fields, added handling in handler and webhook, created CollectionOptionInForm.tsx and SponsorOptionInForm.tsx, integrated into registration form with price breakdown. 8 new tests (1903 total).
+
+---
+
+## ✅ PREVIOUS STATUS - RECEIPT/CONFIRMATION EMAILS (2026-03-25)
+**Date**: 2026-03-25
+**Session**: Phase 6A.137B — Implement 4 receipt/confirmation emails
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `193f5e14`)
+**Scope**: Replace TODO placeholders in 4 event handlers with actual email sending. Created 3 TypedEmailParams classes, added contract constants, created EF Core migration for 3 new email templates.
+**Handlers updated**: AddOnPurchaseCompleted, CollectionCompleted, SponsorPaymentCompleted, ItemSponsorRecorded
+**Remaining**: Phase 6A.137 B2 (4 refund emails), C (email breakdown), D (add-on bundling)
+
+---
+
+## ✅ PREVIOUS STATUS - MY-RSVPS API CRASH FIX (2026-03-25)
+**Date**: 2026-03-25
+**Session**: Phase 6A.137A — Fix my-rsvps API crash & registration badge
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `61466b88`)
+**RCA**: `ToDictionary(r => r.EventId, r => r.Status)` in `GetMyRegisteredEventsQueryHandler` crashes with `ArgumentException` when user has duplicate registrations (Preliminary + Confirmed). DB unique constraint excludes Preliminary, allowing coexistence.
+**Fixes**: (1) Replace ToDictionary with GroupBy in 3 handlers, (2) Populate UserRegistrationStatus in GetEventByIdQueryHandler, (3) Add Preliminary/RefundRequested/Waitlisted badge variants to RegistrationBadge.tsx
+**Remaining**: Phase 6A.137 B-E (9 email gaps, email breakdown, add-on bundling, collection/sponsor bundling)
+
+---
+
+## ✅ PREVIOUS STATUS - COMPREHENSIVE PAYMENT AUDIT (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Phase 6A.136 — Comprehensive payment processing audit (20 issues, 17 fixed across 5 phases)
+**Status**: ✅ **DEPLOYED TO STAGING** (commits `a88ccd92` → `47ce646b`)
+**Scope**: Full audit of Stripe checkout, webhooks, refunds, emails, and calculations. 5 phased commits:
+- **136B** (`a88ccd92`): Webhook routing — addition expiry, charge.refunded by payment_type, payment_failed handler
+- **136C** (`d0030af2`): Race conditions — capacity counts Preliminary, refund withdrawal guard, idempotency key fix
+- **136D** (`ce3df58a`): Data integrity — session ID not URL, addition fallback lookup, LogCritical for swallowed errors
+- **136E** (`3258a6b6`): Refund handlers for donation/collection/sponsor (were no-op)
+- **136F** (`47ce646b`): URL allowlist (open redirect prevention) + expiry alignment with Stripe session
+**Deferred**: #15 (receipt emails for collections/sponsors — needs DB template migrations)
+
+---
+
+## ✅ PREVIOUS STATUS - ADD-ON REFUND IDEMPOTENCY FIX (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Phase 6A.135 — Fix add-on refund idempotency collision + RefundCompleted email amount
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `adc64339`)
+**RCA**: `StripePaymentService` used `RegistrationId` for idempotency key. `AddOnRefundService` passed `Guid.Empty` → ALL add-on refunds globally shared same key → Stripe silently deduplicated → `addOnRefundTotal` always $0. Fix: (1) Key uses `PaymentIntentId`, (2) Persist `AddOnRefundAmount` on Registration entity, (3) `RefundCompletedEvent` carries add-on amount, (4) Completion email handler calculates combined total.
+
+---
+
+## ✅ PREVIOUS STATUS - REFUND EMAIL FIX + PARTIAL FAILURE FEEDBACK (2026-03-23)
+**Date**: 2026-03-23
+**Session**: Fix refund email showing only ticket price (missing add-on refund amounts) + return partial failure details to frontend
+**Status**: ✅ **DEPLOYED TO STAGING** (commit `09b40093`)
+**Fix A (Bug)**: Refund email now includes add-on refund total. Added `AddOnRefundAmount` to `RefundRequestedEvent`, `additionalRefundAmount` parameter through `RequestRefund()` → `ProcessRefundAsync()` → `RefundRequestedEventHandler` chain. Reordered `CancelRsvpCommandHandler` to process add-on refunds BEFORE registration refund.
+**Fix B (Enhancement)**: `CancelRsvpCommand` changed from `ICommand` to `ICommand<CancelRsvpResult>`. Returns structured result with success/failure status for each optional action + warnings list. Frontend shows alert with warnings before page reload.
+
+---
+
+## ✅ PREVIOUS STATUS - CANCELLATION FLOW ENHANCEMENTS (2026-03-22)
+**Date**: 2026-03-22
+**Session**: Cancellation flow enhancements — form deletion, add-on refunds, non-refundable disclaimers
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commit `5ff0fc87`)
+**Changes**: (1) Non-refundable disclaimers on Donation/Collection/Sponsor forms + amounts breakdown in cancel dialog, (2) Opt-in form response deletion during cancellation (new `GetByEventAndUserAsync` repo method, non-blocking handler logic), (3) Opt-in add-on purchase refund during cancellation (new `AddOnRefundService` — Stripe refund + domain transition + stock restore, partial failure tolerant). Frontend: 3 new checkboxes in cancel dialog, `cancelRsvp()` uses options object pattern. All opt-in, non-blocking (failures logged but don't prevent registration cancellation).
+
+---
+
+## ✅ PREVIOUS STATUS - YOUR ADD-ONS AUTH-BASED DISPLAY FIX (2026-03-22)
+**Date**: 2026-03-22
+**Session**: Fix "My Add-Ons" to use auth-based /mine endpoint (like "Your Sponsorships")
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commit `485dd1ab`)
+**RCA**: UX pattern mismatch — built email-based localStorage lookup for add-on purchases, but the established pattern ("Your Sponsorships", "Your Contributions") uses JWT auth + auto-display. User couldn't see purchases because email lookup was never triggered.
+**Fix**: (1) Backend: new `GET /add-ons/mine` [Authorize] endpoint using `User.GetUserId()`, (2) Frontend: `useMyAddOnPurchasesMine` hook, event page wiring, AddOnSelector accepts `myAddOnPurchases` prop, renders "Your Add-Ons" auto-display for logged-in users. Removed all localStorage/email lookup code.
+
+---
+
+## ✅ PREVIOUS STATUS - DB ID COLUMN FIX + FREE ADD-ON FIXES (2026-03-21)
+**Date**: 2026-03-21
+**Session**: Fix critical DB column casing bug + free add-on owned entity bug + UX improvements
+**Status**: ✅ **DEPLOYED & VERIFIED ON STAGING** (commits `d6ef4433`, `0c97b6dc`, `23e0dadd`, `44d334f6`)
+**Fixes**: (1) PostgreSQL "column id does not exist" — 4 financial tables had PascalCase `"Id"` but raw SQL used lowercase `id`. (2) Free add-on `Money.Zero()` shared instance caused EF Core owned entity error. (3) Public page: "Free"/"Get Free"/"Get Now" for $0 items. (4) Manage page: tabular add-on items.
+**API Verification**: Paid purchase → Stripe URL ✅ | Free purchase → success URL ✅ | All 1,888 tests pass ✅
 
 ---
 

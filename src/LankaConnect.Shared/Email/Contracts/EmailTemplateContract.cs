@@ -85,6 +85,16 @@ public static class EmailTemplateContract
 
         // Donation Templates
         public const string DonationReceipt = "template-donation-receipt";
+
+        // Phase 6A.137B: Financial Receipt Templates
+        public const string AddOnPurchaseReceipt = "template-addon-purchase-receipt";
+        public const string CollectionReceipt = "template-collection-receipt";
+        public const string SponsorConfirmation = "template-sponsor-confirmation";
+
+        // Phase 6A.137B2: Financial Refund Templates
+        public const string DonationRefund = "template-donation-refund";
+        public const string CollectionRefund = "template-collection-refund";
+        public const string SponsorRefund = "template-sponsor-refund";
     }
 
     #endregion
@@ -933,6 +943,142 @@ public static class EmailTemplateContract
         public const string DonationCurrency = "DonationCurrency";
         public const string PaymentIntentId = "PaymentIntentId";
         public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Add-On Purchase Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for add-on purchase receipt email.
+    /// Template: template-addon-purchase-receipt
+    /// </summary>
+    public static class AddOnPurchase
+    {
+        public const string BuyerName = "BuyerName";
+        public const string BuyerEmail = "BuyerEmail";
+        public const string EventTitle = "EventTitle";
+        public const string AddOnName = "AddOnName";
+        public const string Quantity = "Quantity";
+        public const string UnitPrice = "UnitPrice";
+        public const string TotalAmount = "TotalAmount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Collection Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for collection receipt email.
+    /// Template: template-collection-receipt
+    /// </summary>
+    public static class Collection
+    {
+        public const string ContributorName = "ContributorName";
+        public const string ContributorEmail = "ContributorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string ContributionAmount = "ContributionAmount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Sponsor Parameters
+
+    /// <summary>
+    /// Phase 6A.137B: Parameters for sponsor confirmation email (money + item).
+    /// Template: template-sponsor-confirmation
+    /// </summary>
+    public static class Sponsor
+    {
+        public const string SponsorName = "SponsorName";
+        public const string SponsorEmail = "SponsorEmail";
+        public const string SponsorOrganization = "SponsorOrganization";
+        public const string HasOrganization = "HasOrganization";
+        public const string EventTitle = "EventTitle";
+        public const string SponsorType = "SponsorType";
+        public const string IsMonetarySponsor = "IsMonetarySponsor";
+        public const string IsItemSponsor = "IsItemSponsor";
+        public const string Amount = "Amount";
+        public const string Currency = "Currency";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string PaymentDate = "PaymentDate";
+        public const string ItemName = "ItemName";
+        public const string ItemDescription = "ItemDescription";
+        public const string HasItemDescription = "HasItemDescription";
+        public const string EstimatedValue = "EstimatedValue";
+        public const string HasEstimatedValue = "HasEstimatedValue";
+        public const string RecordedAt = "RecordedAt";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Donation Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for donation refund email.
+    /// Template: template-donation-refund
+    /// </summary>
+    public static class DonationRefund
+    {
+        public const string DonorName = "DonorName";
+        public const string DonorEmail = "DonorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string DonationAmount = "DonationAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Collection Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for collection refund email.
+    /// Template: template-collection-refund
+    /// </summary>
+    public static class CollectionRefund
+    {
+        public const string ContributorName = "ContributorName";
+        public const string ContributorEmail = "ContributorEmail";
+        public const string EventTitle = "EventTitle";
+        public const string ContributionAmount = "ContributionAmount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
+        public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Sponsor Refund Parameters
+
+    /// <summary>
+    /// Phase 6A.137B2: Parameters for sponsor refund email.
+    /// Template: template-sponsor-refund
+    /// </summary>
+    public static class SponsorRefund
+    {
+        public const string SponsorName = "SponsorName";
+        public const string SponsorEmail = "SponsorEmail";
+        public const string SponsorOrganization = "SponsorOrganization";
+        public const string HasOrganization = "HasOrganization";
+        public const string EventTitle = "EventTitle";
+        public const string Amount = "Amount";
+        public const string Currency = "Currency";
+        public const string RefundedAt = "RefundedAt";
+        public const string PaymentIntentId = "PaymentIntentId";
         public const string EventDetailsUrl = "EventDetailsUrl";
     }
 

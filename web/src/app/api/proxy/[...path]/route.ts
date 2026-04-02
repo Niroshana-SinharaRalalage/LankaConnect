@@ -85,13 +85,18 @@ async function forwardRequest(
     // Get Content-Type to detect multipart/form-data
     const contentType = request.headers.get('content-type');
     const isMultipart = contentType?.includes('multipart/form-data');
+    const contentLength = request.headers.get('content-length');
 
     // Get request body if present
-    // CRITICAL: For multipart/form-data, stream body as-is to preserve binary data and boundary
+    // CRITICAL: For multipart/form-data, STREAM the body (don't buffer into memory).
+    // Buffering via arrayBuffer() causes OOM for large videos (67+ MB) because the entire
+    // file is loaded into Node.js heap. Instead, stream the ReadableStream body directly
+    // and forward Content-Length from the browser's original request header.
     let body: BodyInit | undefined;
     if (method !== 'GET' && method !== 'DELETE') {
       if (isMultipart) {
-        // Stream multipart body as-is (don't read as text - corrupts binary data)
+        // Stream multipart body directly — avoids OOM for large uploads (up to 500 MB)
+        // Content-Length is forwarded from the browser's request header (set below)
         body = request.body ?? undefined;
       } else {
         // For JSON, read as text
@@ -136,6 +141,13 @@ async function forwardRequest(
       headers['Authorization'] = authHeader;
     }
 
+    // Forward Content-Length for multipart uploads (critical for large video uploads)
+    // When body is ArrayBuffer, fetch() doesn't auto-set Content-Length from the browser's original header
+    // Backend needs Content-Length to properly parse multipart form data for large files
+    if (isMultipart && contentLength) {
+      headers['Content-Length'] = contentLength;
+    }
+
     // Forward cookies
     if (cookieHeader) {
       headers['Cookie'] = cookieHeader;
@@ -155,6 +167,8 @@ async function forwardRequest(
       contentType,
       isMultipart,
       hasBody: !!body,
+      bodySize: typeof body === 'string' ? body.length : (contentLength || 'streaming'),
+      contentLength,
       isAuthRefresh,
       hasRefreshToken,
     });
@@ -165,15 +179,15 @@ async function forwardRequest(
       headers,
       body,
       credentials: 'include', // Important: include cookies
-      // CRITICAL: Large file uploads (videos up to 100MB) need longer timeout
+      // CRITICAL: Large file uploads (videos up to 500MB) need longer timeout
       // Backend has 5-minute timeout for video uploads, proxy needs at least as long
       // Add buffer for network overhead: 10 minutes total
       signal: AbortSignal.timeout(600000), // 10 minutes
     };
 
-    // Only add duplex for multipart/form-data streaming
+    // REQUIRED for streaming request bodies (ReadableStream) in Node.js fetch
     if (isMultipart && body) {
-      // @ts-ignore - duplex is required for streaming request bodies but not in TS types yet
+      // @ts-ignore - duplex is required for streaming but not in TS types yet
       fetchOptions.duplex = 'half';
     }
 

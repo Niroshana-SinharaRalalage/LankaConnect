@@ -44,7 +44,7 @@ public class StripePaymentService : IStripePaymentService
     /// Session 23: Creates a Stripe Checkout session for event ticket purchase
     /// Returns the checkout session URL for frontend redirect
     /// </summary>
-    public async Task<Result<string>> CreateEventCheckoutSessionAsync(
+    public async Task<Result<EventCheckoutResult>> CreateEventCheckoutSessionAsync(
         CreateEventCheckoutSessionRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -55,6 +55,15 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
+            // Phase 6A.136F: Validate redirect URLs against allowlist
+            var successUrlValidation = ValidateRedirectUrl(request.SuccessUrl, "SuccessUrl");
+            if (successUrlValidation.IsFailure)
+                return Result<EventCheckoutResult>.Failure(successUrlValidation.Error);
+
+            var cancelUrlValidation = ValidateRedirectUrl(request.CancelUrl, "CancelUrl");
+            if (cancelUrlValidation.IsFailure)
+                return Result<EventCheckoutResult>.Failure(cancelUrlValidation.Error);
+
             // Phase 6A.44: Handle both authenticated and anonymous registrations
             string? stripeCustomerId = null;
             bool isAnonymous = request.Metadata?.ContainsKey("anonymous") == true;
@@ -64,14 +73,14 @@ public class StripePaymentService : IStripePaymentService
                 // Get or create Stripe customer for authenticated user
                 if (request.Metadata == null || !request.Metadata.TryGetValue("user_id", out var userIdStr) || !Guid.TryParse(userIdStr, out var userId))
                 {
-                    return Result<string>.Failure("Invalid or missing user_id in request metadata");
+                    return Result<EventCheckoutResult>.Failure("Invalid or missing user_id in request metadata");
                 }
 
                 stripeCustomerId = await GetOrCreateStripeCustomerAsync(userId, cancellationToken);
 
                 if (stripeCustomerId == null)
                 {
-                    return Result<string>.Failure("Failed to create or retrieve Stripe customer");
+                    return Result<EventCheckoutResult>.Failure("Failed to create or retrieve Stripe customer");
                 }
             }
             else
@@ -152,18 +161,24 @@ public class StripePaymentService : IStripePaymentService
                 request.EventId,
                 request.RegistrationId);
 
-            // Return the checkout session URL (not ID) for frontend redirect
-            return Result<string>.Success(session.Url);
+            // Phase 6A.136D: Return both session ID and URL
+            // Phase 6A.136F: Include Stripe's actual ExpiresAt to prevent expiry drift
+            return Result<EventCheckoutResult>.Success(new EventCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
         }
         catch (StripeException ex)
         {
             _logger.LogError(ex, "Stripe error creating event checkout session for Event {EventId}", request.EventId);
-            return Result<string>.Failure($"Payment processing error: {ex.Message}");
+            return Result<EventCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event checkout session for Event {EventId}", request.EventId);
-            return Result<string>.Failure("Failed to create payment session");
+            return Result<EventCheckoutResult>.Failure("Failed to create payment session");
         }
     }
 
@@ -329,10 +344,16 @@ public class StripePaymentService : IStripePaymentService
                 refundOptions.Amount = request.AmountInCents.Value;
             }
 
-            // Use RegistrationId as idempotency key to prevent duplicate refunds
+            // Phase 6A.135: Use PaymentIntentId as idempotency key to prevent duplicate refunds.
+            // Previously used RegistrationId which caused ALL add-on refunds (RegistrationId=Guid.Empty)
+            // to share the same idempotency key, silently deduplicating at the Stripe API level.
+            // Phase 6A.136C: Include amount to allow partial refunds on the same PaymentIntent
+            // (e.g., refund $10 then refund $5 are distinct operations).
             var requestOptions = new RequestOptions
             {
-                IdempotencyKey = $"refund_{request.RegistrationId}"
+                // Phase 6A.137F: Include RegistrationId to prevent idempotency collisions
+                // for bundled purchases sharing the same PaymentIntent and amount
+                IdempotencyKey = $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}_{request.RegistrationId}"
             };
 
             // Phase 6A.94: Log just before Stripe API call
@@ -384,12 +405,22 @@ public class StripePaymentService : IStripePaymentService
                 stopwatch.ElapsedMilliseconds);
 
             // Handle specific error cases with clear messaging
+            // Phase 6A.137F: Treat charge_already_refunded as idempotent success.
+            // The money IS refunded (which is our goal). Returning Failure causes the caller
+            // to report "failed" when the refund actually succeeded.
             if (ex.StripeError?.Code == "charge_already_refunded")
             {
                 _logger.LogWarning(
-                    "[Phase 6A.94] Charge already refunded - PaymentIntentId={PaymentIntentId}. This is expected if refund was previously processed.",
+                    "[Phase 6A.137F] Charge already refunded (idempotent success) - PaymentIntentId={PaymentIntentId}",
                     request.PaymentIntentId);
-                return Result<StripeRefundResult>.Failure("This payment has already been refunded.");
+                return Result<StripeRefundResult>.Success(new StripeRefundResult
+                {
+                    RefundId = "already_refunded",
+                    Status = "succeeded",
+                    AmountRefunded = request.AmountInCents ?? 0,
+                    Currency = "usd",
+                    CreatedAt = DateTime.UtcNow
+                });
             }
 
             if (ex.StripeError?.Code == "insufficient_funds")
@@ -512,7 +543,40 @@ public class StripePaymentService : IStripePaymentService
     {
         // For zero-decimal currencies (e.g., JPY), don't multiply by 100
         // For now, we only support USD and LKR which are both 2-decimal currencies
-        return (long)(amount * 100);
+        // Phase 6A.136: Use Math.Round to prevent fractional cent truncation.
+        // (long) cast truncates: (long)(19.994999 * 100) = 1999 instead of 2000.
+        return (long)Math.Round(amount * 100, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Phase 6A.136F: Validates that a redirect URL belongs to an allowed origin.
+    /// Prevents open redirect attacks via checkout success/cancel URLs.
+    /// </summary>
+    private Result ValidateRedirectUrl(string url, string urlType)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure($"{urlType} URL cannot be empty");
+
+        if (_stripeOptions.AllowedRedirectOrigins.Count == 0)
+        {
+            // No allowlist configured — permit all (dev/test environments)
+            return Result.Success();
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            return Result.Failure($"{urlType} URL is not a valid absolute URL: {url}");
+
+        var origin = $"{uri.Scheme}://{uri.Host}" + (uri.IsDefaultPort ? "" : $":{uri.Port}");
+        if (_stripeOptions.AllowedRedirectOrigins.Any(allowed =>
+                origin.Equals(allowed, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Result.Success();
+        }
+
+        _logger.LogWarning(
+            "[Phase 6A.136F] Rejected redirect URL with disallowed origin - UrlType: {UrlType}, Url: {Url}, Origin: {Origin}",
+            urlType, url, origin);
+        return Result.Failure($"{urlType} URL origin '{origin}' is not in the allowed origins list");
     }
 
     /// <summary>
@@ -1060,6 +1124,111 @@ public class StripePaymentService : IStripePaymentService
                 "[AddOnPurchase] Error creating add-on purchase checkout - PurchaseId={PurchaseId}",
                 request.AddOnPurchaseId);
             return Result<AddOnPurchaseCheckoutResult>.Failure("Failed to create add-on purchase payment session");
+        }
+    }
+
+    /// <summary>
+    /// Creates a Stripe Checkout session with multiple add-on line items (cart purchase).
+    /// Each line item maps to a distinct AddOnDefinition with its own quantity and price.
+    /// All paid purchases share the same checkout session ID.
+    /// </summary>
+    public async Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnCartCheckoutSessionAsync(
+        CreateAddOnCartCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[AddOnCart] Creating cart checkout session - EventId={EventId}, LineItemCount={LineItemCount}",
+                request.EventId, request.Items.Count);
+
+            var lineItems = request.Items.Select(item => new SessionLineItemOptions
+            {
+                PriceData = new SessionLineItemPriceDataOptions
+                {
+                    Currency = item.Currency.ToLower(),
+                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    {
+                        Name = $"{item.Name} - {request.EventTitle}",
+                        Description = !string.IsNullOrEmpty(item.Description)
+                            ? item.Description
+                            : $"Add-on purchase ({item.Quantity}x)",
+                        Metadata = new Dictionary<string, string>
+                        {
+                            ["event_id"] = request.EventId.ToString(),
+                            ["add_on_purchase_id"] = item.AddOnPurchaseId.ToString(),
+                            ["add_on_definition_id"] = item.AddOnDefinitionId.ToString(),
+                            ["payment_type"] = "add_on_purchase"
+                        }
+                    },
+                    UnitAmount = ConvertToStripeAmount(item.UnitPrice, item.Currency)
+                },
+                Quantity = item.Quantity
+            }).ToList();
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = lineItems,
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["payment_type"] = "add_on_purchase",
+                    ["cart_item_count"] = request.Items.Count.ToString(),
+                    ["purchase_ids"] = string.Join(",", request.Items.Select(i => i.AddOnPurchaseId))
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["payment_type"] = "add_on_purchase",
+                        ["cart_item_count"] = request.Items.Count.ToString(),
+                        ["purchase_ids"] = string.Join(",", request.Items.Select(i => i.AddOnPurchaseId))
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[AddOnCart] Created cart checkout session - SessionId={SessionId}, EventId={EventId}, LineItems={LineItemCount}, ExpiresAt={ExpiresAt}",
+                session.Id, request.EventId, request.Items.Count, session.ExpiresAt);
+
+            return Result<AddOnPurchaseCheckoutResult>.Success(new AddOnPurchaseCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnCart] Stripe error creating cart checkout - EventId={EventId}, Error={Error}",
+                request.EventId, ex.Message);
+            return Result<AddOnPurchaseCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[AddOnCart] Error creating cart checkout - EventId={EventId}",
+                request.EventId);
+            return Result<AddOnPurchaseCheckoutResult>.Failure("Failed to create cart payment session");
         }
     }
 

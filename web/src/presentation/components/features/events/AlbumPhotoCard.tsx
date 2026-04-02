@@ -3,30 +3,31 @@
 /**
  * AlbumPhotoCard Component
  *
- * Individual photo card displayed in the album gallery grid.
+ * Individual media card displayed in the album gallery grid.
  * Shows thumbnail with hover overlay containing uploader info, caption, and expiry badge.
+ * For videos: shows play icon overlay and duration badge.
  * Supports click-to-view lightbox, delete actions, and selection mode for bulk operations.
  */
 
 import { useMemo } from 'react';
-import { Trash2, Clock, Check } from 'lucide-react';
+import { Trash2, Clock, Check, Play } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import type { AlbumPhotoDto } from '@/infrastructure/api/types/events.types';
 
 export interface AlbumPhotoCardProps {
-  /** The photo data to display */
+  /** The photo/video data to display */
   photo: AlbumPhotoDto;
   /** Whether the current user is an event organizer */
   isOrganizer: boolean;
   /** The current user's ID (for permission checks) */
   currentUserId?: string;
-  /** Callback when the photo is clicked for viewing */
+  /** Callback when the item is clicked for viewing */
   onView: (photo: AlbumPhotoDto) => void;
   /** Callback when delete is requested (only shown to uploader or organizer) */
   onDelete?: (photoId: string) => void;
   /** Whether selection mode is active */
   isSelectionMode?: boolean;
-  /** Whether this photo is currently selected */
+  /** Whether this item is currently selected */
   isSelected?: boolean;
   /** Callback when selection checkbox is toggled */
   onToggleSelect?: (photoId: string) => void;
@@ -69,6 +70,15 @@ function getExpiryInfo(expiresAt: string): { label: string; colorClass: string }
   };
 }
 
+/**
+ * Format seconds into mm:ss display
+ */
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 export function AlbumPhotoCard({
   photo,
   isOrganizer,
@@ -80,6 +90,7 @@ export function AlbumPhotoCard({
   onToggleSelect,
 }: AlbumPhotoCardProps) {
   const expiryInfo = useMemo(() => getExpiryInfo(photo.expiresAt), [photo.expiresAt]);
+  const isVideo = photo.mediaType === 'Video';
 
   const canDelete = isOrganizer || (currentUserId && currentUserId === photo.uploaderId);
 
@@ -109,17 +120,35 @@ export function AlbumPhotoCard({
       }`}
       aria-label={
         isSelectionMode
-          ? `${isSelected ? 'Deselect' : 'Select'} photo by ${photo.uploaderName}`
-          : `View photo by ${photo.uploaderName}${photo.caption ? `: ${photo.caption}` : ''}`
+          ? `${isSelected ? 'Deselect' : 'Select'} ${isVideo ? 'video' : 'photo'} by ${photo.uploaderName}`
+          : `View ${isVideo ? 'video' : 'photo'} by ${photo.uploaderName}${photo.caption ? `: ${photo.caption}` : ''}`
       }
     >
-      {/* Gallery Image — use medium (800px) for crisp display in grid */}
+      {/* Gallery Image — use medium (800px) for photos, thumbnail for videos */}
       <img
-        src={photo.mediumUrl}
-        alt={photo.caption || `Photo by ${photo.uploaderName}`}
+        src={isVideo ? photo.thumbnailUrl : photo.mediumUrl}
+        alt={photo.caption || `${isVideo ? 'Video' : 'Photo'} by ${photo.uploaderName}`}
         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
         loading="lazy"
       />
+
+      {/* Video Play Icon Overlay */}
+      {isVideo && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center">
+            <Play className="w-6 h-6 text-white ml-0.5" fill="white" />
+          </div>
+        </div>
+      )}
+
+      {/* Video Duration Badge */}
+      {isVideo && photo.durationSeconds != null && photo.durationSeconds > 0 && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <span className="text-xs font-medium text-white bg-black/70 px-1.5 py-0.5 rounded">
+            {formatDuration(photo.durationSeconds)}
+          </span>
+        </div>
+      )}
 
       {/* Selection Checkbox (visible in selection mode) */}
       {isSelectionMode && (
@@ -171,7 +200,7 @@ export function AlbumPhotoCard({
             size="sm"
             onClick={handleDelete}
             className="h-8 w-8 p-0"
-            aria-label="Delete photo"
+            aria-label={`Delete ${isVideo ? 'video' : 'photo'}`}
           >
             <Trash2 className="w-4 h-4" />
           </Button>

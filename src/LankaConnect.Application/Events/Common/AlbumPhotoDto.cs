@@ -3,8 +3,8 @@ using LankaConnect.Domain.Events.Enums;
 namespace LankaConnect.Application.Events.Common;
 
 /// <summary>
-/// DTO for a single photo within a photo album.
-/// Contains all 3 image URLs (original, medium, thumbnail) and metadata.
+/// DTO for a single media item (photo or video) within a photo album.
+/// Contains image/video URLs, media type discriminator, and metadata.
 /// </summary>
 public record AlbumPhotoDto
 {
@@ -17,7 +17,9 @@ public record AlbumPhotoDto
     public string MediumUrl { get; init; } = string.Empty;
     public string? Caption { get; init; }
     public AlbumPhotoStatus Status { get; init; }
+    public AlbumMediaType MediaType { get; init; } = AlbumMediaType.Photo;
     public long FileSizeBytes { get; init; }
+    public long? DurationSeconds { get; init; }
     public DateTime UploadedAt { get; init; }
     public DateTime ExpiresAt { get; init; }
     public int DisplayOrder { get; init; }

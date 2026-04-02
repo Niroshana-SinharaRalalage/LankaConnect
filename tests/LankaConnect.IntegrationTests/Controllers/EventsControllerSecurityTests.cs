@@ -126,7 +126,10 @@ public class EventsControllerSecurityTests
         // Arrange
         var eventId = Guid.NewGuid();
         _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRsvpCommand>(), default))
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(Result<CancelRsvpResult>.Success(new CancelRsvpResult(
+                RegistrationCancelled: true, CommitmentsDeleted: null, FormResponsesDeleted: null,
+                FormResponsesDeletedCount: null, AddOnRefundsProcessed: null, AddOnRefundedCount: null,
+                AddOnFailedCount: null, AddOnRefundTotal: null, Warnings: null)));
 
         // Act
         var result = await _controller.CancelRsvp(eventId);

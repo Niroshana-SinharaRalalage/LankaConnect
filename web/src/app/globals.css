@@ -58,6 +58,18 @@
   }
 }
 
+/* Scroll offset for sticky header — ensures anchor links don't hide behind nav */
+[id="registration"],
+[id="donations"],
+[id="collections"],
+[id="sponsors"],
+[id="add-ons"],
+[id="signup-lists"],
+[id="signup-forms"],
+[id="sign-ups"] {
+  scroll-margin-top: 80px;
+}
+
 /* GitHub Issue #19: Hide number input spinner arrows
  * Prevents accidental value changes from scroll wheel and removes visual clutter
  * All numeric inputs now behave like plain text inputs visually

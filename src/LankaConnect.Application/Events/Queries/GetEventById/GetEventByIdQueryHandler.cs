@@ -5,6 +5,7 @@ using LankaConnect.Application.Communications.Common; // Phase 6A.32: EmailGroup
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Communications; // Phase 6A.32: Email groups
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -18,6 +19,7 @@ namespace LankaConnect.Application.Events.Queries.GetEventById;
 public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDto?>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository; // Phase 6A.137: Registration status
     private readonly IEmailGroupRepository _emailGroupRepository; // Phase 6A.32: Email groups
     private readonly ICurrentUserService _currentUserService; // Phase 6A.133: Multi-organizer
     private readonly IMapper _mapper;
@@ -25,12 +27,14 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
 
     public GetEventByIdQueryHandler(
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository, // Phase 6A.137: Registration status
         IEmailGroupRepository emailGroupRepository, // Phase 6A.32: Email groups
         ICurrentUserService currentUserService, // Phase 6A.133: Multi-organizer
         IMapper mapper,
         ILogger<GetEventByIdQueryHandler> logger)
     {
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
         _emailGroupRepository = emailGroupRepository; // Phase 6A.32: Email groups
         _currentUserService = currentUserService;
         _mapper = mapper;
@@ -125,11 +129,39 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
                     ? @event.IsOrganizer(_currentUserService.UserId)
                     : null;
 
+                // Phase 6A.137: Populate UserRegistrationStatus for authenticated users
+                RegistrationStatus? userRegistrationStatus = null;
+                if (_currentUserService.IsAuthenticated && _currentUserService.UserId != Guid.Empty)
+                {
+                    try
+                    {
+                        var registration = await _registrationRepository.GetByEventAndUserAsync(
+                            @event.Id, _currentUserService.UserId, cancellationToken);
+
+                        if (registration != null)
+                        {
+                            userRegistrationStatus = registration.Status;
+
+                            _logger.LogInformation(
+                                "GetEventById: UserRegistrationStatus populated - EventId={EventId}, UserId={UserId}, Status={Status}",
+                                @event.Id, _currentUserService.UserId, registration.Status);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail — registration status is supplementary data
+                        _logger.LogWarning(ex,
+                            "GetEventById: Failed to populate UserRegistrationStatus - EventId={EventId}, UserId={UserId}, Error={ErrorMessage}",
+                            @event.Id, _currentUserService.UserId, ex.Message);
+                    }
+                }
+
                 result = result with
                 {
                     EmailGroupIds = @event.EmailGroupIds.ToList(),
                     EmailGroups = emailGroupSummaries,
-                    IsCurrentUserOrganizer = isCurrentUserOrganizer
+                    IsCurrentUserOrganizer = isCurrentUserOrganizer,
+                    UserRegistrationStatus = userRegistrationStatus
                 };
 
                 stopwatch.Stop();

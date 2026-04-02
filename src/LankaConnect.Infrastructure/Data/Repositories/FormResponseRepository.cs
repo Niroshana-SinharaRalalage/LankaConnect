@@ -289,4 +289,46 @@ public class FormResponseRepository : Repository<FormResponse>, IFormResponseRep
             }
         }
     }
+
+    public async Task<IReadOnlyList<FormResponse>> GetByEventAndUserAsync(
+        Guid eventId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetByEventAndUser"))
+        using (LogContext.PushProperty("EntityType", "FormResponse"))
+        using (LogContext.PushProperty("EventId", eventId))
+        using (LogContext.PushProperty("UserId", userId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetByEventAndUserAsync START: EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+
+            try
+            {
+                var responses = await _dbSet
+                    .Include(r => r.Answers)
+                    .Where(r => r.EventId == eventId && r.RespondentUserId == userId)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetByEventAndUserAsync COMPLETE: EventId={EventId}, UserId={UserId}, Count={Count}, Duration={ElapsedMs}ms",
+                    eventId, userId, responses.Count, stopwatch.ElapsedMilliseconds);
+
+                return responses;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetByEventAndUserAsync FAILED: EventId={EventId}, UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    eventId, userId, stopwatch.ElapsedMilliseconds, ex.Message);
+
+                throw;
+            }
+        }
+    }
 }

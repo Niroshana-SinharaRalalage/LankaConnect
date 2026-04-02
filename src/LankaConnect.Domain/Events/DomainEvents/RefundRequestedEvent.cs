@@ -16,7 +16,8 @@ public record RefundRequestedEvent(
     string ContactEmail,
     string PaymentIntentId,
     decimal RefundAmount,
-    DateTime RefundRequestedAt
+    DateTime RefundRequestedAt,
+    decimal AddOnRefundAmount = 0m
 ) : IDomainEvent
 {
     public DateTime OccurredAt { get; } = DateTime.UtcNow;

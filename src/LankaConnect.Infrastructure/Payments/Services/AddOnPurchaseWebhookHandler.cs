@@ -8,7 +8,8 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 
 /// <summary>
 /// Phase 4: Handles Stripe webhook events for add-on purchase payments.
-/// Follows DonationWebhookHandler pattern with additional stock restoration on failure/expiry.
+/// Supports both single-item and cart (multi-item) purchases.
+/// Cart purchases share the same StripeCheckoutSessionId across N AddOnPurchase rows.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (purchase stays Pending; expiry cleanup handles it).
 /// </summary>
 public class AddOnPurchaseWebhookHandler : IAddOnPurchaseWebhookHandler
@@ -44,51 +45,61 @@ public class AddOnPurchaseWebhookHandler : IAddOnPurchaseWebhookHandler
                 "[AddOnPurchase] [Webhook-AddOn-1] Processing add-on purchase payment - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
                 correlationId, sessionId);
 
-            // Load purchase by checkout session
-            var purchase = await _addOnPurchaseRepository.GetByCheckoutSessionIdAsync(sessionId, ct);
-            if (purchase == null)
+            // Load ALL purchases for this session (supports both single and cart)
+            var purchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(sessionId, ct);
+            if (purchases.Count == 0)
             {
                 _logger.LogError(
-                    "[AddOnPurchase] [Webhook-AddOn-ERROR] Purchase not found by session - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    "[AddOnPurchase] [Webhook-AddOn-ERROR] No purchases found by session - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
                     correlationId, sessionId);
                 return;
             }
 
             _logger.LogInformation(
-                "[AddOnPurchase] [Webhook-AddOn-2] Purchase loaded - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Status: {Status}, Quantity: {Quantity}",
-                correlationId, purchase.Id, purchase.Status, purchase.Quantity);
+                "[AddOnPurchase] [Webhook-AddOn-2] Loaded {PurchaseCount} purchase(s) for session - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                purchases.Count, correlationId, sessionId);
 
-            // Verify the purchase is still pending (idempotency check)
-            if (purchase.Status != AddOnPurchaseStatus.Pending)
+            var completedCount = 0;
+            var skippedCount = 0;
+
+            foreach (var purchase in purchases)
             {
-                _logger.LogWarning(
-                    "[AddOnPurchase] [Webhook-AddOn-WARN] Purchase not in Pending status (idempotent skip) - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, CurrentStatus: {Status}",
-                    correlationId, purchase.Id, purchase.Status);
-                return;
+                // Verify the purchase is still pending (idempotency check)
+                if (purchase.Status != AddOnPurchaseStatus.Pending)
+                {
+                    _logger.LogWarning(
+                        "[AddOnPurchase] [Webhook-AddOn-WARN] Purchase not in Pending status (idempotent skip) - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, CurrentStatus: {Status}",
+                        correlationId, purchase.Id, purchase.Status);
+                    skippedCount++;
+                    continue;
+                }
+
+                // Complete payment on the purchase entity
+                var completeResult = purchase.CompletePayment(paymentIntentId);
+
+                if (completeResult.IsFailure)
+                {
+                    _logger.LogError(
+                        "[AddOnPurchase] [Webhook-AddOn-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Error: {Error}",
+                        correlationId, purchase.Id, completeResult.Error);
+                    continue;
+                }
+
+                _addOnPurchaseRepository.Update(purchase);
+                completedCount++;
+
+                _logger.LogInformation(
+                    "[AddOnPurchase] [Webhook-AddOn-3] Payment completed on purchase - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, PaymentIntentId: {PaymentIntentId}",
+                    correlationId, purchase.Id, paymentIntentId);
             }
 
-            // Complete payment on the purchase entity
-            var completeResult = purchase.CompletePayment(paymentIntentId);
-
-            if (completeResult.IsFailure)
-            {
-                _logger.LogError(
-                    "[AddOnPurchase] [Webhook-AddOn-ERROR] CompletePayment failed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Error: {Error}",
-                    correlationId, purchase.Id, completeResult.Error);
-                return;
-            }
+            // Save all changes in a single commit
+            if (completedCount > 0)
+                await _unitOfWork.CommitAsync(ct);
 
             _logger.LogInformation(
-                "[AddOnPurchase] [Webhook-AddOn-3] Payment completed on purchase - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, PaymentIntentId: {PaymentIntentId}",
-                correlationId, purchase.Id, paymentIntentId);
-
-            // Save changes and dispatch domain events
-            _addOnPurchaseRepository.Update(purchase);
-            await _unitOfWork.CommitAsync(ct);
-
-            _logger.LogInformation(
-                "[AddOnPurchase] [Webhook-AddOn-SUCCESS] Add-on purchase completed successfully - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, PaymentIntentId: {PaymentIntentId}",
-                correlationId, purchase.Id, paymentIntentId);
+                "[AddOnPurchase] [Webhook-AddOn-SUCCESS] Add-on purchase(s) completed - CorrelationId: {CorrelationId}, Completed: {CompletedCount}, Skipped: {SkippedCount}, PaymentIntentId: {PaymentIntentId}",
+                correlationId, completedCount, skippedCount, paymentIntentId);
         }
         catch (Exception ex)
         {
@@ -113,48 +124,61 @@ public class AddOnPurchaseWebhookHandler : IAddOnPurchaseWebhookHandler
                 "[AddOnPurchase] [Webhook-Expired-AddOn-1] Processing add-on purchase expiry - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
                 correlationId, sessionId);
 
-            var purchase = await _addOnPurchaseRepository.GetByCheckoutSessionIdAsync(sessionId, ct);
-            if (purchase == null)
+            // Load ALL purchases for this session (supports both single and cart)
+            var purchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(sessionId, ct);
+            if (purchases.Count == 0)
             {
                 _logger.LogWarning(
-                    "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] Purchase not found by session - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                    "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] No purchases found by session - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
                     correlationId, sessionId);
                 return;
             }
 
-            if (purchase.Status != AddOnPurchaseStatus.Pending)
+            _logger.LogInformation(
+                "[AddOnPurchase] [Webhook-Expired-AddOn-2] Loaded {PurchaseCount} purchase(s) for expiry - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                purchases.Count, correlationId, sessionId);
+
+            var abandonedCount = 0;
+
+            foreach (var purchase in purchases)
             {
-                _logger.LogWarning(
-                    "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] Purchase not in Pending status - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Status: {Status}",
-                    correlationId, purchase.Id, purchase.Status);
-                return;
+                if (purchase.Status != AddOnPurchaseStatus.Pending)
+                {
+                    _logger.LogWarning(
+                        "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] Purchase not in Pending status - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, Status: {Status}",
+                        correlationId, purchase.Id, purchase.Status);
+                    continue;
+                }
+
+                purchase.MarkAsAbandoned();
+
+                // Restore reserved stock back to the add-on definition
+                var stockRestored = await _addOnDefinitionRepository.TryRestoreStockAsync(
+                    purchase.AddOnDefinitionId, purchase.Quantity, ct);
+
+                if (stockRestored)
+                {
+                    _logger.LogInformation(
+                        "[AddOnPurchase] [Webhook-Expired-AddOn-3] Stock restored - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, DefinitionId: {DefinitionId}, Quantity: {Quantity}",
+                        correlationId, purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] Stock restore failed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, DefinitionId: {DefinitionId}, Quantity: {Quantity}",
+                        correlationId, purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
+                }
+
+                _addOnPurchaseRepository.Update(purchase);
+                abandonedCount++;
             }
 
-            purchase.MarkAsAbandoned();
-
-            // Restore reserved stock back to the add-on definition
-            var stockRestored = await _addOnDefinitionRepository.TryRestoreStockAsync(
-                purchase.AddOnDefinitionId, purchase.Quantity, ct);
-
-            if (stockRestored)
-            {
-                _logger.LogInformation(
-                    "[AddOnPurchase] [Webhook-Expired-AddOn-2] Stock restored - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, DefinitionId: {DefinitionId}, Quantity: {Quantity}",
-                    correlationId, purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "[AddOnPurchase] [Webhook-Expired-AddOn-WARN] Stock restore failed - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}, DefinitionId: {DefinitionId}, Quantity: {Quantity}",
-                    correlationId, purchase.Id, purchase.AddOnDefinitionId, purchase.Quantity);
-            }
-
-            _addOnPurchaseRepository.Update(purchase);
-            await _unitOfWork.CommitAsync(ct);
+            if (abandonedCount > 0)
+                await _unitOfWork.CommitAsync(ct);
 
             _logger.LogInformation(
-                "[AddOnPurchase] [Webhook-Expired-AddOn-SUCCESS] Add-on purchase abandoned, stock restored - CorrelationId: {CorrelationId}, PurchaseId: {PurchaseId}",
-                correlationId, purchase.Id);
+                "[AddOnPurchase] [Webhook-Expired-AddOn-SUCCESS] Add-on purchase(s) abandoned, stock restored - CorrelationId: {CorrelationId}, AbandonedCount: {AbandonedCount}",
+                correlationId, abandonedCount);
         }
         catch (Exception ex)
         {

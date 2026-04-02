@@ -52,11 +52,11 @@ try
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         });
 
-    // Configure FormOptions for large file uploads (videos up to 100MB)
+    // Configure FormOptions for large file uploads (videos up to 500MB)
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     {
-        options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100MB
-        options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB
+        options.MultipartBodyLengthLimit = 500L * 1024 * 1024; // 500MB
+        options.ValueLengthLimit = 100 * 1024 * 1024; // 100MB (form field values, not files)
         options.MultipartHeadersLengthLimit = 100 * 1024 * 1024; // 100MB
     });
 
@@ -480,6 +480,16 @@ try
         // Phase 6A.81: Cleanup Abandoned Registrations Job - Runs hourly to mark expired Preliminary registrations as Abandoned
         recurringJobManager.AddOrUpdate<CleanupAbandonedRegistrationsJob>(
             "cleanup-abandoned-registrations-job",
+            job => job.ExecuteAsync(),
+            Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Cleanup Abandoned Add-On Purchases Job - Runs hourly to mark expired Pending add-on purchases as Abandoned and restore stock
+        recurringJobManager.AddOrUpdate<CleanupAbandonedAddOnPurchasesJob>(
+            "cleanup-abandoned-addon-purchases-job",
             job => job.ExecuteAsync(),
             Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
             new RecurringJobOptions

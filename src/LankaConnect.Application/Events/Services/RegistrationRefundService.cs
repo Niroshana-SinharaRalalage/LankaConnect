@@ -40,6 +40,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount = 0m,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -85,7 +86,7 @@ public class RegistrationRefundService : IRegistrationRefundService
             {
                 // NEW PATH: Refund each payment individually
                 return await ProcessMultiplePaymentRefundsAsync(
-                    registration, completedPayments, reason, metadata, stopwatch, cancellationToken);
+                    registration, completedPayments, reason, metadata, additionalRefundAmount, stopwatch, cancellationToken);
             }
             else if (!string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
             {
@@ -95,7 +96,7 @@ public class RegistrationRefundService : IRegistrationRefundService
                     "[RefundService] No RegistrationPayments found, using legacy StripePaymentIntentId - RegId={RegId}",
                     registration.Id);
                 return await ProcessLegacySinglePaymentRefundAsync(
-                    registration, reason, metadata, stopwatch, cancellationToken);
+                    registration, reason, metadata, additionalRefundAmount, stopwatch, cancellationToken);
             }
             else
             {
@@ -127,6 +128,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         List<RegistrationPayment> completedPayments,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount,
         Stopwatch stopwatch,
         CancellationToken cancellationToken)
     {
@@ -144,9 +146,12 @@ public class RegistrationRefundService : IRegistrationRefundService
             {
                 var amountInCents = (long)(payment.Amount.Amount * 100);
 
-                // Add payment-specific metadata
+                // Add payment-specific metadata including registration_id for webhook lookup.
+                // Phase 6A.137F-Fix5f: registration_id was missing, causing charge.refunded webhook
+                // to fail silently (couldn't find registration → stuck in RefundRequested forever).
                 var paymentMetadata = new Dictionary<string, string>(metadata ?? new Dictionary<string, string>())
                 {
+                    ["registration_id"] = registration.Id.ToString(),
                     ["payment_id"] = payment.Id.ToString(),
                     ["payment_type"] = payment.Type.ToString()
                 };
@@ -231,8 +236,10 @@ public class RegistrationRefundService : IRegistrationRefundService
         }
 
         // Transition registration state to RefundRequested
+        // Phase 6A.136C: Pass first StripeRefundId to prevent withdrawal race condition
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund();
+        var firstRefundId = refundIds.Count > 0 ? refundIds[0] : null;
+        var requestResult = registration.RequestRefund(additionalRefundAmount, firstRefundId);
 
         if (requestResult.IsFailure)
         {
@@ -245,8 +252,8 @@ public class RegistrationRefundService : IRegistrationRefundService
         {
             _logger.LogInformation(
                 "[RefundService] RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}, " +
-                "StatusBefore={StatusBefore}, StatusAfter={StatusAfter}",
-                registration.Id, statusBefore, registration.Status);
+                "StatusBefore={StatusBefore}, StatusAfter={StatusAfter}, AdditionalRefundAmount=${AdditionalRefundAmount}",
+                registration.Id, statusBefore, registration.Status, additionalRefundAmount);
         }
 
         stopwatch.Stop();
@@ -271,6 +278,7 @@ public class RegistrationRefundService : IRegistrationRefundService
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
+        decimal additionalRefundAmount,
         Stopwatch stopwatch,
         CancellationToken cancellationToken)
     {
@@ -310,8 +318,9 @@ public class RegistrationRefundService : IRegistrationRefundService
             registration.Id, stripeResult.Value.RefundId);
 
         // Transition registration state
+        // Phase 6A.136C: Pass StripeRefundId to prevent withdrawal race condition
         var statusBefore = registration.Status;
-        var requestResult = registration.RequestRefund();
+        var requestResult = registration.RequestRefund(additionalRefundAmount, stripeResult.Value.RefundId);
 
         if (requestResult.IsFailure)
         {
@@ -322,8 +331,8 @@ public class RegistrationRefundService : IRegistrationRefundService
         else
         {
             _logger.LogInformation(
-                "[RefundService] LEGACY: RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}",
-                registration.Id);
+                "[RefundService] LEGACY: RequestRefund STATE TRANSITION SUCCESS - RegId={RegId}, AdditionalRefundAmount=${AdditionalRefundAmount}",
+                registration.Id, additionalRefundAmount);
         }
 
         stopwatch.Stop();

@@ -18,6 +18,7 @@ public class AddOnDefinitionEntityConfiguration : IEntityTypeConfiguration<AddOn
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Foreign keys

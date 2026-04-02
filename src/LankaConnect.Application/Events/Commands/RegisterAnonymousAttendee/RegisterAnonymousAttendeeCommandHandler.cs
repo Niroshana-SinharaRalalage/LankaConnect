@@ -7,6 +7,7 @@ using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -28,6 +29,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly IUserRepository _userRepository;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
+    // Phase 6A.137F: Add-on, collection, and sponsor repositories for bundled checkout
+    private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
     private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
@@ -37,6 +43,11 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         IUserRepository userRepository,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
+        // Phase 6A.137F: Inject bundling dependencies
+        IAddOnDefinitionRepository addOnDefinitionRepository,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -45,6 +56,10 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _userRepository = userRepository;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
+        _addOnDefinitionRepository = addOnDefinitionRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
         _logger = logger;
     }
 
@@ -351,6 +366,157 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             }
         }
 
+        // Phase 6A.137F: Handle optional add-ons bundled with anonymous registration
+        // C2 Guard: Add-on failures are isolated — registration succeeds even if add-on creation fails
+        var bundledAddOns = new List<(AddOnPurchase Purchase, string DefinitionName)>();
+        if (request.AddOnSelections != null && request.AddOnSelections.Any())
+        {
+            try
+            {
+                bundledAddOns = await HandleAddOnsDuringAnonymousRegistration(
+                    @event, registration, request.Email,
+                    request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Attendee",
+                    request.AddOnSelections,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Anonymous registration: Add-on processing failed - EventId={EventId}, RegistrationId={RegistrationId}. Registration will continue without add-ons.",
+                    @event.Id, registration.Id);
+                bundledAddOns.Clear();
+            }
+        }
+
+        // Phase 6A.137F: Handle optional collection contribution during anonymous registration
+        // C2 Guard: Collection failures are isolated
+        Collection? bundledCollection = null;
+        if (request.CollectionAmount.HasValue && request.CollectionAmount.Value > 0 && @event.AreCollectionsEnabled())
+        {
+            try
+            {
+                var validateResult = @event.ValidateCollectionAmount(request.CollectionAmount.Value);
+                if (validateResult.IsSuccess)
+                {
+                    var currency = registration.TotalPrice?.Currency
+                        ?? @event.Pricing?.Currency
+                        ?? Domain.Shared.Enums.Currency.USD;
+
+                    var amountResult = Money.Create(request.CollectionAmount.Value, currency);
+                    if (amountResult.IsSuccess)
+                    {
+                        // Anonymous users don't have a UserId — use Guid.Empty
+                        var collectionResult = Collection.Create(
+                            @event.Id,
+                            Guid.Empty,
+                            request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Contributor",
+                            request.Email,
+                            request.PhoneNumber,
+                            request.CollectionNotes,
+                            amountResult.Value);
+
+                        if (collectionResult.IsSuccess)
+                        {
+                            bundledCollection = collectionResult.Value;
+
+                            try
+                            {
+                                var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(
+                                    amountResult.Value, @event.Location, cancellationToken);
+                                if (breakdown.IsSuccess)
+                                {
+                                    bundledCollection.SetRevenueBreakdown(
+                                        breakdown.Value.StripeFeeAmount,
+                                        breakdown.Value.PlatformCommission,
+                                        breakdown.Value.OrganizerPayout);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Exception calculating collection revenue breakdown for anonymous registration");
+                            }
+
+                            _logger.LogInformation(
+                                "Anonymous registration: Bundled collection created - CollectionId={CollectionId}, Amount={Amount}",
+                                bundledCollection.Id, request.CollectionAmount.Value);
+                        }
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("Collection validation failed during anonymous registration - Error={Error}", validateResult.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Anonymous registration: Collection processing failed - EventId={EventId}. Registration will continue without collection.",
+                    @event.Id);
+                bundledCollection = null;
+            }
+        }
+
+        // Phase 6A.137F: Handle optional money sponsorship during anonymous registration
+        // C2 Guard: Sponsor failures are isolated
+        Sponsor? bundledSponsor = null;
+        if (request.SponsorAmount.HasValue && request.SponsorAmount.Value > 0 && @event.AreSponsorsEnabled())
+        {
+            try
+            {
+                var currency = registration.TotalPrice?.Currency
+                    ?? @event.Pricing?.Currency
+                    ?? Domain.Shared.Enums.Currency.USD;
+
+                var amountResult = Money.Create(request.SponsorAmount.Value, currency);
+                if (amountResult.IsSuccess)
+                {
+                    // Anonymous users don't have a UserId — use Guid.Empty
+                    var sponsorResult = Sponsor.CreateMoneySponsor(
+                        @event.Id,
+                        Guid.Empty,
+                        request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Sponsor",
+                        request.Email,
+                        request.PhoneNumber,
+                        request.SponsorOrganization,
+                        request.SponsorNotes,
+                        amountResult.Value);
+
+                    if (sponsorResult.IsSuccess)
+                    {
+                        bundledSponsor = sponsorResult.Value;
+
+                        try
+                        {
+                            var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(
+                                amountResult.Value, @event.Location, cancellationToken);
+                            if (breakdown.IsSuccess)
+                            {
+                                bundledSponsor.SetRevenueBreakdown(
+                                    breakdown.Value.StripeFeeAmount,
+                                    breakdown.Value.PlatformCommission,
+                                    breakdown.Value.OrganizerPayout);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Exception calculating sponsor revenue breakdown for anonymous registration");
+                        }
+
+                        _logger.LogInformation(
+                            "Anonymous registration: Bundled money sponsor created - SponsorId={SponsorId}, Amount={Amount}",
+                            bundledSponsor.Id, request.SponsorAmount.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Anonymous registration: Sponsor processing failed - EventId={EventId}. Registration will continue without sponsor.",
+                    @event.Id);
+                bundledSponsor = null;
+            }
+        }
+
         // Phase 6A.44: Handle payment for paid events
         if (!@event.IsFree())
         {
@@ -377,11 +543,13 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 }
             };
 
-            // Combined checkout: Add donation as second line item
-            if (bundledDonation != null)
+            // Phase 6A.137F: Build multi-line-item checkout when any bundled items exist
+            var hasLineItems = bundledDonation != null || bundledAddOns.Count > 0
+                || bundledCollection != null || bundledSponsor != null;
+            if (hasLineItems)
             {
                 var currency = registration.TotalPrice.Currency.ToString();
-                checkoutRequest.LineItems = new List<CheckoutLineItem>
+                var lineItems = new List<CheckoutLineItem>
                 {
                     new CheckoutLineItem
                     {
@@ -389,25 +557,85 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                         Description = $"Registration for {registration.Attendees?.Count ?? 1} attendee(s)",
                         Amount = registration.TotalPrice.Amount,
                         Currency = currency
-                    },
-                    new CheckoutLineItem
+                    }
+                };
+
+                var totalAmount = registration.TotalPrice.Amount;
+
+                // Add donation line item
+                if (bundledDonation != null)
+                {
+                    lineItems.Add(new CheckoutLineItem
                     {
                         Name = $"Donation: {@event.Title.Value}",
                         Description = "Voluntary donation",
                         Amount = bundledDonation.Amount.Amount,
                         Currency = currency
-                    }
-                };
-                checkoutRequest.Amount = registration.TotalPrice.Amount + bundledDonation.Amount.Amount;
-                checkoutRequest.Metadata["donation_id"] = bundledDonation.Id.ToString();
+                    });
+                    totalAmount += bundledDonation.Amount.Amount;
+                    checkoutRequest.Metadata["donation_id"] = bundledDonation.Id.ToString();
+                }
+
+                // Add add-on line items
+                foreach (var (addOn, definitionName) in bundledAddOns)
+                {
+                    lineItems.Add(new CheckoutLineItem
+                    {
+                        Name = $"Add-on: {definitionName}",
+                        Description = $"Qty: {addOn.Quantity} × {addOn.UnitPrice.Amount:F2} {currency}",
+                        Amount = addOn.TotalAmount.Amount,
+                        Currency = currency
+                    });
+                    totalAmount += addOn.TotalAmount.Amount;
+                }
+
+                if (bundledAddOns.Count > 0)
+                {
+                    var addOnIds = string.Join(",", bundledAddOns.Select(a => a.Purchase.Id));
+                    checkoutRequest.Metadata["addon_purchase_ids"] = addOnIds;
+                }
+
+                // Add collection line item
+                if (bundledCollection != null)
+                {
+                    lineItems.Add(new CheckoutLineItem
+                    {
+                        Name = $"Event Fund Contribution: {@event.Title.Value}",
+                        Description = "Collection contribution",
+                        Amount = bundledCollection.Amount.Amount,
+                        Currency = currency
+                    });
+                    totalAmount += bundledCollection.Amount.Amount;
+                    checkoutRequest.Metadata["collection_id"] = bundledCollection.Id.ToString();
+                }
+
+                // Add sponsor line item
+                if (bundledSponsor != null)
+                {
+                    lineItems.Add(new CheckoutLineItem
+                    {
+                        Name = $"Sponsorship: {@event.Title.Value}",
+                        Description = request.SponsorOrganization != null
+                            ? $"Sponsored by {request.SponsorOrganization}"
+                            : "Money sponsorship",
+                        Amount = bundledSponsor.Amount!.Amount,
+                        Currency = currency
+                    });
+                    totalAmount += bundledSponsor.Amount!.Amount;
+                    checkoutRequest.Metadata["sponsor_id"] = bundledSponsor.Id.ToString();
+                }
+
+                checkoutRequest.LineItems = lineItems;
+                checkoutRequest.Amount = totalAmount;
             }
 
             var checkoutResult = await _stripePaymentService.CreateEventCheckoutSessionAsync(checkoutRequest, cancellationToken);
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
-            // Set checkout session ID on registration
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value);
+            // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
+            // Phase 6A.136F: Pass Stripe expiry to align with actual session lifetime
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId, checkoutResult.Value.ExpiresAt);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -415,17 +643,69 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (bundledDonation != null)
             {
                 var donationSessionResult = bundledDonation.SetStripeCheckoutSession(
-                    checkoutResult.Value,
+                    checkoutResult.Value.SessionId,
                     DateTime.UtcNow.AddHours(24));
 
                 if (donationSessionResult.IsFailure)
                 {
                     _logger.LogWarning(
-                        "HandleMultiAttendeeRegistration: Failed to set checkout session on bundled donation - DonationId={DonationId}, Error={Error}",
+                        "Anonymous registration: Failed to set checkout session on bundled donation - DonationId={DonationId}, Error={Error}",
                         bundledDonation.Id, donationSessionResult.Error);
                 }
 
                 await _donationRepository.AddAsync(bundledDonation, cancellationToken);
+            }
+
+            // Phase 6A.137F: Set checkout session on bundled add-on purchases and persist
+            var addOnExpiresAt = checkoutResult.Value.ExpiresAt ?? DateTime.UtcNow.AddHours(24);
+            foreach (var (addOn, _) in bundledAddOns)
+            {
+                var addOnSessionResult = addOn.SetStripeCheckoutSession(
+                    checkoutResult.Value.SessionId,
+                    addOnExpiresAt);
+
+                if (addOnSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Anonymous registration: Failed to set checkout session on bundled add-on - PurchaseId={PurchaseId}, Error={Error}",
+                        addOn.Id, addOnSessionResult.Error);
+                }
+
+                await _addOnPurchaseRepository.AddAsync(addOn, cancellationToken);
+            }
+
+            // Phase 6A.137F: Set checkout session on bundled collection and persist
+            if (bundledCollection != null)
+            {
+                var collectionSessionResult = bundledCollection.SetStripeCheckoutSession(
+                    checkoutResult.Value.SessionId,
+                    addOnExpiresAt);
+
+                if (collectionSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Anonymous registration: Failed to set checkout session on bundled collection - CollectionId={CollectionId}, Error={Error}",
+                        bundledCollection.Id, collectionSessionResult.Error);
+                }
+
+                await _collectionRepository.AddAsync(bundledCollection, cancellationToken);
+            }
+
+            // Phase 6A.137F: Set checkout session on bundled sponsor and persist
+            if (bundledSponsor != null)
+            {
+                var sponsorSessionResult = bundledSponsor.SetStripeCheckoutSession(
+                    checkoutResult.Value.SessionId,
+                    addOnExpiresAt);
+
+                if (sponsorSessionResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "Anonymous registration: Failed to set checkout session on bundled sponsor - SponsorId={SponsorId}, Error={Error}",
+                        bundledSponsor.Id, sponsorSessionResult.Error);
+                }
+
+                await _sponsorRepository.AddAsync(bundledSponsor, cancellationToken);
             }
 
             // Save changes with checkout session ID
@@ -434,11 +714,13 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             stopwatch.Stop();
 
             _logger.LogInformation(
-                "HandleMultiAttendeeRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}, HasDonation={HasDonation}, Duration={ElapsedMs}ms",
-                @event.Id, registration.Id, registration.TotalPrice!.Amount, bundledDonation != null, stopwatch.ElapsedMilliseconds);
+                "Anonymous registration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}, HasDonation={HasDonation}, HasAddOns={HasAddOns}, HasCollection={HasCollection}, HasSponsor={HasSponsor}, Duration={ElapsedMs}ms",
+                @event.Id, registration.Id, registration.TotalPrice!.Amount,
+                bundledDonation != null, bundledAddOns.Count > 0, bundledCollection != null, bundledSponsor != null,
+                stopwatch.ElapsedMilliseconds);
 
-            // Return checkout session URL for frontend to redirect
-            return Result<string?>.Success(checkoutResult.Value);
+            // Return checkout URL for frontend to redirect
+            return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
         }
 
         // Free event handling
@@ -586,6 +868,108 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             donationResult.Value.Id, registration.Id, request.DonationAmount.Value);
 
         return donationResult.Value;
+    }
+
+    // Phase 6A.137F: Handle add-ons during anonymous registration (mirrors RsvpToEventCommandHandler.HandleAddOnsDuringRegistration)
+    // TODO: Extract shared BundledCheckoutService to eliminate duplication with RsvpToEventCommandHandler
+    private async Task<List<(AddOnPurchase Purchase, string DefinitionName)>> HandleAddOnsDuringAnonymousRegistration(
+        Event @event,
+        Registration registration,
+        string buyerEmail,
+        string buyerName,
+        List<AddOnSelectionDto> selections,
+        CancellationToken cancellationToken)
+    {
+        var purchases = new List<(AddOnPurchase Purchase, string DefinitionName)>();
+
+        var definitions = await _addOnDefinitionRepository.GetActiveByEventIdAsync(@event.Id, cancellationToken);
+        var definitionMap = definitions.ToDictionary(d => d.Id);
+
+        foreach (var selection in selections)
+        {
+            if (selection.Quantity <= 0)
+            {
+                _logger.LogWarning(
+                    "Anonymous registration: Skipping add-on with non-positive quantity - DefinitionId={DefinitionId}, Quantity={Quantity}",
+                    selection.DefinitionId, selection.Quantity);
+                continue;
+            }
+
+            if (!definitionMap.TryGetValue(selection.DefinitionId, out var definition))
+            {
+                _logger.LogWarning(
+                    "Anonymous registration: Add-on definition not found or inactive - DefinitionId={DefinitionId}, EventId={EventId}",
+                    selection.DefinitionId, @event.Id);
+                continue;
+            }
+
+            if (!definition.HasAvailableStock(selection.Quantity))
+            {
+                _logger.LogWarning(
+                    "Anonymous registration: Insufficient add-on stock - DefinitionId={DefinitionId}, Requested={Requested}, Remaining={Remaining}",
+                    selection.DefinitionId, selection.Quantity, definition.RemainingStock);
+                continue;
+            }
+
+            var stockReserved = await _addOnDefinitionRepository.TryReserveStockAsync(
+                selection.DefinitionId, selection.Quantity, cancellationToken);
+
+            if (!stockReserved)
+            {
+                _logger.LogWarning(
+                    "Anonymous registration: Failed to reserve add-on stock - DefinitionId={DefinitionId}, Quantity={Quantity}",
+                    selection.DefinitionId, selection.Quantity);
+                continue;
+            }
+
+            // Anonymous users don't have a UserId — use Guid.Empty
+            var purchaseResult = AddOnPurchase.CreateBundledWithRegistration(
+                eventId: @event.Id,
+                addOnDefinitionId: definition.Id,
+                registrationId: registration.Id,
+                buyerUserId: Guid.Empty,
+                buyerName: buyerName,
+                buyerEmail: buyerEmail,
+                buyerPhone: null,
+                quantity: selection.Quantity,
+                unitPrice: definition.Price);
+
+            if (purchaseResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "Anonymous registration: Failed to create bundled add-on purchase - DefinitionId={DefinitionId}, Error={Error}",
+                    selection.DefinitionId, purchaseResult.Error);
+
+                await _addOnDefinitionRepository.TryRestoreStockAsync(
+                    selection.DefinitionId, selection.Quantity, cancellationToken);
+                continue;
+            }
+
+            // Calculate revenue breakdown for add-on
+            try
+            {
+                var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(
+                    purchaseResult.Value.TotalAmount, @event.Location, cancellationToken);
+                if (breakdown.IsSuccess)
+                {
+                    purchaseResult.Value.SetRevenueBreakdown(
+                        breakdown.Value.StripeFeeAmount,
+                        breakdown.Value.PlatformCommission,
+                        breakdown.Value.OrganizerPayout);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception calculating add-on revenue breakdown for anonymous registration");
+            }
+
+            purchases.Add((purchaseResult.Value, definition.Name));
+            _logger.LogInformation(
+                "Anonymous registration: Bundled add-on created - PurchaseId={PurchaseId}, DefinitionId={DefinitionId}, Qty={Quantity}, Amount={Amount}",
+                purchaseResult.Value.Id, definition.Id, selection.Quantity, purchaseResult.Value.TotalAmount.Amount);
+        }
+
+        return purchases;
     }
 
     /// <summary>
@@ -736,8 +1120,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             if (checkoutResult.IsFailure)
                 return Result<string?>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
-            // Set checkout session ID on registration
-            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value);
+            // Phase 6A.136D: Store session ID (not URL) in StripeCheckoutSessionId
+            // Phase 6A.136F: Pass Stripe expiry to align with actual session lifetime
+            var setSessionResult = registration.SetStripeCheckoutSession(checkoutResult.Value.SessionId, checkoutResult.Value.ExpiresAt);
             if (setSessionResult.IsFailure)
                 return Result<string?>.Failure(setSessionResult.Error);
 
@@ -748,10 +1133,10 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
             _logger.LogInformation(
                 "HandleLegacyRegistration COMPLETE (PAID): EventId={EventId}, RegistrationId={RegistrationId}, CheckoutSessionId={SessionId}, Amount={Amount}, Quantity={Quantity}, Duration={ElapsedMs}ms",
-                @event.Id, registration.Id, checkoutResult.Value, registration.TotalPrice!.Amount, request.Quantity, stopwatch.ElapsedMilliseconds);
+                @event.Id, registration.Id, checkoutResult.Value.SessionId, registration.TotalPrice!.Amount, request.Quantity, stopwatch.ElapsedMilliseconds);
 
-            // Return checkout session URL for frontend to redirect
-            return Result<string?>.Success(checkoutResult.Value);
+            // Return checkout URL for frontend to redirect
+            return Result<string?>.Success(checkoutResult.Value.CheckoutUrl);
         }
 
         // FREE event - save and return null (no payment needed)

@@ -427,9 +427,11 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string }) => {
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string; addOnSelections?: { definitionId: string; quantity: number }[]; collectionAmount?: number; collectionNotes?: string; sponsorAmount?: number; sponsorOrganization?: string; sponsorNotes?: string }) => {
       // Phase 6A.11: Construct full RsvpRequest with all fields (legacy and new format support)
       // Donation Feature: Include donation fields for combined checkout
+      // Phase 6A.137D: Include add-on selections for bundled checkout
+      // Phase 6A.137E: Include collection and sponsor fields for bundled checkout
       const rsvpRequest: RsvpRequest = {
         userId: data.userId,
         quantity: data.quantity ?? 1,
@@ -445,6 +447,21 @@ export function useRsvpToEvent() {
           donorName: data.donorName,
           donorPhone: data.donorPhone,
           donorNotes: data.donorNotes,
+        }),
+        // Phase 6A.137D: Include add-on selections when present
+        ...(data.addOnSelections && data.addOnSelections.length > 0 && {
+          addOnSelections: data.addOnSelections,
+        }),
+        // Phase 6A.137E: Include collection when amount > 0
+        ...(data.collectionAmount && data.collectionAmount > 0 && {
+          collectionAmount: data.collectionAmount,
+          collectionNotes: data.collectionNotes,
+        }),
+        // Phase 6A.137E: Include sponsor when amount > 0
+        ...(data.sponsorAmount && data.sponsorAmount > 0 && {
+          sponsorAmount: data.sponsorAmount,
+          sponsorOrganization: data.sponsorOrganization,
+          sponsorNotes: data.sponsorNotes,
         }),
       };
       return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);

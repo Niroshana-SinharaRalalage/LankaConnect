@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
@@ -35,7 +36,14 @@ public record RegisterAnonymousAttendeeCommand(
     decimal? DonationAmount = null,
     string? DonorName = null,
     string? DonorPhone = null,
-    string? DonorNotes = null
+    string? DonorNotes = null,
+    // Phase 6A.137F: Add-on, collection, and sponsor fields for bundled checkout
+    List<AddOnSelectionDto>? AddOnSelections = null,
+    decimal? CollectionAmount = null,
+    string? CollectionNotes = null,
+    decimal? SponsorAmount = null,
+    string? SponsorOrganization = null,
+    string? SponsorNotes = null
 ) : ICommand<string?>;
 
 /// <summary>

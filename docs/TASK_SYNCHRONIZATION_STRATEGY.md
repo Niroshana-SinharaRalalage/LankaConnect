@@ -3,7 +3,95 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
+## 🎯 CURRENT SESSION STATUS - ALBUM UI FIXES 🔄 DEPLOYING
+**Date**: 2026-04-01
+**Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
+**Progress**: 🔄 **DEPLOYING** — Three fixes: (1) Added "Albums" quick-nav pill button on public event page. (2) Gated Albums section on isUserRegistered || isOrganizer. (3) Changed "N photos" → "N items" labels.
+**Status**: 🔄 **DEPLOYING** — Commit `726b24c4`. Frontend deploying to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT ✅ DEPLOYED
+**Date**: 2026-04-01
+**Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
+**Progress**: ✅ **DEPLOYED** — Three root causes fixed: (1) Proxy arrayBuffer() → OOM; switched to ReadableStream streaming. (2) Video limit 100→500 MB across all layers. (3) Next.js middleware truncated body at 10 MB; excluded api/proxy from middleware matcher.
+**Status**: ✅ **DEPLOYED** — Commits `c49d57c4` → `9040baa5`. Backend + frontend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - VIDEO UPLOAD TIMEOUT FIX ✅ COMPLETE
+**Date**: 2026-03-30
+**Session**: Phase 6A.138-Fix — Video upload timeout fix for large files
+**Progress**: ✅ **COMPLETE** — Root cause: Axios 30s timeout too short for large video uploads (77 MB takes ~31s server-side). Frontend: 5-minute timeout for video uploads, upload progress indicator, improved error messages. Backend: hardened ISO BMFF ftyp scanning, hex dump logging, removed duplicate validation.
+**Status**: ✅ **COMPLETE** — Commit `d0a718c6`. Backend + frontend deployed to Azure staging. 77 MB video verified: HTTP 200.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - REFUND/CONFIRMATION EMAIL + EVENT CARD BUG FIXES ✅ VERIFIED
+**Date**: 2026-03-31
+**Session**: Phase 6A.137F-Fix5 — Refund email, confirmation email, and event card badge fixes
+**Progress**: ✅ **COMPLETE & VERIFIED** — 3 bugs + 1 hidden root cause: (1) CancelRsvpCommandHandler combines all successful refund amounts. (2) PaymentCompletedEventHandler filters add-ons by RegistrationId. (3) GetEventsQueryHandler: Fixed Dictionary.GetValueOrDefault() returning default enum Preliminary(0) for missing keys — used TryGetValue + null fallback. Also filters Abandoned + stale Preliminary.
+**Status**: ✅ **VERIFIED** — Commits `68cbc045` → `393a2e38`. API tested: 5 Confirmed + 1 RefundRequested correct, 39 false Preliminary badges removed.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - PHOTO ALBUM VIDEO UPLOAD SUPPORT ✅ COMPLETE
+**Date**: 2026-03-30
+**Session**: Phase 6A.138 — Photo Album Video Upload Support
+**Progress**: ✅ **COMPLETE** — Full-stack video upload: AlbumMediaType enum, AlbumPhoto entity (MediaType, DurationSeconds, nullable MediumUrl/MediumBlobName), PhotoAlbum.AddVideo(), video validation (100MB, MP4/WebM/MOV magic numbers), ProcessAndUploadVideoAsync, UploadAlbumVideoCommand, POST /albums/{albumId}/videos endpoint, frontend uploader with auto-thumbnail generation, gallery cards with play icon overlay + duration badge, lightbox video player. 19 files changed.
+**Status**: ✅ **COMPLETE** — Commit `493757bb`. Backend + frontend deployed to Azure staging. API verified: video upload returns mediaType:"Video" + durationSeconds, GET photos returns both Photo and Video items.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - BUNDLED ADD-ON RACE CONDITION ROOT CAUSE FIX ✅ COMPLETE
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix4 — Bundled add-on race condition root cause fix
+**Progress**: ✅ **COMPLETE** — Root cause: moved all bundled item completion BEFORE CommitAsync in RegistrationWebhookHandler, removed ClearChangeTrackerExceptAsync. Defense-in-depth: include Pending add-ons in 3 query/event handlers. Fixed AddOnRefundService fallback. Frontend: scoped cancel dialog by registrationId. EF Core migration: Registration FK on add_on_purchases + orphan cleanup.
+**Status**: ✅ **COMPLETE** — Commit `4a71e561`. 4 bugs fixed: (1) add-ons missing from payment success, (2) $0.00 in email, (3) cancel "X failed to refund" + slow, (4) orphaned purchases inflating refunds. Backend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - ADD-ON REFUND GROUPING + QUERY FIX ✅ COMPLETE
+**Date**: 2026-03-29
+**Session**: Phase 6A.137F-Fix2 — Add-on refund grouping, cancel dialog UX, add-on query fix
+**Progress**: ✅ **COMPLETE** — Bug 1: Cancel dialog notification repositioned. Bug 2: AddOnRefundService rewritten to group by PaymentIntentId. Bug 3/4: Add-on query changed from CheckoutSessionId to UserIdAndEventId in 3 handlers. Bug 5: Stripe API call reduction via PI grouping.
+**Status**: ✅ **COMPLETE** — Commit `ee21e92f`. API verified: /my-registration and /registrations/{id} return all 5 financial fields including addOnTotal. Backend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - EMAIL BREAKDOWN + PAYMENT SUCCESS FIX ✅ COMPLETE
+**Date**: 2026-03-28
+**Session**: Phase 6A.137F-Fix — Fix email breakdown + payment success page financial display
+**Progress**: ✅ **COMPLETE** — Fix A: Corrected TicketSubtotal (AmountPaid IS ticket-only). Fix B: EF Core migration adds add-on/collection/sponsor sections to email. Fix C: 5 financial fields in RegistrationDetailsDto, both query handlers load bundled items, TypeScript types + payment success page breakdown UI.
+**Status**: ✅ **COMPLETE** — Commit `66b4552c`. 9 files changed. Tests: 1903/1903 (Application). Backend + UI deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - REGISTRATION BUNDLING FIXES ✅ COMPLETE
+**Date**: 2026-03-27
+**Session**: Phase 6A.137F — Registration bundling fixes, anonymous registration, refund improvements
+**Progress**: ✅ **COMPLETE** — F1a/F1b: Authenticated + anonymous registration bundling. F2: Add-on partial refund fix. F3: Email financial breakdown with bundled items. F4/F4b: Sponsor validation + price breakdown display. F5: Collection/sponsor refund with UI checkboxes.
+**Status**: ✅ **COMPLETE** — Commit `f544806e`. 15 files changed. Tests: 1903/1903 (Application), 146/148 (Domain, 2 pre-existing).
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - COLLECTION/SPONSOR BUNDLING ✅ COMPLETE
+**Date**: 2026-03-26
+**Session**: Phase 6A.137E — Bundle collections & sponsors with registration checkout
+**Progress**: ✅ **COMPLETE** — Extended RsvpToEventCommand, handler, webhook; created CollectionOptionInForm.tsx & SponsorOptionInForm.tsx; integrated into registration form with price breakdown
+**Status**: ✅ **COMPLETE** — Commit `cea19564`. 8 new tests (1903 total).
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - RECEIPT/CONFIRMATION EMAILS ✅ COMPLETE
+**Date**: 2026-03-25
+**Session**: Phase 6A.137B — Implement 4 receipt/confirmation emails (add-on, collection, sponsor money, sponsor item)
+**Progress**: ✅ **COMPLETE** — All handlers updated, migration created, deployed and API-verified on staging
+**Status**: ✅ **COMPLETE** — Commit `193f5e14` deployed. 3 new TypedEmailParams classes, 3 new email templates, 4 handlers updated. Build: 0 errors. Staging: my-rsvps 200 OK, event detail shows userRegistrationStatus.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - FREE ADD-ON SUPPORT ✅ COMPLETE
 **Date**: 2026-03-21
 **Session**: Allow free add-ons ($0 price) — domain validation fix + Stripe bypass + frontend UX
 **Progress**: ✅ **COMPLETE** — All fixes deployed and API-verified on staging

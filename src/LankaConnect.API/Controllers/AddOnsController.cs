@@ -2,11 +2,14 @@ using LankaConnect.API.Extensions;
 using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.PurchaseAddOn;
+using LankaConnect.Application.Events.Commands.PurchaseAddOnCart;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportAddOnPurchases;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventAddOnPurchases;
+using LankaConnect.Application.Events.Queries.GetMyAddOnPurchases;
+using LankaConnect.Domain.Events.Repositories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,11 +25,18 @@ namespace LankaConnect.API.Controllers;
 [Produces("application/json")]
 public class AddOnsController : BaseController<AddOnsController>
 {
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
+
     public AddOnsController(
         IMediator mediator,
-        ILogger<AddOnsController> logger)
+        ILogger<AddOnsController> logger,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        IAddOnDefinitionRepository addOnDefinitionRepository)
         : base(mediator, logger)
     {
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _addOnDefinitionRepository = addOnDefinitionRepository;
     }
 
     // ──────────────────────────────────────────────
@@ -163,6 +173,132 @@ public class AddOnsController : BaseController<AddOnsController>
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Purchases multiple add-ons in a single cart checkout.
+    /// Creates one Stripe session with N line items (one per add-on).
+    /// Free items complete immediately; only paid items go to Stripe.
+    /// Returns: checkout URL if any paid items, or success URL if all free.
+    /// </summary>
+    [HttpPost("purchase-cart")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> PurchaseAddOnCart(
+        Guid eventId,
+        [FromBody] PurchaseAddOnCartRequest request)
+    {
+        Logger.LogInformation(
+            "PurchaseAddOnCart: EventId={EventId}, BuyerEmail={BuyerEmail}, ItemCount={ItemCount}",
+            eventId, request.BuyerEmail, request.Items?.Count ?? 0);
+
+        var userId = User.Identity?.IsAuthenticated == true
+            ? User.TryGetUserId()
+            : null;
+
+        var cartItems = request.Items?.Select(i => new AddOnCartItem(
+            i.AddOnDefinitionId,
+            i.Quantity)).ToList() ?? new List<AddOnCartItem>();
+
+        var command = new PurchaseAddOnCartCommand(
+            EventId: eventId,
+            Items: cartItems,
+            BuyerName: request.BuyerName,
+            BuyerEmail: request.BuyerEmail,
+            BuyerPhone: request.BuyerPhone,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Public buyer lookup
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets add-on purchases for a specific buyer email (public).
+    /// Allows buyers to see their purchase history on the event details page.
+    /// Only returns Completed and Pending purchases.
+    /// </summary>
+    [HttpGet("my-purchases")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<AddOnPurchaseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetMyAddOnPurchases(Guid eventId, [FromQuery] string email)
+    {
+        Logger.LogInformation(
+            "GetMyAddOnPurchases: EventId={EventId}, BuyerEmail={BuyerEmail}",
+            eventId, email);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new { Error = "Email parameter is required" });
+        }
+
+        var result = await Mediator.Send(new GetMyAddOnPurchasesQuery(eventId, email));
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Gets the authenticated user's own add-on purchases for an event.
+    /// Returns individual purchase line items for the logged-in user.
+    /// Mirrors the /sponsors/mine pattern for consistent UX.
+    /// </summary>
+    [HttpGet("mine")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<AddOnPurchaseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyAddOns(Guid eventId)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "GetMyAddOns: EventId={EventId}, UserId={UserId}", eventId, userId);
+
+        try
+        {
+            var purchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(userId, eventId);
+
+            // Build definition name lookup
+            var definitions = await _addOnDefinitionRepository.GetByEventIdAsync(eventId);
+            var definitionLookup = definitions.ToDictionary(d => d.Id, d => d.Name);
+
+            var purchaseDtos = purchases.Select(p => new AddOnPurchaseDto
+            {
+                Id = p.Id,
+                EventId = p.EventId,
+                AddOnDefinitionId = p.AddOnDefinitionId,
+                AddOnName = definitionLookup.TryGetValue(p.AddOnDefinitionId, out var name) ? name : "Unknown",
+                RegistrationId = p.RegistrationId,
+                BuyerUserId = p.BuyerUserId,
+                BuyerName = p.BuyerName,
+                BuyerEmail = p.BuyerEmail,
+                BuyerPhone = p.BuyerPhone,
+                Quantity = p.Quantity,
+                UnitPrice = p.UnitPrice.Amount,
+                TotalAmount = p.TotalAmount.Amount,
+                Currency = p.UnitPrice.Currency.ToString(),
+                Status = p.Status.ToString(),
+                CreatedAt = p.CreatedAt,
+                PaymentCompletedAt = p.PaymentCompletedAt
+            }).ToList();
+
+            Logger.LogInformation(
+                "GetMyAddOns: Found {Count} purchases for UserId={UserId}, EventId={EventId}",
+                purchaseDtos.Count, userId, eventId);
+
+            return Ok(purchaseDtos);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "GetMyAddOns FAILED: EventId={EventId}, UserId={UserId}",
+                eventId, userId);
+            return StatusCode(500, new { Error = "Failed to retrieve your add-on purchases" });
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -330,4 +466,26 @@ public class PurchaseAddOnRequest
     public int Quantity { get; init; } = 1;
     public required string SuccessUrl { get; init; }
     public required string CancelUrl { get; init; }
+}
+
+/// <summary>
+/// Request body for purchasing multiple add-ons in a cart.
+/// </summary>
+public class PurchaseAddOnCartRequest
+{
+    public required string BuyerName { get; init; }
+    public required string BuyerEmail { get; init; }
+    public string? BuyerPhone { get; init; }
+    public required List<PurchaseAddOnCartItemRequest> Items { get; init; }
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+}
+
+/// <summary>
+/// Single item in a cart purchase request.
+/// </summary>
+public class PurchaseAddOnCartItemRequest
+{
+    public Guid AddOnDefinitionId { get; init; }
+    public int Quantity { get; init; } = 1;
 }

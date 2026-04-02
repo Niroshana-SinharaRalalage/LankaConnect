@@ -332,6 +332,13 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
           </div>
         )}
 
+        {/* Non-refundable disclaimer (money sponsorships only) */}
+        {mode === 'money' && (
+          <p className="text-xs text-gray-500 italic">
+            Sponsorships are non-refundable and will not be included in registration cancellation refunds.
+          </p>
+        )}
+
         {/* Submit Button */}
         {mode === 'money' ? (
           <Button

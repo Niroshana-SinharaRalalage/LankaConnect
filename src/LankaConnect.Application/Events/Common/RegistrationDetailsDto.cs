@@ -48,6 +48,19 @@ public record RegistrationDetailsDto
     /// Used for countdown timer in UI. Null if not Preliminary or no session created.
     /// </summary>
     public DateTime? CheckoutSessionExpiresAt { get; init; }
+
+    // Phase 6A.137F-Fix: Financial breakdown for bundled checkout items
+    // These are populated from separate entities (donations, add-ons, collections, sponsors)
+    // that share the same Stripe checkout session as the registration.
+    public decimal? DonationAmount { get; init; }
+    public decimal? AddOnTotal { get; init; }
+    public decimal? CollectionTotal { get; init; }
+    public decimal? SponsorTotal { get; init; }
+    /// <summary>
+    /// Grand total = TotalPriceAmount (tickets) + DonationAmount + AddOnTotal + CollectionTotal + SponsorTotal.
+    /// Represents the actual amount charged by Stripe. Null if no bundled items.
+    /// </summary>
+    public decimal? GrandTotal { get; init; }
 }
 
 /// <summary>

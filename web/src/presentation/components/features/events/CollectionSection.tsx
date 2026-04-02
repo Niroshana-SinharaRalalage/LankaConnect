@@ -279,6 +279,11 @@ export function CollectionSection({ eventId, collectionConfig, publicSummary, my
             </div>
           )}
 
+          {/* Non-refundable disclaimer */}
+          <p className="text-xs text-gray-500 italic">
+            Contributions are non-refundable and will not be included in registration cancellation refunds.
+          </p>
+
           {/* Submit Button */}
           <Button
             type="submit"

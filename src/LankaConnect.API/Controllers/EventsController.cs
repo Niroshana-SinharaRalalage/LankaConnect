@@ -626,7 +626,14 @@ public class EventsController : BaseController<EventsController>
             DonationAmount: request.DonationAmount,
             DonorName: request.DonorName,
             DonorPhone: request.DonorPhone,
-            DonorNotes: request.DonorNotes
+            DonorNotes: request.DonorNotes,
+            // Phase 6A.137F: Pass bundled add-on, collection, and sponsor fields
+            AddOnSelections: request.AddOnSelections,
+            CollectionAmount: request.CollectionAmount,
+            CollectionNotes: request.CollectionNotes,
+            SponsorAmount: request.SponsorAmount,
+            SponsorOrganization: request.SponsorOrganization,
+            SponsorNotes: request.SponsorNotes
         );
         var result = await Mediator.Send(command);
 
@@ -714,7 +721,15 @@ public class EventsController : BaseController<EventsController>
             DonationAmount: request.DonationAmount,
             DonorName: request.DonorName,
             DonorPhone: request.DonorPhone,
-            DonorNotes: request.DonorNotes
+            DonorNotes: request.DonorNotes,
+            // Phase 6A.137F: Pass bundled add-on, collection, and sponsor fields
+            AddOnSelections: request.AddOnSelections?.Select(a =>
+                new LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto(a.DefinitionId, a.Quantity)).ToList(),
+            CollectionAmount: request.CollectionAmount,
+            CollectionNotes: request.CollectionNotes,
+            SponsorAmount: request.SponsorAmount,
+            SponsorOrganization: request.SponsorOrganization,
+            SponsorNotes: request.SponsorNotes
         );
 
         var result = await Mediator.Send(command);
@@ -744,18 +759,38 @@ public class EventsController : BaseController<EventsController>
     /// If true, deletes all sign-up commitments and restores remaining quantities.
     /// If false (default), keeps sign-up commitments intact.
     /// </param>
+    /// <param name="deleteFormResponses">
+    /// If true, deletes all form submissions for this event. If false (default), keeps them.
+    /// </param>
+    /// <param name="refundAddOnPurchases">
+    /// If true, refunds all completed add-on purchases via Stripe. If false (default), keeps them.
+    /// </param>
+    /// <param name="refundCollections">
+    /// Phase 6A.137F: If true, refunds collection contribution via Stripe. If false (default), keeps it.
+    /// </param>
+    /// <param name="refundSponsors">
+    /// Phase 6A.137F: If true, refunds money sponsorship via Stripe. If false (default), keeps it.
+    /// </param>
     [HttpDelete("{id:guid}/rsvp")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CancelRsvp(Guid id, [FromQuery] bool deleteSignUpCommitments = false)
+    public async Task<IActionResult> CancelRsvp(
+        Guid id,
+        [FromQuery] bool deleteSignUpCommitments = false,
+        [FromQuery] bool deleteFormResponses = false,
+        [FromQuery] bool refundAddOnPurchases = false,
+        // Phase 6A.137F: Collection and sponsor refund query parameters
+        [FromQuery] bool refundCollections = false,
+        [FromQuery] bool refundSponsors = false)
     {
         var userId = User.GetUserId();
-        Logger.LogInformation("User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}",
-            userId, id, deleteSignUpCommitments);
+        Logger.LogInformation(
+            "User {UserId} cancelling RSVP to event {EventId}, DeleteSignUpCommitments={DeleteSignUpCommitments}, DeleteFormResponses={DeleteFormResponses}, RefundAddOnPurchases={RefundAddOnPurchases}, RefundCollections={RefundCollections}, RefundSponsors={RefundSponsors}",
+            userId, id, deleteSignUpCommitments, deleteFormResponses, refundAddOnPurchases, refundCollections, refundSponsors);
 
-        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments);
+        var command = new CancelRsvpCommand(id, userId, deleteSignUpCommitments, deleteFormResponses, refundAddOnPurchases, refundCollections, refundSponsors);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -3123,7 +3158,14 @@ public record RsvpRequest(
     decimal? DonationAmount = null,
     string? DonorName = null,
     string? DonorPhone = null,
-    string? DonorNotes = null
+    string? DonorNotes = null,
+    // Phase 6A.137F: Add-on, collection, and sponsor fields for bundled checkout
+    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
+    decimal? CollectionAmount = null,
+    string? CollectionNotes = null,
+    decimal? SponsorAmount = null,
+    string? SponsorOrganization = null,
+    string? SponsorNotes = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3154,7 +3196,14 @@ public record AnonymousRegistrationRequest(
     decimal? DonationAmount = null,
     string? DonorName = null,
     string? DonorPhone = null,
-    string? DonorNotes = null);
+    string? DonorNotes = null,
+    // Phase 6A.137F: Add-on, collection, and sponsor fields for bundled checkout
+    List<LankaConnect.Application.Events.Commands.RsvpToEvent.AddOnSelectionDto>? AddOnSelections = null,
+    decimal? CollectionAmount = null,
+    string? CollectionNotes = null,
+    decimal? SponsorAmount = null,
+    string? SponsorOrganization = null,
+    string? SponsorNotes = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration

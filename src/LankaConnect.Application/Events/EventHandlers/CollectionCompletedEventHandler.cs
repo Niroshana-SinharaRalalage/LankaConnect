@@ -2,6 +2,8 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -92,11 +94,39 @@ public class CollectionCompletedEventHandler
                                     capturedEventId);
                             }
 
-                            // TODO: Create email template and TypedEmailParams for collection receipts
-                            _logger.LogInformation(
-                                "CollectionCompleted EMAIL PLACEHOLDER: Would send receipt to {Email} for collection {CollectionId} on event '{EventTitle}', Amount={Amount} {Currency}",
-                                capturedContributorEmail, capturedCollectionId, eventTitle,
-                                capturedAmount, capturedCurrency);
+                            // Phase 6A.137B: Build event details URL from configuration
+                            var baseUrl = configuration["Application:FrontendBaseUrl"]
+                                ?? configuration["FrontendBaseUrl"]
+                                ?? "https://lankaconnect.com";
+                            var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                            // Phase 6A.137B: Send collection receipt email
+                            var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                            var emailParams = CollectionReceiptEmailParams.Create(
+                                contributorName: capturedContributorName,
+                                contributorEmail: capturedContributorEmail,
+                                eventTitle: eventTitle,
+                                contributionAmount: capturedAmount,
+                                currency: capturedCurrency,
+                                paymentDate: capturedPaymentDate,
+                                paymentIntentId: capturedPaymentIntentId,
+                                eventDetailsUrl: eventDetailsUrl
+                            );
+
+                            var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                            if (result.Success)
+                            {
+                                _logger.LogInformation(
+                                    "CollectionCompleted EMAIL SENT: Email={Email}, CollectionId={CollectionId}, EventTitle={EventTitle}",
+                                    capturedContributorEmail, capturedCollectionId, eventTitle);
+                            }
+                            else
+                            {
+                                _logger.LogError(
+                                    "CollectionCompleted EMAIL FAILED: Email={Email}, CollectionId={CollectionId}, Errors={Errors}",
+                                    capturedContributorEmail, capturedCollectionId, string.Join(", ", result.Errors));
+                            }
                         }
                         catch (Exception ex)
                         {

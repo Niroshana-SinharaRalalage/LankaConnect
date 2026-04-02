@@ -91,6 +91,13 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     }
                 }
 
+                // Phase 6A.135: Calculate combined refund total (ticket + add-ons)
+                var totalRefundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+
+                _logger.LogInformation(
+                    "[Phase 6A.135] RefundCompleted: TicketRefund=${TicketAmount}, AddOnRefund=${AddOnAmount}, TotalRefund=${TotalAmount}",
+                    domainEvent.RefundAmount, domainEvent.AddOnRefundAmount, totalRefundAmount);
+
                 // Phase 6A.87: Use typed email parameters for compile-time safety
                 // Phase 6A.87 Fix: Added stripeRefundId parameter required by template
                 var emailParams = RefundEmailParams.CreateCompleted(
@@ -103,8 +110,8 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate,
                     timeZoneId: @event.TimeZoneId,
-                    refundAmount: domainEvent.RefundAmount,
-                    originalAmount: domainEvent.RefundAmount,  // Same as refund for full refunds
+                    refundAmount: totalRefundAmount,  // Phase 6A.135: Combined ticket + add-on amount
+                    originalAmount: totalRefundAmount,  // Same as refund for full refunds
                     completedAt: DateTime.UtcNow,
                     stripeRefundId: domainEvent.StripeRefundId,  // Phase 6A.87 Fix: Pass Stripe refund ID for template
                     processingMethod: "Original Payment Method"

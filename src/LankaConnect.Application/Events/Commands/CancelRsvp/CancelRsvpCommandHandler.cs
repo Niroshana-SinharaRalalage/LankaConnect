@@ -6,16 +6,23 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.CancelRsvp;
 
-public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
+public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, CancelRsvpResult>
 {
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IRegistrationRefundService _refundService;
+    private readonly IFormResponseRepository _formResponseRepository;
+    private readonly IAddOnRefundService _addOnRefundService;
+    // Phase 6A.137F: Collection and sponsor refund support
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ISponsorRepository _sponsorRepository;
+    private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
 
@@ -23,17 +30,28 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
         IRegistrationRefundService refundService,
+        IFormResponseRepository formResponseRepository,
+        IAddOnRefundService addOnRefundService,
+        // Phase 6A.137F: Inject collection/sponsor refund dependencies
+        ICollectionRepository collectionRepository,
+        ISponsorRepository sponsorRepository,
+        IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
         ILogger<CancelRsvpCommandHandler> logger)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
         _refundService = refundService;
+        _formResponseRepository = formResponseRepository;
+        _addOnRefundService = addOnRefundService;
+        _collectionRepository = collectionRepository;
+        _sponsorRepository = sponsorRepository;
+        _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
-    public async Task<Result> Handle(CancelRsvpCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CancelRsvpResult>> Handle(CancelRsvpCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "CancelRsvp"))
         using (LogContext.PushProperty("EntityType", "Registration"))
@@ -43,8 +61,8 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}",
-                request.EventId, request.UserId, request.DeleteSignUpCommitments);
+                "CancelRsvp START: EventId={EventId}, UserId={UserId}, DeleteCommitments={DeleteCommitments}, DeleteFormResponses={DeleteFormResponses}, RefundAddOnPurchases={RefundAddOnPurchases}",
+                request.EventId, request.UserId, request.DeleteSignUpCommitments, request.DeleteFormResponses, request.RefundAddOnPurchases);
 
             try
             {
@@ -58,7 +76,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         "CancelRsvp FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
                         request.EventId, stopwatch.ElapsedMilliseconds);
 
-                    return Result.Failure("Event not found");
+                    return Result<CancelRsvpResult>.Failure("Event not found");
                 }
 
                 _logger.LogInformation(
@@ -74,7 +92,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         "[Phase 6A.91] CancelRsvp FAILED: Cannot cancel after event has started - EventId={EventId}, StartDate={StartDate}, Now={Now}, Duration={ElapsedMs}ms",
                         request.EventId, @event.StartDate, DateTime.UtcNow, stopwatch.ElapsedMilliseconds);
 
-                    return Result.Failure("Cannot cancel registration after the event has started");
+                    return Result<CancelRsvpResult>.Failure("Cannot cancel registration after the event has started");
                 }
 
                 // Find active registration using GetByEventAndUserAsync (read-only query)
@@ -93,8 +111,16 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         request.EventId, request.UserId, stopwatch.ElapsedMilliseconds);
 
                     // Phase 6A.45: Since we hard delete, no registration found means operation already succeeded (idempotent)
-                    // This follows REST API idempotency best practices: DELETE operations should be idempotent
-                    return Result.Success();
+                    return Result<CancelRsvpResult>.Success(new CancelRsvpResult(
+                        RegistrationCancelled: true,
+                        CommitmentsDeleted: null,
+                        FormResponsesDeleted: null,
+                        FormResponsesDeletedCount: null,
+                        AddOnRefundsProcessed: null,
+                        AddOnRefundedCount: null,
+                        AddOnFailedCount: null,
+                        AddOnRefundTotal: null,
+                        Warnings: null));
                 }
 
                 // Phase 6A.45 FIX: Hard delete registration instead of soft delete (marking as cancelled)
@@ -110,14 +136,16 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         "CancelRsvp FAILED: Could not retrieve registration with tracking - RegId={RegId}, Duration={ElapsedMs}ms",
                         registrationReadOnly.Id, stopwatch.ElapsedMilliseconds);
 
-                    return Result.Failure("Failed to cancel registration");
+                    return Result<CancelRsvpResult>.Failure("Failed to cancel registration");
                 }
 
                 using (LogContext.PushProperty("RegistrationId", registration.Id))
                 {
+                    // Track warnings for partial failures
+                    var warnings = new List<string>();
 
                     // Phase 6A.28: Handle sign-up commitments based on user choice
-                    // Fix: Trust domain model as single source of truth (removed competing deletion strategies)
+                    bool? commitmentsDeleted = null;
                     if (request.DeleteSignUpCommitments)
                     {
                         _logger.LogInformation(
@@ -128,20 +156,21 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
 
                         if (cancelResult.IsFailure)
                         {
+                            commitmentsDeleted = false;
+                            warnings.Add($"Failed to delete sign-up commitments: {cancelResult.Error}");
                             _logger.LogWarning(
                                 "CancelRsvp: Failed to delete commitments - EventId={EventId}, UserId={UserId}, Error={Error}",
                                 request.EventId, request.UserId, cancelResult.Error);
                         }
                         else
                         {
+                            commitmentsDeleted = true;
                             _logger.LogInformation(
                                 "CancelRsvp: Commitments cancelled successfully - EventId={EventId}, UserId={UserId}",
                                 request.EventId, request.UserId);
                         }
 
                         // CRITICAL FIX ADR-007: Explicitly mark event as modified for EF Core change tracking
-                        // Without this, collection deletions (commitments removed) are not tracked even though
-                        // domain method executed successfully. Pattern matches RsvpToEventCommandHandler (Phase 6A.24)
                         _eventRepository.Update(@event);
                     }
                     else
@@ -149,6 +178,259 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         _logger.LogInformation(
                             "CancelRsvp: User chose to keep sign-up commitments - EventId={EventId}, UserId={UserId}",
                             request.EventId, request.UserId);
+                    }
+
+                    // Cancellation enhancement: Handle form response deletion (non-blocking)
+                    bool? formResponsesDeleted = null;
+                    int? formResponsesDeletedCount = null;
+                    if (request.DeleteFormResponses)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Deleting form responses - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var formResponses = await _formResponseRepository.GetByEventAndUserAsync(
+                                request.EventId, request.UserId, cancellationToken);
+
+                            if (formResponses.Count > 0)
+                            {
+                                foreach (var response in formResponses)
+                                {
+                                    response.RaiseDeletedEvent();
+                                    _formResponseRepository.Remove(response);
+                                }
+
+                                formResponsesDeleted = true;
+                                formResponsesDeletedCount = formResponses.Count;
+
+                                _logger.LogInformation(
+                                    "CancelRsvp: Deleted {Count} form responses - EventId={EventId}, UserId={UserId}",
+                                    formResponses.Count, request.EventId, request.UserId);
+                            }
+                            else
+                            {
+                                formResponsesDeleted = true;
+                                formResponsesDeletedCount = 0;
+
+                                _logger.LogInformation(
+                                    "CancelRsvp: No form responses found to delete - EventId={EventId}, UserId={UserId}",
+                                    request.EventId, request.UserId);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            formResponsesDeleted = false;
+                            warnings.Add($"Failed to delete form responses: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to delete form responses (non-blocking) - EventId={EventId}, UserId={UserId}, Error={ErrorMessage}",
+                                request.EventId, request.UserId, ex.Message);
+                        }
+                    }
+
+                    // Cancellation enhancement: Handle add-on purchase refunds BEFORE registration refund
+                    // so the add-on total can be included in the refund email.
+                    // Phase 6A.137F-Fix3: Pass registrationId to scope refunds to current registration only,
+                    // excluding orphaned purchases from previous cancelled registrations.
+                    decimal addOnRefundTotal = 0m;
+                    int addOnRefundedCount = 0;
+                    int addOnFailedCount = 0;
+                    bool? addOnRefundsProcessed = null;
+
+                    if (request.RefundAddOnPurchases)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding add-on purchases - EventId={EventId}, UserId={UserId}, RegistrationId={RegistrationId}",
+                                request.EventId, request.UserId, registration.Id);
+
+                            var addOnMetadata = new Dictionary<string, string>
+                            {
+                                ["event_id"] = request.EventId.ToString(),
+                                ["user_id"] = request.UserId.ToString(),
+                                ["refund_type"] = "user_cancellation_add_on_refund"
+                            };
+
+                            var addOnRefundResult = await _addOnRefundService.RefundUserPurchasesAsync(
+                                request.UserId,
+                                request.EventId,
+                                "requested_by_customer",
+                                addOnMetadata,
+                                registration.Id,
+                                cancellationToken);
+
+                            if (addOnRefundResult.IsFailure)
+                            {
+                                addOnRefundsProcessed = false;
+                                warnings.Add($"Add-on refund failed: {addOnRefundResult.Error}");
+                                _logger.LogWarning(
+                                    "CancelRsvp: Add-on refund failed (non-blocking) - EventId={EventId}, UserId={UserId}, Error={Error}",
+                                    request.EventId, request.UserId, addOnRefundResult.Error);
+                            }
+                            else
+                            {
+                                addOnRefundTotal = addOnRefundResult.Value.TotalAmountRefunded;
+                                addOnRefundedCount = addOnRefundResult.Value.PurchasesRefunded;
+                                addOnFailedCount = addOnRefundResult.Value.PurchasesFailed;
+                                addOnRefundsProcessed = addOnFailedCount == 0;
+
+                                if (addOnFailedCount > 0)
+                                {
+                                    warnings.Add($"{addOnFailedCount} add-on purchase(s) failed to refund. {addOnRefundedCount} succeeded (${addOnRefundTotal:F2} refunded).");
+                                }
+
+                                _logger.LogInformation(
+                                    "CancelRsvp: Add-on refunds processed - EventId={EventId}, UserId={UserId}, Refunded={Refunded}, Failed={Failed}, TotalAmount=${TotalAmount}",
+                                    request.EventId, request.UserId,
+                                    addOnRefundedCount, addOnFailedCount, addOnRefundTotal);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            addOnRefundsProcessed = false;
+                            warnings.Add($"Add-on refund error: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund add-on purchases (non-blocking) - EventId={EventId}, UserId={UserId}, Error={ErrorMessage}",
+                                request.EventId, request.UserId, ex.Message);
+                        }
+                    }
+
+                    // Phase 6A.137F: Handle collection refund
+                    bool? collectionRefundProcessed = null;
+                    decimal? collectionRefundAmount = null;
+
+                    if (request.RefundCollections)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding collection contribution - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var collections = await _collectionRepository.GetByUserIdAndEventIdAsync(
+                                request.UserId, request.EventId, cancellationToken);
+
+                            var refundableCollection = collections?.FirstOrDefault(c =>
+                                c.Status == CollectionStatus.Completed &&
+                                !string.IsNullOrEmpty(c.StripePaymentIntentId));
+
+                            if (refundableCollection != null)
+                            {
+                                var refundAmountInCents = (long)(refundableCollection.Amount.Amount * 100);
+                                var refundRequest = new CreateRefundRequest
+                                {
+                                    PaymentIntentId = refundableCollection.StripePaymentIntentId!,
+                                    RegistrationId = refundableCollection.Id,
+                                    AmountInCents = refundAmountInCents,
+                                    Reason = "requested_by_customer",
+                                    Metadata = new Dictionary<string, string>
+                                    {
+                                        ["collection_id"] = refundableCollection.Id.ToString(),
+                                        ["refund_type"] = "user_cancellation_collection_refund"
+                                    }
+                                };
+
+                                var stripeResult = await _stripePaymentService.CreateRefundAsync(refundRequest);
+                                if (stripeResult.IsSuccess)
+                                {
+                                    refundableCollection.MarkAsRefunded();
+                                    _collectionRepository.Update(refundableCollection);
+                                    collectionRefundProcessed = true;
+                                    collectionRefundAmount = refundableCollection.Amount.Amount;
+
+                                    _logger.LogInformation(
+                                        "CancelRsvp: Collection refund succeeded - CollectionId={CollectionId}, Amount=${Amount}",
+                                        refundableCollection.Id, collectionRefundAmount);
+                                }
+                                else
+                                {
+                                    collectionRefundProcessed = false;
+                                    warnings.Add($"Collection refund failed: {stripeResult.Error}");
+                                    _logger.LogWarning(
+                                        "CancelRsvp: Collection refund failed - CollectionId={CollectionId}, Error={Error}",
+                                        refundableCollection.Id, stripeResult.Error);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            collectionRefundProcessed = false;
+                            warnings.Add($"Collection refund error: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund collection (non-blocking) - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+                        }
+                    }
+
+                    // Phase 6A.137F: Handle sponsor refund
+                    bool? sponsorRefundProcessed = null;
+                    decimal? sponsorRefundAmount = null;
+
+                    if (request.RefundSponsors)
+                    {
+                        try
+                        {
+                            _logger.LogInformation(
+                                "CancelRsvp: Refunding sponsorship - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+
+                            var sponsors = await _sponsorRepository.GetByUserIdAndEventIdAsync(
+                                request.UserId, request.EventId, cancellationToken);
+
+                            // Only refund money sponsors that have been completed
+                            var refundableSponsor = sponsors?.FirstOrDefault(s =>
+                                s.Type == SponsorType.Money &&
+                                s.Status == SponsorStatus.Completed &&
+                                !string.IsNullOrEmpty(s.StripePaymentIntentId));
+
+                            if (refundableSponsor != null && refundableSponsor.Amount != null)
+                            {
+                                var refundAmountInCents = (long)(refundableSponsor.Amount.Amount * 100);
+                                var refundRequest = new CreateRefundRequest
+                                {
+                                    PaymentIntentId = refundableSponsor.StripePaymentIntentId!,
+                                    RegistrationId = refundableSponsor.Id,
+                                    AmountInCents = refundAmountInCents,
+                                    Reason = "requested_by_customer",
+                                    Metadata = new Dictionary<string, string>
+                                    {
+                                        ["sponsor_id"] = refundableSponsor.Id.ToString(),
+                                        ["refund_type"] = "user_cancellation_sponsor_refund"
+                                    }
+                                };
+
+                                var stripeResult = await _stripePaymentService.CreateRefundAsync(refundRequest);
+                                if (stripeResult.IsSuccess)
+                                {
+                                    refundableSponsor.MarkAsRefunded();
+                                    _sponsorRepository.Update(refundableSponsor);
+                                    sponsorRefundProcessed = true;
+                                    sponsorRefundAmount = refundableSponsor.Amount.Amount;
+
+                                    _logger.LogInformation(
+                                        "CancelRsvp: Sponsor refund succeeded - SponsorId={SponsorId}, Amount=${Amount}",
+                                        refundableSponsor.Id, sponsorRefundAmount);
+                                }
+                                else
+                                {
+                                    sponsorRefundProcessed = false;
+                                    warnings.Add($"Sponsor refund failed: {stripeResult.Error}");
+                                    _logger.LogWarning(
+                                        "CancelRsvp: Sponsor refund failed - SponsorId={SponsorId}, Error={Error}",
+                                        refundableSponsor.Id, stripeResult.Error);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            sponsorRefundProcessed = false;
+                            warnings.Add($"Sponsor refund error: {ex.Message}");
+                            _logger.LogError(ex,
+                                "CancelRsvp: Failed to refund sponsor (non-blocking) - EventId={EventId}, UserId={UserId}",
+                                request.EventId, request.UserId);
+                        }
                     }
 
                     // Phase 6A.81 Part 3: Different handling for Preliminary vs Confirmed registrations
@@ -166,7 +448,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             _logger.LogError(
                                 "[Phase 6A.81-Part3] Failed to abandon Preliminary registration - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
                                 registration.Id, abandonResult.Error, stopwatch.ElapsedMilliseconds);
-                            return Result.Failure(abandonResult.Error);
+                            return Result<CancelRsvpResult>.Failure(abandonResult.Error);
                         }
 
                         _registrationRepository.Update(registration);
@@ -193,11 +475,26 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             ["refund_type"] = "user_initiated_cancellation"
                         };
 
+                        // Phase 6A.137F-Fix5: Combine ALL successful bundled item refund amounts
+                        // so the refund email shows the correct total (ticket + add-ons + collection + sponsor).
+                        // Only include amounts from SUCCESSFUL refunds to avoid inflated totals.
+                        var totalAdditionalRefund = addOnRefundTotal
+                            + (collectionRefundProcessed == true ? collectionRefundAmount ?? 0m : 0m)
+                            + (sponsorRefundProcessed == true ? sponsorRefundAmount ?? 0m : 0m);
+
+                        _logger.LogInformation(
+                            "CancelRsvp: Combined additional refund total - AddOns=${AddOnTotal}, Collection=${CollectionAmount}, Sponsor=${SponsorAmount}, TotalAdditional=${TotalAdditional}",
+                            addOnRefundTotal,
+                            collectionRefundProcessed == true ? collectionRefundAmount ?? 0m : 0m,
+                            sponsorRefundProcessed == true ? sponsorRefundAmount ?? 0m : 0m,
+                            totalAdditionalRefund);
+
                         // Use shared refund service - handles Stripe call and RequestRefund() transition
                         var refundResult = await _refundService.ProcessRefundAsync(
                             registration,
                             "requested_by_customer",
                             metadata,
+                            totalAdditionalRefund,
                             cancellationToken);
 
                         if (refundResult.IsFailure)
@@ -206,7 +503,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             _logger.LogError(
                                 "[Phase 6A.92] Refund failed - RegId={RegId}, Error={Error}, Duration={ElapsedMs}ms",
                                 registration.Id, refundResult.Error, stopwatch.ElapsedMilliseconds);
-                            return Result.Failure($"Refund failed: {refundResult.Error}");
+                            return Result<CancelRsvpResult>.Failure($"Refund failed: {refundResult.Error}");
                         }
 
                         _registrationRepository.Update(registration);
@@ -216,9 +513,6 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                             registration.Id, refundResult.Value.StripeRefundId, refundResult.Value.AmountRefunded);
 
                         // Phase 6A.93: Also raise RegistrationCancelledEvent for paid cancellations
-                        // This triggers BOTH emails:
-                        // 1. RegistrationCancelledEventHandler -> Cancellation confirmation email
-                        // 2. RefundRequestedEventHandler -> Refund request acknowledgment email (already raised by RequestRefund())
                         @event.RaiseRegistrationCancelledEvent(request.UserId);
                         _eventRepository.Update(@event);
 
@@ -242,8 +536,6 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                         _registrationRepository.Remove(registration);
 
                         // Phase 6A.62 Fix: Raise domain event for email notification
-                        // The original CancelRegistration domain method was bypassed due to EF Core navigation issues,
-                        // but we still need to trigger the email notification via the domain event.
                         @event.RaiseRegistrationCancelledEvent(request.UserId);
                         _eventRepository.Update(@event);
 
@@ -264,10 +556,24 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand>
                     stopwatch.Stop();
 
                     _logger.LogInformation(
-                        "CancelRsvp COMPLETE: EventId={EventId}, UserId={UserId}, RegId={RegId}, DeletedCommitments={DeletedCommitments}, Duration={ElapsedMs}ms",
-                        request.EventId, request.UserId, registration.Id, request.DeleteSignUpCommitments, stopwatch.ElapsedMilliseconds);
+                        "CancelRsvp COMPLETE: EventId={EventId}, UserId={UserId}, RegId={RegId}, DeletedCommitments={DeletedCommitments}, DeletedFormResponses={DeletedFormResponses}, RefundedAddOns={RefundedAddOns}, Warnings={WarningCount}, Duration={ElapsedMs}ms",
+                        request.EventId, request.UserId, registration.Id, request.DeleteSignUpCommitments, request.DeleteFormResponses, request.RefundAddOnPurchases, warnings.Count, stopwatch.ElapsedMilliseconds);
 
-                    return Result.Success();
+                    return Result<CancelRsvpResult>.Success(new CancelRsvpResult(
+                        RegistrationCancelled: true,
+                        CommitmentsDeleted: commitmentsDeleted,
+                        FormResponsesDeleted: formResponsesDeleted,
+                        FormResponsesDeletedCount: formResponsesDeletedCount,
+                        AddOnRefundsProcessed: addOnRefundsProcessed,
+                        AddOnRefundedCount: addOnRefundsProcessed.HasValue ? addOnRefundedCount : null,
+                        AddOnFailedCount: addOnRefundsProcessed.HasValue ? addOnFailedCount : null,
+                        AddOnRefundTotal: addOnRefundsProcessed.HasValue ? addOnRefundTotal : null,
+                        // Phase 6A.137F: Include collection/sponsor refund results
+                        CollectionRefundProcessed: collectionRefundProcessed,
+                        CollectionRefundAmount: collectionRefundAmount,
+                        SponsorRefundProcessed: sponsorRefundProcessed,
+                        SponsorRefundAmount: sponsorRefundAmount,
+                        Warnings: warnings.Count > 0 ? warnings : null));
                 }
             }
             catch (Exception ex)

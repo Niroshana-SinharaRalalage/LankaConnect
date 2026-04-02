@@ -28,7 +28,17 @@ public record RsvpToEventCommand(
     decimal? DonationAmount = null,
     string? DonorName = null,
     string? DonorPhone = null,
-    string? DonorNotes = null
+    string? DonorNotes = null,
+    // Phase 6A.137D: Optional add-ons bundled with registration checkout
+    // C2 Guard: Add-on failures are isolated — registration succeeds even if add-on creation fails.
+    List<AddOnSelectionDto>? AddOnSelections = null,
+    // Phase 6A.137E: Optional collection (event fund) contribution during registration
+    decimal? CollectionAmount = null,
+    string? CollectionNotes = null,
+    // Phase 6A.137E: Optional money sponsorship during registration
+    decimal? SponsorAmount = null,
+    string? SponsorOrganization = null,
+    string? SponsorNotes = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>
@@ -38,4 +48,13 @@ public record AttendeeDto(
     string Name,
     AgeCategory AgeCategory,
     Gender? Gender = null
+);
+
+/// <summary>
+/// Phase 6A.137D: Add-on selection during registration.
+/// DefinitionId references the AddOnDefinition; Quantity is the number of units.
+/// </summary>
+public record AddOnSelectionDto(
+    Guid DefinitionId,
+    int Quantity
 );

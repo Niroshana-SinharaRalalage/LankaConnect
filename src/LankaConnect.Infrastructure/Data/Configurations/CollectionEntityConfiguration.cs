@@ -18,6 +18,7 @@ public class CollectionEntityConfiguration : IEntityTypeConfiguration<Collection
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         // Foreign keys

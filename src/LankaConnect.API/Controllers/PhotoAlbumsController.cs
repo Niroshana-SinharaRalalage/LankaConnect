@@ -13,6 +13,7 @@ using LankaConnect.Application.Events.Commands.PhotoAlbums.BulkDeleteAlbumPhotos
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SetAlbumCoverPhoto;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.DeletePhotoAlbum;
 using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification;
+using LankaConnect.Application.Events.Commands.PhotoAlbums.UploadAlbumVideo;
 using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumByEventId;
 using LankaConnect.Application.Events.Queries.PhotoAlbums.GetAlbumPhotos;
 using LankaConnect.Application.Events.Queries.PhotoAlbums.DownloadAlbumZip;
@@ -244,6 +245,70 @@ public class PhotoAlbumsController : BaseController<PhotoAlbumsController>
             ImageData: imageData,
             FileName: image.FileName,
             Caption: caption);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Upload a video to a photo album.
+    /// Requires a video file and a thumbnail image. Video is stored as-is (no transcoding).
+    /// Thumbnail is processed (EXIF stripped, resized to 150x150 WebP).
+    /// </summary>
+    /// <param name="eventId">The event ID (for route consistency).</param>
+    /// <param name="albumId">The album ID to upload to.</param>
+    /// <param name="video">The video file to upload (MP4, WebM, or MOV, max 500 MB).</param>
+    /// <param name="thumbnail">A thumbnail image for the video (JPEG, PNG, GIF, or WebP, max 10 MB).</param>
+    /// <param name="caption">Optional caption for the video.</param>
+    /// <param name="durationSeconds">Optional video duration in seconds.</param>
+    /// <returns>The uploaded media metadata.</returns>
+    [HttpPost("{albumId:guid}/videos")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(AlbumPhotoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [RequestSizeLimit(500L * 1024 * 1024)] // 500 MB for video uploads
+    public async Task<IActionResult> UploadAlbumVideo(
+        Guid eventId, Guid albumId,
+        IFormFile video, IFormFile thumbnail,
+        [FromForm] string? caption = null,
+        [FromForm] long? durationSeconds = null)
+    {
+        if (video == null || video.Length == 0)
+            return BadRequest("Video file is required");
+
+        if (thumbnail == null || thumbnail.Length == 0)
+            return BadRequest("Thumbnail image is required");
+
+        var userId = User.GetUserId();
+        var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+
+        // Read video data into memory
+        using var videoStream = new MemoryStream();
+        await video.CopyToAsync(videoStream);
+        var videoData = videoStream.ToArray();
+
+        // Read thumbnail data into memory
+        using var thumbStream = new MemoryStream();
+        await thumbnail.CopyToAsync(thumbStream);
+        var thumbnailData = thumbStream.ToArray();
+
+        Logger.LogInformation(
+            "Uploading video to album {AlbumId} for event {EventId} by user {UserId} ({UserName}), FileName={FileName}, VideoSize={VideoSize}, ThumbSize={ThumbSize}",
+            albumId, eventId, userId, userName, video.FileName, videoData.Length, thumbnailData.Length);
+
+        var command = new UploadAlbumVideoCommand(
+            AlbumId: albumId,
+            UploaderId: userId,
+            UploaderName: userName,
+            VideoData: videoData,
+            VideoFileName: video.FileName,
+            ThumbnailData: thumbnailData,
+            ThumbnailFileName: thumbnail.FileName,
+            Caption: caption,
+            DurationSeconds: durationSeconds);
 
         var result = await Mediator.Send(command);
 

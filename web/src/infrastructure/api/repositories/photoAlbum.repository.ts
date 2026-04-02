@@ -123,6 +123,37 @@ export class PhotoAlbumRepository {
   }
 
   /**
+   * Upload a video to an album with a thumbnail image.
+   * Uses 10-minute timeout (videos up to 500 MB need more than the default 30s).
+   * Supports optional onUploadProgress callback for progress indicators.
+   */
+  async uploadVideo(
+    eventId: string,
+    albumId: string,
+    videoFile: File,
+    thumbnailFile: File,
+    caption?: string,
+    durationSeconds?: number,
+    onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void,
+  ): Promise<AlbumPhotoDto> {
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    formData.append('thumbnail', thumbnailFile);
+    if (caption) formData.append('caption', caption);
+    if (durationSeconds != null) formData.append('durationSeconds', String(durationSeconds));
+
+    return await apiClient.post<AlbumPhotoDto>(
+      `${this.albumPath(eventId, albumId)}/videos`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 10 * 60 * 1000, // 10 minutes for large video uploads (up to 500 MB)
+        onUploadProgress,
+      },
+    );
+  }
+
+  /**
    * Delete a photo from an album
    */
   async deletePhoto(eventId: string, albumId: string, photoId: string): Promise<void> {

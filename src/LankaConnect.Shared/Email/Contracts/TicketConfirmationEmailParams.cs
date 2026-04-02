@@ -252,6 +252,84 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Financial Breakdown Properties (Phase 6A.137C)
+
+    /// <summary>
+    /// Whether the payment includes a financial breakdown (ticket + donation).
+    /// Controls {{#if HasFinancialBreakdown}} conditional in template.
+    /// </summary>
+    public bool HasFinancialBreakdown { get; set; } = false;
+
+    /// <summary>
+    /// Whether the registration includes a bundled donation.
+    /// Controls {{#if HasDonation}} conditional in template.
+    /// </summary>
+    public bool HasDonation { get; set; } = false;
+
+    /// <summary>
+    /// Ticket subtotal (AmountPaid minus donation, formatted as "140.00").
+    /// </summary>
+    public string TicketSubtotal { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bundled donation amount formatted as "25.00".
+    /// </summary>
+    public string DonationAmount { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Currency code (e.g., "USD") for the financial breakdown.
+    /// </summary>
+    public string BreakdownCurrency { get; set; } = "USD";
+
+    #endregion
+
+    #region Add-On Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes bundled add-on purchases.
+    /// </summary>
+    public bool HasAddOns { get; set; } = false;
+
+    /// <summary>
+    /// Pre-rendered HTML rows for add-on line items (e.g., "T-Shirt x2 — $30.00").
+    /// </summary>
+    public string AddOnBreakdownHtml { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Total add-on amount formatted as "30.00".
+    /// </summary>
+    public string AddOnTotal { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Collection Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes a bundled collection contribution.
+    /// </summary>
+    public bool HasCollection { get; set; } = false;
+
+    /// <summary>
+    /// Collection contribution amount formatted as "10.00".
+    /// </summary>
+    public string CollectionBreakdownAmount { get; set; } = string.Empty;
+
+    #endregion
+
+    #region Sponsor Breakdown Properties (Phase 6A.137F)
+
+    /// <summary>
+    /// Whether the registration includes a bundled sponsorship.
+    /// </summary>
+    public bool HasSponsor { get; set; } = false;
+
+    /// <summary>
+    /// Sponsorship amount formatted as "25.00".
+    /// </summary>
+    public string SponsorBreakdownAmount { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -317,7 +395,23 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
             // Event image parameters
             { "HasEventImage", HasEventImage },
-            { "EventImageUrl", EventImageUrl }
+            { "EventImageUrl", EventImageUrl },
+
+            // Phase 6A.137C: Financial breakdown parameters
+            { "HasFinancialBreakdown", HasFinancialBreakdown },
+            { "HasDonation", HasDonation },
+            { "TicketSubtotal", TicketSubtotal },
+            { "DonationAmount", DonationAmount },
+            { "BreakdownCurrency", BreakdownCurrency },
+
+            // Phase 6A.137F: Add-on, collection, sponsor breakdown parameters
+            { "HasAddOns", HasAddOns },
+            { "AddOnBreakdownHtml", AddOnBreakdownHtml },
+            { "AddOnTotal", AddOnTotal },
+            { "HasCollection", HasCollection },
+            { "CollectionBreakdownAmount", CollectionBreakdownAmount },
+            { "HasSponsor", HasSponsor },
+            { "SponsorBreakdownAmount", SponsorBreakdownAmount }
         };
 
         return dict;
@@ -505,6 +599,57 @@ public class TicketConfirmationEmailParams : IEmailParameters
     {
         HasSignupForms = !string.IsNullOrWhiteSpace(url);
         SignupFormsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137C: Sets financial breakdown showing ticket + donation itemization.
+    /// Only applicable when registration includes a bundled donation.
+    /// </summary>
+    public TicketConfirmationEmailParams WithFinancialBreakdown(
+        decimal ticketSubtotal,
+        decimal donationAmount,
+        string currency)
+    {
+        HasFinancialBreakdown = true;
+        HasDonation = donationAmount > 0;
+        TicketSubtotal = ticketSubtotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        DonationAmount = donationAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        BreakdownCurrency = currency;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets add-on breakdown in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithAddOnBreakdown(string addOnBreakdownHtml, decimal addOnTotal)
+    {
+        HasFinancialBreakdown = true;
+        HasAddOns = true;
+        AddOnBreakdownHtml = addOnBreakdownHtml;
+        AddOnTotal = addOnTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets collection contribution in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithCollectionBreakdown(decimal collectionAmount)
+    {
+        HasFinancialBreakdown = true;
+        HasCollection = true;
+        CollectionBreakdownAmount = collectionAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 6A.137F: Sets sponsorship in the financial section.
+    /// </summary>
+    public TicketConfirmationEmailParams WithSponsorBreakdown(decimal sponsorAmount)
+    {
+        HasFinancialBreakdown = true;
+        HasSponsor = true;
+        SponsorBreakdownAmount = sponsorAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         return this;
     }
 

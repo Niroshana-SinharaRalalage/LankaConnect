@@ -2,7 +2,10 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -91,11 +94,41 @@ public class ItemSponsorRecordedEventHandler
                                     capturedEventId);
                             }
 
-                            // TODO: Create email template and TypedEmailParams for item sponsor acknowledgments
-                            _logger.LogInformation(
-                                "ItemSponsorRecorded EMAIL PLACEHOLDER: Would send acknowledgment to {Email} for sponsor {SponsorId} on event '{EventTitle}', ItemName={ItemName}, Organization={Organization}",
-                                capturedSponsorEmail, capturedSponsorId, eventTitle,
-                                capturedItemName, capturedSponsorOrganization ?? "(none)");
+                            // Phase 6A.137B: Build event details URL from configuration
+                            var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                            var baseUrl = configuration["Application:FrontendBaseUrl"]
+                                ?? configuration["FrontendBaseUrl"]
+                                ?? "https://lankaconnect.com";
+                            var eventDetailsUrl = $"{baseUrl}/events/{capturedEventId}";
+
+                            // Phase 6A.137B: Send item sponsor acknowledgment email
+                            var emailService = scope.ServiceProvider.GetRequiredService<ITypedEmailService>();
+                            var emailParams = SponsorConfirmationEmailParams.CreateForItemSponsor(
+                                sponsorName: capturedSponsorName,
+                                sponsorEmail: capturedSponsorEmail,
+                                sponsorOrganization: capturedSponsorOrganization,
+                                eventTitle: eventTitle,
+                                itemName: capturedItemName,
+                                itemDescription: capturedItemDescription,
+                                estimatedValue: capturedEstimatedValue,
+                                recordedAt: capturedRecordedAt,
+                                eventDetailsUrl: eventDetailsUrl
+                            );
+
+                            var result = await emailService.SendEmailAsync(emailParams, CancellationToken.None);
+
+                            if (result.Success)
+                            {
+                                _logger.LogInformation(
+                                    "ItemSponsorRecorded EMAIL SENT: Email={Email}, SponsorId={SponsorId}, ItemName={ItemName}, EventTitle={EventTitle}",
+                                    capturedSponsorEmail, capturedSponsorId, capturedItemName, eventTitle);
+                            }
+                            else
+                            {
+                                _logger.LogError(
+                                    "ItemSponsorRecorded EMAIL FAILED: Email={Email}, SponsorId={SponsorId}, Errors={Errors}",
+                                    capturedSponsorEmail, capturedSponsorId, string.Join(", ", result.Errors));
+                            }
                         }
                         catch (Exception ex)
                         {

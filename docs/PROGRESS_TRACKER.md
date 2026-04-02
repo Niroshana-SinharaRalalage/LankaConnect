@@ -1,9 +1,57 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-02 - Phase 7A.1: WhatsApp Integration Foundation*
+*Last Updated: 2026-04-02 - Phase 7A.2: WhatsApp Send Infrastructure*
 
 ## 🎯 Current Session Status (2026-04-02)
 
-### Phase 7A.1: WhatsApp Integration Foundation
+### Phase 7A.2: WhatsApp Send Infrastructure
+
+**Status**: ✅ **DEPLOYED** (commit `205c6231`)
+
+**Classification**: New Feature — WhatsApp send infrastructure, CQRS commands/queries, API controllers, phone verification.
+
+**Scope**: Complete application + infrastructure layer services, API endpoints, and 56 unit tests. 37 files, ~4,500 lines. Users can opt in and manage preferences but no event notifications sent yet.
+
+**Application Layer** (15 new files):
+| # | Type | Description |
+|---|------|-------------|
+| 1 | Interface | `IWhatsAppService` — Send template, send to phone, broadcast |
+| 2 | Interface | `IWhatsAppSendStrategy` — Provider abstraction (ACS) |
+| 3 | Interface | `IPhoneVerificationService` — SMS verification |
+| 4 | Interface | `IWhatsAppWebhookProcessor` — Delivery status processing |
+| 5 | Options | `WhatsAppOptions` — Clean Architecture settings |
+| 6 | Command | `EnableWhatsAppCommand` + handler |
+| 7 | Command | `DisableWhatsAppCommand` + handler |
+| 8 | Command | `RequestPhoneVerificationCommand` + handler |
+| 9 | Command | `VerifyWhatsAppPhoneCommand` + handler |
+| 10 | Command | `UpdateWhatsAppPreferencesCommand` + handler |
+| 11 | Command | `SendTestWhatsAppCommand` + handler (admin) |
+| 12 | Query | `GetWhatsAppPreferencesQuery` + handler + DTO |
+| 13 | Query | `GetWhatsAppMetricsQuery` + handler + DTO |
+| 14 | Query | `GetWhatsAppTemplatesQuery` + handler + DTO |
+| 15 | Query | `GetWhatsAppMessageHistoryQuery` + handler + DTO |
+
+**Infrastructure Layer** (4 new services):
+| # | Service | Description |
+|---|---------|-------------|
+| 1 | `AcsWhatsAppStrategy` | Azure.Communication.Messages with lazy client, 429 retry, phone masking |
+| 2 | `WhatsAppService` | Feature flag → prefs → dedup → template → send → persist |
+| 3 | `SmsPhoneVerificationService` | Phone verification via WA template fallback |
+| 4 | `WhatsAppWebhookProcessor` | ACS CloudEvents parsing, status updates, audit trail |
+
+**API Layer** (3 controllers):
+| # | Controller | Endpoints |
+|---|-----------|-----------|
+| 1 | `WhatsAppController` | GET/POST/PUT preferences, enable, disable, verify |
+| 2 | `WhatsAppAdminController` | GET metrics/templates/messages, POST test-message |
+| 3 | `WhatsAppWebhookController` | POST status (Event Grid validated) |
+
+**Tests**: 56 application tests + 77 domain tests = **133 WhatsApp tests total**.
+
+**NuGet Added**: `Azure.Communication.Messages` v1.1.0
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.1: WhatsApp Integration Foundation
 
 **Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
 

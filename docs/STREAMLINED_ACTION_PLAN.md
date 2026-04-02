@@ -7,11 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.1 (2026-04-02)
+## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.2 (2026-04-02)
+**Date**: 2026-04-02
+**Session**: Phase 7A.2 — WhatsApp Send Infrastructure
+**Status**: ✅ **DEPLOYED** (commit `205c6231`)
+**Scope**: Complete send infrastructure: IWhatsAppService + AcsWhatsAppStrategy (Azure.Communication.Messages v1.1.0, lazy client, 429 retry), WhatsAppService (feature flag, prefs, dedup, persist), phone verification, webhook processor, 6 CQRS commands, 4 queries, 3 API controllers (user + admin + webhook), 56 application tests (133 total). Users can opt in. Next: Phase 7A.3 (Event Handlers).
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.1 (2026-04-02)
 **Date**: 2026-04-02
 **Session**: Phase 7A.1 — WhatsApp Integration Foundation
 **Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
-**Scope**: Complete domain + infrastructure foundation for WhatsApp as parallel notification channel. 4 domain entities, 3 enums, 2 domain events, 3 repository interfaces, 4 EF configs, 3 repo implementations, EF migration (4 tables + 14 seeded templates), WhatsAppSettings, WhatsAppTemplateContract, 77 unit tests. Feature flag OFF — zero behavior change. Next: Phase 7A.2 (Send Infrastructure).
+**Scope**: Domain + infrastructure foundation. 4 entities, 3 enums, 2 events, 3 repos, 4 EF configs, migration (4 tables + 14 templates), 77 domain tests. Feature flag OFF.
 
 ---
 

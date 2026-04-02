@@ -118,6 +118,15 @@ public class SendNewsletterCommandHandler : ICommandHandler<SendNewsletterComman
                     request.Id,
                     jobId);
 
+                // Phase 7A.3: Queue WhatsApp broadcast job in parallel (fire-and-forget)
+                var waJobId = _backgroundJobClient.Enqueue<NewsletterWhatsAppJob>(
+                    job => job.ExecuteAsync(request.Id));
+
+                _logger.LogInformation(
+                    "[Phase 7A] SendNewsletter: Queued NewsletterWhatsAppJob - NewsletterId={NewsletterId}, JobId={JobId}",
+                    request.Id,
+                    waJobId);
+
                 stopwatch.Stop();
                 _logger.LogInformation(
                     "SendNewsletter COMPLETE: NewsletterId={NewsletterId}, User={UserId}, JobId={JobId}, Duration={ElapsedMs}ms (emails will be sent asynchronously in background)",

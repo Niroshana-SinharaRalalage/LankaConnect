@@ -358,6 +358,10 @@ public static class DependencyInjection
         // Phase 6A.74: Newsletter Background Jobs
         services.AddTransient<NewsletterEmailJob>();
 
+        // Phase 7A.3: WhatsApp Background Jobs
+        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.NewsletterWhatsAppJob>();
+        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.EventDetailsWhatsAppJob>();
+
         // Phase 6A.61: Event Notification Background Jobs
         services.AddTransient<LankaConnect.Application.Events.BackgroundJobs.EventNotificationEmailJob>();
 

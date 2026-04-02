@@ -3,11 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT 🔄 DEPLOYING
+## 🎯 CURRENT SESSION STATUS - ALBUM UI FIXES 🔄 DEPLOYING
+**Date**: 2026-04-01
+**Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
+**Progress**: 🔄 **DEPLOYING** — Three fixes: (1) Added "Albums" quick-nav pill button on public event page. (2) Gated Albums section on isUserRegistered || isOrganizer. (3) Changed "N photos" → "N items" labels.
+**Status**: 🔄 **DEPLOYING** — Commit `726b24c4`. Frontend deploying to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT ✅ DEPLOYED
 **Date**: 2026-04-01
 **Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
-**Progress**: 🔄 **DEPLOYING** — Two issues: (1) Bug: Proxy buffered entire body via arrayBuffer() → OOM for 67+ MB uploads → HTTP 500. Fix: stream via ReadableStream + explicit Content-Length. (2) Feature: video size limit 100 MB → 500 MB across all layers (frontend, backend, Kestrel, FormOptions).
-**Status**: 🔄 **DEPLOYING** — Commit `c49d57c4`. Backend + frontend deploying to Azure staging. Pending verification with large video upload.
+**Progress**: ✅ **DEPLOYED** — Three root causes fixed: (1) Proxy arrayBuffer() → OOM; switched to ReadableStream streaming. (2) Video limit 100→500 MB across all layers. (3) Next.js middleware truncated body at 10 MB; excluded api/proxy from middleware matcher.
+**Status**: ✅ **DEPLOYED** — Commits `c49d57c4` → `9040baa5`. Backend + frontend deployed to Azure staging.
 
 ---
 

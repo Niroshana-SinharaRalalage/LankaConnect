@@ -7,10 +7,18 @@
 
 ---
 
-## 🔄 CURRENT STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT (2026-04-01)
+## 🔄 CURRENT STATUS - ALBUM UI FIXES (2026-04-01)
+**Date**: 2026-04-01
+**Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
+**Status**: 🔄 **DEPLOYING** (commit `726b24c4`)
+**Scope**: Three album UI fixes: (1) Added "Albums" quick-nav pill button with scroll targeting. (2) Gated "After Event Albums" section on (isUserRegistered || isOrganizer) — was visible to all visitors. (3) Changed "N photos" to "N items" since albums contain both photos and videos.
+
+---
+
+## ✅ PREVIOUS STATUS - VIDEO UPLOAD PROXY STREAMING + 500 MB LIMIT (2026-04-01)
 **Date**: 2026-04-01
 **Session**: Phase 6A.138-Fix2 — Video upload proxy streaming + 500 MB limit increase
-**Status**: 🔄 **DEPLOYING** (commit `c49d57c4`)
+**Status**: ✅ **DEPLOYED** (commits `c49d57c4` → `9040baa5`)
 **Scope**: Two issues: (1) Bug: 67+ MB video uploads returned 500 because proxy buffered entire body via arrayBuffer() causing OOM in Node.js. Fix: stream body via ReadableStream with explicit Content-Length forwarding. (2) Feature: video size limit increased from 100 MB to 500 MB across all layers (frontend, backend controller, Kestrel, FormOptions, backend service). Axios timeout increased to 10 min.
 
 ---

@@ -5,7 +5,7 @@
 
 ### Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
 
-**Status**: 🔄 **DEPLOYING** (commit `c49d57c4`)
+**Status**: ✅ **DEPLOYED** (commits `c49d57c4` → `9040baa5`)
 
 **Classification**: Bug fix + Feature enhancement — Two issues:
 1. **Bug (Critical)**: 67+ MB video uploads returned HTTP 500 because Next.js proxy buffered entire body via `arrayBuffer()` causing OOM. Fixed: stream body via ReadableStream with explicit Content-Length forwarding.
@@ -30,8 +30,29 @@
 | 9 | Backend | `appsettings.Staging.json` | Kestrel MaxRequestBodySize: 104857600→524288000 |
 | 10 | Backend | `appsettings.Production.json` | Kestrel MaxRequestBodySize: 104857600→524288000 |
 
-**Deployment**: 🔄 Backend + Frontend deploying to Azure staging
-**Verification**: Pending — test with 67+ MB video through staging UI
+**Deployment**: ✅ Backend + Frontend deployed to Azure staging
+**Verification**: ✅ Azure container logs confirmed middleware body truncation was the 3rd root cause; excluded api/proxy from middleware
+
+---
+
+### Phase 6A.139: Album UI Fixes (Nav Button, Registration Gate, Media Count)
+
+**Status**: 🔄 **DEPLOYING** (commit `726b24c4`)
+
+**Classification**: Bug fixes + Feature gap — Three album UI issues:
+
+1. **No "Albums" quick-nav button**: Added `Albums` pill button to the quick-nav bar with scroll-to targeting
+2. **Albums visible to all visitors**: Gated on `(isUserRegistered || isOrganizer)` — previously no auth check
+3. **"N photos" includes videos**: Changed label to "N items" across manage page, public page, and photos page
+
+**Changes**:
+| # | File | Fix |
+|---|------|-----|
+| 1 | `page.tsx` | Added Albums entry to quick-nav array + `id="albums"` on section div |
+| 2 | `page.tsx` | Added `(isUserRegistered \|\| isOrganizer)` gate to Albums section + nav button |
+| 3 | `page.tsx` + `PhotoAlbumManagementTab.tsx` | Changed "photo(s)" → "item(s)" labels |
+
+**Deployment**: 🔄 Frontend deploying to Azure staging
 
 ---
 

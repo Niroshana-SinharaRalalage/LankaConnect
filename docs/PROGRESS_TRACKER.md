@@ -1,9 +1,44 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-03 - Phase 7A.3: WhatsApp Event Handler Integration*
+*Last Updated: 2026-04-03 - Phase 7A.4: WhatsApp Frontend Integration*
 
 ## 🎯 Current Session Status (2026-04-03)
 
-### Phase 7A.3: WhatsApp Event Handler Integration
+### Phase 7A.4: WhatsApp Frontend Integration
+
+**Status**: ✅ **DEPLOYED** (commit `ef55e8cf`)
+
+**Classification**: New Feature — Complete frontend for WhatsApp opt-in, preferences, and sharing. TypeScript types matching backend DTOs, API repository, React Query hooks, 3 components, integrated into Profile/Event/Newsletter pages.
+
+**Scope**: 7 new files + 3 modified files = 10 files, ~1,326 lines.
+
+**New Files** (7):
+| # | File | Description |
+|---|------|-------------|
+| 1 | `web/src/infrastructure/api/types/whatsapp.types.ts` | TypeScript DTOs + enums matching backend (4 enums, 8 response DTOs, 5 request DTOs) |
+| 2 | `web/src/presentation/lib/validators/whatsapp.schemas.ts` | Zod schemas: E.164 phone, 6-digit code, 9 notification toggles + quiet hours |
+| 3 | `web/src/infrastructure/api/repositories/whatsapp.repository.ts` | API client: 6 user + 4 admin endpoints, singleton pattern |
+| 4 | `web/src/presentation/hooks/useWhatsApp.ts` | React Query hooks: 5 user + 4 admin, cache invalidation, toast notifications |
+| 5 | `web/src/presentation/components/features/whatsapp/WhatsAppOptIn.tsx` | 3-state opt-in widget: disabled → unverified → verified |
+| 6 | `web/src/presentation/components/features/whatsapp/WhatsAppPreferences.tsx` | 9 notification toggles + quiet hours + cultural timing |
+| 7 | `web/src/presentation/components/features/whatsapp/WhatsAppShareButton.tsx` | wa.me deep link share button for events |
+
+**Modified Files** (3):
+- `web/src/app/(dashboard)/profile/page.tsx` — Added WhatsAppOptIn + WhatsAppPreferences sections
+- `web/src/app/events/[id]/page.tsx` — Added WhatsAppShareButton next to event badges
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` — Added WhatsApp info banner
+
+**Key Design Decisions**:
+- String-based enums matching backend `JsonStringEnumConverter` output
+- `toE164()` helper strips formatting before API submission
+- WhatsAppOptIn handles all 3 states internally (no parent state management needed)
+- WhatsAppPreferences only renders when user is fully verified
+- WhatsAppShareButton uses `wa.me/?text=` deep link (no phone target = user picks contact)
+- Newsletter WhatsApp sending is automatic for opted-in users (no checkbox needed)
+- Build verified: `npx next build` — zero errors
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.3: WhatsApp Event Handler Integration
 
 **Status**: ✅ **DEPLOYED** (commit `f1e198b5`)
 

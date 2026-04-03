@@ -20,14 +20,16 @@ import {
   Users,
   MessageSquare,
   Activity,
+  MessageCircle,
 } from 'lucide-react';
 import { ApprovalsTable } from './ApprovalsTable';
 import { UserManagementTab } from './users';
 import { SupportTab } from './support';
 import { EmailMetricsTab } from './email-metrics';
+import { WhatsAppMetricsTab } from './whatsapp-metrics';
 import type { PendingRoleUpgradeDto } from '@/infrastructure/api/types/approvals.types';
 
-type AdminSection = 'approvals' | 'users' | 'support' | 'email-metrics';
+type AdminSection = 'approvals' | 'users' | 'support' | 'email-metrics' | 'whatsapp-metrics';
 
 interface AdminTasksTabProps {
   pendingApprovals: PendingRoleUpgradeDto[];
@@ -71,6 +73,12 @@ export function AdminTasksTab({
           icon={Activity}
           label="Email Metrics"
         />
+        <TabButton
+          active={activeSection === 'whatsapp-metrics'}
+          onClick={() => setActiveSection('whatsapp-metrics')}
+          icon={MessageCircle}
+          label="WhatsApp Metrics"
+        />
       </div>
 
       {/* Content Area - Full Width */}
@@ -112,6 +120,13 @@ export function AdminTasksTab({
         {activeSection === 'email-metrics' && (
           <div className="max-h-[700px] overflow-y-auto">
             <EmailMetricsTab />
+          </div>
+        )}
+
+        {/* WhatsApp Metrics Section - Phase 7A.5 */}
+        {activeSection === 'whatsapp-metrics' && (
+          <div className="max-h-[700px] overflow-y-auto">
+            <WhatsAppMetricsTab />
           </div>
         )}
       </div>

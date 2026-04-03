@@ -204,7 +204,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationConfirmedEvent(Guid.NewGuid(), attendeeId, 1, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150); // Allow Task.Run to complete
+        await Task.Delay(500); // Allow Task.Run to complete (500ms for CI runners)
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -228,7 +228,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationConfirmedEvent(eventId, attendeeId, 1, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -252,7 +252,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationConfirmedEvent(eventId, attendeeId, 2, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(attendeeId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -298,7 +298,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 50m, 1, DateTime.UtcNow);
 
         await handler.Handle(new DomainEventNotification<PaymentCompletedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -325,7 +325,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 50m, 1, DateTime.UtcNow);
 
         await handler.Handle(new DomainEventNotification<PaymentCompletedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -353,7 +353,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 75m, 2, DateTime.UtcNow);
 
         await handler.Handle(new DomainEventNotification<PaymentCompletedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -389,7 +389,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new EventCancelledEvent(eventId, "Venue issue", DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<EventCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.BroadcastToEventAttendeesAsync(It.IsAny<Guid>(), It.IsAny<string>(),
@@ -410,7 +410,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new EventCancelledEvent(eventId, "Venue issue", DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<EventCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.BroadcastToEventAttendeesAsync(eventId, It.IsAny<string>(),
@@ -447,7 +447,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationCancelledEvent(Guid.NewGuid(), attendeeId, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -471,7 +471,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationCancelledEvent(eventId, attendeeId, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -495,7 +495,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationCancelledEvent(eventId, attendeeId, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(attendeeId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -533,7 +533,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new UserCommittedToSignUpEvent(
             Guid.NewGuid(), userId, "Food plates", 5, null, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<UserCommittedToSignUpEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -558,7 +558,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new UserCommittedToSignUpEvent(
             signUpListId, userId, "Food plates", 5, null, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<UserCommittedToSignUpEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -586,7 +586,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new UserCommittedToSignUpEvent(
             signUpListId, userId, "Volunteer slot", null, 3, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<UserCommittedToSignUpEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(),
@@ -625,7 +625,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentUpdatedEvent(
             Guid.NewGuid(), userId, 5, 8, null, null, "Food plates", DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<CommitmentUpdatedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -650,7 +650,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentUpdatedEvent(
             signUpItemId, userId, 5, 8, null, null, "Food plates", DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<CommitmentUpdatedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -676,7 +676,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentUpdatedEvent(
             signUpItemId, userId, 5, 8, null, null, "Food plates", DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<CommitmentUpdatedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -714,7 +714,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentCancelledEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, Guid.NewGuid(), "Food plates", 5, null);
         await handler.Handle(new DomainEventNotification<CommitmentCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -739,7 +739,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentCancelledEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, signUpListId, "Food plates", 5, null);
         await handler.Handle(new DomainEventNotification<CommitmentCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -765,7 +765,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new CommitmentCancelledEvent(
             Guid.NewGuid(), Guid.NewGuid(), userId, signUpListId, "Food plates", 5, null);
         await handler.Handle(new DomainEventNotification<CommitmentCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -810,7 +810,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 50m, DateTime.UtcNow, 0m);
 
         await handler.Handle(new DomainEventNotification<RefundRequestedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -838,7 +838,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 75m, DateTime.UtcNow, 10m);
 
         await handler.Handle(new DomainEventNotification<RefundRequestedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -866,7 +866,7 @@ public class WhatsAppEventHandlerTests
             "pi_test", 50m, DateTime.UtcNow, 0m);
 
         await handler.Handle(new DomainEventNotification<RefundRequestedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         // Handler still calls SendTemplateMessageAsync (uses null-coalescing fallback title)
         _mockWhatsAppService.Verify(
@@ -913,7 +913,7 @@ public class WhatsAppEventHandlerTests
             "re_test", 50m, DateTime.UtcNow, 0m);
 
         await handler.Handle(new DomainEventNotification<RefundCompletedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -941,7 +941,7 @@ public class WhatsAppEventHandlerTests
             "re_completed", 75m, DateTime.UtcNow, 10m);
 
         await handler.Handle(new DomainEventNotification<RefundCompletedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -977,7 +977,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new EventPublishedEvent(eventId, DateTime.UtcNow, Guid.NewGuid());
         await handler.Handle(new DomainEventNotification<EventPublishedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.BroadcastToEventAttendeesAsync(It.IsAny<Guid>(), It.IsAny<string>(),
@@ -998,7 +998,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new EventPublishedEvent(eventId, DateTime.UtcNow, Guid.NewGuid());
         await handler.Handle(new DomainEventNotification<EventPublishedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.BroadcastToEventAttendeesAsync(eventId, It.IsAny<string>(),
@@ -1037,7 +1037,7 @@ public class WhatsAppEventHandlerTests
         var domainEvent = new AnonymousRegistrationConfirmedEvent(
             eventId, "guest@test.com", 2, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageToPhoneAsync(It.IsAny<string>(), It.IsAny<string>(),
@@ -1065,7 +1065,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new AnonymousRegistrationConfirmedEvent(eventId, email, 2, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageToPhoneAsync(It.IsAny<string>(), It.IsAny<string>(),
@@ -1094,7 +1094,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new AnonymousRegistrationConfirmedEvent(eventId, email, 2, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageToPhoneAsync(phoneNumber, It.IsAny<string>(),
@@ -1119,7 +1119,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new AnonymousRegistrationConfirmedEvent(eventId, email, 1, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(150);
+        await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageToPhoneAsync(It.IsAny<string>(), It.IsAny<string>(),

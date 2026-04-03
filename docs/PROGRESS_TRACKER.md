@@ -1,9 +1,54 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-02 - Phase 7A.2: WhatsApp Send Infrastructure*
+*Last Updated: 2026-04-03 - Phase 7A.3: WhatsApp Event Handler Integration*
 
-## 🎯 Current Session Status (2026-04-02)
+## 🎯 Current Session Status (2026-04-03)
 
-### Phase 7A.2: WhatsApp Send Infrastructure
+### Phase 7A.3: WhatsApp Event Handler Integration
+
+**Status**: ✅ **DEPLOYED** (commit `f1e198b5`)
+
+**Classification**: New Feature — 13 WhatsApp notification handlers parallel to existing email handlers. Uses fire-and-forget pattern with IServiceScopeFactory [FIX C6]. Email handlers completely untouched.
+
+**Scope**: 13 new handler/job files + 2 modified files + 2 test files = 17 files, ~3,070 lines.
+
+**Event Handlers** (11 new files in `Application/Events/EventHandlers/`):
+| # | Handler | Domain Event | Template | Pattern |
+|---|---------|-------------|----------|---------|
+| 1 | `RegistrationConfirmedWhatsAppHandler` | RegistrationConfirmedEvent | event_registration_confirmed | Fire-and-forget |
+| 2 | `PaymentCompletedWhatsAppHandler` | PaymentCompletedEvent | event_ticket_confirmation | Fire-and-forget |
+| 3 | `EventCancelledWhatsAppHandler` | EventCancelledEvent | event_cancelled | Broadcast |
+| 4 | `RegistrationCancelledWhatsAppHandler` | RegistrationCancelledEvent | registration_cancelled | Fire-and-forget |
+| 5 | `UserCommittedToSignUpWhatsAppHandler` | UserCommittedToSignUpEvent | signup_commitment_confirmed | Fire-and-forget |
+| 6 | `CommitmentUpdatedWhatsAppHandler` | CommitmentUpdatedEvent | signup_commitment_updated | Fire-and-forget |
+| 7 | `CommitmentCancelledWhatsAppHandler` | CommitmentCancelledEvent | signup_commitment_cancelled | Fire-and-forget |
+| 8 | `RefundRequestedWhatsAppHandler` | RefundRequestedEvent | refund_initiated | Fire-and-forget |
+| 9 | `RefundCompletedWhatsAppHandler` | RefundCompletedEvent | refund_completed | Fire-and-forget |
+| 10 | `EventPublishedWhatsAppHandler` | EventPublishedEvent | new_event_announcement | Broadcast |
+| 11 | `AnonymousRegistrationWhatsAppHandler` | AnonymousRegistrationConfirmedEvent | event_registration_confirmed | Phone-based |
+
+**Background Jobs** (2 new files in `Application/Communications/BackgroundJobs/`):
+| # | Job | Trigger | Description |
+|---|-----|---------|-------------|
+| 12 | `NewsletterWhatsAppJob` | SendNewsletterCommand (Hangfire) | Broadcasts to event attendees opted in for Newsletter |
+| 13 | `EventDetailsWhatsAppJob` | Manual admin trigger | Broadcasts event update to opted-in attendees |
+
+**Modified Files**:
+- `SendNewsletterCommandHandler.cs` — Added NewsletterWhatsAppJob enqueue alongside email
+- `DependencyInjection.cs` — Registered 2 background jobs as Transient
+
+**Tests**: 86 handler tests + 30 background job tests = **116 new WhatsApp tests**. Running total: **249 WhatsApp tests** (77 domain + 56 app Phase 7A.2 + 116 Phase 7A.3).
+
+**Key Design Decisions**:
+- All handlers use `IServiceScopeFactory` + `Task.Run()` to avoid ObjectDisposedException [FIX C6]
+- Variables captured BEFORE `Task.Run` lambda to prevent closure on disposed objects
+- Fail-silent pattern: exceptions logged but never thrown (prevents transaction rollback)
+- Anonymous users (no UserId) skip WhatsApp for refund/payment handlers
+- Newsletter/EventDetails use Hangfire background jobs (not domain events)
+- `WhatsAppTemplateContract` constants used for all template names and parameter keys
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.2: WhatsApp Send Infrastructure
 
 **Status**: ✅ **DEPLOYED** (commit `205c6231`)
 

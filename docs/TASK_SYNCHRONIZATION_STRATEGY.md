@@ -3,11 +3,18 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.4 ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.5 ✅ DEPLOYED
+**Date**: 2026-04-03
+**Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
+**Progress**: ✅ **DEPLOYED** — Admin WhatsApp metrics dashboard (Overview, Templates, Messages, Test Send). 5th tab in AdminTasksTab. All 5 WhatsApp phases complete (~58 files, ~10,000 lines, 249 tests). API verified: all endpoints responding correctly. Feature flag OFF by design — go-live requires Meta template approval + ACS config.
+**Status**: ✅ **DEPLOYED** — Commit `d60512bb`. Frontend deployed to Azure staging. WhatsApp integration feature-complete.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.4 ✅ DEPLOYED
 **Date**: 2026-04-03
 **Session**: Phase 7A.4 — WhatsApp Frontend Integration
-**Progress**: ✅ **DEPLOYED** — Complete frontend: TypeScript types + Zod validators + API repository + React Query hooks + 3 components (WhatsAppOptIn 3-state, WhatsAppPreferences 9 toggles, WhatsAppShareButton wa.me link). Integrated into Profile page, Event detail page, Newsletter form. Build verified: zero errors.
-**Status**: ✅ **DEPLOYED** — Commit `ef55e8cf`. Frontend pushed to develop. Next: Phase 7A.5 (Admin + Go-Live).
+**Status**: ✅ **DEPLOYED** — Commit `ef55e8cf`. Frontend types, hooks, 3 components, page integrations.
 
 ---
 

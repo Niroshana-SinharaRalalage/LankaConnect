@@ -7,11 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.4 (2026-04-03)
+## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.5 (2026-04-03)
+**Date**: 2026-04-03
+**Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
+**Status**: ✅ **DEPLOYED** (commit `d60512bb`)
+**Scope**: Admin WhatsApp metrics dashboard (4 sections: Overview stat cards + template breakdown, Templates expandable list with Meta approval status, Messages paginated history, Test Send). Integrated as 5th tab in AdminTasksTab. All 5 WhatsApp phases complete. Go-live requires: Meta template approval, ACS configuration, feature flag enable. Total: ~58 new files, ~10,000 lines, 249 tests.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.4 (2026-04-03)
 **Date**: 2026-04-03
 **Session**: Phase 7A.4 — WhatsApp Frontend Integration
 **Status**: ✅ **DEPLOYED** (commit `ef55e8cf`)
-**Scope**: Complete frontend: TypeScript types (4 enums, 13 DTOs), Zod validators (E.164 phone, 6-digit code), API repository (10 endpoints), React Query hooks (9 hooks with cache invalidation + toasts), 3 components (WhatsAppOptIn 3-state, WhatsAppPreferences 9 toggles, WhatsAppShareButton wa.me link). Integrated into Profile page, Event detail page, Newsletter form. Build verified: zero errors. Next: Phase 7A.5 (Admin + Go-Live).
+**Scope**: Complete frontend: types, validators, repository, hooks, 3 components, page integrations.
 
 ---
 

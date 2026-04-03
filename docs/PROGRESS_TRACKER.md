@@ -1,9 +1,49 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-03 - Phase 7A.4: WhatsApp Frontend Integration*
+*Last Updated: 2026-04-03 - Phase 7A.5: WhatsApp Admin Dashboard + Go-Live Readiness*
 
 ## 🎯 Current Session Status (2026-04-03)
 
-### Phase 7A.4: WhatsApp Frontend Integration
+### Phase 7A.5: WhatsApp Admin Dashboard + Go-Live Readiness
+
+**Status**: ✅ **DEPLOYED** (commit `d60512bb`)
+
+**Classification**: New Feature — Admin WhatsApp metrics dashboard with 4 sections (Overview, Templates, Messages, Test Send). Integrated as 5th tab in AdminTasksTab.
+
+**Scope**: 2 new files + 1 modified file = 3 files, ~760 lines.
+
+**New Files**:
+| # | File | Description |
+|---|------|-------------|
+| 1 | `web/src/presentation/components/features/admin/whatsapp-metrics/WhatsAppMetricsTab.tsx` | 4-section admin dashboard: Overview (stat cards + template breakdown), Templates (expandable rows with status/category/params), Messages (paginated table), Test Send (phone + template selector) |
+| 2 | `web/src/presentation/components/features/admin/whatsapp-metrics/index.ts` | Barrel export |
+
+**Modified Files**:
+- `web/src/presentation/components/features/admin/AdminTasksTab.tsx` — Added WhatsApp Metrics as 5th admin tab with MessageCircle icon
+
+**API Verification** (2026-04-03):
+- `GET /api/whatsapp/preferences` → 204 (no preferences set) ✅
+- `POST /api/whatsapp/enable` → 400 "WhatsApp messaging is currently disabled" (feature flag OFF) ✅
+- `POST /api/whatsapp/disable` → 400 "preferences not found" (user never enabled) ✅
+- `POST /api/whatsapp/verify/request` → 400 "enable WhatsApp first" ✅
+- `GET /api/whatsapp-admin/*` → 403 (EventOrganizer role, not Admin) ✅
+- Frontend deploy: ✅ success (GitHub Actions run #23932387312)
+
+**Go-Live Checklist**:
+- [x] Phase 7A.1: Foundation (4 DB tables, 14 templates, domain entities, 77 tests)
+- [x] Phase 7A.2: Send infrastructure (CQRS, controllers, phone verification, 56 tests)
+- [x] Phase 7A.3: Event handlers (13 WhatsApp handlers, 116 tests)
+- [x] Phase 7A.4: Frontend (types, hooks, 3 components, page integrations)
+- [x] Phase 7A.5: Admin dashboard (metrics, templates, messages, test send)
+- [ ] Meta template approval (5-7 business days — submit during go-live)
+- [ ] Set `WhatsAppSettings:Enabled=true` in Azure env vars
+- [ ] Configure ACS Advanced Messaging connection string
+- [ ] End-to-end test with real phone number
+
+**Total WhatsApp Phase 7A Stats**: ~58 new files, ~10,000 lines, 249 unit tests, 5 deployable phases.
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.4: WhatsApp Frontend Integration
 
 **Status**: ✅ **DEPLOYED** (commit `ef55e8cf`)
 

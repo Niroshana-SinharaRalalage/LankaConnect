@@ -8,6 +8,8 @@ import { ProfilePhotoSection } from '@/presentation/components/features/profile/
 import { BasicInfoSection } from '@/presentation/components/features/profile/BasicInfoSection';
 import { CulturalInterestsSection } from '@/presentation/components/features/profile/CulturalInterestsSection';
 import { PreferredMetroAreasSection } from '@/presentation/components/features/profile/PreferredMetroAreasSection';
+import { WhatsAppOptIn } from '@/presentation/components/features/whatsapp/WhatsAppOptIn';
+import { WhatsAppPreferences } from '@/presentation/components/features/whatsapp/WhatsAppPreferences';
 import { Button } from '@/presentation/components/ui/Button';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { useRouter } from 'next/navigation';
@@ -121,6 +123,10 @@ export default function ProfilePage() {
 
             {/* Preferred Metro Areas Section - Phase 5B */}
             <PreferredMetroAreasSection />
+
+            {/* WhatsApp Notifications - Phase 7A.4 */}
+            <WhatsAppOptIn />
+            <WhatsAppPreferences />
 
             {/* Future Sections - Phase 3+ */}
             {/* <BasicInfoSection /> */}

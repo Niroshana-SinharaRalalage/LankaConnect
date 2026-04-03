@@ -48,6 +48,8 @@ import { useMyAddOnPurchasesMine } from '@/presentation/hooks/useAddOns';
 import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
 import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
 import { AlbumStatus } from '@/infrastructure/api/types/events.types';
+// Phase 7A.4: WhatsApp share button
+import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp/WhatsAppShareButton';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -727,6 +729,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                 {/* Registration Badge - Issue #2: Use registration status directly */}
                 <RegistrationBadge registrationStatus={registrationDetails?.status as any} compact={false} />
+
+                {/* Phase 7A.4: WhatsApp Share */}
+                <WhatsAppShareButton
+                  eventTitle={event.title}
+                  eventUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                  eventDate={event.startDate ? formatEventDate(event.startDate, event.timeZoneId) : undefined}
+                  eventLocation={event.city || undefined}
+                />
               </div>
 
               {/* Quick Navigation Bar — anchor links to sections below */}

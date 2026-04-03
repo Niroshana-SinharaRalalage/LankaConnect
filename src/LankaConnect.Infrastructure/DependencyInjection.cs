@@ -157,6 +157,7 @@ public static class DependencyInjection
 
         // Phase 7A: WhatsApp Integration
         services.Configure<WhatsAppSettings>(configuration.GetSection(WhatsAppSettings.SectionName));
+        services.Configure<WhatsAppOptions>(configuration.GetSection(WhatsAppOptions.SectionName));
         services.AddScoped<IWhatsAppMessageRepository, WhatsAppMessageRepository>();
         services.AddScoped<IWhatsAppTemplateRepository, WhatsAppTemplateRepository>();
         services.AddScoped<IUserWhatsAppPreferencesRepository, UserWhatsAppPreferencesRepository>();

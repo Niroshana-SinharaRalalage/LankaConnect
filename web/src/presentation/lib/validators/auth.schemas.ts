@@ -63,6 +63,9 @@ export const registerSchema = z
       message: 'You must agree to the terms and conditions',
     }),
     agreeToApproval: z.boolean().optional(),
+    // Phase 7A.6A: WhatsApp opt-in fields
+    whatsAppEnabled: z.boolean().optional(),
+    whatsAppPhoneNumber: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -79,6 +82,19 @@ export const registerSchema = z
     {
       message: 'You must acknowledge that Event Organizer requests require admin approval',
       path: ['agreeToApproval'],
+    }
+  )
+  .refine(
+    (data) => {
+      // Phase 7A.6A: If WhatsApp enabled, phone number must be valid E.164
+      if (data.whatsAppEnabled) {
+        return /^\+[1-9]\d{1,14}$/.test(data.whatsAppPhoneNumber || '');
+      }
+      return true;
+    },
+    {
+      message: 'Please enter a valid phone number in international format (e.g., +14155551234)',
+      path: ['whatsAppPhoneNumber'],
     }
   );
 

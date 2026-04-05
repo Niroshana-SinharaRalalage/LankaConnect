@@ -13,6 +13,8 @@ import { Input } from '@/presentation/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
 import { MetroAreasSelector } from '@/presentation/components/features/auth/MetroAreasSelector';
+import { WhatsAppInlineOptIn } from '@/presentation/components/features/whatsapp/WhatsAppInlineOptIn';
+import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
 
 /**
  * RegisterForm Component
@@ -37,16 +39,25 @@ export function RegisterForm() {
     defaultValues: {
       selectedRole: 'GeneralUser',
       preferredMetroAreaIds: [],
+      whatsAppEnabled: false,
+      whatsAppPhoneNumber: '',
     },
   });
 
   const selectedRole = watch('selectedRole');
   const preferredMetroAreaIds = watch('preferredMetroAreaIds') || [];
+  const whatsAppEnabled = watch('whatsAppEnabled') || false;
+  const whatsAppPhoneNumber = watch('whatsAppPhoneNumber') || '';
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setApiError(null);
       setSuccessMessage(null);
+
+      // Phase 7A.6A: Include WhatsApp phone if opted in
+      const whatsAppPhone = data.whatsAppEnabled && data.whatsAppPhoneNumber
+        ? toE164(data.whatsAppPhoneNumber)
+        : undefined;
 
       await authRepository.register({
         email: data.email,
@@ -55,6 +66,7 @@ export function RegisterForm() {
         lastName: data.lastName,
         selectedRole: data.selectedRole === 'GeneralUser' ? UserRole.GeneralUser : UserRole.EventOrganizer,
         preferredMetroAreaIds: data.preferredMetroAreaIds,
+        whatsAppPhoneNumber: whatsAppPhone || undefined,
       });
 
       // Phase 6A.53: Redirect to login page with info message about email verification
@@ -325,6 +337,21 @@ export function RegisterForm() {
               )}
             </div>
           )}
+
+          {/* Phase 7A.6A: WhatsApp Opt-In */}
+          <WhatsAppInlineOptIn
+            enabled={whatsAppEnabled}
+            onEnabledChange={(enabled) => {
+              setValue('whatsAppEnabled', enabled, { shouldValidate: true });
+              if (!enabled) {
+                setValue('whatsAppPhoneNumber', '', { shouldValidate: false });
+              }
+            }}
+            phoneNumber={whatsAppPhoneNumber}
+            onPhoneNumberChange={(phone) => setValue('whatsAppPhoneNumber', phone, { shouldValidate: true })}
+            phoneError={errors.whatsAppPhoneNumber?.message}
+            disabled={isSubmitting}
+          />
 
           <div className="flex items-start space-x-2">
             <input

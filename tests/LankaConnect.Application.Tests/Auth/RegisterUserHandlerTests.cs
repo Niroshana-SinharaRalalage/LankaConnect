@@ -10,6 +10,8 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.Communications.Entities;
 using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Application.Tests.Auth;
@@ -21,6 +23,7 @@ public class RegisterUserHandlerTests
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<ILogger<RegisterUserHandler>> _mockLogger;
     private readonly Mock<IMediator> _mockMediator;
+    private readonly Mock<IUserWhatsAppPreferencesRepository> _mockWhatsAppPreferencesRepository;
     private readonly RegisterUserHandler _handler;
 
     public RegisterUserHandlerTests()
@@ -30,6 +33,7 @@ public class RegisterUserHandlerTests
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockLogger = new Mock<ILogger<RegisterUserHandler>>();
         _mockMediator = new Mock<IMediator>();
+        _mockWhatsAppPreferencesRepository = new Mock<IUserWhatsAppPreferencesRepository>();
 
         // Setup default success response for email verification
         _mockMediator
@@ -46,7 +50,8 @@ public class RegisterUserHandlerTests
             _mockPasswordHashingService.Object,
             _mockUnitOfWork.Object,
             _mockLogger.Object,
-            _mockMediator.Object);
+            _mockMediator.Object,
+            _mockWhatsAppPreferencesRepository.Object);
     }
 
     [Fact]
@@ -450,5 +455,208 @@ public class RegisterUserHandlerTests
             u => u.CommitAsync(It.IsAny<CancellationToken>()),
             Times.Once,
             "CommitAsync should be called to save user and dispatch verification email via domain events");
+    }
+
+    // === Phase 7A.6A: WhatsApp Opt-In During Registration ===
+
+    [Fact]
+    public async Task Handle_WithWhatsAppPhone_ShouldCreateWhatsAppPreferences()
+    {
+        // Arrange
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.GeneralUser,
+            null,
+            WhatsAppPhoneNumber: "+14155551234");
+
+        var email = Email.Create(request.Email).Value;
+        UserWhatsAppPreferences? capturedPrefs = null;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockWhatsAppPreferencesRepository
+            .Setup(r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()))
+            .Callback<UserWhatsAppPreferences, CancellationToken>((prefs, _) => capturedPrefs = prefs);
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        capturedPrefs.Should().NotBeNull();
+        capturedPrefs!.WhatsAppEnabled.Should().BeTrue();
+        capturedPrefs.WhatsAppPhoneNumber.Should().Be("+14155551234");
+        capturedPrefs.PhoneVerified.Should().BeFalse();
+
+        _mockWhatsAppPreferencesRepository.Verify(
+            r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutWhatsAppPhone_ShouldNotCreateWhatsAppPreferences()
+    {
+        // Arrange
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.GeneralUser);
+
+        var email = Email.Create(request.Email).Value;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _mockWhatsAppPreferencesRepository.Verify(
+            r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithEmptyWhatsAppPhone_ShouldNotCreateWhatsAppPreferences()
+    {
+        // Arrange
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.GeneralUser,
+            null,
+            WhatsAppPhoneNumber: "");
+
+        var email = Email.Create(request.Email).Value;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        _mockWhatsAppPreferencesRepository.Verify(
+            r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidWhatsAppPhone_ShouldSkipPreferencesButSucceed()
+    {
+        // Arrange: Invalid E.164 should be caught by domain method, but registration still succeeds
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.GeneralUser,
+            null,
+            WhatsAppPhoneNumber: "not-a-phone");
+
+        var email = Email.Create(request.Email).Value;
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert: Registration succeeds, but WhatsApp preferences not created
+        result.IsSuccess.Should().BeTrue();
+        _mockWhatsAppPreferencesRepository.Verify(
+            r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithWhatsAppPhone_ShouldCommitAtomically()
+    {
+        // Arrange: Verify that user + WhatsApp preferences are committed in single transaction
+        var request = new RegisterUserCommand(
+            "test@example.com",
+            "ValidPassword123!",
+            "John",
+            "Doe",
+            UserRole.GeneralUser,
+            null,
+            WhatsAppPhoneNumber: "+14155551234");
+
+        var email = Email.Create(request.Email).Value;
+        var callOrder = new List<string>();
+
+        _mockUserRepository.Setup(r => r.GetByEmailAsync(email, It.IsAny<CancellationToken>()))
+                          .ReturnsAsync((User?)null);
+
+        _mockPasswordHashingService.Setup(p => p.ValidatePasswordStrength(request.Password))
+                                  .Returns(Result.Success());
+
+        _mockPasswordHashingService.Setup(p => p.HashPassword(request.Password))
+                                  .Returns(Result<string>.Success("hashedpassword123"));
+
+        _mockUserRepository.Setup(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+                          .Callback<User, CancellationToken>((_, _) => callOrder.Add("UserAdd"));
+
+        _mockWhatsAppPreferencesRepository
+            .Setup(r => r.AddAsync(It.IsAny<UserWhatsAppPreferences>(), It.IsAny<CancellationToken>()))
+            .Callback<UserWhatsAppPreferences, CancellationToken>((_, _) => callOrder.Add("WhatsAppAdd"));
+
+        _mockUnitOfWork.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>()))
+                      .Callback<CancellationToken>(_ => callOrder.Add("Commit"))
+                      .ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(request, CancellationToken.None);
+
+        // Assert: User added first, then WhatsApp prefs, then single Commit
+        result.IsSuccess.Should().BeTrue();
+        callOrder.Should().ContainInOrder("UserAdd", "WhatsAppAdd", "Commit");
+        callOrder.Count(c => c == "Commit").Should().Be(1, "should be exactly one CommitAsync call");
     }
 }

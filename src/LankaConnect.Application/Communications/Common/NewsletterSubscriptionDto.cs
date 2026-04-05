@@ -29,6 +29,11 @@ public class NewsletterSubscriptionDto
     /// Timestamp of subscription
     /// </summary>
     public DateTime Timestamp { get; set; }
+
+    /// <summary>
+    /// Phase 7A.6C: Optional WhatsApp phone number for WhatsApp notifications (E.164 format)
+    /// </summary>
+    public string? WhatsAppPhoneNumber { get; set; }
 }
 
 /// <summary>

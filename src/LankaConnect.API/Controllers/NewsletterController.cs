@@ -83,7 +83,8 @@ public class NewsletterController : ControllerBase
             var command = new SubscribeToNewsletterCommand(
                 request.Email,
                 metroAreaIds,
-                request.ReceiveAllLocations);
+                request.ReceiveAllLocations,
+                request.WhatsAppPhoneNumber);
 
             // Execute command
             var result = await _mediator.Send(command, cancellationToken);

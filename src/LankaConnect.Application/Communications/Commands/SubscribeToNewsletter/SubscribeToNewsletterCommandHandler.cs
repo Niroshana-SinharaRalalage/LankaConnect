@@ -111,10 +111,11 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "SubscribeToNewsletter START: Email={Email}, MetroAreaCount={MetroAreaCount}, ReceiveAll={ReceiveAll}",
+                "SubscribeToNewsletter START: Email={Email}, MetroAreaCount={MetroAreaCount}, ReceiveAll={ReceiveAll}, HasWhatsApp={HasWhatsApp}",
                 request.Email,
                 request.MetroAreaIds?.Count ?? 0,
-                request.ReceiveAllLocations);
+                request.ReceiveAllLocations,
+                !string.IsNullOrWhiteSpace(request.WhatsAppPhoneNumber));
 
             try
             {

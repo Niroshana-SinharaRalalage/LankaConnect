@@ -39,6 +39,8 @@ export function WhatsAppOptIn() {
   const requestVerificationMutation = useRequestVerification();
   const verifyPhoneMutation = useVerifyPhone();
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  // Phase 7A Phase 1: Track whether verification code was actually requested
+  const [codeSent, setCodeSent] = useState(false);
 
   // Enable form
   const enableForm = useForm<EnableWhatsAppFormData>({
@@ -56,6 +58,7 @@ export function WhatsAppOptIn() {
     const e164Phone = toE164(data.phoneNumber);
     await enableMutation.mutateAsync({ phoneNumber: e164Phone });
     enableForm.reset();
+    setCodeSent(false); // Reset code sent state for new enable
   };
 
   const handleVerify = async (data: VerifyPhoneFormData) => {
@@ -63,8 +66,9 @@ export function WhatsAppOptIn() {
     verifyForm.reset();
   };
 
-  const handleResendCode = async () => {
+  const handleSendCode = async () => {
     await requestVerificationMutation.mutateAsync();
+    setCodeSent(true);
   };
 
   const handleDisable = async () => {
@@ -161,9 +165,9 @@ export function WhatsAppOptIn() {
                   Phone verification required
                 </p>
                 <p className="text-xs text-gray-600">
-                  {preferences?.whatsAppPhoneNumber
-                    ? `A verification code has been sent to ${preferences.whatsAppPhoneNumber}`
-                    : 'Please verify your phone number to receive WhatsApp notifications'}
+                  {codeSent
+                    ? `A verification code has been sent to ${preferences?.whatsAppPhoneNumber || 'your phone'}`
+                    : 'Please send a verification code to verify your phone number'}
                 </p>
               </div>
             </div>
@@ -177,6 +181,28 @@ export function WhatsAppOptIn() {
                     : '1 hour'}
                   .
                 </p>
+              </div>
+            ) : !codeSent ? (
+              /* Phase 7A Phase 1: Explicit "Send Verification Code" button before showing code input */
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Your WhatsApp number is <strong>{preferences?.whatsAppPhoneNumber}</strong>.
+                  Click below to receive a verification code via SMS.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleSendCode}
+                  disabled={requestVerificationMutation.isPending}
+                  className="w-full"
+                  style={{ backgroundColor: '#25D366', color: 'white' }}
+                >
+                  {requestVerificationMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Phone className="h-4 w-4 mr-2" />
+                  )}
+                  Send Verification Code
+                </Button>
               </div>
             ) : (
               <form onSubmit={verifyForm.handleSubmit(handleVerify)} className="space-y-3">
@@ -216,7 +242,7 @@ export function WhatsAppOptIn() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleResendCode}
+                    onClick={handleSendCode}
                     disabled={requestVerificationMutation.isPending}
                   >
                     {requestVerificationMutation.isPending ? (

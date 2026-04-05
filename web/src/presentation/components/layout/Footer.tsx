@@ -7,6 +7,8 @@ import { Logo } from '../atoms/Logo';
 import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
 import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { WhatsAppInlineOptIn } from '../features/whatsapp/WhatsAppInlineOptIn';
+import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
 
 interface FooterLinkProps {
   href: string;
@@ -60,6 +62,9 @@ const Footer: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   // Phase 6A.99: Server error message for inline display
   const [serverError, setServerError] = useState<string | null>(null);
+  // Phase 7A.6C: WhatsApp opt-in state
+  const [whatsAppEnabled, setWhatsAppEnabled] = useState(false);
+  const [whatsAppPhone, setWhatsAppPhone] = useState('');
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
@@ -136,6 +141,10 @@ const Footer: React.FC = () => {
           MetroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
           ReceiveAllLocations: receiveAllLocations,
           Timestamp: new Date().toISOString(),
+          // Phase 7A.6C: WhatsApp opt-in
+          ...(whatsAppEnabled && whatsAppPhone && {
+            WhatsAppPhoneNumber: toE164(whatsAppPhone),
+          }),
         }),
       });
 
@@ -150,6 +159,8 @@ const Footer: React.FC = () => {
         setEmail('');
         setSelectedMetroIds([]);
         setReceiveAllLocations(false);
+        setWhatsAppEnabled(false);
+        setWhatsAppPhone('');
 
         // Auto-clear success message after 10 seconds
         setTimeout(() => {
@@ -210,6 +221,21 @@ const Footer: React.FC = () => {
                   onMetrosChange={setSelectedMetroIds}
                   onReceiveAllChange={setReceiveAllLocations}
                   disabled={subscribeStatus === 'loading'}
+                />
+              </div>
+
+              {/* Phase 7A.6C: WhatsApp opt-in for newsletter subscribers */}
+              <div className="bg-white/95 p-4 rounded-lg text-gray-800">
+                <WhatsAppInlineOptIn
+                  enabled={whatsAppEnabled}
+                  onEnabledChange={(enabled) => {
+                    setWhatsAppEnabled(enabled);
+                    if (!enabled) setWhatsAppPhone('');
+                  }}
+                  phoneNumber={whatsAppPhone}
+                  onPhoneNumberChange={setWhatsAppPhone}
+                  disabled={subscribeStatus === 'loading'}
+                  description="Also receive community updates and event alerts via WhatsApp."
                 />
               </div>
 

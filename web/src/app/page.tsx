@@ -22,13 +22,13 @@ import {
   BookOpen,
   Lock,
   ChevronRight,
-  Globe,
 } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { Logo } from '@/presentation/components/atoms/Logo';
 
-// ─── Default theme — change this to user's chosen key after preview ───────────
-const DEFAULT_THEME_KEY = 'satellite-navy';
+// ─── Default theme ────────────────────────────────────────────────────────────
+const DEFAULT_THEME_KEY = 'brand-dark';
 
 // ─── Sub-brand definitions ────────────────────────────────────────────────────
 interface SubBrand {
@@ -128,7 +128,7 @@ export default function LankaConnectHome() {
       {/* ── Top nav bar ─────────────────────────────────────────────────── */}
       <nav className="relative z-20 flex items-center justify-between px-6 py-4 md:px-10">
         <div className="flex items-center gap-2">
-          <Globe className="h-5 w-5" style={{ color: theme.nodeFill }} />
+          <Logo size="sm" showText={false} />
           <span className="text-white font-bold text-lg tracking-tight">LankaConnect</span>
         </div>
         <div className="flex items-center gap-3">

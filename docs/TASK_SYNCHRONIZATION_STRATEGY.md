@@ -3,11 +3,18 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.5 ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C ✅ DEPLOYED
+**Date**: 2026-04-05
+**Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
+**Progress**: ✅ **DEPLOYED** — WhatsApp opt-in during registration (7A.6A), event registration (7A.6B), newsletter subscription (7A.6C). Fix misleading verification UI (explicit "Send Verification Code" button). CI fix: WhatsAppSettings__Enabled permanently in deploy-staging.yml. 10 modified files, ~170 lines. All 2,030 tests pass.
+**Status**: ✅ **DEPLOYED** — Commits `4b3dadfc`, `d24c1d90`, `0fc54b63`. API verified: newsletter with WA phone → 200, invalid phone → 400.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.5 ✅ DEPLOYED
 **Date**: 2026-04-03
 **Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
-**Progress**: ✅ **DEPLOYED** — Admin WhatsApp metrics dashboard (Overview, Templates, Messages, Test Send). 5th tab in AdminTasksTab. All 5 WhatsApp phases complete (~58 files, ~10,000 lines, 249 tests). API verified: all endpoints responding correctly. Feature flag OFF by design — go-live requires Meta template approval + ACS config.
-**Status**: ✅ **DEPLOYED** — Commit `d60512bb`. Frontend deployed to Azure staging. WhatsApp integration feature-complete.
+**Status**: ✅ **DEPLOYED** — Commit `d60512bb`. WhatsApp integration feature-complete.
 
 ---
 

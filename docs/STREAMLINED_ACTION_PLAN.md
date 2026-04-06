@@ -7,11 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - WHATSAPP INTEGRATION PHASE 7A.5 (2026-04-03)
+## 🔄 CURRENT STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C (2026-04-05)
+**Date**: 2026-04-05
+**Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
+**Status**: ✅ **DEPLOYED** (commits `4b3dadfc`, `d24c1d90`, `0fc54b63`)
+**Scope**: WhatsApp opt-in during registration (7A.6A), event registration (7A.6B), newsletter subscription (7A.6C). Fix misleading verification UI (Phase 1). CI fix for WhatsAppSettings env var. 10 modified files, ~170 lines. All 2,030 tests pass.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.5 (2026-04-03)
 **Date**: 2026-04-03
 **Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
 **Status**: ✅ **DEPLOYED** (commit `d60512bb`)
-**Scope**: Admin WhatsApp metrics dashboard (4 sections: Overview stat cards + template breakdown, Templates expandable list with Meta approval status, Messages paginated history, Test Send). Integrated as 5th tab in AdminTasksTab. All 5 WhatsApp phases complete. Go-live requires: Meta template approval, ACS configuration, feature flag enable. Total: ~58 new files, ~10,000 lines, 249 tests.
+**Scope**: Admin WhatsApp metrics dashboard (4 sections). All 5 WhatsApp phases complete. Total: ~58 new files, ~10,000 lines, 249 tests.
 
 ---
 

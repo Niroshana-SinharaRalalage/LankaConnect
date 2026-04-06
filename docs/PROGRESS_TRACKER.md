@@ -1,7 +1,35 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-03 - Phase 7A.5: WhatsApp Admin Dashboard + Go-Live Readiness*
+*Last Updated: 2026-04-05 - Phase 7A.6A-6C: WhatsApp Opt-In Expansion + Verification UI Fix*
 
-## 🎯 Current Session Status (2026-04-03)
+## 🎯 Current Session Status (2026-04-05)
+
+### Phase 7A.6A-6C: WhatsApp Opt-In Expansion + Verification UI Fix
+
+**Status**: ✅ **DEPLOYED** (commits `4b3dadfc`, `d24c1d90`, `0fc54b63`)
+
+**Classification**: Feature Enhancement — WhatsApp opt-in during registration, event registration, newsletter subscription + fix misleading verification UI.
+
+**Scope**: 10 modified files, ~170 lines.
+
+**Changes**:
+| Phase | Description |
+|-------|-------------|
+| 7A.6A | WhatsApp opt-in during user registration (RegisterForm + backend handler) |
+| Phase 1 | Fix misleading verification UI — explicit "Send Verification Code" button, `codeSent` state tracking |
+| 7A.6B | WhatsApp opt-in in EventRegistrationForm (both anonymous + authenticated flows) |
+| 7A.6C | WhatsApp opt-in in Footer newsletter form + backend DTO/command/validator |
+| CI Fix | `WhatsAppSettings__Enabled=true` added permanently to deploy-staging.yml |
+
+**API Verification** (2026-04-05):
+- Newsletter subscribe with WhatsApp phone → 200 ✅
+- Newsletter subscribe with invalid phone → 400 "E.164 format" validation ✅
+- Login → 200 ✅
+- Health check → Healthy ✅
+- All 2,030 tests pass (2,024 passed, 6 skipped) ✅
+
+---
+
+## ⏸️ Previous Session Status (2026-04-03)
 
 ### Phase 7A.5: WhatsApp Admin Dashboard + Go-Live Readiness
 

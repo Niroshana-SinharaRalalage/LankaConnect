@@ -137,7 +137,8 @@ public class WhatsAppEventHandlerTests
     /// Creates a Registration with a real RegistrationContact (with a valid phone number).
     /// </summary>
     private static LankaConnect.Domain.Events.Registration CreateRealRegistrationWithPhone(
-        Guid eventId, string email, string phoneNumber)
+        Guid eventId, string email, string phoneNumber,
+        string? whatsAppPhoneNumber = null, bool whatsAppOptedIn = false)
     {
         var regType = typeof(LankaConnect.Domain.Events.Registration);
         var ctor = regType.GetConstructor(
@@ -147,8 +148,9 @@ public class WhatsAppEventHandlerTests
         var registration = (LankaConnect.Domain.Events.Registration)ctor!.Invoke(null);
         SetPrivateProperty(registration, "EventId", eventId);
 
+        // Phase 7A.6D: Pass WhatsApp phone + opt-in flag to RegistrationContact
         var contact = LankaConnect.Domain.Events.ValueObjects.RegistrationContact
-            .Create(email, phoneNumber, null).Value;
+            .Create(email, phoneNumber, null, whatsAppPhoneNumber, whatsAppOptedIn).Value;
         SetPrivateProperty(registration, "Contact", contact);
 
         var attendee = LankaConnect.Domain.Events.ValueObjects.AttendeeDetails
@@ -1074,7 +1076,39 @@ public class WhatsAppEventHandlerTests
     }
 
     [Fact]
-    public async Task AnonymousRegistration_Handle_WithPhoneNumber_SendsToPhone()
+    public async Task AnonymousRegistration_Handle_WithWhatsAppOptIn_SendsToWhatsAppPhone()
+    {
+        var handler = new AnonymousRegistrationWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<AnonymousRegistrationWhatsAppHandler>().Object);
+
+        var eventId = Guid.NewGuid();
+        var email = "guest@test.com";
+        var phoneNumber = "+14155552671";
+        var whatsAppPhone = "+14155559999";
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        // Phase 7A.6D: Create registration with WhatsApp opt-in and WhatsApp phone
+        var registration = CreateRealRegistrationWithPhone(eventId, email, phoneNumber,
+            whatsAppPhoneNumber: whatsAppPhone, whatsAppOptedIn: true);
+        _mockRegistrationRepo
+            .Setup(r => r.GetAnonymousByEventAndEmailAsync(eventId, email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(registration);
+
+        var domainEvent = new AnonymousRegistrationConfirmedEvent(eventId, email, 2, DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<AnonymousRegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        // Should send to the WhatsApp-specific phone, not the general contact phone
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageToPhoneAsync(whatsAppPhone, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(), eventId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnonymousRegistration_Handle_WithPhoneButNoWhatsAppOptIn_SkipsSend()
     {
         var handler = new AnonymousRegistrationWhatsAppHandler(
             _mockScopeFactory.Object, CreateLogger<AnonymousRegistrationWhatsAppHandler>().Object);
@@ -1086,7 +1120,7 @@ public class WhatsAppEventHandlerTests
         _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateRealEvent(eventId));
 
-        // Create a real Registration with Contact phone number set via reflection
+        // Phase 7A.6D: Registration with phone but NO WhatsApp opt-in should be skipped
         var registration = CreateRealRegistrationWithPhone(eventId, email, phoneNumber);
         _mockRegistrationRepo
             .Setup(r => r.GetAnonymousByEventAndEmailAsync(eventId, email, It.IsAny<CancellationToken>()))
@@ -1097,9 +1131,9 @@ public class WhatsAppEventHandlerTests
         await Task.Delay(500);
 
         _mockWhatsAppService.Verify(
-            s => s.SendTemplateMessageToPhoneAsync(phoneNumber, It.IsAny<string>(),
-                It.IsAny<Dictionary<string, string>>(), eventId, It.IsAny<CancellationToken>()),
-            Times.Once);
+            s => s.SendTemplateMessageToPhoneAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

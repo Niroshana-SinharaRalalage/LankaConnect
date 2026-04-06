@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D ✅ DEPLOYED
+**Date**: 2026-04-06
+**Session**: Phase 7A.6D — WhatsApp Data Persistence for Event Registration + Newsletter
+**Progress**: ✅ **DEPLOYED** — Fixed 7 break points where frontend WhatsApp data was silently dropped by backend. `RegistrationContact` value object extended with `WhatsAppPhoneNumber`+`WhatsAppOptedIn` (JSONB, no migration). `NewsletterSubscriber` entity extended (migration added `whatsapp_phone_number` column). All commands, handlers, DTOs updated. `AnonymousRegistrationWhatsAppHandler` fixed to use opt-in phone + check flag. 15 files, ~240 lines, 2,031 tests pass.
+**Status**: ✅ **DEPLOYED** — Commits `f51e01d9`, `cd6b2eb5`. API verified: newsletter WA → 200, event reg WA → 200, invalid phone → 400. DB migration confirmed in Azure logs.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C ✅ DEPLOYED
 **Date**: 2026-04-05
 **Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
 **Progress**: ✅ **DEPLOYED** — WhatsApp opt-in during registration (7A.6A), event registration (7A.6B), newsletter subscription (7A.6C). Fix misleading verification UI (explicit "Send Verification Code" button). CI fix: WhatsAppSettings__Enabled permanently in deploy-staging.yml. 10 modified files, ~170 lines. All 2,030 tests pass.

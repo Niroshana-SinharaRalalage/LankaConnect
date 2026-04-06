@@ -1,7 +1,44 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-05 - Phase 7A.6A-6C: WhatsApp Opt-In Expansion + Verification UI Fix*
+*Last Updated: 2026-04-06 - Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter*
 
-## 🎯 Current Session Status (2026-04-05)
+## 🎯 Current Session Status (2026-04-06)
+
+### Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter
+
+**Status**: ✅ **DEPLOYED** (commits `f51e01d9`, `cd6b2eb5`)
+
+**Classification**: Feature Missing (Backend Data Persistence) — frontend collected WhatsApp data but backend silently dropped it. Fixed 7 break points across event registration and newsletter flows.
+
+**Scope**: 14 modified files + 1 EF migration = 15 total, ~240 lines.
+
+**Break Points Fixed**:
+| # | Layer | Fix |
+|---|-------|-----|
+| B1 | API DTO | `EventsController.cs` `RsvpRequest` — added `WhatsAppPhoneNumber` |
+| B2 | API DTO | `EventsController.cs` `AnonymousRegistrationRequest` — added `WhatsAppPhoneNumber` |
+| B3 | Command | `RsvpToEventCommand.cs` — added `WhatsAppPhoneNumber` param |
+| B4 | Command | `RegisterAnonymousAttendeeCommand.cs` — added `WhatsAppPhoneNumber` param |
+| B5 | Domain | `RegistrationContact.cs` — added `WhatsAppPhoneNumber` + `WhatsAppOptedIn`, E.164 validation |
+| B6 | Domain+Handler | `NewsletterSubscriber.cs` — added `WhatsAppPhoneNumber`; handler now persists it |
+| B7 | Handler Bug | `AnonymousRegistrationWhatsAppHandler.cs` — uses `Contact.WhatsAppPhoneNumber` + checks `WhatsAppOptedIn` |
+
+**Migration**: `20260406033337_Phase7A6D_AddWhatsAppPhoneToNewsletterSubscribers` — adds `whatsapp_phone_number VARCHAR(20) NULL` to `communications.newsletter_subscribers`. Applied ✅
+
+**Note**: `registrations` table needed NO migration — `contact` is JSONB via `ToJson()`, new fields serialize/deserialize automatically.
+
+**API Verification** (2026-04-06):
+- Newsletter subscribe with WhatsApp phone (`+14155559876`) → 200 ✅
+- Newsletter subscribe without WhatsApp → 200 ✅
+- Newsletter subscribe with invalid phone → 400 "E.164 format required" ✅
+- Anonymous event registration with WhatsApp (`+14155559999`) → 200 (Stripe checkout) ✅
+- Anonymous event registration without WhatsApp → 200 (Stripe checkout) ✅
+- DB migration confirmed in Azure logs: `ALTER TABLE communications.newsletter_subscribers ADD whatsapp_phone_number character varying(20)` ✅
+- Container logs: No errors ✅
+- All 2,031 tests pass (2,025 passed, 6 skipped) ✅
+
+---
+
+## ⏸️ Previous Session Status (2026-04-05)
 
 ### Phase 7A.6A-6C: WhatsApp Opt-In Expansion + Verification UI Fix
 

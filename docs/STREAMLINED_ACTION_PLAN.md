@@ -7,7 +7,15 @@
 
 ---
 
-## 🔄 CURRENT STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C (2026-04-05)
+## 🔄 CURRENT STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D (2026-04-06)
+**Date**: 2026-04-06
+**Session**: Phase 7A.6D — WhatsApp Data Persistence for Event Registration + Newsletter
+**Status**: ✅ **DEPLOYED** (commits `f51e01d9`, `cd6b2eb5`)
+**Scope**: Fixed 7 break points where backend silently dropped WhatsApp data from frontend. Domain value object + entity updated. EF migration for newsletter_subscribers. All commands, handlers, and controller DTOs updated. AnonymousRegistrationWhatsAppHandler fixed to use opt-in phone. 15 files, ~240 lines. All 2,031 tests pass.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C (2026-04-05)
 **Date**: 2026-04-05
 **Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
 **Status**: ✅ **DEPLOYED** (commits `4b3dadfc`, `d24c1d90`, `0fc54b63`)

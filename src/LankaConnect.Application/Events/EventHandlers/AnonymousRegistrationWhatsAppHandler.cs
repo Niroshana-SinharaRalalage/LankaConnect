@@ -58,15 +58,26 @@ public class AnonymousRegistrationWhatsAppHandler : INotificationHandler<DomainE
                     return;
                 }
 
-                // Try to get phone number from the anonymous registration contact info
+                // Phase 7A.6D: Get registration and check WhatsApp opt-in
                 var registration = await registrationRepository.GetAnonymousByEventAndEmailAsync(
                     eventId, attendeeEmail, CancellationToken.None);
 
-                var phoneNumber = registration?.Contact?.PhoneNumber;
+                // Check if user opted in to WhatsApp notifications
+                var whatsAppOptedIn = registration?.Contact?.WhatsAppOptedIn ?? false;
+                if (!whatsAppOptedIn)
+                {
+                    _logger.LogInformation(
+                        "[Phase 7A] WhatsApp AnonymousRegistration SKIPPED: Not opted in - EventId={EventId}, Email={Email}",
+                        eventId, attendeeEmail);
+                    return;
+                }
+
+                // Use WhatsApp-specific phone number (not general contact phone)
+                var phoneNumber = registration?.Contact?.WhatsAppPhoneNumber;
                 if (string.IsNullOrWhiteSpace(phoneNumber))
                 {
                     _logger.LogInformation(
-                        "[Phase 7A] WhatsApp AnonymousRegistration SKIPPED: No phone number available - EventId={EventId}, Email={Email}",
+                        "[Phase 7A] WhatsApp AnonymousRegistration SKIPPED: No WhatsApp phone number - EventId={EventId}, Email={Email}",
                         eventId, attendeeEmail);
                     return;
                 }

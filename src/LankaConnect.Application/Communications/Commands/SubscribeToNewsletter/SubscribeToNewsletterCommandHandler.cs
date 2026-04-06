@@ -231,10 +231,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                         request.ReceiveAllLocations,
                         cancellationToken);
 
+                    // Phase 7A.6D: Pass WhatsApp phone number
                     var reactivateResult = NewsletterSubscriber.Create(
                         email,
                         reactivateMetroAreaIds.ToList(),
-                        request.ReceiveAllLocations);
+                        request.ReceiveAllLocations,
+                        request.WhatsAppPhoneNumber);
 
                     if (!reactivateResult.IsSuccess)
                     {
@@ -272,10 +274,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                         request.ReceiveAllLocations,
                         cancellationToken);
 
+                    // Phase 7A.6D: Pass WhatsApp phone number
                     var createResult = NewsletterSubscriber.Create(
                         email,
                         metroAreaIds.ToList(),
-                        request.ReceiveAllLocations);
+                        request.ReceiveAllLocations,
+                        request.WhatsAppPhoneNumber);
 
                     if (!createResult.IsSuccess)
                     {

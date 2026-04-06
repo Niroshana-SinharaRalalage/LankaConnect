@@ -22,6 +22,9 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
     public bool IsActive { get; private set; }
     public bool IsConfirmed { get; private set; }
 
+    // Phase 7A.6D: WhatsApp phone number for newsletter notifications
+    public string? WhatsAppPhoneNumber { get; private set; }
+
     public string? ConfirmationToken { get; private set; }
     public DateTime? ConfirmationSentAt { get; private set; }
     public DateTime? ConfirmedAt { get; private set; }
@@ -66,10 +69,14 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
     /// Factory method to create a new newsletter subscription
     /// Phase 6A.64: Updated to accept collection of metro area IDs
     /// </summary>
+    /// <summary>
+    /// Phase 7A.6D: Updated to accept optional WhatsApp phone number
+    /// </summary>
     public static Result<NewsletterSubscriber> Create(
         Email email,
         IEnumerable<Guid> metroAreaIds,
-        bool receiveAllLocations)
+        bool receiveAllLocations,
+        string? whatsAppPhoneNumber = null)
     {
         var metroAreaIdsList = metroAreaIds?.ToList() ?? new List<Guid>();
 
@@ -88,7 +95,9 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
             IsConfirmed = false,
             ConfirmationToken = GenerateToken(),
             ConfirmationSentAt = DateTime.UtcNow,
-            UnsubscribeToken = GenerateToken()
+            UnsubscribeToken = GenerateToken(),
+            // Phase 7A.6D: Persist WhatsApp phone number
+            WhatsAppPhoneNumber = !string.IsNullOrWhiteSpace(whatsAppPhoneNumber) ? whatsAppPhoneNumber.Trim() : null
         };
 
         // Add metro area IDs if not receiving all locations

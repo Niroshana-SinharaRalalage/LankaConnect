@@ -38,7 +38,9 @@ public record RsvpToEventCommand(
     // Phase 6A.137E: Optional money sponsorship during registration
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
-    string? SponsorNotes = null
+    string? SponsorNotes = null,
+    // Phase 7A.6D: WhatsApp opt-in during registration
+    string? WhatsAppPhoneNumber = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>

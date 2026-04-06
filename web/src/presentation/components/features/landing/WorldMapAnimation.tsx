@@ -34,31 +34,78 @@ function px(lon: number, lat: number): [number, number] {
 
 // ─── Locations ────────────────────────────────────────────────────────────────
 export const SRI_LANKA_CITIES = [
-  { name: 'Colombo',     lat: 6.9271,  lon: 79.8612 },
-  { name: 'Kandy',       lat: 7.2906,  lon: 80.6337 },
-  { name: 'Galle',       lat: 6.0535,  lon: 80.2170 },
-  { name: 'Jaffna',      lat: 9.6615,  lon: 80.0255 },
-  { name: 'Trincomalee', lat: 8.5874,  lon: 81.2152 },
+  { name: 'Colombo',      lat: 6.9271,  lon: 79.8612 },  // Western Province
+  { name: 'Kandy',        lat: 7.2906,  lon: 80.6337 },  // Central Province
+  { name: 'Galle',        lat: 6.0535,  lon: 80.2170 },  // Southern Province
+  { name: 'Jaffna',       lat: 9.6615,  lon: 80.0255 },  // Northern Province
+  { name: 'Trincomalee',  lat: 8.5874,  lon: 81.2152 },  // Eastern Province
+  { name: 'Kurunegala',   lat: 7.4675,  lon: 80.3647 },  // North Western Province
+  { name: 'Anuradhapura', lat: 8.3114,  lon: 80.4037 },  // North Central Province
+  { name: 'Badulla',      lat: 6.9934,  lon: 81.0550 },  // Uva Province
+  { name: 'Ratnapura',    lat: 6.6828,  lon: 80.3992 },  // Sabaragamuwa Province
 ];
 
 export const US_HUBS = [
-  { name: 'California',    lat: 36.7783, lon: -119.4179 },
-  { name: 'New York',      lat: 40.7128, lon: -74.0060  },
-  { name: 'New Jersey',    lat: 40.0583, lon: -74.4057  },
-  { name: 'Texas',         lat: 31.9686, lon: -99.9018  },
-  { name: 'Virginia',      lat: 37.4316, lon: -78.6569  },
-  { name: 'Illinois',      lat: 40.6331, lon: -89.3985  },
-  { name: 'Washington',    lat: 47.7511, lon: -120.7401 },
-  { name: 'Ohio',          lat: 40.4173, lon: -82.9071  },
-  { name: 'Massachusetts', lat: 42.4072, lon: -71.3824  },
-  { name: 'Florida',       lat: 27.6648, lon: -81.5158  },
-  { name: 'Georgia',       lat: 32.1656, lon: -83.6431  },
-  { name: 'Maryland',      lat: 39.0458, lon: -76.6413  },
-  { name: 'Pennsylvania',  lat: 41.2033, lon: -77.1945  },
+  { name: 'California',     lat: 36.7783, lon: -119.4179 },  // 0
+  { name: 'New York',       lat: 40.7128, lon: -74.0060  },  // 1
+  { name: 'New Jersey',     lat: 40.0583, lon: -74.4057  },  // 2
+  { name: 'Texas',          lat: 31.9686, lon: -99.9018  },  // 3
+  { name: 'Virginia',       lat: 37.4316, lon: -78.6569  },  // 4
+  { name: 'Illinois',       lat: 40.6331, lon: -89.3985  },  // 5
+  { name: 'Washington',     lat: 47.7511, lon: -120.7401 },  // 6
+  { name: 'Ohio',           lat: 40.4173, lon: -82.9071  },  // 7
+  { name: 'Massachusetts',  lat: 42.4072, lon: -71.3824  },  // 8
+  { name: 'Florida',        lat: 27.6648, lon: -81.5158  },  // 9
+  { name: 'Georgia',        lat: 32.1656, lon: -83.6431  },  // 10
+  { name: 'Maryland',       lat: 39.0458, lon: -76.6413  },  // 11
+  { name: 'Pennsylvania',   lat: 41.2033, lon: -77.1945  },  // 12
+  { name: 'Michigan',       lat: 44.3148, lon: -85.6024  },  // 13
+  { name: 'North Carolina', lat: 35.7596, lon: -79.0193  },  // 14
+  { name: 'Arizona',        lat: 34.0489, lon: -111.0937 },  // 15
+  { name: 'Colorado',       lat: 39.5501, lon: -105.7821 },  // 16
+  { name: 'Connecticut',    lat: 41.6032, lon: -73.0877  },  // 17
+  { name: 'Minnesota',      lat: 46.7296, lon: -94.6859  },  // 18
+  { name: 'Oregon',         lat: 43.8041, lon: -120.5542 },  // 19
+  { name: 'Nevada',         lat: 38.8026, lon: -116.4194 },  // 20
+  { name: 'Indiana',        lat: 40.2672, lon: -86.1349  },  // 21
+  { name: 'Missouri',       lat: 37.9643, lon: -91.8318  },  // 22
+  { name: 'Tennessee',      lat: 35.5175, lon: -86.5804  },  // 23
+  { name: 'Wisconsin',      lat: 43.7844, lon: -88.7879  },  // 24
+  { name: 'South Carolina', lat: 33.8361, lon: -81.1637  },  // 25
+  { name: 'Louisiana',      lat: 31.1695, lon: -91.8678  },  // 26
+  { name: 'Kentucky',       lat: 37.6681, lon: -84.6701  },  // 27
+  { name: 'Alabama',        lat: 32.3182, lon: -86.9023  },  // 28
+  { name: 'Oklahoma',       lat: 35.4676, lon: -97.5164  },  // 29
+  { name: 'Iowa',           lat: 41.8780, lon: -93.0977  },  // 30
+  { name: 'Kansas',         lat: 38.5266, lon: -96.7265  },  // 31
+  { name: 'New Mexico',     lat: 34.5199, lon: -105.8701 },  // 32
+  { name: 'Utah',           lat: 39.3210, lon: -111.0937 },  // 33
 ];
 
-const SL_LINE_PAIRS = [[0, 1], [0, 2], [0, 3], [1, 4], [3, 4]];
-const US_LINE_PAIRS = [[0, 6], [1, 2], [1, 4], [1, 8], [3, 9], [4, 12], [5, 7], [9, 10]];
+const SL_LINE_PAIRS = [
+  [0, 1], [0, 2], [0, 5], [0, 8],   // Colombo → Central, Southern, NW, Sabara
+  [1, 5], [1, 6], [1, 7],            // Kandy → NW, NC, Uva
+  [2, 8], [2, 7],                    // Galle → Sabara, Uva
+  [3, 4], [3, 6],                    // Jaffna → Eastern, NC
+  [4, 7], [6, 4], [6, 3],            // Trinco ↔ NC ↔ Uva
+  [5, 6], [7, 8],                    // NW → NC; Uva → Sabara
+];
+const US_LINE_PAIRS = [
+  // East Coast corridor
+  [8, 17], [8, 1], [1, 2], [2, 12], [12, 11], [11, 4], [4, 14], [14, 25], [25, 10], [10, 9],
+  // Southeast cluster
+  [9, 28], [28, 26], [28, 23], [23, 27], [27, 7], [10, 23],
+  // Great Lakes / Midwest
+  [7, 21], [21, 5], [5, 24], [24, 13], [13, 7], [5, 22], [22, 30], [30, 18], [18, 24],
+  // South-Central
+  [3, 26], [3, 29], [29, 22], [3, 32], [3, 31], [31, 16],
+  // Mountain / West
+  [32, 15], [15, 20], [20, 0], [33, 20], [33, 16], [16, 15],
+  // Pacific Northwest
+  [6, 19], [19, 0], [6, 0],
+  // Diaspora cross-country
+  [1, 5], [0, 5], [0, 3], [1, 11], [1, 4],
+];
 
 // Natural Earth ISO 3166-1 numeric IDs
 const SL_ID = '144';
@@ -300,12 +347,30 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
 
   return (
     <div
-      className={`w-full h-full overflow-hidden ${className}`}
+      className={`relative w-full h-full overflow-hidden ${className}`}
       style={{ background: theme.bg }}
     >
+      {/* Sri Lanka phase: orange→amber→green gradient (LankaEvents brand) */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(135deg, #FF7900 0%, #f59e0b 45%, #059669 100%)',
+          opacity: ['zoom-sl','sl-cities','sl-lines'].includes(phase) ? 0.85 : 0,
+          transition: 'opacity 1.8s ease-in-out',
+        }}
+      />
+      {/* USA phase: deep blue gradient */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(135deg, #0c2461 0%, #1e3799 50%, #0a3d62 100%)',
+          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 0.82 : 0,
+          transition: 'opacity 1.8s ease-in-out',
+        }}
+      />
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-full"
+        className="absolute inset-0 w-full h-full"
         preserveAspectRatio="xMidYMid slice"
         style={{ display: 'block' }}
       >

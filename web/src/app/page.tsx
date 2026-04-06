@@ -3,113 +3,27 @@
 /**
  * LankaConnect Umbrella Landing Page
  *
- * The root landing page for lankaconnect.app.
- * Shows the world map animation as full-page background, the brand
- * identity, and entry points to all LankaConnect sub-brands.
+ * Cinematic full-page animated world map background with the brand
+ * identity centred and a single prominent LankaEvents entry point.
  *
- * Currently live:  LankaEvents
- * Coming soon:     LankaSeyla, LankaNivasa, LankaMart, LankaForums, LankaLearn
+ * Intentionally no top-left logo/branding — the hero IS the identity.
+ * No "My Dashboard" in nav — that belongs in /lanka-events.
  */
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  Calendar,
-  ShoppingBag,
-  Home,
-  ShoppingCart,
-  MessageSquare,
-  BookOpen,
-  Lock,
-  ChevronRight,
-} from 'lucide-react';
+import Image from 'next/image';
+import { Calendar, ChevronRight, Sparkles } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { Logo } from '@/presentation/components/atoms/Logo';
 
-// ─── Default theme ────────────────────────────────────────────────────────────
-const DEFAULT_THEME_KEY = 'brand-dark';
-
-// ─── Sub-brand definitions ────────────────────────────────────────────────────
-interface SubBrand {
-  key: string;
-  name: string;
-  tagline: string;
-  href: string;
-  icon: React.ReactNode;
-  live: boolean;
-  color: string;         // accent color for the card border/icon
-  bgColor: string;       // card background tint
-}
-
-const SUB_BRANDS: SubBrand[] = [
-  {
-    key: 'lanka-events',
-    name: 'LankaEvents',
-    tagline: 'Plan & discover Sri Lankan events',
-    href: '/lanka-events',
-    icon: <Calendar className="h-7 w-7" />,
-    live: true,
-    color: '#FF7900',
-    bgColor: 'rgba(255,121,0,0.08)',
-  },
-  {
-    key: 'lanka-forums',
-    name: 'LankaForums',
-    tagline: 'Connect & discuss in the community',
-    href: '#',
-    icon: <MessageSquare className="h-7 w-7" />,
-    live: false,
-    color: '#6366f1',
-    bgColor: 'rgba(99,102,241,0.06)',
-  },
-  {
-    key: 'lanka-seyla',
-    name: 'LankaSeyla',
-    tagline: 'Sri Lankan clothing & fashion',
-    href: '#',
-    icon: <ShoppingBag className="h-7 w-7" />,
-    live: false,
-    color: '#ec4899',
-    bgColor: 'rgba(236,72,153,0.06)',
-  },
-  {
-    key: 'lanka-nivasa',
-    name: 'LankaNivasa',
-    tagline: 'Home goods & furnishings',
-    href: '#',
-    icon: <Home className="h-7 w-7" />,
-    live: false,
-    color: '#10b981',
-    bgColor: 'rgba(16,185,129,0.06)',
-  },
-  {
-    key: 'lanka-mart',
-    name: 'LankaMart',
-    tagline: 'Sri Lankan grocery store',
-    href: '#',
-    icon: <ShoppingCart className="h-7 w-7" />,
-    live: false,
-    color: '#f59e0b',
-    bgColor: 'rgba(245,158,11,0.06)',
-  },
-  {
-    key: 'lanka-learn',
-    name: 'LankaLearn',
-    tagline: 'Online education platform',
-    href: '#',
-    icon: <BookOpen className="h-7 w-7" />,
-    live: false,
-    color: '#3b82f6',
-    bgColor: 'rgba(59,130,246,0.06)',
-  },
-];
+// ─── Theme ────────────────────────────────────────────────────────────────────
+const DEFAULT_THEME_KEY = 'satellite-navy';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LankaConnectHome() {
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => { setMounted(true); }, []);
 
   const theme = THEMES.find(t => t.key === DEFAULT_THEME_KEY) ?? THEMES[2];
@@ -117,57 +31,73 @@ export default function LankaConnectHome() {
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
 
-      {/* ── Full-page animated background ───────────────────────────────── */}
+      {/* ── Full-page animated world map ──────────────────────────────── */}
       <div className="absolute inset-0 z-0">
         {mounted && <WorldMapAnimation theme={theme} className="w-full h-full" />}
       </div>
 
-      {/* ── Dark overlay for text readability ───────────────────────────── */}
-      <div className="absolute inset-0 z-10 bg-black/30" />
+      {/* ── Subtle dark overlay — just enough for text legibility ─────── */}
+      <div className="absolute inset-0 z-10 bg-black/20" />
 
-      {/* ── Top nav bar ─────────────────────────────────────────────────── */}
-      <nav className="relative z-20 flex items-center justify-between px-6 py-4 md:px-10">
-        <div className="flex items-center gap-2">
-          <Logo size="sm" showText={false} />
-          <span className="text-white font-bold text-lg tracking-tight">LankaConnect</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {user ? (
+      {/* ── Top nav — sign-in / join only, no dashboard ───────────────── */}
+      <nav className="relative z-20 flex items-center justify-end px-6 py-4 md:px-10">
+        {!user ? (
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white border transition-all hover:bg-white/10 backdrop-blur-sm"
+              style={{ borderColor: theme.nodeFill, boxShadow: `0 0 12px ${theme.nodeFill}40` }}
+            >
+              Join Free
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
             <Link
               href="/lanka-events"
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white border border-white/30 hover:bg-white/10 transition-colors backdrop-blur-sm"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
             >
-              My Dashboard
+              Go to LankaEvents
             </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="px-4 py-2 rounded-lg text-sm font-medium text-white border border-white/30 hover:bg-white/10 transition-colors backdrop-blur-sm"
-                style={{ borderColor: theme.nodeFill }}
-              >
-                Join Free
-              </Link>
-            </>
-          )}
-        </div>
+          </div>
+        )}
       </nav>
 
-      {/* ── Hero content ────────────────────────────────────────────────── */}
-      <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 pt-10 pb-6 md:pt-16 md:pb-10">
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 pt-2 pb-8 md:pt-4 md:pb-12">
 
-        {/* Tagline pill */}
+        {/* Brand identity — logo + name + hub tagline */}
+        <div className="flex flex-col items-center gap-1 mb-5">
+          <div className="mb-1 drop-shadow-2xl" style={{ filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.6))' }}>
+            <Image
+              src="/images/lankaconnect-logo.png"
+              alt="LankaConnect"
+              width={88}
+              height={88}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white drop-shadow-lg tracking-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+            LankaConnect
+          </h1>
+          <p className="text-base md:text-lg font-medium text-white/75 tracking-wide">
+            Sri Lankan Community Hub
+          </p>
+        </div>
+
+        {/* Live indicator pill */}
         <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-5 backdrop-blur-sm border"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6 backdrop-blur-sm border"
           style={{
-            borderColor: `${theme.nodeFill}60`,
-            background: `${theme.nodeFill}18`,
+            borderColor: `${theme.nodeFill}55`,
+            background: `${theme.nodeFill}1a`,
             color: theme.nodeFill,
           }}
         >
@@ -175,35 +105,92 @@ export default function LankaConnectHome() {
           Connecting Sri Lankans Worldwide
         </div>
 
-        {/* Main heading */}
-        <h1 className="text-5xl md:text-7xl font-bold text-white mb-3 drop-shadow-lg tracking-tight">
-          LankaConnect
-        </h1>
-        <p className="text-xl md:text-2xl font-light text-white/80 mb-3">
-          One Country, One Community
-        </p>
-        <p className="text-sm text-white/55 max-w-md mb-10 leading-relaxed">
-          Join the largest Sri Lankan community platform. Discover events, connect
-          with businesses, engage in discussions, and celebrate our rich culture together.
+        {/* Main copy */}
+        <h2
+          className="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-md leading-tight"
+          style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
+        >
+          One Country,{' '}
+          <span style={{ color: theme.nodeFill }}>One Community</span>
+        </h2>
+        <p
+          className="text-base md:text-lg font-medium text-white/90 max-w-lg mb-10 leading-relaxed"
+          style={{ textShadow: '0 1px 8px rgba(0,0,0,0.7)' }}
+        >
+          Join the largest Sri Lankan community platform. Discover events,
+          connect with businesses, engage in discussions, and celebrate our
+          rich culture together.
         </p>
 
-        {/* ── Sub-brand cards grid ─────────────────────────────────────── */}
-        <div className="w-full max-w-4xl grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-          {SUB_BRANDS.map((brand) => (
-            <SubBrandCard key={brand.key} brand={brand} />
-          ))}
-        </div>
+        {/* ── LankaEvents — the ONLY live sub-brand, prominently featured ── */}
+        <Link href="/lanka-events" className="w-full max-w-2xl group block">
+          <div
+            className="relative rounded-2xl p-7 md:p-8 border backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer text-left"
+            style={{
+              background: 'rgba(255,121,0,0.13)',
+              borderColor: 'rgba(255,121,0,0.45)',
+              boxShadow: '0 0 50px rgba(255,121,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+          >
+            {/* Top row: badge + live indicator */}
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                style={{ background: 'rgba(255,121,0,0.25)', color: '#FF7900' }}
+              >
+                <Calendar className="h-3 w-3" />
+                Event Planner
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-green-400 text-xs font-semibold">Live Now</span>
+              </div>
+            </div>
 
-        {/* Coming soon note */}
-        <p className="mt-6 text-xs text-white/35 flex items-center gap-1.5">
-          <Lock className="h-3 w-3" />
-          5 more platforms coming soon — locked cards will unlock as they launch
+            {/* Main content */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="flex-1">
+                <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-2 tracking-tight">
+                  LankaEvents
+                </h3>
+                <p className="text-white/70 text-sm md:text-base leading-relaxed mb-5">
+                  Sri Lanka&apos;s premier event planning platform — discover, plan &amp; celebrate
+                  Sri Lankan cultural events, festivals, and gatherings worldwide.
+                </p>
+                <div
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all group-hover:gap-3"
+                  style={{ background: '#FF7900', color: 'white', boxShadow: '0 4px 20px rgba(255,121,0,0.5)' }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Explore LankaEvents
+                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="flex sm:flex-col gap-6 sm:gap-4 shrink-0">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">31+</div>
+                  <div className="text-xs text-white/50">Members</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">38+</div>
+                  <div className="text-xs text-white/50">Events</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+
+        {/* Coming-soon hint */}
+        <p className="mt-5 text-xs text-white/30 max-w-md">
+          More platforms arriving soon — LankaForums · LankaSeyla · LankaNivasa · LankaMart · LankaLearn
         </p>
       </div>
 
-      {/* ── Footer strip ────────────────────────────────────────────────── */}
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
       <div className="relative z-20 text-center pb-4 px-6">
-        <p className="text-xs text-white/25">
+        <p className="text-xs text-white/20">
           © {new Date().getFullYear()} LankaConnect LLC · lankaconnect.app
           {' '}·{' '}
           <Link href="/animation-preview" className="underline hover:text-white/50 transition-colors">
@@ -213,64 +200,4 @@ export default function LankaConnectHome() {
       </div>
     </div>
   );
-}
-
-// ─── Sub-brand card ───────────────────────────────────────────────────────────
-function SubBrandCard({ brand }: { brand: SubBrand }) {
-  const inner = (
-    <div
-      className={`
-        relative flex flex-col items-center text-center p-4 md:p-5 rounded-2xl
-        border backdrop-blur-md transition-all duration-200
-        ${brand.live
-          ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer'
-          : 'opacity-50 cursor-not-allowed'}
-      `}
-      style={{
-        background: brand.live ? `${brand.bgColor}` : 'rgba(255,255,255,0.04)',
-        borderColor: brand.live ? `${brand.color}50` : 'rgba(255,255,255,0.08)',
-        boxShadow: brand.live ? `0 0 20px ${brand.color}15` : 'none',
-      }}
-    >
-      {/* Coming soon lock badge */}
-      {!brand.live && (
-        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 text-white/40 text-[10px]">
-          <Lock className="h-2.5 w-2.5" />
-          Soon
-        </div>
-      )}
-
-      {/* Icon */}
-      <div
-        className="flex items-center justify-center w-12 h-12 rounded-xl mb-3"
-        style={{
-          background: brand.live ? `${brand.color}20` : 'rgba(255,255,255,0.06)',
-          color: brand.live ? brand.color : 'rgba(255,255,255,0.25)',
-        }}
-      >
-        {brand.icon}
-      </div>
-
-      {/* Name */}
-      <h3 className={`font-semibold text-sm mb-1 ${brand.live ? 'text-white' : 'text-white/40'}`}>
-        {brand.name}
-      </h3>
-
-      {/* Tagline */}
-      <p className={`text-xs leading-snug ${brand.live ? 'text-white/60' : 'text-white/25'}`}>
-        {brand.tagline}
-      </p>
-
-      {/* Arrow for live brands */}
-      {brand.live && (
-        <div className="mt-3 flex items-center gap-1 text-xs font-medium" style={{ color: brand.color }}>
-          Explore <ChevronRight className="h-3 w-3" />
-        </div>
-      )}
-    </div>
-  );
-
-  if (!brand.live) return inner;
-
-  return <Link href={brand.href}>{inner}</Link>;
 }

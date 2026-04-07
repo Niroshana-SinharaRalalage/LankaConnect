@@ -94,10 +94,10 @@ export default function LankaConnectHome() {
           */}
           <div className="flex flex-col items-start gap-1.5">
             <span
-              className="font-semibold text-white leading-none"
+              className="font-bold text-white leading-none"
               style={{
-                fontSize: '22px',
-                letterSpacing: '-0.01em',
+                fontSize: '28px',
+                letterSpacing: '0em',
                 textShadow: '0 2px 14px rgba(0,0,0,0.55)',
               }}
             >

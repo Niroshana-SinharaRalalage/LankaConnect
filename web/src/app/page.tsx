@@ -72,23 +72,43 @@ export default function LankaConnectHome() {
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 pt-2 pb-8 md:pt-4 md:pb-12">
 
-        {/* Brand identity — logo + name side by side */}
+        {/* Brand identity — logo + name side by side, equal heights */}
         <div className="flex items-center gap-4 mb-5" style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.6))' }}>
+          {/* Logo — 84px, defines the column height */}
           <Image
             src="/images/lankaconnect-logo.png"
             alt="LankaConnect"
-            width={72}
-            height={72}
+            width={84}
+            height={84}
             className="object-contain flex-shrink-0"
             priority
           />
-          <div className="flex flex-col items-start">
-            <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-none tracking-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+          {/* Text column — same height as logo, title at top / subtitle at bottom */}
+          <div className="flex flex-col justify-between items-start" style={{ height: '84px' }}>
+            {/*
+              "LankaConnect" (12 chars) and subtitle (24 chars, uppercase, spaced)
+              are tuned to the same rendered width ≈ 185px via complementary
+              font-size + letter-spacing values.
+            */}
+            <span
+              className="font-semibold text-white leading-none"
+              style={{
+                fontSize: '27px',
+                letterSpacing: '-0.01em',
+                textShadow: '0 2px 16px rgba(0,0,0,0.55)',
+              }}
+            >
               LankaConnect
-            </h1>
-            <p className="text-sm md:text-base font-medium text-white/70 tracking-widest uppercase mt-1">
+            </span>
+            <span
+              className="font-medium text-white/65 uppercase"
+              style={{
+                fontSize: '10.5px',
+                letterSpacing: '0.215em',
+              }}
+            >
               Sri Lankan Community Hub
-            </p>
+            </span>
           </div>
         </div>
 

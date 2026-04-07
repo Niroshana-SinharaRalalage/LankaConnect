@@ -274,7 +274,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
 
   // Load world TopoJSON from /public
   useEffect(() => {
-    fetch('/world-110m.json')
+    fetch('/world-50m.json')
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -294,7 +294,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
         setGraticuleD(PATH_GEN(grat()) ?? '');
       })
       .catch(err => {
-        console.warn('[WorldMapAnimation] Failed to load world-110m.json:', err);
+        console.warn('[WorldMapAnimation] Failed to load world-50m.json:', err);
       });
   }, []);
 

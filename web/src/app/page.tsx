@@ -72,24 +72,24 @@ export default function LankaConnectHome() {
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 pt-2 pb-8 md:pt-4 md:pb-12">
 
-        {/* Brand identity — logo + name + hub tagline */}
-        <div className="flex flex-col items-center gap-1 mb-5">
-          <div className="mb-1 drop-shadow-2xl" style={{ filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.6))' }}>
-            <Image
-              src="/images/lankaconnect-logo.png"
-              alt="LankaConnect"
-              width={88}
-              height={88}
-              className="object-contain"
-              priority
-            />
+        {/* Brand identity — logo + name side by side */}
+        <div className="flex items-center gap-4 mb-5" style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.6))' }}>
+          <Image
+            src="/images/lankaconnect-logo.png"
+            alt="LankaConnect"
+            width={72}
+            height={72}
+            className="object-contain flex-shrink-0"
+            priority
+          />
+          <div className="flex flex-col items-start">
+            <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-none tracking-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+              LankaConnect
+            </h1>
+            <p className="text-sm md:text-base font-medium text-white/70 tracking-widest uppercase mt-1">
+              Sri Lankan Community Hub
+            </p>
           </div>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white drop-shadow-lg tracking-tight" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
-            LankaConnect
-          </h1>
-          <p className="text-base md:text-lg font-medium text-white/75 tracking-wide">
-            Sri Lankan Community Hub
-          </p>
         </div>
 
         {/* Live indicator pill */}
@@ -182,10 +182,6 @@ export default function LankaConnectHome() {
           </div>
         </Link>
 
-        {/* Coming-soon hint */}
-        <p className="mt-5 text-xs text-white/30 max-w-md">
-          More platforms arriving soon — LankaForums · LankaSeyla · LankaNivasa · LankaMart · LankaLearn
-        </p>
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}

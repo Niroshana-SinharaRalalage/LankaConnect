@@ -60,7 +60,7 @@ public sealed class BrandingOptions
     /// <summary>
     /// Support email address displayed in footer
     /// </summary>
-    public string SupportEmail { get; set; } = "lankaconnect.app@gmail.com";
+    public string SupportEmail { get; set; } = "info@lankaconnect.app";
 
     /// <summary>
     /// Gets button CSS style string with primary color.

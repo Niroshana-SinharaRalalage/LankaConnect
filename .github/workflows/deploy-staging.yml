@@ -251,6 +251,7 @@ jobs:
               EmailSettings__Provider=Azure \
               EmailSettings__AzureConnectionString=secretref:azure-email-connection-string \
               EmailSettings__AzureSenderAddress=secretref:azure-email-sender-address \
+              EmailSettings__AzureEventsSenderAddress=secretref:azure-email-events-sender-address \
               EmailSettings__SenderName="LankaConnect Staging" \
               EmailSettings__TemplateBasePath=Templates/Email \
               AzureStorage__ConnectionString=secretref:azure-storage-connection-string \

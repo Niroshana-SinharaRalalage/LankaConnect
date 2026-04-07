@@ -54,8 +54,8 @@ export default function HelpPage() {
             <div className="mt-8 p-6 bg-neutral-50 rounded-lg">
               <p className="text-sm text-neutral-700">
                 Need help right away? Contact our support team at{' '}
-                <a href="mailto:lankaconnect.app@gmail.com" className="text-orange-600 hover:text-orange-700 font-medium">
-                  lankaconnect.app@gmail.com
+                <a href="mailto:info@lankaconnect.app" className="text-orange-600 hover:text-orange-700 font-medium">
+                  info@lankaconnect.app
                 </a>
               </p>
             </div>

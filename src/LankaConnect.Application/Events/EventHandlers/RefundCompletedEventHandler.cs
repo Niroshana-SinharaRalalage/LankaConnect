@@ -29,8 +29,6 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundCompletedEventHandler> _logger;
 
-    private const string SupportEmail = "lankaconnect.app@gmail.com";
-
     public RefundCompletedEventHandler(
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
@@ -116,7 +114,6 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     stripeRefundId: domainEvent.StripeRefundId,  // Phase 6A.87 Fix: Pass Stripe refund ID for template
                     processingMethod: "Original Payment Method"
                 );
-                emailParams.SupportEmail = SupportEmail;
                 emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);  // Phase 6A.97: For "View Event Details" button
 
                 // Phase 6A.87+ Fix: Populate organizer contact if available

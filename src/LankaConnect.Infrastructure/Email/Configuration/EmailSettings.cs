@@ -17,10 +17,17 @@ public class EmailSettings
     public string AzureConnectionString { get; set; } = string.Empty;
 
     /// <summary>
-    /// Azure sender email address (from verified domain)
-    /// Example: DoNotReply@xxx.azurecomm.net
+    /// Azure sender email address for general/auth emails.
+    /// Example: info@lankaconnect.app
     /// </summary>
     public string AzureSenderAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Azure sender email address for event-related emails (registrations, tickets, refunds, etc.).
+    /// Falls back to AzureSenderAddress when not configured.
+    /// Example: events@lankaconnect.app
+    /// </summary>
+    public string AzureEventsSenderAddress { get; set; } = string.Empty;
 
     // SMTP settings (for non-Azure providers like SendGrid, Gmail, etc.)
     public string SmtpServer { get; set; } = string.Empty;
@@ -37,6 +44,33 @@ public class EmailSettings
     public int Port => SmtpPort;
     public string FromEmail => !string.IsNullOrEmpty(AzureSenderAddress) ? AzureSenderAddress : SenderEmail;
     public string FromName => SenderName;
+
+    /// <summary>
+    /// Event-related template name fragments used to route to events@lankaconnect.app.
+    /// </summary>
+    private static readonly HashSet<string> EventTemplateKeywords =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "event", "registration", "ticket", "refund", "signup", "sign-up",
+            "sponsor", "addon", "add-on", "payment", "reminder", "organizer"
+        };
+
+    /// <summary>
+    /// Resolves the ACS sender address based on email template name.
+    /// Event-related emails use AzureEventsSenderAddress; all others use AzureSenderAddress.
+    /// Falls back to AzureSenderAddress when AzureEventsSenderAddress is not configured.
+    /// </summary>
+    public string ResolveSenderAddress(string templateName)
+    {
+        if (!string.IsNullOrEmpty(AzureEventsSenderAddress) &&
+            EventTemplateKeywords.Any(kw =>
+                templateName.Contains(kw, StringComparison.OrdinalIgnoreCase)))
+        {
+            return AzureEventsSenderAddress;
+        }
+
+        return !string.IsNullOrEmpty(AzureSenderAddress) ? AzureSenderAddress : SenderEmail;
+    }
     
     // Queue settings
     public int MaxRetryAttempts { get; set; } = 3;

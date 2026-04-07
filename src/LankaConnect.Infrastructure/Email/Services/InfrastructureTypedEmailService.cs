@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.DTOs;
+using LankaConnect.Infrastructure.Email.Configuration;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Helpers;
 using LankaConnect.Shared.Email.Observability;
 using LankaConnect.Shared.Email.Services;
+using Microsoft.Extensions.Options;
 
 namespace LankaConnect.Infrastructure.Email.Services;
 
@@ -25,15 +27,18 @@ public class InfrastructureTypedEmailService : ITypedEmailService
     private readonly AzureEmailService _emailService;
     private readonly IEmailLogger _logger;
     private readonly IEmailMetrics _metrics;
+    private readonly BrandingOptions _branding;
 
     public InfrastructureTypedEmailService(
         AzureEmailService emailService,
         IEmailLogger logger,
-        IEmailMetrics metrics)
+        IEmailMetrics metrics,
+        IOptions<BrandingOptions> brandingOptions)
     {
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        _branding = brandingOptions?.Value ?? throw new ArgumentNullException(nameof(brandingOptions));
     }
 
     /// <inheritdoc />
@@ -66,6 +71,11 @@ public class InfrastructureTypedEmailService : ITypedEmailService
 
             // Convert to dictionary for template rendering
             var parameters = emailParams.ToDictionary();
+
+            // Override SupportEmail with the authoritative value from BrandingOptions config.
+            // This ensures all email templates show the correct support address regardless of
+            // the hardcoded defaults in individual EmailParams classes.
+            parameters["SupportEmail"] = _branding.SupportEmail;
 
             // Build custom email headers for deliverability compliance
             Dictionary<string, string>? emailHeaders = null;

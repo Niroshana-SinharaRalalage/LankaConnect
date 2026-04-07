@@ -201,6 +201,9 @@ public class AzureEmailService : IEmailTemplateService
 
             _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
+            // Resolve sender address: event-related templates use events@lankaconnect.app
+            var resolvedFrom = _emailSettings.ResolveSenderAddress(templateName);
+
             // Create email message DTO
             var emailMessage = new EmailMessageDto
             {
@@ -208,7 +211,7 @@ public class AzureEmailService : IEmailTemplateService
                 Subject = subject ?? string.Empty,
                 HtmlBody = htmlBody ?? string.Empty,
                 PlainTextBody = textBody ?? string.Empty,
-                FromEmail = _emailSettings.FromEmail,
+                FromEmail = resolvedFrom,
                 FromName = _emailSettings.FromName,
                 Priority = 2, // Normal priority for templated emails
                 Headers = headers
@@ -216,7 +219,7 @@ public class AzureEmailService : IEmailTemplateService
 
             // TODO-REMOVE: Diagnostic logging
             _logger.LogError("[DIAG-EMAIL] Calling SendEmailAsync - FromEmail: {FromEmail}, FromName: {FromName}, ToEmail: {ToEmail}",
-                _emailSettings.FromEmail, _emailSettings.FromName, recipientEmail);
+                resolvedFrom, _emailSettings.FromName, recipientEmail);
 
             // Send the email
             var result = await SendEmailAsync(emailMessage, cancellationToken);
@@ -289,6 +292,9 @@ public class AzureEmailService : IEmailTemplateService
 
             _logger.LogInformation("Template '{TemplateName}' rendered from database successfully", templateName);
 
+            // Resolve sender address: event-related templates use events@lankaconnect.app
+            var resolvedFrom = _emailSettings.ResolveSenderAddress(templateName);
+
             // Create email message DTO with attachments
             var emailMessage = new EmailMessageDto
             {
@@ -296,7 +302,7 @@ public class AzureEmailService : IEmailTemplateService
                 Subject = subject ?? string.Empty,
                 HtmlBody = htmlBody ?? string.Empty,
                 PlainTextBody = textBody ?? string.Empty,
-                FromEmail = _emailSettings.FromEmail,
+                FromEmail = resolvedFrom,
                 FromName = _emailSettings.FromName,
                 Priority = 2,
                 Attachments = attachments,
@@ -839,7 +845,12 @@ public class AzureEmailService : IEmailTemplateService
     {
         try
         {
-            var senderAddress = _emailSettings.AzureSenderAddress;
+            // Use per-message FromEmail when set (e.g. events@lankaconnect.app for event emails),
+            // otherwise fall back to the global AzureSenderAddress configuration.
+            var senderAddress = !string.IsNullOrEmpty(emailMessage.FromEmail)
+                ? emailMessage.FromEmail
+                : _emailSettings.AzureSenderAddress;
+
             if (string.IsNullOrEmpty(senderAddress))
             {
                 return Result.Failure("Azure sender address is not configured. Check AzureSenderAddress in EmailSettings.");

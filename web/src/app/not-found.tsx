@@ -147,7 +147,7 @@ export default function NotFound() {
 
           {/* Footer Note */}
           <div className="mt-12 text-xs text-[#a0aec0]">
-            <p>Need help? Contact us at lankaconnect.app@gmail.com</p>
+            <p>Need help? Contact us at info@lankaconnect.app</p>
           </div>
         </div>
       </div>

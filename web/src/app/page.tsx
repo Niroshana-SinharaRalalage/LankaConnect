@@ -13,12 +13,87 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, ChevronRight, MessageSquare, ShoppingBag, Home, ShoppingCart, BookOpen, Lock } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DEFAULT_THEME_KEY = 'satellite-navy';
+
+// ─── Sub-brand definitions ────────────────────────────────────────────────────
+interface SubBrand {
+  key: string;
+  name: string;
+  tagline: string;
+  href: string;
+  icon: React.ReactNode;
+  live: boolean;
+  color: string;
+  description: string;
+}
+
+const SUB_BRANDS: SubBrand[] = [
+  {
+    key: 'lanka-events',
+    name: 'LankaEvents',
+    tagline: 'Event Planner',
+    description: 'Discover & plan Sri Lankan events worldwide',
+    href: '/lanka-events',
+    icon: <Calendar className="h-5 w-5" />,
+    live: true,
+    color: '#FF7900',
+  },
+  {
+    key: 'lanka-forums',
+    name: 'LankaForums',
+    tagline: 'Community Forum',
+    description: 'Connect & discuss with the community',
+    href: '#',
+    icon: <MessageSquare className="h-5 w-5" />,
+    live: false,
+    color: '#6366f1',
+  },
+  {
+    key: 'lanka-seyla',
+    name: 'LankaSeyla',
+    tagline: 'Fashion & Clothing',
+    description: 'Sri Lankan clothing & fashion',
+    href: '#',
+    icon: <ShoppingBag className="h-5 w-5" />,
+    live: false,
+    color: '#ec4899',
+  },
+  {
+    key: 'lanka-nivasa',
+    name: 'LankaNivasa',
+    tagline: 'Home & Living',
+    description: 'Home goods & furnishings',
+    href: '#',
+    icon: <Home className="h-5 w-5" />,
+    live: false,
+    color: '#10b981',
+  },
+  {
+    key: 'lanka-mart',
+    name: 'LankaMart',
+    tagline: 'Grocery Store',
+    description: 'Sri Lankan grocery & essentials',
+    href: '#',
+    icon: <ShoppingCart className="h-5 w-5" />,
+    live: false,
+    color: '#f59e0b',
+  },
+  {
+    key: 'lanka-learn',
+    name: 'LankaLearn',
+    tagline: 'Education',
+    description: 'Online learning platform',
+    href: '#',
+    icon: <BookOpen className="h-5 w-5" />,
+    live: false,
+    color: '#3b82f6',
+  },
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LankaConnectHome() {
@@ -140,65 +215,84 @@ export default function LankaConnectHome() {
           rich culture together.
         </p>
 
-        {/* ── LankaEvents — the ONLY live sub-brand, prominently featured ── */}
-        <Link href="/lanka-events" className="w-full max-w-2xl group block">
-          <div
-            className="relative rounded-2xl p-5 md:p-6 border transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer text-left"
-            style={{
-              background: 'rgba(20,10,5,0.45)',
-              borderColor: 'rgba(255,121,0,0.35)',
-              boxShadow: '0 0 40px rgba(255,121,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
-            }}
-          >
-            {/* Top row: badge + live indicator */}
-            <div className="flex items-center gap-3 mb-4">
+        {/* ── Sub-brand grid — 3 rows × 2 columns ─────────────────────── */}
+        <div className="w-full max-w-xl grid grid-cols-2 gap-3">
+          {SUB_BRANDS.map((brand) => {
+            const card = (
               <div
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
-                style={{ background: 'rgba(255,121,0,0.25)', color: '#FF7900' }}
+                className={`
+                  relative flex flex-col gap-2 p-4 rounded-xl border
+                  transition-all duration-200
+                  ${brand.live
+                    ? 'hover:scale-[1.03] hover:shadow-xl cursor-pointer'
+                    : 'opacity-60 cursor-not-allowed'}
+                `}
+                style={{
+                  background: brand.live
+                    ? `rgba(${brand.color === '#FF7900' ? '255,121,0' : '20,10,5'},${brand.live ? '0.18' : '0.1'})`
+                    : 'rgba(255,255,255,0.04)',
+                  borderColor: brand.live ? `${brand.color}50` : 'rgba(255,255,255,0.08)',
+                  boxShadow: brand.live ? `0 0 20px ${brand.color}15` : 'none',
+                }}
               >
-                <Calendar className="h-3 w-3" />
-                Event Planner
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-green-400 text-xs font-semibold">Live Now</span>
-              </div>
-            </div>
+                {/* Coming soon badge */}
+                {!brand.live && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/10 text-white/40 text-[9px]">
+                    <Lock className="h-2 w-2" />
+                    Soon
+                  </div>
+                )}
 
-            {/* Main content */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-              <div className="flex-1">
-                <h3 className="text-3xl md:text-4xl font-extrabold text-white mb-2 tracking-tight">
-                  LankaEvents
-                </h3>
-                <p className="text-white/70 text-sm md:text-base leading-relaxed mb-5">
-                  Sri Lanka&apos;s premier event planning platform — discover, plan &amp; celebrate
-                  Sri Lankan cultural events, festivals, and gatherings worldwide.
-                </p>
+                {/* Live badge */}
+                {brand.live && (
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-[9px] font-semibold">Live</span>
+                  </div>
+                )}
+
+                {/* Icon */}
                 <div
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all group-hover:gap-3"
-                  style={{ background: '#FF7900', color: 'white', boxShadow: '0 4px 20px rgba(255,121,0,0.5)' }}
+                  className="flex items-center justify-center w-9 h-9 rounded-lg"
+                  style={{
+                    background: brand.live ? `${brand.color}22` : 'rgba(255,255,255,0.06)',
+                    color: brand.live ? brand.color : 'rgba(255,255,255,0.25)',
+                  }}
                 >
-                  <Sparkles className="h-4 w-4" />
-                  Explore LankaEvents
-                  <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  {brand.icon}
                 </div>
-              </div>
 
-              {/* Stats */}
-              <div className="flex sm:flex-col gap-6 sm:gap-4 shrink-0">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">31+</div>
-                  <div className="text-xs text-white/50">Members</div>
+                {/* Name + tagline */}
+                <div>
+                  <div className={`font-bold text-sm leading-none mb-0.5 ${brand.live ? 'text-white' : 'text-white/40'}`}>
+                    {brand.name}
+                  </div>
+                  <div className={`text-[10px] font-medium ${brand.live ? 'text-white/50' : 'text-white/25'}`}>
+                    {brand.tagline}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">38+</div>
-                  <div className="text-xs text-white/50">Events</div>
-                </div>
+
+                {/* Description */}
+                <p className={`text-[11px] leading-snug ${brand.live ? 'text-white/60' : 'text-white/20'}`}>
+                  {brand.description}
+                </p>
+
+                {/* CTA for live brand */}
+                {brand.live && (
+                  <div
+                    className="flex items-center gap-1 text-[11px] font-semibold mt-auto"
+                    style={{ color: brand.color }}
+                  >
+                    Explore <ChevronRight className="h-3 w-3" />
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        </Link>
+            );
+
+            if (!brand.live) return <div key={brand.key}>{card}</div>;
+            return <Link key={brand.key} href={brand.href}>{card}</Link>;
+          })}
+        </div>
 
       </div>
 

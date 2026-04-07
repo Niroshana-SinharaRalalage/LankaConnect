@@ -271,6 +271,8 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
 
   const [countryPaths, setCountryPaths] = useState<Array<{ id: string; d: string }>>([]);
   const [graticuleD,   setGraticuleD  ] = useState('');
+  const [usBorderPaths, setUsBorderPaths] = useState<string[]>([]);
+  const [lkProvincePaths, setLkProvincePaths] = useState<string[]>([]);
 
   // Load world TopoJSON from /public
   useEffect(() => {
@@ -296,6 +298,32 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
       .catch(err => {
         console.warn('[WorldMapAnimation] Failed to load world-50m.json:', err);
       });
+  }, []);
+
+  // Load US state borders
+  useEffect(() => {
+    fetch('/us-states.json')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((geojson: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paths = geojson.features.map((f: any) => PATH_GEN(f) ?? '').filter((d: string) => d.length > 0);
+        setUsBorderPaths(paths);
+      })
+      .catch(err => console.warn('[WorldMapAnimation] US states load failed:', err));
+  }, []);
+
+  // Load Sri Lanka province borders
+  useEffect(() => {
+    fetch('/lk-provinces.json')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((geojson: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const paths = geojson.features.map((f: any) => PATH_GEN(f) ?? '').filter((d: string) => d.length > 0);
+        setLkProvincePaths(paths);
+      })
+      .catch(err => console.warn('[WorldMapAnimation] SL provinces load failed:', err));
   }, []);
 
   // Phase timer loop
@@ -410,10 +438,32 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             <stop offset="55%" stopColor="black" stopOpacity="0" />
             <stop offset="100%" stopColor="black" stopOpacity="0.65" />
           </radialGradient>
+          {/* Beam gradient for animated trail */}
+          <linearGradient id={filterId('bg-grad')} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stopColor={theme.beamStroke} stopOpacity="0" />
+            <stop offset="40%"  stopColor={theme.beamStroke} stopOpacity="0.6" />
+            <stop offset="100%" stopColor={theme.beamStroke} stopOpacity="1" />
+          </linearGradient>
+          {/* Strong glow for beam */}
+          <filter id={filterId('gb2')} x="-50%" y="-200%" width="200%" height="500%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
-        {/* Ocean */}
-        <rect x={0} y={0} width={W} height={H} fill={theme.oceanFill} />
+        {/* Ocean — semi-transparent so phase gradient overlays show through */}
+        <rect
+          x={0} y={0} width={W} height={H}
+          fill={theme.oceanFill}
+          style={{
+            fillOpacity: isSLPhase || isUSPhase ? 0.18 : 0.88,
+            transition: 'fill-opacity 1.8s ease-in-out',
+          }}
+        />
 
         {/* Stars (dark themes only) */}
         {theme.isDark && STARS.map((s, i) => (
@@ -450,122 +500,211 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             );
           })}
 
-          {/* SL city arcs */}
-          {showSLLines && slArcs.map((d, i) => (
-            <motion.path
-              key={`sl-arc-${i}`}
+          {/* US state borders — shown during US phases */}
+          {isUSPhase && usBorderPaths.map((d, i) => (
+            <path
+              key={`us-state-${i}`}
               d={d}
               fill="none"
-              stroke={theme.lineStroke}
-              strokeWidth={strokeW * 0.9}
-              strokeLinecap="round"
-              filter={`url(#${filterId('gl')})`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.9 }}
-              transition={{ duration: 1.0, delay: i * 0.22 }}
+              stroke="rgba(255,255,255,0.18)"
+              strokeWidth={0.4 / z}
+              strokeLinejoin="round"
             />
           ))}
 
-          {/* Transcontinental beam */}
-          {showBeam && (
-            <motion.path
-              key="beam"
-              d={beamPath}
+          {/* SL province borders — shown during SL phases */}
+          {isSLPhase && lkProvincePaths.map((d, i) => (
+            <path
+              key={`lk-prov-${i}`}
+              d={d}
               fill="none"
-              stroke={theme.beamStroke}
-              strokeWidth={strokeW * 1.6}
-              strokeLinecap="round"
-              strokeDasharray={`${4 / z} ${2.5 / z}`}
-              filter={`url(#${filterId('gb')})`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.95 }}
-              transition={{ duration: 2.4, ease: 'easeInOut' }}
+              stroke="rgba(255,255,255,0.25)"
+              strokeWidth={0.8 / z}
+              strokeLinejoin="round"
             />
+          ))}
+
+          {/* SL city arcs — glow layer + sharp line layer */}
+          {showSLLines && slArcs.map((d, i) => (
+            <g key={`sl-arc-${i}`}>
+              {/* Wide blurred glow */}
+              <motion.path
+                d={d} fill="none"
+                stroke={theme.lineStroke}
+                strokeWidth={strokeW * 5}
+                strokeLinecap="round"
+                filter={`url(#${filterId('gl')})`}
+                opacity={0.22}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.0, delay: i * 0.22 }}
+              />
+              {/* Sharp line */}
+              <motion.path
+                d={d} fill="none"
+                stroke={theme.lineStroke}
+                strokeWidth={strokeW * 0.9}
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.9 }}
+                transition={{ duration: 1.0, delay: i * 0.22 }}
+              />
+            </g>
+          ))}
+
+          {/* Transcontinental beam — wide glow + core */}
+          {showBeam && (
+            <g>
+              {/* Wide glow layer */}
+              <motion.path
+                key="beam-glow"
+                d={beamPath} fill="none"
+                stroke={theme.beamStroke}
+                strokeWidth={strokeW * 8}
+                strokeLinecap="round"
+                filter={`url(#${filterId('gb2')})`}
+                opacity={0.3}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.4, ease: 'easeInOut' }}
+              />
+              {/* Medium glow */}
+              <motion.path
+                key="beam-mid"
+                d={beamPath} fill="none"
+                stroke={theme.beamStroke}
+                strokeWidth={strokeW * 3}
+                strokeLinecap="round"
+                filter={`url(#${filterId('gb')})`}
+                opacity={0.55}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2.4, ease: 'easeInOut' }}
+              />
+              {/* Core line */}
+              <motion.path
+                key="beam-core"
+                d={beamPath} fill="none"
+                stroke={theme.beamStroke}
+                strokeWidth={strokeW * 1.4}
+                strokeLinecap="round"
+                strokeDasharray={`${3 / z} ${2 / z}`}
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.95 }}
+                transition={{ duration: 2.4, ease: 'easeInOut' }}
+              />
+            </g>
           )}
 
-          {/* US hub arcs */}
+          {/* US hub arcs — glow layer + sharp line layer */}
           {showUSLines && usArcs.map((d, i) => (
-            <motion.path
-              key={`us-arc-${i}`}
-              d={d}
-              fill="none"
-              stroke={theme.lineStroke}
-              strokeWidth={strokeW * 0.9}
-              strokeLinecap="round"
-              filter={`url(#${filterId('gl')})`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 0.9 }}
-              transition={{ duration: 0.85, delay: i * 0.2 }}
-            />
+            <g key={`us-arc-${i}`}>
+              {/* Wide blurred glow */}
+              <motion.path
+                d={d} fill="none"
+                stroke={theme.lineStroke}
+                strokeWidth={strokeW * 5}
+                strokeLinecap="round"
+                filter={`url(#${filterId('gl')})`}
+                opacity={0.22}
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.85, delay: i * 0.2 }}
+              />
+              {/* Sharp line */}
+              <motion.path
+                d={d} fill="none"
+                stroke={theme.lineStroke}
+                strokeWidth={strokeW * 0.9}
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.9 }}
+                transition={{ duration: 0.85, delay: i * 0.2 }}
+              />
+            </g>
           ))}
 
-          {/* Sri Lanka city nodes */}
+          {/* Sri Lanka city nodes — 3D glowing sphere */}
           {slXY.map((xy, i) => (
             <g key={`sl-node-${i}`}>
               {showSLCities && (
                 <>
-                  {/* Outer pulse ring */}
-                  <motion.circle
-                    cx={xy[0]} cy={xy[1]}
-                    r={nodeR * 5}
-                    fill="none"
-                    stroke={theme.nodeFill}
-                    strokeWidth={0.3 / z}
-                    initial={{ scale: 0.6, opacity: 0.8 }}
-                    animate={{ scale: 2.2, opacity: 0 }}
-                    transition={{ duration: 2.2, delay: i * 0.3, repeat: Infinity }}
+                  {/* Pulse ring 1 */}
+                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
+                    fill="none" stroke={theme.nodeFill} strokeWidth={0.2 / z}
+                    initial={{ scale: 0.4, opacity: 0.7 }}
+                    animate={{ scale: 2.8, opacity: 0 }}
+                    transition={{ duration: 2.8, delay: i * 0.25, repeat: Infinity }}
                   />
-                  {/* Inner ring */}
-                  <motion.circle
-                    cx={xy[0]} cy={xy[1]}
-                    r={nodeR * 3}
-                    fill="none"
-                    stroke={theme.nodeFill}
-                    strokeWidth={0.2 / z}
-                    opacity={0.5}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1.8, opacity: 0 }}
-                    transition={{ duration: 2.2, delay: i * 0.3 + 0.6, repeat: Infinity }}
+                  {/* Pulse ring 2 — offset timing */}
+                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
+                    fill="none" stroke={theme.nodeFill} strokeWidth={0.15 / z}
+                    initial={{ scale: 0.5, opacity: 0.5 }}
+                    animate={{ scale: 2.4, opacity: 0 }}
+                    transition={{ duration: 2.8, delay: i * 0.25 + 0.9, repeat: Infinity }}
+                  />
+                  {/* Halo ring — static soft glow */}
+                  <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
+                    fill={theme.nodeGlow} opacity={0.15}
+                    filter={`url(#${filterId('gn')})`}
                   />
                 </>
               )}
-              {/* Core dot */}
+              {/* Core sphere with radial gradient */}
               <motion.circle
-                cx={xy[0]} cy={xy[1]}
-                r={nodeR * 1.8}
+                cx={xy[0]} cy={xy[1]} r={nodeR * 2}
                 fill={`url(#${filterId('ng')})`}
                 filter={`url(#${filterId('gn')})`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={showSLCities ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
                 transition={{ duration: 0.55, delay: i * 0.15 }}
               />
+              {/* White hot center */}
+              {showSLCities && (
+                <circle cx={xy[0]} cy={xy[1]} r={nodeR * 0.6} fill="white" opacity={0.9} />
+              )}
             </g>
           ))}
 
-          {/* US hub nodes */}
+          {/* US hub nodes — 3D glowing sphere */}
           {usXY.map((xy, i) => (
             <g key={`us-node-${i}`}>
               {showUSHubs && (
-                <motion.circle
-                  cx={xy[0]} cy={xy[1]}
-                  r={nodeR * 4}
-                  fill="none"
-                  stroke={theme.nodeFill}
-                  strokeWidth={0.25 / z}
-                  initial={{ scale: 0.6, opacity: 0.8 }}
-                  animate={{ scale: 2.2, opacity: 0 }}
-                  transition={{ duration: 2, delay: i * 0.18, repeat: Infinity }}
-                />
+                <>
+                  {/* Pulse ring 1 */}
+                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
+                    fill="none" stroke={theme.nodeFill} strokeWidth={0.2 / z}
+                    initial={{ scale: 0.4, opacity: 0.7 }}
+                    animate={{ scale: 2.8, opacity: 0 }}
+                    transition={{ duration: 2.8, delay: i * 0.12, repeat: Infinity }}
+                  />
+                  {/* Pulse ring 2 — offset timing */}
+                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
+                    fill="none" stroke={theme.nodeFill} strokeWidth={0.15 / z}
+                    initial={{ scale: 0.5, opacity: 0.5 }}
+                    animate={{ scale: 2.4, opacity: 0 }}
+                    transition={{ duration: 2.8, delay: i * 0.12 + 0.7, repeat: Infinity }}
+                  />
+                  {/* Halo ring — static soft glow */}
+                  <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
+                    fill={theme.nodeGlow} opacity={0.15}
+                    filter={`url(#${filterId('gn')})`}
+                  />
+                </>
               )}
+              {/* Core sphere with radial gradient */}
               <motion.circle
-                cx={xy[0]} cy={xy[1]}
-                r={nodeR * 1.5}
+                cx={xy[0]} cy={xy[1]} r={nodeR * 2}
                 fill={`url(#${filterId('ng')})`}
                 filter={`url(#${filterId('gn')})`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={showUSHubs ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                transition={{ duration: 0.45, delay: i * 0.12 }}
+                transition={{ duration: 0.55, delay: i * 0.12 }}
               />
+              {/* White hot center */}
+              {showUSHubs && (
+                <circle cx={xy[0]} cy={xy[1]} r={nodeR * 0.6} fill="white" opacity={0.9} />
+              )}
             </g>
           ))}
         </g>

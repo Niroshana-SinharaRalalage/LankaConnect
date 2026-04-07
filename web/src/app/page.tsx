@@ -77,26 +77,21 @@ export default function LankaConnectHome() {
           className="flex items-center gap-3 mb-5"
           style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.55))' }}
         >
-          {/* Logo */}
+          {/* Logo — 84px as confirmed in DevTools */}
           <Image
             src="/images/lankaconnect-logo.png"
             alt="LankaConnect"
-            width={96}
-            height={96}
+            width={84}
+            height={84}
             className="object-contain flex-shrink-0"
             priority
           />
-          {/*
-            Text lockup — both lines tuned to equal rendered width ~153px:
-              "LankaConnect"         22px semibold, ls -0.01em → ~153px
-              "SRI LANKAN COMMUNITY HUB"  8.5px, ls 0.255em  → ~153px
-            Tight gap-1.5 keeps the block compact and centered to the logo.
-          */}
+          {/* Text lockup — exact values confirmed via DevTools inspection */}
           <div className="flex flex-col items-start gap-1.5">
             <span
               className="font-bold text-white leading-none"
               style={{
-                fontSize: '28px',
+                fontSize: '40px',
                 letterSpacing: '0em',
                 textShadow: '0 2px 14px rgba(0,0,0,0.55)',
               }}
@@ -106,7 +101,7 @@ export default function LankaConnectHome() {
             <span
               className="font-medium text-white/60 uppercase leading-none"
               style={{
-                fontSize: '8.5px',
+                fontSize: '13.5px',
                 letterSpacing: '0.255em',
               }}
             >
@@ -148,11 +143,11 @@ export default function LankaConnectHome() {
         {/* ── LankaEvents — the ONLY live sub-brand, prominently featured ── */}
         <Link href="/lanka-events" className="w-full max-w-2xl group block">
           <div
-            className="relative rounded-2xl p-7 md:p-8 border backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer text-left"
+            className="relative rounded-2xl p-5 md:p-6 border transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl cursor-pointer text-left"
             style={{
-              background: 'rgba(255,121,0,0.13)',
-              borderColor: 'rgba(255,121,0,0.45)',
-              boxShadow: '0 0 50px rgba(255,121,0,0.18), inset 0 1px 0 rgba(255,255,255,0.08)',
+              background: 'rgba(20,10,5,0.45)',
+              borderColor: 'rgba(255,121,0,0.35)',
+              boxShadow: '0 0 40px rgba(255,121,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05)',
             }}
           >
             {/* Top row: badge + live indicator */}

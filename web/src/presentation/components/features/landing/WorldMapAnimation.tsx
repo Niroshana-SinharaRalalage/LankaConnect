@@ -350,12 +350,12 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
       className={`relative w-full h-full overflow-hidden ${className}`}
       style={{ background: theme.bg }}
     >
-      {/* Sri Lanka phase: orange→amber→green gradient (LankaEvents brand) */}
+      {/* Sri Lanka phase: matches /lanka-events banner — orange → crimson/pink → forest green */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(135deg, #FF7900 0%, #f59e0b 45%, #059669 100%)',
-          opacity: ['zoom-sl','sl-cities','sl-lines'].includes(phase) ? 0.85 : 0,
+          background: 'linear-gradient(135deg, #e85d04 0%, #c1121f 35%, #9b2226 55%, #1a6b3c 100%)',
+          opacity: ['zoom-sl','sl-cities','sl-lines'].includes(phase) ? 0.80 : 0,
           transition: 'opacity 1.8s ease-in-out',
         }}
       />

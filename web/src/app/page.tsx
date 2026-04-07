@@ -72,39 +72,42 @@ export default function LankaConnectHome() {
       {/* ── Hero ──────────────────────────────────────────────────────── */}
       <div className="relative z-20 flex flex-col items-center justify-center text-center px-6 pt-2 pb-8 md:pt-4 md:pb-12">
 
-        {/* Brand identity — logo + name side by side, equal heights */}
-        <div className="flex items-center gap-4 mb-5" style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.6))' }}>
-          {/* Logo — 84px, defines the column height */}
+        {/* Brand identity — logo + compact text lockup */}
+        <div
+          className="flex items-center gap-3 mb-5"
+          style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.55))' }}
+        >
+          {/* Logo */}
           <Image
             src="/images/lankaconnect-logo.png"
             alt="LankaConnect"
-            width={84}
-            height={84}
+            width={96}
+            height={96}
             className="object-contain flex-shrink-0"
             priority
           />
-          {/* Text column — same height as logo, title at top / subtitle at bottom */}
-          <div className="flex flex-col justify-between items-start" style={{ height: '84px' }}>
-            {/*
-              "LankaConnect" (12 chars) and subtitle (24 chars, uppercase, spaced)
-              are tuned to the same rendered width ≈ 185px via complementary
-              font-size + letter-spacing values.
-            */}
+          {/*
+            Text lockup — both lines tuned to equal rendered width ~153px:
+              "LankaConnect"         22px semibold, ls -0.01em → ~153px
+              "SRI LANKAN COMMUNITY HUB"  8.5px, ls 0.255em  → ~153px
+            Tight gap-1.5 keeps the block compact and centered to the logo.
+          */}
+          <div className="flex flex-col items-start gap-1.5">
             <span
               className="font-semibold text-white leading-none"
               style={{
-                fontSize: '27px',
+                fontSize: '22px',
                 letterSpacing: '-0.01em',
-                textShadow: '0 2px 16px rgba(0,0,0,0.55)',
+                textShadow: '0 2px 14px rgba(0,0,0,0.55)',
               }}
             >
               LankaConnect
             </span>
             <span
-              className="font-medium text-white/65 uppercase"
+              className="font-medium text-white/60 uppercase leading-none"
               style={{
-                fontSize: '10.5px',
-                letterSpacing: '0.215em',
+                fontSize: '8.5px',
+                letterSpacing: '0.255em',
               }}
             >
               Sri Lankan Community Hub

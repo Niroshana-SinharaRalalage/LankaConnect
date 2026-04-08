@@ -187,7 +187,7 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-gray-950 text-white mt-24 relative overflow-hidden">
+    <footer className="bg-transparent text-white mt-0 relative overflow-hidden">
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Newsletter Section */}

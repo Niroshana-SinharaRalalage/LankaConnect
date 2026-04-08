@@ -146,13 +146,6 @@ export default function LankaConnectHome() {
         </div>
 
         {/* ── LankaEvents — single centred entry card ──────────────────── */}
-        {/* Wrapper preserves the vertical space that the 3-row grid previously occupied */}
-        <div className="w-full flex justify-center px-4" style={{ marginBottom: 0 }}>
-          {/* Invisible spacer rows to maintain original grid height (~2 hidden rows) */}
-          <div className="w-full" style={{ maxWidth: '1200px' }}>
-            {/* 2 invisible placeholder rows — same height as the old coming-soon cards */}
-            <div style={{ height: '246px' }} aria-hidden="true" />
-        </div></div>
         <div className="w-full flex justify-center px-4 mb-6">
           <Link href="/lanka-events" className="block w-full" style={{ maxWidth: '520px' }}>
             <div
@@ -264,35 +257,36 @@ export default function LankaConnectHome() {
           </Link>
         </div>
 
-      </div>{/* ── end hero content ── */}
-
-      </div>{/* ══ end 100vh hero section ══ */}
-
-      {/* ══════════════════════════════════════════════════════════════════
-          BELOW-FOLD SECTION — scrolled into view
-      ══════════════════════════════════════════════════════════════════ */}
-      <div className="bg-gray-950">
-
-        {/* "One Country, One Community" */}
-        <div className="flex flex-col items-center text-center px-4 py-20">
+        {/* ── "One Country, One Community" — inside hero, below card ──── */}
+        <div className="max-w-lg mt-6 text-center">
           <h2
-            className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight"
+            className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-md leading-tight"
             style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
           >
             One Country,{' '}
             <span style={{ color: theme.nodeFill }}>One Community</span>
           </h2>
-          <p className="text-base md:text-lg font-medium text-white/70 leading-relaxed max-w-lg">
+          <p
+            className="text-sm md:text-base font-medium text-white/80 leading-relaxed"
+            style={{ textShadow: '0 1px 8px rgba(0,0,0,0.7)' }}
+          >
             Join the largest Sri Lankan community platform. Discover events,
             connect with businesses, engage in discussions, and celebrate our
             rich culture together.
           </p>
         </div>
 
-        {/* Footer */}
-        <Footer />
+      </div>{/* ── end hero content ── */}
 
+      </div>{/* ══ end 100vh hero section ══ */}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          FOOTER — background blends with the map's satellite-navy palette
+      ══════════════════════════════════════════════════════════════════ */}
+      <div style={{ background: 'linear-gradient(180deg, #020818 0%, #0a0f2e 50%, #030d1a 100%)' }}>
+        <Footer />
       </div>
+
     </div>
   );
 }

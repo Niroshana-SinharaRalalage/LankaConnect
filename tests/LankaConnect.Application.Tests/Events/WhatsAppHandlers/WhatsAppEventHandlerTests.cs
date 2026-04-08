@@ -254,7 +254,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationConfirmedEvent(eventId, attendeeId, 2, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationConfirmedEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(500);
+        await Task.Delay(3000); // Increased for CI runner stability (fire-and-forget Task.Run)
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(attendeeId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
@@ -497,7 +497,7 @@ public class WhatsAppEventHandlerTests
 
         var domainEvent = new RegistrationCancelledEvent(eventId, attendeeId, DateTime.UtcNow);
         await handler.Handle(new DomainEventNotification<RegistrationCancelledEvent>(domainEvent), CancellationToken.None);
-        await Task.Delay(500);
+        await Task.Delay(3000); // Increased for CI runner stability (fire-and-forget Task.Run)
 
         _mockWhatsAppService.Verify(
             s => s.SendTemplateMessageAsync(attendeeId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),

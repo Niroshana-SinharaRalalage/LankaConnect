@@ -13,7 +13,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, ChevronRight, MessageSquare, ShoppingBag, Home, ShoppingCart, BookOpen, Lock } from 'lucide-react';
+import { Calendar, ChevronRight, MessageSquare, ShoppingBag, Home, ShoppingCart, BookOpen, Lock, ArrowUpRight } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DEFAULT_THEME_KEY = 'satellite-navy';
@@ -35,9 +35,9 @@ const SUB_BRANDS: SubBrand[] = [
     key: 'lanka-events',
     name: 'LankaEvents',
     tagline: 'Event Planner',
-    description: 'Discover & plan Sri Lankan events worldwide',
+    description: 'Discover, create & manage Sri Lankan events worldwide. Browse upcoming concerts, cultural shows, food fairs & more.',
     href: '/lanka-events',
-    icon: <Calendar className="h-5 w-5" />,
+    icon: <Calendar className="h-7 w-7" />,
     live: true,
     color: '#FF7900',
   },
@@ -45,9 +45,9 @@ const SUB_BRANDS: SubBrand[] = [
     key: 'lanka-forums',
     name: 'LankaForums',
     tagline: 'Community Forum',
-    description: 'Connect & discuss with the community',
+    description: 'Discuss news, culture & life with Sri Lankans across the globe. Share stories, ask questions, build connections.',
     href: '#',
-    icon: <MessageSquare className="h-5 w-5" />,
+    icon: <MessageSquare className="h-7 w-7" />,
     live: false,
     color: '#6366f1',
   },
@@ -55,9 +55,9 @@ const SUB_BRANDS: SubBrand[] = [
     key: 'lanka-seyla',
     name: 'LankaSeyla',
     tagline: 'Fashion & Clothing',
-    description: 'Sri Lankan clothing & fashion',
+    description: 'Authentic Sri Lankan clothing, batik, traditional wear & modern fashion delivered worldwide.',
     href: '#',
-    icon: <ShoppingBag className="h-5 w-5" />,
+    icon: <ShoppingBag className="h-7 w-7" />,
     live: false,
     color: '#ec4899',
   },
@@ -65,29 +65,29 @@ const SUB_BRANDS: SubBrand[] = [
     key: 'lanka-nivasa',
     name: 'LankaNivasa',
     tagline: 'Home & Living',
-    description: 'Home goods & furnishings',
+    description: 'Sri Lankan home decor, furniture & lifestyle goods. Bring the warmth of home wherever you are.',
     href: '#',
-    icon: <Home className="h-5 w-5" />,
+    icon: <Home className="h-7 w-7" />,
     live: false,
     color: '#10b981',
   },
   {
     key: 'lanka-mart',
     name: 'LankaMart',
-    tagline: 'Grocery Store',
-    description: 'Sri Lankan grocery & essentials',
+    tagline: 'Grocery & Essentials',
+    description: 'Sri Lankan spices, rice, lentils, snacks & pantry essentials. Fresh and authentic, shipped to your door.',
     href: '#',
-    icon: <ShoppingCart className="h-5 w-5" />,
+    icon: <ShoppingCart className="h-7 w-7" />,
     live: false,
     color: '#f59e0b',
   },
   {
     key: 'lanka-learn',
     name: 'LankaLearn',
-    tagline: 'Education',
-    description: 'Online learning platform',
+    tagline: 'Education Platform',
+    description: 'Online courses in Sinhala, Tamil, Sri Lankan history, culture, cooking & professional skills.',
     href: '#',
-    icon: <BookOpen className="h-5 w-5" />,
+    icon: <BookOpen className="h-7 w-7" />,
     live: false,
     color: '#3b82f6',
   },
@@ -175,32 +175,32 @@ export default function LankaConnectHome() {
           Connecting Sri Lankans Worldwide
         </div>
 
-        {/* ── Sub-brand buttons — 3 rows × 2 columns, 150px column gap ─── */}
-        <div className="w-full max-w-[820px] grid grid-cols-2 gap-y-3 mb-12" style={{ columnGap: '150px' }}>
+        {/* ── Sub-brand grid — 1 col mobile, 2 col desktop ────────────── */}
+        <div className="w-full px-3 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-y-3 mb-10" style={{ maxWidth: '1100px', columnGap: '80px' }}>
           {SUB_BRANDS.map((brand) => {
             const inner = (
               <div
                 className={`
-                  relative flex items-center gap-3 px-4 py-3.5 rounded-xl border
+                  relative flex items-start gap-4 px-5 py-4 rounded-2xl border
                   transition-all duration-200 text-left w-full
                   ${brand.live
-                    ? 'hover:scale-[1.02] hover:brightness-110 cursor-pointer active:scale-[0.99]'
+                    ? 'hover:scale-[1.015] hover:brightness-110 cursor-pointer active:scale-[0.99]'
                     : 'opacity-55 cursor-not-allowed'}
                 `}
                 style={{
                   background: brand.live
-                    ? `linear-gradient(135deg, ${brand.color}28 0%, ${brand.color}10 100%)`
+                    ? `linear-gradient(135deg, ${brand.color}28 0%, ${brand.color}08 100%)`
                     : 'rgba(255,255,255,0.03)',
-                  borderColor: brand.live ? `${brand.color}55` : 'rgba(255,255,255,0.07)',
-                  boxShadow: brand.live ? `0 2px 16px ${brand.color}20, inset 0 1px 0 rgba(255,255,255,0.06)` : 'none',
-                  minHeight: '120px',
+                  borderColor: brand.live ? `${brand.color}50` : 'rgba(255,255,255,0.07)',
+                  boxShadow: brand.live ? `0 4px 24px ${brand.color}18, inset 0 1px 0 rgba(255,255,255,0.07)` : 'none',
+                  minHeight: '110px',
                 }}
               >
                 {/* Icon */}
                 <div
-                  className="flex items-center justify-center w-10 h-10 rounded-lg flex-shrink-0"
+                  className="flex items-center justify-center w-14 h-14 rounded-xl flex-shrink-0 mt-0.5"
                   style={{
-                    background: brand.live ? `${brand.color}20` : 'rgba(255,255,255,0.05)',
+                    background: brand.live ? `${brand.color}22` : 'rgba(255,255,255,0.05)',
                     color: brand.live ? brand.color : 'rgba(255,255,255,0.2)',
                   }}
                 >
@@ -208,29 +208,41 @@ export default function LankaConnectHome() {
                 </div>
 
                 {/* Text */}
-                <div className="flex-1 min-w-0">
-                  <div className={`font-bold text-sm leading-tight ${brand.live ? 'text-white' : 'text-white/35'}`}>
-                    {brand.name}
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`font-bold text-base leading-tight ${brand.live ? 'text-white' : 'text-white/35'}`}>
+                      {brand.name}
+                    </span>
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none flex-shrink-0"
+                      style={{
+                        background: brand.live ? `${brand.color}25` : 'rgba(255,255,255,0.06)',
+                        color: brand.live ? brand.color : 'rgba(255,255,255,0.25)',
+                        border: `1px solid ${brand.live ? `${brand.color}40` : 'rgba(255,255,255,0.08)'}`,
+                      }}
+                    >
+                      {brand.tagline}
+                    </span>
                   </div>
-                  <div className={`text-[11px] mt-0.5 leading-tight ${brand.live ? 'text-white/55' : 'text-white/20'}`}>
+                  <div className={`text-xs leading-relaxed ${brand.live ? 'text-white/60' : 'text-white/22'}`}>
                     {brand.description}
                   </div>
                 </div>
 
                 {/* Right side */}
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="flex flex-col items-end gap-2 flex-shrink-0 pt-0.5">
                   {brand.live ? (
                     <>
                       <div className="flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                        <span className="text-green-400 text-[9px] font-bold uppercase">Live</span>
+                        <span className="text-green-400 text-[10px] font-bold uppercase tracking-wide">Live</span>
                       </div>
-                      <ChevronRight className="h-4 w-4" style={{ color: brand.color }} />
+                      <ArrowUpRight className="h-5 w-5" style={{ color: brand.color }} />
                     </>
                   ) : (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                      <Lock className="h-2.5 w-2.5 text-white/30" />
-                      <span className="text-white/30 text-[9px] font-medium">Soon</span>
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                      <Lock className="h-3 w-3 text-white/30" />
+                      <span className="text-white/30 text-[10px] font-medium">Coming Soon</span>
                     </div>
                   )}
                 </div>

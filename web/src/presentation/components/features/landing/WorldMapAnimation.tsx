@@ -426,12 +426,12 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
   const ty = (H / 2 - view.zoom * vpy).toFixed(3);
   const groupTransform = `translate(${tx}px, ${ty}px) scale(${view.zoom})`;
 
-  // Visibility flags
-  const showSLCities = ['sl-cities','sl-lines','beam','zoom-out','pause'].includes(phase);
-  const showSLLines  = ['sl-lines', 'beam','zoom-out','pause'].includes(phase);
-  const showBeam     = ['beam','zoom-us','us-hubs','us-lines','zoom-out','pause'].includes(phase);
-  const showUSHubs   = ['us-hubs','us-lines','zoom-out','pause'].includes(phase);
-  const showUSLines  = ['us-lines','zoom-out','pause'].includes(phase);
+  // Visibility flags — nodes/lines only shown during their own zoomed phase to avoid colour bleed on world view
+  const showSLCities = ['sl-cities','sl-lines','beam'].includes(phase);
+  const showSLLines  = ['sl-lines','beam'].includes(phase);
+  const showBeam     = ['beam','zoom-us','us-hubs','us-lines'].includes(phase);
+  const showUSHubs   = ['us-hubs','us-lines'].includes(phase);
+  const showUSLines  = ['us-lines'].includes(phase);
   const isSLPhase    = ['zoom-sl','sl-cities','sl-lines'].includes(phase);
   const isUSPhase    = ['zoom-us','us-hubs','us-lines'].includes(phase);
 
@@ -646,7 +646,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 opacity={0.22}
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 0.6, delay: i * 0.055 }}
+                transition={{ duration: 0.75, delay: i * 0.055, ease: [0.22, 1, 0.36, 1] }}
               />
               {/* Sharp line */}
               <motion.path
@@ -656,7 +656,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.9 }}
-                transition={{ duration: 0.6, delay: i * 0.055 }}
+                transition={{ duration: 0.75, delay: i * 0.055, ease: [0.22, 1, 0.36, 1] }}
               />
             </g>
           ))}
@@ -718,7 +718,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 opacity={0.28}
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 0.55, delay: i * 0.04 }}
+                transition={{ duration: 0.65, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
               />
               {/* Sharp line */}
               <motion.path
@@ -728,7 +728,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.85 }}
-                transition={{ duration: 0.55, delay: i * 0.04 }}
+                transition={{ duration: 0.65, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
               />
             </g>
           ))}
@@ -752,9 +752,9 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                     animate={{ scale: 2.4, opacity: 0 }}
                     transition={{ duration: 2.8, delay: i * 0.25 + 0.9, repeat: Infinity }}
                   />
-                  {/* Halo ring — static soft glow */}
+                  {/* Halo ring — static soft glow, gold during SL phase */}
                   <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
-                    fill={theme.nodeGlow} opacity={0.15}
+                    fill={isSLPhase ? phaseNodeFill : theme.nodeGlow} opacity={0.18}
                     filter={`url(#${filterId('gn')})`}
                   />
                 </>
@@ -766,7 +766,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 filter={`url(#${filterId('gn')})`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={showSLCities ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                transition={{ duration: 0.55, delay: i * 0.22 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 22, delay: i * 0.22 }}
               />
               {/* White hot center */}
               {showSLCities && (
@@ -812,7 +812,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                   filter={`url(#${filterId('gn')})`}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={showUSHubs ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                  transition={{ duration: 0.55, delay: i * 0.18 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 22, delay: i * 0.18 }}
                 />
                 {/* White hot center */}
                 {showUSHubs && (

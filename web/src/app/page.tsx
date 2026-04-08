@@ -34,15 +34,20 @@ export default function LankaConnectHome() {
   const theme = THEMES.find(t => t.key === DEFAULT_THEME_KEY) ?? THEMES[2];
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
+    <div className="w-full">
 
-      {/* ── Full-page animated world map ──────────────────────────────── */}
-      <div className="absolute inset-0 z-0">
-        {mounted && <WorldMapAnimation theme={theme} className="w-full h-full" />}
-      </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          HERO SECTION — exactly 100vh, animation stays inside this box
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative w-full overflow-hidden" style={{ height: '100vh' }}>
 
-      {/* ── Subtle dark overlay — just enough for text legibility ─────── */}
-      <div className="absolute inset-0 z-10 bg-black/20" />
+        {/* ── Animated world map — constrained to hero only ────────────── */}
+        <div className="absolute inset-0 z-0">
+          {mounted && <WorldMapAnimation theme={theme} className="w-full h-full" />}
+        </div>
+
+        {/* ── Subtle dark overlay ───────────────────────────────────────── */}
+        <div className="absolute inset-0 z-10 bg-black/20" />
 
       {/* ── Top nav — auth-aware ──────────────────────────────────────── */}
       <nav className="relative z-20 flex items-center justify-end px-6 py-4 md:px-10">
@@ -95,8 +100,8 @@ export default function LankaConnectHome() {
         )}
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────────── */}
-      <div className="relative z-20 flex flex-col items-center justify-center text-center px-4 pt-2 pb-6 md:pt-4 md:pb-10">
+      {/* ── Hero content — centred inside the 100vh box ───────────────── */}
+      <div className="relative z-20 flex flex-col items-center justify-center text-center px-4 h-full" style={{ paddingTop: '0', paddingBottom: '0' }}>
 
         {/* Brand identity */}
         <div
@@ -141,7 +146,14 @@ export default function LankaConnectHome() {
         </div>
 
         {/* ── LankaEvents — single centred entry card ──────────────────── */}
-        <div className="w-full flex justify-center px-4 mb-10">
+        {/* Wrapper preserves the vertical space that the 3-row grid previously occupied */}
+        <div className="w-full flex justify-center px-4" style={{ marginBottom: 0 }}>
+          {/* Invisible spacer rows to maintain original grid height (~2 hidden rows) */}
+          <div className="w-full" style={{ maxWidth: '1200px' }}>
+            {/* 2 invisible placeholder rows — same height as the old coming-soon cards */}
+            <div style={{ height: '246px' }} aria-hidden="true" />
+        </div></div>
+        <div className="w-full flex justify-center px-4 mb-6">
           <Link href="/lanka-events" className="block w-full" style={{ maxWidth: '520px' }}>
             <div
               className="relative flex items-start gap-5 px-6 py-5 rounded-2xl cursor-pointer select-none"
@@ -212,15 +224,11 @@ export default function LankaConnectHome() {
                 }}
               >
                 <Image
-                  src="/images/lanka-events-logo.png"
+                  src="/lanka-events.jpg"
                   alt="LankaEvents"
                   width={80}
                   height={80}
-                  className="object-contain w-full h-full"
-                  onError={(e) => {
-                    // fallback: hide broken image, show nothing (parent bg shows)
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  }}
+                  className="object-cover w-full h-full"
                 />
               </div>
 
@@ -256,30 +264,34 @@ export default function LankaConnectHome() {
           </Link>
         </div>
 
-        {/* Main copy — below the buttons */}
-        <div className="max-w-lg">
+      </div>{/* ── end hero content ── */}
+
+      </div>{/* ══ end 100vh hero section ══ */}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          BELOW-FOLD SECTION — scrolled into view
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="bg-gray-950">
+
+        {/* "One Country, One Community" */}
+        <div className="flex flex-col items-center text-center px-4 py-20">
           <h2
-            className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-md leading-tight"
+            className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight"
             style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
           >
             One Country,{' '}
             <span style={{ color: theme.nodeFill }}>One Community</span>
           </h2>
-          <p
-            className="text-sm md:text-base font-medium text-white/80 leading-relaxed"
-            style={{ textShadow: '0 1px 8px rgba(0,0,0,0.7)' }}
-          >
+          <p className="text-base md:text-lg font-medium text-white/70 leading-relaxed max-w-lg">
             Join the largest Sri Lankan community platform. Discover events,
             connect with businesses, engage in discussions, and celebrate our
             rich culture together.
           </p>
         </div>
 
-      </div>
-
-      {/* ── Footer — shared component (same as /lanka-events) ────────── */}
-      <div className="relative z-20">
+        {/* Footer */}
         <Footer />
+
       </div>
     </div>
   );

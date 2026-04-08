@@ -267,7 +267,7 @@ export default function LankaConnectHome() {
                   alt="LankaEvents"
                   width={80}
                   height={80}
-                  className="object-contain flex-shrink-0 rounded-xl"
+                  className="object-contain flex-shrink-0 rounded-xl mix-blend-screen"
                 />
 
                 {/* Text */}

@@ -429,7 +429,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
   // Visibility flags — nodes/lines only shown during their own zoomed phase to avoid colour bleed on world view
   const showSLCities = ['sl-cities','sl-lines','beam'].includes(phase);
   const showSLLines  = ['sl-lines','beam'].includes(phase);
-  const showBeam     = ['beam','zoom-us','us-hubs','us-lines'].includes(phase);
+  const showBeam     = ['beam','zoom-us','us-hubs','us-lines','zoom-out','pause'].includes(phase);
   const showUSHubs   = ['us-hubs','us-lines'].includes(phase);
   const showUSLines  = ['us-lines'].includes(phase);
   const isSLPhase    = ['zoom-sl','sl-cities','sl-lines'].includes(phase);

@@ -261,22 +261,14 @@ export default function LankaConnectHome() {
                   ].join(', ');
                 }}
               >
-                {/* Logo — object-contain shows full illustration without cropping */}
-                <div
-                  className="flex items-center justify-center w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden"
-                  style={{
-                    background: 'rgba(255,255,255,0.92)',
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 12px ${LANKA_EVENTS_COLOR}35`,
-                  }}
-                >
-                  <Image
-                    src="/lanka-events.jpg"
-                    alt="LankaEvents"
-                    width={80}
-                    height={80}
-                    className="object-contain w-full h-full p-1"
-                  />
-                </div>
+                {/* Logo — no container box, just the image */}
+                <Image
+                  src="/lanka-events3.jpg"
+                  alt="LankaEvents"
+                  width={80}
+                  height={80}
+                  className="object-contain flex-shrink-0 rounded-xl"
+                />
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">

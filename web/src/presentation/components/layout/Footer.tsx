@@ -75,21 +75,6 @@ const Footer: React.FC = () => {
   // entire Resources category, Careers, Press. Renamed "Our Story" to "About Us".
   const linkCategories: LinkCategory[] = [
     {
-      title: 'Community',
-      links: [
-        { label: 'Events', href: '/events' },
-        { label: 'Forums', href: '/forums' },
-        ...(isAuthenticated ? [{ label: 'Dashboard', href: '/dashboard' }] : []),
-      ],
-    },
-    {
-      title: 'Marketplace',
-      links: [
-        { label: 'Browse Listings', href: '/marketplace' },
-        { label: 'Businesses', href: '/business' },
-      ],
-    },
-    {
       title: 'About',
       links: [
         { label: 'About Us', href: '/about' },

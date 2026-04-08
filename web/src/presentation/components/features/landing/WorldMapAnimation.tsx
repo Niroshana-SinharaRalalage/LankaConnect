@@ -661,49 +661,42 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             </g>
           ))}
 
-          {/* Transcontinental beam — wide glow + core */}
-          {showBeam && (
-            <g>
-              {/* Wide glow layer */}
-              <motion.path
-                key="beam-glow"
-                d={beamPath} fill="none"
-                stroke={theme.beamStroke}
-                strokeWidth={strokeW * 8}
-                strokeLinecap="round"
-                filter={`url(#${filterId('gb2')})`}
-                opacity={0.3}
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 2.4, ease: 'easeInOut' }}
-              />
-              {/* Medium glow */}
-              <motion.path
-                key="beam-mid"
-                d={beamPath} fill="none"
-                stroke={theme.beamStroke}
-                strokeWidth={strokeW * 3}
-                strokeLinecap="round"
-                filter={`url(#${filterId('gb')})`}
-                opacity={0.55}
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 2.4, ease: 'easeInOut' }}
-              />
-              {/* Core line */}
-              <motion.path
-                key="beam-core"
-                d={beamPath} fill="none"
-                stroke={theme.beamStroke}
-                strokeWidth={strokeW * 1.4}
-                strokeLinecap="round"
-                strokeDasharray={`${3 / z} ${2 / z}`}
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.95 }}
-                transition={{ duration: 2.4, ease: 'easeInOut' }}
-              />
-            </g>
-          )}
+          {/* Transcontinental beam — always mounted, opacity-controlled to prevent re-draw blast */}
+          <g style={{ pointerEvents: 'none' }}>
+            {/* Wide glow layer — draws once on first mount, then fades in/out via opacity */}
+            <motion.path
+              d={beamPath} fill="none"
+              stroke={theme.beamStroke}
+              strokeWidth={strokeW * 8}
+              strokeLinecap="round"
+              filter={`url(#${filterId('gb2')})`}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: showBeam ? 0.3 : 0 }}
+              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+            />
+            {/* Medium glow */}
+            <motion.path
+              d={beamPath} fill="none"
+              stroke={theme.beamStroke}
+              strokeWidth={strokeW * 3}
+              strokeLinecap="round"
+              filter={`url(#${filterId('gb')})`}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: showBeam ? 0.55 : 0 }}
+              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+            />
+            {/* Core dashed line */}
+            <motion.path
+              d={beamPath} fill="none"
+              stroke={theme.beamStroke}
+              strokeWidth={strokeW * 1.4}
+              strokeLinecap="round"
+              strokeDasharray={`${3 / z} ${2 / z}`}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: showBeam ? 0.95 : 0 }}
+              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+            />
+          </g>
 
           {/* US hub arcs — glow layer + sharp line layer, flag colors */}
           {showUSLines && usArcs.map((d, i) => (

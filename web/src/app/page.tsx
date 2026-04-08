@@ -176,24 +176,82 @@ export default function LankaConnectHome() {
         </div>
 
         {/* ── Sub-brand grid — 1 col mobile, 2 col desktop ────────────── */}
-        <div className="w-full px-3 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-y-3 mb-10" style={{ maxWidth: '1100px', columnGap: '80px' }}>
+        <div className="w-full px-3 md:px-10 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-y-4 mb-10" style={{ maxWidth: '1200px', columnGap: '140px' }}>
           {SUB_BRANDS.map((brand) => {
             const inner = (
               <div
                 className={`
-                  relative flex items-start gap-4 px-5 py-4 rounded-2xl border
-                  transition-all duration-200 text-left w-full
-                  ${brand.live
-                    ? 'hover:scale-[1.015] hover:brightness-110 cursor-pointer active:scale-[0.99]'
-                    : 'opacity-55 cursor-not-allowed'}
+                  relative flex items-start gap-4 px-5 py-4 rounded-2xl
+                  text-left w-full select-none
+                  ${brand.live ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}
                 `}
                 style={{
+                  /* Layered 3-D effect: top-edge highlight + bottom-edge depth shadow + ambient glow */
                   background: brand.live
-                    ? `linear-gradient(135deg, ${brand.color}28 0%, ${brand.color}08 100%)`
+                    ? `linear-gradient(175deg, ${brand.color}30 0%, ${brand.color}14 60%, ${brand.color}06 100%)`
                     : 'rgba(255,255,255,0.03)',
-                  borderColor: brand.live ? `${brand.color}50` : 'rgba(255,255,255,0.07)',
-                  boxShadow: brand.live ? `0 4px 24px ${brand.color}18, inset 0 1px 0 rgba(255,255,255,0.07)` : 'none',
+                  border: brand.live
+                    ? `1px solid ${brand.color}55`
+                    : '1px solid rgba(255,255,255,0.07)',
+                  boxShadow: brand.live
+                    ? [
+                        `inset 0 1px 0 rgba(255,255,255,0.18)`,           /* top-edge shine */
+                        `inset 0 -1px 0 ${brand.color}60`,                /* bottom-edge inner lip */
+                        `0 6px 0 ${brand.color}55`,                       /* 3-D lift shadow */
+                        `0 10px 32px ${brand.color}22`,                   /* ambient glow */
+                        `0 2px 4px rgba(0,0,0,0.45)`,                     /* ground shadow */
+                      ].join(', ')
+                    : 'none',
                   minHeight: '110px',
+                  transition: 'transform 0.10s ease, box-shadow 0.10s ease',
+                }}
+                onMouseEnter={e => {
+                  if (!brand.live) return;
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(-2px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    `inset 0 -1px 0 ${brand.color}70`,
+                    `0 8px 0 ${brand.color}60`,
+                    `0 14px 40px ${brand.color}30`,
+                    `0 4px 6px rgba(0,0,0,0.5)`,
+                  ].join(', ');
+                }}
+                onMouseLeave={e => {
+                  if (!brand.live) return;
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = '';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.18)`,
+                    `inset 0 -1px 0 ${brand.color}60`,
+                    `0 6px 0 ${brand.color}55`,
+                    `0 10px 32px ${brand.color}22`,
+                    `0 2px 4px rgba(0,0,0,0.45)`,
+                  ].join(', ');
+                }}
+                onMouseDown={e => {
+                  if (!brand.live) return;
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(5px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.10)`,
+                    `inset 0 -1px 0 ${brand.color}40`,
+                    `0 1px 0 ${brand.color}55`,
+                    `0 3px 12px ${brand.color}18`,
+                    `0 1px 2px rgba(0,0,0,0.5)`,
+                  ].join(', ');
+                }}
+                onMouseUp={e => {
+                  if (!brand.live) return;
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(-2px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    `inset 0 -1px 0 ${brand.color}70`,
+                    `0 8px 0 ${brand.color}60`,
+                    `0 14px 40px ${brand.color}30`,
+                    `0 4px 6px rgba(0,0,0,0.5)`,
+                  ].join(', ');
                 }}
               >
                 {/* Icon */}
@@ -202,6 +260,7 @@ export default function LankaConnectHome() {
                   style={{
                     background: brand.live ? `${brand.color}22` : 'rgba(255,255,255,0.05)',
                     color: brand.live ? brand.color : 'rgba(255,255,255,0.2)',
+                    boxShadow: brand.live ? `inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 8px ${brand.color}30` : 'none',
                   }}
                 >
                   {brand.icon}

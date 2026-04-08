@@ -13,8 +13,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, ChevronRight, MessageSquare, ShoppingBag, Home, ShoppingCart, BookOpen, Lock, ArrowUpRight } from 'lucide-react';
+import { Calendar, ChevronRight, MessageSquare, ShoppingBag, Home, ShoppingCart, BookOpen, Lock, ArrowUpRight, Facebook, Twitter, Instagram, Youtube, Mail, User } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
+import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 // ─── Theme ────────────────────────────────────────────────────────────────────
 const DEFAULT_THEME_KEY = 'satellite-navy';
 
@@ -98,6 +99,9 @@ export default function LankaConnectHome() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  const { isAuthenticated, user } = useAuthStore();
+  const hasHydrated = useHasHydrated();
+
   const theme = THEMES.find(t => t.key === DEFAULT_THEME_KEY) ?? THEMES[2];
 
   return (
@@ -111,23 +115,55 @@ export default function LankaConnectHome() {
       {/* ── Subtle dark overlay — just enough for text legibility ─────── */}
       <div className="absolute inset-0 z-10 bg-black/20" />
 
-      {/* ── Top nav — always show Sign In / Join Free ─────────────────── */}
+      {/* ── Top nav — auth-aware ──────────────────────────────────────── */}
       <nav className="relative z-20 flex items-center justify-end px-6 py-4 md:px-10">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/register"
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white border transition-all hover:bg-white/10 backdrop-blur-sm"
-            style={{ borderColor: theme.nodeFill, boxShadow: `0 0 12px ${theme.nodeFill}40` }}
-          >
-            Join Free
-          </Link>
-        </div>
+        {/* Placeholder while Zustand rehydrates — prevents flash of wrong state */}
+        {!hasHydrated && <div className="h-9 w-40" />}
+
+        {hasHydrated && isAuthenticated && user && (
+          <div className="flex items-center gap-3">
+            {/* User avatar */}
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border"
+              style={{ borderColor: 'rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)' }}
+            >
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={{ background: theme.nodeFill, color: '#000' }}
+              >
+                {user.fullName?.[0]?.toUpperCase() ?? <User className="w-3 h-3" />}
+              </div>
+              <span className="text-white/90 text-sm font-medium hidden sm:inline">
+                {user.fullName?.split(' ')[0]}
+              </span>
+            </div>
+            <Link
+              href="/lanka-events/dashboard"
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white border transition-all hover:bg-white/10 backdrop-blur-sm"
+              style={{ borderColor: theme.nodeFill, boxShadow: `0 0 12px ${theme.nodeFill}40` }}
+            >
+              Dashboard
+            </Link>
+          </div>
+        )}
+
+        {hasHydrated && !isAuthenticated && (
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white border transition-all hover:bg-white/10 backdrop-blur-sm"
+              style={{ borderColor: theme.nodeFill, boxShadow: `0 0 12px ${theme.nodeFill}40` }}
+            >
+              Join Free
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────── */}
@@ -335,15 +371,121 @@ export default function LankaConnectHome() {
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <div className="relative z-20 text-center pb-4 px-6">
-        <p className="text-xs text-white/20">
-          © {new Date().getFullYear()} LankaConnect LLC · lankaconnect.app
-          {' '}·{' '}
-          <Link href="/animation-preview" className="underline hover:text-white/50 transition-colors">
-            Preview themes
-          </Link>
-        </p>
-      </div>
+      <footer className="relative z-20 mt-8">
+        {/* Gradient background with cross pattern */}
+        <div
+          className="relative px-8 md:px-16 pt-12 pb-8"
+          style={{
+            background: 'linear-gradient(135deg, #c45000 0%, #8B0000 30%, #6b0020 55%, #1a4a20 100%)',
+          }}
+        >
+          {/* Cross/plus pattern overlay */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)`,
+              backgroundSize: '32px 32px',
+              maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.15) 100%)',
+            }}
+          />
+
+          {/* Link columns */}
+          <div className="relative grid grid-cols-2 md:grid-cols-3 gap-8 mb-10 max-w-4xl">
+            {/* Community */}
+            <div>
+              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">Community</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Events', href: '/lanka-events' },
+                  { label: 'Forums', href: '#' },
+                  { label: 'Dashboard', href: '/lanka-events/dashboard' },
+                ].map(l => (
+                  <li key={l.label}>
+                    <Link href={l.href} className="text-white/65 hover:text-white text-sm transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Marketplace */}
+            <div>
+              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">Marketplace</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Browse Listings', href: '#' },
+                  { label: 'Businesses', href: '#' },
+                ].map(l => (
+                  <li key={l.label}>
+                    <Link href={l.href} className="text-white/65 hover:text-white text-sm transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* About */}
+            <div>
+              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">About</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'About Us', href: '#' },
+                  { label: 'Contact Us', href: '#' },
+                ].map(l => (
+                  <li key={l.label}>
+                    <Link href={l.href} className="text-white/65 hover:text-white text-sm transition-colors">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="relative border-t border-white/15 mb-6" />
+
+          {/* Bottom bar */}
+          <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/lankaconnect-logo.png"
+                alt="LankaConnect"
+                width={38}
+                height={38}
+                className="object-contain"
+              />
+              <div>
+                <div className="text-white font-bold text-sm leading-tight">LankaConnect</div>
+                <div className="text-white/50 text-xs">© {new Date().getFullYear()} All rights reserved</div>
+              </div>
+            </div>
+
+            {/* Social icons */}
+            <div className="flex items-center gap-5">
+              {[
+                { icon: <Facebook className="w-4 h-4" />, href: '#', label: 'Facebook' },
+                { icon: <Twitter className="w-4 h-4" />, href: '#', label: 'Twitter' },
+                { icon: <Instagram className="w-4 h-4" />, href: '#', label: 'Instagram' },
+                { icon: <Youtube className="w-4 h-4" />, href: '#', label: 'YouTube' },
+                { icon: <Mail className="w-4 h-4" />, href: 'mailto:hello@lankaconnect.app', label: 'Email' },
+              ].map(s => (
+                <Link
+                  key={s.label}
+                  href={s.href}
+                  aria-label={s.label}
+                  className="text-white/50 hover:text-white transition-colors"
+                >
+                  {s.icon}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

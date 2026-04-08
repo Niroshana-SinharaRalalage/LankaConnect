@@ -156,7 +156,7 @@ export default function LankaConnectHome() {
         <div className="relative z-20 flex flex-col items-center justify-between text-center px-4 h-full pt-[55px] pb-[25px]">
 
           {/* ── TOP: Brand identity + pill ─────────────────────────────── */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center mt-5">
             <div
               className="flex items-center gap-3 mb-4"
               style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.55))' }}
@@ -311,7 +311,7 @@ export default function LankaConnectHome() {
           </div>
 
           {/* ── BOTTOM: One Country tagline ─────────────────────────────── */}
-          <div className="max-w-lg">
+          <div className="max-w-lg mb-6">
             <h2
               className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-md leading-tight"
               style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}

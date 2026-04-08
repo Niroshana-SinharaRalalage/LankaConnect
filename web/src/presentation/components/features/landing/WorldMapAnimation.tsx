@@ -34,77 +34,146 @@ function px(lon: number, lat: number): [number, number] {
 
 // ─── Locations ────────────────────────────────────────────────────────────────
 export const SRI_LANKA_CITIES = [
-  { name: 'Colombo',      lat: 6.9271,  lon: 79.8612 },  // Western Province
-  { name: 'Kandy',        lat: 7.2906,  lon: 80.6337 },  // Central Province
-  { name: 'Galle',        lat: 6.0535,  lon: 80.2170 },  // Southern Province
-  { name: 'Jaffna',       lat: 9.6615,  lon: 80.0255 },  // Northern Province
-  { name: 'Trincomalee',  lat: 8.5874,  lon: 81.2152 },  // Eastern Province
-  { name: 'Kurunegala',   lat: 7.4675,  lon: 80.3647 },  // North Western Province
-  { name: 'Anuradhapura', lat: 8.3114,  lon: 80.4037 },  // North Central Province
-  { name: 'Badulla',      lat: 6.9934,  lon: 81.0550 },  // Uva Province
-  { name: 'Ratnapura',    lat: 6.6828,  lon: 80.3992 },  // Sabaragamuwa Province
+  // Western Province
+  { name: 'Colombo',      lat: 6.9271,  lon: 79.8612 },  // 0
+  { name: 'Gampaha',      lat: 7.0873,  lon: 80.0144 },  // 1
+  { name: 'Kalutara',     lat: 6.5854,  lon: 79.9607 },  // 2
+  // Central Province
+  { name: 'Kandy',        lat: 7.2906,  lon: 80.6337 },  // 3
+  { name: 'Matale',       lat: 7.4675,  lon: 80.6234 },  // 4
+  { name: 'Nuwara Eliya', lat: 6.9497,  lon: 80.7891 },  // 5
+  // Southern Province
+  { name: 'Galle',        lat: 6.0535,  lon: 80.2170 },  // 6
+  { name: 'Matara',       lat: 5.9549,  lon: 80.5550 },  // 7
+  { name: 'Hambantota',   lat: 6.1241,  lon: 81.1185 },  // 8
+  // Northern Province
+  { name: 'Jaffna',       lat: 9.6615,  lon: 80.0255 },  // 9
+  { name: 'Kilinochchi',  lat: 9.3803,  lon: 80.4036 },  // 10
+  { name: 'Mannar',       lat: 8.9810,  lon: 79.9044 },  // 11
+  { name: 'Vavuniya',     lat: 8.7514,  lon: 80.4971 },  // 12
+  { name: 'Mullaitivu',   lat: 9.2671,  lon: 80.8128 },  // 13
+  // Eastern Province
+  { name: 'Trincomalee',  lat: 8.5874,  lon: 81.2152 },  // 14
+  { name: 'Batticaloa',   lat: 7.7102,  lon: 81.6924 },  // 15
+  { name: 'Ampara',       lat: 7.2992,  lon: 81.6724 },  // 16
+  // North Western Province
+  { name: 'Kurunegala',   lat: 7.4675,  lon: 80.3647 },  // 17
+  { name: 'Puttalam',     lat: 8.0362,  lon: 79.8283 },  // 18
+  // North Central Province
+  { name: 'Anuradhapura', lat: 8.3114,  lon: 80.4037 },  // 19
+  { name: 'Polonnaruwa',  lat: 7.9403,  lon: 81.0188 },  // 20
+  // Uva Province
+  { name: 'Badulla',      lat: 6.9934,  lon: 81.0550 },  // 21
+  { name: 'Monaragala',   lat: 6.8728,  lon: 81.3507 },  // 22
+  // Sabaragamuwa Province
+  { name: 'Ratnapura',    lat: 6.6828,  lon: 80.3992 },  // 23
+  { name: 'Kegalle',      lat: 7.2513,  lon: 80.3464 },  // 24
 ];
 
 export const US_HUBS = [
-  { name: 'California',     lat: 36.7783, lon: -119.4179 },  // 0
-  { name: 'New York',       lat: 40.7128, lon: -74.0060  },  // 1
-  { name: 'New Jersey',     lat: 40.0583, lon: -74.4057  },  // 2
-  { name: 'Texas',          lat: 31.9686, lon: -99.9018  },  // 3
-  { name: 'Virginia',       lat: 37.4316, lon: -78.6569  },  // 4
-  { name: 'Illinois',       lat: 40.6331, lon: -89.3985  },  // 5
-  { name: 'Washington',     lat: 47.7511, lon: -120.7401 },  // 6
-  { name: 'Ohio',           lat: 40.4173, lon: -82.9071  },  // 7
-  { name: 'Massachusetts',  lat: 42.4072, lon: -71.3824  },  // 8
-  { name: 'Florida',        lat: 27.6648, lon: -81.5158  },  // 9
-  { name: 'Georgia',        lat: 32.1656, lon: -83.6431  },  // 10
-  { name: 'Maryland',       lat: 39.0458, lon: -76.6413  },  // 11
-  { name: 'Pennsylvania',   lat: 41.2033, lon: -77.1945  },  // 12
-  { name: 'Michigan',       lat: 44.3148, lon: -85.6024  },  // 13
-  { name: 'North Carolina', lat: 35.7596, lon: -79.0193  },  // 14
-  { name: 'Arizona',        lat: 34.0489, lon: -111.0937 },  // 15
-  { name: 'Colorado',       lat: 39.5501, lon: -105.7821 },  // 16
-  { name: 'Connecticut',    lat: 41.6032, lon: -73.0877  },  // 17
-  { name: 'Minnesota',      lat: 46.7296, lon: -94.6859  },  // 18
-  { name: 'Oregon',         lat: 43.8041, lon: -120.5542 },  // 19
-  { name: 'Nevada',         lat: 38.8026, lon: -116.4194 },  // 20
-  { name: 'Indiana',        lat: 40.2672, lon: -86.1349  },  // 21
-  { name: 'Missouri',       lat: 37.9643, lon: -91.8318  },  // 22
-  { name: 'Tennessee',      lat: 35.5175, lon: -86.5804  },  // 23
-  { name: 'Wisconsin',      lat: 43.7844, lon: -88.7879  },  // 24
-  { name: 'South Carolina', lat: 33.8361, lon: -81.1637  },  // 25
-  { name: 'Louisiana',      lat: 31.1695, lon: -91.8678  },  // 26
-  { name: 'Kentucky',       lat: 37.6681, lon: -84.6701  },  // 27
-  { name: 'Alabama',        lat: 32.3182, lon: -86.9023  },  // 28
-  { name: 'Oklahoma',       lat: 35.4676, lon: -97.5164  },  // 29
-  { name: 'Iowa',           lat: 41.8780, lon: -93.0977  },  // 30
-  { name: 'Kansas',         lat: 38.5266, lon: -96.7265  },  // 31
-  { name: 'New Mexico',     lat: 34.5199, lon: -105.8701 },  // 32
-  { name: 'Utah',           lat: 39.3210, lon: -111.0937 },  // 33
+  { name: 'Alabama',        lat: 32.3182, lon: -86.9023  },  // 0
+  { name: 'Alaska',         lat: 64.2008, lon: -153.4937 },  // 1
+  { name: 'Arizona',        lat: 34.0489, lon: -111.0937 },  // 2
+  { name: 'Arkansas',       lat: 34.7465, lon: -92.2896  },  // 3
+  { name: 'California',     lat: 36.7783, lon: -119.4179 },  // 4
+  { name: 'Colorado',       lat: 39.5501, lon: -105.7821 },  // 5
+  { name: 'Connecticut',    lat: 41.6032, lon: -73.0877  },  // 6
+  { name: 'Delaware',       lat: 38.9108, lon: -75.5277  },  // 7
+  { name: 'Florida',        lat: 27.6648, lon: -81.5158  },  // 8
+  { name: 'Georgia',        lat: 32.1656, lon: -83.6431  },  // 9
+  { name: 'Hawaii',         lat: 19.8968, lon: -155.5828 },  // 10
+  { name: 'Idaho',          lat: 44.0682, lon: -114.7420 },  // 11
+  { name: 'Illinois',       lat: 40.6331, lon: -89.3985  },  // 12
+  { name: 'Indiana',        lat: 40.2672, lon: -86.1349  },  // 13
+  { name: 'Iowa',           lat: 41.8780, lon: -93.0977  },  // 14
+  { name: 'Kansas',         lat: 38.5266, lon: -96.7265  },  // 15
+  { name: 'Kentucky',       lat: 37.6681, lon: -84.6701  },  // 16
+  { name: 'Louisiana',      lat: 31.1695, lon: -91.8678  },  // 17
+  { name: 'Maine',          lat: 45.2538, lon: -69.4455  },  // 18
+  { name: 'Maryland',       lat: 39.0458, lon: -76.6413  },  // 19
+  { name: 'Massachusetts',  lat: 42.4072, lon: -71.3824  },  // 20
+  { name: 'Michigan',       lat: 44.3148, lon: -85.6024  },  // 21
+  { name: 'Minnesota',      lat: 46.7296, lon: -94.6859  },  // 22
+  { name: 'Mississippi',    lat: 32.3547, lon: -89.3985  },  // 23
+  { name: 'Missouri',       lat: 37.9643, lon: -91.8318  },  // 24
+  { name: 'Montana',        lat: 46.8797, lon: -110.3626 },  // 25
+  { name: 'Nebraska',       lat: 41.4925, lon: -99.9018  },  // 26
+  { name: 'Nevada',         lat: 38.8026, lon: -116.4194 },  // 27
+  { name: 'New Hampshire',  lat: 43.1939, lon: -71.5724  },  // 28
+  { name: 'New Jersey',     lat: 40.0583, lon: -74.4057  },  // 29
+  { name: 'New Mexico',     lat: 34.5199, lon: -105.8701 },  // 30
+  { name: 'New York',       lat: 42.1657, lon: -74.9481  },  // 31
+  { name: 'North Carolina', lat: 35.7596, lon: -79.0193  },  // 32
+  { name: 'North Dakota',   lat: 47.5515, lon: -101.0020 },  // 33
+  { name: 'Ohio',           lat: 40.4173, lon: -82.9071  },  // 34
+  { name: 'Oklahoma',       lat: 35.4676, lon: -97.5164  },  // 35
+  { name: 'Oregon',         lat: 43.8041, lon: -120.5542 },  // 36
+  { name: 'Pennsylvania',   lat: 41.2033, lon: -77.1945  },  // 37
+  { name: 'Rhode Island',   lat: 41.6809, lon: -71.5118  },  // 38
+  { name: 'South Carolina', lat: 33.8361, lon: -81.1637  },  // 39
+  { name: 'South Dakota',   lat: 43.9695, lon: -99.9018  },  // 40
+  { name: 'Tennessee',      lat: 35.5175, lon: -86.5804  },  // 41
+  { name: 'Texas',          lat: 31.9686, lon: -99.9018  },  // 42
+  { name: 'Utah',           lat: 39.3210, lon: -111.0937 },  // 43
+  { name: 'Vermont',        lat: 44.5588, lon: -72.5778  },  // 44
+  { name: 'Virginia',       lat: 37.4316, lon: -78.6569  },  // 45
+  { name: 'Washington',     lat: 47.7511, lon: -120.7401 },  // 46
+  { name: 'West Virginia',  lat: 38.4912, lon: -80.9545  },  // 47
+  { name: 'Wisconsin',      lat: 43.7844, lon: -88.7879  },  // 48
+  { name: 'Wyoming',        lat: 43.0760, lon: -107.2903 },  // 49
 ];
 
 const SL_LINE_PAIRS = [
-  [0, 1], [0, 2], [0, 5], [0, 8],   // Colombo → Central, Southern, NW, Sabara
-  [1, 5], [1, 6], [1, 7],            // Kandy → NW, NC, Uva
-  [2, 8], [2, 7],                    // Galle → Sabara, Uva
-  [3, 4], [3, 6],                    // Jaffna → Eastern, NC
-  [4, 7], [6, 4], [6, 3],            // Trinco ↔ NC ↔ Uva
-  [5, 6], [7, 8],                    // NW → NC; Uva → Sabara
+  // Western cluster
+  [0,1],[0,2],[1,2],[0,24],[1,17],
+  // Central cluster
+  [3,4],[3,5],[4,17],[3,24],[5,21],
+  // Western → Central
+  [0,3],[1,4],[2,6],
+  // Southern cluster
+  [6,7],[7,8],[6,2],[8,22],
+  // Northern cluster
+  [9,10],[10,11],[10,12],[9,12],[12,13],[11,18],
+  // Northern → Central spine
+  [9,19],[12,19],[13,14],
+  // Eastern cluster
+  [14,15],[15,16],[14,20],[16,8],
+  // North Central
+  [19,20],[20,21],[19,17],[20,15],
+  // Uva cluster
+  [21,22],[22,16],[21,5],
+  // Sabaragamuwa
+  [23,24],[23,2],[24,3],[23,6],
+  // Cross-island connections
+  [0,19],[3,20],[14,9],
 ];
 const US_LINE_PAIRS = [
-  // East Coast corridor
-  [8, 17], [8, 1], [1, 2], [2, 12], [12, 11], [11, 4], [4, 14], [14, 25], [25, 10], [10, 9],
-  // Southeast cluster
-  [9, 28], [28, 26], [28, 23], [23, 27], [27, 7], [10, 23],
-  // Great Lakes / Midwest
-  [7, 21], [21, 5], [5, 24], [24, 13], [13, 7], [5, 22], [22, 30], [30, 18], [18, 24],
-  // South-Central
-  [3, 26], [3, 29], [29, 22], [3, 32], [3, 31], [31, 16],
-  // Mountain / West
-  [32, 15], [15, 20], [20, 0], [33, 20], [33, 16], [16, 15],
-  // Pacific Northwest
-  [6, 19], [19, 0], [6, 0],
-  // Diaspora cross-country
-  [1, 5], [0, 5], [0, 3], [1, 11], [1, 4],
+  // New England
+  [18,28],[28,44],[44,20],[20,6],[6,38],[38,29],[28,31],
+  // Mid-Atlantic
+  [31,29],[29,37],[37,19],[19,45],[45,47],[7,29],[7,19],
+  // Southeast
+  [32,39],[39,9],[9,0],[0,23],[23,17],[17,3],[3,41],[41,16],[16,47],
+  [9,8],[8,17],[39,32],[32,45],[0,41],
+  // Great Lakes
+  [34,13],[13,12],[12,48],[48,21],[21,34],[34,37],[13,16],
+  // Midwest spine
+  [14,22],[22,33],[33,25],[25,40],[40,26],[26,15],[15,35],[35,24],
+  [14,12],[22,48],[24,12],[14,26],
+  // South Central
+  [42,35],[42,17],[42,30],[42,15],[35,3],[30,5],
+  // Mountain West
+  [30,2],[2,43],[43,27],[27,4],[5,43],[5,25],[25,11],[11,36],
+  // Pacific
+  [36,4],[36,46],[46,11],[4,27],[46,4],
+  // Northern tier
+  [25,33],[33,22],[46,25],[49,25],[49,5],[49,43],
+  // Hawaii & Alaska (connect to West Coast)
+  [10,4],[1,46],
+  // Cross-country diaspora links
+  [31,12],[31,19],[31,45],[4,12],[4,42],[31,42],
+  // Remaining isolated states
+  [44,31],[38,20],[40,14],[47,34],[7,32],
 ];
 
 // Natural Earth ISO 3166-1 numeric IDs
@@ -219,9 +288,9 @@ type Phase =
   | 'zoom-out' | 'pause';
 
 const PHASE_MS: Record<Phase, number> = {
-  'world': 2500, 'zoom-sl': 2000, 'sl-cities': 2500, 'sl-lines': 2500,
-  'beam': 3000, 'zoom-us': 2000, 'us-hubs': 2500, 'us-lines': 2500,
-  'zoom-out': 2500, 'pause': 1500,
+  'world': 3000, 'zoom-sl': 2000, 'sl-cities': 5000, 'sl-lines': 6000,
+  'beam': 3500, 'zoom-us': 2000, 'us-hubs': 6000, 'us-lines': 8000,
+  'zoom-out': 2500, 'pause': 2000,
 };
 const PHASE_SEQ: Phase[] = [
   'world', 'zoom-sl', 'sl-cities', 'sl-lines',
@@ -343,7 +412,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
   const slXY     = useMemo(() => SRI_LANKA_CITIES.map(c => px(c.lon, c.lat)), []);
   const usXY     = useMemo(() => US_HUBS.map(c => px(c.lon, c.lat)),          []);
   const beamFrom = useMemo(() => px(SRI_LANKA_CITIES[0].lon, SRI_LANKA_CITIES[0].lat), []);
-  const beamTo   = useMemo(() => px(US_HUBS[1].lon, US_HUBS[1].lat),                   []);
+  const beamTo   = useMemo(() => px(US_HUBS[31].lon, US_HUBS[31].lat),                  []);
 
   // Arc paths
   const slArcs   = useMemo(() => SL_LINE_PAIRS.map(([a, b]) => makeArc(slXY[a][0], slXY[a][1], slXY[b][0], slXY[b][1])), [slXY]);
@@ -371,6 +440,10 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
   const nodeR    = 1.5 / z;
   const strokeW  = 0.7 / z;
 
+  // Phase-specific node colors: SL flag gold, US flag white, default theme color
+  const phaseNodeFill = isSLPhase ? '#FFD700' : isUSPhase ? '#ffffff' : theme.nodeFill;
+  const phaseLineStroke = isSLPhase ? '#FFD700' : isUSPhase ? '#ffffff' : theme.lineStroke;
+
   const filterId = (type: string) => `${type}-${theme.key}`;
 
   return (
@@ -378,21 +451,21 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
       className={`relative w-full h-full overflow-hidden ${className}`}
       style={{ background: theme.bg }}
     >
-      {/* Sri Lanka phase: matches /lanka-events banner — orange → crimson/pink → forest green */}
+      {/* Sri Lanka phase: Sri Lanka flag colors — dark maroon + saffron gold */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(135deg, #e85d04 0%, #c1121f 35%, #9b2226 55%, #1a6b3c 100%)',
-          opacity: ['zoom-sl','sl-cities','sl-lines'].includes(phase) ? 0.80 : 0,
+          background: 'linear-gradient(160deg, #4a0000 0%, #7b0000 30%, #8B0000 55%, #4a3000 80%, #2d1a00 100%)',
+          opacity: ['zoom-sl','sl-cities','sl-lines'].includes(phase) ? 0.82 : 0,
           transition: 'opacity 1.8s ease-in-out',
         }}
       />
-      {/* USA phase: deep blue gradient */}
+      {/* USA phase: US flag colors — navy blue + deep red */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(135deg, #0c2461 0%, #1e3799 50%, #0a3d62 100%)',
-          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 0.82 : 0,
+          background: 'linear-gradient(160deg, #001f5b 0%, #002868 40%, #3a0010 75%, #BF0A30 100%)',
+          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 0.80 : 0,
           transition: 'opacity 1.8s ease-in-out',
         }}
       />
@@ -432,6 +505,12 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             <stop offset="0%"   stopColor="white"         stopOpacity="0.95" />
             <stop offset="40%"  stopColor={theme.nodeFill} stopOpacity="1"   />
             <stop offset="100%" stopColor={theme.nodeFill} stopOpacity="0.2" />
+          </radialGradient>
+          {/* Phase-specific node gradient */}
+          <radialGradient id={filterId('ng-phase')} cx="50%" cy="40%" r="50%">
+            <stop offset="0%"   stopColor="white"          stopOpacity="0.95" />
+            <stop offset="40%"  stopColor={phaseNodeFill}   stopOpacity="1"   />
+            <stop offset="100%" stopColor={phaseNodeFill}   stopOpacity="0.2" />
           </radialGradient>
           {/* Vignette */}
           <radialGradient id="vg" cx="50%" cy="50%" r="70%">
@@ -530,7 +609,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               {/* Wide blurred glow */}
               <motion.path
                 d={d} fill="none"
-                stroke={theme.lineStroke}
+                stroke={phaseLineStroke}
                 strokeWidth={strokeW * 5}
                 strokeLinecap="round"
                 filter={`url(#${filterId('gl')})`}
@@ -542,7 +621,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               {/* Sharp line */}
               <motion.path
                 d={d} fill="none"
-                stroke={theme.lineStroke}
+                stroke={phaseLineStroke}
                 strokeWidth={strokeW * 0.9}
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
@@ -602,24 +681,24 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               {/* Wide blurred glow */}
               <motion.path
                 d={d} fill="none"
-                stroke={theme.lineStroke}
+                stroke={phaseLineStroke}
                 strokeWidth={strokeW * 5}
                 strokeLinecap="round"
                 filter={`url(#${filterId('gl')})`}
                 opacity={0.22}
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 0.85, delay: i * 0.2 }}
+                transition={{ duration: 0.85, delay: i * 0.18 }}
               />
               {/* Sharp line */}
               <motion.path
                 d={d} fill="none"
-                stroke={theme.lineStroke}
+                stroke={phaseLineStroke}
                 strokeWidth={strokeW * 0.9}
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.9 }}
-                transition={{ duration: 0.85, delay: i * 0.2 }}
+                transition={{ duration: 0.85, delay: i * 0.18 }}
               />
             </g>
           ))}
@@ -631,14 +710,14 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 <>
                   {/* Pulse ring 1 */}
                   <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
-                    fill="none" stroke={theme.nodeFill} strokeWidth={0.2 / z}
+                    fill="none" stroke={phaseNodeFill} strokeWidth={0.2 / z}
                     initial={{ scale: 0.4, opacity: 0.7 }}
                     animate={{ scale: 2.8, opacity: 0 }}
                     transition={{ duration: 2.8, delay: i * 0.25, repeat: Infinity }}
                   />
                   {/* Pulse ring 2 — offset timing */}
                   <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
-                    fill="none" stroke={theme.nodeFill} strokeWidth={0.15 / z}
+                    fill="none" stroke={phaseNodeFill} strokeWidth={0.15 / z}
                     initial={{ scale: 0.5, opacity: 0.5 }}
                     animate={{ scale: 2.4, opacity: 0 }}
                     transition={{ duration: 2.8, delay: i * 0.25 + 0.9, repeat: Infinity }}
@@ -653,11 +732,11 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               {/* Core sphere with radial gradient */}
               <motion.circle
                 cx={xy[0]} cy={xy[1]} r={nodeR * 2}
-                fill={`url(#${filterId('ng')})`}
+                fill={`url(#${filterId('ng-phase')})`}
                 filter={`url(#${filterId('gn')})`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={showSLCities ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                transition={{ duration: 0.55, delay: i * 0.15 }}
+                transition={{ duration: 0.55, delay: i * 0.22 }}
               />
               {/* White hot center */}
               {showSLCities && (
@@ -673,17 +752,17 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 <>
                   {/* Pulse ring 1 */}
                   <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
-                    fill="none" stroke={theme.nodeFill} strokeWidth={0.2 / z}
+                    fill="none" stroke={phaseNodeFill} strokeWidth={0.2 / z}
                     initial={{ scale: 0.4, opacity: 0.7 }}
                     animate={{ scale: 2.8, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.12, repeat: Infinity }}
+                    transition={{ duration: 2.8, delay: i * 0.15, repeat: Infinity }}
                   />
                   {/* Pulse ring 2 — offset timing */}
                   <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
-                    fill="none" stroke={theme.nodeFill} strokeWidth={0.15 / z}
+                    fill="none" stroke={phaseNodeFill} strokeWidth={0.15 / z}
                     initial={{ scale: 0.5, opacity: 0.5 }}
                     animate={{ scale: 2.4, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.12 + 0.7, repeat: Infinity }}
+                    transition={{ duration: 2.8, delay: i * 0.15 + 0.7, repeat: Infinity }}
                   />
                   {/* Halo ring — static soft glow */}
                   <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
@@ -695,11 +774,11 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               {/* Core sphere with radial gradient */}
               <motion.circle
                 cx={xy[0]} cy={xy[1]} r={nodeR * 2}
-                fill={`url(#${filterId('ng')})`}
+                fill={`url(#${filterId('ng-phase')})`}
                 filter={`url(#${filterId('gn')})`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={showUSHubs ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                transition={{ duration: 0.55, delay: i * 0.12 }}
+                transition={{ duration: 0.55, delay: i * 0.18 }}
               />
               {/* White hot center */}
               {showUSHubs && (

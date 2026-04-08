@@ -263,11 +263,11 @@ export default function LankaConnectHome() {
               >
                 {/* Logo — no container box, just the image */}
                 <Image
-                  src="/lanka-events5.jpg"
+                  src="/lanka-events5.png"
                   alt="LankaEvents"
                   width={80}
                   height={80}
-                  className="object-contain flex-shrink-0 rounded-xl mix-blend-screen"
+                  className="object-contain flex-shrink-0"
                 />
 
                 {/* Text */}

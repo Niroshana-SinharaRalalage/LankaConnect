@@ -261,21 +261,12 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Links Grid - Phase 6A.76: Changed from 4 to 3 columns after removing Resources category */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
-          {linkCategories.map((category) => (
-            <div key={category.title}>
-              <h4 className="text-white font-semibold mb-4">{category.title}</h4>
-              <ul className="space-y-2" role="list">
-                {category.links.map((link) => (
-                  <li key={link.label}>
-                    <FooterLink href={link.href} external={link.external}>
-                      {link.label}
-                    </FooterLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Links — centred horizontal row */}
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 mb-12">
+          {linkCategories.flatMap(cat => cat.links).map((link) => (
+            <FooterLink key={link.label} href={link.href} external={link.external}>
+              {link.label}
+            </FooterLink>
           ))}
         </div>
 

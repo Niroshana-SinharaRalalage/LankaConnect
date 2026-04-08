@@ -661,18 +661,18 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             </g>
           ))}
 
-          {/* Transcontinental beam — always mounted, opacity-controlled to prevent re-draw blast */}
+          {/* Transcontinental beam — always mounted, opacity-only to prevent draw-blast on phase transitions */}
           <g style={{ pointerEvents: 'none' }}>
-            {/* Wide glow layer — draws once on first mount, then fades in/out via opacity */}
+            {/* Wide glow layer */}
             <motion.path
               d={beamPath} fill="none"
               stroke={theme.beamStroke}
               strokeWidth={strokeW * 8}
               strokeLinecap="round"
               filter={`url(#${filterId('gb2')})`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: showBeam ? 0.3 : 0 }}
-              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+              initial={{ pathLength: 1, opacity: 0 }}
+              animate={{ opacity: showBeam ? 0.3 : 0 }}
+              transition={{ opacity: { duration: 1.2 } }}
             />
             {/* Medium glow */}
             <motion.path
@@ -681,9 +681,9 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               strokeWidth={strokeW * 3}
               strokeLinecap="round"
               filter={`url(#${filterId('gb')})`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: showBeam ? 0.55 : 0 }}
-              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+              initial={{ pathLength: 1, opacity: 0 }}
+              animate={{ opacity: showBeam ? 0.55 : 0 }}
+              transition={{ opacity: { duration: 1.2 } }}
             />
             {/* Core dashed line */}
             <motion.path
@@ -692,9 +692,9 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
               strokeWidth={strokeW * 1.4}
               strokeLinecap="round"
               strokeDasharray={`${3 / z} ${2 / z}`}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: showBeam ? 0.95 : 0 }}
-              transition={{ pathLength: { duration: 2.4, ease: 'easeInOut' }, opacity: { duration: 1.2 } }}
+              initial={{ pathLength: 1, opacity: 0 }}
+              animate={{ opacity: showBeam ? 0.95 : 0 }}
+              transition={{ opacity: { duration: 1.2 } }}
             />
           </g>
 

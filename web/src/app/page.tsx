@@ -10,10 +10,11 @@
  * No "My Dashboard" in nav — that belongs in /lanka-events.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowUpRight, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowUpRight, User, ChevronDown, LogOut, UserCircle } from 'lucide-react';
 import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
 import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 import Footer from '@/presentation/components/layout/Footer';
@@ -28,8 +29,27 @@ export default function LankaConnectHome() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, clearAuth } = useAuthStore();
   const hasHydrated = useHasHydrated();
+  const router = useRouter();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUserMenuOpen(false);
+    router.push('/');
+  };
 
   const theme = THEMES.find(t => t.key === DEFAULT_THEME_KEY) ?? THEMES[2];
 
@@ -53,20 +73,63 @@ export default function LankaConnectHome() {
           {!hasHydrated && <div className="h-9 w-32" />}
 
           {hasHydrated && isAuthenticated && user && (
-            /* Avatar chip only — no Dashboard button on landing page */
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border"
-              style={{ borderColor: 'rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)' }}
-            >
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ background: theme.nodeFill, color: '#000' }}
+            /* User chip with dropdown — no Dashboard button on landing page */
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(v => !v)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border transition-colors"
+                style={{ borderColor: 'rgba(255,255,255,0.20)', background: 'rgba(255,255,255,0.10)' }}
               >
-                {user.fullName?.[0]?.toUpperCase() ?? <User className="w-3 h-3" />}
-              </div>
-              <span className="text-white/90 text-sm font-medium hidden sm:inline">
-                {user.fullName?.split(' ')[0]}
-              </span>
+                {/* Avatar — photo if available, else gradient initials */}
+                {user.profilePhotoUrl ? (
+                  <Image
+                    src={user.profilePhotoUrl}
+                    alt={user.fullName}
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
+                    style={{ background: 'linear-gradient(135deg, #FF7900, #8B1538)' }}
+                  >
+                    {user.fullName ? (user.fullName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()) : <User className="w-3 h-3" />}
+                  </div>
+                )}
+                <span className="text-white/90 text-sm font-medium hidden sm:inline max-w-[140px] truncate">
+                  {user.fullName}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
+              </button>
+
+              {/* Dropdown */}
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50"
+                  style={{ background: 'rgba(10,15,40,0.95)', borderColor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)' }}
+                >
+                  <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <p className="text-white text-sm font-semibold truncate">{user.fullName}</p>
+                    <p className="text-white/50 text-xs truncate">{user.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    My Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-red-400 hover:text-red-300 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -90,7 +153,7 @@ export default function LankaConnectHome() {
         </nav>
 
         {/* ── Content — fills full 100vh, flex column, space-between ───── */}
-        <div className="relative z-20 flex flex-col items-center justify-between text-center px-4 h-full py-10">
+        <div className="relative z-20 flex flex-col items-center justify-between text-center px-4 h-full pt-[55px] pb-[25px]">
 
           {/* ── TOP: Brand identity + pill ─────────────────────────────── */}
           <div className="flex flex-col items-center">

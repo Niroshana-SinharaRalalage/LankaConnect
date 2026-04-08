@@ -444,6 +444,11 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
   const phaseNodeFill = isSLPhase ? '#FFD700' : isUSPhase ? '#ffffff' : theme.nodeFill;
   const phaseLineStroke = isSLPhase ? '#FFD700' : isUSPhase ? '#ffffff' : theme.lineStroke;
 
+  // US flag cycling colors (red, white, blue) for nodes and arcs
+  const US_FLAG_COLORS = ['#BF0A30', '#e8e8e8', '#002868'] as const;
+  const usNodeFill  = (i: number) => isUSPhase ? US_FLAG_COLORS[i % 3] : phaseNodeFill;
+  const usArcColor  = (i: number) => isUSPhase ? US_FLAG_COLORS[i % 3] : phaseLineStroke;
+
   const filterId = (type: string) => `${type}-${theme.key}`;
 
   return (
@@ -460,12 +465,21 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
           transition: 'opacity 1.8s ease-in-out',
         }}
       />
-      {/* USA phase: US flag colors — navy blue + deep red */}
+      {/* USA phase: US flag colors — strong navy + deep red diagonal */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'linear-gradient(160deg, #001f5b 0%, #002868 40%, #3a0010 75%, #BF0A30 100%)',
-          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 0.80 : 0,
+          background: 'linear-gradient(160deg, #001040 0%, #002868 22%, #001040 42%, #6b0010 58%, #BF0A30 75%, #8B0015 88%, #001040 100%)',
+          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 0.88 : 0,
+          transition: 'opacity 1.8s ease-in-out',
+        }}
+      />
+      {/* USA phase: subtle red stripe accent overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'repeating-linear-gradient(0deg, transparent 0px, transparent 28px, rgba(191,10,48,0.06) 28px, rgba(191,10,48,0.06) 32px)',
+          opacity: ['zoom-us','us-hubs','us-lines'].includes(phase) ? 1 : 0,
           transition: 'opacity 1.8s ease-in-out',
         }}
       />
@@ -511,6 +525,22 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             <stop offset="0%"   stopColor="white"          stopOpacity="0.95" />
             <stop offset="40%"  stopColor={phaseNodeFill}   stopOpacity="1"   />
             <stop offset="100%" stopColor={phaseNodeFill}   stopOpacity="0.2" />
+          </radialGradient>
+          {/* US flag node gradients — red / white / blue */}
+          <radialGradient id="ng-us-red" cx="50%" cy="40%" r="50%">
+            <stop offset="0%"   stopColor="white"    stopOpacity="0.95" />
+            <stop offset="40%"  stopColor="#BF0A30"  stopOpacity="1"   />
+            <stop offset="100%" stopColor="#8B0015"  stopOpacity="0.25" />
+          </radialGradient>
+          <radialGradient id="ng-us-white" cx="50%" cy="40%" r="50%">
+            <stop offset="0%"   stopColor="white"    stopOpacity="1"   />
+            <stop offset="40%"  stopColor="#d0d0d0"  stopOpacity="1"   />
+            <stop offset="100%" stopColor="#a0a0a0"  stopOpacity="0.25" />
+          </radialGradient>
+          <radialGradient id="ng-us-blue" cx="50%" cy="40%" r="50%">
+            <stop offset="0%"   stopColor="white"    stopOpacity="0.95" />
+            <stop offset="40%"  stopColor="#002868"  stopOpacity="1"   />
+            <stop offset="100%" stopColor="#001540"  stopOpacity="0.25" />
           </radialGradient>
           {/* Vignette */}
           <radialGradient id="vg" cx="50%" cy="50%" r="70%">
@@ -616,7 +646,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 opacity={0.22}
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 1.0, delay: i * 0.22 }}
+                transition={{ duration: 0.6, delay: i * 0.055 }}
               />
               {/* Sharp line */}
               <motion.path
@@ -626,7 +656,7 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 0.9 }}
-                transition={{ duration: 1.0, delay: i * 0.22 }}
+                transition={{ duration: 0.6, delay: i * 0.055 }}
               />
             </g>
           ))}
@@ -675,30 +705,30 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             </g>
           )}
 
-          {/* US hub arcs — glow layer + sharp line layer */}
+          {/* US hub arcs — glow layer + sharp line layer, flag colors */}
           {showUSLines && usArcs.map((d, i) => (
             <g key={`us-arc-${i}`}>
               {/* Wide blurred glow */}
               <motion.path
                 d={d} fill="none"
-                stroke={phaseLineStroke}
+                stroke={usArcColor(i)}
                 strokeWidth={strokeW * 5}
                 strokeLinecap="round"
                 filter={`url(#${filterId('gl')})`}
-                opacity={0.22}
+                opacity={0.28}
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 0.85, delay: i * 0.18 }}
+                transition={{ duration: 0.55, delay: i * 0.04 }}
               />
               {/* Sharp line */}
               <motion.path
                 d={d} fill="none"
-                stroke={phaseLineStroke}
+                stroke={usArcColor(i)}
                 strokeWidth={strokeW * 0.9}
                 strokeLinecap="round"
                 initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.9 }}
-                transition={{ duration: 0.85, delay: i * 0.18 }}
+                animate={{ pathLength: 1, opacity: 0.85 }}
+                transition={{ duration: 0.55, delay: i * 0.04 }}
               />
             </g>
           ))}
@@ -745,47 +775,52 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             </g>
           ))}
 
-          {/* US hub nodes — 3D glowing sphere */}
-          {usXY.map((xy, i) => (
-            <g key={`us-node-${i}`}>
-              {showUSHubs && (
-                <>
-                  {/* Pulse ring 1 */}
-                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
-                    fill="none" stroke={phaseNodeFill} strokeWidth={0.2 / z}
-                    initial={{ scale: 0.4, opacity: 0.7 }}
-                    animate={{ scale: 2.8, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.15, repeat: Infinity }}
-                  />
-                  {/* Pulse ring 2 — offset timing */}
-                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
-                    fill="none" stroke={phaseNodeFill} strokeWidth={0.15 / z}
-                    initial={{ scale: 0.5, opacity: 0.5 }}
-                    animate={{ scale: 2.4, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.15 + 0.7, repeat: Infinity }}
-                  />
-                  {/* Halo ring — static soft glow */}
-                  <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
-                    fill={theme.nodeGlow} opacity={0.15}
-                    filter={`url(#${filterId('gn')})`}
-                  />
-                </>
-              )}
-              {/* Core sphere with radial gradient */}
-              <motion.circle
-                cx={xy[0]} cy={xy[1]} r={nodeR * 2}
-                fill={`url(#${filterId('ng-phase')})`}
-                filter={`url(#${filterId('gn')})`}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={showUSHubs ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
-                transition={{ duration: 0.55, delay: i * 0.18 }}
-              />
-              {/* White hot center */}
-              {showUSHubs && (
-                <circle cx={xy[0]} cy={xy[1]} r={nodeR * 0.6} fill="white" opacity={0.9} />
-              )}
-            </g>
-          ))}
+          {/* US hub nodes — 3D glowing sphere with flag colors */}
+          {usXY.map((xy, i) => {
+            const US_NODE_GRADS = ['ng-us-red', 'ng-us-white', 'ng-us-blue'] as const;
+            const nodeGrad = isUSPhase ? `url(#${US_NODE_GRADS[i % 3]})` : `url(#${filterId('ng-phase')})`;
+            const ringColor = usNodeFill(i);
+            return (
+              <g key={`us-node-${i}`}>
+                {showUSHubs && (
+                  <>
+                    {/* Pulse ring 1 */}
+                    <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
+                      fill="none" stroke={ringColor} strokeWidth={0.2 / z}
+                      initial={{ scale: 0.4, opacity: 0.7 }}
+                      animate={{ scale: 2.8, opacity: 0 }}
+                      transition={{ duration: 2.8, delay: i * 0.15, repeat: Infinity }}
+                    />
+                    {/* Pulse ring 2 — offset timing */}
+                    <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
+                      fill="none" stroke={ringColor} strokeWidth={0.15 / z}
+                      initial={{ scale: 0.5, opacity: 0.5 }}
+                      animate={{ scale: 2.4, opacity: 0 }}
+                      transition={{ duration: 2.8, delay: i * 0.15 + 0.7, repeat: Infinity }}
+                    />
+                    {/* Halo ring — static soft glow */}
+                    <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
+                      fill={ringColor} opacity={0.18}
+                      filter={`url(#${filterId('gn')})`}
+                    />
+                  </>
+                )}
+                {/* Core sphere with flag-color radial gradient */}
+                <motion.circle
+                  cx={xy[0]} cy={xy[1]} r={nodeR * 2}
+                  fill={nodeGrad}
+                  filter={`url(#${filterId('gn')})`}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={showUSHubs ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.55, delay: i * 0.18 }}
+                />
+                {/* White hot center */}
+                {showUSHubs && (
+                  <circle cx={xy[0]} cy={xy[1]} r={nodeR * 0.6} fill="white" opacity={0.9} />
+                )}
+              </g>
+            );
+          })}
         </g>
         {/* ── end pan/zoom group ───────────────────────────────────────────── */}
 

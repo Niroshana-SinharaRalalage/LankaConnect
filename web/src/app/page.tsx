@@ -175,8 +175,8 @@ export default function LankaConnectHome() {
           Connecting Sri Lankans Worldwide
         </div>
 
-        {/* ── Sub-brand buttons — 3 rows × 2 columns ───────────────────── */}
-        <div className="w-full max-w-2xl grid grid-cols-2 gap-2.5 mb-6">
+        {/* ── Sub-brand buttons — 6 rows × 1 column ───────────────────── */}
+        <div className="w-full max-w-[500px] grid grid-cols-1 gap-3 mb-12">
           {SUB_BRANDS.map((brand) => {
             const inner = (
               <div
@@ -193,7 +193,7 @@ export default function LankaConnectHome() {
                     : 'rgba(255,255,255,0.03)',
                   borderColor: brand.live ? `${brand.color}55` : 'rgba(255,255,255,0.07)',
                   boxShadow: brand.live ? `0 2px 16px ${brand.color}20, inset 0 1px 0 rgba(255,255,255,0.06)` : 'none',
-                  minHeight: '72px',
+                  minHeight: '120px',
                 }}
               >
                 {/* Icon */}

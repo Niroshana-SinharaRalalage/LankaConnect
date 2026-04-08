@@ -46,30 +46,32 @@ public class EmailSettings
     public string FromName => SenderName;
 
     /// <summary>
-    /// Event-related template name fragments used to route to events@lankaconnect.app.
+    /// Templates that are human-reply emails (contact form, support tickets) sent FROM info@lankaconnect.app
+    /// so recipients can reply directly to a monitored inbox.
+    /// All other platform emails (registrations, tickets, reminders, etc.) default to events@lankaconnect.app.
     /// </summary>
-    private static readonly HashSet<string> EventTemplateKeywords =
+    private static readonly HashSet<string> HumanReplyTemplates =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "event", "registration", "ticket", "refund", "signup", "sign-up",
-            "sponsor", "addon", "add-on", "payment", "reminder", "organizer"
+            "template-support-ticket"   // matches template-support-ticket-confirmation and template-support-ticket-reply
         };
 
     /// <summary>
     /// Resolves the ACS sender address based on email template name.
-    /// Event-related emails use AzureEventsSenderAddress; all others use AzureSenderAddress.
-    /// Falls back to AzureSenderAddress when AzureEventsSenderAddress is not configured.
+    /// LankaConnect is an events platform — events@lankaconnect.app is the default for all automated emails.
+    /// Only support/contact templates use info@lankaconnect.app so users can reply to a monitored inbox.
     /// </summary>
     public string ResolveSenderAddress(string templateName)
     {
-        if (!string.IsNullOrEmpty(AzureEventsSenderAddress) &&
-            EventTemplateKeywords.Any(kw =>
-                templateName.Contains(kw, StringComparison.OrdinalIgnoreCase)))
-        {
-            return AzureEventsSenderAddress;
-        }
+        var isHumanReplyTemplate = HumanReplyTemplates.Any(t =>
+            templateName.Contains(t, StringComparison.OrdinalIgnoreCase));
 
-        return !string.IsNullOrEmpty(AzureSenderAddress) ? AzureSenderAddress : SenderEmail;
+        if (isHumanReplyTemplate && !string.IsNullOrEmpty(AzureSenderAddress))
+            return AzureSenderAddress;  // info@lankaconnect.app — user can reply to this inbox
+
+        return !string.IsNullOrEmpty(AzureEventsSenderAddress)
+            ? AzureEventsSenderAddress   // events@lankaconnect.app — default for all platform emails
+            : (!string.IsNullOrEmpty(AzureSenderAddress) ? AzureSenderAddress : SenderEmail);
     }
     
     // Queue settings

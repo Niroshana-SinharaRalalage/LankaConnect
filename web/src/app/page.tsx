@@ -175,8 +175,8 @@ export default function LankaConnectHome() {
           Connecting Sri Lankans Worldwide
         </div>
 
-        {/* ── Sub-brand buttons — 6 rows × 1 column ───────────────────── */}
-        <div className="w-full max-w-[500px] grid grid-cols-1 gap-3 mb-12">
+        {/* ── Sub-brand buttons — 3 rows × 2 columns, 150px column gap ─── */}
+        <div className="w-full max-w-[820px] grid grid-cols-2 gap-y-3 mb-12" style={{ columnGap: '150px' }}>
           {SUB_BRANDS.map((brand) => {
             const inner = (
               <div

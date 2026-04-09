@@ -61,22 +61,28 @@ function NewsletterVerticalCard({ newsletter }: { newsletter: NewsletterDto }) {
   return (
     <Link
       href={`/newsletters/${newsletter.id}`}
-      className="group flex flex-col gap-1 px-3 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all border border-white/10 hover:border-white/25 cursor-pointer"
+      className="group relative flex flex-col gap-1 px-3 py-2.5 rounded-lg flex-shrink-0 transition-all border cursor-pointer overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, rgba(139,21,56,0.45) 0%, rgba(200,50,30,0.25) 100%)',
+        borderColor: 'rgba(255,121,0,0.25)',
+        backdropFilter: 'blur(4px)',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(139,21,56,0.65) 0%, rgba(200,50,30,0.45) 100%)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(139,21,56,0.45) 0%, rgba(200,50,30,0.25) 100%)'; }}
     >
-      <div className="flex items-start gap-2">
-        <div className="w-1 h-full min-h-[14px] rounded-full bg-gradient-to-b from-[#FF7900] to-[#8B1538] flex-shrink-0 mt-0.5" />
-        <h3 className="text-white text-sm font-semibold leading-snug line-clamp-2 flex-1">
-          {newsletter.title}
-        </h3>
-      </div>
+      {/* Orange left accent bar */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg bg-gradient-to-b from-[#FF7900] to-[#8B1538]" />
+      <h3 className="text-white text-sm font-semibold leading-snug line-clamp-2 pl-1">
+        {newsletter.title}
+      </h3>
       {preview && (
-        <p className="text-white/55 text-[11px] leading-snug line-clamp-1 pl-3">
+        <p className="text-orange-200/60 text-[11px] leading-snug line-clamp-1 pl-1">
           {preview}
         </p>
       )}
-      <div className="flex items-center gap-1 pl-3">
+      <div className="flex items-center gap-1 pl-1">
         <Mail className="h-2.5 w-2.5 text-[#FF7900] flex-shrink-0" />
-        <span className="text-white/60 text-[10px]">{formatDate(newsletter)}</span>
+        <span className="text-orange-300/70 text-[10px]">{formatDate(newsletter)}</span>
       </div>
     </Link>
   );
@@ -94,19 +100,40 @@ export function FeaturedNewslettersCarousel({ variant = 'horizontal', maxItems =
   if (!isLoading && newsletters.length === 0) return null;
 
   if (variant === 'vertical') {
+    // Card height ~78px + gap 10px = 88px per card; 4 visible = 352px container
     return (
-      <div className="flex flex-col gap-2 w-full">
+      <div className="w-full relative overflow-hidden" style={{ height: '352px' }}>
+        {/* Top fade */}
+        <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-black/20 to-transparent z-10 pointer-events-none" />
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-black/20 to-transparent z-10 pointer-events-none" />
+
         {isLoading ? (
-          <>
+          <div className="flex flex-col gap-2.5">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-[78px] rounded-lg animate-pulse bg-white/10 border border-white/10" />
+              <div key={i} className="h-[78px] rounded-lg animate-pulse" style={{ background: 'rgba(139,21,56,0.3)', border: '1px solid rgba(255,121,0,0.15)' }} />
             ))}
-          </>
+          </div>
         ) : (
-          newsletters.map((nl) => (
-            <NewsletterVerticalCard key={nl.id} newsletter={nl} />
-          ))
+          <div className="flex flex-col gap-2.5 nl-animate-marquee-vertical">
+            {[...newsletters, ...newsletters, ...newsletters].map((nl, index) => (
+              <NewsletterVerticalCard key={`${nl.id}-${index}`} newsletter={nl} />
+            ))}
+          </div>
         )}
+
+        <style jsx>{`
+          @keyframes nl-marquee-vertical {
+            0%   { transform: translateY(0); }
+            100% { transform: translateY(-33.33%); }
+          }
+          .nl-animate-marquee-vertical {
+            animation: nl-marquee-vertical 12s linear infinite;
+          }
+          .nl-animate-marquee-vertical:hover {
+            animation-play-state: paused;
+          }
+        `}</style>
       </div>
     );
   }

@@ -24,7 +24,7 @@ export default function LankaEventsHome() {
 
   return (
     // Single continuous gradient — no dark gap before footer
-    <div className="relative min-h-screen bg-gradient-to-b from-orange-600 via-rose-800 to-[#1a0a1e]">
+    <div className="relative min-h-screen bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-900">
       {/* Full-page cross pattern — covers entire page from top to footer */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ zIndex: 0 }}>
         <div
@@ -57,15 +57,15 @@ export default function LankaEventsHome() {
 
               {/* 3D watermark — lanka-events.png behind text */}
               <div
-                className="absolute -right-8 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                className="absolute -right-8 top-[58%] -translate-y-1/2 pointer-events-none select-none hidden lg:block"
                 style={{ zIndex: 0 }}
               >
                 <Image
                   src="/lanka-events.png"
                   alt=""
-                  width={540}
-                  height={540}
-                  className="object-contain opacity-[0.22] w-[540px] max-w-none"
+                  width={480}
+                  height={480}
+                  className="object-contain opacity-[0.22] w-[480px] max-w-none"
                   style={{
                     transform: 'rotate(-6deg)',
                     filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.35))',

@@ -24,7 +24,7 @@ export default function LankaEventsHome() {
 
   return (
     // Single continuous gradient — no dark gap before footer
-    <div className="relative min-h-screen bg-gradient-to-br from-orange-600 via-rose-800 to-emerald-900">
+    <div className="relative min-h-screen bg-gradient-to-b from-orange-600 via-rose-800 to-[#1a0a1e]">
       {/* Full-page cross pattern — covers entire page from top to footer */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ zIndex: 0 }}>
         <div
@@ -38,33 +38,37 @@ export default function LankaEventsHome() {
 
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        {/* Decorative gradient blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl" />
-        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_400px] gap-8 items-start">
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* ── Column 1: Newsletter Panel (desktop only) ──────────────── */}
+            <div className="hidden lg:flex flex-col gap-2">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-white/70 text-xs font-semibold uppercase tracking-widest">Newsletters</span>
+                <a href="/newsletters" className="text-[#FF7900] hover:text-[#E66D00] text-xs font-semibold transition-colors">
+                  View All →
+                </a>
+              </div>
+              <FeaturedNewslettersCarousel variant="vertical" maxItems={4} />
+            </div>
 
-            {/* ── Left Content ───────────────────────────────────────────── */}
+            {/* ── Column 2: Hero Text ─────────────────────────────────────── */}
             <div className="text-center lg:text-left relative">
 
               {/* 3D watermark — lanka-events.png behind text */}
               <div
-                className="absolute -right-16 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                className="absolute -right-8 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
                 style={{ zIndex: 0 }}
               >
                 <Image
                   src="/lanka-events.png"
                   alt=""
-                  width={640}
-                  height={640}
-                  className="object-contain opacity-[0.22] w-[640px] max-w-none"
+                  width={540}
+                  height={540}
+                  className="object-contain opacity-[0.22] w-[540px] max-w-none"
                   style={{
-                    transform: 'rotate(-8deg) perspective(600px) rotateY(-15deg)',
-                    filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.5))',
+                    transform: 'rotate(-6deg)',
+                    filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.35))',
                   }}
                 />
               </div>
@@ -237,9 +241,6 @@ export default function LankaEventsHome() {
           </div>
         </div>
       </div>
-
-      {/* ── Featured Newsletters — full-width below hero, on same gradient ── */}
-      <FeaturedNewslettersCarousel />
 
       {/* ── Footer — transparent, inherits gradient ──────────────────────── */}
       <Footer transparent={true} />

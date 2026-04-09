@@ -104,11 +104,11 @@ export function LankaEventsHeader() {
             <div className="w-px h-10 bg-gray-200 hidden sm:block" />
 
             {/* LankaEvents brand — text only, no separate icon */}
-            <Link href="/lanka-events" className="flex flex-col leading-tight group hidden sm:flex">
-              <span className="font-bold text-2xl text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
+            <Link href="/lanka-events" className="flex flex-col leading-tight group">
+              <span className="font-bold text-xl sm:text-2xl text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
                 LankaEvents
               </span>
-              <span className="text-xs tracking-[0.035em] text-gray-600 font-medium -mt-1">
+              <span className="text-[10px] sm:text-xs tracking-[0.035em] text-gray-600 font-medium -mt-0.5 sm:-mt-1">
                 Plan Your Event with Ease
               </span>
             </Link>

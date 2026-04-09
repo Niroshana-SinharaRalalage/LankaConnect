@@ -3,7 +3,7 @@
 import { use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -61,7 +61,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   if (isLoading || !isAuthenticated || !user?.userId) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card className="animate-pulse">
             <CardContent className="p-12">
@@ -80,7 +80,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   if (fetchError || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card>
             <CardContent className="p-12 text-center">
@@ -104,7 +104,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-12 relative overflow-hidden">

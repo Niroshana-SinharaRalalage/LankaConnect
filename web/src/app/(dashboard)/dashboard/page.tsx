@@ -6,7 +6,7 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { Button } from '@/presentation/components/ui/Button';
 import { TabPanel } from '@/presentation/components/ui/TabPanel';
 import Footer from '@/presentation/components/layout/Footer';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { canCreateEvents, isAdmin } from '@/infrastructure/api/utils/role-helpers';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
@@ -290,7 +290,7 @@ function DashboardContent() {
     <ProtectedRoute>
       <div className="min-h-screen" style={{ background: '#f7fafc' }}>
         {/* Phase 6A.X Issue #44: Use shared Header component for consistent alignment across all pages */}
-        <Header />
+        <LankaEventsHeader />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Phase 6A.7: Upgrade Pending Banner - Show if user has pending upgrade */}

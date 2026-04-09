@@ -105,10 +105,10 @@ export function LankaEventsHeader() {
 
             {/* LankaEvents brand — text only, no separate icon */}
             <Link href="/lanka-events" className="flex flex-col leading-tight group hidden sm:flex">
-              <span className="font-bold text-lg text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
+              <span className="font-bold text-2xl text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
                 LankaEvents
               </span>
-              <span className="text-[11px] text-gray-500 font-medium">
+              <span className="text-xs tracking-[0.035em] text-gray-600 font-medium -mt-1">
                 Plan Your Event with Ease
               </span>
             </Link>
@@ -125,9 +125,6 @@ export function LankaEventsHeader() {
 
           {/* ── Desktop nav links ─────────────────────────────────────────── */}
           <nav className="hidden lg:flex items-center gap-6">
-            <Link href="/lanka-events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
-              Events Home
-            </Link>
             <Link href="/events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors">
               Events
             </Link>
@@ -266,9 +263,6 @@ export function LankaEventsHeader() {
                 </div>
               )}
 
-              <Link href="/lanka-events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
-                Events Home
-              </Link>
               <Link href="/events" className="text-[#333] hover:text-[#FF7900] font-medium transition-colors px-4 py-2 hover:bg-gray-50 rounded-lg" onClick={() => setMobileMenuOpen(false)}>
                 Events
               </Link>

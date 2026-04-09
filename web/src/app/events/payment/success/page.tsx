@@ -3,7 +3,7 @@
 import { use, useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Home } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -89,7 +89,7 @@ function PaymentSuccessContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
-        <Header />
+        <LankaEventsHeader />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -103,7 +103,7 @@ function PaymentSuccessContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <LankaEventsHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
@@ -272,7 +272,7 @@ export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex flex-col bg-background">
-        <Header />
+        <LankaEventsHeader />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>

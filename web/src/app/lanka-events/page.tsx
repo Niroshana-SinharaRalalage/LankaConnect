@@ -24,21 +24,20 @@ export default function LankaEventsHome() {
 
   return (
     // Single continuous gradient — no dark gap before footer
-    <div className="min-h-screen bg-gradient-to-br from-orange-600 via-rose-800 to-emerald-900">
+    <div className="relative min-h-screen bg-gradient-to-br from-orange-600 via-rose-800 to-emerald-900">
+      {/* Full-page cross pattern — covers entire page from top to footer */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ zIndex: 0 }}>
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        />
+      </div>
       <LankaEventsHeader />
 
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
-        {/* Decorative Background Pattern */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          />
-        </div>
-
         {/* Decorative gradient blobs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl" />
@@ -54,15 +53,15 @@ export default function LankaEventsHome() {
 
               {/* 3D watermark — lanka-events.png behind text */}
               <div
-                className="absolute -right-8 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                className="absolute -right-16 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
                 style={{ zIndex: 0 }}
               >
                 <Image
                   src="/lanka-events.png"
                   alt=""
-                  width={320}
-                  height={320}
-                  className="object-contain opacity-[0.13]"
+                  width={640}
+                  height={640}
+                  className="object-contain opacity-[0.22] w-[640px] max-w-none"
                   style={{
                     transform: 'rotate(-8deg) perspective(600px) rotateY(-15deg)',
                     filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.5))',
@@ -243,7 +242,7 @@ export default function LankaEventsHome() {
       <FeaturedNewslettersCarousel />
 
       {/* ── Footer — transparent, inherits gradient ──────────────────────── */}
-      <Footer />
+      <Footer transparent={true} />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -597,7 +597,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card className="animate-pulse">
             <CardContent className="p-12">
@@ -616,7 +616,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (fetchError || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card>
             <CardContent className="p-12 text-center">
@@ -653,7 +653,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Back Button and Organizer Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

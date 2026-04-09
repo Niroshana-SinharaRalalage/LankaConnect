@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventById } from '@/presentation/hooks/useEvents';
@@ -367,7 +367,7 @@ export default function ManageSignUpsPage() {
   if (!isAuthenticated || !user?.userId) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <p className="text-neutral-500">Redirecting to login...</p>
@@ -382,7 +382,7 @@ export default function ManageSignUpsPage() {
   if (eventLoading || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <p className="text-neutral-500">Loading event...</p>
@@ -397,7 +397,7 @@ export default function ManageSignUpsPage() {
   if (event.isCurrentUserOrganizer !== true) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
             <p className="text-destructive">You are not authorized to manage this event</p>
@@ -412,7 +412,7 @@ export default function ManageSignUpsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-8 relative overflow-hidden">

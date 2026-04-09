@@ -56,12 +56,12 @@ function NewsletterScrollerCard({ newsletter }: { newsletter: NewsletterDto }) {
 
 export function FeaturedNewslettersCarousel() {
   const { data: allNewsletters, isLoading } = usePublishedNewsletters();
-  const newsletters = allNewsletters?.slice(0, 12) ?? [];
+  const newsletters = allNewsletters?.slice(0, 6) ?? [];
 
   if (!isLoading && newsletters.length === 0) return null;
 
   return (
-    <div className="w-full py-10 px-4">
+    <div className="w-full pt-2 pb-8 px-4">
       {/* Section header — centered */}
       <div className="max-w-7xl mx-auto flex items-center justify-between mb-5 px-4">
         <span className="text-white/80 text-sm font-semibold uppercase tracking-widest">

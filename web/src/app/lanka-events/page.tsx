@@ -39,7 +39,7 @@ export default function LankaEventsHome() {
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_400px] gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_460px] gap-8 items-start">
 
             {/* ── Column 1: Newsletter Panel (desktop only) ──────────────── */}
             <div className="hidden lg:flex flex-col gap-2">
@@ -57,15 +57,15 @@ export default function LankaEventsHome() {
 
               {/* 3D watermark — lanka-events.png behind text */}
               <div
-                className="absolute -right-8 top-[58%] -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                className="absolute right-8 top-[58%] -translate-y-1/2 pointer-events-none select-none hidden lg:block"
                 style={{ zIndex: 0 }}
               >
                 <Image
                   src="/lanka-events.png"
                   alt=""
-                  width={480}
-                  height={480}
-                  className="object-contain opacity-[0.22] w-[480px] max-w-none"
+                  width={450}
+                  height={450}
+                  className="object-contain opacity-[0.22] w-[450px] max-w-none"
                   style={{
                     transform: 'rotate(-6deg)',
                     filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.35))',
@@ -80,13 +80,13 @@ export default function LankaEventsHome() {
                   <span className="text-sm text-white">Connecting Sri Lankans Worldwide</span>
                 </div>
 
-                <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl text-white mb-6">
                   One Country,
                   <br />
                   <span className="text-white drop-shadow-lg">One Community</span>
                 </h1>
 
-                <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
+                <p className="text-lg text-white/95 mb-8 max-w-xs mx-auto lg:mx-0">
                   Discover, create &amp; manage Sri Lankan events worldwide. Browse upcoming
                   concerts, cultural shows, food fairs &amp; more.
                 </p>

@@ -63,12 +63,12 @@ function NewsletterVerticalCard({ newsletter }: { newsletter: NewsletterDto }) {
       href={`/newsletters/${newsletter.id}`}
       className="group relative flex flex-col gap-1 px-3 py-2.5 rounded-lg flex-shrink-0 transition-all border cursor-pointer overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, rgba(6,78,59,0.60) 0%, rgba(4,120,87,0.35) 100%)',
-        borderColor: 'rgba(52,211,153,0.20)',
+        background: 'linear-gradient(135deg, rgba(19,136,8,0.55) 0%, rgba(10,90,5,0.40) 100%)',
+        borderColor: 'rgba(19,136,8,0.35)',
         backdropFilter: 'blur(4px)',
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(6,78,59,0.80) 0%, rgba(4,120,87,0.55) 100%)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(6,78,59,0.60) 0%, rgba(4,120,87,0.35) 100%)'; }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(19,136,8,0.75) 0%, rgba(10,90,5,0.60) 100%)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, rgba(19,136,8,0.55) 0%, rgba(10,90,5,0.40) 100%)'; }}
     >
       {/* Orange left accent bar */}
       <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-lg bg-gradient-to-b from-[#FF7900] to-[#8B1538]" />

@@ -105,10 +105,10 @@ export function LankaEventsHeader() {
 
             {/* LankaEvents brand — text only, no separate icon */}
             <Link href="/lanka-events" className="flex flex-col leading-tight group">
-              <span className="text-2xl text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
+              <span className="lanka-events-brand-title text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
                 LankaEvents
               </span>
-              <span className="text-[10px] sm:text-xs tracking-[0.035em] -mt-1">
+              <span className="text-xs tracking-[0.035em] text-gray-600 -mt-1">
                 Plan Your Event with Ease
               </span>
             </Link>

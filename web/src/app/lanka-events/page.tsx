@@ -57,15 +57,15 @@ export default function LankaEventsHome() {
 
               {/* 3D watermark — lanka-events.png behind text */}
               <div
-                className="absolute right-8 top-[58%] -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                className="absolute right-6 top-[65%] -translate-y-1/2 pointer-events-none select-none hidden lg:block"
                 style={{ zIndex: 0 }}
               >
                 <Image
                   src="/lanka-events.png"
                   alt=""
-                  width={450}
-                  height={450}
-                  className="object-contain opacity-[0.22] w-[450px] max-w-none"
+                  width={420}
+                  height={420}
+                  className="object-contain opacity-[0.22] w-[420px] max-w-none"
                   style={{
                     transform: 'rotate(-6deg)',
                     filter: 'drop-shadow(0 16px 32px rgba(0,0,0,0.35))',

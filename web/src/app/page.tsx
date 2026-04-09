@@ -213,7 +213,7 @@ export default function LankaConnectHome() {
                     `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
                     `0 2px 4px rgba(0,0,0,0.45)`,
                   ].join(', '),
-                  minHeight: '120px',
+                  minHeight: '90px',
                   transition: 'transform 0.10s ease, box-shadow 0.10s ease',
                 }}
                 onMouseEnter={e => {
@@ -265,8 +265,8 @@ export default function LankaConnectHome() {
                 <Image
                   src="/lanka-events.png"
                   alt="LankaEvents"
-                  width={80}
-                  height={80}
+                  width={60}
+                  height={60}
                   className="object-contain flex-shrink-0"
                 />
 
@@ -286,7 +286,7 @@ export default function LankaConnectHome() {
                     </span>
                   </div>
                   <div className="text-sm text-white/65 leading-relaxed">
-                    Discover, create &amp; manage Sri Lankan events worldwide. Browse upcoming concerts, cultural shows, food fairs &amp; more.
+                    Plan Your Event with Ease
                   </div>
                 </div>
 

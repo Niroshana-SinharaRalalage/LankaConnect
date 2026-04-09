@@ -731,20 +731,6 @@ export function WorldMapAnimation({ theme, className = '' }: WorldMapAnimationPr
             <g key={`sl-node-${i}`}>
               {showSLCities && (
                 <>
-                  {/* Pulse ring 1 */}
-                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 7}
-                    fill="none" stroke={phaseNodeFill} strokeWidth={0.2 / z}
-                    initial={{ scale: 0.4, opacity: 0.7 }}
-                    animate={{ scale: 2.8, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.25, repeat: Infinity }}
-                  />
-                  {/* Pulse ring 2 — offset timing */}
-                  <motion.circle cx={xy[0]} cy={xy[1]} r={nodeR * 5}
-                    fill="none" stroke={phaseNodeFill} strokeWidth={0.15 / z}
-                    initial={{ scale: 0.5, opacity: 0.5 }}
-                    animate={{ scale: 2.4, opacity: 0 }}
-                    transition={{ duration: 2.8, delay: i * 0.25 + 0.9, repeat: Infinity }}
-                  />
                   {/* Halo ring — static soft glow, gold during SL phase */}
                   <circle cx={xy[0]} cy={xy[1]} r={nodeR * 3.5}
                     fill={isSLPhase ? phaseNodeFill : theme.nodeGlow} opacity={0.18}

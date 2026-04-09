@@ -97,29 +97,28 @@ export function LankaEventsHeader() {
           <div className="flex items-center gap-3">
             {/* LankaConnect lion icon — links back to umbrella landing */}
             <Link href="/" aria-label="LankaConnect home">
-              <Logo size="sm" showText={false} className="flex-shrink-0" />
+              <Logo size="md" showText={false} className="flex-shrink-0" />
             </Link>
 
             {/* Divider */}
-            <div className="w-px h-8 bg-gray-200 hidden sm:block" />
+            <div className="w-px h-10 bg-gray-200 hidden sm:block" />
 
-            {/* LankaEvents brand */}
-            <Link href="/lanka-events" className="flex items-center gap-2 group">
+            {/* LankaEvents brand — icon + text image */}
+            <Link href="/lanka-events" className="flex items-center gap-2.5 group">
               <Image
-                src="/lanka-events3.jpg"
+                src="/lanka-events.png"
                 alt="LankaEvents"
-                width={36}
-                height={36}
-                className="rounded-lg object-contain flex-shrink-0"
+                width={63}
+                height={63}
+                className="object-contain flex-shrink-0"
               />
-              <div className="flex flex-col leading-tight">
-                <span className="font-bold text-base text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
-                  LankaEvents
-                </span>
-                <span className="text-[10px] text-gray-500 font-medium hidden sm:block">
-                  Plan Your Event with Ease
-                </span>
-              </div>
+              <Image
+                src="/lanka-events-text.png"
+                alt="LankaEvents — Plan Your Event with Ease"
+                width={160}
+                height={44}
+                className="object-contain flex-shrink-0 hidden sm:block"
+              />
             </Link>
           </div>
 

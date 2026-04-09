@@ -12,11 +12,9 @@ import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 export default function LankaEventsHome() {
   const { user } = useAuthStore();
 
-  // For anonymous users, detect location via IP/browser geolocation
   const isAnonymous = !user?.userId;
   const { latitude, longitude, loading: locationLoading } = useGeolocation(isAnonymous);
 
-  // Fetch featured events with location-based sorting
   const { data: featuredEvents, isLoading: eventsLoading, error: eventsError } = useFeaturedEvents(
     user?.userId,
     isAnonymous ? latitude ?? undefined : undefined,
@@ -24,13 +22,14 @@ export default function LankaEventsHome() {
   );
 
   return (
-    <div className="min-h-screen bg-[#020818]">
+    // Single continuous gradient — no dark gap before footer
+    <div className="min-h-screen bg-gradient-to-br from-orange-600 via-rose-800 to-emerald-900">
       <LankaEventsHeader />
 
       {/* ── Hero Section ─────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800">
+      <div className="relative overflow-hidden">
         {/* Decorative Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div
             className="absolute inset-0"
             style={{
@@ -40,7 +39,7 @@ export default function LankaEventsHome() {
         </div>
 
         {/* Decorative gradient blobs */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl" />
@@ -51,34 +50,40 @@ export default function LankaEventsHome() {
 
             {/* ── Left Content ───────────────────────────────────────────── */}
             <div className="text-center lg:text-left">
-              {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-6">
                 <Sparkles className="h-4 w-4 text-white" />
                 <span className="text-sm text-white">Connecting Sri Lankans Worldwide</span>
               </div>
 
-              {/* Heading */}
               <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
                 One Country,
                 <br />
                 <span className="text-white drop-shadow-lg">One Community</span>
               </h1>
 
-              {/* Description */}
               <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
                 Join the largest Sri Lankan community platform. Discover events, connect
                 with businesses, engage in discussions, and celebrate our rich culture
                 together.
               </p>
+
+              {/* Mobile — View All Events CTA */}
+              <div className="lg:hidden flex justify-center lg:justify-start">
+                <a href="/events" className="inline-flex items-center gap-2 px-6 py-3 bg-white text-orange-600 hover:bg-orange-50 shadow-lg rounded-lg font-semibold transition-all">
+                  <Calendar className="h-4 w-4" />
+                  View All Events
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </div>
             </div>
 
-            {/* ── Right — Featured Events Cards ──────────────────────────── */}
+            {/* ── Right — Featured Events Cards (desktop only) ────────────── */}
             <div className="relative hidden lg:block">
               {eventsLoading || (isAnonymous && locationLoading) ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-white/10 ring-2 ring-white/20">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <div className="h-4 bg-white/30 rounded w-3/4 mb-2" />
@@ -89,7 +94,7 @@ export default function LankaEventsHome() {
                   </div>
                   <div className="space-y-4 mt-8">
                     {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
+                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-white/10 ring-2 ring-white/20">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4">
                           <div className="h-4 bg-white/30 rounded w-3/4 mb-2" />
@@ -102,40 +107,34 @@ export default function LankaEventsHome() {
               ) : eventsError || !featuredEvents || featuredEvents.length === 0 ? (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-4">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-orange-600 via-rose-600 to-amber-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">🎉</span></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">No Events Yet</h3>
-                        <div className="text-white/90 text-sm">Check back soon</div>
+                    {[
+                      { emoji: '🎉', title: 'No Events Yet', sub: 'Check back soon', grad: 'from-orange-600 via-rose-600 to-amber-500' },
+                      { emoji: '📅', title: 'Coming Soon', sub: 'New events weekly', grad: 'from-emerald-600 via-teal-600 to-cyan-500' },
+                    ].map(({ emoji, title, sub, grad }) => (
+                      <div key={title} className={`group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br ${grad} ring-2 ring-white/40`}>
+                        <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">{emoji}</span></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                          <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">{title}</h3>
+                          <div className="text-white/90 text-sm">{sub}</div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">📅</span></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Coming Soon</h3>
-                        <div className="text-white/90 text-sm">New events weekly</div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                   <div className="space-y-4 mt-8">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">🎭</span></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Cultural Events</h3>
-                        <div className="text-white/90 text-sm">Stay tuned</div>
+                    {[
+                      { emoji: '🎭', title: 'Cultural Events', sub: 'Stay tuned', grad: 'from-rose-600 via-pink-600 to-purple-500' },
+                      { emoji: '🌟', title: 'Join Community', sub: 'Connect with us', grad: 'from-indigo-600 via-blue-600 to-cyan-500' },
+                    ].map(({ emoji, title, sub, grad }) => (
+                      <div key={title} className={`group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br ${grad} ring-2 ring-white/40`}>
+                        <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">{emoji}</span></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        <div className="absolute inset-0 p-4 flex flex-col justify-end">
+                          <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">{title}</h3>
+                          <div className="text-white/90 text-sm">{sub}</div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center"><span className="text-6xl opacity-30">🌟</span></div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Join Community</h3>
-                        <div className="text-white/90 text-sm">Connect with us</div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               ) : (
@@ -205,31 +204,23 @@ export default function LankaEventsHome() {
                 </div>
               )}
 
-              {/* View All Events + Newsletter Carousel */}
+              {/* View All Events button */}
               <div className="mt-6 flex justify-center">
-                <a href="/events" className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-neutral-100 shadow-lg rounded-lg font-semibold transition-all">
+                <a href="/events" className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-orange-50 shadow-lg rounded-lg font-semibold transition-all">
                   <Calendar className="mr-2 h-5 w-5" />
                   View All Events
                 </a>
               </div>
-
-              {/* ── Featured Newsletters Carousel ──────────────────────── */}
-              <FeaturedNewslettersCarousel />
             </div>
 
           </div>
         </div>
       </div>
 
-      {/* Mobile — View All Events link (visible only on small screens) */}
-      <div className="lg:hidden flex justify-center py-6">
-        <a href="/events" className="inline-flex items-center gap-2 px-6 py-3 bg-[#FF7900] hover:bg-[#E66D00] text-white rounded-lg font-semibold transition-all">
-          <Calendar className="h-4 w-4" />
-          View All Events
-          <ArrowRight className="h-4 w-4" />
-        </a>
-      </div>
+      {/* ── Featured Newsletters — full-width below hero, on same gradient ── */}
+      <FeaturedNewslettersCarousel />
 
+      {/* ── Footer — transparent, inherits gradient ──────────────────────── */}
       <Footer />
     </div>
   );

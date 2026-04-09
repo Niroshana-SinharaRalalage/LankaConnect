@@ -4,6 +4,7 @@ import * as React from 'react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { FeaturedNewslettersCarousel } from '@/presentation/components/features/newsletters/FeaturedNewslettersCarousel';
+import Image from 'next/image';
 import { Sparkles, ArrowRight, Calendar } from 'lucide-react';
 import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
@@ -49,23 +50,44 @@ export default function LankaEventsHome() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
             {/* ── Left Content ───────────────────────────────────────────── */}
-            <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-6">
-                <Sparkles className="h-4 w-4 text-white" />
-                <span className="text-sm text-white">Connecting Sri Lankans Worldwide</span>
+            <div className="text-center lg:text-left relative">
+
+              {/* 3D watermark — lanka-events.png behind text */}
+              <div
+                className="absolute -right-8 top-1/2 -translate-y-1/2 pointer-events-none select-none hidden lg:block"
+                style={{ zIndex: 0 }}
+              >
+                <Image
+                  src="/lanka-events.png"
+                  alt=""
+                  width={320}
+                  height={320}
+                  className="object-contain opacity-[0.13]"
+                  style={{
+                    transform: 'rotate(-8deg) perspective(600px) rotateY(-15deg)',
+                    filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.5))',
+                  }}
+                />
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
-                One Country,
-                <br />
-                <span className="text-white drop-shadow-lg">One Community</span>
-              </h1>
+              {/* Text content — sits above the watermark */}
+              <div className="relative" style={{ zIndex: 1 }}>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-6">
+                  <Sparkles className="h-4 w-4 text-white" />
+                  <span className="text-sm text-white">Connecting Sri Lankans Worldwide</span>
+                </div>
 
-              <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
-                Join the largest Sri Lankan community platform. Discover events, connect
-                with businesses, engage in discussions, and celebrate our rich culture
-                together.
-              </p>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
+                  One Country,
+                  <br />
+                  <span className="text-white drop-shadow-lg">One Community</span>
+                </h1>
+
+                <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
+                  Discover, create &amp; manage Sri Lankan events worldwide. Browse upcoming
+                  concerts, cultural shows, food fairs &amp; more.
+                </p>
+              </div>
 
               {/* Mobile — View All Events CTA */}
               <div className="lg:hidden flex justify-center lg:justify-start">

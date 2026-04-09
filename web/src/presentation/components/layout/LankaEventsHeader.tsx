@@ -103,22 +103,14 @@ export function LankaEventsHeader() {
             {/* Divider */}
             <div className="w-px h-10 bg-gray-200 hidden sm:block" />
 
-            {/* LankaEvents brand — icon + text image */}
-            <Link href="/lanka-events" className="flex items-center gap-2.5 group">
-              <Image
-                src="/lanka-events.png"
-                alt="LankaEvents"
-                width={63}
-                height={63}
-                className="object-contain flex-shrink-0"
-              />
-              <Image
-                src="/lanka-events-text.png"
-                alt="LankaEvents — Plan Your Event with Ease"
-                width={160}
-                height={44}
-                className="object-contain flex-shrink-0 hidden sm:block"
-              />
+            {/* LankaEvents brand — text only, no separate icon */}
+            <Link href="/lanka-events" className="flex flex-col leading-tight group hidden sm:flex">
+              <span className="font-bold text-lg text-[#8B1538] group-hover:text-[#FF7900] transition-colors">
+                LankaEvents
+              </span>
+              <span className="text-[11px] text-gray-500 font-medium">
+                Plan Your Event with Ease
+              </span>
             </Link>
           </div>
 

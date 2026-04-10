@@ -3,7 +3,7 @@
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -48,6 +48,8 @@ import { useMyAddOnPurchasesMine } from '@/presentation/hooks/useAddOns';
 import { useEventAlbums, useDownloadAlbumZip } from '@/presentation/hooks/usePhotoAlbum';
 import { AlbumPhotoCarousel } from '@/presentation/components/features/events/AlbumPhotoCarousel';
 import { AlbumStatus } from '@/infrastructure/api/types/events.types';
+// Phase 7A.4: WhatsApp share button
+import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp/WhatsAppShareButton';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -595,7 +597,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card className="animate-pulse">
             <CardContent className="p-12">
@@ -614,7 +616,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (fetchError || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <Card>
             <CardContent className="p-12 text-center">
@@ -651,7 +653,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Back Button and Organizer Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -727,6 +729,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                 {/* Registration Badge - Issue #2: Use registration status directly */}
                 <RegistrationBadge registrationStatus={registrationDetails?.status as any} compact={false} />
+
+                {/* Phase 7A.4: WhatsApp Share */}
+                <WhatsAppShareButton
+                  eventTitle={event.title}
+                  eventUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                  eventDate={event.startDate ? formatEventDate(event.startDate, event.timeZoneId) : undefined}
+                  eventLocation={event.city || undefined}
+                />
               </div>
 
               {/* Quick Navigation Bar — anchor links to sections below */}

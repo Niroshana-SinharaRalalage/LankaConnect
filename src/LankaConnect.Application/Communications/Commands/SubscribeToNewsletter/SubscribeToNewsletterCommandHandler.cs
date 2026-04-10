@@ -111,10 +111,11 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "SubscribeToNewsletter START: Email={Email}, MetroAreaCount={MetroAreaCount}, ReceiveAll={ReceiveAll}",
+                "SubscribeToNewsletter START: Email={Email}, MetroAreaCount={MetroAreaCount}, ReceiveAll={ReceiveAll}, HasWhatsApp={HasWhatsApp}",
                 request.Email,
                 request.MetroAreaIds?.Count ?? 0,
-                request.ReceiveAllLocations);
+                request.ReceiveAllLocations,
+                !string.IsNullOrWhiteSpace(request.WhatsAppPhoneNumber));
 
             try
             {
@@ -230,10 +231,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                         request.ReceiveAllLocations,
                         cancellationToken);
 
+                    // Phase 7A.6D: Pass WhatsApp phone number
                     var reactivateResult = NewsletterSubscriber.Create(
                         email,
                         reactivateMetroAreaIds.ToList(),
-                        request.ReceiveAllLocations);
+                        request.ReceiveAllLocations,
+                        request.WhatsAppPhoneNumber);
 
                     if (!reactivateResult.IsSuccess)
                     {
@@ -271,10 +274,12 @@ public class SubscribeToNewsletterCommandHandler : IRequestHandler<SubscribeToNe
                         request.ReceiveAllLocations,
                         cancellationToken);
 
+                    // Phase 7A.6D: Pass WhatsApp phone number
                     var createResult = NewsletterSubscriber.Create(
                         email,
                         metroAreaIds.ToList(),
-                        request.ReceiveAllLocations);
+                        request.ReceiveAllLocations,
+                        request.WhatsAppPhoneNumber);
 
                     if (!createResult.IsSuccess)
                     {

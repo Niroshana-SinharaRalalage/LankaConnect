@@ -1,489 +1,334 @@
 'use client';
 
-import * as React from 'react';
-import { Header } from '@/presentation/components/layout/Header';
+/**
+ * LankaConnect Umbrella Landing Page
+ *
+ * Cinematic full-page animated world map background with the brand
+ * identity centred and a single prominent LankaEvents entry point.
+ *
+ * Intentionally no top-left logo/branding — the hero IS the identity.
+ * No "My Dashboard" in nav — that belongs in /lanka-events.
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { ArrowUpRight, User, ChevronDown, LogOut, UserCircle } from 'lucide-react';
+import { WorldMapAnimation, THEMES } from '@/presentation/components/features/landing/WorldMapAnimation';
+import { useAuthStore, useHasHydrated } from '@/presentation/store/useAuthStore';
 import Footer from '@/presentation/components/layout/Footer';
-import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
-import { Badge } from '@/presentation/components/ui/Badge';
-import { Sparkles, ArrowRight, Calendar, Users, Clock, Store, MessageSquare, Newspaper, ShoppingBag } from 'lucide-react';
-import { MarketplaceItemCard } from '@/presentation/components/widgets/MarketplaceItemCard';
-import { MARKETPLACE_ITEMS } from '@/config/marketplaceItems';
-import { useFeaturedEvents } from '@/presentation/hooks/useEvents';
-import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { useGeolocation } from '@/presentation/hooks/useGeolocation';
-import { useCommunityStats } from '@/presentation/hooks/useStats';
-import { usePublishedNewsletters } from '@/presentation/hooks/useNewsletters';
+// ─── Theme ────────────────────────────────────────────────────────────────────
+const DEFAULT_THEME_KEY = 'satellite-navy';
 
-export default function Home() {
-  const { user } = useAuthStore();
+// ─── LankaEvents brand ────────────────────────────────────────────────────────
+const LANKA_EVENTS_COLOR = '#FF7900';
 
-  // For anonymous users, detect location via IP/browser geolocation
-  const isAnonymous = !user?.userId;
-  const { latitude, longitude, loading: locationLoading } = useGeolocation(isAnonymous);
+// ─── Component ────────────────────────────────────────────────────────────────
+export default function LankaConnectHome() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Fetch featured events with location-based sorting
-  const { data: featuredEvents, isLoading: eventsLoading, error: eventsError } = useFeaturedEvents(
-    user?.userId,
-    isAnonymous ? latitude ?? undefined : undefined,
-    isAnonymous ? longitude ?? undefined : undefined
-  );
+  const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const hasHydrated = useHasHydrated();
+  const router = useRouter();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Phase 6A.69: Fetch real-time community statistics
-  const { data: stats, isLoading: statsLoading } = useCommunityStats();
-
-  // Phase 6A.74: Fetch published newsletters for News & Updates section
-  const { data: newsletters, isLoading: newslettersLoading } = usePublishedNewsletters();
-
-  // Format number for display (1234 → "1.2K+", 25678 → "25.6K+")
-  const formatCount = (count: number): string => {
-    if (count >= 1000) {
-      const k = Math.floor(count / 1000);
-      const remainder = count % 1000;
-      if (remainder >= 100) {
-        return `${k}.${Math.floor(remainder / 100)}K+`;
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
       }
-      return `${k}K+`;
     }
-    return count.toString();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    clearAuth();
+    setUserMenuOpen(false);
+    router.push('/');
   };
 
-  // Phase 6A.74: Strip HTML tags and get excerpt for newsletter preview
-  const getNewsletterExcerpt = (html: string, maxLength: number = 100): string => {
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-  };
-
-  // Phase 6A.74: Format relative time for newsletter display
-  const getRelativeTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
+  const theme = THEMES.find(t => t.key === DEFAULT_THEME_KEY) ?? THEMES[2];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+    <div className="w-full">
 
-      {/* Hero Section - Exact Figma Design */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800">
-        {/* Decorative Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          ></div>
+      {/* ══════════════════════════════════════════════════════════════════
+          HERO — exactly 100vh. Nav floats top-right. Content fills height
+          with brand at top, card in middle, tagline at bottom.
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="relative w-full overflow-hidden" style={{ height: '100vh' }}>
+
+        {/* Animation — constrained strictly to this box */}
+        <div className="absolute inset-0 z-0">
+          {mounted && <WorldMapAnimation theme={theme} className="w-full h-full" />}
         </div>
+        <div className="absolute inset-0 z-10 bg-black/20" />
 
-        {/* Decorative gradient blobs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
-        </div>
+        {/* ── Nav — floats top-right, does NOT consume vertical flow ───── */}
+        <nav className="absolute top-0 right-0 z-30 flex items-center px-6 py-4 md:px-10">
+          {!hasHydrated && <div className="h-9 w-32" />}
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="text-center lg:text-left">
-              {/* Badge with Icon */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mb-6">
-                <Sparkles className="h-4 w-4 text-white" />
-                <span className="text-sm text-white">Connecting Sri Lankans Worldwide</span>
-              </div>
-
-              {/* Heading */}
-              <h1 className="text-4xl md:text-5xl lg:text-6xl text-white mb-6">
-                One Country,
-                <br />
-                <span className="text-white drop-shadow-lg">One Community</span>
-              </h1>
-
-              {/* Description */}
-              <p className="text-lg text-white/95 mb-8 max-w-xl mx-auto lg:mx-0">
-                Join the largest Sri Lankan community platform. Discover events, connect
-                with businesses, engage in discussions, and celebrate our rich culture
-                together.
-              </p>
-
-              {/* Removed News & Updates button per user request */}
-
-              {/* Phase 6A.69: Real-time Community Statistics */}
-              {statsLoading ? (
-                <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/20">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i}>
-                      <div className="h-9 w-20 bg-white/20 rounded animate-pulse mb-1"></div>
-                      <div className="h-4 w-16 bg-white/10 rounded animate-pulse"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : stats && (stats.totalUsers > 0 || stats.totalEvents > 0 || stats.totalBusinesses > 0) ? (
-                <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-white/20">
-                  {stats.totalUsers > 0 && (
-                    <div>
-                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalUsers)}</div>
-                      <div className="text-sm text-white/90">Members</div>
-                    </div>
-                  )}
-                  {stats.totalEvents > 0 && (
-                    <div>
-                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalEvents)}</div>
-                      <div className="text-sm text-white/90">Events</div>
-                    </div>
-                  )}
-                  {stats.totalBusinesses > 0 && (
-                    <div>
-                      <div className="text-3xl text-white mb-1">{formatCount(stats.totalBusinesses)}</div>
-                      <div className="text-sm text-white/90">Businesses</div>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Right - Featured Events Cards (from Database) */}
-            <div className="relative hidden lg:block">
-              {eventsLoading || (isAnonymous && locationLoading) ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
-                          <div className="h-3 bg-white/20 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    ))}
+          {hasHydrated && isAuthenticated && user && (
+            /* User chip with dropdown — no Dashboard button on landing page */
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(v => !v)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border transition-colors"
+                style={{ borderColor: 'rgba(255,255,255,0.20)', background: 'rgba(255,255,255,0.10)' }}
+              >
+                {/* Avatar — photo if available, else gradient initials */}
+                {user.profilePhotoUrl ? (
+                  <Image
+                    src={user.profilePhotoUrl}
+                    alt={user.fullName}
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
+                    style={{ background: 'linear-gradient(135deg, #FF7900, #8B1538)' }}
+                  >
+                    {user.fullName ? (user.fullName.trim().split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()) : <User className="w-3 h-3" />}
                   </div>
-                  <div className="space-y-4 mt-8">
-                    {[...Array(2)].map((_, i) => (
-                      <div key={i} className="relative h-40 rounded-2xl shadow-lg overflow-hidden animate-pulse bg-gradient-to-br from-neutral-200 to-neutral-300 ring-2 ring-white/40">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <div className="h-4 bg-white/30 rounded w-3/4 mb-2"></div>
-                          <div className="h-3 bg-white/20 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    ))}
+                )}
+                <span className="text-white/90 text-sm font-medium hidden sm:inline max-w-[140px] truncate">
+                  {user.fullName}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
+              </button>
+
+              {/* Dropdown */}
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50"
+                  style={{ background: 'rgba(10,15,40,0.95)', borderColor: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(12px)' }}
+                >
+                  <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <p className="text-white text-sm font-semibold truncate">{user.fullName}</p>
+                    <p className="text-white/50 text-xs truncate">{user.email}</p>
                   </div>
-                </div>
-              ) : eventsError || !featuredEvents || featuredEvents.length === 0 ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-orange-600 via-rose-600 to-amber-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-6xl opacity-30">🎉</span>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">No Events Yet</h3>
-                        <div className="text-white/90 text-sm">Check back soon</div>
-                      </div>
-                    </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-6xl opacity-30">📅</span>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Coming Soon</h3>
-                        <div className="text-white/90 text-sm">New events weekly</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4 mt-8">
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-6xl opacity-30">🎭</span>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Cultural Events</h3>
-                        <div className="text-white/90 text-sm">Stay tuned</div>
-                      </div>
-                    </div>
-                    <div className="group relative h-40 rounded-2xl shadow-lg overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 ring-2 ring-white/40">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-6xl opacity-30">🌟</span>
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                      <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                        <h3 className="text-white font-bold text-base drop-shadow-lg mb-1">Join Community</h3>
-                        <div className="text-white/90 text-sm">Connect with us</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    {featuredEvents.slice(0, 2).map((event, index) => {
-                      const primaryImage = event.images?.find(img => img.isPrimary) || event.images?.[0];
-                      const hasImage = primaryImage?.imageUrl;
-                      const gradients = [
-                        'from-orange-600 via-rose-600 to-amber-500',
-                        'from-emerald-600 via-teal-600 to-cyan-500',
-                      ];
-                      const fallbackIcons = ['🎉', '📅'];
-
-                      return (
-                        <div
-                          key={event.id}
-                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70"
-                          onClick={() => window.location.href = `/events/${event.id}`}
-                        >
-                          {/* Background Image or Gradient Fallback */}
-                          {hasImage ? (
-                            <img
-                              src={primaryImage.imageUrl}
-                              alt={event.title}
-                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          ) : (
-                            <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index % 2]} flex items-center justify-center`}>
-                              <span className="text-6xl opacity-30">{fallbackIcons[index % 2]}</span>
-                            </div>
-                          )}
-
-                          {/* Dark Gradient Overlay for Text Readability */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-                          {/* Content Overlay */}
-                          <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                            <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">
-                              {event.title}
-                            </h3>
-                            <div className="flex items-center gap-2 text-white/90 text-sm">
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>
-                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="space-y-4 mt-8">
-                    {featuredEvents.slice(2, 4).map((event, index) => {
-                      const primaryImage = event.images?.find(img => img.isPrimary) || event.images?.[0];
-                      const hasImage = primaryImage?.imageUrl;
-                      const gradients = [
-                        'from-rose-600 via-pink-600 to-purple-500',
-                        'from-indigo-600 via-blue-600 to-cyan-500',
-                      ];
-                      const fallbackIcons = ['🎭', '🌟'];
-
-                      return (
-                        <div
-                          key={event.id}
-                          className="group relative h-40 rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 hover:scale-[1.02] cursor-pointer overflow-hidden ring-2 ring-white/40 hover:ring-white/70"
-                          onClick={() => window.location.href = `/events/${event.id}`}
-                        >
-                          {/* Background Image or Gradient Fallback */}
-                          {hasImage ? (
-                            <img
-                              src={primaryImage.imageUrl}
-                              alt={event.title}
-                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                          ) : (
-                            <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index % 2]} flex items-center justify-center`}>
-                              <span className="text-6xl opacity-30">{fallbackIcons[index % 2]}</span>
-                            </div>
-                          )}
-
-                          {/* Dark Gradient Overlay for Text Readability */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-
-                          {/* Content Overlay */}
-                          <div className="absolute inset-0 p-4 flex flex-col justify-end">
-                            <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">
-                              {event.title}
-                            </h3>
-                            <div className="flex items-center gap-2 text-white/90 text-sm">
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>
-                                {new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    My Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-red-400 hover:text-red-300 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* View All Events Button - Below feature cards */}
-              <div className="mt-6 flex justify-center">
-                <a href="/events" className="inline-flex items-center justify-center px-8 py-3 bg-white text-orange-600 hover:bg-neutral-100 shadow-lg rounded-lg font-semibold transition-all">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  View All Events
-                </a>
+          {hasHydrated && !isAuthenticated && (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white border transition-all hover:bg-white/10 backdrop-blur-sm"
+                style={{ borderColor: theme.nodeFill, boxShadow: `0 0 12px ${theme.nodeFill}40` }}
+              >
+                Join Free
+              </Link>
+            </div>
+          )}
+        </nav>
+
+        {/* ── Content — fills full 100vh, flex column, space-between ───── */}
+        <div className="relative z-20 flex flex-col items-center justify-between text-center px-4 h-full pt-[55px] pb-[25px]">
+
+          {/* ── TOP: Brand identity + pill ─────────────────────────────── */}
+          <div className="flex flex-col items-center mt-5">
+            <div
+              className="flex items-center gap-3 mb-4"
+              style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.55))' }}
+            >
+              <Image
+                src="/images/lankaconnect-logo.png"
+                alt="LankaConnect"
+                width={84}
+                height={84}
+                className="object-contain flex-shrink-0"
+                priority
+              />
+              <div className="flex flex-col items-start gap-1.5">
+                <span
+                  className="font-bold text-white leading-none"
+                  style={{ fontSize: '40px', letterSpacing: '0em', textShadow: '0 2px 14px rgba(0,0,0,0.55)' }}
+                >
+                  LankaConnect
+                </span>
+                <span
+                  className="font-medium text-white/60 uppercase leading-none"
+                  style={{ fontSize: '13.5px', letterSpacing: '0.255em' }}
+                >
+                  Sri Lankan Community Hub
+                </span>
               </div>
             </div>
+
+            <div
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm border"
+              style={{
+                borderColor: `${theme.nodeFill}55`,
+                background: `${theme.nodeFill}1a`,
+                color: theme.nodeFill,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: theme.nodeFill }} />
+              Connecting Sri Lankans Worldwide
+            </div>
           </div>
-        </div>
+
+          {/* ── MIDDLE: LankaEvents entry card ─────────────────────────── */}
+          <div className="w-full flex justify-center px-4">
+            <Link href="/lanka-events" className="block w-full" style={{ maxWidth: '520px' }}>
+              <div
+                className="relative flex items-start gap-5 px-6 py-5 rounded-2xl cursor-pointer select-none"
+                style={{
+                  background: `linear-gradient(175deg, ${LANKA_EVENTS_COLOR}30 0%, ${LANKA_EVENTS_COLOR}14 60%, ${LANKA_EVENTS_COLOR}06 100%)`,
+                  border: `1px solid ${LANKA_EVENTS_COLOR}55`,
+                  boxShadow: [
+                    `inset 0 1px 0 rgba(255,255,255,0.18)`,
+                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}60`,
+                    `0 6px 0 ${LANKA_EVENTS_COLOR}55`,
+                    `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
+                    `0 2px 4px rgba(0,0,0,0.45)`,
+                  ].join(', '),
+                  minHeight: '50px',
+                  transition: 'transform 0.10s ease, box-shadow 0.10s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(-3px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}70`,
+                    `0 9px 0 ${LANKA_EVENTS_COLOR}60`,
+                    `0 16px 48px ${LANKA_EVENTS_COLOR}35`,
+                    `0 4px 8px rgba(0,0,0,0.5)`,
+                  ].join(', ');
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = '';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.18)`,
+                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}60`,
+                    `0 6px 0 ${LANKA_EVENTS_COLOR}55`,
+                    `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
+                    `0 2px 4px rgba(0,0,0,0.45)`,
+                  ].join(', ');
+                }}
+                onMouseDown={e => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(5px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.10)`,
+                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}40`,
+                    `0 1px 0 ${LANKA_EVENTS_COLOR}55`,
+                    `0 3px 12px ${LANKA_EVENTS_COLOR}18`,
+                    `0 1px 2px rgba(0,0,0,0.5)`,
+                  ].join(', ');
+                }}
+                onMouseUp={e => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.transform = 'translateY(-3px)';
+                  el.style.boxShadow = [
+                    `inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    `inset 0 -1px 0 ${LANKA_EVENTS_COLOR}70`,
+                    `0 9px 0 ${LANKA_EVENTS_COLOR}60`,
+                    `0 16px 48px ${LANKA_EVENTS_COLOR}35`,
+                    `0 4px 8px rgba(0,0,0,0.5)`,
+                  ].join(', ');
+                }}
+              >
+                {/* Logo — no container box, just the image */}
+                <Image
+                  src="/lanka-events.png"
+                  alt="LankaEvents"
+                  width={55}
+                  height={55}
+                  className="object-contain flex-shrink-0"
+                />
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="font-bold text-2xl text-white leading-tight">LankaEvents</span>
+                    <span
+                      className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full leading-none"
+                      style={{
+                        background: `${LANKA_EVENTS_COLOR}25`,
+                        color: LANKA_EVENTS_COLOR,
+                        border: `1px solid ${LANKA_EVENTS_COLOR}40`,
+                      }}
+                    >
+                      Event Planner
+                    </span>
+                  </div>
+                  <div className="card-tagline text-white/65 uppercase leading-tight text-left">
+                    Plan Your Event with Ease
+                  </div>
+                </div>
+
+                {/* Right side */}
+                <div className="flex flex-col items-end gap-2 flex-shrink-0 pt-1">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-[10px] font-bold uppercase tracking-wide">Live</span>
+                  </div>
+                  <ArrowUpRight className="h-5 w-5" style={{ color: LANKA_EVENTS_COLOR }} />
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          {/* ── BOTTOM: One Country tagline ─────────────────────────────── */}
+          <div className="max-w-lg mb-6">
+            <h2
+              className="text-2xl md:text-3xl font-bold text-white mb-3 drop-shadow-md leading-tight"
+              style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
+            >
+              One Country,{' '}
+              <span style={{ color: theme.nodeFill }}>One Community</span>
+            </h2>
+            <p
+              className="text-sm md:text-base font-medium text-white/80 leading-relaxed"
+              style={{ textShadow: '0 1px 8px rgba(0,0,0,0.7)' }}
+            >
+              Join the largest Sri Lankan community platform. Discover events,
+              connect with businesses, engage in discussions, and celebrate our
+              rich culture together.
+            </p>
+          </div>
+
+        </div>{/* ── end content ── */}
+      </div>{/* ══ end 100vh hero ══ */}
+
+      {/* Footer — satellite-navy gradient continues from hero */}
+      <div style={{ background: 'linear-gradient(180deg, #020818 0%, #0a0f2e 50%, #030d1a 100%)' }}>
+        <Footer />
       </div>
 
-
-
-      {/* Main Content */}
-      {/* Phase 6A.X Issue #44: Use max-w-7xl for consistent width with header */}
-      <section className="py-16 bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Forum Highlights + News (stacked) then Business */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Forum Highlights and News & Updates - Side by side */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Forum Highlights */}
-                <Card className="border-neutral-200 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
-                    <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
-                      <MessageSquare className="h-5 w-5 text-rose-600" />
-                      Forum Highlights
-                    </CardTitle>
-                    <button className="text-rose-600 hover:text-rose-700">
-                      <ArrowRight className="h-5 w-5" />
-                    </button>
-                  </CardHeader>
-
-                  <CardContent className="p-6 space-y-4">
-                    <div className="text-center py-6 text-neutral-500">
-                      <MessageSquare className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
-                      <p className="text-sm">No forum discussions yet</p>
-                      <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Latest News & Updates - Phase 6A.74 Part 10: Dynamic newsletters from database */}
-                <Card className="border-neutral-200 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
-                    <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
-                      <Newspaper className="h-5 w-5 text-amber-600" />
-                      Latest News & Updates
-                    </CardTitle>
-                    <a href="/newsletters" className="text-amber-600 hover:text-amber-700">
-                      <ArrowRight className="h-5 w-5" />
-                    </a>
-                  </CardHeader>
-
-                  <CardContent className="p-6 space-y-4">
-                    {newslettersLoading ? (
-                      // Loading skeleton
-                      <>
-                        {[...Array(2)].map((_, i) => (
-                          <div key={i} className="rounded-xl border border-neutral-200 bg-white p-4 animate-pulse">
-                            <div className="h-5 w-20 bg-neutral-200 rounded mb-3"></div>
-                            <div className="h-5 w-3/4 bg-neutral-200 rounded mb-2"></div>
-                            <div className="h-4 w-full bg-neutral-100 rounded mb-2"></div>
-                            <div className="h-3 w-16 bg-neutral-100 rounded"></div>
-                          </div>
-                        ))}
-                      </>
-                    ) : newsletters && newsletters.length > 0 ? (
-                      // Real newsletter data
-                      newsletters.slice(0, 2).map((newsletter) => (
-                        <div
-                          key={newsletter.id}
-                          onClick={() => window.location.href = `/newsletters/${newsletter.id}`}
-                          className="group relative overflow-hidden rounded-xl border border-neutral-200 hover:border-amber-200 transition-all hover:shadow-md bg-white p-4 cursor-pointer"
-                        >
-                          <Badge variant={newsletter.eventId ? 'community' : 'business'}>
-                            {newsletter.eventId ? 'Event Update' : 'News'}
-                          </Badge>
-                          <h3 className="font-semibold text-neutral-900 mt-3 mb-2 leading-snug group-hover:text-amber-600 transition-colors line-clamp-2">
-                            {newsletter.title}
-                          </h3>
-                          <p className="text-sm text-neutral-600 mb-2 line-clamp-2">
-                            {getNewsletterExcerpt(newsletter.description)}
-                          </p>
-                          <div className="flex items-center gap-1 text-xs text-neutral-500">
-                            <Clock className="h-3 w-3" />
-                            <span>{getRelativeTime(newsletter.publishedAt || newsletter.createdAt)}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      // Empty state
-                      <div className="text-center py-6 text-neutral-500">
-                        <Newspaper className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
-                        <p className="text-sm">No news available</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Business Section */}
-              <Card className="border-neutral-200 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
-                  <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
-                    <Store className="h-5 w-5 text-emerald-600" />
-                    Business
-                  </CardTitle>
-                  <button className="text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 text-sm">
-                    Browse All
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </CardHeader>
-
-                <CardContent className="p-6">
-                  <div className="text-center py-6 text-neutral-500">
-                    <Store className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
-                    <p className="text-sm">No businesses listed yet</p>
-                    <p className="text-xs text-neutral-400 mt-1">Coming soon</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Sidebar - Marketplace */}
-            <div>
-              <Card className="border-neutral-200 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-neutral-100">
-                  <CardTitle className="flex items-center gap-2 text-neutral-900 text-lg font-semibold">
-                    <ShoppingBag className="h-5 w-5 text-emerald-600" />
-                    Marketplace
-                  </CardTitle>
-                  <a href="/marketplace" className="text-emerald-600 hover:text-emerald-700">
-                    <ArrowRight className="h-5 w-5" />
-                  </a>
-                </CardHeader>
-
-                <CardContent className="p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    {MARKETPLACE_ITEMS.map((item) => (
-                      <MarketplaceItemCard key={item.id} item={item} compact />
-                    ))}
-                  </div>
-                  <a
-                    href="/marketplace"
-                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium py-3 mt-3 border-t border-neutral-100"
-                  >
-                    View All Details & Order
-                  </a>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
     </div>
   );
 }

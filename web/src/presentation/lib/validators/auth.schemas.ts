@@ -44,7 +44,7 @@ export type LoginFormData = z.infer<typeof loginSchema>;
 
 /**
  * Register Form Schema
- * Updated for Phase 6A.0 - includes role selection
+ * All users join as General User — role selection removed
  * Metro areas required: Minimum 1, Maximum 20
  */
 export const registerSchema = z
@@ -54,7 +54,6 @@ export const registerSchema = z
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     firstName: nameSchema,
     lastName: nameSchema,
-    selectedRole: z.enum(['GeneralUser', 'EventOrganizer']),
     preferredMetroAreaIds: z
       .array(z.string())
       .min(1, 'Please select at least one metro area')
@@ -62,7 +61,9 @@ export const registerSchema = z
     agreeToTerms: z.boolean().refine((val) => val === true, {
       message: 'You must agree to the terms and conditions',
     }),
-    agreeToApproval: z.boolean().optional(),
+    // Phase 7A.6A: WhatsApp opt-in fields
+    whatsAppEnabled: z.boolean().optional(),
+    whatsAppPhoneNumber: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -70,15 +71,15 @@ export const registerSchema = z
   })
   .refine(
     (data) => {
-      // If Event Organizer selected, approval checkbox must be checked
-      if (data.selectedRole === 'EventOrganizer') {
-        return data.agreeToApproval === true;
+      // Phase 7A.6A: If WhatsApp enabled, phone number must be valid E.164
+      if (data.whatsAppEnabled) {
+        return /^\+[1-9]\d{1,14}$/.test(data.whatsAppPhoneNumber || '');
       }
       return true;
     },
     {
-      message: 'You must acknowledge that Event Organizer requests require admin approval',
-      path: ['agreeToApproval'],
+      message: 'Please enter a valid phone number in international format (e.g., +14155551234)',
+      path: ['whatsAppPhoneNumber'],
     }
   );
 

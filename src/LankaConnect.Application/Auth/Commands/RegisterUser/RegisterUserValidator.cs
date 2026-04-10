@@ -55,6 +55,12 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
             .WithMessage("At least one metro area must be selected")
             .Must(ids => ids == null || ids.Count <= 20)
             .WithMessage("Maximum 20 metro areas allowed");
+
+        // Phase 7A.6A: WhatsApp phone number - optional, but must be E.164 if provided
+        RuleFor(x => x.WhatsAppPhoneNumber)
+            .Matches(@"^\+[1-9]\d{1,14}$")
+            .When(x => !string.IsNullOrWhiteSpace(x.WhatsAppPhoneNumber))
+            .WithMessage("WhatsApp phone number must be in E.164 format (e.g., +14155551234)");
     }
 
     private static bool BeValidEmail(string email)

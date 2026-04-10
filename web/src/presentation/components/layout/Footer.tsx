@@ -7,6 +7,8 @@ import { Logo } from '../atoms/Logo';
 import { NewsletterMetroSelector } from '../features/newsletter/NewsletterMetroSelector';
 import { Facebook, Twitter, Instagram, Youtube, Mail } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { WhatsAppInlineOptIn } from '../features/whatsapp/WhatsAppInlineOptIn';
+import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
 
 interface FooterLinkProps {
   href: string;
@@ -47,7 +49,11 @@ interface LinkCategory {
   }>;
 }
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  transparent?: boolean;
+}
+
+const Footer: React.FC<FooterProps> = ({ transparent = false }) => {
   const { isAuthenticated } = useAuthStore();
   const [email, setEmail] = useState('');
   const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -60,6 +66,9 @@ const Footer: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   // Phase 6A.99: Server error message for inline display
   const [serverError, setServerError] = useState<string | null>(null);
+  // Phase 7A.6C: WhatsApp opt-in state
+  const [whatsAppEnabled, setWhatsAppEnabled] = useState(false);
+  const [whatsAppPhone, setWhatsAppPhone] = useState('');
 
   // Set current year on client side only to avoid hydration mismatch
   React.useEffect(() => {
@@ -69,21 +78,6 @@ const Footer: React.FC = () => {
   // Phase 6A.76: Updated footer links - removed Cultural Hub, Services, Sell Items,
   // entire Resources category, Careers, Press. Renamed "Our Story" to "About Us".
   const linkCategories: LinkCategory[] = [
-    {
-      title: 'Community',
-      links: [
-        { label: 'Events', href: '/events' },
-        { label: 'Forums', href: '/forums' },
-        ...(isAuthenticated ? [{ label: 'Dashboard', href: '/dashboard' }] : []),
-      ],
-    },
-    {
-      title: 'Marketplace',
-      links: [
-        { label: 'Browse Listings', href: '/marketplace' },
-        { label: 'Businesses', href: '/business' },
-      ],
-    },
     {
       title: 'About',
       links: [
@@ -136,6 +130,10 @@ const Footer: React.FC = () => {
           MetroAreaIds: receiveAllLocations ? [] : selectedMetroIds,
           ReceiveAllLocations: receiveAllLocations,
           Timestamp: new Date().toISOString(),
+          // Phase 7A.6C: WhatsApp opt-in
+          ...(whatsAppEnabled && whatsAppPhone && {
+            WhatsAppPhoneNumber: toE164(whatsAppPhone),
+          }),
         }),
       });
 
@@ -150,6 +148,8 @@ const Footer: React.FC = () => {
         setEmail('');
         setSelectedMetroIds([]);
         setReceiveAllLocations(false);
+        setWhatsAppEnabled(false);
+        setWhatsAppPhone('');
 
         // Auto-clear success message after 10 seconds
         setTimeout(() => {
@@ -176,13 +176,17 @@ const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 text-white mt-24 relative overflow-hidden">
-      {/* Decorative Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}></div>
-      </div>
+    <footer className={`text-white mt-0 relative overflow-hidden ${transparent ? 'bg-transparent' : 'bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800'}`}>
+      {!transparent && (
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
+        </div>
+      )}
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Newsletter Section */}
@@ -210,6 +214,21 @@ const Footer: React.FC = () => {
                   onMetrosChange={setSelectedMetroIds}
                   onReceiveAllChange={setReceiveAllLocations}
                   disabled={subscribeStatus === 'loading'}
+                />
+              </div>
+
+              {/* Phase 7A.6C: WhatsApp opt-in for newsletter subscribers */}
+              <div className="bg-white/95 p-4 rounded-lg text-gray-800">
+                <WhatsAppInlineOptIn
+                  enabled={whatsAppEnabled}
+                  onEnabledChange={(enabled) => {
+                    setWhatsAppEnabled(enabled);
+                    if (!enabled) setWhatsAppPhone('');
+                  }}
+                  phoneNumber={whatsAppPhone}
+                  onPhoneNumberChange={setWhatsAppPhone}
+                  disabled={subscribeStatus === 'loading'}
+                  description="Also receive community updates and event alerts via WhatsApp."
                 />
               </div>
 
@@ -256,21 +275,12 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Links Grid - Phase 6A.76: Changed from 4 to 3 columns after removing Resources category */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
-          {linkCategories.map((category) => (
-            <div key={category.title}>
-              <h4 className="text-white font-semibold mb-4">{category.title}</h4>
-              <ul className="space-y-2" role="list">
-                {category.links.map((link) => (
-                  <li key={link.label}>
-                    <FooterLink href={link.href} external={link.external}>
-                      {link.label}
-                    </FooterLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
+        {/* Links — centred horizontal row */}
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 mb-12">
+          {linkCategories.flatMap(cat => cat.links).map((link) => (
+            <FooterLink key={link.label} href={link.href} external={link.external}>
+              {link.label}
+            </FooterLink>
           ))}
         </div>
 

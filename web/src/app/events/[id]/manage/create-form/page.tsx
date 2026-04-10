@@ -36,7 +36,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -253,7 +253,7 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
   if (eventLoading || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           <span className="ml-3 text-gray-600">Loading...</span>
@@ -265,7 +265,7 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-8">

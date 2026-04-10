@@ -16,6 +16,7 @@ export interface RegisterRequest {
   lastName: string;
   selectedRole?: UserRole; // Phase 6A.0: Optional role selection (defaults to GeneralUser)
   preferredMetroAreaIds?: string[]; // Required: Minimum 1, Maximum 20 metro areas
+  whatsAppPhoneNumber?: string; // Phase 7A.6A: Optional WhatsApp opt-in phone (E.164)
 }
 
 // Response DTOs

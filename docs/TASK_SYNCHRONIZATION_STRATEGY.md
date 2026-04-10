@@ -3,11 +3,54 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - ALBUM UI FIXES 🔄 DEPLOYING
-**Date**: 2026-04-01
-**Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
-**Progress**: 🔄 **DEPLOYING** — Three fixes: (1) Added "Albums" quick-nav pill button on public event page. (2) Gated Albums section on isUserRegistered || isOrganizer. (3) Changed "N photos" → "N items" labels.
-**Status**: 🔄 **DEPLOYING** — Commit `726b24c4`. Frontend deploying to Azure staging.
+## 🎯 CURRENT SESSION STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D ✅ DEPLOYED
+**Date**: 2026-04-06
+**Session**: Phase 7A.6D — WhatsApp Data Persistence for Event Registration + Newsletter
+**Progress**: ✅ **DEPLOYED** — Fixed 7 break points where frontend WhatsApp data was silently dropped by backend. `RegistrationContact` value object extended with `WhatsAppPhoneNumber`+`WhatsAppOptedIn` (JSONB, no migration). `NewsletterSubscriber` entity extended (migration added `whatsapp_phone_number` column). All commands, handlers, DTOs updated. `AnonymousRegistrationWhatsAppHandler` fixed to use opt-in phone + check flag. 15 files, ~240 lines, 2,031 tests pass.
+**Status**: ✅ **DEPLOYED** — Commits `f51e01d9`, `cd6b2eb5`. API verified: newsletter WA → 200, event reg WA → 200, invalid phone → 400. DB migration confirmed in Azure logs.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C ✅ DEPLOYED
+**Date**: 2026-04-05
+**Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
+**Progress**: ✅ **DEPLOYED** — WhatsApp opt-in during registration (7A.6A), event registration (7A.6B), newsletter subscription (7A.6C). Fix misleading verification UI (explicit "Send Verification Code" button). CI fix: WhatsAppSettings__Enabled permanently in deploy-staging.yml. 10 modified files, ~170 lines. All 2,030 tests pass.
+**Status**: ✅ **DEPLOYED** — Commits `4b3dadfc`, `d24c1d90`, `0fc54b63`. API verified: newsletter with WA phone → 200, invalid phone → 400.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.5 ✅ DEPLOYED
+**Date**: 2026-04-03
+**Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
+**Status**: ✅ **DEPLOYED** — Commit `d60512bb`. WhatsApp integration feature-complete.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.4 ✅ DEPLOYED
+**Date**: 2026-04-03
+**Session**: Phase 7A.4 — WhatsApp Frontend Integration
+**Status**: ✅ **DEPLOYED** — Commit `ef55e8cf`. Frontend types, hooks, 3 components, page integrations.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.3 ✅ DEPLOYED
+**Date**: 2026-04-03
+**Session**: Phase 7A.3 — WhatsApp Event Handler Integration
+**Status**: ✅ **DEPLOYED** — Commit `f1e198b5`. 13 WhatsApp notification handlers. 116 new tests (249 total).
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.2 ✅ DEPLOYED
+**Date**: 2026-04-02
+**Session**: Phase 7A.2 — WhatsApp Send Infrastructure
+**Status**: ✅ **DEPLOYED** — Commit `205c6231`. Send infrastructure, CQRS commands/queries, API controllers, 56 tests.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP INTEGRATION PHASE 7A.1 ✅ DEPLOYED
+**Date**: 2026-04-02
+**Session**: Phase 7A.1 — WhatsApp Integration Foundation
+**Status**: ✅ **DEPLOYED** — Commit `cbff6deb`. 4 entities, 3 enums, 2 events, 3 repos, 4 EF configs, migration (4 tables + 14 templates), 77 tests. Feature flag OFF.
 
 ---
 

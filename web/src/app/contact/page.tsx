@@ -297,10 +297,10 @@ export default function ContactPage() {
                 <p className="text-sm text-neutral-600 text-center">
                   You can also reach us directly at{' '}
                   <a
-                    href="mailto:lankaconnect.app@gmail.com"
+                    href="mailto:info@lankaconnect.app"
                     className="text-orange-600 hover:text-orange-700 font-medium"
                   >
-                    lankaconnect.app@gmail.com
+                    info@lankaconnect.app
                   </a>
                 </p>
               </div>

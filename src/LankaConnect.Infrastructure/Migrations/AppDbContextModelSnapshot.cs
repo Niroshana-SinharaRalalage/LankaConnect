@@ -1190,6 +1190,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("WhatsAppPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("whatsapp_phone_number");
+
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1284,6 +1289,514 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasDatabaseName("IX_UserEmailPreferences_UserId_Unique");
 
                     b.ToTable("user_email_preferences", "communications");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("NotifyEventCancellation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_event_cancellation");
+
+                    b.Property<bool>("NotifyEventRegistration")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_event_registration");
+
+                    b.Property<bool>("NotifyEventReminder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_event_reminder");
+
+                    b.Property<bool>("NotifyEventUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_event_update");
+
+                    b.Property<bool>("NotifyNewEvent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_new_event");
+
+                    b.Property<bool>("NotifyNewsletter")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_newsletter");
+
+                    b.Property<bool>("NotifyPayment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_payment");
+
+                    b.Property<bool>("NotifyRefund")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_refund");
+
+                    b.Property<bool>("NotifySignupCommitment")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notify_signup_commitment");
+
+                    b.Property<bool>("PhoneVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("phone_verified");
+
+                    b.Property<DateTime?>("PhoneVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("phone_verified_at");
+
+                    b.Property<string>("PreferredLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("en")
+                        .HasColumnName("preferred_language");
+
+                    b.Property<TimeOnly?>("QuietHoursEnd")
+                        .HasColumnType("time")
+                        .HasColumnName("quiet_hours_end");
+
+                    b.Property<TimeOnly?>("QuietHoursStart")
+                        .HasColumnType("time")
+                        .HasColumnName("quiet_hours_start");
+
+                    b.Property<bool>("RespectCulturalTiming")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("respect_cultural_timing");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("VerificationAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("verification_attempts");
+
+                    b.Property<string>("VerificationCode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("verification_code");
+
+                    b.Property<DateTime?>("VerificationCodeExpires")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verification_code_expires");
+
+                    b.Property<DateTime?>("VerificationLockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("verification_locked_until");
+
+                    b.Property<bool>("WhatsAppEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("whatsapp_enabled");
+
+                    b.Property<string>("WhatsAppPhoneNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("whatsapp_phone_number");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_UserWhatsAppPreferences_CreatedAt");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserWhatsAppPreferences_UserId_Unique");
+
+                    b.HasIndex("WhatsAppPhoneNumber")
+                        .HasDatabaseName("IX_UserWhatsAppPreferences_Phone_EnabledVerified")
+                        .HasFilter("whatsapp_enabled = true AND phone_verified = true");
+
+                    b.ToTable("user_whatsapp_preferences", "communications");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AcsMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("acs_message_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<double>("CulturalAppropriatenessScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cultural_appropriateness_score");
+
+                    b.Property<string>("CulturalContext")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("cultural_context");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<string>("DiasporaRegion")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("diaspora_region");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("FromPhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("from_phone_number");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("en")
+                        .HasColumnName("language");
+
+                    b.Property<int>("MaxRetries")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("max_retries");
+
+                    b.Property<string>("MessageContent")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("message_content");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("message_type");
+
+                    b.Property<string>("MetaMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("meta_message_id");
+
+                    b.Property<Guid?>("NewsletterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("newsletter_id");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid?>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<bool>("RequiresCulturalValidation")
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_cultural_validation");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<DateTime?>("ScheduledFor")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_for");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TemplateName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_name");
+
+                    b.Property<string>("TemplateParameters")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("template_parameters");
+
+                    b.Property<string>("TimeZone")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("timezone");
+
+                    b.Property<string>("ToPhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("to_phone_number");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcsMessageId")
+                        .HasDatabaseName("IX_WhatsAppMessages_AcsMessageId");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_WhatsAppMessages_CreatedAt");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("IX_WhatsAppMessages_EventId");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_WhatsAppMessages_Status");
+
+                    b.HasIndex("TemplateName")
+                        .HasDatabaseName("IX_WhatsAppMessages_TemplateName");
+
+                    b.HasIndex("ToPhoneNumber")
+                        .HasDatabaseName("IX_WhatsAppMessages_ToPhoneNumber");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_WhatsAppMessages_UserId");
+
+                    b.HasIndex("Status", "ScheduledFor")
+                        .HasDatabaseName("IX_WhatsAppMessages_Status_ScheduledFor");
+
+                    b.ToTable("whatsapp_messages", "communications");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.WhatsAppTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<string>("BodyText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body_text");
+
+                    b.Property<string>("ButtonTypes")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("button_types");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("FooterText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("footer_text");
+
+                    b.Property<string>("HeaderText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("header_text");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("en")
+                        .HasColumnName("language");
+
+                    b.Property<string>("MetaTemplateId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("meta_template_id");
+
+                    b.Property<int>("ParameterCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("parameter_count");
+
+                    b.Property<string>("ParameterNames")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("parameter_names");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("SampleValues")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sample_values");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_name");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category")
+                        .HasDatabaseName("IX_WhatsAppTemplates_Category");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_WhatsAppTemplates_CreatedAt");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_WhatsAppTemplates_Status");
+
+                    b.HasIndex("TemplateName")
+                        .IsUnique()
+                        .HasDatabaseName("IX_WhatsAppTemplates_TemplateName_Unique");
+
+                    b.ToTable("whatsapp_templates", "communications");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AcsMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("acs_message_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("MetaMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("meta_message_id");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<bool>("Processed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("processed");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcsMessageId")
+                        .HasDatabaseName("IX_WhatsAppWebhookEvents_AcsMessageId");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_WhatsAppWebhookEvents_CreatedAt");
+
+                    b.HasIndex("Processed", "CreatedAt")
+                        .HasDatabaseName("IX_WhatsAppWebhookEvents_Processed_CreatedAt");
+
+                    b.ToTable("whatsapp_webhook_events", "communications");
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Community.ForumTopic", b =>
@@ -3503,7 +4016,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                             Code = "Religious",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2659),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(401),
                             DisplayOrder = 1,
                             EnumType = "EventCategory",
                             IntValue = 0,
@@ -3515,7 +4028,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                             Code = "Cultural",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2698),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(428),
                             DisplayOrder = 2,
                             EnumType = "EventCategory",
                             IntValue = 1,
@@ -3527,7 +4040,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                             Code = "Community",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2719),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(444),
                             DisplayOrder = 3,
                             EnumType = "EventCategory",
                             IntValue = 2,
@@ -3539,7 +4052,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                             Code = "Educational",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2737),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(458),
                             DisplayOrder = 4,
                             EnumType = "EventCategory",
                             IntValue = 3,
@@ -3551,7 +4064,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                             Code = "Social",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2755),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(473),
                             DisplayOrder = 5,
                             EnumType = "EventCategory",
                             IntValue = 4,
@@ -3563,7 +4076,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                             Code = "Business",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2772),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(486),
                             DisplayOrder = 6,
                             EnumType = "EventCategory",
                             IntValue = 5,
@@ -3575,7 +4088,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                             Code = "Charity",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2799),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(512),
                             DisplayOrder = 7,
                             EnumType = "EventCategory",
                             IntValue = 6,
@@ -3587,7 +4100,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                             Code = "Entertainment",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2817),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(527),
                             DisplayOrder = 8,
                             EnumType = "EventCategory",
                             IntValue = 7,
@@ -3599,7 +4112,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                             Code = "Workshop",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2838),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(555),
                             DisplayOrder = 9,
                             EnumType = "EventCategory",
                             IntValue = 8,
@@ -3611,7 +4124,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                             Code = "Festival",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2854),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(568),
                             DisplayOrder = 10,
                             EnumType = "EventCategory",
                             IntValue = 9,
@@ -3623,7 +4136,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                             Code = "Ceremony",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2871),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(581),
                             DisplayOrder = 11,
                             EnumType = "EventCategory",
                             IntValue = 10,
@@ -3635,7 +4148,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                             Code = "Celebration",
-                            CreatedAt = new DateTime(2026, 3, 29, 22, 40, 22, 416, DateTimeKind.Utc).AddTicks(2935),
+                            CreatedAt = new DateTime(2026, 4, 6, 3, 33, 34, 829, DateTimeKind.Utc).AddTicks(594),
                             DisplayOrder = 12,
                             EnumType = "EventCategory",
                             IntValue = 11,
@@ -4793,6 +5306,31 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("FK_UserEmailPreferences_Users_UserId");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_UserWhatsAppPreferences_Users_UserId");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_WhatsAppMessages_Events_EventId");
+
+                    b.HasOne("LankaConnect.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_WhatsAppMessages_Users_UserId");
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Community.ForumTopic", b =>
@@ -6299,6 +6837,14 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .ValueGeneratedOnUpdateSometimes()
                                 .HasColumnType("text")
                                 .HasColumnName("phone_number");
+
+                            b1.Property<bool>("WhatsAppOptedIn")
+                                .HasColumnType("boolean")
+                                .HasColumnName("whats_app_opted_in");
+
+                            b1.Property<string>("WhatsAppPhoneNumber")
+                                .HasColumnType("text")
+                                .HasColumnName("whats_app_phone_number");
 
                             b1.HasKey("RegistrationId");
 

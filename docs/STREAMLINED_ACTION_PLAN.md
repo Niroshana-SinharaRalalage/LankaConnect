@@ -7,10 +7,66 @@
 
 ---
 
-## 🔄 CURRENT STATUS - ALBUM UI FIXES (2026-04-01)
+## 🔄 CURRENT STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D (2026-04-06)
+**Date**: 2026-04-06
+**Session**: Phase 7A.6D — WhatsApp Data Persistence for Event Registration + Newsletter
+**Status**: ✅ **DEPLOYED** (commits `f51e01d9`, `cd6b2eb5`)
+**Scope**: Fixed 7 break points where backend silently dropped WhatsApp data from frontend. Domain value object + entity updated. EF migration for newsletter_subscribers. All commands, handlers, and controller DTOs updated. AnonymousRegistrationWhatsAppHandler fixed to use opt-in phone. 15 files, ~240 lines. All 2,031 tests pass.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP OPT-IN EXPANSION PHASE 7A.6A-6C (2026-04-05)
+**Date**: 2026-04-05
+**Session**: Phase 7A.6A-6C — WhatsApp Opt-In Expansion + Verification UI Fix
+**Status**: ✅ **DEPLOYED** (commits `4b3dadfc`, `d24c1d90`, `0fc54b63`)
+**Scope**: WhatsApp opt-in during registration (7A.6A), event registration (7A.6B), newsletter subscription (7A.6C). Fix misleading verification UI (Phase 1). CI fix for WhatsAppSettings env var. 10 modified files, ~170 lines. All 2,030 tests pass.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.5 (2026-04-03)
+**Date**: 2026-04-03
+**Session**: Phase 7A.5 — WhatsApp Admin Dashboard + Go-Live Readiness
+**Status**: ✅ **DEPLOYED** (commit `d60512bb`)
+**Scope**: Admin WhatsApp metrics dashboard (4 sections). All 5 WhatsApp phases complete. Total: ~58 new files, ~10,000 lines, 249 tests.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.4 (2026-04-03)
+**Date**: 2026-04-03
+**Session**: Phase 7A.4 — WhatsApp Frontend Integration
+**Status**: ✅ **DEPLOYED** (commit `ef55e8cf`)
+**Scope**: Complete frontend: types, validators, repository, hooks, 3 components, page integrations.
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.3 (2026-04-03)
+**Date**: 2026-04-03
+**Session**: Phase 7A.3 — WhatsApp Event Handler Integration
+**Status**: ✅ **DEPLOYED** (commit `f1e198b5`)
+**Scope**: 13 WhatsApp notification handlers. Fire-and-forget with IServiceScopeFactory [FIX C6]. 116 new tests (249 total).
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.2 (2026-04-02)
+**Date**: 2026-04-02
+**Session**: Phase 7A.2 — WhatsApp Send Infrastructure
+**Status**: ✅ **DEPLOYED** (commit `205c6231`)
+**Scope**: Complete send infrastructure: IWhatsAppService + AcsWhatsAppStrategy (Azure.Communication.Messages v1.1.0, lazy client, 429 retry), WhatsAppService (feature flag, prefs, dedup, persist), phone verification, webhook processor, 6 CQRS commands, 4 queries, 3 API controllers (user + admin + webhook), 56 application tests (133 total). Users can opt in. Next: Phase 7A.3 (Event Handlers).
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP INTEGRATION PHASE 7A.1 (2026-04-02)
+**Date**: 2026-04-02
+**Session**: Phase 7A.1 — WhatsApp Integration Foundation
+**Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
+**Scope**: Domain + infrastructure foundation. 4 entities, 3 enums, 2 events, 3 repos, 4 EF configs, migration (4 tables + 14 templates), 77 domain tests. Feature flag OFF.
+
+---
+
+## ✅ PREVIOUS STATUS - ALBUM UI FIXES (2026-04-01)
 **Date**: 2026-04-01
 **Session**: Phase 6A.139 — Album UI fixes (nav button, registration gate, media count)
-**Status**: 🔄 **DEPLOYING** (commit `726b24c4`)
+**Status**: ✅ **DEPLOYED** (commit `726b24c4`)
 **Scope**: Three album UI fixes: (1) Added "Albums" quick-nav pill button with scroll targeting. (2) Gated "After Event Albums" section on (isUserRegistered || isOrganizer) — was visible to all visitors. (3) Changed "N photos" to "N items" since albums contain both photos and videos.
 
 ---

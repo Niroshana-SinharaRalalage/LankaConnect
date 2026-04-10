@@ -5,6 +5,7 @@
   <!-- ASP.NET Core -->
   <ItemGroup>
     <PackageVersion Include="Azure.Communication.Email" Version="1.1.0" />
+    <PackageVersion Include="Azure.Communication.Messages" Version="1.1.0" />
     <PackageVersion Include="ClosedXML" Version="0.102.3" />
     <PackageVersion Include="CsvHelper" Version="33.0.1" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.17" />

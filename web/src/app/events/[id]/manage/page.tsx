@@ -13,7 +13,7 @@ import {
   Camera,
   Banknote,
 } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
@@ -184,7 +184,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="animate-pulse">
             <div className="h-8 bg-neutral-200 rounded w-3/4 mb-4"></div>
@@ -200,7 +200,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   if (fetchError || !event) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="p-12 text-center bg-white rounded-lg shadow">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Event Not Found</h2>
@@ -221,7 +221,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
   if (!isOrganizer) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-        <Header />
+        <LankaEventsHeader />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="p-12 text-center bg-white rounded-lg shadow">
             <h2 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h2>
@@ -324,7 +324,7 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
-      <Header />
+      <LankaEventsHeader />
 
       {/* Page Header */}
       <div className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-8">

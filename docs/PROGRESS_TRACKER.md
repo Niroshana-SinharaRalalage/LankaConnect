@@ -1,9 +1,291 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-01 - Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit*
+*Last Updated: 2026-04-06 - Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter*
 
-## 🎯 Current Session Status (2026-04-01)
+## 🎯 Current Session Status (2026-04-06)
 
-### Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
+### Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter
+
+**Status**: ✅ **DEPLOYED** (commits `f51e01d9`, `cd6b2eb5`)
+
+**Classification**: Feature Missing (Backend Data Persistence) — frontend collected WhatsApp data but backend silently dropped it. Fixed 7 break points across event registration and newsletter flows.
+
+**Scope**: 14 modified files + 1 EF migration = 15 total, ~240 lines.
+
+**Break Points Fixed**:
+| # | Layer | Fix |
+|---|-------|-----|
+| B1 | API DTO | `EventsController.cs` `RsvpRequest` — added `WhatsAppPhoneNumber` |
+| B2 | API DTO | `EventsController.cs` `AnonymousRegistrationRequest` — added `WhatsAppPhoneNumber` |
+| B3 | Command | `RsvpToEventCommand.cs` — added `WhatsAppPhoneNumber` param |
+| B4 | Command | `RegisterAnonymousAttendeeCommand.cs` — added `WhatsAppPhoneNumber` param |
+| B5 | Domain | `RegistrationContact.cs` — added `WhatsAppPhoneNumber` + `WhatsAppOptedIn`, E.164 validation |
+| B6 | Domain+Handler | `NewsletterSubscriber.cs` — added `WhatsAppPhoneNumber`; handler now persists it |
+| B7 | Handler Bug | `AnonymousRegistrationWhatsAppHandler.cs` — uses `Contact.WhatsAppPhoneNumber` + checks `WhatsAppOptedIn` |
+
+**Migration**: `20260406033337_Phase7A6D_AddWhatsAppPhoneToNewsletterSubscribers` — adds `whatsapp_phone_number VARCHAR(20) NULL` to `communications.newsletter_subscribers`. Applied ✅
+
+**Note**: `registrations` table needed NO migration — `contact` is JSONB via `ToJson()`, new fields serialize/deserialize automatically.
+
+**API Verification** (2026-04-06):
+- Newsletter subscribe with WhatsApp phone (`+14155559876`) → 200 ✅
+- Newsletter subscribe without WhatsApp → 200 ✅
+- Newsletter subscribe with invalid phone → 400 "E.164 format required" ✅
+- Anonymous event registration with WhatsApp (`+14155559999`) → 200 (Stripe checkout) ✅
+- Anonymous event registration without WhatsApp → 200 (Stripe checkout) ✅
+- DB migration confirmed in Azure logs: `ALTER TABLE communications.newsletter_subscribers ADD whatsapp_phone_number character varying(20)` ✅
+- Container logs: No errors ✅
+- All 2,031 tests pass (2,025 passed, 6 skipped) ✅
+
+---
+
+## ⏸️ Previous Session Status (2026-04-05)
+
+### Phase 7A.6A-6C: WhatsApp Opt-In Expansion + Verification UI Fix
+
+**Status**: ✅ **DEPLOYED** (commits `4b3dadfc`, `d24c1d90`, `0fc54b63`)
+
+**Classification**: Feature Enhancement — WhatsApp opt-in during registration, event registration, newsletter subscription + fix misleading verification UI.
+
+**Scope**: 10 modified files, ~170 lines.
+
+**Changes**:
+| Phase | Description |
+|-------|-------------|
+| 7A.6A | WhatsApp opt-in during user registration (RegisterForm + backend handler) |
+| Phase 1 | Fix misleading verification UI — explicit "Send Verification Code" button, `codeSent` state tracking |
+| 7A.6B | WhatsApp opt-in in EventRegistrationForm (both anonymous + authenticated flows) |
+| 7A.6C | WhatsApp opt-in in Footer newsletter form + backend DTO/command/validator |
+| CI Fix | `WhatsAppSettings__Enabled=true` added permanently to deploy-staging.yml |
+
+**API Verification** (2026-04-05):
+- Newsletter subscribe with WhatsApp phone → 200 ✅
+- Newsletter subscribe with invalid phone → 400 "E.164 format" validation ✅
+- Login → 200 ✅
+- Health check → Healthy ✅
+- All 2,030 tests pass (2,024 passed, 6 skipped) ✅
+
+---
+
+## ⏸️ Previous Session Status (2026-04-03)
+
+### Phase 7A.5: WhatsApp Admin Dashboard + Go-Live Readiness
+
+**Status**: ✅ **DEPLOYED** (commit `d60512bb`)
+
+**Classification**: New Feature — Admin WhatsApp metrics dashboard with 4 sections (Overview, Templates, Messages, Test Send). Integrated as 5th tab in AdminTasksTab.
+
+**Scope**: 2 new files + 1 modified file = 3 files, ~760 lines.
+
+**New Files**:
+| # | File | Description |
+|---|------|-------------|
+| 1 | `web/src/presentation/components/features/admin/whatsapp-metrics/WhatsAppMetricsTab.tsx` | 4-section admin dashboard: Overview (stat cards + template breakdown), Templates (expandable rows with status/category/params), Messages (paginated table), Test Send (phone + template selector) |
+| 2 | `web/src/presentation/components/features/admin/whatsapp-metrics/index.ts` | Barrel export |
+
+**Modified Files**:
+- `web/src/presentation/components/features/admin/AdminTasksTab.tsx` — Added WhatsApp Metrics as 5th admin tab with MessageCircle icon
+
+**API Verification** (2026-04-03):
+- `GET /api/whatsapp/preferences` → 204 (no preferences set) ✅
+- `POST /api/whatsapp/enable` → 400 "WhatsApp messaging is currently disabled" (feature flag OFF) ✅
+- `POST /api/whatsapp/disable` → 400 "preferences not found" (user never enabled) ✅
+- `POST /api/whatsapp/verify/request` → 400 "enable WhatsApp first" ✅
+- `GET /api/whatsapp-admin/*` → 403 (EventOrganizer role, not Admin) ✅
+- Frontend deploy: ✅ success (GitHub Actions run #23932387312)
+
+**Go-Live Checklist**:
+- [x] Phase 7A.1: Foundation (4 DB tables, 14 templates, domain entities, 77 tests)
+- [x] Phase 7A.2: Send infrastructure (CQRS, controllers, phone verification, 56 tests)
+- [x] Phase 7A.3: Event handlers (13 WhatsApp handlers, 116 tests)
+- [x] Phase 7A.4: Frontend (types, hooks, 3 components, page integrations)
+- [x] Phase 7A.5: Admin dashboard (metrics, templates, messages, test send)
+- [ ] Meta template approval (5-7 business days — submit during go-live)
+- [ ] Set `WhatsAppSettings:Enabled=true` in Azure env vars
+- [ ] Configure ACS Advanced Messaging connection string
+- [ ] End-to-end test with real phone number
+
+**Total WhatsApp Phase 7A Stats**: ~58 new files, ~10,000 lines, 249 unit tests, 5 deployable phases.
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.4: WhatsApp Frontend Integration
+
+**Status**: ✅ **DEPLOYED** (commit `ef55e8cf`)
+
+**Classification**: New Feature — Complete frontend for WhatsApp opt-in, preferences, and sharing. TypeScript types matching backend DTOs, API repository, React Query hooks, 3 components, integrated into Profile/Event/Newsletter pages.
+
+**Scope**: 7 new files + 3 modified files = 10 files, ~1,326 lines.
+
+**New Files** (7):
+| # | File | Description |
+|---|------|-------------|
+| 1 | `web/src/infrastructure/api/types/whatsapp.types.ts` | TypeScript DTOs + enums matching backend (4 enums, 8 response DTOs, 5 request DTOs) |
+| 2 | `web/src/presentation/lib/validators/whatsapp.schemas.ts` | Zod schemas: E.164 phone, 6-digit code, 9 notification toggles + quiet hours |
+| 3 | `web/src/infrastructure/api/repositories/whatsapp.repository.ts` | API client: 6 user + 4 admin endpoints, singleton pattern |
+| 4 | `web/src/presentation/hooks/useWhatsApp.ts` | React Query hooks: 5 user + 4 admin, cache invalidation, toast notifications |
+| 5 | `web/src/presentation/components/features/whatsapp/WhatsAppOptIn.tsx` | 3-state opt-in widget: disabled → unverified → verified |
+| 6 | `web/src/presentation/components/features/whatsapp/WhatsAppPreferences.tsx` | 9 notification toggles + quiet hours + cultural timing |
+| 7 | `web/src/presentation/components/features/whatsapp/WhatsAppShareButton.tsx` | wa.me deep link share button for events |
+
+**Modified Files** (3):
+- `web/src/app/(dashboard)/profile/page.tsx` — Added WhatsAppOptIn + WhatsAppPreferences sections
+- `web/src/app/events/[id]/page.tsx` — Added WhatsAppShareButton next to event badges
+- `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` — Added WhatsApp info banner
+
+**Key Design Decisions**:
+- String-based enums matching backend `JsonStringEnumConverter` output
+- `toE164()` helper strips formatting before API submission
+- WhatsAppOptIn handles all 3 states internally (no parent state management needed)
+- WhatsAppPreferences only renders when user is fully verified
+- WhatsAppShareButton uses `wa.me/?text=` deep link (no phone target = user picks contact)
+- Newsletter WhatsApp sending is automatic for opted-in users (no checkbox needed)
+- Build verified: `npx next build` — zero errors
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.3: WhatsApp Event Handler Integration
+
+**Status**: ✅ **DEPLOYED** (commit `f1e198b5`)
+
+**Classification**: New Feature — 13 WhatsApp notification handlers parallel to existing email handlers. Uses fire-and-forget pattern with IServiceScopeFactory [FIX C6]. Email handlers completely untouched.
+
+**Scope**: 13 new handler/job files + 2 modified files + 2 test files = 17 files, ~3,070 lines.
+
+**Event Handlers** (11 new files in `Application/Events/EventHandlers/`):
+| # | Handler | Domain Event | Template | Pattern |
+|---|---------|-------------|----------|---------|
+| 1 | `RegistrationConfirmedWhatsAppHandler` | RegistrationConfirmedEvent | event_registration_confirmed | Fire-and-forget |
+| 2 | `PaymentCompletedWhatsAppHandler` | PaymentCompletedEvent | event_ticket_confirmation | Fire-and-forget |
+| 3 | `EventCancelledWhatsAppHandler` | EventCancelledEvent | event_cancelled | Broadcast |
+| 4 | `RegistrationCancelledWhatsAppHandler` | RegistrationCancelledEvent | registration_cancelled | Fire-and-forget |
+| 5 | `UserCommittedToSignUpWhatsAppHandler` | UserCommittedToSignUpEvent | signup_commitment_confirmed | Fire-and-forget |
+| 6 | `CommitmentUpdatedWhatsAppHandler` | CommitmentUpdatedEvent | signup_commitment_updated | Fire-and-forget |
+| 7 | `CommitmentCancelledWhatsAppHandler` | CommitmentCancelledEvent | signup_commitment_cancelled | Fire-and-forget |
+| 8 | `RefundRequestedWhatsAppHandler` | RefundRequestedEvent | refund_initiated | Fire-and-forget |
+| 9 | `RefundCompletedWhatsAppHandler` | RefundCompletedEvent | refund_completed | Fire-and-forget |
+| 10 | `EventPublishedWhatsAppHandler` | EventPublishedEvent | new_event_announcement | Broadcast |
+| 11 | `AnonymousRegistrationWhatsAppHandler` | AnonymousRegistrationConfirmedEvent | event_registration_confirmed | Phone-based |
+
+**Background Jobs** (2 new files in `Application/Communications/BackgroundJobs/`):
+| # | Job | Trigger | Description |
+|---|-----|---------|-------------|
+| 12 | `NewsletterWhatsAppJob` | SendNewsletterCommand (Hangfire) | Broadcasts to event attendees opted in for Newsletter |
+| 13 | `EventDetailsWhatsAppJob` | Manual admin trigger | Broadcasts event update to opted-in attendees |
+
+**Modified Files**:
+- `SendNewsletterCommandHandler.cs` — Added NewsletterWhatsAppJob enqueue alongside email
+- `DependencyInjection.cs` — Registered 2 background jobs as Transient
+
+**Tests**: 86 handler tests + 30 background job tests = **116 new WhatsApp tests**. Running total: **249 WhatsApp tests** (77 domain + 56 app Phase 7A.2 + 116 Phase 7A.3).
+
+**Key Design Decisions**:
+- All handlers use `IServiceScopeFactory` + `Task.Run()` to avoid ObjectDisposedException [FIX C6]
+- Variables captured BEFORE `Task.Run` lambda to prevent closure on disposed objects
+- Fail-silent pattern: exceptions logged but never thrown (prevents transaction rollback)
+- Anonymous users (no UserId) skip WhatsApp for refund/payment handlers
+- Newsletter/EventDetails use Hangfire background jobs (not domain events)
+- `WhatsAppTemplateContract` constants used for all template names and parameter keys
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.2: WhatsApp Send Infrastructure
+
+**Status**: ✅ **DEPLOYED** (commit `205c6231`)
+
+**Classification**: New Feature — WhatsApp send infrastructure, CQRS commands/queries, API controllers, phone verification.
+
+**Scope**: Complete application + infrastructure layer services, API endpoints, and 56 unit tests. 37 files, ~4,500 lines. Users can opt in and manage preferences but no event notifications sent yet.
+
+**Application Layer** (15 new files):
+| # | Type | Description |
+|---|------|-------------|
+| 1 | Interface | `IWhatsAppService` — Send template, send to phone, broadcast |
+| 2 | Interface | `IWhatsAppSendStrategy` — Provider abstraction (ACS) |
+| 3 | Interface | `IPhoneVerificationService` — SMS verification |
+| 4 | Interface | `IWhatsAppWebhookProcessor` — Delivery status processing |
+| 5 | Options | `WhatsAppOptions` — Clean Architecture settings |
+| 6 | Command | `EnableWhatsAppCommand` + handler |
+| 7 | Command | `DisableWhatsAppCommand` + handler |
+| 8 | Command | `RequestPhoneVerificationCommand` + handler |
+| 9 | Command | `VerifyWhatsAppPhoneCommand` + handler |
+| 10 | Command | `UpdateWhatsAppPreferencesCommand` + handler |
+| 11 | Command | `SendTestWhatsAppCommand` + handler (admin) |
+| 12 | Query | `GetWhatsAppPreferencesQuery` + handler + DTO |
+| 13 | Query | `GetWhatsAppMetricsQuery` + handler + DTO |
+| 14 | Query | `GetWhatsAppTemplatesQuery` + handler + DTO |
+| 15 | Query | `GetWhatsAppMessageHistoryQuery` + handler + DTO |
+
+**Infrastructure Layer** (4 new services):
+| # | Service | Description |
+|---|---------|-------------|
+| 1 | `AcsWhatsAppStrategy` | Azure.Communication.Messages with lazy client, 429 retry, phone masking |
+| 2 | `WhatsAppService` | Feature flag → prefs → dedup → template → send → persist |
+| 3 | `SmsPhoneVerificationService` | Phone verification via WA template fallback |
+| 4 | `WhatsAppWebhookProcessor` | ACS CloudEvents parsing, status updates, audit trail |
+
+**API Layer** (3 controllers):
+| # | Controller | Endpoints |
+|---|-----------|-----------|
+| 1 | `WhatsAppController` | GET/POST/PUT preferences, enable, disable, verify |
+| 2 | `WhatsAppAdminController` | GET metrics/templates/messages, POST test-message |
+| 3 | `WhatsAppWebhookController` | POST status (Event Grid validated) |
+
+**Tests**: 56 application tests + 77 domain tests = **133 WhatsApp tests total**.
+
+**NuGet Added**: `Azure.Communication.Messages` v1.1.0
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 7A.1: WhatsApp Integration Foundation
+
+**Status**: ✅ **DEPLOYED** (commit `cbff6deb`)
+
+**Classification**: New Feature — WhatsApp as parallel notification channel via Azure Communication Services Advanced Messaging.
+
+**Scope**: Complete foundation layer with feature flag OFF (zero behavior change on deploy). 30 files, ~12,000 lines.
+
+**Domain Layer** (16 new files):
+| # | Type | File | Description |
+|---|------|------|-------------|
+| 1 | Enum | `WhatsAppNotificationType.cs` | 9 notification types (EventRegistration through Payment) |
+| 2 | Enum | `WhatsAppTemplateStatus.cs` | Pending, Approved, Rejected |
+| 3 | Enum | `WhatsAppTemplateCategory.cs` | Utility, Marketing |
+| 4 | Entity | `WhatsAppMessageRecord.cs` | Private setters, Create() factory, MarkAsSent/Delivered/Read/Failed |
+| 5 | Entity | `WhatsAppTemplate.cs` | Create/MarkApproved/MarkRejected, enum Status/Category |
+| 6 | Entity | `UserWhatsAppPreferences.cs` | E.164 validation, crypto verification, ShouldNotify(enum), lockout |
+| 7 | Entity | `WhatsAppWebhookEvent.cs` | Raw ACS webhook payload persistence |
+| 8 | Event | `WhatsAppMessageSentEvent.cs` | Domain event for message sent |
+| 9 | Event | `WhatsAppPhoneVerifiedEvent.cs` | Domain event for phone verified |
+| 10 | Repo | `IWhatsAppMessageRepository.cs` | CRUD + dedup + metrics |
+| 11 | Repo | `IWhatsAppTemplateRepository.cs` | Template registry |
+| 12 | Repo | `IUserWhatsAppPreferencesRepository.cs` | User preferences |
+
+**Infrastructure Layer** (11 new files + 3 modified):
+| # | Type | File | Description |
+|---|------|------|-------------|
+| 1 | Config | `WhatsAppMessageRecordConfiguration.cs` | communications schema, 8 indexes |
+| 2 | Config | `WhatsAppTemplateConfiguration.cs` | Unique template_name, enum conversions |
+| 3 | Config | `UserWhatsAppPreferencesConfiguration.cs` | FK users CASCADE, TimeOnly, partial index |
+| 4 | Config | `WhatsAppWebhookEventConfiguration.cs` | JSONB payload, processed index |
+| 5 | Migration | `Phase7A_WhatsAppIntegration.cs` | 4 tables + 14 seeded templates |
+| 6 | Repo | `WhatsAppMessageRepository.cs` | Structured Serilog logging |
+| 7 | Repo | `WhatsAppTemplateRepository.cs` | Template queries |
+| 8 | Repo | `UserWhatsAppPreferencesRepository.cs` | Preference queries |
+| 9 | Settings | `WhatsAppSettings.cs` | Feature flag, ACS config |
+| 10 | Contract | `WhatsAppTemplateContract.cs` | 14 template names + parameter constants |
+| 11 | Modified | `AppDbContext.cs` | 4 DbSets + configuredEntityTypes |
+| 12 | Modified | `DependencyInjection.cs` | 3 scoped repos + settings binding |
+| 13 | Modified | `appsettings.json` | WhatsAppSettings section |
+
+**Tests**: 77 unit tests (17 MessageRecord + 15 Template + 45 Preferences) — all passing.
+
+**Architect Fixes**: C1 (private setters), C2 (no null singleton), C5 (audit-only FKs), D2-D8 (enums, crypto codes, lockout, JSONB comments, shared ACS connection string).
+
+**Remaining Phases**: 7A.2 (Send Infrastructure) → 7A.3 (Event Handlers) → 7A.4 (Frontend) → 7A.5 (Admin+Go-Live)
+
+---
+
+## ⏸️ PREVIOUS SESSION - Phase 6A.138-Fix2: Video Upload Proxy Streaming + 500 MB Limit Increase
 
 **Status**: ✅ **DEPLOYED** (commits `c49d57c4` → `9040baa5`)
 

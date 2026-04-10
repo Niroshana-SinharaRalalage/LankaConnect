@@ -133,6 +133,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<PhotoAlbum> PhotoAlbums => Set<PhotoAlbum>();
     public DbSet<AlbumPhoto> AlbumPhotos => Set<AlbumPhoto>();
 
+    // WhatsApp Entity Sets (Phase 7A: WhatsApp Integration)
+    public DbSet<WhatsAppMessageRecord> WhatsAppMessageRecords => Set<WhatsAppMessageRecord>();
+    public DbSet<WhatsAppTemplate> WhatsAppTemplates => Set<WhatsAppTemplate>();
+    public DbSet<UserWhatsAppPreferences> UserWhatsAppPreferences => Set<UserWhatsAppPreferences>();
+    public DbSet<WhatsAppWebhookEvent> WhatsAppWebhookEvents => Set<WhatsAppWebhookEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -233,6 +239,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new PhotoAlbumConfiguration());
         modelBuilder.ApplyConfiguration(new AlbumPhotoConfiguration());
 
+        // WhatsApp entity configurations (Phase 7A: WhatsApp Integration)
+        modelBuilder.ApplyConfiguration(new WhatsAppMessageRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new WhatsAppTemplateConfiguration());
+        modelBuilder.ApplyConfiguration(new UserWhatsAppPreferencesConfiguration());
+        modelBuilder.ApplyConfiguration(new WhatsAppWebhookEventConfiguration());
+
         // Configure schemas
         ConfigureSchemas(modelBuilder);
 
@@ -281,6 +293,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EventNotificationHistory>().ToTable("event_notification_history", "communications"); // Phase 6A.61: Event notification history tracking
         modelBuilder.Entity<EmailMetricRecord>().ToTable("email_metrics", "communications"); // Phase 6A.89: Email metrics persistence
         modelBuilder.Entity<EmailFailureDetail>().ToTable("email_failure_details", "communications"); // Phase 6A.99: Email failure details persistence
+        modelBuilder.Entity<WhatsAppMessageRecord>().ToTable("whatsapp_messages", "communications"); // Phase 7A: WhatsApp Integration
+        modelBuilder.Entity<WhatsAppTemplate>().ToTable("whatsapp_templates", "communications"); // Phase 7A: WhatsApp Integration
+        modelBuilder.Entity<UserWhatsAppPreferences>().ToTable("user_whatsapp_preferences", "communications"); // Phase 7A: WhatsApp Integration
+        modelBuilder.Entity<WhatsAppWebhookEvent>().ToTable("whatsapp_webhook_events", "communications"); // Phase 7A: WhatsApp Integration
 
         // Analytics schema (Epic 2 Phase 3)
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
@@ -371,7 +387,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(AddOnPurchase), // Add-on purchases (Financial Features)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(PhotoAlbum), // After Event Photo Album Feature
-            typeof(AlbumPhoto) // After Event Photo Album Feature
+            typeof(AlbumPhoto), // After Event Photo Album Feature
+            typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
+            typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration
+            typeof(UserWhatsAppPreferences), // Phase 7A: WhatsApp Integration
+            typeof(WhatsAppWebhookEvent) // Phase 7A: WhatsApp Integration
         };
 
         // Get all types from Domain assembly that aren't in our configured list

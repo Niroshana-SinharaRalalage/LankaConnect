@@ -14,6 +14,8 @@ import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { CollectionOptionInForm } from './CollectionOptionInForm';
 import { SponsorOptionInForm } from './SponsorOptionInForm';
 import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
+import { WhatsAppInlineOptIn } from '@/presentation/components/features/whatsapp/WhatsAppInlineOptIn';
+import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
 
 /**
  * Event Registration Form Component
@@ -92,6 +94,10 @@ export function EventRegistrationForm({
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Phase 7A.6B: WhatsApp opt-in state
+  const [whatsAppEnabled, setWhatsAppEnabled] = useState(false);
+  const [whatsAppPhone, setWhatsAppPhone] = useState('');
 
   // Session 21: Multi-attendee state
   // Phase 6A.43: Updated to use AgeCategory and Gender instead of age
@@ -310,6 +316,10 @@ export function EventRegistrationForm({
         address: address.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
+        // Phase 7A.6B: WhatsApp opt-in
+        ...(whatsAppEnabled && whatsAppPhone && {
+          whatsAppPhoneNumber: toE164(whatsAppPhone),
+        }),
         // Quantity for multiple attendees
         quantity: attendeesData.length,
         // Attendees array with AgeCategory and Gender
@@ -332,6 +342,10 @@ export function EventRegistrationForm({
         email: email.trim() || undefined,
         phoneNumber: phoneNumber.trim() || undefined,
         address: address.trim() || undefined,
+        // Phase 7A.6B: WhatsApp opt-in
+        ...(whatsAppEnabled && whatsAppPhone && {
+          whatsAppPhoneNumber: toE164(whatsAppPhone),
+        }),
         // Donation Feature: Include donation amount if provided
         ...(donationAmount && donationAmount > 0 && {
           donationAmount,
@@ -647,6 +661,21 @@ export function EventRegistrationForm({
           </p>
         </div>
       )}
+
+      {/* Phase 7A.6B: WhatsApp opt-in during event registration */}
+      <div className="border-t pt-4">
+        <WhatsAppInlineOptIn
+          enabled={whatsAppEnabled}
+          onEnabledChange={(enabled) => {
+            setWhatsAppEnabled(enabled);
+            if (!enabled) setWhatsAppPhone('');
+          }}
+          phoneNumber={whatsAppPhone}
+          onPhoneNumberChange={setWhatsAppPhone}
+          disabled={isProcessing}
+          description="Get event reminders and updates via WhatsApp for this registration."
+        />
+      </div>
 
       {/* Donation Feature: Optional donation add-on */}
       {donationConfig?.isEnabled === true && (

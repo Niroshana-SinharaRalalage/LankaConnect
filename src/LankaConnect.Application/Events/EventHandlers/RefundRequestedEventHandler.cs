@@ -29,8 +29,6 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RefundRequestedEventHandler> _logger;
 
-    private const string SupportEmail = "lankaconnect.app@gmail.com";
-
     public RefundRequestedEventHandler(
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
@@ -115,7 +113,6 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                     requestedAt: DateTime.UtcNow,
                     paymentIntentId: domainEvent.PaymentIntentId  // Phase 6A.87++ Fix: Reference number
                 );
-                emailParams.SupportEmail = SupportEmail;
                 emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);  // Phase 6A.97: For "View Event Details" button
 
                 // Phase 6A.87+ Fix: Populate organizer contact if available

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { ProtectedRoute } from '@/presentation/components/auth/ProtectedRoute';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
@@ -85,7 +85,7 @@ export default function NotificationsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <LankaEventsHeader />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Page Header */}

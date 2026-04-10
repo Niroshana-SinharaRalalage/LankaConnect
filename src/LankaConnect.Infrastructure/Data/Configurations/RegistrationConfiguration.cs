@@ -88,6 +88,11 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
             contactBuilder.Property(c => c.Email).HasColumnName("email");
             contactBuilder.Property(c => c.PhoneNumber).HasColumnName("phone_number");
             contactBuilder.Property(c => c.Address).HasColumnName("address");
+
+            // Phase 7A.6D: WhatsApp opt-in fields (JSONB schema-less — no ALTER TABLE needed)
+            // Existing rows deserialize with null/false defaults for these new fields
+            contactBuilder.Property(c => c.WhatsAppPhoneNumber).HasColumnName("whats_app_phone_number");
+            contactBuilder.Property(c => c.WhatsAppOptedIn).HasColumnName("whats_app_opted_in");
         });
 
         // Session 21: Configure TotalPrice as Money value object (separate columns)

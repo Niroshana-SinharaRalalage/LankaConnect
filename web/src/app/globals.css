@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* LankaEvents sub-brand heading — matches LankaConnect header hierarchy */
+  .brand-title {
+    font-size: 1.65rem;
+    line-height: 2rem;
+    font-weight: 700;
+  }
+  /* LankaEvents sub-brand tagline */
+  .brand-tagline {
+    font-size: 0.645em;
+    line-height: 1.6rem;
+  }
+  /* LankaEvents card tagline — landing page */
+  .card-tagline {
+    font-size: 0.62rem;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

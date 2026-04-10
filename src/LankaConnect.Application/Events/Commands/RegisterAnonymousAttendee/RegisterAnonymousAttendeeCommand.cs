@@ -43,7 +43,9 @@ public record RegisterAnonymousAttendeeCommand(
     string? CollectionNotes = null,
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
-    string? SponsorNotes = null
+    string? SponsorNotes = null,
+    // Phase 7A.6D: WhatsApp opt-in during registration
+    string? WhatsAppPhoneNumber = null
 ) : ICommand<string?>;
 
 /// <summary>

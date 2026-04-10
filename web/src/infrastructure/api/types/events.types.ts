@@ -824,6 +824,9 @@ export interface RsvpRequest {
   phoneNumber?: string;
   address?: string;
 
+  // Phase 7A.6B: WhatsApp opt-in during event registration
+  whatsAppPhoneNumber?: string;
+
   // Session 23: Payment redirect URLs (required for paid events)
   successUrl?: string;
   cancelUrl?: string;
@@ -874,6 +877,9 @@ export interface AnonymousRegistrationRequest {
   email: string;
   phoneNumber: string;
   address?: string;
+
+  // Phase 7A.6B: WhatsApp opt-in during event registration
+  whatsAppPhoneNumber?: string;
 
   // Legacy quantity field (backward compatibility)
   quantity?: number; // Default: 1

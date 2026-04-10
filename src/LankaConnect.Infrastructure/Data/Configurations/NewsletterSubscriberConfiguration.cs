@@ -52,6 +52,12 @@ public class NewsletterSubscriberConfiguration : IEntityTypeConfiguration<Newsle
             .IsRequired()
             .HasDefaultValue(false);
 
+        // Phase 7A.6D: WhatsApp phone number for newsletter notifications
+        builder.Property(ns => ns.WhatsAppPhoneNumber)
+            .HasColumnName("whatsapp_phone_number")
+            .HasMaxLength(20)
+            .IsRequired(false);
+
         // Configure tokens
         builder.Property(ns => ns.ConfirmationToken)
             .HasColumnName("confirmation_token")

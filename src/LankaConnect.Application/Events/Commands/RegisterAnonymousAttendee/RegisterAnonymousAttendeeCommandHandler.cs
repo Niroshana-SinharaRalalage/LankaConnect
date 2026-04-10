@@ -244,10 +244,13 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             @event.Id, attendeeDetailsList.Count);
 
         // Create RegistrationContact value object
+        // Phase 7A.6D: Pass WhatsApp phone + opt-in flag
         var contactResult = RegistrationContact.Create(
             request.Email,
             request.PhoneNumber,
-            request.Address
+            request.Address,
+            request.WhatsAppPhoneNumber,
+            !string.IsNullOrWhiteSpace(request.WhatsAppPhoneNumber)
         );
 
         if (contactResult.IsFailure)

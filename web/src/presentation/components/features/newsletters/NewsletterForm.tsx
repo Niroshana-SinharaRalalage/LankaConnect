@@ -3,7 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect, useMemo } from 'react';
-import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks, Bell } from 'lucide-react';
+import { Mail, FileText, Users, MapPin, Calendar, MapPinIcon, UserCheck, ListChecks, Bell, MessageCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -594,6 +594,14 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
           {errors.emailGroupIds.message}
         </div>
       )}
+
+      {/* Phase 7A.4: WhatsApp notification info */}
+      <div className="flex items-center gap-2 p-3 rounded-lg" style={{ backgroundColor: '#25D36610' }}>
+        <MessageCircle className="h-4 w-4 flex-shrink-0" style={{ color: '#25D366' }} />
+        <p className="text-xs text-gray-600">
+          When sent, this newsletter will also be delivered via WhatsApp to users who have opted in to WhatsApp notifications.
+        </p>
+      </div>
 
       {/* Form Actions */}
       <div className="flex gap-3 justify-end">

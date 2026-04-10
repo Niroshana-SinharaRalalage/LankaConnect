@@ -14,4 +14,5 @@ public record RegisterUserCommand(
     string FirstName,
     string LastName,
     UserRole? SelectedRole = null, // Phase 6A.0: Optional role selection (defaults to GeneralUser)
-    List<Guid>? PreferredMetroAreaIds = null) : IRequest<Result<RegisterUserResponse>>; // Phase 5A: Optional metro areas
+    List<Guid>? PreferredMetroAreaIds = null, // Phase 5A: Optional metro areas
+    string? WhatsAppPhoneNumber = null) : IRequest<Result<RegisterUserResponse>>; // Phase 7A.6A: Optional WhatsApp opt-in

@@ -12,7 +12,8 @@ namespace LankaConnect.Application.Communications.Commands.SubscribeToNewsletter
 public record SubscribeToNewsletterCommand(
     string Email,
     List<Guid>? MetroAreaIds = null,
-    bool ReceiveAllLocations = false) : ICommand<SubscribeToNewsletterResponse>;
+    bool ReceiveAllLocations = false,
+    string? WhatsAppPhoneNumber = null) : ICommand<SubscribeToNewsletterResponse>;
 
 /// <summary>
 /// Response for newsletter subscription command

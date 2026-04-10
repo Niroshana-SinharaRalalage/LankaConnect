@@ -10,7 +10,7 @@
 import { use, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Camera, Loader2, AlertCircle, Download } from 'lucide-react';
-import { Header } from '@/presentation/components/layout/Header';
+import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
@@ -74,7 +74,7 @@ export default function PhotosPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <>
-      <Header />
+      <LankaEventsHeader />
       <main className="min-h-screen bg-gray-50 dark:bg-neutral-950">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Back Navigation */}

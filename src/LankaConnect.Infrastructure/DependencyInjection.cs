@@ -41,6 +41,8 @@ using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Tax.Repositories;
 using LankaConnect.Domain.Support;
 using LankaConnect.Application.Events.Services;
+using LankaConnect.Infrastructure.WhatsApp.Configuration;
+using LankaConnect.Infrastructure.WhatsApp.Services;
 using Stripe;
 using Serilog;
 
@@ -152,6 +154,17 @@ public static class DependencyInjection
         services.AddScoped<IEmailStatusRepository, EmailStatusRepository>();
         services.AddScoped<INewsletterSubscriberRepository, NewsletterSubscriberRepository>();
         services.AddScoped<INewsletterRepository, NewsletterRepository>(); // Phase 6A.74: Newsletter Management
+
+        // Phase 7A: WhatsApp Integration
+        services.Configure<WhatsAppSettings>(configuration.GetSection(WhatsAppSettings.SectionName));
+        services.Configure<WhatsAppOptions>(configuration.GetSection(WhatsAppOptions.SectionName));
+        services.AddScoped<IWhatsAppMessageRepository, WhatsAppMessageRepository>();
+        services.AddScoped<IWhatsAppTemplateRepository, WhatsAppTemplateRepository>();
+        services.AddScoped<IUserWhatsAppPreferencesRepository, UserWhatsAppPreferencesRepository>();
+        services.AddScoped<IWhatsAppSendStrategy, AcsWhatsAppStrategy>();
+        services.AddScoped<IWhatsAppService, WhatsAppService>();
+        services.AddScoped<IPhoneVerificationService, SmsPhoneVerificationService>();
+        services.AddScoped<IWhatsAppWebhookProcessor, WhatsAppWebhookProcessor>();
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -345,6 +358,10 @@ public static class DependencyInjection
 
         // Phase 6A.74: Newsletter Background Jobs
         services.AddTransient<NewsletterEmailJob>();
+
+        // Phase 7A.3: WhatsApp Background Jobs
+        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.NewsletterWhatsAppJob>();
+        services.AddTransient<LankaConnect.Application.Communications.BackgroundJobs.EventDetailsWhatsAppJob>();
 
         // Phase 6A.61: Event Notification Background Jobs
         services.AddTransient<LankaConnect.Application.Events.BackgroundJobs.EventNotificationEmailJob>();

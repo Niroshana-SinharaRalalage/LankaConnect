@@ -5,6 +5,8 @@ using Serilog.Context;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Communications.Commands.SendEmailVerification;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Communications;
+using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Users.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -18,19 +20,22 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
     private readonly LankaConnect.Domain.Common.IUnitOfWork _unitOfWork;
     private readonly ILogger<RegisterUserHandler> _logger;
     private readonly IMediator _mediator;
+    private readonly IUserWhatsAppPreferencesRepository _whatsAppPreferencesRepository;
 
     public RegisterUserHandler(
         IUserRepository userRepository,
         IPasswordHashingService passwordHashingService,
         LankaConnect.Domain.Common.IUnitOfWork unitOfWork,
         ILogger<RegisterUserHandler> logger,
-        IMediator mediator)
+        IMediator mediator,
+        IUserWhatsAppPreferencesRepository whatsAppPreferencesRepository)
     {
         _userRepository = userRepository;
         _passwordHashingService = passwordHashingService;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _mediator = mediator;
+        _whatsAppPreferencesRepository = whatsAppPreferencesRepository;
     }
 
     public async Task<Result<RegisterUserResponse>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
@@ -185,6 +190,27 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
                     // Save user
                     await _userRepository.AddAsync(user, cancellationToken);
 
+                    // Phase 7A.6A: Create WhatsApp preferences if phone number provided during registration
+                    if (!string.IsNullOrWhiteSpace(request.WhatsAppPhoneNumber))
+                    {
+                        var prefs = UserWhatsAppPreferences.Create(user.Id);
+                        var enableResult = prefs.EnableWhatsApp(request.WhatsAppPhoneNumber);
+                        if (enableResult.IsSuccess)
+                        {
+                            await _whatsAppPreferencesRepository.AddAsync(prefs, cancellationToken);
+
+                            _logger.LogInformation(
+                                "RegisterUser: WhatsApp opt-in created - UserId={UserId}, Phone={PhoneMasked}",
+                                user.Id, MaskPhone(request.WhatsAppPhoneNumber));
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "RegisterUser: WhatsApp opt-in skipped (invalid phone) - UserId={UserId}, Error={Error}",
+                                user.Id, enableResult.Error);
+                        }
+                    }
+
                     // Phase 6A.53: Email verification is sent automatically via domain event
                     // When CommitAsync() is called, it dispatches MemberVerificationRequestedEvent
                     // which triggers MemberVerificationRequestedEventHandler to send the email
@@ -217,4 +243,8 @@ public class RegisterUserHandler : IRequestHandler<RegisterUserCommand, Result<R
             }
         }
     }
+
+    /// <summary>Mask phone number for logging (show last 4 digits only).</summary>
+    private static string MaskPhone(string phone)
+        => phone.Length > 4 ? $"***{phone[^4..]}" : "****";
 }

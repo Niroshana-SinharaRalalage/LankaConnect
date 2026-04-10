@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Azure.Communication.Email" />
+    <PackageReference Include="Azure.Communication.Messages" />
     <PackageReference Include="ClosedXML" />
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="Hangfire.AspNetCore" />

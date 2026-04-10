@@ -633,7 +633,9 @@ public class EventsController : BaseController<EventsController>
             CollectionNotes: request.CollectionNotes,
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
-            SponsorNotes: request.SponsorNotes
+            SponsorNotes: request.SponsorNotes,
+            // Phase 7A.6D: Pass WhatsApp phone for opt-in
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
         );
         var result = await Mediator.Send(command);
 
@@ -729,7 +731,9 @@ public class EventsController : BaseController<EventsController>
             CollectionNotes: request.CollectionNotes,
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
-            SponsorNotes: request.SponsorNotes
+            SponsorNotes: request.SponsorNotes,
+            // Phase 7A.6D: Pass WhatsApp phone for opt-in
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
         );
 
         var result = await Mediator.Send(command);
@@ -3165,7 +3169,9 @@ public record RsvpRequest(
     string? CollectionNotes = null,
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
-    string? SponsorNotes = null
+    string? SponsorNotes = null,
+    // Phase 7A.6D: WhatsApp opt-in during registration
+    string? WhatsAppPhoneNumber = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3203,7 +3209,9 @@ public record AnonymousRegistrationRequest(
     string? CollectionNotes = null,
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
-    string? SponsorNotes = null);
+    string? SponsorNotes = null,
+    // Phase 7A.6D: WhatsApp opt-in during registration
+    string? WhatsAppPhoneNumber = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration

@@ -4,9 +4,15 @@
 
 @layer components {
   /* LankaEvents sub-brand heading — matches LankaConnect header hierarchy */
-  .lanka-events-brand-title {
+  .brand-title {
     font-size: 1.65rem;
     line-height: 2rem;
+    font-weight: 700;
+  }
+  /* LankaEvents sub-brand tagline */
+  .brand-tagline {
+    font-size: 0.645em;
+    line-height: 1.6rem;
   }
 }
 

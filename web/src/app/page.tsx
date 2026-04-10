@@ -213,7 +213,7 @@ export default function LankaConnectHome() {
                     `0 10px 32px ${LANKA_EVENTS_COLOR}22`,
                     `0 2px 4px rgba(0,0,0,0.45)`,
                   ].join(', '),
-                  minHeight: '90px',
+                  minHeight: '50px',
                   transition: 'transform 0.10s ease, box-shadow 0.10s ease',
                 }}
                 onMouseEnter={e => {
@@ -265,17 +265,17 @@ export default function LankaConnectHome() {
                 <Image
                   src="/lanka-events.png"
                   alt="LankaEvents"
-                  width={60}
-                  height={60}
+                  width={55}
+                  height={55}
                   className="object-contain flex-shrink-0"
                 />
 
                 {/* Text */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-bold text-xl text-white leading-tight">LankaEvents</span>
+                    <span className="font-bold text-2xl text-white leading-tight">LankaEvents</span>
                     <span
-                      className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full leading-none"
+                      className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full leading-none"
                       style={{
                         background: `${LANKA_EVENTS_COLOR}25`,
                         color: LANKA_EVENTS_COLOR,
@@ -285,7 +285,7 @@ export default function LankaConnectHome() {
                       Event Planner
                     </span>
                   </div>
-                  <div className="text-sm text-white/65 leading-relaxed">
+                  <div className="text-sm text-white/65 uppercase leading-tight text-left">
                     Plan Your Event with Ease
                   </div>
                 </div>

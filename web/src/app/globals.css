@@ -14,6 +14,10 @@
     font-size: 0.645em;
     line-height: 1.6rem;
   }
+  /* LankaEvents card tagline — landing page */
+  .card-tagline {
+    font-size: 0.62rem;
+  }
 }
 
 @layer base {

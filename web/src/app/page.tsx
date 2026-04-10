@@ -285,7 +285,7 @@ export default function LankaConnectHome() {
                       Event Planner
                     </span>
                   </div>
-                  <div className="text-sm text-white/65 uppercase leading-tight text-left">
+                  <div className="card-tagline text-white/65 uppercase leading-tight text-left">
                     Plan Your Event with Ease
                   </div>
                 </div>

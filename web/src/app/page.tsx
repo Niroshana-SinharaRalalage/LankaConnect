@@ -326,7 +326,7 @@ export default function LankaConnectHome() {
 
       {/* Footer — satellite-navy gradient continues from hero */}
       <div style={{ background: 'linear-gradient(180deg, #020818 0%, #0a0f2e 50%, #030d1a 100%)' }}>
-        <Footer />
+        <Footer transparent={true} />
       </div>
 
     </div>

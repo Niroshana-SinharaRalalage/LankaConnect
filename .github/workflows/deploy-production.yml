@@ -182,7 +182,8 @@ jobs:
               AzureStorage__ConnectionString=secretref:azure-storage-connection-string \
               Stripe__SecretKey=secretref:stripe-secret-key \
               Stripe__PublishableKey=secretref:stripe-publishable-key \
-              Stripe__WebhookSecret=secretref:stripe-webhook-secret
+              Stripe__WebhookSecret=secretref:stripe-webhook-secret \
+              WhatsAppSettings__Enabled=true
 
           # Ensure ingress is configured for port 5000
           az containerapp ingress update \

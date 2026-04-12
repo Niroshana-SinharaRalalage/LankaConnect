@@ -40,7 +40,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     'Transactional',
                     'AlbumNotification',
                     'Your photos from {{EventTitle}} are ready!',
-                    E'Hi {{UserName}},\n\nThe photo album ''{{AlbumName}}'' from {{EventTitle}} is now available to view.\n\nView it here: {{AlbumUrl}}\n\nNote: photos and videos are available for {{PhotoExpiryDays}} days only, so download your favourites soon!\n\n\xA9 {{Year}} LankaEvents',
+                    E'Hi {{UserName}},\n\nThe photo album ''{{AlbumName}}'' from {{EventTitle}} is now available to view.\n\nView it here: {{AlbumUrl}}\n\nNote: photos and videos are available for {{PhotoExpiryDays}} days only, so download your favourites soon!\n\n\u00A9 {{Year}} LankaEvents',
                     $html_template$<!DOCTYPE html>
 <html lang=""en"">
 <head>

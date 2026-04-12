@@ -1,7 +1,39 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-06 - Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter*
+*Last Updated: 2026-04-12 - Phase 7B: Photo Album "Send Email" Fix*
 
-## 🎯 Current Session Status (2026-04-06)
+## 🎯 Current Session Status (2026-04-12)
+
+### Phase 7B: Photo Album "Send Email" Not Sending — Root Cause Fix
+
+**Status**: ✅ **DEPLOYED & VERIFIED** (commits `a1c2d14b`, `60260584`)
+
+**Classification**: Backend API Bug + Missing Database Data + Incomplete Feature
+
+**Root Causes Fixed**:
+| # | Root Cause | Fix |
+|---|-----------|-----|
+| RC1 | `template-photo-album-published` never seeded in DB → silent failure | EF Core migration Phase7B seeds template via inline PostgreSQL SQL (`$html_template$` dollar-quoting) |
+| RC2 | Fire-and-forget Task silently swallowed "template not found" error; frontend showed false "Notification sent!" | Now logging + template found = email actually delivers |
+| RC3 | Sign-up list committed users excluded from recipients — events with Signup Lists had 0 recipients | Added `IEventRepository` + `IUserRepository` injection; mirrors `EventCancellationEmailJob` Phase 6A.75 pattern |
+| RC4 | `AlbumNotificationEmailParams.TemplateName` used magic string | Now uses `EmailTemplateNames.PhotoAlbumPublished` constant |
+
+**Changes**:
+- `EmailTemplateNames.cs` — Added `PhotoAlbumPublished = "template-photo-album-published"` constant + All collection + GetDescription
+- `SendAlbumNotificationCommand.cs` — Added `IEventRepository` + `IUserRepository` deps; sign-up list recipient merge (deduped by email); constant usage
+- `Migration 20260412025231_Phase7B_AddPhotoAlbumEmailTemplate` — Inline SQL, idempotent `WHERE NOT EXISTS`, PostgreSQL `$html_template$` dollar-quoting for HTML body
+- `SendAlbumNotificationCommandHandlerTests.cs` — 9 new TDD unit tests (all passing)
+
+**Test Results**: Application.Tests 2034 passed, 0 failed. New tests: 9/9 passed.
+
+**API Verification** (2026-04-12 05:03 UTC):
+- POST `/api/events/{eventId}/albums/{albumId}/notify` → HTTP 200 ✅
+- Azure log: `Template FOUND - IsActive: True, HasHtml: True` ✅
+- Azure log: `Azure email sent successfully. Operation ID: f32e1149-1b7c-410d-8df0-6c210e38ee9c` ✅
+- Azure log: `Album notification emails complete: Sent=1, Failed=0` ✅
+
+---
+
+## ✅ PREVIOUS STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D (2026-04-06)
 
 ### Phase 7A.6D: WhatsApp Data Persistence — Event Registration + Newsletter
 

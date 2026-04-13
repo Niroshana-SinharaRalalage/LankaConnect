@@ -219,6 +219,14 @@ public static class EmailTemplateNames
     public const string AccountDeactivatedByAdmin = "template-account-deactivated-by-admin";
 
     /// <summary>
+    /// Photo album published notification email — sent to event attendees/sign-up participants
+    /// when the organizer explicitly clicks "Send Email" after publishing an album.
+    /// Phase 7B: Fix for silent failure where template was missing from database.
+    /// Variables: {UserName}, {EventTitle}, {AlbumName}, {AlbumUrl}, {PhotoExpiryDays}, {Year}
+    /// </summary>
+    public const string PhotoAlbumPublished = "template-photo-album-published";
+
+    /// <summary>
     /// Gets all template names as a collection.
     /// Useful for validation, seeding, and documentation.
     /// Phase 6A.80: Removed AnonymousRsvpConfirmation - now using FreeEventRegistration for anonymous users.
@@ -255,7 +263,8 @@ public static class EmailTemplateNames
         AccountLockedByAdmin,
         AccountUnlockedByAdmin,
         AccountActivatedByAdmin,
-        AccountDeactivatedByAdmin
+        AccountDeactivatedByAdmin,
+        PhotoAlbumPublished // Phase 7B: Album notification email to attendees/sign-up participants
     };
 
     /// <summary>
@@ -308,6 +317,7 @@ public static class EmailTemplateNames
             AccountUnlockedByAdmin => "Account unlocked by admin notification email",
             AccountActivatedByAdmin => "Account activated by admin notification email",
             AccountDeactivatedByAdmin => "Account deactivated by admin notification email",
+            PhotoAlbumPublished => "Photo album published notification email to attendees and sign-up participants (Phase 7B)",
             _ => "Unknown template"
         };
     }

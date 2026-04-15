@@ -40,12 +40,19 @@ public interface IWhatsAppService
 public class WhatsAppSendResult
 {
     public Guid MessageRecordId { get; init; }
-    public string? AcsMessageId { get; init; }
+
+    /// <summary>Provider-assigned message ID (ACS MessageId or Twilio MessageSid).</summary>
+    public string? ProviderMessageId { get; init; }
+
     public bool WasSkipped { get; init; }
     public string? SkipReason { get; init; }
 
-    public static WhatsAppSendResult Sent(Guid recordId, string acsMessageId) =>
-        new() { MessageRecordId = recordId, AcsMessageId = acsMessageId };
+    /// <summary>Backward-compatible alias for ProviderMessageId.</summary>
+    [Obsolete("Use ProviderMessageId instead. Will be removed in a future version.")]
+    public string? AcsMessageId => ProviderMessageId;
+
+    public static WhatsAppSendResult Sent(Guid recordId, string providerMessageId) =>
+        new() { MessageRecordId = recordId, ProviderMessageId = providerMessageId };
 
     public static WhatsAppSendResult Skipped(string reason) =>
         new() { WasSkipped = true, SkipReason = reason };

@@ -129,14 +129,14 @@ public class SendTestWhatsAppCommandHandler : IRequestHandler<SendTestWhatsAppCo
                 var response = new SendTestWhatsAppResponse
                 {
                     Success = true,
-                    MessageId = result.AcsMessageId,
+                    MessageId = result.ProviderMessageId,
                     ErrorMessage = null
                 };
 
                 stopwatch.Stop();
                 _logger.LogInformation(
                     "SendTestWhatsApp COMPLETE: AdminUserId={AdminUserId}, TemplateName={TemplateName}, MessageId={MessageId}, Duration={ElapsedMs}ms",
-                    request.AdminUserId, request.TemplateName, result.AcsMessageId, stopwatch.ElapsedMilliseconds);
+                    request.AdminUserId, request.TemplateName, result.ProviderMessageId, stopwatch.ElapsedMilliseconds);
 
                 return Result<SendTestWhatsAppResponse>.Success(response);
             }

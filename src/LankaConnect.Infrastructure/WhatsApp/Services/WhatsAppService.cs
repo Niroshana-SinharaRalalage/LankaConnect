@@ -264,7 +264,7 @@ public class WhatsAppService : IWhatsAppService
     }
 
     /// <summary>
-    /// Core send logic: template lookup, parameter ordering, ACS send, and persistence.
+    /// Core send logic: template lookup, parameter ordering, provider send, and persistence.
     /// </summary>
     private async Task<Result<WhatsAppSendResult>> SendViaTemplateAsync(
         string phoneNumber,
@@ -323,9 +323,12 @@ public class WhatsAppService : IWhatsAppService
             eventId: eventId,
             registrationId: registrationId);
 
+        // Phase 7B: Track which provider sent this message
+        record.SetProvider(_settings.Provider);
+
         await _messageRepository.AddAsync(record, ct);
 
-        // Step 6: Send via ACS strategy
+        // Step 6: Send via provider strategy (ACS or Twilio)
         var sendResult = await _sendStrategy.SendTemplateMessageAsync(
             phoneNumber,
             templateName,
@@ -338,8 +341,8 @@ public class WhatsAppService : IWhatsAppService
         {
             record.MarkAsSent(sendResult.Value);
             _logger.LogInformation(
-                "[Phase 7A] Message record {RecordId} marked as SENT. AcsMessageId={AcsMessageId}",
-                record.Id, sendResult.Value);
+                "[Phase 7A] Message record {RecordId} marked as SENT. Provider={Provider}, ProviderMessageId={ProviderMessageId}",
+                record.Id, _settings.Provider, sendResult.Value);
         }
         else
         {

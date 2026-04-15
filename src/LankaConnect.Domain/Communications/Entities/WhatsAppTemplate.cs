@@ -27,6 +27,10 @@ public class WhatsAppTemplate : BaseEntity
     public string? MetaTemplateId { get; private set; }
     public string? SampleValues { get; private set; }
 
+    // Provider-specific IDs
+    /// <summary>Twilio Content API SID for this template (e.g., "HXxxxxx"). Phase 7B.</summary>
+    public string? TwilioContentSid { get; private set; }
+
     // Approval tracking
     public DateTime? ApprovedAt { get; private set; }
     public DateTime? RejectedAt { get; private set; }
@@ -110,6 +114,15 @@ public class WhatsAppTemplate : BaseEntity
         RejectionReason = null;
         ApprovedAt = null;
         MetaTemplateId = null;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Set the Twilio Content API SID for this template. Phase 7B.
+    /// </summary>
+    public void SetTwilioContentSid(string? contentSid)
+    {
+        TwilioContentSid = contentSid;
         MarkAsUpdated();
     }
 

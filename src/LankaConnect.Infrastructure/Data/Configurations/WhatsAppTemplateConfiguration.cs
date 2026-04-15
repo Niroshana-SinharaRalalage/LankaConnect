@@ -82,6 +82,12 @@ public class WhatsAppTemplateConfiguration : IEntityTypeConfiguration<WhatsAppTe
             .HasColumnName("meta_template_id")
             .HasMaxLength(200);
 
+        // Phase 7B: Twilio Content API SID
+        builder.Property(e => e.TwilioContentSid)
+            .HasColumnName("twilio_content_sid")
+            .HasMaxLength(200)
+            .IsRequired(false);
+
         // JSONB stored as string — no ValueComparer needed (immutable). See Phase 6A.129.
         builder.Property(e => e.SampleValues)
             .HasColumnName("sample_values")

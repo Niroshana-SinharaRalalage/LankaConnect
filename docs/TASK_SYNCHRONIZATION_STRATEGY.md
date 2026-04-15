@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - TWILIO WHATSAPP BSP INTEGRATION PHASE 7B.2 ✅ DEPLOYED
+## 🔄 CURRENT SESSION STATUS - MULTI-TIER TICKETING PHASE 8 — BACKEND COMPLETE
+**Date**: 2026-04-15
+**Session**: Phase 8 — Multi-Tier Ticketing
+**Progress**: ✅ **COMMITTED** — Complete backend for multi-tier ticketing. Domain: `TicketTier` entity (adult/child pricing, capacity tracking, reserve/release), `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class (tier CRUD, tiered price calculation, per-tier capacity validation), `AttendeeDetails` extended with `TicketTierId`/`TicketTierName`, `Ticket.CreateTiered()` for master/individual tickets. Infrastructure: `TicketTierConfiguration`, `NonNullableMoneyConverter`, EF migration `AddTicketTiers`. Application: 5 CQRS handlers (Add/Update/Remove TicketTier, SetTicketingMode, GetTicketTiers), `EventDto`/`TicketDto`/`AttendeeDto` extended, AutoMapper profile updated. API: 5 endpoints on EventsController. 36 files changed, ~10,681 lines. 50 domain tests passing. 0 build errors.
+**Status**: ✅ **COMMITTED & PUSHED** — Commit `58efb0fd`. Awaiting deployment verification. Remaining: Frontend, RSVP tier-aware handler, Stripe multi-line, email/PDF integration.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - TWILIO WHATSAPP BSP INTEGRATION PHASE 7B.2 ✅ DEPLOYED
 **Date**: 2026-04-15
 **Session**: Phase 7B.2 — Twilio WhatsApp BSP Integration
 **Progress**: ✅ **DEPLOYED** — Added Twilio as alternative WhatsApp BSP. Strategy pattern (`TwilioWhatsAppStrategy`), factory-based DI for provider/webhook/verification selection, Twilio webhook endpoint with HMAC-SHA1 validation, Twilio phone verification service. Config-driven via `WhatsAppSettings__Provider` enum. EF migration adds `provider` + `twilio_content_sid` columns. Zero changes to 11 event handlers, 2 background jobs, or frontend. 7 new files, 5 modified files, ~760 lines added. 2034 tests pass.

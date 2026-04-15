@@ -1,7 +1,43 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-15 - Phase 7B.2: Twilio WhatsApp BSP Integration*
+*Last Updated: 2026-04-15 - Phase 8: Multi-Tier Ticketing*
 
 ## 🎯 Current Session Status (2026-04-15)
+
+### Phase 8: Multi-Tier Ticketing — Backend Complete (Steps 1-4)
+
+**Status**: ✅ **COMMITTED & PUSHED** (commit `58efb0fd`)
+
+**Classification**: New Feature — Multi-tier ticketing system (VIP/Plus/Basic/custom tiers)
+
+**Summary**: Implemented complete backend for multi-tier ticketing across all 4 layers (Domain, Infrastructure, Application, API). Each tier has its own adult/child pricing, capacity tracking, and per-user limits. Existing SingleTier/AgeDual/GroupTiered pricing modes unchanged. 50 domain tests passing, 0 build errors.
+
+**Changes**:
+| Layer | New Files | Modified Files | Description |
+|-------|-----------|----------------|-------------|
+| Domain | 4 new | 3 modified, 1 deleted | `TicketTier` entity, `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class, `AttendeeDetails` + `Ticket` extended. Deleted dead `TicketType.cs` |
+| Infrastructure | 3 new | 4 modified | `TicketTierConfiguration`, `NonNullableMoneyConverter`, EF migration. Updated Event/Ticket/Registration configs, AppDbContext |
+| Application | 11 new | 3 modified | CRUD commands (Add/Update/Remove tier, SetTicketingMode), GetTicketTiers query, TicketTierDto. Updated EventDto, TicketDto, AttendeeDto, AutoMapper profile |
+| API | 0 new | 1 modified | 5 new endpoints on EventsController (GET/POST/PUT/DELETE ticket-tiers, PUT ticketing-mode) |
+| Tests | 3 new | 0 | 50 domain tests: TicketTier CRUD, capacity, pricing, Event tier management, Ticket.CreateTiered() |
+
+**Migration**: `20260415203751_AddTicketTiers` — Creates `ticket_tiers` table; adds `ticketing_mode` to `events`; adds `ticket_category`, `ticket_tier_name`, `attendee_index`, `attendee_names` to `tickets`
+
+**API Endpoints Added**:
+- `GET /api/events/{id}/ticket-tiers` — List tiers with availability (public)
+- `PUT /api/events/{id}/ticketing-mode` — Set SingleTier/Tiered mode (auth)
+- `POST /api/events/{id}/ticket-tiers` — Add tier (auth)
+- `PUT /api/events/{id}/ticket-tiers/{tierId}` — Update tier (auth)
+- `DELETE /api/events/{id}/ticket-tiers/{tierId}` — Remove tier (auth)
+
+**Remaining (Phase 8 continued)**:
+- Frontend: TypeScript types, hooks, TierBuilder component, registration form tier selector
+- RSVP handler: Tier-aware pricing and capacity validation in RsvpToEventCommandHandler
+- Stripe: Multi-line-item checkout per tier
+- Email/PDF: Tier name in emails, master+individual ticket PDF generation
+
+---
+
+## ⏸️ Previous Session Status (2026-04-15)
 
 ### Phase 7B.2: Twilio WhatsApp BSP Integration — Production-Ready Implementation
 

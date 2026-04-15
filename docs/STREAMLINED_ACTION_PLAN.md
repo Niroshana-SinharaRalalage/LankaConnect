@@ -7,7 +7,15 @@
 
 ---
 
-## ✅ CURRENT STATUS - TWILIO WHATSAPP BSP INTEGRATION PHASE 7B.2 (2026-04-15)
+## 🔄 CURRENT STATUS - MULTI-TIER TICKETING PHASE 8 (2026-04-15)
+**Date**: 2026-04-15
+**Session**: Phase 8 — Multi-Tier Ticketing (Backend Complete)
+**Status**: ✅ **COMMITTED & PUSHED** (commit `58efb0fd`)
+**Scope**: Complete backend for multi-tier ticketing (VIP/Plus/Basic/custom). Domain: `TicketTier` entity with adult/child pricing + capacity, `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class. Infrastructure: EF config + migration (`ticket_tiers` table + columns on `events`/`tickets`). Application: CRUD commands, query, EventDto/TicketDto/AttendeeDto extended, AutoMapper. API: 5 endpoints (GET/POST/PUT/DELETE ticket-tiers, PUT ticketing-mode). Tests: 50 domain tests passing. 0 build errors. Remaining: Frontend, RSVP tier-aware handler, Stripe multi-line, email/PDF integration.
+
+---
+
+## ✅ PREVIOUS STATUS - TWILIO WHATSAPP BSP INTEGRATION PHASE 7B.2 (2026-04-15)
 **Date**: 2026-04-15
 **Session**: Phase 7B.2 — Twilio WhatsApp BSP Integration
 **Status**: ✅ **DEPLOYED & VERIFIED** (commits `fbef9a06`, `41728340`)

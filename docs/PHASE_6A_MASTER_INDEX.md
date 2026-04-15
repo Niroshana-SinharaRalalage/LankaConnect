@@ -240,6 +240,19 @@
 
 ---
 
+## Phase 8: Multi-Tier Ticketing & Seating
+
+| Phase | Feature | Status | Description |
+|-------|---------|--------|-------------|
+| 8.1   | Multi-Tier Ticketing Backend | ✅ Committed | Domain, Infrastructure, Application, API layers. TicketTier entity, CRUD, 5 API endpoints. 50 tests. Commit `58efb0fd` |
+| 8.2   | Multi-Tier Ticketing Frontend | ⏳ Planned | TypeScript types, hooks, TierBuilder component, registration tier selector |
+| 8.3   | RSVP Tier-Aware Handler | ⏳ Planned | RsvpToEventCommandHandler modifications for per-attendee tier pricing + capacity |
+| 8.4   | Stripe Multi-Line Items | ⏳ Planned | Per-tier Stripe checkout line items |
+| 8.5   | Email + PDF Tier Integration | ⏳ Planned | Tier name in emails, master + individual ticket PDF generation |
+| 8.6   | Seating Infrastructure | ⏳ Planned | Venue layouts, zones, seats, seat reservations (Phase 2+) |
+
+---
+
 ## Related Documents
 
 - **Primary Tracking Docs** (must stay in sync):

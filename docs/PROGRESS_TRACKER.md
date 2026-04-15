@@ -1,7 +1,40 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-12 - Phase 7B: Photo Album "Send Email" Fix*
+*Last Updated: 2026-04-15 - Phase 7B.2: Twilio WhatsApp BSP Integration*
 
-## 🎯 Current Session Status (2026-04-12)
+## 🎯 Current Session Status (2026-04-15)
+
+### Phase 7B.2: Twilio WhatsApp BSP Integration — Production-Ready Implementation
+
+**Status**: ✅ **DEPLOYED & VERIFIED** (commits `fbef9a06`, `41728340`)
+
+**Classification**: New Feature — Alternative WhatsApp BSP with config-driven provider switching
+
+**Summary**: Added Twilio as an alternative WhatsApp BSP alongside existing ACS, with factory-based DI registration, webhook processing, and phone verification. Zero changes to existing event handlers, background jobs, or frontend code. Instant rollback via `WhatsAppSettings__Provider=Acs` env var.
+
+**Changes**:
+| Phase | Files | Description |
+|-------|-------|-------------|
+| Phase 1 | 9 modified, 2 new | Domain (`WhatsAppProvider` enum), config extensions, EF migration (`provider` + `twilio_content_sid` columns), `ProviderMessageId` rename |
+| Phase 2 | 1 new | `TwilioWhatsAppStrategy.cs` — Twilio Messages API with retry, phone masking, structured logging |
+| Phase 3 | 1 modified | `DependencyInjection.cs` — Factory pattern for strategy, webhook, verification (all config-driven) |
+| Phase 4 | 2 new/modified | `TwilioWhatsAppWebhookProcessor.cs` + new `/api/webhooks/whatsapp/twilio-status` endpoint with HMAC-SHA1 |
+| Phase 5 | 1 new | `TwilioPhoneVerificationService.cs` — Twilio SMS-based verification |
+
+**Migration**: `20260415184320_Phase7B_TwilioWhatsAppIntegration` — Adds `provider varchar(20) NULL` to `whatsapp_messages`, `twilio_content_sid varchar(200) NULL` to `whatsapp_templates`
+
+**Test Results**: Application.Tests 2034 passed, 0 failed. Build: 0 errors.
+
+**API Verification** (2026-04-15 20:29 UTC):
+- Health check → HTTP 200 ✅ (PostgreSQL Healthy, EF Core Healthy)
+- POST `/api/webhooks/whatsapp/twilio-status` → HTTP 200 ✅ (new endpoint live)
+- POST `/api/webhooks/whatsapp/status` → HTTP 200 ✅ (ACS endpoint still works, no regression)
+- EF Migration applied → Confirmed in CI/CD logs ✅
+
+**Manual Setup Required**: Twilio account creation, template submission, env var configuration (see plan)
+
+---
+
+## ⏸️ Previous Session Status (2026-04-12)
 
 ### Phase 7B: Photo Album "Send Email" Not Sending — Root Cause Fix
 

@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🎯 CURRENT SESSION STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D ✅ DEPLOYED
+## 🎯 CURRENT SESSION STATUS - TWILIO WHATSAPP BSP INTEGRATION PHASE 7B.2 ✅ DEPLOYED
+**Date**: 2026-04-15
+**Session**: Phase 7B.2 — Twilio WhatsApp BSP Integration
+**Progress**: ✅ **DEPLOYED** — Added Twilio as alternative WhatsApp BSP. Strategy pattern (`TwilioWhatsAppStrategy`), factory-based DI for provider/webhook/verification selection, Twilio webhook endpoint with HMAC-SHA1 validation, Twilio phone verification service. Config-driven via `WhatsAppSettings__Provider` enum. EF migration adds `provider` + `twilio_content_sid` columns. Zero changes to 11 event handlers, 2 background jobs, or frontend. 7 new files, 5 modified files, ~760 lines added. 2034 tests pass.
+**Status**: ✅ **DEPLOYED** — Commits `fbef9a06`, `41728340`. Migration applied. Health check 200. Twilio webhook endpoint `/api/webhooks/whatsapp/twilio-status` → 200. ACS endpoint still works (no regression). Manual Twilio account setup required to activate.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP DATA PERSISTENCE PHASE 7A.6D ✅ DEPLOYED
 **Date**: 2026-04-06
 **Session**: Phase 7A.6D — WhatsApp Data Persistence for Event Registration + Newsletter
 **Progress**: ✅ **DEPLOYED** — Fixed 7 break points where frontend WhatsApp data was silently dropped by backend. `RegistrationContact` value object extended with `WhatsAppPhoneNumber`+`WhatsAppOptedIn` (JSONB, no migration). `NewsletterSubscriber` entity extended (migration added `whatsapp_phone_number` column). All commands, handlers, DTOs updated. `AnonymousRegistrationWhatsAppHandler` fixed to use opt-in phone + check flag. 15 files, ~240 lines, 2,031 tests pass.

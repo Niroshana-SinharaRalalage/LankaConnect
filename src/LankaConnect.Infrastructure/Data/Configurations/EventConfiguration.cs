@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Communications.Entities; // Phase 6A.32: Email groups relationship
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
@@ -162,6 +163,26 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         {
             addOnConfig.ToJson("add_on_config");
         });
+
+        // Multi-tier ticketing: TicketingMode enum
+        builder.Property(e => e.TicketingMode)
+            .HasColumnName("ticketing_mode")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(TicketingMode.SingleTier);
+
+        // Multi-tier ticketing: TicketTiers relationship
+        builder.HasMany(e => e.TicketTiers)
+            .WithOne()
+            .HasForeignKey(t => t.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(e => e.TicketTiers)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Ignore computed properties from partial class
+        builder.Ignore(e => e.HasTicketTiers);
 
         // Configure audit fields
         builder.Property(e => e.CreatedAt)

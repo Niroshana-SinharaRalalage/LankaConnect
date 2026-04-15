@@ -79,6 +79,31 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.CollectionConfig, opt => opt.MapFrom(src => src.CollectionConfig))
             .ForMember(dest => dest.SponsorConfig, opt => opt.MapFrom(src => src.SponsorConfig))
             .ForMember(dest => dest.AddOnConfig, opt => opt.MapFrom(src => src.AddOnConfig))
+            // Phase 8: Multi-Tier Ticketing
+            .ForMember(dest => dest.TicketingMode, opt => opt.MapFrom(src => src.TicketingMode))
+            .ForMember(dest => dest.HasTicketTiers, opt => opt.MapFrom(src => src.HasTicketTiers))
+            .ForMember(dest => dest.TicketTiers, opt => opt.MapFrom(src =>
+                src.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered
+                    ? src.GetActiveTiers().Select(t => new TicketTierDto
+                    {
+                        Id = t.Id,
+                        Name = t.Name,
+                        Description = t.Description,
+                        AdultPriceAmount = t.AdultPrice.Amount,
+                        AdultPriceCurrency = t.AdultPrice.Currency,
+                        ChildPriceAmount = t.ChildPrice != null ? t.ChildPrice.Amount : (decimal?)null,
+                        ChildPriceCurrency = t.ChildPrice != null ? t.ChildPrice.Currency : (Domain.Shared.Enums.Currency?)null,
+                        ChildAgeLimit = t.ChildAgeLimit,
+                        HasChildPricing = t.HasChildPricing,
+                        Capacity = t.Capacity,
+                        ReservedCount = t.ReservedCount,
+                        AvailableQuantity = t.AvailableQuantity,
+                        MaxPerUser = t.MaxPerUser,
+                        SortOrder = t.SortOrder,
+                        IsActive = t.IsActive,
+                        IsFree = t.IsFree
+                    }).ToList()
+                    : new List<TicketTierDto>()))
             // Phase 6A.133: IsCurrentUserOrganizer is computed post-mapping by query handlers
             .ForMember(dest => dest.IsCurrentUserOrganizer, opt => opt.Ignore());
 

@@ -81,8 +81,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<SignUpItem> SignUpItems => Set<SignUpItem>(); // Phase 6A.16: Required for cascade deletion
     public DbSet<SignUpCommitment> SignUpCommitments => Set<SignUpCommitment>(); // Phase 6A.16: Cascade deletion
 
-    // Ticket Entity Set (Phase 6A.24)
+    // Ticket Entity Sets
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
+    public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
 
     // Registration Addition Entity Sets (Add-Only Attendees Feature)
     public DbSet<RegistrationAddition> RegistrationAdditions => Set<RegistrationAddition>(); // Delta payment for adding attendees
@@ -149,6 +150,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Apply entity configurations
         modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new TicketTierConfiguration()); // Multi-tier ticketing (must be before EventConfiguration to avoid shared-type Money conflict)
         modelBuilder.ApplyConfiguration(new EventConfiguration());
         modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
@@ -391,7 +393,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration
             typeof(UserWhatsAppPreferences), // Phase 7A: WhatsApp Integration
-            typeof(WhatsAppWebhookEvent) // Phase 7A: WhatsApp Integration
+            typeof(WhatsAppWebhookEvent), // Phase 7A: WhatsApp Integration
+            typeof(TicketTier) // Multi-tier ticketing
         };
 
         // Get all types from Domain assembly that aren't in our configured list

@@ -101,6 +101,11 @@ using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
 using LankaConnect.Application.Events.Commands.CancelPendingAddition;
+using LankaConnect.Application.Events.Commands.AddTicketTier;
+using LankaConnect.Application.Events.Commands.UpdateTicketTier;
+using LankaConnect.Application.Events.Commands.RemoveTicketTier;
+using LankaConnect.Application.Events.Commands.SetTicketingMode;
+using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -1629,6 +1634,132 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Removing pass {PassId} from event {EventId}", passId, eventId);
 
         var command = new RemovePassFromEventCommand(eventId, passId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
+    #region Ticket Tier Management (Phase 8)
+
+    /// <summary>
+    /// Get all ticket tiers for an event with availability info
+    /// </summary>
+    [HttpGet("{id:guid}/ticket-tiers")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IReadOnlyList<TicketTierDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetTicketTiers(Guid id)
+    {
+        Logger.LogInformation("Getting ticket tiers for event {EventId}", id);
+
+        var query = new GetTicketTiersQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Set the ticketing mode for an event (SingleTier or Tiered)
+    /// Must be set to Tiered before adding ticket tiers.
+    /// </summary>
+    [HttpPut("{id:guid}/ticketing-mode")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetTicketingMode(Guid id, [FromBody] SetTicketingModeRequest request)
+    {
+        Logger.LogInformation("Setting ticketing mode for event {EventId} to {Mode}", id, request.TicketingMode);
+
+        var command = new SetTicketingModeCommand(id, request.TicketingMode);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Add a new ticket tier to an event (Event Organizer/Admin only)
+    /// Event must be in Tiered ticketing mode.
+    /// </summary>
+    [HttpPost("{id:guid}/ticket-tiers")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddTicketTier(Guid id, [FromBody] AddTicketTierRequest request)
+    {
+        Logger.LogInformation("Adding ticket tier '{TierName}' to event {EventId}", request.Name, id);
+
+        var command = new AddTicketTierCommand(
+            id,
+            request.Name,
+            request.Description,
+            request.AdultPriceAmount,
+            request.AdultPriceCurrency,
+            request.ChildPriceAmount,
+            request.ChildPriceCurrency,
+            request.ChildAgeLimit,
+            request.Capacity,
+            request.MaxPerUser,
+            request.SortOrder);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update an existing ticket tier (Event Organizer/Admin only)
+    /// </summary>
+    [HttpPut("{eventId:guid}/ticket-tiers/{tierId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateTicketTier(Guid eventId, Guid tierId, [FromBody] UpdateTicketTierRequest request)
+    {
+        Logger.LogInformation("Updating ticket tier {TierId} for event {EventId}", tierId, eventId);
+
+        var command = new UpdateTicketTierCommand(
+            eventId,
+            tierId,
+            request.Name,
+            request.Description,
+            request.AdultPriceAmount,
+            request.AdultPriceCurrency,
+            request.ChildPriceAmount,
+            request.ChildPriceCurrency,
+            request.ChildAgeLimit,
+            request.Capacity,
+            request.MaxPerUser,
+            request.SortOrder);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Remove a ticket tier from an event (Event Organizer/Admin only)
+    /// Cannot remove a tier that has reservations.
+    /// </summary>
+    [HttpDelete("{eventId:guid}/ticket-tiers/{tierId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveTicketTier(Guid eventId, Guid tierId)
+    {
+        Logger.LogInformation("Removing ticket tier {TierId} from event {EventId}", tierId, eventId);
+
+        var command = new RemoveTicketTierCommand(eventId, tierId);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -3525,3 +3656,31 @@ public record UpdateFormAnswerRequest(
     string? TextValue,
     List<Guid>? SelectedOptionIds,
     bool? BooleanValue);
+
+// Phase 8: Ticket Tier Management request DTOs
+
+public record SetTicketingModeRequest(TicketingMode TicketingMode);
+
+public record AddTicketTierRequest(
+    string Name,
+    string? Description,
+    decimal AdultPriceAmount,
+    Currency AdultPriceCurrency,
+    decimal? ChildPriceAmount,
+    Currency? ChildPriceCurrency,
+    int? ChildAgeLimit,
+    int Capacity,
+    int MaxPerUser = 10,
+    int SortOrder = 0);
+
+public record UpdateTicketTierRequest(
+    string Name,
+    string? Description,
+    decimal AdultPriceAmount,
+    Currency AdultPriceCurrency,
+    decimal? ChildPriceAmount,
+    Currency? ChildPriceCurrency,
+    int? ChildAgeLimit,
+    int Capacity,
+    int MaxPerUser = 10,
+    int SortOrder = 0);

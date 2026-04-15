@@ -152,6 +152,22 @@ public record EventDto
     /// </summary>
     public AddOnConfigurationDto? AddOnConfig { get; init; }
 
+    // Phase 8: Multi-Tier Ticketing
+    /// <summary>
+    /// Phase 8: Ticketing mode — SingleTier (legacy) or Tiered (multi-tier pricing).
+    /// </summary>
+    public TicketingMode TicketingMode { get; init; }
+
+    /// <summary>
+    /// Phase 8: Ticket tiers for this event (only populated when TicketingMode == Tiered).
+    /// </summary>
+    public IReadOnlyList<TicketTierDto> TicketTiers { get; init; } = Array.Empty<TicketTierDto>();
+
+    /// <summary>
+    /// Phase 8: Whether event has active ticket tiers configured.
+    /// </summary>
+    public bool HasTicketTiers { get; init; }
+
     /// <summary>
     /// Issue #2: User's registration status for this event (if user is registered)
     /// Only populated for authenticated queries like /my-rsvps

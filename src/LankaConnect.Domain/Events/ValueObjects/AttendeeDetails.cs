@@ -14,6 +14,18 @@ public class AttendeeDetails : ValueObject
     public AgeCategory AgeCategory { get; }
     public Gender? Gender { get; }
 
+    /// <summary>
+    /// Optional ticket tier ID for multi-tier events.
+    /// Null for SingleTier mode events.
+    /// </summary>
+    public Guid? TicketTierId { get; }
+
+    /// <summary>
+    /// Denormalized tier name for display (e.g., "VIP", "Basic").
+    /// Null for SingleTier mode events.
+    /// </summary>
+    public string? TicketTierName { get; }
+
     // EF Core constructor
     private AttendeeDetails()
     {
@@ -21,11 +33,14 @@ public class AttendeeDetails : ValueObject
         Name = null!;
     }
 
-    private AttendeeDetails(string name, AgeCategory ageCategory, Gender? gender)
+    private AttendeeDetails(string name, AgeCategory ageCategory, Gender? gender,
+        Guid? ticketTierId = null, string? ticketTierName = null)
     {
         Name = name;
         AgeCategory = ageCategory;
         Gender = gender;
+        TicketTierId = ticketTierId;
+        TicketTierName = ticketTierName;
     }
 
     /// <summary>
@@ -34,7 +49,8 @@ public class AttendeeDetails : ValueObject
     /// <param name="name">Attendee's full name</param>
     /// <param name="ageCategory">Age category (Adult or Child)</param>
     /// <param name="gender">Optional gender (Male, Female, or Other)</param>
-    public static Result<AttendeeDetails> Create(string? name, AgeCategory ageCategory, Gender? gender = null)
+    public static Result<AttendeeDetails> Create(string? name, AgeCategory ageCategory, Gender? gender = null,
+        Guid? ticketTierId = null, string? ticketTierName = null)
     {
         // Validation: Name is required
         if (string.IsNullOrWhiteSpace(name))
@@ -51,7 +67,8 @@ public class AttendeeDetails : ValueObject
         // Trim whitespace from name
         var trimmedName = name.Trim();
 
-        return Result<AttendeeDetails>.Success(new AttendeeDetails(trimmedName, ageCategory, gender));
+        return Result<AttendeeDetails>.Success(new AttendeeDetails(
+            trimmedName, ageCategory, gender, ticketTierId, ticketTierName?.Trim()));
     }
 
     /// <summary>
@@ -85,6 +102,7 @@ public class AttendeeDetails : ValueObject
         yield return Name;
         yield return AgeCategory;
         yield return Gender ?? Enums.Gender.Other; // Use default for null comparison
+        yield return TicketTierId ?? Guid.Empty;
     }
 
     public override string ToString()

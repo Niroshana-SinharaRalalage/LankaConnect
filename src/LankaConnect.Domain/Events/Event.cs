@@ -7,7 +7,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
-public class Event : BaseEntity
+public partial class Event : BaseEntity
 {
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support

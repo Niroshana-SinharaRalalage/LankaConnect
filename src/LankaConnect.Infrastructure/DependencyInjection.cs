@@ -43,6 +43,7 @@ using LankaConnect.Domain.Support;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Infrastructure.WhatsApp.Configuration;
 using LankaConnect.Infrastructure.WhatsApp.Services;
+using LankaConnect.Domain.Communications.Enums;
 using Stripe;
 using Serilog;
 
@@ -161,10 +162,41 @@ public static class DependencyInjection
         services.AddScoped<IWhatsAppMessageRepository, WhatsAppMessageRepository>();
         services.AddScoped<IWhatsAppTemplateRepository, WhatsAppTemplateRepository>();
         services.AddScoped<IUserWhatsAppPreferencesRepository, UserWhatsAppPreferencesRepository>();
-        services.AddScoped<IWhatsAppSendStrategy, AcsWhatsAppStrategy>();
+        // Phase 7B: Factory-based provider selection — config-driven, instant rollback via env var
+        services.AddScoped<AcsWhatsAppStrategy>();
+        services.AddScoped<TwilioWhatsAppStrategy>();
+        services.AddScoped<IWhatsAppSendStrategy>(sp =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;
+            return settings.Provider switch
+            {
+                WhatsAppProvider.Twilio => sp.GetRequiredService<TwilioWhatsAppStrategy>(),
+                _ => sp.GetRequiredService<AcsWhatsAppStrategy>(),
+            };
+        });
         services.AddScoped<IWhatsAppService, WhatsAppService>();
-        services.AddScoped<IPhoneVerificationService, SmsPhoneVerificationService>();
-        services.AddScoped<IWhatsAppWebhookProcessor, WhatsAppWebhookProcessor>();
+        services.AddScoped<SmsPhoneVerificationService>();
+        services.AddScoped<TwilioPhoneVerificationService>();
+        services.AddScoped<IPhoneVerificationService>(sp =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;
+            return settings.Provider switch
+            {
+                WhatsAppProvider.Twilio => sp.GetRequiredService<TwilioPhoneVerificationService>(),
+                _ => sp.GetRequiredService<SmsPhoneVerificationService>(),
+            };
+        });
+        services.AddScoped<WhatsAppWebhookProcessor>();
+        services.AddScoped<TwilioWhatsAppWebhookProcessor>();
+        services.AddScoped<IWhatsAppWebhookProcessor>(sp =>
+        {
+            var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<WhatsAppSettings>>().Value;
+            return settings.Provider switch
+            {
+                WhatsAppProvider.Twilio => sp.GetRequiredService<TwilioWhatsAppWebhookProcessor>(),
+                _ => sp.GetRequiredService<WhatsAppWebhookProcessor>(),
+            };
+        });
 
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();

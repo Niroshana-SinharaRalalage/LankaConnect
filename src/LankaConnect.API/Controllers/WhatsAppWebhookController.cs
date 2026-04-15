@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Infrastructure.WhatsApp.Services;
 
 namespace LankaConnect.API.Controllers;
 
 /// <summary>
-/// Phase 7A: Webhook endpoint for WhatsApp/ACS delivery status callbacks.
-/// AllowAnonymous because Azure Event Grid calls this endpoint directly.
-/// Validates requests via Event Grid subscription handshake and webhook secret.
+/// Phase 7A/7B: Webhook endpoints for WhatsApp delivery status callbacks.
+/// Supports both ACS (Event Grid CloudEvents) and Twilio (HMAC-SHA1 form-encoded).
+/// AllowAnonymous because provider systems call these endpoints directly.
 /// </summary>
 [ApiController]
 [Route("api/webhooks/whatsapp")]
@@ -17,13 +18,16 @@ namespace LankaConnect.API.Controllers;
 public class WhatsAppWebhookController : ControllerBase
 {
     private readonly IWhatsAppWebhookProcessor _processor;
+    private readonly TwilioWhatsAppWebhookProcessor _twilioProcessor;
     private readonly ILogger<WhatsAppWebhookController> _logger;
 
     public WhatsAppWebhookController(
         IWhatsAppWebhookProcessor processor,
+        TwilioWhatsAppWebhookProcessor twilioProcessor,
         ILogger<WhatsAppWebhookController> logger)
     {
         _processor = processor;
+        _twilioProcessor = twilioProcessor;
         _logger = logger;
     }
 
@@ -85,6 +89,70 @@ public class WhatsAppWebhookController : ControllerBase
                 "[Phase 7A] Unhandled exception processing WhatsApp delivery status webhook");
 
             // Return 500 only for truly unexpected errors so Event Grid can retry
+            return StatusCode(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Phase 7B: Handle WhatsApp delivery status webhook from Twilio.
+    /// Twilio sends form-encoded POST with X-Twilio-Signature for validation.
+    /// Separate endpoint because Twilio uses different auth/payload format than ACS.
+    /// </summary>
+    [HttpPost("twilio-status")]
+    [Consumes("application/x-www-form-urlencoded")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> HandleTwilioDeliveryStatus(
+        [FromForm] Dictionary<string, string> formData,
+        [FromHeader(Name = "X-Twilio-Signature")] string? twilioSignature,
+        CancellationToken ct)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[Phase 7B] Processing Twilio WhatsApp delivery status webhook - FieldCount={FieldCount}",
+                formData.Count);
+
+            // Validate Twilio signature
+            var requestUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
+            if (!string.IsNullOrWhiteSpace(twilioSignature))
+            {
+                var isValid = _twilioProcessor.ValidateSignature(requestUrl, formData, twilioSignature);
+                if (!isValid)
+                {
+                    _logger.LogWarning("[Phase 7B] Twilio signature validation failed. Rejecting webhook.");
+                    return Forbid();
+                }
+            }
+            else
+            {
+                _logger.LogWarning("[Phase 7B] No X-Twilio-Signature header. Processing anyway (staging mode).");
+            }
+
+            // Convert form data to a payload string for the processor
+            var payload = string.Join("&",
+                formData.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+
+            var result = await _twilioProcessor.ProcessDeliveryStatusAsync(payload, ct);
+
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("[Phase 7B] Twilio webhook processed successfully");
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[Phase 7B] Twilio webhook processing failed: {Error}",
+                    result.Errors.FirstOrDefault());
+            }
+
+            // Always return 200 to prevent Twilio retries
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 7B] Unhandled exception processing Twilio delivery status webhook");
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
     }

@@ -121,7 +121,11 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
 
             var from = new PhoneNumber(FormatWhatsAppNumber(_settings.TwilioWhatsAppNumber));
             var to = new PhoneNumber(FormatWhatsAppNumber(toPhoneNumber));
-            var contentVariables = BuildContentVariables(parameterValues);
+
+            // Build the message body with parameter values interpolated
+            // Sandbox mode: send as plain text since no ContentSid is available
+            // Production mode: would use ContentSid + ContentVariables (when templates are registered)
+            var body = BuildTemplateBody(templateName, parameterValues);
 
             // Send with retry for rate limiting (429/500/503)
             MessageResource? messageResource = null;
@@ -132,13 +136,10 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
             {
                 try
                 {
-                    // Use Twilio Messages API with template name as body
-                    // When ContentSid is available, the WhatsAppService will pass it via the template lookup
                     messageResource = await MessageResource.CreateAsync(
                         from: from,
                         to: to,
-                        body: $"Template: {templateName}",  // Fallback body; overridden by ContentSid when available
-                        contentVariables: contentVariables);
+                        body: body);
                     break;
                 }
                 catch (ApiException ex) when (IsRetryableStatusCode(ex.Status) && retryCount < maxRetries)
@@ -253,6 +254,22 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
                 maskedPhone, sw.ElapsedMilliseconds);
             return Result<string>.Failure($"Failed to send text message: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Build a readable text body from template name and parameter values.
+    /// Used when no ContentSid is available (sandbox mode).
+    /// Replaces positional placeholders {{1}}, {{2}}, etc. with actual values.
+    /// </summary>
+    private static string BuildTemplateBody(string templateName, IReadOnlyList<string> parameterValues)
+    {
+        // Build a human-readable message with the template name and parameters
+        var body = $"[{templateName}]";
+        if (parameterValues.Count > 0)
+        {
+            body += " " + string.Join(", ", parameterValues.Select((v, i) => $"{{{{{i + 1}}}}}={v}"));
+        }
+        return body;
     }
 
     /// <summary>

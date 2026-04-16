@@ -205,7 +205,11 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 {
                     foreach (var attendee in registration.Attendees)
                     {
-                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                        // Phase 8: Include tier name if present (e.g., "John Smith (VIP)")
+                        var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                            ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                            : "";
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}</p>");
                     }
                 }
 
@@ -232,8 +236,28 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 // Phase 6A.97: Set event's timezone for consistent date/time display
                 typedParams.TimeZoneId = @event.TimeZoneId;
 
-                // Set ticket type
-                typedParams.TicketType = @event.IsFree() ? "Free Entry" : "General Admission";
+                // Phase 8: Set ticket type dynamically based on ticketing mode
+                if (@event.IsFree())
+                {
+                    typedParams.TicketType = "Free Entry";
+                }
+                else if (@event.TicketingMode == TicketingMode.Tiered && registration.Attendees.Any(a => a.TicketTierName != null))
+                {
+                    // Build tier summary from attendee tier assignments (e.g., "2x VIP, 3x Basic")
+                    var tierGroups = registration.Attendees
+                        .Where(a => a.TicketTierName != null)
+                        .GroupBy(a => a.TicketTierName!)
+                        .Select(g => g.Count() > 1 ? $"{g.Count()}x {g.Key}" : g.Key)
+                        .ToList();
+                    typedParams.TicketType = string.Join(", ", tierGroups);
+                    _logger.LogInformation(
+                        "[Phase 8] [PaymentEmail-TierType] Set dynamic ticket type from tiers - CorrelationId: {CorrelationId}, TicketType: {TicketType}",
+                        correlationId, typedParams.TicketType);
+                }
+                else
+                {
+                    typedParams.TicketType = "General Admission";
+                }
                 typedParams.RegistrationDate = domainEvent.PaymentCompletedAt;
 
                 // Phase 6A.128: Fix - use WithSignUpLists() which sets BOTH URL and HasSignUpLists flag

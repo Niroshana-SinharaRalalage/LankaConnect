@@ -124,13 +124,31 @@ public class TicketService : ITicketService
 
             // Prepare attendee info for PDF
             // Phase 6A.43: Use AgeCategory instead of Age
+            // Phase 8: Include tier name per attendee for tiered events
             var attendees = registration.Attendees
-                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
+                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString(), a.TicketTierName))
                 .ToList();
 
             var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                 ? registration.Attendees.First().Name
                 : "Guest";
+
+            // Phase 8: Build ticket type label for PDF
+            string? ticketType = null;
+            if (@event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered
+                && registration.Attendees.Any(a => a.TicketTierName != null))
+            {
+                var tierGroups = registration.Attendees
+                    .Where(a => a.TicketTierName != null)
+                    .GroupBy(a => a.TicketTierName!)
+                    .Select(g => g.Count() > 1 ? $"{g.Count()}x {g.Key}" : g.Key)
+                    .ToList();
+                ticketType = string.Join(", ", tierGroups);
+            }
+            else
+            {
+                ticketType = @event.IsFree() ? "Free Entry" : "General Admission";
+            }
 
             // Generate PDF
             var pdfData = new TicketPdfData
@@ -148,7 +166,8 @@ public class TicketService : ITicketService
                 Attendees = attendees,
                 AmountPaid = registration.TotalPrice?.Amount ?? 0m,
                 PaymentDate = DateTime.UtcNow,
-                TimeZoneId = @event.TimeZoneId
+                TimeZoneId = @event.TimeZoneId,
+                TicketType = ticketType
             };
 
             var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);

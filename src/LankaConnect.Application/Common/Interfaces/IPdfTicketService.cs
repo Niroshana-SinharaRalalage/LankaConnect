@@ -82,8 +82,14 @@ public record TicketPdfData
     public string? TimeZoneId { get; init; }
 
     /// <summary>
+    /// Ticket type label for display on PDF (e.g., "General Admission", "VIP", "2x VIP, 3x Basic")
+    /// </summary>
+    public string? TicketType { get; init; }
+
+    /// <summary>
     /// Attendee information for the ticket
     /// Phase 6A.43: Updated to use AgeCategory string instead of numeric Age
+    /// Phase 8: Added TierName for multi-tier ticketing
     /// </summary>
-    public record AttendeeInfo(string Name, string AgeCategory);
+    public record AttendeeInfo(string Name, string AgeCategory, string? TierName = null);
 }

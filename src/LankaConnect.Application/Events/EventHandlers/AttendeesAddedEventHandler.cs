@@ -161,14 +161,21 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                 var allAttendees = registration.Attendees.ToList();
                 var newAttendees = allAttendees.TakeLast(domainEvent.AddedAttendeeCount).ToList();
 
+                // Phase 8: Include tier name when present
                 foreach (var attendee in newAttendees)
                 {
+                    var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                        : "";
+                    var tierText = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" [{attendee.TicketTierName}]"
+                        : "";
                     newAttendeesHtml.AppendLine($@"<div class=""attendee-item"">
                         <div class=""attendee-icon new"">&#10003;</div>
-                        <span class=""attendee-name"">{attendee.Name}</span>
+                        <span class=""attendee-name"">{attendee.Name}{tierSuffix}</span>
                         <span class=""attendee-badge"">NEW</span>
                     </div>");
-                    newAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory})");
+                    newAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){tierText}");
                 }
 
                 var allAttendeesHtml = new System.Text.StringBuilder();
@@ -181,12 +188,18 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     var badge = isNew ? @"<span class=""attendee-badge"">NEW</span>" : "";
                     var initial = attendee.Name.Length > 0 ? attendee.Name[0].ToString().ToUpper() : index.ToString();
 
+                    var allTierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                        : "";
+                    var allTierText = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" [{attendee.TicketTierName}]"
+                        : "";
                     allAttendeesHtml.AppendLine($@"<div class=""attendee-item"">
                         <div class=""attendee-icon {iconClass}"">{(isNew ? "&#10003;" : initial)}</div>
-                        <span class=""attendee-name"">{attendee.Name}</span>
+                        <span class=""attendee-name"">{attendee.Name}{allTierSuffix}</span>
                         {badge}
                     </div>");
-                    allAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory})");
+                    allAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){allTierText}");
                     index++;
                 }
 

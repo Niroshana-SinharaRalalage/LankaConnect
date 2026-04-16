@@ -120,9 +120,13 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             if (hasAttendeeDetailsLocal)
             {
+                // Phase 8: Include tier name when present
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                    var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                        : "";
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}</p>");
                 }
             }
 

@@ -7,8 +7,8 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto, CollectionConfigurationDto, SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
-import { AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto, CollectionConfigurationDto, SponsorConfigurationDto, TicketTierDto } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender, TicketingMode } from '@/infrastructure/api/types/events.types';
 import { DonationOptionInForm } from './DonationOptionInForm';
 import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { CollectionOptionInForm } from './CollectionOptionInForm';
@@ -38,6 +38,9 @@ interface EventRegistrationFormProps {
   // Phase 6D: Group tiered pricing support
   hasGroupPricing?: boolean;
   groupPricingTiers?: readonly GroupPricingTierDto[];
+  // Phase 8: Multi-tier ticketing support
+  ticketingMode?: TicketingMode;
+  ticketTiers?: readonly TicketTierDto[];
   // Issue #51: Max attendees per registration (configurable by event organizer)
   maxAttendeesPerRegistration?: number;
   // Donation Feature: Optional donation configuration
@@ -63,6 +66,8 @@ export function EventRegistrationForm({
   childAgeLimit,
   hasGroupPricing,
   groupPricingTiers,
+  ticketingMode,
+  ticketTiers,
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
   donationConfig,
   addOnConfig,
@@ -101,8 +106,8 @@ export function EventRegistrationForm({
 
   // Session 21: Multi-attendee state
   // Phase 6A.43: Updated to use AgeCategory and Gender instead of age
-  const [attendees, setAttendees] = useState<Array<{ name: string; ageCategory: AgeCategory | ''; gender: Gender | null }>>([
-    { name: '', ageCategory: '', gender: null },
+  const [attendees, setAttendees] = useState<Array<{ name: string; ageCategory: AgeCategory | ''; gender: Gender | null; ticketTierId?: string | null }>>([
+    { name: '', ageCategory: '', gender: null, ticketTierId: null },
   ]);
 
   // Validation state
@@ -143,6 +148,7 @@ export function EventRegistrationForm({
           name: `${profile.firstName} ${profile.lastName}`.trim(),
           ageCategory: '',
           gender: null,
+          ticketTierId: null,
         },
       ]);
     }
@@ -158,7 +164,7 @@ export function EventRegistrationForm({
     // Issue #51: Use event's configured max attendees per registration
     const maxAttendees = Math.min(maxAttendeesPerRegistration, spotsLeft);
     if (attendees.length < maxAttendees) {
-      setAttendees([...attendees, { name: '', ageCategory: '', gender: null }]);
+      setAttendees([...attendees, { name: '', ageCategory: '', gender: null, ticketTierId: null }]);
       setTouched(prev => ({
         ...prev,
         attendees: [...prev.attendees, false],
@@ -180,7 +186,7 @@ export function EventRegistrationForm({
 
   // Session 21: Update individual attendee
   // Phase 6A.43: Updated to handle AgeCategory and Gender
-  const handleAttendeeChange = (index: number, field: 'name' | 'ageCategory' | 'gender', value: string | AgeCategory | Gender | null) => {
+  const handleAttendeeChange = (index: number, field: 'name' | 'ageCategory' | 'gender' | 'ticketTierId', value: string | AgeCategory | Gender | null) => {
     const updated = [...attendees];
     if (field === 'name') {
       updated[index] = { ...updated[index], name: value as string };
@@ -188,6 +194,8 @@ export function EventRegistrationForm({
       updated[index] = { ...updated[index], ageCategory: value === '' ? '' : (value as AgeCategory) };
     } else if (field === 'gender') {
       updated[index] = { ...updated[index], gender: value === '' ? null : (value as Gender) };
+    } else if (field === 'ticketTierId') {
+      updated[index] = { ...updated[index], ticketTierId: value === '' ? null : (value as string) };
     }
     setAttendees(updated);
   };
@@ -223,9 +231,28 @@ export function EventRegistrationForm({
     return null;
   };
 
-  // Session 21 + Phase 6D: Calculate total price with group/dual/single pricing support
+  // Phase 8: Helper to check if event uses tiered ticketing
+  const isTieredTicketing = ticketingMode === TicketingMode.Tiered && ticketTiers && ticketTiers.length > 0;
+  // Phase 8: Active tiers only
+  const activeTiers = isTieredTicketing ? ticketTiers.filter(t => t.isActive && t.availableQuantity > 0) : [];
+
+  // Session 21 + Phase 6D + Phase 8: Calculate total price
   const calculateTotalPrice = (): number => {
     if (isFree) return 0;
+
+    // Phase 8: Tiered ticketing (highest priority)
+    if (isTieredTicketing && ticketTiers) {
+      return attendees.reduce((total, attendee) => {
+        if (!attendee.ticketTierId || attendee.ageCategory === '') return total;
+        const tier = ticketTiers.find(t => t.id === attendee.ticketTierId);
+        if (!tier) return total;
+        if (tier.isFree) return total;
+        if (attendee.ageCategory === AgeCategory.Child && tier.childPriceAmount != null) {
+          return total + tier.childPriceAmount;
+        }
+        return total + tier.adultPriceAmount;
+      }, 0);
+    }
 
     // Phase 6D: Group tiered pricing (highest priority)
     if (hasGroupPricing && groupPricingTiers && groupPricingTiers.length > 0) {
@@ -262,10 +289,11 @@ export function EventRegistrationForm({
     email: touched.email && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
     phoneNumber: touched.phoneNumber ? validatePhoneNumber(phoneNumber).error || '' : '',
     attendees: attendees.map((attendee, index) => {
-      if (!touched.attendees[index]) return { name: '', ageCategory: '' };
+      if (!touched.attendees[index]) return { name: '', ageCategory: '', ticketTier: '' };
       return {
         name: !attendee.name.trim() ? 'Name is required' : '',
         ageCategory: attendee.ageCategory === '' ? 'Please select Adult or Child' : '',
+        ticketTier: isTieredTicketing && !attendee.ticketTierId ? 'Please select a ticket tier' : '',
       };
     }),
   };
@@ -278,7 +306,7 @@ export function EventRegistrationForm({
     email.trim() &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
     isValidPhoneNumber(phoneNumber) &&
-    attendees.every(a => a.name.trim() && a.ageCategory !== '');
+    attendees.every(a => a.name.trim() && a.ageCategory !== '' && (!isTieredTicketing || a.ticketTierId));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -301,6 +329,8 @@ export function EventRegistrationForm({
       name: a.name.trim(),
       ageCategory: a.ageCategory as AgeCategory,
       gender: a.gender,
+      // Phase 8: Include ticket tier ID for tiered events
+      ...(isTieredTicketing && a.ticketTierId && { ticketTierId: a.ticketTierId }),
     }));
 
     // Phase 6A.137D: Map add-on selections for bundled checkout
@@ -501,6 +531,40 @@ export function EventRegistrationForm({
                     <option value={Gender.Other}>Other</option>
                   </select>
                 </div>
+
+                {/* Phase 8: Ticket Tier Selector (shown for tiered events) */}
+                {isTieredTicketing && activeTiers.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-neutral-700">
+                      Ticket Tier <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={attendee.ticketTierId ?? ''}
+                      onChange={(e) => handleAttendeeChange(index, 'ticketTierId', e.target.value)}
+                      onBlur={() => handleAttendeeTouched(index)}
+                      disabled={isProcessing}
+                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm ${
+                        errors.attendees[index]?.ticketTier ? 'border-red-500' : 'border-neutral-300'
+                      }`}
+                    >
+                      <option value="">-- Select Tier --</option>
+                      {activeTiers.map((tier) => (
+                        <option key={tier.id} value={tier.id}>
+                          {tier.name}
+                          {tier.isFree
+                            ? ' (Free)'
+                            : attendee.ageCategory === AgeCategory.Child && tier.childPriceAmount != null
+                            ? ` ($${tier.childPriceAmount})`
+                            : ` ($${tier.adultPriceAmount})`}
+                          {' '} — {tier.availableQuantity} left
+                        </option>
+                      ))}
+                    </select>
+                    {errors.attendees[index]?.ticketTier && (
+                      <p className="text-xs text-red-600 mt-1">{errors.attendees[index].ticketTier}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

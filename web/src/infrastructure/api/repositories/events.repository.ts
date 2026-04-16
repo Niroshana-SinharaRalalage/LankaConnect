@@ -66,6 +66,12 @@ import type {
   UserSearchResultDto,
   // Cancellation result
   CancelRsvpResult,
+  // Phase 8: Ticket Tier Management
+  TicketTierDto,
+  SetTicketingModeRequest,
+  CreateTicketTierRequest,
+  UpdateTicketTierRequest,
+  TicketingMode,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1794,6 +1800,49 @@ export class EventsRepository {
     return await apiClient.get<UserSearchResultDto[]>(
       `/users/search?query=${encodeURIComponent(query)}`
     );
+  }
+
+  // ==================== Phase 8: Ticket Tier Management ====================
+
+  /**
+   * Phase 8: Get ticket tiers for an event with availability info.
+   * Public endpoint — no auth required.
+   */
+  async getTicketTiers(eventId: string): Promise<TicketTierDto[]> {
+    return await apiClient.get<TicketTierDto[]>(`/events/${eventId}/ticket-tiers`);
+  }
+
+  /**
+   * Phase 8: Set the ticketing mode for an event (SingleTier or Tiered).
+   * Requires auth.
+   */
+  async setTicketingMode(eventId: string, mode: TicketingMode): Promise<void> {
+    await apiClient.put<void>(`/events/${eventId}/ticketing-mode`, { ticketingMode: mode } as SetTicketingModeRequest);
+  }
+
+  /**
+   * Phase 8: Add a ticket tier to an event. Returns the new tier ID.
+   * Requires auth.
+   */
+  async addTicketTier(eventId: string, request: CreateTicketTierRequest): Promise<string> {
+    return await apiClient.post<string>(`/events/${eventId}/ticket-tiers`, request);
+  }
+
+  /**
+   * Phase 8: Update an existing ticket tier.
+   * Requires auth.
+   */
+  async updateTicketTier(eventId: string, tierId: string, request: UpdateTicketTierRequest): Promise<void> {
+    await apiClient.put<void>(`/events/${eventId}/ticket-tiers/${tierId}`, request);
+  }
+
+  /**
+   * Phase 8: Remove a ticket tier from an event.
+   * Cannot remove tiers with reservations.
+   * Requires auth.
+   */
+  async removeTicketTier(eventId: string, tierId: string): Promise<void> {
+    await apiClient.delete<void>(`/events/${eventId}/ticket-tiers/${tierId}`);
   }
 
 }

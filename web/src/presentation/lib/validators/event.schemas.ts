@@ -202,6 +202,27 @@ export const createEventSchema = z.object({
     .optional()
     .nullable(),
 
+  // Phase 8: Multi-tier ticketing
+  enableTieredTicketing: z.boolean().default(false),
+
+  ticketTiers: z
+    .array(z.object({
+      id: z.string().optional(),
+      name: z.string().min(1, 'Tier name is required').max(100),
+      description: z.string().max(500).default(''),
+      adultPriceAmount: z.number().min(0, 'Price must be 0 or greater'),
+      adultPriceCurrency: z.nativeEnum(Currency),
+      childPriceAmount: z.number().min(0).optional().nullable(),
+      childPriceCurrency: z.nativeEnum(Currency).optional().nullable(),
+      childAgeLimit: z.number().int().min(1).max(17).optional().nullable(),
+      capacity: z.number().int().min(1, 'Capacity must be at least 1'),
+      maxPerUser: z.number().int().min(1).max(50).default(10),
+      sortOrder: z.number().int().min(0).default(0),
+      isFree: z.boolean().optional(),
+    }))
+    .optional()
+    .nullable(),
+
   // Phase 6A.32: Email Groups Integration
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))
@@ -245,8 +266,8 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Session 33: If not free and not using dual or group pricing, single price and currency are required
-    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing) {
+    // Session 33: If not free and not using dual, group, or tiered pricing, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&
@@ -392,16 +413,30 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Phase 6D: Only one pricing mode can be enabled at a time
-    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing].filter(Boolean).length;
+    // Phase 6D + Phase 8: Only one pricing mode can be enabled at a time
+    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing, data.enableTieredTicketing].filter(Boolean).length;
     if (!data.isFree && modesEnabled > 1) {
       return false;
     }
     return true;
   },
   {
-    message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
+    message: 'Only one pricing mode can be enabled at a time (single, dual, group, or tiered)',
     path: ['enableGroupPricing'],
+  }
+).refine(
+  (data) => {
+    // Phase 8: If using tiered ticketing, at least one tier is required
+    if (!data.isFree && data.enableTieredTicketing) {
+      return data.ticketTiers !== null &&
+             data.ticketTiers !== undefined &&
+             data.ticketTiers.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one ticket tier is required for tiered ticketing',
+    path: ['ticketTiers'],
   }
 ).refine(
   (data) => {
@@ -576,6 +611,27 @@ const baseEditEventSchema = z.object({
     .optional()
     .nullable(),
 
+  // Phase 8: Multi-tier ticketing (same schema as create)
+  enableTieredTicketing: z.boolean().default(false),
+
+  ticketTiers: z
+    .array(z.object({
+      id: z.string().optional(),
+      name: z.string().min(1).max(100),
+      description: z.string().max(500).default(''),
+      adultPriceAmount: z.number().min(0),
+      adultPriceCurrency: z.nativeEnum(Currency),
+      childPriceAmount: z.number().min(0).optional().nullable(),
+      childPriceCurrency: z.nativeEnum(Currency).optional().nullable(),
+      childAgeLimit: z.number().int().min(1).max(17).optional().nullable(),
+      capacity: z.number().int().min(1),
+      maxPerUser: z.number().int().min(1).max(50).default(10),
+      sortOrder: z.number().int().min(0).default(0),
+      isFree: z.boolean().optional(),
+    }))
+    .optional()
+    .nullable(),
+
   // Phase 6A.32: Email Groups Integration
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))
@@ -626,8 +682,8 @@ export const editEventSchema = baseEditEventSchema.refine(
   }
 ).refine(
   (data) => {
-    // If not free and not using dual pricing, single price and currency are required
-    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing) {
+    // If not free and not using any advanced pricing mode, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&
@@ -717,15 +773,29 @@ export const editEventSchema = baseEditEventSchema.refine(
 ).refine(
   (data) => {
     // Only one pricing mode can be enabled at a time
-    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing].filter(Boolean).length;
+    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing, data.enableTieredTicketing].filter(Boolean).length;
     if (!data.isFree && modesEnabled > 1) {
       return false;
     }
     return true;
   },
   {
-    message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
+    message: 'Only one pricing mode can be enabled at a time (single, dual, group, or tiered)',
     path: ['enableGroupPricing'],
+  }
+).refine(
+  (data) => {
+    // Phase 8: If using tiered ticketing, at least one tier is required
+    if (!data.isFree && data.enableTieredTicketing) {
+      return data.ticketTiers !== null &&
+             data.ticketTiers !== undefined &&
+             data.ticketTiers.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one ticket tier is required for multi-tier ticketing',
+    path: ['ticketTiers'],
   }
 ).refine(
   (data) => {

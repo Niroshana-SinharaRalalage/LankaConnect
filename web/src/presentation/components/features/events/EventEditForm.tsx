@@ -22,6 +22,8 @@ import { useContentImageUpload } from '@/presentation/hooks/useContentImageUploa
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
+import { TicketTierBuilder, type TicketTierFormData } from './TicketTierBuilder';
+import { TicketingMode } from '@/infrastructure/api/types/events.types';
 import { DonationConfigForm } from './DonationConfigForm';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { SponsorConfigForm } from './SponsorConfigForm';
@@ -161,6 +163,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Pricing mode toggles
       enableDualPricing: event.hasDualPricing ?? false,
       enableGroupPricing: event.hasGroupPricing ?? false,
+      enableTieredTicketing: event.ticketingMode === TicketingMode.Tiered,
+      ticketTiers: [],
       // Single pricing - undefined by default, populated by reset() if applicable
       ticketPriceAmount: undefined,
       ticketPriceCurrency: undefined,
@@ -252,6 +256,24 @@ export function EventEditForm({ event }: EventEditFormProps) {
       childPriceAmount: hasDualPricing ? (event.childPriceAmount ?? undefined) : undefined,
       childPriceCurrency: hasDualPricing ? childCurrency : undefined,
       childAgeLimit: hasDualPricing ? (event.childAgeLimit ?? undefined) : undefined,
+      // Phase 8: Tiered ticketing
+      enableTieredTicketing: event.ticketingMode === TicketingMode.Tiered,
+      ticketTiers: event.ticketingMode === TicketingMode.Tiered && event.ticketTiers
+        ? event.ticketTiers.map(tier => ({
+            id: tier.id,
+            name: tier.name,
+            description: tier.description || '',
+            adultPriceAmount: tier.adultPriceAmount,
+            adultPriceCurrency: convertCurrencyToNumber(tier.adultPriceCurrency),
+            childPriceAmount: tier.childPriceAmount ?? null,
+            childPriceCurrency: tier.childPriceCurrency ? convertCurrencyToNumber(tier.childPriceCurrency) : null,
+            childAgeLimit: tier.childAgeLimit ?? null,
+            capacity: tier.capacity,
+            maxPerUser: tier.maxPerUser,
+            sortOrder: tier.sortOrder,
+            isFree: tier.isFree,
+          }))
+        : [],
       // Group pricing - Session 44: Convert currency values from string to number
       enableGroupPricing: hasGroupPricing,
       groupPricingTiers: hasGroupPricing && event.groupPricingTiers
@@ -284,6 +306,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const isFree = watch('isFree');
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
+  const enableTieredTicketing = watch('enableTieredTicketing');
+  const ticketTiers = (watch('ticketTiers') || []) as TicketTierFormData[];
   const publishOrganizerContact = watch('publishOrganizerContact');
 
   // Auto-populate first organizer contact from user profile when checkbox is checked
@@ -408,7 +432,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Session 33: Determine pricing mode and build appropriate pricing fields
       const isDualPricing = !data.isFree && data.enableDualPricing;
       const isGroupPricing = !data.isFree && data.enableGroupPricing;
-      const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing;
+      const isTieredTicketing = !data.isFree && data.enableTieredTicketing;
+      const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing;
 
       const eventData = {
         eventId: event.id,
@@ -473,6 +498,23 @@ export function EventEditForm({ event }: EventEditFormProps) {
             maxAttendees: tier.maxAttendees ?? null,
             pricePerPerson: tier.pricePerPerson,
             currency: tier.currency,
+          })),
+        }),
+        // Phase 8: Tiered ticketing mode
+        ...(isTieredTicketing && {
+          ticketingMode: 'Tiered' as const,
+          ticketTiers: (data.ticketTiers as TicketTierFormData[] | undefined)?.map((tier) => ({
+            id: tier.id || undefined,
+            name: tier.name,
+            description: tier.description || null,
+            adultPriceAmount: tier.adultPriceAmount,
+            adultPriceCurrency: tier.adultPriceCurrency,
+            childPriceAmount: tier.childPriceAmount ?? null,
+            childPriceCurrency: tier.childPriceCurrency ?? null,
+            childAgeLimit: tier.childAgeLimit ?? null,
+            capacity: tier.capacity,
+            maxPerUser: tier.maxPerUser,
+            sortOrder: tier.sortOrder,
           })),
         }),
       };
@@ -882,6 +924,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       onChange: (e) => {
                         if (e.target.checked) {
                           setValue('enableGroupPricing', false);
+                          setValue('enableTieredTicketing', false);
+                          setValue('ticketTiers', []);
                         }
                       }
                     })}
@@ -901,6 +945,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       onChange: (e) => {
                         if (e.target.checked) {
                           setValue('enableDualPricing', false);
+                          setValue('enableTieredTicketing', false);
+                          setValue('ticketTiers', []);
                         }
                       }
                     })}
@@ -909,10 +955,32 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     Enable Group Tiered Pricing (quantity-based discounts for groups)
                   </label>
                 </div>
+
+                {/* Phase 8: Tiered Ticketing Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableTieredTicketing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableTieredTicketing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableDualPricing', false);
+                          setValue('enableGroupPricing', false);
+                        } else {
+                          setValue('ticketTiers', []);
+                        }
+                      }
+                    })}
+                  />
+                  <label htmlFor="enableTieredTicketing" className="text-sm font-medium text-neutral-700">
+                    Enable Multi-Tier Ticketing (VIP, Plus, Basic tiers with separate pricing and capacity)
+                  </label>
+                </div>
               </div>
 
               {/* Single Pricing Fields (default) */}
-              {!enableDualPricing && !enableGroupPricing && (
+              {!enableDualPricing && !enableGroupPricing && !enableTieredTicketing && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Ticket Price */}
                   <div>
@@ -1269,6 +1337,19 @@ export function EventEditForm({ event }: EventEditFormProps) {
                   {errors.groupPricingTiers && typeof errors.groupPricingTiers === 'object' && 'message' in errors.groupPricingTiers && (
                     <p className="mt-2 text-sm text-destructive">{errors.groupPricingTiers.message as string}</p>
                   )}
+                </div>
+              )}
+
+              {/* Phase 8: Ticket Tier Builder */}
+              {enableTieredTicketing && (
+                <div className="space-y-4">
+                  <TicketTierBuilder
+                    tiers={ticketTiers}
+                    onChange={(tiers) => setValue('ticketTiers', tiers)}
+                    defaultCurrency={watch('ticketPriceCurrency') || Currency.USD}
+                    eventCapacity={watch('capacity')}
+                    errors={errors.ticketTiers?.message}
+                  />
                 </div>
               )}
             </div>

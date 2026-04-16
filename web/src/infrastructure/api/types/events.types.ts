@@ -158,6 +158,48 @@ export enum PricingType {
 }
 
 /**
+ * Phase 8: Ticketing mode — determines whether event uses single pricing or multi-tier pricing.
+ * Matches backend LankaConnect.Domain.Events.Enums.TicketingMode
+ */
+export enum TicketingMode {
+  SingleTier = 'SingleTier',   // Legacy single pricing (default)
+  Tiered = 'Tiered',           // Multi-tier pricing (VIP/Plus/Basic/custom)
+}
+
+/**
+ * Phase 8: Ticket category for multi-tier ticket generation.
+ * Matches backend LankaConnect.Domain.Events.Enums.TicketCategory
+ */
+export enum TicketCategory {
+  Standard = 'Standard',     // Legacy single ticket per registration
+  Master = 'Master',         // Group check-in ticket (one per tier group)
+  Individual = 'Individual', // Per-attendee ticket
+}
+
+/**
+ * Phase 8: Ticket tier DTO — represents a pricing tier (VIP, Plus, Basic, custom).
+ * Matches backend LankaConnect.Application.Events.Common.TicketTierDto
+ */
+export interface TicketTierDto {
+  id: string;
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  hasChildPricing: boolean;
+  capacity: number;
+  reservedCount: number;
+  availableQuantity: number;
+  maxPerUser: number;
+  sortOrder: number;
+  isActive: boolean;
+  isFree: boolean;
+}
+
+/**
  * Payment status enum matching backend LankaConnect.Domain.Events.Enums.PaymentStatus
  * Session 23: Stripe payment integration
  */
@@ -364,6 +406,11 @@ export interface EventDto {
   pricingType?: PricingType | null; // Pricing model type (Single, AgeDual, GroupTiered)
   groupPricingTiers: readonly GroupPricingTierDto[]; // Quantity-based pricing tiers
   hasGroupPricing: boolean; // True if event uses group tiered pricing
+
+  // Phase 8: Multi-tier ticketing
+  ticketingMode: TicketingMode;
+  ticketTiers: readonly TicketTierDto[];
+  hasTicketTiers: boolean;
 
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
@@ -916,6 +963,8 @@ export interface AttendeeDto {
   name: string;
   ageCategory: AgeCategory;
   gender?: Gender | null;
+  // Phase 8: Optional ticket tier assignment for tiered events
+  ticketTierId?: string | null;
 }
 
 /**
@@ -2275,4 +2324,45 @@ export interface CreatePhotoAlbumRequest {
 export interface UpdateAlbumDetailsRequest {
   name: string;
   description?: string;
+}
+
+// ==================== Phase 8: Ticket Tier Request Types ====================
+
+/**
+ * Phase 8: Request to set the ticketing mode for an event.
+ */
+export interface SetTicketingModeRequest {
+  ticketingMode: TicketingMode;
+}
+
+/**
+ * Phase 8: Request to create a ticket tier.
+ */
+export interface CreateTicketTierRequest {
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  capacity: number;
+  maxPerUser?: number;
+  sortOrder?: number;
+}
+
+/**
+ * Phase 8: Request to update a ticket tier.
+ */
+export interface UpdateTicketTierRequest {
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  capacity: number;
+  maxPerUser?: number;
+  sortOrder?: number;
 }

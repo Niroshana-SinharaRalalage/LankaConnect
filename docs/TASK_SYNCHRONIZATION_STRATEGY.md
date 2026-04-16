@@ -3,11 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS - MULTI-TIER TICKETING PHASE 8 — BACKEND COMPLETE
+## 🔄 CURRENT SESSION STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 — COMPLETE
+**Date**: 2026-04-16
+**Session**: Phase 8.2 — Frontend Multi-Tier Ticketing UI
+**Progress**: ✅ **COMMITTED** — Complete frontend for multi-tier ticketing. New: TicketTierBuilder component (VIP/Plus/Basic/custom tiers, adult/child pricing, capacity, sort order), useTicketTiers React Query hooks (CRUD + cache invalidation), TypeScript types (TicketingMode enum, TicketTierDto, TicketCategory enum, request DTOs), repository methods (getTicketTiers, setTicketingMode, addTicketTier, updateTicketTier, removeTicketTier). Integrated into EventCreationForm + EventEditForm (pricing mode mutual exclusion), EventRegistrationForm (per-attendee tier selector + tier-aware price calculation), event detail page (availability with sold-out/low-stock badges). Zod schemas updated. All 6 EventRegistrationForm instances wired with ticketingMode + ticketTiers props. Also completed Phase 8.3 (RsvpToEventCommandHandler tier-aware pricing + capacity validation) and Phase 8.4 (Stripe multi-line items per tier group).
+**Status**: ✅ **COMMITTED & PUSHED** — Commit `c82c8b44`. 273 tests passing, 2 pre-existing failures. 0 build errors. API verified: existing events return `ticketingMode: "SingleTier"`, `hasTicketTiers: false`. Remaining: Email/PDF tier integration.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - MULTI-TIER TICKETING BACKEND PHASE 8 ✅ COMMITTED
 **Date**: 2026-04-15
-**Session**: Phase 8 — Multi-Tier Ticketing
-**Progress**: ✅ **COMMITTED** — Complete backend for multi-tier ticketing. Domain: `TicketTier` entity (adult/child pricing, capacity tracking, reserve/release), `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class (tier CRUD, tiered price calculation, per-tier capacity validation), `AttendeeDetails` extended with `TicketTierId`/`TicketTierName`, `Ticket.CreateTiered()` for master/individual tickets. Infrastructure: `TicketTierConfiguration`, `NonNullableMoneyConverter`, EF migration `AddTicketTiers`. Application: 5 CQRS handlers (Add/Update/Remove TicketTier, SetTicketingMode, GetTicketTiers), `EventDto`/`TicketDto`/`AttendeeDto` extended, AutoMapper profile updated. API: 5 endpoints on EventsController. 36 files changed, ~10,681 lines. 50 domain tests passing. 0 build errors.
-**Status**: ✅ **COMMITTED & PUSHED** — Commit `58efb0fd`. Awaiting deployment verification. Remaining: Frontend, RSVP tier-aware handler, Stripe multi-line, email/PDF integration.
+**Session**: Phase 8 — Multi-Tier Ticketing (Backend)
+**Progress**: ✅ **COMMITTED** — Complete backend across Domain, Infrastructure, Application, API. 36 files, ~10,681 lines, 50 domain tests. 0 build errors.
+**Status**: ✅ **COMMITTED & PUSHED** — Commit `58efb0fd`.
 
 ---
 

@@ -1,7 +1,41 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-15 - Phase 8: Multi-Tier Ticketing*
+*Last Updated: 2026-04-16 - Phase 8.2: Frontend Multi-Tier Ticketing UI*
 
-## 🎯 Current Session Status (2026-04-15)
+## 🎯 Current Session Status (2026-04-16)
+
+### Phase 8.2: Frontend Multi-Tier Ticketing UI — Complete
+
+**Status**: ✅ **COMMITTED & PUSHED** (commit `c82c8b44`)
+
+**Classification**: New Feature — Frontend UI for multi-tier ticketing (organizer + attendee flows)
+
+**Summary**: Built complete frontend for multi-tier ticketing: organizer-facing TicketTierBuilder component, attendee-facing tier selector in registration, tier availability on event detail page. Also completed Phase 8.3 (RsvpToEventCommandHandler tier-aware pricing + capacity validation) and Phase 8.4 (Stripe multi-line items per tier group) in this session. 273 tests passing, 0 build errors.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| TicketTierBuilder | 1 new | `web/src/presentation/components/features/events/TicketTierBuilder.tsx` — organizer creates/edits tiers (VIP, Plus, Basic, custom) with adult/child pricing, capacity, sort order |
+| React Query Hooks | 1 new | `web/src/presentation/hooks/useTicketTiers.ts` — CRUD mutations with cache invalidation |
+| TypeScript Types | 1 modified | `events.types.ts` — `TicketingMode` enum, `TicketTierDto`, `TicketCategory` enum, `CreateTicketTierRequest`, `UpdateTicketTierRequest` |
+| Repository | 1 modified | `events.repository.ts` — `getTicketTiers`, `setTicketingMode`, `addTicketTier`, `updateTicketTier`, `removeTicketTier` |
+| Event Forms | 2 modified | EventCreationForm + EventEditForm — integrated TicketTierBuilder with pricing mode mutual exclusion |
+| Registration | 1 modified | EventRegistrationForm — per-attendee ticket tier selector + tier-aware price calculation |
+| Event Detail | 1 modified | Event detail page — tier availability display with sold-out/low-stock badges |
+| Schemas | 2 modified | Zod schemas for create + edit forms — tiered ticketing validation |
+| Form Instances | 6 modified | All EventRegistrationForm instances — `ticketingMode` + `ticketTiers` props passed through |
+| Backend (8.3) | 1 modified | RsvpToEventCommandHandler — tier-aware pricing + capacity validation |
+| Backend (8.4) | 1 modified | Stripe checkout — multi-line items per tier group |
+
+**Build**: 0 errors (frontend + backend)
+**Tests**: 273 passed, 2 pre-existing failures (DonationConfigurationTests, FormResponseTests)
+**API Verification**: `ticketingMode: "SingleTier"`, `hasTicketTiers: false`, empty `ticketTiers` for existing events
+
+**Remaining (Phase 8 continued)**:
+- Email/PDF: Tier name in confirmation emails, master+individual ticket PDF generation
+
+---
+
+## ⏸️ Previous Session Status (2026-04-15)
 
 ### Phase 8: Multi-Tier Ticketing — Backend Complete (Steps 1-4)
 
@@ -10,30 +44,6 @@
 **Classification**: New Feature — Multi-tier ticketing system (VIP/Plus/Basic/custom tiers)
 
 **Summary**: Implemented complete backend for multi-tier ticketing across all 4 layers (Domain, Infrastructure, Application, API). Each tier has its own adult/child pricing, capacity tracking, and per-user limits. Existing SingleTier/AgeDual/GroupTiered pricing modes unchanged. 50 domain tests passing, 0 build errors.
-
-**Changes**:
-| Layer | New Files | Modified Files | Description |
-|-------|-----------|----------------|-------------|
-| Domain | 4 new | 3 modified, 1 deleted | `TicketTier` entity, `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class, `AttendeeDetails` + `Ticket` extended. Deleted dead `TicketType.cs` |
-| Infrastructure | 3 new | 4 modified | `TicketTierConfiguration`, `NonNullableMoneyConverter`, EF migration. Updated Event/Ticket/Registration configs, AppDbContext |
-| Application | 11 new | 3 modified | CRUD commands (Add/Update/Remove tier, SetTicketingMode), GetTicketTiers query, TicketTierDto. Updated EventDto, TicketDto, AttendeeDto, AutoMapper profile |
-| API | 0 new | 1 modified | 5 new endpoints on EventsController (GET/POST/PUT/DELETE ticket-tiers, PUT ticketing-mode) |
-| Tests | 3 new | 0 | 50 domain tests: TicketTier CRUD, capacity, pricing, Event tier management, Ticket.CreateTiered() |
-
-**Migration**: `20260415203751_AddTicketTiers` — Creates `ticket_tiers` table; adds `ticketing_mode` to `events`; adds `ticket_category`, `ticket_tier_name`, `attendee_index`, `attendee_names` to `tickets`
-
-**API Endpoints Added**:
-- `GET /api/events/{id}/ticket-tiers` — List tiers with availability (public)
-- `PUT /api/events/{id}/ticketing-mode` — Set SingleTier/Tiered mode (auth)
-- `POST /api/events/{id}/ticket-tiers` — Add tier (auth)
-- `PUT /api/events/{id}/ticket-tiers/{tierId}` — Update tier (auth)
-- `DELETE /api/events/{id}/ticket-tiers/{tierId}` — Remove tier (auth)
-
-**Remaining (Phase 8 continued)**:
-- Frontend: TypeScript types, hooks, TierBuilder component, registration form tier selector
-- RSVP handler: Tier-aware pricing and capacity validation in RsvpToEventCommandHandler
-- Stripe: Multi-line-item checkout per tier
-- Email/PDF: Tier name in emails, master+individual ticket PDF generation
 
 ---
 

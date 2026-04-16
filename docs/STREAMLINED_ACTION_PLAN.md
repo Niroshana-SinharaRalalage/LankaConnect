@@ -7,11 +7,19 @@
 
 ---
 
-## 🔄 CURRENT STATUS - MULTI-TIER TICKETING PHASE 8 (2026-04-15)
+## 🔄 CURRENT STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 (2026-04-16)
+**Date**: 2026-04-16
+**Session**: Phase 8.2 — Frontend Multi-Tier Ticketing UI (Complete)
+**Status**: ✅ **COMMITTED & PUSHED** (commit `c82c8b44`)
+**Scope**: Complete frontend for multi-tier ticketing. TicketTierBuilder component (create/edit tiers with VIP/Plus/Basic/custom, adult/child pricing, capacity, sort order). React Query hooks with cache invalidation. TypeScript types (TicketingMode, TicketTierDto, TicketCategory, request DTOs). Repository methods (CRUD for tiers + set mode). Integrated into EventCreationForm, EventEditForm (with pricing mode mutual exclusion), EventRegistrationForm (per-attendee tier selector + tier-aware pricing), event detail page (availability badges). Zod schema validation. All 6 EventRegistrationForm instances updated. Also completed Phase 8.3 (RsvpToEventCommandHandler tier-aware pricing/capacity) and Phase 8.4 (Stripe multi-line items per tier). 273 tests passing, 0 build errors. Remaining: Email/PDF tier integration.
+
+---
+
+## ✅ PREVIOUS STATUS - MULTI-TIER TICKETING BACKEND PHASE 8 (2026-04-15)
 **Date**: 2026-04-15
 **Session**: Phase 8 — Multi-Tier Ticketing (Backend Complete)
 **Status**: ✅ **COMMITTED & PUSHED** (commit `58efb0fd`)
-**Scope**: Complete backend for multi-tier ticketing (VIP/Plus/Basic/custom). Domain: `TicketTier` entity with adult/child pricing + capacity, `TicketingMode`/`TicketCategory` enums, `Event.TicketTiers.cs` partial class. Infrastructure: EF config + migration (`ticket_tiers` table + columns on `events`/`tickets`). Application: CRUD commands, query, EventDto/TicketDto/AttendeeDto extended, AutoMapper. API: 5 endpoints (GET/POST/PUT/DELETE ticket-tiers, PUT ticketing-mode). Tests: 50 domain tests passing. 0 build errors. Remaining: Frontend, RSVP tier-aware handler, Stripe multi-line, email/PDF integration.
+**Scope**: Complete backend for multi-tier ticketing (VIP/Plus/Basic/custom). Domain, Infrastructure, Application, API layers. 5 endpoints. 50 domain tests. 0 build errors.
 
 ---
 

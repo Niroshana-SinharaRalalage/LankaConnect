@@ -258,7 +258,11 @@ jobs:
               Stripe__SecretKey=secretref:stripe-secret-key \
               Stripe__PublishableKey=secretref:stripe-publishable-key \
               Stripe__WebhookSecret=secretref:stripe-webhook-secret \
-              WhatsAppSettings__Enabled=true
+              WhatsAppSettings__Enabled=true \
+              WhatsAppSettings__Provider=Twilio \
+              WhatsAppSettings__TwilioAccountSid=secretref:twilio-account-sid \
+              WhatsAppSettings__TwilioAuthToken=secretref:twilio-auth-token \
+              WhatsAppSettings__TwilioWhatsAppNumber=secretref:twilio-whatsapp-number
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

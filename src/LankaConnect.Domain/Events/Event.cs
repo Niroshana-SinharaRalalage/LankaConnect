@@ -408,16 +408,44 @@ public partial class Event : BaseEntity
                 return Result.Failure("This email is already registered for this event. Each email can only register once.");
         }
 
-        // Check capacity for all attendees
-        if (!HasCapacityFor(attendeeList.Count))
-            return Result.Failure("Event does not have enough capacity for all attendees");
+        // Phase 8: Tier-aware capacity and pricing
+        Money? totalPrice;
+        if (TicketingMode == Enums.TicketingMode.Tiered)
+        {
+            // Tiered mode: per-tier capacity check
+            var tierCapacityResult = HasTieredCapacityFor(attendeeList);
+            if (tierCapacityResult.IsFailure)
+                return Result.Failure(tierCapacityResult.Errors);
 
-        // Calculate total price based on attendee ages
-        var priceResult = CalculatePriceForAttendees(attendeeList);
-        if (priceResult.IsFailure)
-            return Result.Failure(priceResult.Errors);
+            // Tiered mode: per-attendee tier pricing
+            var tieredPriceResult = CalculateTieredPriceForAttendees(attendeeList);
+            if (tieredPriceResult.IsFailure)
+                return Result.Failure(tieredPriceResult.Errors);
 
-        var totalPrice = priceResult.Value;
+            totalPrice = tieredPriceResult.Value;
+
+            // Reserve tier capacity
+            foreach (var tierGroup in attendeeList.Where(a => a.TicketTierId != null).GroupBy(a => a.TicketTierId!.Value))
+            {
+                var tier = _ticketTiers.First(t => t.Id == tierGroup.Key);
+                var reserveResult = tier.Reserve(tierGroup.Count());
+                if (reserveResult.IsFailure)
+                    return Result.Failure(reserveResult.Errors);
+            }
+        }
+        else
+        {
+            // SingleTier mode: existing capacity check
+            if (!HasCapacityFor(attendeeList.Count))
+                return Result.Failure("Event does not have enough capacity for all attendees");
+
+            // SingleTier mode: existing pricing
+            var priceResult = CalculatePriceForAttendees(attendeeList);
+            if (priceResult.IsFailure)
+                return Result.Failure(priceResult.Errors);
+
+            totalPrice = priceResult.Value;
+        }
 
         // Session 23: Determine if this is a paid event (has pricing and not free)
         bool isPaidEvent = !IsFree();

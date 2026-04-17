@@ -367,6 +367,9 @@ public static class DependencyInjection
         // Photo Album: Add Album Photo Cleanup Service (Background Service - 7-day retention, runs daily at 2 AM UTC)
         services.AddHostedService<BackgroundServices.AlbumPhotoCleanupService>();
 
+        // Phase 2: Seat Hold Cleanup Service (Background Service - releases expired holds every 60 seconds)
+        services.AddHostedService<BackgroundServices.SeatHoldCleanupService>();
+
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, LankaConnect.Infrastructure.CulturalIntelligence.StubUserPreferences>();

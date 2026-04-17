@@ -28,6 +28,9 @@ describe('EventsList', () => {
       groupPricingTiers: [],
       hasGroupPricing: false,
       publishOrganizerContact: false,
+      ticketingMode: 'SingleTier' as any,
+      ticketTiers: [],
+      hasTicketTiers: false,
     },
     {
       id: '2',
@@ -53,6 +56,9 @@ describe('EventsList', () => {
       groupPricingTiers: [],
       hasGroupPricing: false,
       publishOrganizerContact: false,
+      ticketingMode: 'SingleTier' as any,
+      ticketTiers: [],
+      hasTicketTiers: false,
     },
   ];
 

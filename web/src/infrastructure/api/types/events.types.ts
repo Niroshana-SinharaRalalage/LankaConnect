@@ -2366,3 +2366,142 @@ export interface UpdateTicketTierRequest {
   maxPerUser?: number;
   sortOrder?: number;
 }
+
+// ==================== Phase 2: Seating & Venue Layout ====================
+
+/**
+ * Seating mode for an event.
+ * Matches backend LankaConnect.Domain.Events.Enums.SeatingMode
+ */
+export enum SeatingMode {
+  GeneralAdmission = 'GeneralAdmission',
+  AssignedSeating = 'AssignedSeating',
+}
+
+/**
+ * Layout type for venue layout.
+ * Matches backend LankaConnect.Domain.Events.Enums.LayoutType
+ */
+export enum LayoutType {
+  Theater = 'Theater',
+  Banquet = 'Banquet',
+  Custom = 'Custom',
+}
+
+/**
+ * Seat availability status (derived from runtime state).
+ */
+export type SeatStatus = 'Available' | 'Held' | 'Reserved' | 'Disabled';
+
+/**
+ * Venue layout DTO — aggregate with zones and seats.
+ * Matches backend VenueLayoutDto
+ */
+export interface VenueLayoutDto {
+  id: string;
+  name: string;
+  eventId?: string | null;
+  layoutType: string;
+  isTemplate: boolean;
+  createdByUserId: string;
+  totalCapacity: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  zones: VenueZoneDto[];
+}
+
+/**
+ * Venue zone DTO — a named section of a layout.
+ */
+export interface VenueZoneDto {
+  id: string;
+  name: string;
+  color: string;
+  ticketTierId?: string | null;
+  sortOrder: number;
+  enabledSeatCount: number;
+  totalSeatCount: number;
+  seats: SeatDto[];
+}
+
+/**
+ * Seat DTO — structural data for a single seat.
+ */
+export interface SeatDto {
+  id: string;
+  row: string;
+  number: number;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+  isAccessible: boolean;
+  x: number;
+  y: number;
+}
+
+/**
+ * Seat availability DTO — combines structural data with runtime status.
+ * Matches backend SeatAvailabilityDto
+ */
+export interface SeatAvailabilityDto {
+  id: string;
+  label: string;
+  row: string;
+  number: number;
+  isEnabled: boolean;
+  isAccessible: boolean;
+  x: number;
+  y: number;
+  status: SeatStatus;
+  zoneId: string;
+  zoneName: string;
+  zoneColor: string;
+  ticketTierId?: string | null;
+}
+
+/**
+ * Result from holding seats.
+ */
+export interface HoldSeatsResult {
+  heldSeatIds: string[];
+  expiresAt: string;
+  sessionId: string;
+}
+
+// ==================== Seating Request DTOs ====================
+
+export interface CreateVenueLayoutRequest {
+  name: string;
+  layoutType: string;
+  eventId?: string | null;
+  isTemplate: boolean;
+  zones: CreateVenueZoneRequest[];
+}
+
+export interface CreateVenueZoneRequest {
+  name: string;
+  color: string;
+  ticketTierId?: string | null;
+  sortOrder: number;
+}
+
+export interface GenerateSeatsRequest {
+  generationType: string;
+  rowsOrTables: number;
+  seatsPerUnit: number;
+  startLabel?: string | null;
+}
+
+export interface AssignLayoutRequest {
+  eventId: string;
+  layoutId: string;
+}
+
+export interface HoldSeatsRequest {
+  sessionId: string;
+  seatIds: string[];
+}
+
+export interface ReleaseSeatsRequest {
+  sessionId: string;
+}

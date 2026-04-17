@@ -1,7 +1,36 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-16 - Phase 8.2: Frontend Multi-Tier Ticketing UI*
+*Last Updated: 2026-04-16 - Phase 8.5A: Email & Ticket Tier Integration*
 
 ## 🎯 Current Session Status (2026-04-16)
+
+### Phase 8.5A: Email & Ticket Tier Integration — Complete
+
+**Status**: ✅ **COMMITTED & DEPLOYED TO STAGING**
+
+**Classification**: Enhancement — Integrate ticket tier names into email handlers and PDF ticket generation
+
+**Summary**: Integrated ticket tier names into all email handlers and PDF ticket generation so attendees see their actual tier (e.g., "2x VIP, 3x Basic") instead of hardcoded "General Admission". Also committed Phase 8 tier-aware capacity checks and RSVP pricing (Event.cs + RsvpToEventCommandHandler.cs). 273 domain tests passing, 2034 application tests passing, 0 failures except 2 pre-existing DonationConfiguration tests.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| PaymentCompletedEventHandler | 1 modified | Dynamic TicketType from tier groups (e.g., "2x VIP, 3x Basic") instead of hardcoded "General Admission" |
+| AttendeesAddedEventHandler | 1 modified | Tier name suffix on attendee list in confirmation emails |
+| RegistrationConfirmedEventHandler | 1 modified | Tier name suffix for free event attendee list |
+| AnonymousRegistrationConfirmedEventHandler | 1 modified | Tier name suffix for anonymous registration emails |
+| PdfTicketService | 1 modified | Tier name per attendee and ticket type in Payment section |
+| TicketService | 1 modified | Passes tier info to PDF data |
+| IPdfTicketService | 1 modified | Added TicketType property and TierName to AttendeeInfo record |
+| Event.cs (Phase 8) | 1 modified | Tier-aware capacity checks |
+| RsvpToEventCommandHandler (Phase 8) | 1 modified | Tier-aware RSVP pricing |
+
+**Build**: 0 errors
+**Tests**: 273 domain + 2034 application passed, 2 pre-existing failures (DonationConfigurationTests)
+**Deployment**: Backend deployed to Azure staging
+
+---
+
+## ⏸️ Previous Session Status (2026-04-16)
 
 ### Phase 8.2: Frontend Multi-Tier Ticketing UI — Complete
 
@@ -31,7 +60,7 @@
 **API Verification**: `ticketingMode: "SingleTier"`, `hasTicketTiers: false`, empty `ticketTiers` for existing events
 
 **Remaining (Phase 8 continued)**:
-- Email/PDF: Tier name in confirmation emails, master+individual ticket PDF generation
+- ~~Email/PDF: Tier name in confirmation emails, master+individual ticket PDF generation~~ ✅ Done in Phase 8.5A
 
 ---
 

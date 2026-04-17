@@ -7,7 +7,15 @@
 
 ---
 
-## 🔄 CURRENT STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 (2026-04-16)
+## 🔄 CURRENT STATUS - EMAIL & TICKET TIER INTEGRATION PHASE 8.5A (2026-04-16)
+**Date**: 2026-04-16
+**Session**: Phase 8.5A — Email & Ticket Tier Integration (Complete)
+**Status**: ✅ **DEPLOYED TO STAGING**
+**Scope**: Integrated ticket tier names into all email handlers and PDF ticket generation. PaymentCompletedEventHandler: dynamic TicketType from tier groups (e.g., "2x VIP, 3x Basic") instead of hardcoded "General Admission". AttendeesAddedEventHandler, RegistrationConfirmedEventHandler, AnonymousRegistrationConfirmedEventHandler: tier name suffix on attendee lists. PdfTicketService: tier name per attendee + ticket type in Payment section. TicketService passes tier info to PDF data. IPdfTicketService: added TicketType property and TierName to AttendeeInfo record. Also committed Phase 8 tier-aware capacity checks (Event.cs) and RSVP pricing (RsvpToEventCommandHandler). 273 domain + 2034 application tests passing, 2 pre-existing failures. 0 build errors.
+
+---
+
+## ✅ PREVIOUS STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 (2026-04-16)
 **Date**: 2026-04-16
 **Session**: Phase 8.2 — Frontend Multi-Tier Ticketing UI (Complete)
 **Status**: ✅ **COMMITTED & PUSHED** (commit `c82c8b44`)

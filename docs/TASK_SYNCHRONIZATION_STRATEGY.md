@@ -3,7 +3,15 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 — COMPLETE
+## 🔄 CURRENT SESSION STATUS - EMAIL & TICKET TIER INTEGRATION PHASE 8.5A — COMPLETE
+**Date**: 2026-04-16
+**Session**: Phase 8.5A — Email & Ticket Tier Integration
+**Progress**: ✅ **DEPLOYED** — Integrated ticket tier names into all email handlers and PDF ticket generation. PaymentCompletedEventHandler: dynamic TicketType from tier groups (e.g., "2x VIP, 3x Basic") instead of hardcoded "General Admission". AttendeesAddedEventHandler, RegistrationConfirmedEventHandler, AnonymousRegistrationConfirmedEventHandler: tier name suffix on attendee lists. PdfTicketService: tier name per attendee + ticket type in Payment section. TicketService passes tier info. IPdfTicketService: added TicketType property + TierName to AttendeeInfo record. Also committed Phase 8 tier-aware capacity checks (Event.cs) + RSVP pricing (RsvpToEventCommandHandler).
+**Status**: ✅ **DEPLOYED TO STAGING** — 273 domain + 2034 application tests passing, 2 pre-existing failures. 0 build errors. Backend deployed to Azure staging.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - MULTI-TIER TICKETING FRONTEND PHASE 8.2 ✅ COMMITTED
 **Date**: 2026-04-16
 **Session**: Phase 8.2 — Frontend Multi-Tier Ticketing UI
 **Progress**: ✅ **COMMITTED** — Complete frontend for multi-tier ticketing. New: TicketTierBuilder component (VIP/Plus/Basic/custom tiers, adult/child pricing, capacity, sort order), useTicketTiers React Query hooks (CRUD + cache invalidation), TypeScript types (TicketingMode enum, TicketTierDto, TicketCategory enum, request DTOs), repository methods (getTicketTiers, setTicketingMode, addTicketTier, updateTicketTier, removeTicketTier). Integrated into EventCreationForm + EventEditForm (pricing mode mutual exclusion), EventRegistrationForm (per-attendee tier selector + tier-aware price calculation), event detail page (availability with sold-out/low-stock badges). Zod schemas updated. All 6 EventRegistrationForm instances wired with ticketingMode + ticketTiers props. Also completed Phase 8.3 (RsvpToEventCommandHandler tier-aware pricing + capacity validation) and Phase 8.4 (Stripe multi-line items per tier group).

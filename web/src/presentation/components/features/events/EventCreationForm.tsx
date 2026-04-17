@@ -15,7 +15,7 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
-import { EventCategory, Currency } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, TicketingMode } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
@@ -463,6 +463,39 @@ export function EventCreationForm() {
         } catch (defErr) {
           console.error('⚠️ Some add-on definitions failed to save:', defErr);
           // Non-blocking — definitions can be added later from manage page
+        }
+      }
+
+      // Phase 8: Create ticket tiers via dedicated CRUD endpoints after event creation
+      // The createEvent() call does NOT handle tier data — tiers require separate API calls.
+      if (data.enableTieredTicketing && data.ticketTiers && (data.ticketTiers as TicketTierFormData[]).length > 0) {
+        try {
+          // Step 1: Set ticketing mode to Tiered
+          await eventsRepository.setTicketingMode(eventId, TicketingMode.Tiered);
+          console.log('✅ Ticketing mode set to Tiered');
+
+          // Step 2: Create each tier
+          const formTiers = data.ticketTiers as TicketTierFormData[];
+          await Promise.all(
+            formTiers.map((tier) =>
+              eventsRepository.addTicketTier(eventId, {
+                name: tier.name,
+                description: tier.description || null,
+                adultPriceAmount: tier.adultPriceAmount,
+                adultPriceCurrency: tier.adultPriceCurrency as unknown as Currency,
+                childPriceAmount: tier.childPriceAmount ?? null,
+                childPriceCurrency: tier.childPriceCurrency ? (tier.childPriceCurrency as unknown as Currency) : undefined,
+                childAgeLimit: tier.childAgeLimit ?? undefined,
+                capacity: tier.capacity,
+                maxPerUser: tier.maxPerUser,
+                sortOrder: tier.sortOrder,
+              })
+            )
+          );
+          console.log(`✅ ${formTiers.length} ticket tiers created`);
+        } catch (tierErr) {
+          console.error('⚠️ Tier creation failed:', tierErr);
+          // Non-blocking — tiers can be added later from manage page
         }
       }
 

@@ -580,6 +580,95 @@ export function EventEditForm({ event }: EventEditFormProps) {
         // Continue to cache invalidation and redirect — main event data was saved
       }
 
+      // Phase 8 Fix: Sync ticket tiers via dedicated CRUD endpoints
+      // The main updateEvent() call does NOT handle tier data — tiers are managed
+      // via separate API endpoints (setTicketingMode, addTicketTier, updateTicketTier, removeTicketTier).
+      try {
+        const wasAlreadyTiered = event.ticketingMode === TicketingMode.Tiered;
+        const formTiers = (data.ticketTiers as TicketTierFormData[] | undefined) || [];
+
+        if (isTieredTicketing) {
+          // Step 1: Set ticketing mode to Tiered (if not already)
+          if (!wasAlreadyTiered) {
+            await eventsRepository.setTicketingMode(event.id, TicketingMode.Tiered);
+            console.log('✅ Ticketing mode set to Tiered');
+          }
+
+          // Step 2: Determine which tiers to add, update, or remove
+          const existingTierIds = new Set(
+            (event.ticketTiers || []).map(t => t.id)
+          );
+          const formTierIds = new Set(
+            formTiers.filter(t => t.id).map(t => t.id!)
+          );
+
+          // Tiers to remove: exist on server but not in form
+          const tiersToRemove = (event.ticketTiers || []).filter(t => !formTierIds.has(t.id));
+          // Tiers to update: exist on server AND in form (have id)
+          const tiersToUpdate = formTiers.filter(t => t.id && existingTierIds.has(t.id));
+          // Tiers to add: no id, or id not found on server
+          const tiersToAdd = formTiers.filter(t => !t.id || !existingTierIds.has(t.id));
+
+          // Execute removals first, then updates and adds in parallel
+          for (const tier of tiersToRemove) {
+            try {
+              await eventsRepository.removeTicketTier(event.id, tier.id);
+              console.log(`✅ Removed tier: ${tier.name}`);
+            } catch (removeErr) {
+              console.error(`⚠️ Failed to remove tier ${tier.name}:`, removeErr);
+            }
+          }
+
+          const tierPromises: Promise<void | string>[] = [];
+
+          for (const tier of tiersToUpdate) {
+            tierPromises.push(
+              eventsRepository.updateTicketTier(event.id, tier.id!, {
+                name: tier.name,
+                description: tier.description || null,
+                adultPriceAmount: tier.adultPriceAmount,
+                adultPriceCurrency: tier.adultPriceCurrency as unknown as Currency,
+                childPriceAmount: tier.childPriceAmount ?? null,
+                childPriceCurrency: tier.childPriceCurrency ? (tier.childPriceCurrency as unknown as Currency) : undefined,
+                childAgeLimit: tier.childAgeLimit ?? undefined,
+                capacity: tier.capacity,
+                maxPerUser: tier.maxPerUser,
+                sortOrder: tier.sortOrder,
+              })
+            );
+          }
+
+          for (const tier of tiersToAdd) {
+            tierPromises.push(
+              eventsRepository.addTicketTier(event.id, {
+                name: tier.name,
+                description: tier.description || null,
+                adultPriceAmount: tier.adultPriceAmount,
+                adultPriceCurrency: tier.adultPriceCurrency as unknown as Currency,
+                childPriceAmount: tier.childPriceAmount ?? null,
+                childPriceCurrency: tier.childPriceCurrency ? (tier.childPriceCurrency as unknown as Currency) : undefined,
+                childAgeLimit: tier.childAgeLimit ?? undefined,
+                capacity: tier.capacity,
+                maxPerUser: tier.maxPerUser,
+                sortOrder: tier.sortOrder,
+              })
+            );
+          }
+
+          if (tierPromises.length > 0) {
+            await Promise.all(tierPromises);
+            console.log(`✅ Tier sync complete: ${tiersToUpdate.length} updated, ${tiersToAdd.length} added, ${tiersToRemove.length} removed`);
+          }
+        } else if (wasAlreadyTiered) {
+          // User disabled tiered ticketing — revert to SingleTier
+          await eventsRepository.setTicketingMode(event.id, TicketingMode.SingleTier);
+          console.log('✅ Ticketing mode reverted to SingleTier');
+        }
+      } catch (tierErr) {
+        console.error('⚠️ Tier sync failed:', tierErr);
+        // Non-blocking — main event data was saved, tiers can be managed from manage page
+      }
+
       // Invalidate React Query cache to refresh event data
       await queryClient.invalidateQueries({ queryKey: eventKeys.detail(event.id) });
       await queryClient.invalidateQueries({ queryKey: eventKeys.lists() });

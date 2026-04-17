@@ -49,5 +49,55 @@ public enum WhatsAppNotificationType
     /// <summary>
     /// Payment and ticket confirmation notifications
     /// </summary>
-    Payment = 9
+    Payment = 9,
+
+    /// <summary>
+    /// Phase 7B.3: Pending payment reminder (24-hour expiry)
+    /// </summary>
+    PaymentPending = 10,
+
+    /// <summary>
+    /// Phase 7B.3: Event postponement notifications
+    /// </summary>
+    EventPostponed = 11,
+
+    /// <summary>
+    /// Phase 7B.3: Donation receipt confirmations
+    /// </summary>
+    Donation = 12,
+
+    /// <summary>
+    /// Phase 7B.3: Event approval/rejection notifications (organizer)
+    /// </summary>
+    EventApproval = 13,
+
+    /// <summary>
+    /// Phase 7B.3: Additional attendees added confirmations
+    /// </summary>
+    AttendeesAdded = 14,
+
+    /// <summary>
+    /// Phase 7B.3: Add-on purchase receipt
+    /// </summary>
+    AddOnPurchase = 15,
+
+    /// <summary>
+    /// Phase 7B.3: Collection contribution receipt
+    /// </summary>
+    Collection = 16,
+
+    /// <summary>
+    /// Phase 7B.3: Sponsorship confirmation
+    /// </summary>
+    Sponsorship = 17,
+
+    /// <summary>
+    /// Phase 7B.3: Form/survey response confirmation
+    /// </summary>
+    FormResponse = 18,
+
+    /// <summary>
+    /// Phase 7B.3: Photo album published notification
+    /// </summary>
+    PhotoAlbum = 19
 }

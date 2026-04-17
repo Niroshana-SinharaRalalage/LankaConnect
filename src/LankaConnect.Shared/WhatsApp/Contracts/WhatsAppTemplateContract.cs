@@ -39,6 +39,28 @@ public static class WhatsAppTemplateContract
 
         // Verification (used as fallback if SMS is unavailable)
         public const string PhoneVerification = "phone_verification";
+
+        // Phase 7B.3: Additional templates for expanded WhatsApp coverage
+        // Tier 1: HIGH priority
+        public const string PaymentPendingReminder = "payment_pending_reminder";
+        public const string EventPostponed = "event_postponed";
+        public const string DonationReceipt = "donation_receipt";
+
+        // Tier 2: MEDIUM priority — Organizer notifications
+        public const string EventApproved = "event_approved";
+        public const string EventRejected = "event_rejected";
+
+        // Tier 2: MEDIUM priority — Financial confirmations
+        public const string AttendeesAdded = "attendees_added";
+        public const string AddOnPurchaseReceipt = "addon_purchase_receipt";
+        public const string CollectionReceipt = "collection_receipt";
+        public const string SponsorConfirmation = "sponsor_confirmation";
+
+        // Tier 2: MEDIUM priority — Engagement
+        public const string FormResponseConfirmed = "form_response_confirmed";
+
+        // Tier 3: LOW priority
+        public const string PhotoAlbumPublished = "photo_album_published";
     }
 
     #endregion
@@ -123,6 +145,94 @@ public static class WhatsAppTemplateContract
     public static class Verification
     {
         public const string VerificationCode = "verification_code";
+    }
+
+    // Phase 7B.3: Additional parameter classes for expanded template coverage
+
+    /// <summary>
+    /// Payment pending reminder parameters.
+    /// </summary>
+    public static class Payment
+    {
+        public const string PaymentAmount = "payment_amount";
+        public const string ExpiryTime = "expiry_time";
+    }
+
+    /// <summary>
+    /// Event postponement parameters.
+    /// </summary>
+    public static class Postponement
+    {
+        public const string PostponementReason = "postponement_reason";
+    }
+
+    /// <summary>
+    /// Donation receipt parameters.
+    /// </summary>
+    public static class Donation
+    {
+        public const string DonationAmount = "donation_amount";
+    }
+
+    /// <summary>
+    /// Event rejection parameters.
+    /// </summary>
+    public static class Rejection
+    {
+        public const string RejectionReason = "rejection_reason";
+    }
+
+    /// <summary>
+    /// Attendees added parameters.
+    /// </summary>
+    public static class Attendees
+    {
+        public const string AddedCount = "added_count";
+        public const string NewTotalCount = "new_total_count";
+    }
+
+    /// <summary>
+    /// Add-on purchase parameters.
+    /// </summary>
+    public static class AddOn
+    {
+        public const string AddOnName = "addon_name";
+        public const string Quantity = "quantity";
+        public const string TotalAmount = "total_amount";
+    }
+
+    /// <summary>
+    /// Collection contribution parameters.
+    /// </summary>
+    public static class CollectionParams
+    {
+        public const string ContributionAmount = "contribution_amount";
+    }
+
+    /// <summary>
+    /// Sponsorship parameters.
+    /// </summary>
+    public static class Sponsor
+    {
+        public const string SponsorType = "sponsor_type";
+        public const string SponsorDetails = "sponsor_details";
+    }
+
+    /// <summary>
+    /// Form response parameters.
+    /// </summary>
+    public static class Form
+    {
+        public const string FormTitle = "form_title";
+    }
+
+    /// <summary>
+    /// Photo album parameters.
+    /// </summary>
+    public static class Album
+    {
+        public const string AlbumName = "album_name";
+        public const string AlbumUrl = "album_url";
     }
 
     #endregion

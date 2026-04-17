@@ -132,6 +132,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
                     .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers for tiered ticketing
                     .Include(e => e.SignUpLists)
                         .ThenInclude(s => s.Items)
                             .ThenInclude(i => i.Commitments);
@@ -271,6 +272,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)  // For CurrentRegistrations count
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                     .ToListAsync(cancellationToken);
 
                 stopwatch.Stop();
@@ -318,6 +320,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                     .Where(e => e.OrganizerId == organizerId
                         || e.OrganizerContacts.Any(c => c.LinkedUserId == organizerId))
                     .OrderByDescending(e => e.StartDate)
@@ -736,6 +739,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                 .Include(e => e.Images)
                 .Include(e => e.Videos)
                 .Include(e => e.Registrations)
+                .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                 .ToListAsync(cancellationToken);
 
             _repoLogger.LogInformation("[SEARCH-7] Events query succeeded - Found {EventCount} events", events.Count);

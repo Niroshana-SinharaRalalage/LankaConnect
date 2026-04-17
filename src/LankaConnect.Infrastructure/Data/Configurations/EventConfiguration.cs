@@ -184,6 +184,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         // Ignore computed properties from partial class
         builder.Ignore(e => e.HasTicketTiers);
 
+        // Phase 2: Seating properties (from Event.Seating.cs partial class)
+        builder.Property(e => e.SeatingMode)
+            .HasColumnName("seating_mode")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(SeatingMode.GeneralAdmission);
+
+        builder.Property(e => e.VenueLayoutId)
+            .HasColumnName("venue_layout_id");
+
+        // Ignore computed property from Event.Seating.cs
+        builder.Ignore(e => e.HasAssignedSeating);
+
         // Configure audit fields
         builder.Property(e => e.CreatedAt)
             .IsRequired()

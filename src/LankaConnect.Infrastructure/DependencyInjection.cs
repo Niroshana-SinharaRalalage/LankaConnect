@@ -474,6 +474,11 @@ public static class DependencyInjection
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();
         services.AddScoped<ITicketRepository, TicketRepository>();
 
+        // Phase 2: Venue Seating repositories
+        services.AddScoped<IVenueLayoutRepository, VenueLayoutRepository>();
+        services.AddScoped<ISeatHoldRepository, SeatHoldRepository>();
+        services.AddScoped<ISeatReservationRepository, SeatReservationRepository>();
+
         // Add-Only Attendees Feature repositories
         services.AddScoped<IRegistrationAdditionRepository, RegistrationAdditionRepository>();
         services.AddScoped<IRegistrationPaymentRepository, RegistrationPaymentRepository>();

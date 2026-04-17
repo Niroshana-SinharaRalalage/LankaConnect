@@ -85,6 +85,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
     public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
 
+    // Venue Seating Entity Sets (Phase 2: Seat Booking)
+    public DbSet<VenueLayout> VenueLayouts => Set<VenueLayout>();
+    public DbSet<VenueZone> VenueZones => Set<VenueZone>();
+    public DbSet<Seat> Seats => Set<Seat>();
+    public DbSet<SeatHold> SeatHolds => Set<SeatHold>();
+    public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
+
     // Registration Addition Entity Sets (Add-Only Attendees Feature)
     public DbSet<RegistrationAddition> RegistrationAdditions => Set<RegistrationAddition>(); // Delta payment for adding attendees
     public DbSet<RegistrationPayment> RegistrationPayments => Set<RegistrationPayment>(); // Payment audit trail
@@ -188,6 +195,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Ticket entity configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new TicketConfiguration());
+
+        // Venue Seating entity configurations (Phase 2: Seat Booking)
+        modelBuilder.ApplyConfiguration(new VenueLayoutConfiguration());
+        modelBuilder.ApplyConfiguration(new VenueZoneConfiguration());
+        modelBuilder.ApplyConfiguration(new SeatConfiguration());
+        modelBuilder.ApplyConfiguration(new SeatHoldConfiguration());
+        modelBuilder.ApplyConfiguration(new SeatReservationConfiguration());
 
         // Registration Addition entity configurations (Add-Only Attendees Feature)
         modelBuilder.ApplyConfiguration(new RegistrationAdditionConfiguration());
@@ -310,6 +324,13 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tickets schema (Phase 6A.24)
         modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
 
+        // Venue Seating tables (Phase 2: Seat Booking)
+        modelBuilder.Entity<VenueLayout>().ToTable("venue_layouts", "events");
+        modelBuilder.Entity<VenueZone>().ToTable("venue_zones", "events");
+        modelBuilder.Entity<Seat>().ToTable("seats", "events");
+        modelBuilder.Entity<SeatHold>().ToTable("seat_holds", "events");
+        modelBuilder.Entity<SeatReservation>().ToTable("seat_reservations", "events");
+
         // Registration Addition tables (Add-Only Attendees Feature)
         modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
         modelBuilder.Entity<RegistrationPayment>().ToTable("registration_payments", "events");
@@ -394,7 +415,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration
             typeof(UserWhatsAppPreferences), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppWebhookEvent), // Phase 7A: WhatsApp Integration
-            typeof(TicketTier) // Multi-tier ticketing
+            typeof(TicketTier), // Multi-tier ticketing
+            typeof(VenueLayout), // Phase 2: Seat Booking
+            typeof(VenueZone), // Phase 2: Seat Booking
+            typeof(Seat), // Phase 2: Seat Booking
+            typeof(SeatHold), // Phase 2: Seat Booking
+            typeof(SeatReservation) // Phase 2: Seat Booking
         };
 
         // Get all types from Domain assembly that aren't in our configured list

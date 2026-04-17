@@ -1,0 +1,12 @@
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
+
+namespace LankaConnect.Application.Events.Queries.GetVenueLayout;
+
+/// <summary>
+/// Gets a venue layout by ID or by event ID (with zones and seats).
+/// </summary>
+public record GetVenueLayoutQuery(
+    Guid? LayoutId,
+    Guid? EventId
+) : IQuery<VenueLayoutDto>;

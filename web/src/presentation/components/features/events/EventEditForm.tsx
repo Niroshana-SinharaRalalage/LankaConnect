@@ -231,9 +231,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
     // Session 33: Properly load existing pricing data including dual pricing
     // Determine pricing mode to set correct defaults
-    const hasDualPricing = event.hasDualPricing ?? false;
-    const hasGroupPricing = event.hasGroupPricing ?? false;
-    const hasSinglePricing = !event.isFree && !hasDualPricing && !hasGroupPricing;
+    // Phase 8 Fix: Tiered mode takes precedence — when ticketingMode is Tiered,
+    // disable dual/group pricing even if their flags are still true in the DB
+    // (the old pricing data remains until the event is saved in the new mode)
+    const isTieredMode = event.ticketingMode === TicketingMode.Tiered;
+    const hasDualPricing = !isTieredMode && (event.hasDualPricing ?? false);
+    const hasGroupPricing = !isTieredMode && (event.hasGroupPricing ?? false);
+    const hasSinglePricing = !event.isFree && !hasDualPricing && !hasGroupPricing && !isTieredMode;
 
     reset({
       title: event.title,

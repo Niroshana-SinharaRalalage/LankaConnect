@@ -548,7 +548,18 @@ function EventCard({
             <span className="text-sm font-semibold" style={{ color: '#8B1538' }}>
               {event.isFree
                 ? 'Free Event'
-                : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0
+                : event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0
+                  ? (() => {
+                      const activeTiers = event.ticketTiers.filter(t => t.isActive && !t.isFree);
+                      if (activeTiers.length === 0) return 'Free Tiers';
+                      const prices = activeTiers.map(t => t.adultPriceAmount);
+                      const minPrice = Math.min(...prices);
+                      const maxPrice = Math.max(...prices);
+                      return minPrice === maxPrice
+                        ? `$${minPrice.toFixed(2)}`
+                        : `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)}`;
+                    })()
+                  : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0
                   ? (() => {
                       const prices = event.groupPricingTiers.map(t => t.pricePerPerson);
                       const minPrice = Math.min(...prices);

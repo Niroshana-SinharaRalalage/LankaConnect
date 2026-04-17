@@ -217,6 +217,27 @@ export function EventDetailsTab({
             <div>
               {event.isFree ? (
                 <Badge className="bg-green-100 text-green-700">Free Event</Badge>
+              ) : event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0 ? (
+                <div className="space-y-2">
+                  <Badge className="bg-indigo-100 text-indigo-700">Multi-Tier Pricing</Badge>
+                  <div className="flex flex-col gap-1 mt-1">
+                    {event.ticketTiers.filter(t => t.isActive).map((tier) => (
+                      <div key={tier.id} className="flex items-center gap-2">
+                        <Badge className="bg-[#FFE8CC] text-[#8B1538]">
+                          {tier.name}: {tier.isFree ? 'Free' : `$${tier.adultPriceAmount}`}
+                          {tier.childPriceAmount != null && !tier.isFree && ` / Child: $${tier.childPriceAmount}`}
+                        </Badge>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          tier.availableQuantity === 0 ? 'bg-red-100 text-red-700'
+                            : tier.availableQuantity <= 10 ? 'bg-orange-100 text-orange-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {tier.availableQuantity === 0 ? 'Sold Out' : `${tier.availableQuantity} left`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                 <div className="space-y-2">
                   <Badge className="bg-purple-100 text-purple-700">Group Tiered Pricing</Badge>

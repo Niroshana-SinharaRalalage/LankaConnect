@@ -80,6 +80,12 @@ export function EventRegistrationForm({
   const { user } = useAuthStore();
   const { profile, loadProfile } = useProfileStore();
 
+  // Phase 8: When tiered ticketing is active, suppress legacy pricing modes
+  const isTieredMode = ticketTiers && ticketTiers.length > 0 && ticketingMode === 'Tiered';
+  const effectiveDualPricing = isTieredMode ? false : hasDualPricing;
+  const effectiveGroupPricing = isTieredMode ? false : hasGroupPricing;
+  const effectiveTicketPrice = isTieredMode ? undefined : ticketPrice;
+
   // Donation Feature: Donation amount state
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
 
@@ -208,7 +214,7 @@ export function EventRegistrationForm({
 
   // Phase 6D: Find applicable group pricing tier based on total attendee count
   const findApplicableTier = (): GroupPricingTierDto | null => {
-    if (!hasGroupPricing || !groupPricingTiers || groupPricingTiers.length === 0) {
+    if (!effectiveGroupPricing || !groupPricingTiers || groupPricingTiers.length === 0) {
       return null;
     }
 
@@ -254,8 +260,8 @@ export function EventRegistrationForm({
       }, 0);
     }
 
-    // Phase 6D: Group tiered pricing (highest priority)
-    if (hasGroupPricing && groupPricingTiers && groupPricingTiers.length > 0) {
+    // Phase 6D: Group tiered pricing
+    if (effectiveGroupPricing && groupPricingTiers && groupPricingTiers.length > 0) {
       const applicableTier = findApplicableTier();
       if (applicableTier) {
         return applicableTier.pricePerPerson * quantity;
@@ -265,7 +271,7 @@ export function EventRegistrationForm({
 
     // Session 21: Dual pricing (age category-based)
     // Phase 6A.43: Updated to use AgeCategory instead of age
-    if (hasDualPricing && adultPrice && childPrice) {
+    if (effectiveDualPricing && adultPrice && childPrice) {
       // Calculate based on attendee age categories
       return attendees.reduce((total, attendee) => {
         if (attendee.ageCategory === '') return total;
@@ -274,8 +280,8 @@ export function EventRegistrationForm({
     }
 
     // Legacy single pricing
-    if (ticketPrice) {
-      return ticketPrice * quantity;
+    if (effectiveTicketPrice) {
+      return effectiveTicketPrice * quantity;
     }
 
     return 0;
@@ -403,7 +409,7 @@ export function EventRegistrationForm({
   };
 
   const totalPrice = calculateTotalPrice();
-  const applicableTier = hasGroupPricing ? findApplicableTier() : null;
+  const applicableTier = effectiveGroupPricing ? findApplicableTier() : null;
 
   // Issue #51: Use event's configured max attendees per registration
     const maxAttendees = Math.min(maxAttendeesPerRegistration, spotsLeft);
@@ -475,7 +481,7 @@ export function EventRegistrationForm({
                 <div>
                   <label className="block text-sm font-medium mb-2 text-neutral-700">
                     Age Category <span className="text-red-500">*</span>
-                    {hasDualPricing && (
+                    {effectiveDualPricing && (
                       <span className="text-xs text-neutral-500 ml-2">
                         (Child = child price)
                       </span>
@@ -785,7 +791,7 @@ export function EventRegistrationForm({
       {!isFree && totalPrice > 0 && (
         <div className="p-4 bg-neutral-50 rounded-lg border-t-2 border-orange-500">
           {/* Phase 6D: Group Tiered Pricing Breakdown */}
-          {hasGroupPricing && applicableTier && (
+          {effectiveGroupPricing && applicableTier && (
             <div className="mb-3 space-y-2 text-sm">
               <h5 className="font-medium text-neutral-700">Group Pricing Applied:</h5>
               <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-orange-200">
@@ -807,7 +813,7 @@ export function EventRegistrationForm({
 
           {/* Session 21: Dual Pricing Breakdown */}
           {/* Phase 6A.43: Updated to use AgeCategory instead of age */}
-          {hasDualPricing && adultPrice && childPrice && (
+          {effectiveDualPricing && adultPrice && childPrice && (
             <div className="mb-3 space-y-2 text-sm">
               <h5 className="font-medium text-neutral-700">Price Breakdown:</h5>
               {attendees.map((attendee, index) => {

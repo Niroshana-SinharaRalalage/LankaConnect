@@ -329,7 +329,7 @@ function LayoutDetailsView({ layout, eventId, ticketTiers }: LayoutDetailsViewPr
     }
 
     const generationType =
-      layout.layoutType === LayoutType.Banquet ? 'Table' : 'Row';
+      layout.layoutType === LayoutType.Banquet ? 'Banquet' : 'Theater';
 
     const request: GenerateSeatsRequest = {
       generationType,

@@ -1,34 +1,39 @@
 /**
- * Next.js API Route Proxy for Staging Backend
+ * Next.js API Route Proxy
  *
- * Purpose: Forward API requests from localhost:3000 to Azure staging backend
+ * Purpose: Forward API requests to the backend API server
  *
  * Why needed:
- * - Frontend: http://localhost:3000 (HTTP)
- * - Backend: https://staging.azurecontainerapps.io (HTTPS)
- * - Browsers block Secure cookies from being sent over HTTP
- * - This proxy makes browser see same-origin (localhost:3000/api/proxy/...)
+ * - Frontend and backend may run on different origins
+ * - Browsers block Secure cookies from being sent cross-origin
+ * - This proxy makes browser see same-origin (/api/proxy/...)
  *
- * How it works:
- * - Browser sends request to localhost:3000/api/proxy/Auth/login (same-origin HTTP)
- * - Next.js server forwards to staging backend over HTTPS (server-to-server, no browser restrictions)
- * - Backend sets Secure cookies in response
- * - Next.js server receives them and forwards to browser
- * - Browser stores cookies under localhost:3000 domain
- * - Subsequent requests include cookies (same-origin)
+ * Safety:
+ * - In production (NODE_ENV=production), BACKEND_API_URL is REQUIRED.
+ *   If missing, all proxy requests return 503 (fail-closed).
+ *   This prevents accidental routing to staging.
+ * - In development, falls back to staging API for convenience.
+ *
+ * Post-Incident Fix (2026-04-17): Removed hardcoded staging fallback in
+ * production. Uses env-validation module for fail-closed safety.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getEnvValidation } from '@/lib/env-validation';
 
-// IMPORTANT: Use environment variable for backend URL
-// BACKEND_API_URL is set in Container App environment (Azure deployment)
-// For local development, it defaults to Azure staging backend
-// This ensures the proxy works in both local and deployed environments
-const BACKEND_URL = process.env.BACKEND_API_URL || (() => {
-  const fallbackUrl = 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api';
-  console.warn(`⚠️ [PROXY] BACKEND_API_URL not set, using fallback: ${fallbackUrl}`);
-  return fallbackUrl;
-})();
+// Fail-closed: in production, BACKEND_URL is null if BACKEND_API_URL is missing.
+// The guard in forwardRequest() returns 503 for every request.
+const envCheck = getEnvValidation();
+const BACKEND_URL = envCheck.backendUrl;
+
+if (!envCheck.isValid) {
+  console.error(
+    `[PROXY] FATAL: Environment validation failed. Errors: ${envCheck.errors.join('; ')}. ` +
+    `All proxy requests will return 503 Service Unavailable.`
+  );
+} else {
+  console.log(`[PROXY] Backend URL configured: ${BACKEND_URL}`);
+}
 
 export async function GET(
   request: NextRequest,
@@ -75,6 +80,22 @@ async function forwardRequest(
   pathSegments: string[],
   method: string
 ) {
+  // Fail-closed guard: if BACKEND_URL is null, the env var is missing in
+  // a deployed environment. Return 503 instead of silently routing to staging.
+  if (!BACKEND_URL) {
+    console.error(
+      '[PROXY] Refusing to proxy request: BACKEND_API_URL is not configured. ' +
+      `Path: ${pathSegments.join('/')}, Method: ${method}`
+    );
+    return NextResponse.json(
+      {
+        error: 'Service configuration error',
+        message: 'Backend API URL is not configured. This is a deployment issue — not a user error.',
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const path = pathSegments.join('/');
     // CRITICAL FIX: Preserve query string parameters for filtering, pagination, etc.

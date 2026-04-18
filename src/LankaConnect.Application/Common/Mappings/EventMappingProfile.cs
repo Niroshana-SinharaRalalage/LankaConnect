@@ -79,6 +79,9 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.CollectionConfig, opt => opt.MapFrom(src => src.CollectionConfig))
             .ForMember(dest => dest.SponsorConfig, opt => opt.MapFrom(src => src.SponsorConfig))
             .ForMember(dest => dest.AddOnConfig, opt => opt.MapFrom(src => src.AddOnConfig))
+            // Phase 2: Seating
+            .ForMember(dest => dest.SeatingMode, opt => opt.MapFrom(src => src.SeatingMode))
+            .ForMember(dest => dest.VenueLayoutId, opt => opt.MapFrom(src => src.VenueLayoutId))
             // Phase 8: Multi-Tier Ticketing
             .ForMember(dest => dest.TicketingMode, opt => opt.MapFrom(src => src.TicketingMode))
             .ForMember(dest => dest.HasTicketTiers, opt => opt.MapFrom(src => src.HasTicketTiers))

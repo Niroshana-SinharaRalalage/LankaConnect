@@ -152,6 +152,17 @@ public record EventDto
     /// </summary>
     public AddOnConfigurationDto? AddOnConfig { get; init; }
 
+    // Phase 2: Seating
+    /// <summary>
+    /// Phase 2: Seating mode — GeneralAdmission (default) or AssignedSeating.
+    /// </summary>
+    public SeatingMode SeatingMode { get; init; }
+
+    /// <summary>
+    /// Phase 2: Venue layout ID if assigned seating is enabled.
+    /// </summary>
+    public Guid? VenueLayoutId { get; init; }
+
     // Phase 8: Multi-Tier Ticketing
     /// <summary>
     /// Phase 8: Ticketing mode — SingleTier (legacy) or Tiered (multi-tier pricing).

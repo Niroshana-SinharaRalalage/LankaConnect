@@ -8,7 +8,8 @@ import { Clock, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto, CollectionConfigurationDto, SponsorConfigurationDto, TicketTierDto } from '@/infrastructure/api/types/events.types';
-import { AgeCategory, Gender, TicketingMode } from '@/infrastructure/api/types/events.types';
+import { AgeCategory, Gender, TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
+import { SeatSelector } from './SeatSelector';
 import { DonationOptionInForm } from './DonationOptionInForm';
 import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { CollectionOptionInForm } from './CollectionOptionInForm';
@@ -38,6 +39,8 @@ interface EventRegistrationFormProps {
   // Phase 6D: Group tiered pricing support
   hasGroupPricing?: boolean;
   groupPricingTiers?: readonly GroupPricingTierDto[];
+  // Phase 2: Seating support
+  seatingMode?: SeatingMode;
   // Phase 8: Multi-tier ticketing support
   ticketingMode?: TicketingMode;
   ticketTiers?: readonly TicketTierDto[];
@@ -66,6 +69,7 @@ export function EventRegistrationForm({
   childAgeLimit,
   hasGroupPricing,
   groupPricingTiers,
+  seatingMode,
   ticketingMode,
   ticketTiers,
   maxAttendeesPerRegistration = 10, // Issue #51: Default 10 for backward compatibility
@@ -105,6 +109,12 @@ export function EventRegistrationForm({
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Phase 2: Seat selection state
+  const isAssignedSeating = seatingMode === SeatingMode.AssignedSeating;
+  const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
+  const [seatSessionId, setSeatSessionId] = useState<string>('');
+  const [seatsConfirmed, setSeatsConfirmed] = useState(false);
 
   // Phase 7A.6B: WhatsApp opt-in state
   const [whatsAppEnabled, setWhatsAppEnabled] = useState(false);
@@ -378,6 +388,11 @@ export function EventRegistrationForm({
         email: email.trim() || undefined,
         phoneNumber: phoneNumber.trim() || undefined,
         address: address.trim() || undefined,
+        // Phase 2: Include seat hold session for assigned seating events
+        ...(isAssignedSeating && seatSessionId && {
+          seatSessionId,
+          seatIds: selectedSeatIds,
+        }),
         // Phase 7A.6B: WhatsApp opt-in
         ...(whatsAppEnabled && whatsAppPhone && {
           whatsAppPhoneNumber: toE164(whatsAppPhone),
@@ -589,6 +604,50 @@ export function EventRegistrationForm({
           )}
         </div>
       </div>
+
+      {/* Phase 2: Seat Selection for Assigned Seating events */}
+      {isAssignedSeating && user && (
+        <div className="border-t pt-4">
+          <h4 className="text-sm font-semibold mb-3 text-neutral-700">Select Your Seats</h4>
+          {!seatsConfirmed ? (
+            <SeatSelector
+              eventId={eventId}
+              maxSeats={attendees.length}
+              userId={user.userId}
+              onSeatsConfirmed={(seatIds, sessionId) => {
+                setSelectedSeatIds(seatIds);
+                setSeatSessionId(sessionId);
+                setSeatsConfirmed(true);
+              }}
+              onCancel={() => {
+                setSelectedSeatIds([]);
+                setSeatSessionId('');
+                setSeatsConfirmed(false);
+              }}
+            />
+          ) : (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    {selectedSeatIds.length} seat{selectedSeatIds.length !== 1 ? 's' : ''} selected
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    Your seats are held for 10 minutes. Complete registration to confirm.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSeatsConfirmed(false)}
+                  className="text-sm text-green-700 underline hover:text-green-900"
+                >
+                  Change seats
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Contact Information (anonymous users only, or editable for authenticated) */}
       {!user && (

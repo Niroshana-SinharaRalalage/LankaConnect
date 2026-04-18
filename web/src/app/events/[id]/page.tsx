@@ -1026,6 +1026,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
+                        seatingMode={event.seatingMode}
                         ticketingMode={event.ticketingMode}
                         ticketTiers={event.ticketTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}

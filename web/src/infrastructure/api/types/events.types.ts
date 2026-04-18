@@ -407,6 +407,10 @@ export interface EventDto {
   groupPricingTiers: readonly GroupPricingTierDto[]; // Quantity-based pricing tiers
   hasGroupPricing: boolean; // True if event uses group tiered pricing
 
+  // Phase 2: Seating
+  seatingMode?: SeatingMode;
+  venueLayoutId?: string | null;
+
   // Phase 8: Multi-tier ticketing
   ticketingMode: TicketingMode;
   ticketTiers: readonly TicketTierDto[];
@@ -895,6 +899,10 @@ export interface RsvpRequest {
   sponsorAmount?: number | null;
   sponsorOrganization?: string | null;
   sponsorNotes?: string | null;
+
+  // Phase 2: Assigned seating — seat hold session
+  seatSessionId?: string;
+  seatIds?: string[];
 }
 
 /**

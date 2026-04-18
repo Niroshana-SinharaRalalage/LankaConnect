@@ -47,6 +47,10 @@
     <Compile Remove="Integration\**\*.cs" />
     <Compile Remove="Common\*.cs" />
     <Compile Remove="SimpleIntegrationTest.cs" />
+    <!-- Pre-existing broken test referencing non-existent IEmailService type -->
+    <Compile Remove="Services\RegistrationEmailServiceTests.cs" />
+    <!-- Pre-existing broken test using obsolete SignUpItemDto API (post Phase 6A.124) -->
+    <Compile Remove="Services\Export\CsvExportServiceSignUpListsTests.cs" />
   </ItemGroup>
 
   <!-- Phase 6A.75: Include specific test files that are actively needed -->

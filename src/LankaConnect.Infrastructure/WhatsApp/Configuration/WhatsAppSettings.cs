@@ -92,4 +92,13 @@ public class WhatsAppSettings
     /// Twilio Verify Service SID for phone verification (e.g., "VAxxxxxxxxx").
     /// </summary>
     public string TwilioVerifyServiceSid { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7B.4: Dev-only flag. When true, the Twilio strategy will fall back to a
+    /// plain-text debug body for template sends that have no <c>TwilioContentSid</c>.
+    /// When false (default, and required in production), template sends without a
+    /// ContentSid are rejected before the Twilio SDK is invoked.
+    /// MUST remain false in staging/production.
+    /// </summary>
+    public bool SandboxMode { get; set; } = false;
 }

@@ -14,8 +14,10 @@ namespace LankaConnect.Infrastructure.WhatsApp.Services;
 
 /// <summary>
 /// Phase 7B: Twilio WhatsApp send strategy.
-/// Handles low-level Twilio API calls with retry logic, rate limiting, and structured logging.
-/// Mirrors AcsWhatsAppStrategy patterns for consistency.
+/// Phase 7B.4: wires Twilio Content API via ContentSid + ContentVariables.
+/// Sandbox mode (<see cref="WhatsAppSettings.SandboxMode"/>) allows dev-only fallback
+/// to a plain-text debug body when no ContentSid is supplied — never in production.
+/// Mirrors AcsWhatsAppStrategy patterns (retry, masking, structured logging).
 /// </summary>
 public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
 {
@@ -32,9 +34,6 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
         _logger = logger;
     }
 
-    /// <summary>
-    /// Initialize Twilio client (thread-safe, lazy). Matches ACS lazy pattern.
-    /// </summary>
     private void EnsureClientInitialized()
     {
         if (_clientInitialized) return;
@@ -65,10 +64,6 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
             ? $"{phone[..4]}***{phone[^4..]}"
             : "***masked***";
 
-    /// <summary>
-    /// Format phone number with whatsapp: prefix for Twilio.
-    /// Handles bare E.164 numbers from the interface.
-    /// </summary>
     private static string FormatWhatsAppNumber(string phoneNumber) =>
         phoneNumber.StartsWith("whatsapp:")
             ? phoneNumber
@@ -76,17 +71,12 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
 
     /// <summary>
     /// Build ContentVariables JSON from positional parameter values.
-    /// Twilio Content API uses 1-indexed named variables: {"1":"val1","2":"val2",...}
+    /// Twilio Content API uses 1-indexed named variables: {"1":"val1","2":"val2",...}.
+    /// Internal so unit tests can verify 1-indexing and quote escaping (T4).
+    /// Precondition: caller has already guarded <c>parameterValues.Count &lt;= 99</c>.
     /// </summary>
-    private static string BuildContentVariables(IReadOnlyList<string> parameterValues)
+    internal static string BuildContentVariables(IReadOnlyList<string> parameterValues)
     {
-        if (parameterValues.Count > 99)
-        {
-            throw new ArgumentException(
-                $"Twilio supports max 99 content variables, got {parameterValues.Count}.",
-                nameof(parameterValues));
-        }
-
         var variables = new Dictionary<string, string>();
         for (int i = 0; i < parameterValues.Count; i++)
         {
@@ -100,14 +90,42 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
         string templateName,
         IReadOnlyList<string> parameterValues,
         string language = "en",
+        string? providerTemplateId = null,
         CancellationToken ct = default)
     {
         var maskedPhone = MaskPhone(toPhoneNumber);
         var sw = Stopwatch.StartNew();
 
         _logger.LogInformation(
-            "[Phase 7B] Twilio WhatsApp template send START: Template={TemplateName}, To={MaskedPhone}, ParamCount={ParamCount}, Language={Language}",
-            templateName, maskedPhone, parameterValues.Count, language);
+            "[Phase 7B] Twilio WhatsApp template send START: Template={TemplateName}, To={MaskedPhone}, ParamCount={ParamCount}, Language={Language}, HasContentSid={HasContentSid}, SandboxMode={SandboxMode}",
+            templateName, maskedPhone, parameterValues.Count, language,
+            !string.IsNullOrEmpty(providerTemplateId), _settings.SandboxMode);
+
+        // Phase 7B.4 T5: pre-SDK guard — >99 params returns Failure, never throws.
+        if (parameterValues.Count > 99)
+        {
+            sw.Stop();
+            _logger.LogError(
+                "[Phase 7B.4] Twilio WhatsApp send REJECTED: Template={TemplateName}, ParamCount={ParamCount} exceeds Twilio max 99",
+                templateName, parameterValues.Count);
+            return Result<string>.Failure(
+                $"Twilio Content API supports max 99 content variables, got {parameterValues.Count} for template '{templateName}'.");
+        }
+
+        // Phase 7B.4 T2: pre-SDK guard — require ContentSid in production.
+        // SandboxMode=true is dev-only and must never be enabled in production env.
+        var hasContentSid = !string.IsNullOrWhiteSpace(providerTemplateId);
+        if (!hasContentSid && !_settings.SandboxMode)
+        {
+            sw.Stop();
+            _logger.LogError(
+                "[Phase 7B.4] Twilio WhatsApp send REJECTED: Template={TemplateName} has no TwilioContentSid and SandboxMode=false. " +
+                "Seed the Twilio ContentSid via TwilioTemplateSeeder or enable SandboxMode for local development.",
+                templateName);
+            return Result<string>.Failure(
+                $"Cannot send template '{templateName}': TwilioContentSid is missing and SandboxMode is disabled. " +
+                "Configure WhatsAppSettings:TwilioContentSids or enable SandboxMode for dev.");
+        }
 
         try
         {
@@ -122,11 +140,6 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
             var from = new PhoneNumber(FormatWhatsAppNumber(_settings.TwilioWhatsAppNumber));
             var to = new PhoneNumber(FormatWhatsAppNumber(toPhoneNumber));
 
-            // Build the message body with parameter values interpolated
-            // Sandbox mode: send as plain text since no ContentSid is available
-            // Production mode: would use ContentSid + ContentVariables (when templates are registered)
-            var body = BuildTemplateBody(templateName, parameterValues);
-
             // Send with retry for rate limiting (429/500/503)
             MessageResource? messageResource = null;
             int retryCount = 0;
@@ -136,10 +149,26 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
             {
                 try
                 {
-                    messageResource = await MessageResource.CreateAsync(
-                        from: from,
-                        to: to,
-                        body: body);
+                    if (hasContentSid)
+                    {
+                        // Production path: Twilio Content API with ContentSid + ContentVariables.
+                        var contentVariables = BuildContentVariables(parameterValues);
+                        messageResource = await MessageResource.CreateAsync(
+                            to: to,
+                            from: from,
+                            contentSid: providerTemplateId,
+                            contentVariables: contentVariables);
+                    }
+                    else
+                    {
+                        // SandboxMode=true ONLY: debug text fallback. Never reached in prod
+                        // because the pre-SDK guard above returns Failure first.
+                        var debugBody = BuildSandboxDebugBody(templateName, parameterValues);
+                        messageResource = await MessageResource.CreateAsync(
+                            from: from,
+                            to: to,
+                            body: debugBody);
+                    }
                     break;
                 }
                 catch (ApiException ex) when (IsRetryableStatusCode(ex.Status) && retryCount < maxRetries)
@@ -168,8 +197,8 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
             sw.Stop();
 
             _logger.LogInformation(
-                "[Phase 7B] Twilio WhatsApp template send SUCCESS: Template={TemplateName}, To={MaskedPhone}, TwilioSid={TwilioSid}, Status={Status}, Duration={ElapsedMs}ms",
-                templateName, maskedPhone, messageSid, messageResource.Status, sw.ElapsedMilliseconds);
+                "[Phase 7B] Twilio WhatsApp template send SUCCESS: Template={TemplateName}, To={MaskedPhone}, TwilioSid={TwilioSid}, ContentSid={ContentSid}, Status={Status}, Duration={ElapsedMs}ms",
+                templateName, maskedPhone, messageSid, providerTemplateId ?? "(none)", messageResource.Status, sw.ElapsedMilliseconds);
 
             return Result<string>.Success(messageSid);
         }
@@ -257,14 +286,13 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
     }
 
     /// <summary>
-    /// Build a readable text body from template name and parameter values.
-    /// Used when no ContentSid is available (sandbox mode).
-    /// Replaces positional placeholders {{1}}, {{2}}, etc. with actual values.
+    /// Sandbox-only debug body for local development. Emits template name + positional
+    /// placeholders so devs can verify wiring without Content API registration.
+    /// NEVER reachable when <see cref="WhatsAppSettings.SandboxMode"/> is false.
     /// </summary>
-    private static string BuildTemplateBody(string templateName, IReadOnlyList<string> parameterValues)
+    private static string BuildSandboxDebugBody(string templateName, IReadOnlyList<string> parameterValues)
     {
-        // Build a human-readable message with the template name and parameters
-        var body = $"[{templateName}]";
+        var body = $"[SANDBOX][{templateName}]";
         if (parameterValues.Count > 0)
         {
             body += " " + string.Join(", ", parameterValues.Select((v, i) => $"{{{{{i + 1}}}}}={v}"));
@@ -272,9 +300,6 @@ public class TwilioWhatsAppStrategy : IWhatsAppSendStrategy
         return body;
     }
 
-    /// <summary>
-    /// Check if a Twilio API error status code is retryable.
-    /// </summary>
     private static bool IsRetryableStatusCode(int statusCode) =>
         statusCode is 429 or 500 or 503;
 }

@@ -45,6 +45,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="LankaConnect.Infrastructure.Tests" />
+  </ItemGroup>
+
   <!-- Phase 6A.24: Include email templates in publish output -->
   <ItemGroup>
     <Content Include="Templates\Email\**\*.*">

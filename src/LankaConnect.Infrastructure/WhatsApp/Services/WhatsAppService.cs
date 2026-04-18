@@ -328,12 +328,15 @@ public class WhatsAppService : IWhatsAppService
 
         await _messageRepository.AddAsync(record, ct);
 
-        // Step 6: Send via provider strategy (ACS or Twilio)
+        // Step 6: Send via provider strategy (ACS or Twilio).
+        // Phase 7B.4: pass template.TwilioContentSid as providerTemplateId so the Twilio
+        // strategy can use the Content API. ACS ignores this argument.
         var sendResult = await _sendStrategy.SendTemplateMessageAsync(
             phoneNumber,
             templateName,
             orderedValues,
             language,
+            template.TwilioContentSid,
             ct);
 
         // Step 8-9: Update record based on result

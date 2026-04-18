@@ -221,14 +221,14 @@ public class WhatsAppTemplateTests
     }
 
     [Fact]
-    public void IsUsable_Should_Return_True_Only_When_Approved_And_Has_MetaTemplateId()
+    public void IsUsable_Should_Return_True_When_Approved_With_MetaTemplateId()
     {
         var template = CreatePendingTemplate();
 
         // Pending - not usable
         template.IsUsable.Should().BeFalse();
 
-        // Approved with MetaTemplateId - usable
+        // Approved with MetaTemplateId (ACS path) - usable
         template.MarkApproved("meta-template-abc");
         template.IsUsable.Should().BeTrue();
 
@@ -242,6 +242,72 @@ public class WhatsAppTemplateTests
     {
         var template = CreatePendingTemplate();
         template.IsUsable.Should().BeFalse();
+    }
+
+    // Phase 7B.4 — T7: Twilio-only usability path.
+    // Relaxed invariant: IsUsable = IsApproved && (MetaTemplateId != null || TwilioContentSid != null).
+    [Fact]
+    public void IsUsable_Approved_WithTwilioContentSidOnly_NoMetaId_ReturnsTrue()
+    {
+        var template = CreatePendingTemplate();
+        template.SetTwilioContentSid("HX1234567890abcdef1234567890abcdef");
+
+        // Set but not yet approved -> still not usable
+        template.IsUsable.Should().BeFalse();
+
+        // Approved via Twilio path (no MetaTemplateId) -> usable
+        template.MarkApprovedForTwilio();
+
+        template.IsUsable.Should().BeTrue();
+        template.IsApproved.Should().BeTrue();
+        template.MetaTemplateId.Should().BeNull();
+        template.TwilioContentSid.Should().Be("HX1234567890abcdef1234567890abcdef");
+    }
+
+    [Fact]
+    public void IsUsable_Approved_WithoutMetaIdOrTwilioSid_ReturnsFalse()
+    {
+        var template = CreatePendingTemplate();
+
+        // Forcing approval via Twilio path but leaving TwilioContentSid null -> not usable.
+        // (Catches typo/missing-seeder case where seeder marked approved but SID failed to set.)
+        template.MarkApprovedForTwilio();
+
+        template.IsApproved.Should().BeTrue();
+        template.IsUsable.Should().BeFalse();
+    }
+
+    #endregion
+
+    #region MarkApprovedForTwilio Tests (Phase 7B.4)
+
+    // Phase 7B.4 — T13: Twilio-path approval domain method.
+    [Fact]
+    public void MarkApprovedForTwilio_SetsApprovedStatusWithoutMetaId()
+    {
+        var template = CreatePendingTemplate();
+
+        template.MarkApprovedForTwilio();
+
+        template.Status.Should().Be(WhatsAppTemplateStatus.Approved);
+        template.ApprovedAt.Should().NotBeNull();
+        template.ApprovedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        template.MetaTemplateId.Should().BeNull();
+        template.RejectedAt.Should().BeNull();
+        template.RejectionReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void MarkApprovedForTwilio_AfterRejection_ClearsRejectionData()
+    {
+        var template = CreatePendingTemplate();
+        template.MarkRejected("Initial rejection reason");
+
+        template.MarkApprovedForTwilio();
+
+        template.Status.Should().Be(WhatsAppTemplateStatus.Approved);
+        template.RejectedAt.Should().BeNull();
+        template.RejectionReason.Should().BeNull();
     }
 
     #endregion

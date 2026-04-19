@@ -1,11 +1,52 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-19 - Seating Redesign Slice 4 Release N code-complete*
+*Last Updated: 2026-04-19 - Phase 7B.4 bugfix: WhatsApp verify via Content API + sender-number correction (DELIVERED end-to-end)*
 
-## 🎯 Current Session Status (2026-04-19 — Slice 4 Release N)
+## 🎯 Current Session Status (2026-04-19 — Phase 7B.4 Bugfix: WhatsApp Verification Delivery)
 
-### Seating Redesign — Slice 4 Release N (Polymorphic Tier Assignments) — Code Complete
+### WhatsApp Phone Verification — ✅ Deployed + Staging-Verified (Delivered on +12343513717)
 
-**Status**: ✅ **CODE COMPLETE** — Full solution builds clean (0 errors). Domain tests: 458/460 pass (2 pre-existing unrelated failures). 135 Slice-4 / TicketTier / VenueLayout tests all pass.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commit `506835c7`, deploy run `24634800550` SUCCESS, revision `lankaconnect-api-staging--0001332` Healthy. Admin-endpoint test message and user-initiated `/api/whatsapp/verify/request` both returned **status=delivered** from Twilio (SIDs `MM447bdf04…` and `MM0115953d…`, `from=whatsapp:+12343513717`, `error_code=None`). Phase 7B.4 now end-to-end operational.
+
+**Two defects found and fixed together:**
+
+1. **Config defect — staging `twilio-whatsapp-number` secret pointed at the shared Twilio sandbox `+14155238886` (OFFLINE sender on this account), not the dedicated WABA number `+12343513717` (ONLINE under WABA `1514777170010538`). Every prior test send was accepted by Twilio (status=queued) but failed at delivery with `error_code=63015` because the recipient had never joined the sandbox. Rotated the Container App secret to `+12343513717` via `az containerapp secret set`. Production secrets still placeholder — no prod action required until activation.**
+
+2. **Code defect — `TwilioPhoneVerificationService` sent the code via Twilio **Messages API with a plain text body** (SMS) from the WhatsApp sender number. The WABA number has `SMS=None` capability, so every `POST /api/whatsapp/verify/request` returned HTTP 400 and Twilio `error_code=21660` ("From number is not SMS-capable"). Rewrote the service to delegate to `IWhatsAppSendStrategy.SendTemplateMessageAsync` using the `phone_verification` WhatsApp Content template (ContentSid `HX67ba35…`, already seeded by `TwilioTemplateSeeder`). Same code is now transported over Meta-approved WhatsApp business template — no SMS-capable number required, reuses the proven Content API path (logging, retries, phone masking).
+
+**Why this is durable**:
+- No new external dependencies (phone_verification template + ContentSid were already provisioned in Phase 7B.3/7B.4 Phase C).
+- Service no longer embeds Twilio SDK primitives — that concern lives exclusively in `TwilioWhatsAppStrategy`.
+- Missing ContentSid is a fail-fast config error with a named template hint, not an opaque runtime exception.
+- Strategy-pattern DI already routes based on `WhatsAppSettings.Provider`; no DI changes needed.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Infrastructure | [TwilioPhoneVerificationService.cs](../src/LankaConnect.Infrastructure/WhatsApp/Services/TwilioPhoneVerificationService.cs) | Removed direct `MessageResource.CreateAsync` SMS call. Injects `IWhatsAppSendStrategy` + `WhatsAppSettings`; looks up `TwilioContentSids["phone_verification"]` and delegates to `SendTemplateMessageAsync(phone, "phone_verification", [code], "en", contentSid, ct)`. Fail-fast on missing ContentSid. |
+| Tests | [TwilioPhoneVerificationServiceTests.cs](../tests/LankaConnect.Infrastructure.Tests/WhatsApp/TwilioPhoneVerificationServiceTests.cs) (new) | 6 unit tests (Moq strict): happy-path (template name + ContentSid correct), missing ContentSid → Failure without calling strategy, WhatsApp globally disabled guard, empty phone/code guards, strategy-failure propagation. |
+| Config (Azure) | — | Rotated Container App secret `twilio-whatsapp-number`: `+14155238886` → `+12343513717`. New revision picked up value automatically on redeploy. |
+
+**Staging evidence**:
+- `POST /api/whatsapp-admin/test-message` → `{success: true, messageId: "MM447bdf048bf1e31a2039282f8a033d61"}` → Twilio API: `status=delivered, from=whatsapp:+12343513717, error_code=None`.
+- `POST /api/whatsapp/verify/request` → HTTP 200 → Twilio API: `MM0115953d8a9dd40c62ee5058776a64cc, status=delivered, from=whatsapp:+12343513717, error_code=None`.
+- Infrastructure tests: 262/262 pass (0 regressions, 6 new tests added).
+
+**Follow-up (non-blocking)**:
+- Production `twilio-whatsapp-number`, `twilio-account-sid`, `twilio-auth-token` secrets are all placeholders (`PLACEHOLDER_NEEDS_PROD_CREDENTIALS`). When prod goes live, set `twilio-whatsapp-number=+12343513717` (reuse the staging WABA) along with the matching SID/Token. The `deploy-production.yml` already references `secretref:twilio-whatsapp-number`.
+- External task (Twilio Console): configure LankaConnect logo on the +12343513717 WhatsApp sender profile (Messaging → WhatsApp senders → Profile). Not a blocker for delivery; affects branding in the chat header.
+
+---
+
+## 🎯 Previous Session Status (2026-04-19 — Slice 4 Release N)
+
+### Seating Redesign — Slice 4 Release N (Polymorphic Tier Assignments) — ✅ Deployed + Staging-Verified
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commit `01ea022f` (backfill SQL `id` → `""Id""` quoted-identifier fix), deploy run `24632491630` SUCCESS. Smoke test on staging: `POST /api/venue-layouts` returns 201 with `zones[*].ticketTierId == null`; `GET /api/venue-layouts/{id}` echoes same — Release N contract holds on both read paths. Solution builds clean (0 errors). Domain tests: 458/460 pass (2 pre-existing unrelated failures). 135 Slice-4 / TicketTier / VenueLayout tests all pass.
+
+**Staging smoke-test evidence** (token-auth: `niroshhh@gmail.com`):
+- Test template layout `01541a04-8aa0-4ddf-a003-40e891176b34` created with 2 zones; both returned `ticketTierId:null, ticketTierName:null` on write-back and subsequent GET.
+- Deploy success = DDL (`events.tier_assignments` + `ix_tier_assignments_assignable`) + `__EFMigrationsHistory` row + backfill `INSERT ... ON CONFLICT DO NOTHING` applied atomically (Postgres DDL-in-migration transactionality). No production layouts with `ticket_tier_id IS NOT NULL` existed on staging, so backfill legitimately INSERTed 0 rows.
+- Post-verification cleanup: smoke-test layout is a template (`eventId:null`, no seats) — harmless residue; DELETE endpoint ships in Slice 5.
 
 **Classification**: Architect decision #2 (polymorphic junction) + #10 (atomic single-PR for property removal + dual-read) + #11 (two-release column drop). Replaces `venue_zones.ticket_tier_id` FK with a polymorphic `tier_assignments` table supporting both `Zone` and `Table` targets. Column stays nullable in DB throughout Release N; dropped in Release N+1 after ≥1 week in production with no rollback triggered.
 
@@ -36,7 +77,7 @@
 - Remove `@deprecated ticketTierId` fields from TS DTOs.
 - Phase 6A.122 post-deploy check: verify `information_schema.columns` no longer reports `ticket_tier_id` for `venue_zones`.
 
-**Next**: Commit → push to `develop` → `deploy-staging.yml` applies migration → verify `__EFMigrationsHistory` includes `20260419135921_AddTierAssignments` AND `SELECT COUNT(*) FROM events.tier_assignments` on staging matches `COUNT(*) FROM events.venue_zones WHERE ticket_tier_id IS NOT NULL` (backfill row-count verification, Phase 6A.122 class). Slice 5 (API CRUD + auth + concurrency + `PUT /batch` endpoint + TierMappingPanel frontend) follows.
+**Next**: Consult `system-architect` re: whether Slice 2+3B (3-transaction `CreateEventCommand` saga — decision #7) must ship before Slice 5 (API CRUD) or whether Slice 5 can land first. Trigger: Slice 6 preset clone + Slice 8 canvas save are the first consumers with the 500-seat single-transaction timeout risk architect flagged; Slice 5 itself only adds PUT/PATCH/DELETE against already-persisted layouts, which doesn't trip the timeout. Proceed per architect guidance.
 
 ---
 

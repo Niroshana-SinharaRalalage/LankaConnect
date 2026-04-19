@@ -48,7 +48,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { Plus, Edit, Trash2, ChevronDown, ChevronRight, AlertCircle, Lightbulb } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, AlertCircle, Lightbulb } from 'lucide-react';
 import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
@@ -663,21 +663,7 @@ export function SignUpManagementSection({
                               <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
                                 {/* Phase 6A.118: Item Header - Always Visible */}
                                 <div className="flex items-start gap-2">
-                                  {/* Phase 6A.118: Expand/Collapse Button */}
-                                  <button
-                                    onClick={() => toggleItemExpanded(item.id)}
-                                    aria-label={isExpanded ? 'Collapse item details' : 'Expand item details'}
-                                    aria-expanded={isExpanded}
-                                    className="flex-shrink-0 mt-1 hover:bg-gray-100 rounded p-1 transition-colors"
-                                  >
-                                    {isExpanded ? (
-                                      <ChevronDown className="h-4 w-4" style={{ color: '#FF7900' }} />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4" style={{ color: '#FF7900' }} />
-                                    )}
-                                  </button>
-
-                                  <div className="flex-1">
+                                  <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
@@ -695,6 +681,23 @@ export function SignUpManagementSection({
                                       </span>
                                     </div>
                                   </div>
+
+                                  {/* Explicit Show/Hide details pill — matches CollapsibleSection affordance.
+                                      Text hidden on mobile so the pill collapses to chevron-only on narrow screens. */}
+                                  <button
+                                    onClick={() => toggleItemExpanded(item.id)}
+                                    aria-label={isExpanded ? 'Collapse item details' : 'Expand item details'}
+                                    aria-expanded={isExpanded}
+                                    className="inline-flex items-center gap-1.5 flex-shrink-0 rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 shadow-sm hover:border-neutral-400 hover:bg-neutral-50 transition-colors"
+                                  >
+                                    <span className="hidden sm:inline">
+                                      {isExpanded ? 'Hide details' : 'Show details'}
+                                    </span>
+                                    <ChevronDown
+                                      className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                      aria-hidden="true"
+                                    />
+                                  </button>
                                 </div>
 
                                 {/* Phase 6A.123: Sign Up/Update button - Always Visible (outside collapsible) */}

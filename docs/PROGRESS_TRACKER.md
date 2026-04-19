@@ -1,7 +1,46 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-19 - Phase 7B.4 bugfix: WhatsApp verify via Content API + sender-number correction (DELIVERED end-to-end)*
+*Last Updated: 2026-04-19 - Phase 7B.4 E2E staging verification + 6-template Content-API realignment (25/25 render correct)*
 
-## 🎯 Current Session Status (2026-04-19 — Phase 7B.4 Bugfix: WhatsApp Verification Delivery)
+## 🎯 Current Session Status (2026-04-19 — Phase 7B.4 E2E + Twilio Content-template realignment)
+
+### Phase 7B.4 — All 25 WhatsApp Templates Verified on Staging + 6 Template Bodies Reconciled
+
+**Status**: ✅ **E2E VERIFIED** — end-to-end staging test of all 25 WhatsApp templates via `POST /api/whatsapp-admin/test-message` now returns 25/25 MessageSids AND all 25 render with correct positional parameters. Two hidden body-misalignment bugs in Twilio Content templates fixed by creating v2 Content templates with correct `{{N}}` bodies matching the handler's `Dictionary<string,string>` → DB-declared positional contract. Rollback test (T6-11) passed: `Provider=Acs` routes to `AcsWhatsAppStrategy` (fails with ACS-specific config error), `Provider=Twilio` routes back to `TwilioWhatsAppStrategy` (delivers `MM42f75e…`) — factory DI works both directions.
+
+**Two defects found and fixed together:**
+
+1. **Twilio template body misalignment (2 of 6 failures)** — `event_registration_confirmed` and `new_event_announcement` had Twilio Content bodies whose `{{N}}` placeholders did not match the handler's DB-declared parameter order (7 and 5 respectively). Messages were being accepted by Twilio (returned MessageSids) but rendered with positional values shifted — e.g. `"View details: 2"` (the quantity in the URL slot) and `"Time: Test Venue"` (the location in the time slot). **Fix**: created v2 Content templates via `POST /v1/Content` with correct `{{N}}` bodies, updated `WhatsAppSettings__TwilioContentSids__*` env vars on staging Container App, redeployed. `TwilioTemplateSeeder` copied new HX-sids into `communications.whatsapp_templates.twilio_content_sid` on startup. Fresh test messages render correctly (`Tickets: 2`, `View details: <URL>`, `Location: Test Venue`, `Register now: <URL>`). Old template SIDs left in Twilio (harmless if unreferenced).
+
+2. **Test-script parameter drift (4 of 6 failures)** — `scripts/test_whatsapp_all_25_templates.py` sent parameter dictionaries that omitted keys the DB template declared (e.g. `event_url`, `event_time`, `refund_status`). `WhatsAppService.SendViaTemplateAsync` logged a missing-parameter warning and substituted empty strings — Twilio then rejected with `21656 "Content Variables parameter is invalid"` because empty variables are not accepted. Real production handlers (e.g. `RegistrationConfirmedWhatsAppHandler`) DO pass all required keys, so production was never affected. **Fix**: aligned the test script's mock params with each template's DB-declared parameter-name list.
+
+**Why this is durable**:
+- Content-template creation is idempotent (v2 SIDs are now the config truth; if staging is rebuilt, `deploy-staging.yml` carries the v2 SIDs through `--set-env-vars`).
+- No code changes required — the handler contract (`Dictionary<string,string>` with DB-declared keys) was always the intended design; only the remote Twilio bodies and the test script were drifted.
+- `TwilioTemplateSeeder` reconciles env-var → DB on every startup; the fix survives container restarts and revision cycles.
+- Factory-DI rollback verified both directions; provider swap is a single env-var change with no code deploy.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Twilio Content API | (external — 2 new templates) | Created `event_registration_confirmed_v2` → `HXa898bf71c087e6f91e130e5b170d1033` (7 vars) and `new_event_announcement_v2` → `HX346704719517ae90010e5af0570346f9` (5 vars) with bodies matching handler's positional order. |
+| CI/CD | [deploy-staging.yml](../.github/workflows/deploy-staging.yml) | Replaced two `WhatsAppSettings__TwilioContentSids__*` env vars with v2 SIDs so subsequent deploys persist the fix. |
+| Scripts | [test_whatsapp_all_25_templates.py](../scripts/test_whatsapp_all_25_templates.py) | Added missing DB-declared keys to 4 failing templates + extra keys for 2 Category-A templates. Per-template comment annotates the DB parameter order. |
+| Scripts (new) | [inspect_twilio_templates.py](../scripts/inspect_twilio_templates.py) | Read-only tool: GETs each ContentSid from Twilio, diffs `variables` / body-placeholders against DB-declared param names, prints mismatch diagnosis. |
+| Scripts (new) | [fix_twilio_templates.py](../scripts/fix_twilio_templates.py) | POSTs v2 Content templates to Twilio with corrected bodies. Meta-approval submission intentionally skipped (T-EXT-5 is user's plate). |
+
+**Staging evidence**:
+- 25/25 smoke test after fix: every template returns `success:true` with MM-SID; see `c:/tmp/whatsapp_25_smoke_results.json`.
+- Body verification: `event_registration_confirmed` renders `Tickets: 2` + `View details: https://…` in correct slots; `new_event_announcement` renders `Location: Test Venue` + `Register now: https://…` in correct slots. No more positional drift.
+- Rollback test T6-11: `Provider=Acs` → ACS config-error `"ConnectionString is not configured"` (proves factory routed to `AcsWhatsAppStrategy`); `Provider=Twilio` → `success:true, messageId:MM42f75e38f39cc8fd98b512451d00ae01`.
+- Webhook callbacks (T6-10) still pending — Twilio Console `status-callback URL` not yet pointed at staging `/api/webhooks/whatsapp/twilio-status`; tracked under T-EXT-7 on user's plate.
+
+**Follow-up (non-blocking)**:
+- Submit the 2 v2 templates for Meta approval in Twilio Console (current `error_code=63049/63016` on sandbox delivery is the Meta-approval-required signal). Tracked under T-EXT-5.
+- Consider deleting old template SIDs `HX0d8abbb1…` and `HXe8aba256…` from Twilio once production confirms no references.
+
+---
+
+## 🎯 Previous Session Status (2026-04-19 — Phase 7B.4 Bugfix: WhatsApp Verification Delivery)
 
 ### WhatsApp Phone Verification — ✅ Deployed + Staging-Verified (Delivered on +12343513717)
 

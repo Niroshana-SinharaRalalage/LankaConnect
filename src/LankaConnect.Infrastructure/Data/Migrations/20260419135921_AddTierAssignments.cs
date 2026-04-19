@@ -138,9 +138,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // The column stays nullable in DB (Release N dual-read window); Release N+1 drops it after
             // ≥1 week in production with no rollback triggered (architect decision #11).
             // ON CONFLICT DO NOTHING guards against re-apply on environments where backfill already ran.
+            // NOTE: "Id" is quoted because venue_zones.Id was created without HasColumnName override,
+            // so EF's default naming produced a mixed-case quoted identifier at table-creation time.
             migrationBuilder.Sql(@"
                 INSERT INTO events.tier_assignments (tier_id, assignable_kind, assignable_id, created_at)
-                SELECT ticket_tier_id, 'Zone', id, NOW()
+                SELECT ticket_tier_id, 'Zone', ""Id"", NOW()
                 FROM events.venue_zones
                 WHERE ticket_tier_id IS NOT NULL
                 ON CONFLICT DO NOTHING;

@@ -2344,6 +2344,14 @@ export interface SetTicketingModeRequest {
 }
 
 /**
+ * Seating Redesign Slice 1: Request to set the seating mode for an event.
+ * AssignedSeating requires the event to already be in TicketingMode.Tiered.
+ */
+export interface SetSeatingModeRequest {
+  seatingMode: SeatingMode;
+}
+
+/**
  * Phase 8: Request to create a ticket tier.
  */
 export interface CreateTicketTierRequest {

@@ -1,7 +1,40 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-18 - UI Polish: CollapsibleSection discoverability*
+*Last Updated: 2026-04-18 - Seating Redesign Slice 1 complete*
 
 ## 🎯 Current Session Status (2026-04-18)
+
+### Seating Redesign — Slice 1 (Inline SeatingSection UI Shell) — Code Complete
+
+**Status**: ✅ **CODE COMPLETE — ALL TESTS PASS** (awaiting commit + dual staging deploy)
+
+**Classification**: Architecture redesign — Slice 1 of the 8-slice seating rebuild. Backend + frontend wiring of inline seating configuration, gated by `TicketingMode === Tiered`. No layout creation logic (architect decision #9 — deferred to Slice 2+3).
+
+**Architect note on scope**: Plan wording suggested wiring `seatingMode` into `CreateEventCommand`/`UpdateEventCommand`. The existing codebase uses a per-capability command pattern (`SetTicketingModeCommand`, `AddTicketTierCommand`, etc.) with deferred-endpoint saga calls from the forms. Mirrored that convention with a dedicated `SetSeatingModeCommand` — cleaner, parallel to `SetTicketingMode`, and the plan's verification ("event saved with SeatingMode = AssignedSeating") is satisfied either way.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Backend command | [src/LankaConnect.Application/Events/Commands/SetSeatingMode/SetSeatingModeCommand.cs](../src/LankaConnect.Application/Events/Commands/SetSeatingMode/SetSeatingModeCommand.cs), [SetSeatingModeCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/SetSeatingMode/SetSeatingModeCommandHandler.cs) (new) | Per-capability command mirroring `SetTicketingModeCommand`. Serilog `LogContext.PushProperty` for `Operation`/`EventId`, `Stopwatch` duration, structured try/catch. Delegates to `Event.SetSeatingMode(mode)` which enforces Tiered-only + no-registrations invariants. |
+| API endpoint | [src/LankaConnect.API/Controllers/EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) | `PUT /api/events/{id}/seating-mode` + `SetSeatingModeRequest` DTO. `[Authorize]`, 200/400/401 response types. |
+| Backend tests | [tests/LankaConnect.Application.Tests/Events/Commands/SetSeatingModeCommandHandlerTests.cs](../tests/LankaConnect.Application.Tests/Events/Commands/SetSeatingModeCommandHandlerTests.cs) (new) | 6 tests: Tiered→AssignedSeating success, non-Tiered failure, switching back to GA clears layout, idempotent same-mode, event-not-found failure, repository exception propagation. **6/6 pass**. |
+| Frontend types | [web/src/infrastructure/api/types/events.types.ts](../web/src/infrastructure/api/types/events.types.ts) | `SetSeatingModeRequest` interface. |
+| Frontend repository | [web/src/infrastructure/api/repositories/events.repository.ts](../web/src/infrastructure/api/repositories/events.repository.ts) | `setSeatingMode(eventId, mode)` calling `PUT /events/{id}/seating-mode`. |
+| Frontend hook | [web/src/presentation/hooks/useSeatingMode.ts](../web/src/presentation/hooks/useSeatingMode.ts) (new) | `useSetSeatingMode()` React Query mutation, invalidates `eventKeys.detail(eventId)` on success. |
+| Component | [web/src/presentation/components/features/events/SeatingSection.tsx](../web/src/presentation/components/features/events/SeatingSection.tsx) (new) | Pure controlled component. Returns `null` unless `ticketingMode === Tiered`. Tailwind peer-checked toggle, `isSaving` spinner, `errorMessage` panel, `disabled` + `disabledReason` state. Placeholder panel when AssignedSeating active ("Venue layout editor launches in the next release"). |
+| Form wiring | [EventCreationForm.tsx](../web/src/presentation/components/features/events/EventCreationForm.tsx), [EventEditForm.tsx](../web/src/presentation/components/features/events/EventEditForm.tsx) | SeatingSection rendered inside the `{enableTieredTicketing && ...}` block right after TicketTierBuilder. Create form: persists via repository after `setTicketingMode(Tiered)` + tier creation. Edit form: persists on submit after tier sync, only when mode actually changed. Non-blocking try/catch — seating errors surface on the SeatingSection error panel without failing the main save. |
+| Component tests | [web/tests/unit/presentation/components/features/events/SeatingSection.test.tsx](../web/tests/unit/presentation/components/features/events/SeatingSection.test.tsx) (new) | 12 Vitest tests: visibility gate (null on SingleTier, renders on Tiered), toggle state reflection (checked/unchecked), onChange fires flipped enum on/off, placeholder shown only when AssignedSeating, saving spinner, error message with `data-testid="seating-error"`, disabled prevents onChange + shows `disabledReason`, isSaving blocks onChange. **12/12 pass**. |
+
+**Verification**:
+- Backend build: clean.
+- Backend tests (SetSeatingMode filter): 6/6 pass in 46 ms.
+- Frontend TypeScript: `npx tsc --noEmit` exit 0, no regressions.
+- Frontend Vitest: 12/12 SeatingSection tests pass in 150 ms.
+
+**Next**: Commit → push to `develop` → dual deploy (`deploy-staging.yml` for backend API, `deploy-ui-staging.yml` for UI) → verify `PUT /api/events/{id}/seating-mode` on staging via curl + manual UI round-trip. Then Slice 2+3 (domain expansion + 3-transaction layout creation).
+
+---
+
+## ⏸️ Previous Session Status (2026-04-18)
 
 ### UI Polish — CollapsibleSection Discoverability
 

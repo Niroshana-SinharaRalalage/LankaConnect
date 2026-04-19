@@ -15,11 +15,12 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
-import { EventCategory, Currency, TicketingMode } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
 import { TicketTierBuilder, type TicketTierFormData } from './TicketTierBuilder';
+import { SeatingSection } from './SeatingSection';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { DonationConfigForm } from './DonationConfigForm';
 import { CollectionConfigForm } from './CollectionConfigForm';
@@ -47,6 +48,12 @@ export function EventCreationForm() {
   const { user } = useAuthStore();
   const createEventMutation = useCreateEvent();
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Seating Redesign Slice 1: Track assigned-seating intent before the event
+  // exists. Applied via eventsRepository.setSeatingMode(...) after the event
+  // (and Tiered ticketing mode) has been created.
+  const [seatingMode, setSeatingModeState] = useState<SeatingMode>(SeatingMode.GeneralAdmission);
+  const [seatingModeError, setSeatingModeError] = useState<string | null>(null);
 
   // Donation Feature: Donation configuration state
   const [donationsEnabled, setDonationsEnabled] = useState(false);
@@ -496,6 +503,23 @@ export function EventCreationForm() {
         } catch (tierErr) {
           console.error('⚠️ Tier creation failed:', tierErr);
           // Non-blocking — tiers can be added later from manage page
+        }
+      }
+
+      // Seating Redesign Slice 1: If the organizer enabled assigned seating
+      // during creation, persist the flip AFTER setTicketingMode(Tiered).
+      // The backend rejects AssignedSeating on a non-Tiered event.
+      if (data.enableTieredTicketing && seatingMode === SeatingMode.AssignedSeating) {
+        try {
+          console.log('🪑 Applying assigned seating mode to new event');
+          await eventsRepository.setSeatingMode(eventId, SeatingMode.AssignedSeating);
+          console.log('✅ Seating mode set to AssignedSeating');
+        } catch (seatErr) {
+          // Non-blocking — event exists, tiers exist; user can toggle from manage page.
+          console.error('⚠️ Seating mode update failed:', seatErr);
+          setSeatingModeError(
+            seatErr instanceof Error ? seatErr.message : 'Failed to enable assigned seating.'
+          );
         }
       }
 
@@ -1049,6 +1073,20 @@ export function EventCreationForm() {
                     errors={errors.ticketTiers?.message}
                   />
                 </div>
+              )}
+
+              {/* Seating Redesign Slice 1: Inline assigned-seating toggle,
+                  only visible when tiered ticketing is enabled. */}
+              {enableTieredTicketing && (
+                <SeatingSection
+                  ticketingMode={TicketingMode.Tiered}
+                  value={seatingMode}
+                  onChange={(mode) => {
+                    setSeatingModeState(mode);
+                    if (seatingModeError) setSeatingModeError(null);
+                  }}
+                  errorMessage={seatingModeError}
+                />
               )}
 
               {/* Dual Pricing Fields (adult/child) */}

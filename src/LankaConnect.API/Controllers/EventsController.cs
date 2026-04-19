@@ -105,6 +105,7 @@ using LankaConnect.Application.Events.Commands.AddTicketTier;
 using LankaConnect.Application.Events.Commands.UpdateTicketTier;
 using LankaConnect.Application.Events.Commands.RemoveTicketTier;
 using LankaConnect.Application.Events.Commands.SetTicketingMode;
+using LankaConnect.Application.Events.Commands.SetSeatingMode;
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
@@ -1679,6 +1680,27 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Setting ticketing mode for event {EventId} to {Mode}", id, request.TicketingMode);
 
         var command = new SetTicketingModeCommand(id, request.TicketingMode);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Seating Redesign Slice 1: Set the seating mode for an event
+    /// (GeneralAdmission or AssignedSeating). AssignedSeating requires the
+    /// event to already be in TicketingMode.Tiered. Venue layout creation
+    /// comes in Slice 2+3 — this endpoint only flips the enum.
+    /// </summary>
+    [HttpPut("{id:guid}/seating-mode")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetSeatingMode(Guid id, [FromBody] SetSeatingModeRequest request)
+    {
+        Logger.LogInformation("Setting seating mode for event {EventId} to {Mode}", id, request.SeatingMode);
+
+        var command = new SetSeatingModeCommand(id, request.SeatingMode);
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -3660,6 +3682,9 @@ public record UpdateFormAnswerRequest(
 // Phase 8: Ticket Tier Management request DTOs
 
 public record SetTicketingModeRequest(TicketingMode TicketingMode);
+
+// Seating Redesign Slice 1: Set seating mode request DTO
+public record SetSeatingModeRequest(SeatingMode SeatingMode);
 
 public record AddTicketTierRequest(
     string Name,

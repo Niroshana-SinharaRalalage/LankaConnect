@@ -72,6 +72,9 @@ import type {
   CreateTicketTierRequest,
   UpdateTicketTierRequest,
   TicketingMode,
+  // Seating Redesign Slice 1
+  SetSeatingModeRequest,
+  SeatingMode,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1818,6 +1821,18 @@ export class EventsRepository {
    */
   async setTicketingMode(eventId: string, mode: TicketingMode): Promise<void> {
     await apiClient.put<void>(`/events/${eventId}/ticketing-mode`, { ticketingMode: mode } as SetTicketingModeRequest);
+  }
+
+  /**
+   * Seating Redesign Slice 1: Set the seating mode for an event
+   * (GeneralAdmission or AssignedSeating). AssignedSeating requires the
+   * event to already be in TicketingMode.Tiered. Requires auth.
+   */
+  async setSeatingMode(eventId: string, mode: SeatingMode): Promise<void> {
+    await apiClient.put<void>(
+      `/events/${eventId}/seating-mode`,
+      { seatingMode: mode } as SetSeatingModeRequest
+    );
   }
 
   /**

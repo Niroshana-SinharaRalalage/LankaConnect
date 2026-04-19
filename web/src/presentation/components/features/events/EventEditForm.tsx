@@ -23,7 +23,8 @@ import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
 import { TicketTierBuilder, type TicketTierFormData } from './TicketTierBuilder';
-import { TicketingMode } from '@/infrastructure/api/types/events.types';
+import { SeatingSection } from './SeatingSection';
+import { TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
 import { DonationConfigForm } from './DonationConfigForm';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { SponsorConfigForm } from './SponsorConfigForm';
@@ -313,6 +314,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const enableTieredTicketing = watch('enableTieredTicketing');
   const ticketTiers = (watch('ticketTiers') || []) as TicketTierFormData[];
   const publishOrganizerContact = watch('publishOrganizerContact');
+
+  // Seating Redesign Slice 1: local controlled state for assigned seating toggle.
+  // Persisted server-side on submit via eventsRepository.setSeatingMode(...).
+  const [seatingMode, setSeatingModeState] = useState<SeatingMode>(
+    event.seatingMode ?? SeatingMode.GeneralAdmission
+  );
+  const [seatingModeError, setSeatingModeError] = useState<string | null>(null);
 
   // Auto-populate first organizer contact from user profile when checkbox is checked
   useEffect(() => {
@@ -671,6 +679,35 @@ export function EventEditForm({ event }: EventEditFormProps) {
       } catch (tierErr) {
         console.error('⚠️ Tier sync failed:', tierErr);
         // Non-blocking — main event data was saved, tiers can be managed from manage page
+      }
+
+      // Seating Redesign Slice 1: Persist assigned-seating toggle.
+      // Runs AFTER setTicketingMode so the domain sees TicketingMode.Tiered
+      // before accepting AssignedSeating. Reverts to GA when the user
+      // disables tiered ticketing.
+      try {
+        const previousSeatingMode = event.seatingMode ?? SeatingMode.GeneralAdmission;
+        const effectiveDesiredMode = isTieredTicketing
+          ? seatingMode
+          : SeatingMode.GeneralAdmission;
+
+        if (effectiveDesiredMode !== previousSeatingMode) {
+          console.log(
+            `🪑 Seating mode change: ${previousSeatingMode} → ${effectiveDesiredMode}`
+          );
+          await eventsRepository.setSeatingMode(event.id, effectiveDesiredMode);
+          console.log(`✅ Seating mode updated to ${effectiveDesiredMode}`);
+          if (effectiveDesiredMode !== seatingMode) {
+            setSeatingModeState(effectiveDesiredMode);
+          }
+        }
+      } catch (seatErr) {
+        const message = seatErr instanceof Error
+          ? seatErr.message
+          : 'Failed to update seating mode.';
+        console.error('⚠️ Seating mode update failed:', seatErr);
+        setSeatingModeError(message);
+        // Non-blocking — user can retry from the form; main event data saved.
       }
 
       // Invalidate React Query cache to refresh event data
@@ -1444,6 +1481,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     errors={errors.ticketTiers?.message}
                   />
                 </div>
+              )}
+
+              {/* Seating Redesign Slice 1: Inline assigned-seating toggle,
+                  only visible when tiered ticketing is enabled. */}
+              {enableTieredTicketing && (
+                <SeatingSection
+                  ticketingMode={TicketingMode.Tiered}
+                  value={seatingMode}
+                  onChange={(mode) => {
+                    setSeatingModeState(mode);
+                    if (seatingModeError) setSeatingModeError(null);
+                  }}
+                  errorMessage={seatingModeError}
+                />
               )}
             </div>
           )}

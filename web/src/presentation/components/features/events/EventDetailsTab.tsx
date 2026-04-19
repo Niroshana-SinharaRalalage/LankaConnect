@@ -178,15 +178,39 @@ export function EventDetailsTab({
 
             {/* Location */}
             {event.city && (
-              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-[#FF7900]" />
                   Location:
                 </span>
-                <span className="text-sm text-neutral-900">
-                  {event.address && `${event.address}, `}
-                  {event.city}, {event.state} {event.zipCode}
+                <div className="text-sm text-neutral-900 space-y-1">
+                  {event.locationName && (
+                    <div className="font-semibold">{event.locationName}</div>
+                  )}
+                  <div>
+                    {event.address && `${event.address}, `}
+                    {event.city}, {event.state} {event.zipCode}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phase 7C.1: Secondary Location (parking lot or secondary venue) */}
+            {event.hasSecondaryLocation && event.secondaryLocationType && (
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-[#FF7900]" />
+                  {event.secondaryLocationType === 'ParkingLot' ? 'Parking Lot:' : 'Secondary Venue:'}
                 </span>
+                <div className="text-sm text-neutral-900 space-y-1">
+                  {event.secondaryLocationName && (
+                    <div className="font-semibold">{event.secondaryLocationName}</div>
+                  )}
+                  <div>
+                    {event.secondaryAddress && `${event.secondaryAddress}, `}
+                    {event.secondaryCity}{event.secondaryState ? `, ${event.secondaryState}` : ''} {event.secondaryZipCode}
+                  </div>
+                </div>
               </div>
             )}
 

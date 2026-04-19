@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, SecondaryLocationType } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -125,6 +125,55 @@ export const createEventSchema = z.object({
     .or(z.literal('')),
 
   locationCountry: z
+    .string()
+    .max(100, 'Country must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Primary venue name
+  locationName: z
+    .string()
+    .max(150, 'Venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType: z
+    .nativeEnum(SecondaryLocationType)
+    .optional()
+    .nullable(),
+
+  secondaryLocationName: z
+    .string()
+    .max(150, 'Secondary venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationAddress: z
+    .string()
+    .max(200, 'Address must be less than 200 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCity: z
+    .string()
+    .max(100, 'City must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationState: z
+    .string()
+    .max(100, 'State must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationZipCode: z
+    .string()
+    .regex(/^\d{5}(-\d{4})?$/, 'ZIP code must be in format 12345 or 12345-6789')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCountry: z
     .string()
     .max(100, 'Country must be less than 100 characters')
     .optional()
@@ -458,7 +507,27 @@ export const createEventSchema = z.object({
     message: 'At least one organizer contact with name and contact method (email or phone) is required',
     path: ['organizerContacts'],
   }
-);
+).superRefine((data, ctx) => {
+  // Phase 7C.1: If secondary location type is selected, address and city are required
+  if (data.secondaryLocationType) {
+    const address = (data.secondaryLocationAddress ?? '').trim();
+    const city = (data.secondaryLocationCity ?? '').trim();
+    if (!address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location address is required when a secondary location type is selected',
+        path: ['secondaryLocationAddress'],
+      });
+    }
+    if (!city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location city is required when a secondary location type is selected',
+        path: ['secondaryLocationCity'],
+      });
+    }
+  }
+});
 
 export type CreateEventFormData = z.infer<typeof createEventSchema>;
 
@@ -535,6 +604,55 @@ const baseEditEventSchema = z.object({
     .or(z.literal('')),
 
   locationCountry: z
+    .string()
+    .max(100, 'Country must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Primary venue name
+  locationName: z
+    .string()
+    .max(150, 'Venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType: z
+    .nativeEnum(SecondaryLocationType)
+    .optional()
+    .nullable(),
+
+  secondaryLocationName: z
+    .string()
+    .max(150, 'Secondary venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationAddress: z
+    .string()
+    .max(200, 'Address must be less than 200 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCity: z
+    .string()
+    .max(100, 'City must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationState: z
+    .string()
+    .max(100, 'State must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationZipCode: z
+    .string()
+    .regex(/^\d{5}(-\d{4})?$/, 'ZIP code must be in format 12345 or 12345-6789')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCountry: z
     .string()
     .max(100, 'Country must be less than 100 characters')
     .optional()
@@ -816,6 +934,26 @@ export const editEventSchema = baseEditEventSchema.refine(
     message: 'At least one organizer contact with name and contact method (email or phone) is required',
     path: ['organizerContacts'],
   }
-);
+).superRefine((data, ctx) => {
+  // Phase 7C.1: If secondary location type is selected, address and city are required
+  if (data.secondaryLocationType) {
+    const address = (data.secondaryLocationAddress ?? '').trim();
+    const city = (data.secondaryLocationCity ?? '').trim();
+    if (!address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location address is required when a secondary location type is selected',
+        path: ['secondaryLocationAddress'],
+      });
+    }
+    if (!city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location city is required when a secondary location type is selected',
+        path: ['secondaryLocationCity'],
+      });
+    }
+  }
+});
 
 export type EditEventFormData = z.infer<typeof editEventSchema>;

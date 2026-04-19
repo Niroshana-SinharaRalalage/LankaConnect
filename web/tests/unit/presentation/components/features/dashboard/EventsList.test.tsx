@@ -31,6 +31,7 @@ describe('EventsList', () => {
       ticketingMode: 'SingleTier' as any,
       ticketTiers: [],
       hasTicketTiers: false,
+      hasSecondaryLocation: false,
     },
     {
       id: '2',
@@ -59,6 +60,7 @@ describe('EventsList', () => {
       ticketingMode: 'SingleTier' as any,
       ticketTiers: [],
       hasTicketTiers: false,
+      hasSecondaryLocation: false,
     },
   ];
 

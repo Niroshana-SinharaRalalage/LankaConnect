@@ -27,6 +27,7 @@ import { CollectionConfigForm } from './CollectionConfigForm';
 import { SponsorConfigForm } from './SponsorConfigForm';
 import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
+import { SecondaryLocationFieldset } from './SecondaryLocationFieldset';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
@@ -324,6 +325,18 @@ export function EventCreationForm() {
           locationCountry: data.locationCountry || 'United States',
           locationLatitude,
           locationLongitude,
+        }),
+        // Phase 7C.1: Primary venue name
+        ...(data.locationName?.trim() && { locationName: data.locationName.trim() }),
+        // Phase 7C.1: Secondary location (parking lot or secondary venue)
+        ...(data.secondaryLocationType && {
+          secondaryLocationType: data.secondaryLocationType,
+          secondaryLocationName: data.secondaryLocationName?.trim() || undefined,
+          secondaryLocationAddress: data.secondaryLocationAddress || undefined,
+          secondaryLocationCity: data.secondaryLocationCity || undefined,
+          secondaryLocationState: data.secondaryLocationState || undefined,
+          secondaryLocationZipCode: data.secondaryLocationZipCode || undefined,
+          secondaryLocationCountry: data.secondaryLocationCountry || undefined,
         }),
         // Phase 8: Tiered ticketing (highest priority)
         // Phase 6D: Group tiered pricing
@@ -710,6 +723,23 @@ export function EventCreationForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Venue Name (Phase 7C.1) */}
+          <div>
+            <label htmlFor="locationName" className="block text-sm font-medium text-neutral-700 mb-2">
+              Venue Name
+            </label>
+            <Input
+              id="locationName"
+              type="text"
+              placeholder="e.g., Park Community Hall"
+              error={!!errors.locationName}
+              {...register('locationName')}
+            />
+            {errors.locationName && (
+              <p className="mt-1 text-sm text-destructive">{errors.locationName.message}</p>
+            )}
+          </div>
+
           {/* Address */}
           <div>
             <label htmlFor="locationAddress" className="block text-sm font-medium text-neutral-700 mb-2">
@@ -798,6 +828,14 @@ export function EventCreationForm() {
               )}
             </div>
           </div>
+
+          {/* Phase 7C.1: Secondary location (parking lot or secondary venue) */}
+          <SecondaryLocationFieldset
+            register={register as any}
+            watch={watch as any}
+            setValue={setValue as any}
+            errors={errors as any}
+          />
         </CardContent>
       </Card>
 

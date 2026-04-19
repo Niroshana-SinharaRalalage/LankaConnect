@@ -30,6 +30,7 @@ import { CollectionConfigForm } from './CollectionConfigForm';
 import { SponsorConfigForm } from './SponsorConfigForm';
 import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
+import { SecondaryLocationFieldset } from './SecondaryLocationFieldset';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
 interface EventEditFormProps {
@@ -183,6 +184,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 7C.1: Primary venue name + secondary location
+      locationName: event.locationName || undefined,
+      secondaryLocationType: event.secondaryLocationType ?? null,
+      secondaryLocationName: event.secondaryLocationName || undefined,
+      secondaryLocationAddress: event.secondaryAddress || undefined,
+      secondaryLocationCity: event.secondaryCity || undefined,
+      secondaryLocationState: event.secondaryState || undefined,
+      secondaryLocationZipCode: event.secondaryZipCode || undefined,
+      secondaryLocationCountry: event.secondaryCountry || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
       // Phase 6A.X: Event Organizer Contact Details (multiple contacts)
@@ -293,6 +303,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 7C.1: Primary venue name + secondary location
+      locationName: event.locationName || undefined,
+      secondaryLocationType: event.secondaryLocationType ?? null,
+      secondaryLocationName: event.secondaryLocationName || undefined,
+      secondaryLocationAddress: event.secondaryAddress || undefined,
+      secondaryLocationCity: event.secondaryCity || undefined,
+      secondaryLocationState: event.secondaryState || undefined,
+      secondaryLocationZipCode: event.secondaryZipCode || undefined,
+      secondaryLocationCountry: event.secondaryCountry || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
       // Phase 6A.X: Event Organizer Contact Details (multiple contacts)
@@ -492,6 +511,18 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationCountry: data.locationCountry || null,
           locationLatitude: locationLatitude ?? null,
           locationLongitude: locationLongitude ?? null,
+        }),
+        // Phase 7C.1: Primary venue name (null clears)
+        locationName: data.locationName?.trim() ? data.locationName.trim() : null,
+        // Phase 7C.1: Secondary location (null type clears entire secondary location)
+        secondaryLocationType: data.secondaryLocationType ?? null,
+        ...(data.secondaryLocationType && {
+          secondaryLocationName: data.secondaryLocationName?.trim() || null,
+          secondaryLocationAddress: data.secondaryLocationAddress || null,
+          secondaryLocationCity: data.secondaryLocationCity || null,
+          secondaryLocationState: data.secondaryLocationState || null,
+          secondaryLocationZipCode: data.secondaryLocationZipCode || null,
+          secondaryLocationCountry: data.secondaryLocationCountry || null,
         }),
         // Session 33: Pricing fields - send appropriate fields based on pricing mode
         // Single pricing mode
@@ -877,6 +908,23 @@ export function EventEditForm({ event }: EventEditFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Venue Name (Phase 7C.1) */}
+          <div>
+            <label htmlFor="locationName" className="block text-sm font-medium text-neutral-700 mb-2">
+              Venue Name
+            </label>
+            <Input
+              id="locationName"
+              type="text"
+              placeholder="e.g., Park Community Hall"
+              error={!!errors.locationName}
+              {...register('locationName')}
+            />
+            {errors.locationName && (
+              <p className="mt-1 text-sm text-destructive">{errors.locationName.message}</p>
+            )}
+          </div>
+
           {/* Address */}
           <div>
             <label htmlFor="locationAddress" className="block text-sm font-medium text-neutral-700 mb-2">
@@ -965,6 +1013,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
               )}
             </div>
           </div>
+
+          {/* Phase 7C.1: Secondary location (parking lot or secondary venue) */}
+          <SecondaryLocationFieldset
+            register={register}
+            watch={watch}
+            setValue={setValue}
+            errors={errors}
+          />
         </CardContent>
       </Card>
 

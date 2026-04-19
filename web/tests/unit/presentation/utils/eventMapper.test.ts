@@ -70,6 +70,7 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
     ticketingMode: 'SingleTier' as any,
     ticketTiers: [],
     hasTicketTiers: false,
+    hasSecondaryLocation: false,
     ...overrides,
   };
 }

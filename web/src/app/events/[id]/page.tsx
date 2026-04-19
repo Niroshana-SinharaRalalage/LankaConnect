@@ -801,10 +801,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div>
                     <p className="text-sm font-medium text-neutral-500">Location</p>
                     <p className="text-base font-semibold text-neutral-900">
-                      {event.city}, {event.state}
+                      {event.locationName || `${event.city}, ${event.state}`}
                     </p>
                     {event.address && (
-                      <p className="text-sm text-neutral-600">{event.address}</p>
+                      <p className="text-sm text-neutral-600">
+                        {event.address}
+                        {event.locationName ? `, ${event.city}, ${event.state}` : ''}
+                      </p>
+                    )}
+                    {/* Phase 7C.1: Secondary location (parking lot or secondary venue) */}
+                    {event.hasSecondaryLocation && event.secondaryLocationType && (
+                      <div className="mt-2 pt-2 border-t border-neutral-200">
+                        <p className="text-sm font-medium text-neutral-500">
+                          {event.secondaryLocationType === 'ParkingLot' ? 'Parking Lot Address:' : 'Secondary Venue:'}
+                        </p>
+                        {event.secondaryLocationName && (
+                          <p className="text-sm font-semibold text-neutral-900">{event.secondaryLocationName}</p>
+                        )}
+                        <p className="text-sm text-neutral-600">
+                          {event.secondaryAddress && `${event.secondaryAddress}, `}
+                          {event.secondaryCity}{event.secondaryState ? `, ${event.secondaryState}` : ''}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>

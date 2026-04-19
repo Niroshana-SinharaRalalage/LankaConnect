@@ -148,6 +148,15 @@ export enum Currency {
 }
 
 /**
+ * Phase 7C.1: Secondary location type.
+ * String-valued to match backend JsonStringEnumConverter output.
+ */
+export enum SecondaryLocationType {
+  ParkingLot = 'ParkingLot',
+  SecondaryVenue = 'SecondaryVenue',
+}
+
+/**
  * Pricing type enum matching backend LankaConnect.Domain.Events.Enums.PricingType
  * Phase 6D: Tiered Group Pricing
  */
@@ -374,6 +383,21 @@ export interface EventDto {
   country?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+
+  // Phase 7C.1: Primary venue name (distinct from street address)
+  locationName?: string | null;
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType?: SecondaryLocationType | null;
+  secondaryLocationName?: string | null;
+  secondaryAddress?: string | null;
+  secondaryCity?: string | null;
+  secondaryState?: string | null;
+  secondaryZipCode?: string | null;
+  secondaryCountry?: string | null;
+  secondaryLatitude?: number | null;
+  secondaryLongitude?: number | null;
+  hasSecondaryLocation: boolean;
 
   /**
    * Phase 6A.97: IANA timezone identifier for consistent date/time display
@@ -753,6 +777,20 @@ export interface CreateEventRequest {
   locationLatitude?: number;
   locationLongitude?: number;
 
+  // Phase 7C.1: Primary venue name (optional)
+  locationName?: string;
+
+  // Phase 7C.1: Secondary location (optional - all fields required when type is set)
+  secondaryLocationType?: SecondaryLocationType;
+  secondaryLocationName?: string;
+  secondaryLocationAddress?: string;
+  secondaryLocationCity?: string;
+  secondaryLocationState?: string;
+  secondaryLocationZipCode?: string;
+  secondaryLocationCountry?: string;
+  secondaryLocationLatitude?: number;
+  secondaryLocationLongitude?: number;
+
   // Ticket Price (optional - legacy single pricing for backward compatibility)
   ticketPriceAmount?: number;
   ticketPriceCurrency?: Currency;
@@ -820,6 +858,20 @@ export interface UpdateEventRequest {
   locationCountry?: string | null;
   locationLatitude?: number | null;
   locationLongitude?: number | null;
+
+  // Phase 7C.1: Primary venue name (optional; null clears)
+  locationName?: string | null;
+
+  // Phase 7C.1: Secondary location (null type clears entire secondary location)
+  secondaryLocationType?: SecondaryLocationType | null;
+  secondaryLocationName?: string | null;
+  secondaryLocationAddress?: string | null;
+  secondaryLocationCity?: string | null;
+  secondaryLocationState?: string | null;
+  secondaryLocationZipCode?: string | null;
+  secondaryLocationCountry?: string | null;
+  secondaryLocationLatitude?: number | null;
+  secondaryLocationLongitude?: number | null;
 
   // Pricing (nullable to match C# decimal? and Currency?)
   ticketPriceAmount?: number | null;

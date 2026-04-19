@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-query';
 
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
+import { eventKeys } from '@/presentation/hooks/useEvents';
 import type {
   VenueLayoutDto,
   SeatAvailabilityDto,
@@ -140,6 +141,10 @@ export function useAssignLayoutToEvent() {
       });
       queryClient.invalidateQueries({
         queryKey: venueLayoutKeys.seatAvailability(variables.eventId),
+      });
+      // Event's seatingMode / venueLayoutId changed on the backend — refetch event.
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(variables.eventId),
       });
     },
   });

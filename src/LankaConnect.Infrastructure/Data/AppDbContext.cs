@@ -88,6 +88,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Venue Seating Entity Sets (Phase 2: Seat Booking)
     public DbSet<VenueLayout> VenueLayouts => Set<VenueLayout>();
     public DbSet<VenueZone> VenueZones => Set<VenueZone>();
+    public DbSet<VenueTable> VenueTables => Set<VenueTable>(); // Slice 2+3A
+    public DbSet<VenueDecoration> VenueDecorations => Set<VenueDecoration>(); // Slice 2+3A
     public DbSet<Seat> Seats => Set<Seat>();
     public DbSet<SeatHold> SeatHolds => Set<SeatHold>();
     public DbSet<SeatReservation> SeatReservations => Set<SeatReservation>();
@@ -196,9 +198,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Ticket entity configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new TicketConfiguration());
 
-        // Venue Seating entity configurations (Phase 2: Seat Booking)
+        // Venue Seating entity configurations (Phase 2: Seat Booking + Slice 2+3A expansion)
         modelBuilder.ApplyConfiguration(new VenueLayoutConfiguration());
         modelBuilder.ApplyConfiguration(new VenueZoneConfiguration());
+        modelBuilder.ApplyConfiguration(new VenueTableConfiguration()); // Slice 2+3A
+        modelBuilder.ApplyConfiguration(new VenueDecorationConfiguration()); // Slice 2+3A
         modelBuilder.ApplyConfiguration(new SeatConfiguration());
         modelBuilder.ApplyConfiguration(new SeatHoldConfiguration());
         modelBuilder.ApplyConfiguration(new SeatReservationConfiguration());
@@ -324,9 +328,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tickets schema (Phase 6A.24)
         modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
 
-        // Venue Seating tables (Phase 2: Seat Booking)
+        // Venue Seating tables (Phase 2: Seat Booking + Slice 2+3A)
         modelBuilder.Entity<VenueLayout>().ToTable("venue_layouts", "events");
         modelBuilder.Entity<VenueZone>().ToTable("venue_zones", "events");
+        modelBuilder.Entity<VenueTable>().ToTable("venue_tables", "events"); // Slice 2+3A
+        modelBuilder.Entity<VenueDecoration>().ToTable("venue_decorations", "events"); // Slice 2+3A
         modelBuilder.Entity<Seat>().ToTable("seats", "events");
         modelBuilder.Entity<SeatHold>().ToTable("seat_holds", "events");
         modelBuilder.Entity<SeatReservation>().ToTable("seat_reservations", "events");
@@ -418,6 +424,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(TicketTier), // Multi-tier ticketing
             typeof(VenueLayout), // Phase 2: Seat Booking
             typeof(VenueZone), // Phase 2: Seat Booking
+            typeof(VenueTable), // Slice 2+3A
+            typeof(VenueDecoration), // Slice 2+3A
             typeof(Seat), // Phase 2: Seat Booking
             typeof(SeatHold), // Phase 2: Seat Booking
             typeof(SeatReservation) // Phase 2: Seat Booking

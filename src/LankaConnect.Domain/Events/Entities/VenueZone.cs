@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Domain.Events.Entities;
 
@@ -17,6 +18,24 @@ public class VenueZone : BaseEntity
     public Guid? TicketTierId { get; private set; }
     public int SortOrder { get; private set; }
 
+    /// <summary>
+    /// Canvas shape the zone is rendered with. Default is <see cref="ZoneShape.Rect"/>
+    /// so preexisting rows continue to behave as before.
+    /// </summary>
+    public ZoneShape Shape { get; private set; } = ZoneShape.Rect;
+
+    /// <summary>
+    /// JSON document describing the zone geometry on the canvas, as a string.
+    /// Shape-specific payloads:
+    /// <list type="bullet">
+    ///   <item>Rect: <c>{ "x", "y", "width", "height", "rotation" }</c></item>
+    ///   <item>Curve: <c>{ "centerX", "centerY", "radius", "startAngleDeg", "sweepAngleDeg", "rowCount" }</c></item>
+    ///   <item>Polygon: <c>{ "points": [{"x","y"}, ...] }</c></item>
+    /// </list>
+    /// Defaults to <c>"{}"</c> — editor fills in at save time.
+    /// </summary>
+    public string Geometry { get; private set; } = "{}";
+
     public IReadOnlyList<Seat> Seats => _seats.AsReadOnly();
 
     /// <summary>Count of enabled (non-disabled) seats in this zone.</summary>
@@ -30,17 +49,22 @@ public class VenueZone : BaseEntity
         string name,
         string color,
         Guid? ticketTierId,
-        int sortOrder)
+        int sortOrder,
+        ZoneShape shape,
+        string geometry)
     {
         VenueLayoutId = venueLayoutId;
         Name = name;
         Color = color;
         TicketTierId = ticketTierId;
         SortOrder = sortOrder;
+        Shape = shape;
+        Geometry = geometry;
     }
 
     /// <summary>
-    /// Creates a new venue zone within a layout.
+    /// Creates a new venue zone within a layout (back-compat — defaults Shape to Rect,
+    /// empty Geometry). Existing callers preserve behavior.
     /// </summary>
     public static Result<VenueZone> Create(
         Guid venueLayoutId,
@@ -48,6 +72,19 @@ public class VenueZone : BaseEntity
         string color,
         Guid? ticketTierId,
         int sortOrder)
+        => Create(venueLayoutId, name, color, ticketTierId, sortOrder, ZoneShape.Rect, geometry: null);
+
+    /// <summary>
+    /// Creates a new venue zone with an explicit canvas shape + geometry.
+    /// </summary>
+    public static Result<VenueZone> Create(
+        Guid venueLayoutId,
+        string name,
+        string color,
+        Guid? ticketTierId,
+        int sortOrder,
+        ZoneShape shape,
+        string? geometry)
     {
         if (venueLayoutId == Guid.Empty)
             return Result<VenueZone>.Failure("Venue layout ID is required");
@@ -69,11 +106,13 @@ public class VenueZone : BaseEntity
             name.Trim(),
             color.Trim(),
             ticketTierId,
-            sortOrder));
+            sortOrder,
+            shape,
+            NormalizeGeometry(geometry)));
     }
 
     /// <summary>
-    /// Updates zone properties. Cannot change the parent layout.
+    /// Updates zone properties (back-compat — does not touch Shape/Geometry).
     /// </summary>
     public Result Update(string name, string color, Guid? ticketTierId, int sortOrder)
     {
@@ -98,6 +137,26 @@ public class VenueZone : BaseEntity
     }
 
     /// <summary>
+    /// Updates zone properties AND canvas shape/geometry (used by the canvas editor).
+    /// </summary>
+    public Result Update(
+        string name,
+        string color,
+        Guid? ticketTierId,
+        int sortOrder,
+        ZoneShape shape,
+        string? geometry)
+    {
+        var baseResult = Update(name, color, ticketTierId, sortOrder);
+        if (baseResult.IsFailure) return baseResult;
+
+        Shape = shape;
+        Geometry = NormalizeGeometry(geometry);
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Adds a seat to this zone. Called internally by VenueLayout during seat generation.
     /// </summary>
     internal void AddSeat(Seat seat)
@@ -111,5 +170,13 @@ public class VenueZone : BaseEntity
     internal void ClearSeats()
     {
         _seats.Clear();
+    }
+
+    private static string NormalizeGeometry(string? geometry)
+    {
+        if (string.IsNullOrWhiteSpace(geometry)) return "{}";
+        var trimmed = geometry.Trim();
+        if (trimmed[0] != '{' && trimmed[0] != '[') return "{}";
+        return trimmed;
     }
 }

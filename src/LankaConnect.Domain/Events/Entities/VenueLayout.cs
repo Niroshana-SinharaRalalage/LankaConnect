@@ -1,17 +1,22 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 
 namespace LankaConnect.Domain.Events.Entities;
 
 /// <summary>
 /// Aggregate root representing a venue seating layout.
-/// Owns zones and seats (structural definition only).
-/// Runtime seat status (Available/Held/Reserved) is derived from SeatHold/SeatReservation tables.
-/// Can be a reusable template or assigned to a specific event.
+/// Owns zones (with seats), tables (banquet dining — also with seats), and
+/// decorations (stage/aisle/etc., non-selectable). Structural definition only —
+/// runtime seat status (Available/Held/Reserved) is derived from SeatHold /
+/// SeatReservation tables. A layout can be a reusable template or assigned to a
+/// specific event.
 /// </summary>
 public class VenueLayout : BaseEntity
 {
     private readonly List<VenueZone> _zones = new();
+    private readonly List<VenueTable> _tables = new();
+    private readonly List<VenueDecoration> _decorations = new();
 
     public string Name { get; private set; } = string.Empty;
     public Guid? EventId { get; private set; }
@@ -19,13 +24,22 @@ public class VenueLayout : BaseEntity
     public bool IsTemplate { get; private set; }
     public Guid CreatedByUserId { get; private set; }
 
+    /// <summary>
+    /// Canvas rendering configuration. Defaults to <see cref="CanvasConfig.Default"/>
+    /// (1200×800 at scale 1) for layouts that predate the canvas editor.
+    /// </summary>
+    public CanvasConfig Canvas { get; private set; } = CanvasConfig.Default();
+
     /// <summary>Optimistic concurrency token (EF Core xmin/rowversion).</summary>
     public uint RowVersion { get; private set; }
 
     public IReadOnlyList<VenueZone> Zones => _zones.AsReadOnly();
+    public IReadOnlyList<VenueTable> Tables => _tables.AsReadOnly();
+    public IReadOnlyList<VenueDecoration> Decorations => _decorations.AsReadOnly();
 
-    /// <summary>Total number of enabled seats across all zones.</summary>
-    public int TotalCapacity => _zones.Sum(z => z.EnabledSeatCount);
+    /// <summary>Total number of enabled seats across all zones AND tables.</summary>
+    public int TotalCapacity =>
+        _zones.Sum(z => z.EnabledSeatCount) + _tables.Sum(t => t.EnabledSeatCount);
 
     // EF Core parameterless constructor
     private VenueLayout() { }
@@ -35,24 +49,28 @@ public class VenueLayout : BaseEntity
         LayoutType layoutType,
         Guid createdByUserId,
         Guid? eventId,
-        bool isTemplate)
+        bool isTemplate,
+        CanvasConfig canvas)
     {
         Name = name;
         LayoutType = layoutType;
         CreatedByUserId = createdByUserId;
         EventId = eventId;
         IsTemplate = isTemplate;
+        Canvas = canvas;
     }
 
     /// <summary>
-    /// Creates a new venue layout.
+    /// Creates a new venue layout with an optional custom canvas. When
+    /// <paramref name="canvas"/> is null the default 1200×800 canvas is used.
     /// </summary>
     public static Result<VenueLayout> Create(
         string name,
         LayoutType layoutType,
         Guid createdByUserId,
         Guid? eventId = null,
-        bool isTemplate = false)
+        bool isTemplate = false,
+        CanvasConfig? canvas = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result<VenueLayout>.Failure("Layout name is required");
@@ -74,7 +92,21 @@ public class VenueLayout : BaseEntity
             layoutType,
             createdByUserId,
             eventId,
-            isTemplate));
+            isTemplate,
+            canvas ?? CanvasConfig.Default()));
+    }
+
+    /// <summary>
+    /// Replaces the canvas configuration (dimensions, scale, background color).
+    /// </summary>
+    public Result UpdateCanvas(CanvasConfig canvas)
+    {
+        if (canvas is null)
+            return Result.Failure("Canvas configuration is required");
+
+        Canvas = canvas;
+        MarkAsUpdated();
+        return Result.Success();
     }
 
     // ──────────────────────────────────────
@@ -404,6 +436,181 @@ public class VenueLayout : BaseEntity
     }
 
     // ──────────────────────────────────────
+    // Table Management (Slice 2+3A)
+    // ──────────────────────────────────────
+
+    /// <summary>
+    /// Adds a banquet/dining table to this layout. Seats are NOT auto-generated —
+    /// call <see cref="GenerateRoundTable"/> or <see cref="GenerateRectTable"/>
+    /// instead to build a table + its seats in one step.
+    /// </summary>
+    public Result<VenueTable> AddTable(
+        string label,
+        TableShape shape,
+        int capacity,
+        int sortOrder,
+        Guid? zoneId = null,
+        string? geometry = null)
+    {
+        if (_tables.Any(t => t.Label.Equals(label?.Trim() ?? string.Empty, StringComparison.OrdinalIgnoreCase)))
+            return Result<VenueTable>.Failure($"A table labeled '{label?.Trim()}' already exists in this layout");
+
+        if (zoneId.HasValue && _zones.All(z => z.Id != zoneId.Value))
+            return Result<VenueTable>.Failure("Referenced zone does not exist in this layout");
+
+        var tableResult = VenueTable.Create(Id, label!, shape, capacity, sortOrder, zoneId, geometry);
+        if (tableResult.IsFailure)
+            return Result<VenueTable>.Failure(tableResult.Error);
+
+        _tables.Add(tableResult.Value);
+        MarkAsUpdated();
+        return tableResult;
+    }
+
+    /// <summary>
+    /// Adds a round table AND radially generates its seats in one operation. The
+    /// returned table is already populated with <c>capacity</c> seats.
+    /// </summary>
+    public Result<VenueTable> GenerateRoundTable(
+        string label,
+        int capacity,
+        int sortOrder,
+        Guid? zoneId = null,
+        string? geometry = null,
+        double startAngleDeg = 0)
+    {
+        var addResult = AddTable(label, TableShape.Round, capacity, sortOrder, zoneId, geometry);
+        if (addResult.IsFailure) return addResult;
+
+        var seatResult = addResult.Value.GenerateRoundTableSeats(startAngleDeg);
+        if (seatResult.IsFailure)
+        {
+            _tables.Remove(addResult.Value);
+            return Result<VenueTable>.Failure(seatResult.Error);
+        }
+
+        MarkAsUpdated();
+        return addResult;
+    }
+
+    /// <summary>
+    /// Adds a square or rectangular table AND generates its side-distributed seats.
+    /// </summary>
+    public Result<VenueTable> GenerateRectTable(
+        string label,
+        TableShape shape,
+        int capacity,
+        int sortOrder,
+        Guid? zoneId = null,
+        string? geometry = null)
+    {
+        if (shape is not (TableShape.Square or TableShape.Rect))
+            return Result<VenueTable>.Failure("GenerateRectTable requires Square or Rect shape");
+
+        var addResult = AddTable(label, shape, capacity, sortOrder, zoneId, geometry);
+        if (addResult.IsFailure) return addResult;
+
+        var seatResult = addResult.Value.GenerateRectTableSeats();
+        if (seatResult.IsFailure)
+        {
+            _tables.Remove(addResult.Value);
+            return Result<VenueTable>.Failure(seatResult.Error);
+        }
+
+        MarkAsUpdated();
+        return addResult;
+    }
+
+    public Result UpdateTable(
+        Guid tableId,
+        string label,
+        TableShape shape,
+        int capacity,
+        int sortOrder,
+        Guid? zoneId,
+        string? geometry)
+    {
+        var table = _tables.FirstOrDefault(t => t.Id == tableId);
+        if (table == null)
+            return Result.Failure("Table not found in this layout");
+
+        if (_tables.Any(t => t.Id != tableId
+            && t.Label.Equals(label?.Trim() ?? string.Empty, StringComparison.OrdinalIgnoreCase)))
+            return Result.Failure($"A table labeled '{label?.Trim()}' already exists in this layout");
+
+        if (zoneId.HasValue && _zones.All(z => z.Id != zoneId.Value))
+            return Result.Failure("Referenced zone does not exist in this layout");
+
+        var result = table.Update(label!, shape, capacity, sortOrder, zoneId, geometry);
+        if (result.IsSuccess) MarkAsUpdated();
+        return result;
+    }
+
+    public Result RemoveTable(Guid tableId)
+    {
+        var table = _tables.FirstOrDefault(t => t.Id == tableId);
+        if (table == null)
+            return Result.Failure("Table not found in this layout");
+
+        _tables.Remove(table);
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public VenueTable? GetTable(Guid tableId) => _tables.FirstOrDefault(t => t.Id == tableId);
+
+    // ──────────────────────────────────────
+    // Decoration Management (Slice 2+3A)
+    // ──────────────────────────────────────
+
+    public Result<VenueDecoration> AddDecoration(
+        DecorationKind kind,
+        string? label,
+        int sortOrder,
+        string? geometry = null,
+        string? properties = null)
+    {
+        var decorationResult = VenueDecoration.Create(Id, kind, label, sortOrder, geometry, properties);
+        if (decorationResult.IsFailure)
+            return Result<VenueDecoration>.Failure(decorationResult.Error);
+
+        _decorations.Add(decorationResult.Value);
+        MarkAsUpdated();
+        return decorationResult;
+    }
+
+    public Result UpdateDecoration(
+        Guid decorationId,
+        DecorationKind kind,
+        string? label,
+        int sortOrder,
+        string? geometry,
+        string? properties)
+    {
+        var decoration = _decorations.FirstOrDefault(d => d.Id == decorationId);
+        if (decoration == null)
+            return Result.Failure("Decoration not found in this layout");
+
+        var result = decoration.Update(kind, label, sortOrder, geometry, properties);
+        if (result.IsSuccess) MarkAsUpdated();
+        return result;
+    }
+
+    public Result RemoveDecoration(Guid decorationId)
+    {
+        var decoration = _decorations.FirstOrDefault(d => d.Id == decorationId);
+        if (decoration == null)
+            return Result.Failure("Decoration not found in this layout");
+
+        _decorations.Remove(decoration);
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    public VenueDecoration? GetDecoration(Guid decorationId) =>
+        _decorations.FirstOrDefault(d => d.Id == decorationId);
+
+    // ──────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────
 
@@ -412,9 +619,15 @@ public class VenueLayout : BaseEntity
         foreach (var zone in _zones)
         {
             var seat = zone.Seats.FirstOrDefault(s => s.Id == seatId);
-            if (seat != null)
-                return seat;
+            if (seat != null) return seat;
         }
+
+        foreach (var table in _tables)
+        {
+            var seat = table.Seats.FirstOrDefault(s => s.Id == seatId);
+            if (seat != null) return seat;
+        }
+
         return null;
     }
 }

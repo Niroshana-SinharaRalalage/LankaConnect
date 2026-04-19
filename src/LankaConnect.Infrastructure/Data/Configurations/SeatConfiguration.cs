@@ -19,9 +19,17 @@ public class SeatConfiguration : IEntityTypeConfiguration<Seat>
         builder.Property(s => s.Id)
             .ValueGeneratedNever();
 
+        // Slice 2+3A: a seat belongs to EITHER a zone OR a table (XOR). Both columns
+        // are nullable; a DB CHECK constraint enforces XOR at the database layer —
+        // see AddSeatingDomainExpansion migration.
         builder.Property(s => s.VenueZoneId)
-            .HasColumnName("venue_zone_id")
-            .IsRequired();
+            .HasColumnName("venue_zone_id");
+
+        builder.Property(s => s.VenueTableId)
+            .HasColumnName("venue_table_id");
+
+        builder.Property(s => s.AngleDeg)
+            .HasColumnName("angle_deg");
 
         builder.Property(s => s.Row)
             .HasColumnName("row")
@@ -71,10 +79,27 @@ public class SeatConfiguration : IEntityTypeConfiguration<Seat>
 
         // Indexes
         builder.HasIndex(s => s.VenueZoneId)
-            .HasDatabaseName("ix_seats_venue_zone_id");
+            .HasDatabaseName("ix_seats_venue_zone_id")
+            .HasFilter("venue_zone_id IS NOT NULL");
 
+        builder.HasIndex(s => s.VenueTableId)
+            .HasDatabaseName("ix_seats_venue_table_id")
+            .HasFilter("venue_table_id IS NOT NULL");
+
+        // Unique label within a zone — partial index so it only applies to
+        // zone-based seats (table-based seats share labels like "T1-S1" / "T2-S1").
         builder.HasIndex(s => new { s.VenueZoneId, s.Label })
             .IsUnique()
-            .HasDatabaseName("ix_seats_zone_id_label");
+            .HasDatabaseName("ix_seats_zone_id_label")
+            .HasFilter("venue_zone_id IS NOT NULL");
+
+        // Unique label within a table.
+        builder.HasIndex(s => new { s.VenueTableId, s.Label })
+            .IsUnique()
+            .HasDatabaseName("ix_seats_table_id_label")
+            .HasFilter("venue_table_id IS NOT NULL");
+
+        builder.Ignore(s => s.IsZoneSeat);
+        builder.Ignore(s => s.IsTableSeat);
     }
 }

@@ -41,6 +41,21 @@ public class VenueZoneConfiguration : IEntityTypeConfiguration<VenueZone>
             .IsRequired()
             .HasDefaultValue(0);
 
+        // Slice 2+3A: canvas shape + geometry
+        builder.Property(z => z.Shape)
+            .HasColumnName("shape")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(LankaConnect.Domain.Events.Enums.ZoneShape.Rect);
+
+        // Geometry is an immutable raw JSONB string — no ValueComparer needed.
+        builder.Property(z => z.Geometry)
+            .HasColumnName("geometry")
+            .HasColumnType("jsonb")
+            .IsRequired()
+            .HasDefaultValue("{}");
+
         // Audit fields
         builder.Property(z => z.CreatedAt)
             .HasColumnName("created_at")

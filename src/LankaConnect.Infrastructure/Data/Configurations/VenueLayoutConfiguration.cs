@@ -61,10 +61,48 @@ public class VenueLayoutConfiguration : IEntityTypeConfiguration<VenueLayout>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Canvas configuration persisted as flat columns (not ToJson() — avoids
+        // Phase 6A.130 where OwnsOne().ToJson() cannot deserialize IReadOnlyList
+        // collections; OwnsOne flat columns work fine for scalar value objects).
+        builder.OwnsOne(v => v.Canvas, canvas =>
+        {
+            canvas.Property(c => c.Width)
+                .HasColumnName("canvas_width")
+                .IsRequired()
+                .HasDefaultValue(1200);
+
+            canvas.Property(c => c.Height)
+                .HasColumnName("canvas_height")
+                .IsRequired()
+                .HasDefaultValue(800);
+
+            canvas.Property(c => c.Scale)
+                .HasColumnName("canvas_scale")
+                .IsRequired()
+                .HasDefaultValue(1.0);
+
+            canvas.Property(c => c.BackgroundColor)
+                .HasColumnName("canvas_bg_color")
+                .HasMaxLength(9)
+                .IsRequired()
+                .HasDefaultValue("#ffffff");
+        });
+        builder.Navigation(v => v.Canvas).IsRequired();
+
         // Relationships
         builder.HasMany(v => v.Zones)
             .WithOne()
             .HasForeignKey(z => z.VenueLayoutId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(v => v.Tables)
+            .WithOne()
+            .HasForeignKey(t => t.VenueLayoutId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(v => v.Decorations)
+            .WithOne()
+            .HasForeignKey(d => d.VenueLayoutId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes

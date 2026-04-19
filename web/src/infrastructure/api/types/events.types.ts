@@ -2402,6 +2402,42 @@ export enum LayoutType {
   Theater = 'Theater',
   Banquet = 'Banquet',
   Custom = 'Custom',
+  // Slice 2+3A: hybrid layouts combining theater rows and banquet tables.
+  Mixed = 'Mixed',
+}
+
+/**
+ * Slice 2+3A: Canvas shape a zone is rendered with.
+ * Matches backend LankaConnect.Domain.Events.Enums.ZoneShape
+ */
+export enum ZoneShape {
+  Rect = 'Rect',
+  Curve = 'Curve',
+  Polygon = 'Polygon',
+}
+
+/**
+ * Slice 2+3A: Table shape for a banquet / dining table.
+ * Matches backend LankaConnect.Domain.Events.Enums.TableShape
+ */
+export enum TableShape {
+  Round = 'Round',
+  Square = 'Square',
+  Rect = 'Rect',
+}
+
+/**
+ * Slice 2+3A: Non-seating decorative/structural element on the canvas.
+ * Matches backend LankaConnect.Domain.Events.Enums.DecorationKind
+ */
+export enum DecorationKind {
+  Stage = 'Stage',
+  DanceFloor = 'DanceFloor',
+  Aisle = 'Aisle',
+  Door = 'Door',
+  Wall = 'Wall',
+  Text = 'Text',
+  Image = 'Image',
 }
 
 /**
@@ -2410,7 +2446,20 @@ export enum LayoutType {
 export type SeatStatus = 'Available' | 'Held' | 'Reserved' | 'Disabled';
 
 /**
- * Venue layout DTO — aggregate with zones and seats.
+ * Slice 2+3A: Canvas rendering configuration for a layout. Flat-columns model
+ * on the backend (OwnsOne, not JSON) — keep a stable shape on the FE.
+ */
+export interface CanvasConfigDto {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+/**
+ * Venue layout DTO — aggregate with zones, tables, decorations, and seats.
+ * Tables / decorations / canvas are optional for backwards compatibility with
+ * legacy layouts that predate Slice 2+3A.
  * Matches backend VenueLayoutDto
  */
 export interface VenueLayoutDto {
@@ -2424,6 +2473,10 @@ export interface VenueLayoutDto {
   createdAt: string;
   updatedAt?: string | null;
   zones: VenueZoneDto[];
+  // Slice 2+3A additions — optional to preserve backward compatibility.
+  canvas?: CanvasConfigDto;
+  tables?: VenueTableDto[];
+  decorations?: VenueDecorationDto[];
 }
 
 /**
@@ -2438,10 +2491,46 @@ export interface VenueZoneDto {
   enabledSeatCount: number;
   totalSeatCount: number;
   seats: SeatDto[];
+  // Slice 2+3A: canvas shape + geometry. Geometry is a JSON string matching
+  // the shape-specific schema documented on VenueZone.Geometry.
+  shape?: ZoneShape;
+  geometry?: string;
+}
+
+/**
+ * Slice 2+3A: Banquet / dining table DTO. Tables live on a layout and own
+ * their seats directly; optional VenueZoneId groups tables under a section.
+ */
+export interface VenueTableDto {
+  id: string;
+  venueLayoutId: string;
+  venueZoneId?: string | null;
+  label: string;
+  shape: TableShape;
+  geometry: string;
+  capacity: number;
+  sortOrder: number;
+  enabledSeatCount: number;
+  seats: SeatDto[];
+}
+
+/**
+ * Slice 2+3A: Decoration DTO for non-seating elements (stage, aisle, text, …).
+ */
+export interface VenueDecorationDto {
+  id: string;
+  venueLayoutId: string;
+  kind: DecorationKind;
+  label?: string | null;
+  geometry: string;
+  properties: string;
+  sortOrder: number;
 }
 
 /**
  * Seat DTO — structural data for a single seat.
+ * Slice 2+3A: a seat belongs to EITHER a zone OR a table (XOR); angleDeg is set
+ * for radial (round-table) seats.
  */
 export interface SeatDto {
   id: string;
@@ -2453,6 +2542,10 @@ export interface SeatDto {
   isAccessible: boolean;
   x: number;
   y: number;
+  // Slice 2+3A — optional for backward compatibility with existing zone seats.
+  venueZoneId?: string | null;
+  venueTableId?: string | null;
+  angleDeg?: number | null;
 }
 
 /**

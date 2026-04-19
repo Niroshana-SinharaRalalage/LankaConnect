@@ -24,5 +24,12 @@ public enum LayoutType
     /// Manual seat placement with arbitrary coordinates.
     /// Reserved for future implementation.
     /// </summary>
-    Custom = 2
+    Custom = 2,
+
+    /// <summary>
+    /// Hybrid layout combining theater rows and banquet tables in the same venue
+    /// (e.g., front rows facing a stage with rear banquet tables for dining guests).
+    /// Seats may be generated per-zone (rows) or per-table (radial).
+    /// </summary>
+    Mixed = 3
 }

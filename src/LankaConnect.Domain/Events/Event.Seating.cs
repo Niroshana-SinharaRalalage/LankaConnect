@@ -115,4 +115,69 @@ public partial class Event
     }
 
     #endregion
+
+    #region Orchestrated Seating Helpers (Slice 2+3A)
+
+    /// <summary>
+    /// Atomically enables assigned seating and links this event to an already-persisted
+    /// venue layout. This is the sanctioned entry point used by the 3-transaction
+    /// orchestration (Slice 2+3B): Transaction 2 persists the layout; Transaction 3
+    /// calls this method and flips <see cref="SeatingMode"/>. Throws
+    /// <see cref="InvalidOperationException"/> when called with <see cref="Guid.Empty"/>
+    /// so callers cannot bypass the orchestrator by linking an unpersisted layout.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <paramref name="venueLayoutId"/> is empty — indicates the caller
+    /// skipped the layout-persistence transaction.
+    /// </exception>
+    public Result EnableAssignedSeating(Guid venueLayoutId)
+    {
+        if (venueLayoutId == Guid.Empty)
+            throw new InvalidOperationException(
+                "EnableAssignedSeating requires a persisted VenueLayout ID. " +
+                "Persist the layout in a prior transaction before calling this method.");
+
+        if (TicketingMode != TicketingMode.Tiered)
+            return Result.Failure(
+                "Assigned seating requires tiered ticketing mode. " +
+                "Enable tiered ticketing first, then enable assigned seating.");
+
+        if (_registrations.Any(r =>
+            r.Status == RegistrationStatus.Confirmed ||
+            r.Status == RegistrationStatus.Preliminary))
+        {
+            return Result.Failure(
+                "Assigned seating cannot be enabled after registrations exist.");
+        }
+
+        VenueLayoutId = venueLayoutId;
+        SeatingMode = SeatingMode.AssignedSeating;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Atomically disables assigned seating and detaches the venue layout. Mirror of
+    /// <see cref="EnableAssignedSeating"/> for the toggle-off flow.
+    /// </summary>
+    public Result DisableAssignedSeating()
+    {
+        if (SeatingMode == SeatingMode.GeneralAdmission && !VenueLayoutId.HasValue)
+            return Result.Success();
+
+        if (_registrations.Any(r =>
+            r.Status == RegistrationStatus.Confirmed ||
+            r.Status == RegistrationStatus.Preliminary))
+        {
+            return Result.Failure(
+                "Assigned seating cannot be disabled after registrations exist.");
+        }
+
+        SeatingMode = SeatingMode.GeneralAdmission;
+        VenueLayoutId = null;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    #endregion
 }

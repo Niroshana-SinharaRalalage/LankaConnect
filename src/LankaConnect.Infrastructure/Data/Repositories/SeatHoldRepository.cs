@@ -142,17 +142,22 @@ public class SeatHoldRepository : Repository<SeatHold>, ISeatHoldRepository
         {
             try
             {
-                // Join through seat → zone → layout to find holds for an event
-                return await _context.Set<SeatHold>()
-                    .Where(h => h.Status == SeatHoldStatus.Active)
+                // Seats belong to either a zone (row/col seating) or a table (banquet seating) —
+                // never both (enforced by DB CHECK). A hold is "for this event" when the seat's
+                // zone or table belongs to a layout assigned to the event. We evaluate both
+                // branches and union the hold IDs to cover every layout shape.
+                var activeHolds = _context.Set<SeatHold>()
+                    .Where(h => h.Status == SeatHoldStatus.Active);
+
+                var zoneHoldIds = activeHolds
                     .Join(
-                        _context.Set<Seat>(),
+                        _context.Set<Seat>().Where(s => s.VenueZoneId != null),
                         h => h.SeatId,
                         s => s.Id,
-                        (h, s) => new { Hold = h, Seat = s })
+                        (h, s) => new { Hold = h, ZoneId = s.VenueZoneId!.Value })
                     .Join(
                         _context.Set<VenueZone>(),
-                        hs => hs.Seat.VenueZoneId,
+                        hs => hs.ZoneId,
                         z => z.Id,
                         (hs, z) => new { hs.Hold, Zone = z })
                     .Join(
@@ -161,7 +166,31 @@ public class SeatHoldRepository : Repository<SeatHold>, ISeatHoldRepository
                         l => l.Id,
                         (hz, l) => new { hz.Hold, Layout = l })
                     .Where(hl => hl.Layout.EventId == eventId)
-                    .Select(hl => hl.Hold)
+                    .Select(hl => hl.Hold.Id);
+
+                var tableHoldIds = activeHolds
+                    .Join(
+                        _context.Set<Seat>().Where(s => s.VenueTableId != null),
+                        h => h.SeatId,
+                        s => s.Id,
+                        (h, s) => new { Hold = h, TableId = s.VenueTableId!.Value })
+                    .Join(
+                        _context.Set<VenueTable>(),
+                        hs => hs.TableId,
+                        t => t.Id,
+                        (hs, t) => new { hs.Hold, Table = t })
+                    .Join(
+                        _context.Set<VenueLayout>(),
+                        ht => ht.Table.VenueLayoutId,
+                        l => l.Id,
+                        (ht, l) => new { ht.Hold, Layout = l })
+                    .Where(hl => hl.Layout.EventId == eventId)
+                    .Select(hl => hl.Hold.Id);
+
+                var matchedHoldIds = zoneHoldIds.Union(tableHoldIds);
+
+                return await _context.Set<SeatHold>()
+                    .Where(h => matchedHoldIds.Contains(h.Id))
                     .ToListAsync(cancellationToken);
             }
             catch (Exception ex)

@@ -291,7 +291,7 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.HasIndex(e => new { e.Status, e.StartDate })
             .HasDatabaseName("ix_events_status_start_date");
 
-        // Configure EventLocation value object (Epic 2 Phase 1)
+        // Configure EventLocation value object (Epic 2 Phase 1; Phase 7C.1 added Name)
         builder.OwnsOne(e => e.Location, location =>
         {
             // Required to prevent EF Core optional dependent error
@@ -299,6 +299,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
                 .HasColumnName("has_location")
                 .HasDefaultValue(true)
                 .IsRequired();
+
+            // Phase 7C.1: Optional venue name (e.g., "Grand Ballroom")
+            location.Property(l => l.Name)
+                .HasColumnName("location_name")
+                .HasMaxLength(150)
+                .IsRequired(false);
 
             // Configure Address as nested owned entity
             location.OwnsOne(l => l.Address, address =>
@@ -339,6 +345,74 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
                 coordinates.Property(c => c.Longitude)
                     .HasColumnName("coordinates_longitude")
                     .HasPrecision(10, 7); // Precision for GPS coordinates
+            });
+        });
+
+        // Phase 7C.1: Configure optional EventSecondaryLocation value object.
+        // Parallel structure to primary Location with `has_secondary_location` discriminator.
+        builder.OwnsOne(e => e.SecondaryLocation, secondary =>
+        {
+            // Discriminator flag so EF Core can tell "present with empty strings" from "absent"
+            secondary.Property<bool>("_hasValue")
+                .HasColumnName("has_secondary_location")
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            // SecondaryLocationType stored as string for enum-reorder safety.
+            // Column is nullable at the DB level via the owned-type's `has_secondary_location` flag —
+            // EF Core handles optional dependents, so we do NOT mark Type itself as optional
+            // (non-nullable enum properties cannot be marked nullable).
+            secondary.Property(s => s.Type)
+                .HasColumnName("secondary_location_type")
+                .HasConversion<string>()
+                .HasMaxLength(50);
+
+            // Inner EventLocation (owned-within-owned)
+            secondary.OwnsOne(s => s.Location, location =>
+            {
+                location.Property(l => l.Name)
+                    .HasColumnName("secondary_location_name")
+                    .HasMaxLength(150)
+                    .IsRequired(false);
+
+                location.OwnsOne(l => l.Address, address =>
+                {
+                    address.Property(a => a.Street)
+                        .HasColumnName("secondary_address_street")
+                        .HasMaxLength(200)
+                        .IsRequired(false);
+
+                    address.Property(a => a.City)
+                        .HasColumnName("secondary_address_city")
+                        .HasMaxLength(100)
+                        .IsRequired(false);
+
+                    address.Property(a => a.State)
+                        .HasColumnName("secondary_address_state")
+                        .HasMaxLength(100)
+                        .IsRequired(false);
+
+                    address.Property(a => a.ZipCode)
+                        .HasColumnName("secondary_address_zip_code")
+                        .HasMaxLength(20)
+                        .IsRequired(false);
+
+                    address.Property(a => a.Country)
+                        .HasColumnName("secondary_address_country")
+                        .HasMaxLength(100)
+                        .IsRequired(false);
+                });
+
+                location.OwnsOne(l => l.Coordinates, coordinates =>
+                {
+                    coordinates.Property(c => c.Latitude)
+                        .HasColumnName("secondary_coordinates_latitude")
+                        .HasPrecision(10, 7);
+
+                    coordinates.Property(c => c.Longitude)
+                        .HasColumnName("secondary_coordinates_longitude")
+                        .HasPrecision(10, 7);
+                });
             });
         });
 

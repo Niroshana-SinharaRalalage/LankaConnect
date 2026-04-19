@@ -44,6 +44,31 @@ public record EventDto
     public decimal? Longitude { get; init; }
 
     /// <summary>
+    /// Phase 7C.1: Optional venue/location name (e.g., "Park Community Hall").
+    /// Displayed separately from the street address on event details.
+    /// </summary>
+    public string? LocationName { get; init; }
+
+    // Phase 7C.1: Secondary Location (optional — parking lot or secondary venue)
+    /// <summary>
+    /// Phase 7C.1: Secondary location type — "ParkingLot" or "SecondaryVenue". Null if not configured.
+    /// </summary>
+    public string? SecondaryLocationType { get; init; }
+    public string? SecondaryLocationName { get; init; }
+    public string? SecondaryAddress { get; init; }
+    public string? SecondaryCity { get; init; }
+    public string? SecondaryState { get; init; }
+    public string? SecondaryZipCode { get; init; }
+    public string? SecondaryCountry { get; init; }
+    public decimal? SecondaryLatitude { get; init; }
+    public decimal? SecondaryLongitude { get; init; }
+
+    /// <summary>
+    /// Phase 7C.1: True when the event has a configured secondary location.
+    /// </summary>
+    public bool HasSecondaryLocation { get; init; }
+
+    /// <summary>
     /// Phase 6A.97: IANA timezone ID for consistent date/time display (e.g., "America/New_York").
     /// Derived from event location (US state). Used by frontend to display times in event's local timezone.
     /// </summary>

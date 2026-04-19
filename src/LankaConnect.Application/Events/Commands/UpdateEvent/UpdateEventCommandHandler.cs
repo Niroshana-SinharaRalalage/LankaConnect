@@ -132,11 +132,54 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 coordinates = coordinatesResult.Value;
             }
 
-            var locationResult = EventLocation.Create(addressResult.Value, coordinates);
+            var locationResult = EventLocation.Create(addressResult.Value, coordinates, request.LocationName);
             if (locationResult.IsFailure)
                 return Result.Failure(locationResult.Error);
 
             location = locationResult.Value;
+        }
+
+        // Phase 7C.1: Build optional secondary location (null Type means "clear")
+        EventSecondaryLocation? secondaryLocation = null;
+        if (request.SecondaryLocationType.HasValue)
+        {
+            if (string.IsNullOrWhiteSpace(request.SecondaryLocationAddress) ||
+                string.IsNullOrWhiteSpace(request.SecondaryLocationCity))
+            {
+                return Result.Failure("Secondary location address and city are required when a secondary location type is selected");
+            }
+
+            var secAddressResult = Address.Create(
+                request.SecondaryLocationAddress,
+                request.SecondaryLocationCity,
+                request.SecondaryLocationState ?? string.Empty,
+                request.SecondaryLocationZipCode ?? string.Empty,
+                request.SecondaryLocationCountry ?? "Sri Lanka"
+            );
+            if (secAddressResult.IsFailure)
+                return Result.Failure(secAddressResult.Error);
+
+            GeoCoordinate? secCoordinates = null;
+            if (request.SecondaryLocationLatitude.HasValue && request.SecondaryLocationLongitude.HasValue)
+            {
+                var secCoordsResult = GeoCoordinate.Create(
+                    request.SecondaryLocationLatitude.Value,
+                    request.SecondaryLocationLongitude.Value
+                );
+                if (secCoordsResult.IsFailure)
+                    return Result.Failure(secCoordsResult.Error);
+                secCoordinates = secCoordsResult.Value;
+            }
+
+            var secInnerLocationResult = EventLocation.Create(secAddressResult.Value, secCoordinates, request.SecondaryLocationName);
+            if (secInnerLocationResult.IsFailure)
+                return Result.Failure(secInnerLocationResult.Error);
+
+            var secondaryResult = EventSecondaryLocation.Create(request.SecondaryLocationType.Value, secInnerLocationResult.Value);
+            if (secondaryResult.IsFailure)
+                return Result.Failure(secondaryResult.Error);
+
+            secondaryLocation = secondaryResult.Value;
         }
 
         // Session 33: Handle pricing - group pricing takes precedence over dual and legacy single pricing
@@ -287,6 +330,28 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             var removeLocationResult = @event.RemoveLocation();
             if (removeLocationResult.IsFailure)
                 return removeLocationResult;
+        }
+
+        // Phase 7C.1: Apply secondary location (set-or-clear based on request.SecondaryLocationType)
+        if (secondaryLocation != null)
+        {
+            var setSecondaryResult = @event.SetSecondaryLocation(secondaryLocation);
+            if (setSecondaryResult.IsFailure)
+                return setSecondaryResult;
+
+            _logger.LogDebug(
+                "UpdateEvent: Secondary location set - EventId={EventId}, Type={Type}",
+                request.EventId, secondaryLocation.Type);
+        }
+        else if (@event.HasSecondaryLocation())
+        {
+            var clearSecondaryResult = @event.ClearSecondaryLocation();
+            if (clearSecondaryResult.IsFailure)
+                return clearSecondaryResult;
+
+            _logger.LogDebug(
+                "UpdateEvent: Secondary location cleared - EventId={EventId}",
+                request.EventId);
         }
 
         // Issue #55: Update TimeZoneId when location changes

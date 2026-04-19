@@ -265,4 +265,119 @@ public class EventLocationTests
     }
 
     #endregion
+
+    #region Name (Venue) Tests — Phase 7C.1
+
+    [Fact]
+    public void Create_WithName_ShouldPersistName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "Grand Ballroom");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("Grand Ballroom");
+    }
+
+    [Fact]
+    public void Create_WithoutName_ShouldHaveNullName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().BeNull("name is optional");
+    }
+
+    [Fact]
+    public void Create_WithNameOver150Chars_ShouldFail()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var longName = new string('A', 151);
+
+        // Act
+        var result = EventLocation.Create(address, name: longName);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Contains("150"));
+    }
+
+    [Fact]
+    public void Create_WithWhitespaceOnlyName_ShouldNormalizeToNull()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "   ");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().BeNull("whitespace-only names should be treated as absent");
+    }
+
+    [Fact]
+    public void Create_WithName_ShouldTrimWhitespace()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "  Grand Ballroom  ");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("Grand Ballroom");
+    }
+
+    [Fact]
+    public void Equality_DifferentNames_ShouldNotBeEqual()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var loc1 = EventLocation.Create(address, name: "Ballroom A").Value;
+        var loc2 = EventLocation.Create(address, name: "Ballroom B").Value;
+
+        // Act & Assert
+        loc1.Should().NotBe(loc2);
+    }
+
+    [Fact]
+    public void Equality_SameNames_ShouldBeEqual()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var loc1 = EventLocation.Create(address, name: "Ballroom").Value;
+        var loc2 = EventLocation.Create(address, name: "Ballroom").Value;
+
+        // Act & Assert
+        loc1.Should().Be(loc2);
+        loc1.GetHashCode().Should().Be(loc2.GetHashCode());
+    }
+
+    [Fact]
+    public void WithCoordinates_ShouldPreserveName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var location = EventLocation.Create(address, name: "Grand Ballroom").Value;
+        var coordinates = GeoCoordinate.Create(34.0522m, -118.2437m).Value;
+
+        // Act
+        var updated = location.WithCoordinates(coordinates).Value;
+
+        // Assert
+        updated.Name.Should().Be("Grand Ballroom", "WithCoordinates should preserve Name");
+    }
+
+    #endregion
 }

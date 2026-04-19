@@ -41,6 +41,18 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Country, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Country : null))
             .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Latitude : (decimal?)null))
             .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Longitude : (decimal?)null))
+            // Phase 7C.1: Location Name + Secondary Location
+            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.Name : null))
+            .ForMember(dest => dest.SecondaryLocationType, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Type.ToString() : null))
+            .ForMember(dest => dest.SecondaryLocationName, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Name : null))
+            .ForMember(dest => dest.SecondaryAddress, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.Street : null))
+            .ForMember(dest => dest.SecondaryCity, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.City : null))
+            .ForMember(dest => dest.SecondaryState, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.State : null))
+            .ForMember(dest => dest.SecondaryZipCode, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.ZipCode : null))
+            .ForMember(dest => dest.SecondaryCountry, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.Country : null))
+            .ForMember(dest => dest.SecondaryLatitude, opt => opt.MapFrom(src => src.SecondaryLocation != null && src.SecondaryLocation.Location.Coordinates != null ? src.SecondaryLocation.Location.Coordinates.Latitude : (decimal?)null))
+            .ForMember(dest => dest.SecondaryLongitude, opt => opt.MapFrom(src => src.SecondaryLocation != null && src.SecondaryLocation.Location.Coordinates != null ? src.SecondaryLocation.Location.Coordinates.Longitude : (decimal?)null))
+            .ForMember(dest => dest.HasSecondaryLocation, opt => opt.MapFrom(src => src.SecondaryLocation != null))
             // Phase 6A.97: Timezone mapping for consistent date/time display
             .ForMember(dest => dest.TimeZoneId, opt => opt.MapFrom(src => src.TimeZoneId))
             .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>

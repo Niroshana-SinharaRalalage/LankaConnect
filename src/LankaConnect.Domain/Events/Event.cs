@@ -35,6 +35,7 @@ public partial class Event : BaseEntity
     public string? CancellationReason { get; private set; }
     public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
+    public EventSecondaryLocation? SecondaryLocation { get; private set; } // Phase 7C.1: Optional secondary location (parking lot / secondary venue)
 
     /// <summary>
     /// Phase 6A.97: IANA timezone identifier for event's local time display.
@@ -919,6 +920,38 @@ public partial class Event : BaseEntity
     /// Checks if event has a physical location set
     /// </summary>
     public bool HasLocation() => Location != null;
+
+    /// <summary>
+    /// Phase 7C.1: Sets the optional secondary location (parking lot or secondary venue).
+    /// Replaces any existing secondary location.
+    /// </summary>
+    public Result SetSecondaryLocation(EventSecondaryLocation secondaryLocation)
+    {
+        if (secondaryLocation == null)
+            return Result.Failure("Secondary location cannot be null");
+
+        SecondaryLocation = secondaryLocation;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7C.1: Clears the secondary location. Idempotent — succeeds even if already null.
+    /// </summary>
+    public Result ClearSecondaryLocation()
+    {
+        if (SecondaryLocation == null)
+            return Result.Success();
+
+        SecondaryLocation = null;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7C.1: Checks whether a secondary location is set on this event.
+    /// </summary>
+    public bool HasSecondaryLocation() => SecondaryLocation != null;
 
     #endregion
 

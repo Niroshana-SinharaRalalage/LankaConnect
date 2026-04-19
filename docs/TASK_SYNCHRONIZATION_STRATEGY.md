@@ -14,8 +14,8 @@
 ## ⏸️ PREVIOUS SESSION STATUS - UI POLISH: COLLAPSIBLE SECTION DISCOVERABILITY
 **Date**: 2026-04-18
 **Session**: UI Polish — CollapsibleSection affordance (frontend-only)
-**Progress**: ✅ **CODE COMPLETE — 8 TESTS PASS, TYPECHECK CLEAN** — User feedback on event detail page: users don't realize sections are collapsible from the chevron alone. Enhanced [CollapsibleSection.tsx](../web/src/presentation/components/ui/CollapsibleSection.tsx) with explicit "Show/Hide details" pill, subtle collapsed-state tint, bolder mobile chevron, new optional `summary` prop. Neutral styling compatible with 11 usages. Wired summary into Signup Forms on event detail page. 8 Vitest tests passing.
-**Status**: ⏳ **AWAITING COMMIT + UI STAGING DEPLOY** — UI-only change; no backend, no database, no EF migration.
+**Progress**: ✅ **DEPLOYED** (commits `e9185bb3` + `30be432f`) — User feedback on event detail page: users don't realize sections are collapsible from the chevron alone. Enhanced [CollapsibleSection.tsx](../web/src/presentation/components/ui/CollapsibleSection.tsx) with explicit "Show/Hide details" pill, subtle collapsed-state tint, bolder mobile chevron, new optional `summary` prop. Neutral styling compatible with 11 usages. Wired summary into Signup Forms on event detail page. 8 Vitest tests passing. Round 2 (`30be432f`, 2026-04-19): after round-1 visual review user asked to extend the pill pattern to individual signup-item rows inside [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) (mandatory/suggested categories) — small orange left-side chevron was still not discoverable. Replaced with same right-aligned neutral pill. ARIA labels preserved. `ChevronRight` import removed. +19/−16 LOC one file. TypeScript clean. 10 pre-existing `SignUpManagementSection.test.tsx` failures (missing `useRouter` mock) confirmed via `git stash` to exist on HEAD before the change — not a regression.
+**Status**: ✅ **COMMITTED & DEPLOYED TO STAGING** — Round 1 CI run `24618229077` success. Round 2 commit `30be432f` pushed to develop, deploy-ui-staging run `24629422776` in progress.
 
 ---
 

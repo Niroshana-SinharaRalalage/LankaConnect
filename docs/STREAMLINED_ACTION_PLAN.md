@@ -18,8 +18,10 @@
 ## ⏸️ PREVIOUS STATUS - UI POLISH: COLLAPSIBLE SECTION DISCOVERABILITY (2026-04-18)
 **Date**: 2026-04-18
 **Session**: UI Polish — CollapsibleSection affordance (frontend-only)
-**Status**: ✅ **CODE COMPLETE — 8 UNIT TESTS PASS, TYPECHECK CLEAN — awaiting commit + UI staging deploy**
+**Status**: ✅ **DEPLOYED TO STAGING** (commits `e9185bb3` + `30be432f`)
 **Scope**: User feedback on event detail page — users don't recognize Register/Signup Lists/Signup Forms cards as expandable from the chevron alone. Enhanced the shared [CollapsibleSection](../web/src/presentation/components/ui/CollapsibleSection.tsx) component with (1) an explicit **"Show details" / "Hide details" pill** (text label + chevron, neutral styling) next to the title on desktop, (2) a subtle collapsed-state background tint + hover shadow so the whole header visually reads as a button, (3) a bolder mobile-only chevron, (4) an optional `summary` prop that renders preview content under the title only when collapsed. Wired a summary into the Signup Forms section on [web/src/app/events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) ("N forms available • X need your response" / "All responses submitted"). Neutral pill styling deliberately chosen to not clash with the 11 existing usages. All new props optional — backwards-compatible. New Vitest file with 8 tests. No backend / DB / EF changes.
+
+**Round 2 follow-up (2026-04-19)** — commit `30be432f`: after round-1 visual review user asked to extend the pill pattern to the individual signup-item rows inside `SignUpManagementSection` (mandatory/suggested categories) — the small orange left-side chevron was still not discoverable. Replaced it with the same right-aligned neutral pill used on CollapsibleSection. ARIA labels preserved so existing test selectors continue to match. `ChevronRight` import removed. One file: [web/src/presentation/components/features/events/SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) (+19/−16). TypeScript clean. Pre-existing 10 `SignUpManagementSection.test.tsx` failures due to missing `useRouter` mock — **confirmed via `git stash` to exist on HEAD before the change**, not a regression from this round. Needs a separate testing-infra fix.
 
 ---
 

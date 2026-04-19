@@ -1,7 +1,42 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-18 - Seating Redesign Slice 1 complete*
+*Last Updated: 2026-04-19 - Seating Redesign Slice 2+3A code-complete*
 
-## 🎯 Current Session Status (2026-04-18)
+## 🎯 Current Session Status (2026-04-19)
+
+### Seating Redesign — Slice 2+3A (Domain & Schema Expansion) — Code Complete
+
+**Status**: ✅ **CODE COMPLETE** — Domain/Infra builds clean. 82 new tests + 87 existing seating tests pass. Application tests 2063/2063 pass. Frontend `tsc` exit 0. Pre-existing 2 failures (FormResponseTests + DonationConfigurationTests) unrelated to this slice — verified via `git log`.
+
+**Classification**: Architect-approved split of Slice 2+3 into **2+3A (structural, low risk — this slice)** + **2+3B (3-transaction CreateEventCommand split — deferred)**. Slice 2+3A expands the domain so banquet tables, decorations, canvas config, and hybrid (Theater+Banquet=Mixed) layouts are first-class. No handler rewrites — those live in 2+3B.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Domain enums | [LayoutType.cs](../src/LankaConnect.Domain/Events/Enums/LayoutType.cs) (added `Mixed=3`), [ZoneShape.cs](../src/LankaConnect.Domain/Events/Enums/ZoneShape.cs), [TableShape.cs](../src/LankaConnect.Domain/Events/Enums/TableShape.cs), [DecorationKind.cs](../src/LankaConnect.Domain/Events/Enums/DecorationKind.cs) | Mixed layout + canvas primitives. |
+| Value object | [CanvasConfig.cs](../src/LankaConnect.Domain/Events/ValueObjects/CanvasConfig.cs) | 1200×800@1.0 default; hex-color validation; `OwnsOne` flat columns (Phase 6A.130 mitigation — no `ToJson()`). |
+| Entities | [VenueTable.cs](../src/LankaConnect.Domain/Events/Entities/VenueTable.cs) (new), [VenueDecoration.cs](../src/LankaConnect.Domain/Events/Entities/VenueDecoration.cs) (new), [VenueZone.cs](../src/LankaConnect.Domain/Events/Entities/VenueZone.cs), [Seat.cs](../src/LankaConnect.Domain/Events/Entities/Seat.cs), [VenueLayout.cs](../src/LankaConnect.Domain/Events/Entities/VenueLayout.cs), [Event.Seating.cs](../src/LankaConnect.Domain/Events/Event.Seating.cs) | Zone gets `Shape`+`Geometry`. Seat gets nullable `VenueZoneId` (XOR with `VenueTableId`) + `AngleDeg`. VenueTable owns seats with radial/rect distribution (`GenerateRoundTableSeats` / `GenerateRectTableSeats`). VenueLayout aggregates zones + tables + decorations + canvas. `Event.EnableAssignedSeating(layoutId)` / `DisableAssignedSeating()` orchestration helpers (throw on empty Guid → guards Slice 2+3B saga). |
+| Back-compat shims | [Seat.cs](../src/LankaConnect.Domain/Events/Entities/Seat.cs), [VenueZone.cs](../src/LankaConnect.Domain/Events/Entities/VenueZone.cs) | Preserved old factory signatures → no churn for the 87 existing seating tests. |
+| Infra — EF | [VenueLayoutConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/VenueLayoutConfiguration.cs), [VenueZoneConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/VenueZoneConfiguration.cs), [SeatConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/SeatConfiguration.cs), [VenueTableConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/VenueTableConfiguration.cs) (new), [VenueDecorationConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/VenueDecorationConfiguration.cs) (new), [AppDbContext.cs](../src/LankaConnect.Infrastructure/Data/AppDbContext.cs) | Canvas flat columns (canvas_width/height/scale/bg_color). `seats.venue_zone_id` now nullable; partial unique indexes on `(zone_id, label)` and `(table_id, label)` matching the XOR. JSONB stored as strings (immutable) — no ValueComparer needed. |
+| Infra — repo | [SeatHoldRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/SeatHoldRepository.cs) | `GetActiveHoldsForEventAsync` switched to `Union` of zone-path + table-path since `Seat.VenueZoneId` is now nullable. |
+| Migration | [20260419123801_AddSeatingDomainExpansion.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260419123801_AddSeatingDomainExpansion.cs) (+ `.Designer.cs` auto-generated — Phase 6A.133 check ✓) | Creates `venue_tables` + `venue_decorations`, extends `venue_zones` / `seats` / `venue_layouts`. **Architect decision #13**: adds `ck_seats_zone_xor_table` DB CHECK constraint `(venue_zone_id IS NULL) <> (venue_table_id IS NULL)` — last-line-of-defence invariant. |
+| TypeScript | [events.types.ts](../web/src/infrastructure/api/types/events.types.ts) | Additive: `LayoutType.Mixed`, `ZoneShape`, `TableShape`, `DecorationKind` enums; `VenueTableDto`, `VenueDecorationDto`, `CanvasConfigDto`; optional fields on `VenueLayoutDto`/`VenueZoneDto`/`SeatDto`. No breaking changes to existing consumers. |
+| Domain tests | [CanvasConfigTests.cs](../tests/LankaConnect.Domain.Tests/Events/ValueObjects/CanvasConfigTests.cs), [VenueTableTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/VenueTableTests.cs), [VenueDecorationTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/VenueDecorationTests.cs), [SeatAtTableTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/SeatAtTableTests.cs), [VenueLayoutSeatingExpansionTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/VenueLayoutSeatingExpansionTests.cs) | **82 new tests**. Round-table radial distribution + angle normalization, square-table capacity-%-4 invariant, rect 4-side distribution with remainder, Text decoration label requirement, hex color validator, Event toggle-on/off w/ registration guards. |
+| Audit note | [SLICE_2_3B_CREATE_EVENT_TRANSACTION_AUDIT.md](SLICE_2_3B_CREATE_EVENT_TRANSACTION_AUDIT.md) (new) | Read-only record of transaction boundaries Slice 2+3B will need; sanctioned domain seams already in place. |
+
+**Verification**:
+- Full solution build: clean (`0 Error(s)`).
+- Domain tests: 446/448 pass (2 pre-existing unrelated failures: `FormResponseTests` and `DonationConfigurationTests` — last touched in pre-seating commits).
+- Application tests: 2063 pass / 0 fail / 6 skipped.
+- Frontend `tsc --noEmit`: exit 0.
+- Migration `.Designer.cs` present (Phase 6A.133 check ✓), XOR CHECK constraint scripted via raw `migrationBuilder.Sql` (Up + Down).
+- JSONB stored as immutable strings → Phase 6A.129 ValueComparer round-trip N/A.
+- `CanvasConfig` persisted via `OwnsOne` flat columns → Phase 6A.130 `IReadOnlyList.ToJson()` bug avoided by design.
+
+**Next**: Commit → push to `develop` → `deploy-staging.yml` applies migration → verify `__EFMigrationsHistory` has `20260419123801_AddSeatingDomainExpansion` AND `ck_seats_zone_xor_table` exists in `pg_constraint` (belt-and-braces for the Phase 6A.122 silent-migration class of bugs). Then Slice 2+3B can start the 3-transaction CreateEventCommand split using the audit note.
+
+---
+
+## ⏸️ Previous Session Status (2026-04-18)
 
 ### Seating Redesign — Slice 1 (Inline SeatingSection UI Shell) — Code Complete
 
@@ -58,7 +93,9 @@
 - Vitest: `tests/unit/presentation/components/ui/CollapsibleSection.test.tsx` — **8/8 pass**.
 - No backend, no DB migration, no API changes — nothing to deploy to backend staging.
 
-**Next**: Commit, push to trigger `deploy-ui-staging.yml`, verify deployed UI on the event detail page visually.
+**Deploy**: commit `e9185bb3` pushed to develop, CI run `24618229077` succeeded, health endpoint 200.
+
+**Round 2 follow-up (2026-04-19)** — commit `30be432f`: user approved round 1 in a screenshot review and asked to extend the same pattern to the individual signup-item rows inside `SignUpManagementSection` (mandatory/suggested categories) which still had a small orange left-side chevron toggle. Replaced it with the same right-aligned neutral pill used on CollapsibleSection (`border-neutral-300 bg-white text-neutral-700 shadow-sm`, text label + rotating chevron, text hidden on `<sm` breakpoints). Preserved the `aria-label` values ("Expand item details" / "Collapse item details") so existing test selectors continue to match. Removed the now-unused `ChevronRight` import. One file touched: [web/src/presentation/components/features/events/SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) (+19 / −16 LOC). TypeScript `tsc --noEmit` clean. Pre-existing `SignUpManagementSection.test.tsx` 10/10 failures due to missing `useRouter` mock — **confirmed via `git stash` to exist on HEAD before this change**, not a regression caused here. Should be fixed in a separate dedicated testing-infra PR.
 
 ---
 

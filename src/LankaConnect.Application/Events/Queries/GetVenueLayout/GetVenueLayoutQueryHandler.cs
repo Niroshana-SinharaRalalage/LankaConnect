@@ -61,7 +61,7 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
                 Id = z.Id,
                 Name = z.Name,
                 Color = z.Color,
-                TicketTierId = z.TicketTierId,
+                TicketTierId = null, // Slice 4: zone→tier mapping moved to tier_assignments; Slice 5 wires the read path with event tier join
                 SortOrder = z.SortOrder,
                 EnabledSeatCount = z.EnabledSeatCount,
                 TotalSeatCount = z.Seats.Count,

@@ -475,4 +475,139 @@ public class TicketTierTests
     }
 
     #endregion
+
+    #region Tier Assignment Tests (Slice 4 — Polymorphic Tier Assignments)
+
+    [Fact]
+    public void AssignToZone_Should_Add_Assignment()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+        var zoneId = Guid.NewGuid();
+
+        // Act
+        var result = tier.AssignToZone(zoneId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tier.Assignments.Should().HaveCount(1);
+        var assignment = tier.Assignments[0];
+        assignment.TierId.Should().Be(tier.Id);
+        assignment.AssignableKind.Should().Be(AssignableKind.Zone);
+        assignment.AssignableId.Should().Be(zoneId);
+    }
+
+    [Fact]
+    public void AssignToTable_Should_Add_Assignment()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+        var tableId = Guid.NewGuid();
+
+        // Act
+        var result = tier.AssignToTable(tableId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tier.Assignments.Should().HaveCount(1);
+        tier.Assignments[0].AssignableKind.Should().Be(AssignableKind.Table);
+        tier.Assignments[0].AssignableId.Should().Be(tableId);
+    }
+
+    [Fact]
+    public void AssignToZone_Twice_With_Same_Id_Should_Be_Idempotent()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+        var zoneId = Guid.NewGuid();
+
+        // Act
+        var first = tier.AssignToZone(zoneId);
+        var second = tier.AssignToZone(zoneId);
+
+        // Assert
+        first.IsSuccess.Should().BeTrue();
+        second.IsSuccess.Should().BeTrue();
+        tier.Assignments.Should().HaveCount(1); // no duplicate
+    }
+
+    [Fact]
+    public void AssignToZone_And_AssignToTable_Same_Id_Should_Coexist()
+    {
+        // Arrange — Zone and Table are independent ID spaces; the same GUID could legitimately
+        // exist as a zone AND as a table on different layouts, so they are distinct assignments.
+        var tier = CreateValidTier(capacity: 30);
+        var sharedGuid = Guid.NewGuid();
+
+        // Act
+        tier.AssignToZone(sharedGuid);
+        tier.AssignToTable(sharedGuid);
+
+        // Assert
+        tier.Assignments.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void AssignToZone_With_EmptyId_Should_Fail()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+
+        // Act
+        var result = tier.AssignToZone(Guid.Empty);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        tier.Assignments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RemoveAssignment_Should_Remove_Matching_Assignment()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+        var zoneId = Guid.NewGuid();
+        tier.AssignToZone(zoneId);
+
+        // Act
+        var result = tier.RemoveAssignment(AssignableKind.Zone, zoneId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tier.Assignments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RemoveAssignment_When_NotAssigned_Should_Fail()
+    {
+        // Arrange
+        var tier = CreateValidTier(capacity: 30);
+
+        // Act
+        var result = tier.RemoveAssignment(AssignableKind.Zone, Guid.NewGuid());
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("not found");
+    }
+
+    [Fact]
+    public void RemoveAssignment_Only_Removes_Matching_Kind()
+    {
+        // Arrange — same ID assigned as both Zone and Table; removing one must leave the other.
+        var tier = CreateValidTier(capacity: 30);
+        var sharedId = Guid.NewGuid();
+        tier.AssignToZone(sharedId);
+        tier.AssignToTable(sharedId);
+
+        // Act
+        var result = tier.RemoveAssignment(AssignableKind.Zone, sharedId);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        tier.Assignments.Should().HaveCount(1);
+        tier.Assignments[0].AssignableKind.Should().Be(AssignableKind.Table);
+    }
+
+    #endregion
 }

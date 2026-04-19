@@ -96,6 +96,16 @@ public class TicketTierConfiguration : IEntityTypeConfiguration<TicketTier>
             .HasDatabaseName("ix_ticket_tiers_event_id_name")
             .HasFilter("is_active = true");
 
+        // Slice 4 Release N: polymorphic tier assignments
+        builder.HasMany(t => t.Assignments)
+            .WithOne()
+            .HasForeignKey(a => a.TierId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(t => t.Assignments)
+            .HasField("_assignments")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Ignore computed properties
         builder.Ignore(t => t.AvailableQuantity);
         builder.Ignore(t => t.HasChildPricing);

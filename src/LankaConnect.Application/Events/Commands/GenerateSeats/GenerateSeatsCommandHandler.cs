@@ -85,7 +85,7 @@ public class GenerateSeatsCommandHandler : ICommandHandler<GenerateSeatsCommand,
                 Id = z.Id,
                 Name = z.Name,
                 Color = z.Color,
-                TicketTierId = z.TicketTierId,
+                TicketTierId = null, // Slice 4: tier mapping lives in tier_assignments; Slice 5 adds the read path
                 SortOrder = z.SortOrder,
                 EnabledSeatCount = z.EnabledSeatCount,
                 TotalSeatCount = z.Seats.Count,

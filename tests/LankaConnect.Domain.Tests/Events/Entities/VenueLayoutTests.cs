@@ -99,23 +99,21 @@ public class VenueLayoutTests
     public void AddZone_Should_Add_Zone_To_Layout()
     {
         var layout = CreateValidLayout();
-        var tierId = Guid.NewGuid();
 
-        var result = layout.AddZone("VIP Section", "#FF0000", tierId, 1);
+        var result = layout.AddZone("VIP Section", "#FF0000", 1);
 
         result.IsSuccess.Should().BeTrue();
         layout.Zones.Should().HaveCount(1);
         layout.Zones[0].Name.Should().Be("VIP Section");
-        layout.Zones[0].TicketTierId.Should().Be(tierId);
     }
 
     [Fact]
     public void AddZone_WithDuplicateName_Should_Fail()
     {
         var layout = CreateValidLayout();
-        layout.AddZone("VIP", "#FF0000", null, 1);
+        layout.AddZone("VIP", "#FF0000", 1);
 
-        var result = layout.AddZone("VIP", "#00FF00", null, 2);
+        var result = layout.AddZone("VIP", "#00FF00", 2);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("already exists");
@@ -125,9 +123,9 @@ public class VenueLayoutTests
     public void AddZone_WithDuplicateName_CaseInsensitive_Should_Fail()
     {
         var layout = CreateValidLayout();
-        layout.AddZone("VIP", "#FF0000", null, 1);
+        layout.AddZone("VIP", "#FF0000", 1);
 
-        var result = layout.AddZone("vip", "#00FF00", null, 2);
+        var result = layout.AddZone("vip", "#00FF00", 2);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("already exists");
@@ -137,15 +135,13 @@ public class VenueLayoutTests
     public void UpdateZone_Should_Update_Properties()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Old Name", "#000000", null, 1).Value;
-        var tierId = Guid.NewGuid();
+        var zone = layout.AddZone("Old Name", "#000000", 1).Value;
 
-        var result = layout.UpdateZone(zone.Id, "New Name", "#FFFFFF", tierId, 2);
+        var result = layout.UpdateZone(zone.Id, "New Name", "#FFFFFF", 2);
 
         result.IsSuccess.Should().BeTrue();
         layout.Zones[0].Name.Should().Be("New Name");
         layout.Zones[0].Color.Should().Be("#FFFFFF");
-        layout.Zones[0].TicketTierId.Should().Be(tierId);
         layout.Zones[0].SortOrder.Should().Be(2);
     }
 
@@ -154,7 +150,7 @@ public class VenueLayoutTests
     {
         var layout = CreateValidLayout();
 
-        var result = layout.UpdateZone(Guid.NewGuid(), "Name", "#FFF", null, 1);
+        var result = layout.UpdateZone(Guid.NewGuid(), "Name", "#FFF", 1);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("not found");
@@ -164,10 +160,10 @@ public class VenueLayoutTests
     public void UpdateZone_WithDuplicateName_Of_OtherZone_Should_Fail()
     {
         var layout = CreateValidLayout();
-        layout.AddZone("Zone A", "#FF0000", null, 1);
-        var zoneB = layout.AddZone("Zone B", "#00FF00", null, 2).Value;
+        layout.AddZone("Zone A", "#FF0000", 1);
+        var zoneB = layout.AddZone("Zone B", "#00FF00", 2).Value;
 
-        var result = layout.UpdateZone(zoneB.Id, "Zone A", "#00FF00", null, 2);
+        var result = layout.UpdateZone(zoneB.Id, "Zone A", "#00FF00", 2);
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("already exists");
@@ -177,7 +173,7 @@ public class VenueLayoutTests
     public void RemoveZone_Should_Remove_Zone()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("VIP", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
 
         var result = layout.RemoveZone(zone.Id);
 
@@ -200,7 +196,7 @@ public class VenueLayoutTests
     public void GetZone_Should_Return_Zone_By_Id()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("VIP", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
 
         var found = layout.GetZone(zone.Id);
 
@@ -226,7 +222,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_Should_Create_Correct_Seats()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Main Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Main Floor", "#FF0000", 1).Value;
 
         var result = layout.GenerateTheaterSeats(zone.Id, rows: 3, seatsPerRow: 4);
 
@@ -240,7 +236,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_Should_Label_Correctly()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
 
         layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3);
 
@@ -256,7 +252,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_WithCustomStartRow_Should_Start_From_Given_Label()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Balcony", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Balcony", "#FF0000", 1).Value;
 
         layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 2, startRowLabel: "C");
 
@@ -270,7 +266,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_Should_Clear_Existing_Seats_First()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 5, seatsPerRow: 5); // 25 seats
         zone.Seats.Should().HaveCount(25);
 
@@ -294,7 +290,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_WithZeroRows_Should_Fail()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
 
         var result = layout.GenerateTheaterSeats(zone.Id, rows: 0, seatsPerRow: 3);
 
@@ -306,7 +302,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_WithTooManyRows_Should_Fail()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
 
         var result = layout.GenerateTheaterSeats(zone.Id, rows: 101, seatsPerRow: 3);
 
@@ -318,7 +314,7 @@ public class VenueLayoutTests
     public void GenerateTheaterSeats_WithZeroSeatsPerRow_Should_Fail()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
 
         var result = layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 0);
 
@@ -334,7 +330,7 @@ public class VenueLayoutTests
     public void GenerateBanquetSeats_Should_Create_Correct_Seats()
     {
         var layout = CreateValidLayout(LayoutType.Banquet);
-        var zone = layout.AddZone("Dining Hall", "#00FF00", null, 1).Value;
+        var zone = layout.AddZone("Dining Hall", "#00FF00", 1).Value;
 
         var result = layout.GenerateBanquetSeats(zone.Id, tables: 3, seatsPerTable: 8);
 
@@ -346,7 +342,7 @@ public class VenueLayoutTests
     public void GenerateBanquetSeats_Should_Label_Correctly()
     {
         var layout = CreateValidLayout(LayoutType.Banquet);
-        var zone = layout.AddZone("Hall", "#00FF00", null, 1).Value;
+        var zone = layout.AddZone("Hall", "#00FF00", 1).Value;
 
         layout.GenerateBanquetSeats(zone.Id, tables: 2, seatsPerTable: 3);
 
@@ -362,7 +358,7 @@ public class VenueLayoutTests
     public void GenerateBanquetSeats_WithCustomStartTable_Should_Start_Correctly()
     {
         var layout = CreateValidLayout(LayoutType.Banquet);
-        var zone = layout.AddZone("Hall", "#00FF00", null, 1).Value;
+        var zone = layout.AddZone("Hall", "#00FF00", 1).Value;
 
         layout.GenerateBanquetSeats(zone.Id, tables: 2, seatsPerTable: 2, startTableNumber: 5);
 
@@ -374,7 +370,7 @@ public class VenueLayoutTests
     public void GenerateBanquetSeats_WithTooManyTables_Should_Fail()
     {
         var layout = CreateValidLayout(LayoutType.Banquet);
-        var zone = layout.AddZone("Hall", "#00FF00", null, 1).Value;
+        var zone = layout.AddZone("Hall", "#00FF00", 1).Value;
 
         var result = layout.GenerateBanquetSeats(zone.Id, tables: 201, seatsPerTable: 8);
 
@@ -386,7 +382,7 @@ public class VenueLayoutTests
     public void GenerateBanquetSeats_WithTooManySeatsPerTable_Should_Fail()
     {
         var layout = CreateValidLayout(LayoutType.Banquet);
-        var zone = layout.AddZone("Hall", "#00FF00", null, 1).Value;
+        var zone = layout.AddZone("Hall", "#00FF00", 1).Value;
 
         var result = layout.GenerateBanquetSeats(zone.Id, tables: 5, seatsPerTable: 21);
 
@@ -402,7 +398,7 @@ public class VenueLayoutTests
     public void DisableSeat_Should_Disable_Seat_And_Update_Capacity()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3);
         var seatId = zone.Seats[0].Id;
         layout.TotalCapacity.Should().Be(6);
@@ -419,7 +415,7 @@ public class VenueLayoutTests
     public void EnableSeat_Should_Enable_Seat()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 2);
         var seatId = zone.Seats[0].Id;
         layout.DisableSeat(seatId);
@@ -434,7 +430,7 @@ public class VenueLayoutTests
     public void SetSeatAccessible_Should_Set_ADA_Flag()
     {
         var layout = CreateValidLayout();
-        var zone = layout.AddZone("Floor", "#FF0000", null, 1).Value;
+        var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 2);
         var seatId = zone.Seats[0].Id;
 
@@ -560,8 +556,9 @@ public class VenueLayoutTests
     public void ValidateForEvent_WithUnmappedZone_Should_Fail()
     {
         var layout = CreateValidLayout();
-        layout.AddZone("VIP", "#FF0000", ticketTierId: null, 1);
+        layout.AddZone("VIP", "#FF0000", 1);
         var tiers = CreateTestTiers();
+        // Note: No tier.AssignToZone() call — zone is unmapped
 
         var result = layout.ValidateForEvent(tiers);
 
@@ -570,25 +567,12 @@ public class VenueLayoutTests
     }
 
     [Fact]
-    public void ValidateForEvent_WithZoneMappedToInactiveTier_Should_Fail()
-    {
-        var layout = CreateValidLayout();
-        var nonExistentTierId = Guid.NewGuid();
-        layout.AddZone("VIP", "#FF0000", nonExistentTierId, 1);
-        var tiers = CreateTestTiers(); // tiers with different IDs
-
-        var result = layout.ValidateForEvent(tiers);
-
-        result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Contain("does not exist or is inactive");
-    }
-
-    [Fact]
     public void ValidateForEvent_WithValidMapping_Should_Succeed()
     {
         var layout = CreateValidLayout();
         var tiers = CreateTestTiers();
-        var zone = layout.AddZone("VIP Section", "#FF0000", tiers[0].Id, 1).Value;
+        var zone = layout.AddZone("VIP Section", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
         layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 5); // 10 seats, tier capacity is 30
 
         var result = layout.ValidateForEvent(tiers);
@@ -601,7 +585,8 @@ public class VenueLayoutTests
     {
         var layout = CreateValidLayout();
         var tiers = CreateTestTiers(); // Capacity: 30 for first tier
-        var zone = layout.AddZone("VIP", "#FF0000", tiers[0].Id, 1).Value;
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
         layout.GenerateTheaterSeats(zone.Id, rows: 10, seatsPerRow: 10); // 100 seats, tier cap is 30
 
         var result = layout.ValidateForEvent(tiers);

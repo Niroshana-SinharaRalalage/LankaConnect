@@ -77,7 +77,7 @@ public class GetSeatAvailabilityQueryHandler : IQueryHandler<GetSeatAvailability
                 ZoneId = x.Zone.Id,
                 ZoneName = x.Zone.Name,
                 ZoneColor = x.Zone.Color,
-                TicketTierId = x.Zone.TicketTierId
+                TicketTierId = null // Slice 4: zone→tier via tier_assignments; Slice 5 wires the read path
             };
         }).ToList();
 

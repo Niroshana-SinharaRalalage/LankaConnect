@@ -84,6 +84,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Ticket Entity Sets
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
     public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
+    public DbSet<TierAssignment> TierAssignments => Set<TierAssignment>(); // Slice 4 Release N: polymorphic tier→zone/table mapping
 
     // Venue Seating Entity Sets (Phase 2: Seat Booking)
     public DbSet<VenueLayout> VenueLayouts => Set<VenueLayout>();
@@ -206,6 +207,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new SeatConfiguration());
         modelBuilder.ApplyConfiguration(new SeatHoldConfiguration());
         modelBuilder.ApplyConfiguration(new SeatReservationConfiguration());
+        modelBuilder.ApplyConfiguration(new TierAssignmentConfiguration()); // Slice 4 Release N
 
         // Registration Addition entity configurations (Add-Only Attendees Feature)
         modelBuilder.ApplyConfiguration(new RegistrationAdditionConfiguration());
@@ -336,6 +338,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<Seat>().ToTable("seats", "events");
         modelBuilder.Entity<SeatHold>().ToTable("seat_holds", "events");
         modelBuilder.Entity<SeatReservation>().ToTable("seat_reservations", "events");
+        modelBuilder.Entity<TierAssignment>().ToTable("tier_assignments", "events"); // Slice 4 Release N
 
         // Registration Addition tables (Add-Only Attendees Feature)
         modelBuilder.Entity<RegistrationAddition>().ToTable("registration_additions", "events");
@@ -428,7 +431,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(VenueDecoration), // Slice 2+3A
             typeof(Seat), // Phase 2: Seat Booking
             typeof(SeatHold), // Phase 2: Seat Booking
-            typeof(SeatReservation) // Phase 2: Seat Booking
+            typeof(SeatReservation), // Phase 2: Seat Booking
+            typeof(TierAssignment) // Slice 4 Release N: polymorphic tier→zone/table mapping
         };
 
         // Get all types from Domain assembly that aren't in our configured list

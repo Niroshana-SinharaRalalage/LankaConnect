@@ -48,10 +48,15 @@ public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayout
         // Add zones
         foreach (var zoneReq in request.Zones)
         {
-            var zoneResult = layout.AddZone(zoneReq.Name, zoneReq.Color, zoneReq.TicketTierId, zoneReq.SortOrder);
+            var zoneResult = layout.AddZone(zoneReq.Name, zoneReq.Color, zoneReq.SortOrder);
             if (zoneResult.IsFailure)
                 return Result<VenueLayoutDto>.Failure(zoneResult.Error);
         }
+
+        // Slice 4 Release N: tier → zone mapping moved to the polymorphic tier_assignments
+        // junction. CreateVenueZoneRequest.TicketTierId is accepted for API back-compat but
+        // ignored here; Slice 5 exposes POST /api/venue-layouts/{id}/tier-assignments as the
+        // canonical mapping path. Presets (Slice 6) and canvas editor (Slice 8) will call it.
 
         await _venueLayoutRepository.AddAsync(layout, cancellationToken);
         await _unitOfWork.CommitAsync(cancellationToken);
@@ -81,7 +86,7 @@ public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayout
                 Id = z.Id,
                 Name = z.Name,
                 Color = z.Color,
-                TicketTierId = z.TicketTierId,
+                TicketTierId = null, // Slice 4: sourced from tier_assignments; write path lands in Slice 5
                 SortOrder = z.SortOrder,
                 EnabledSeatCount = z.EnabledSeatCount,
                 TotalSeatCount = z.Seats.Count,

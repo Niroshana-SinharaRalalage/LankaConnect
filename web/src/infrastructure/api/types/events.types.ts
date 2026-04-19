@@ -2486,6 +2486,11 @@ export interface VenueZoneDto {
   id: string;
   name: string;
   color: string;
+  /**
+   * @deprecated Slice 4 Release N: server returns `null`. Tier mapping is now polymorphic
+   * via tier_assignments. Slice 5 will expose GET /api/venue-layouts/{id}/tier-assignments
+   * and a TierAssignmentDto[] on the layout. Field removed entirely in Release N+1.
+   */
   ticketTierId?: string | null;
   sortOrder: number;
   enabledSeatCount: number;
@@ -2565,6 +2570,7 @@ export interface SeatAvailabilityDto {
   zoneId: string;
   zoneName: string;
   zoneColor: string;
+  /** @deprecated Slice 4 Release N: server returns `null`. See VenueZoneDto.ticketTierId. */
   ticketTierId?: string | null;
 }
 
@@ -2590,6 +2596,11 @@ export interface CreateVenueLayoutRequest {
 export interface CreateVenueZoneRequest {
   name: string;
   color: string;
+  /**
+   * @deprecated Slice 4 Release N: server accepts but ignores this field. Use the
+   * tier-assignment endpoints (Slice 5) to map tiers to zones after layout creation.
+   * Field removed entirely in Release N+1.
+   */
   ticketTierId?: string | null;
   sortOrder: number;
 }

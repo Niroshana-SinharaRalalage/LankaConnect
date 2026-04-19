@@ -5,7 +5,8 @@ namespace LankaConnect.Domain.Events.Entities;
 
 /// <summary>
 /// Represents a physical zone/section within a venue layout.
-/// Each zone maps to a ticket tier for pricing and can contain multiple seats.
+/// Zones are mapped to ticket tiers via the polymorphic <see cref="TierAssignment"/> table
+/// (Slice 4 Release N); the legacy <c>TicketTierId</c> FK was dropped from the domain model.
 /// Examples: "VIP Section", "Section A", "Balcony".
 /// </summary>
 public class VenueZone : BaseEntity
@@ -15,7 +16,6 @@ public class VenueZone : BaseEntity
     public Guid VenueLayoutId { get; private set; }
     public string Name { get; private set; } = string.Empty;
     public string Color { get; private set; } = string.Empty;
-    public Guid? TicketTierId { get; private set; }
     public int SortOrder { get; private set; }
 
     /// <summary>
@@ -48,7 +48,6 @@ public class VenueZone : BaseEntity
         Guid venueLayoutId,
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder,
         ZoneShape shape,
         string geometry)
@@ -56,7 +55,6 @@ public class VenueZone : BaseEntity
         VenueLayoutId = venueLayoutId;
         Name = name;
         Color = color;
-        TicketTierId = ticketTierId;
         SortOrder = sortOrder;
         Shape = shape;
         Geometry = geometry;
@@ -64,15 +62,14 @@ public class VenueZone : BaseEntity
 
     /// <summary>
     /// Creates a new venue zone within a layout (back-compat — defaults Shape to Rect,
-    /// empty Geometry). Existing callers preserve behavior.
+    /// empty Geometry).
     /// </summary>
     public static Result<VenueZone> Create(
         Guid venueLayoutId,
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder)
-        => Create(venueLayoutId, name, color, ticketTierId, sortOrder, ZoneShape.Rect, geometry: null);
+        => Create(venueLayoutId, name, color, sortOrder, ZoneShape.Rect, geometry: null);
 
     /// <summary>
     /// Creates a new venue zone with an explicit canvas shape + geometry.
@@ -81,7 +78,6 @@ public class VenueZone : BaseEntity
         Guid venueLayoutId,
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder,
         ZoneShape shape,
         string? geometry)
@@ -105,7 +101,6 @@ public class VenueZone : BaseEntity
             venueLayoutId,
             name.Trim(),
             color.Trim(),
-            ticketTierId,
             sortOrder,
             shape,
             NormalizeGeometry(geometry)));
@@ -114,7 +109,7 @@ public class VenueZone : BaseEntity
     /// <summary>
     /// Updates zone properties (back-compat — does not touch Shape/Geometry).
     /// </summary>
-    public Result Update(string name, string color, Guid? ticketTierId, int sortOrder)
+    public Result Update(string name, string color, int sortOrder)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result.Failure("Zone name is required");
@@ -130,7 +125,6 @@ public class VenueZone : BaseEntity
 
         Name = name.Trim();
         Color = color.Trim();
-        TicketTierId = ticketTierId;
         SortOrder = sortOrder;
         MarkAsUpdated();
         return Result.Success();
@@ -142,12 +136,11 @@ public class VenueZone : BaseEntity
     public Result Update(
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder,
         ZoneShape shape,
         string? geometry)
     {
-        var baseResult = Update(name, color, ticketTierId, sortOrder);
+        var baseResult = Update(name, color, sortOrder);
         if (baseResult.IsFailure) return baseResult;
 
         Shape = shape;

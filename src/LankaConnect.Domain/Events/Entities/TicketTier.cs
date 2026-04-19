@@ -81,6 +81,13 @@ public class TicketTier : BaseEntity
     /// </summary>
     public bool IsFree => AdultPrice.IsZero;
 
+    /// <summary>
+    /// Polymorphic tier→zone/table assignments replacing the legacy <c>VenueZone.TicketTierId</c> FK.
+    /// Populated via <see cref="AssignToZone"/> / <see cref="AssignToTable"/>; removed via <see cref="RemoveAssignment"/>.
+    /// </summary>
+    private readonly List<TierAssignment> _assignments = new();
+    public IReadOnlyList<TierAssignment> Assignments => _assignments.AsReadOnly();
+
     // EF Core constructor
     private TicketTier()
     {
@@ -303,6 +310,60 @@ public class TicketTier : BaseEntity
     public Result Activate()
     {
         IsActive = true;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Assigns this tier to a <see cref="VenueZone"/>. Idempotent — a second call with the
+    /// same zone ID is a no-op that still returns success (matches the architect's contract that
+    /// a zone can only be mapped to a given tier once).
+    /// </summary>
+    public Result AssignToZone(Guid zoneId)
+    {
+        return AddAssignment(AssignableKind.Zone, zoneId);
+    }
+
+    /// <summary>
+    /// Assigns this tier to a <see cref="VenueTable"/>. Idempotent (see <see cref="AssignToZone"/>).
+    /// </summary>
+    public Result AssignToTable(Guid tableId)
+    {
+        return AddAssignment(AssignableKind.Table, tableId);
+    }
+
+    /// <summary>
+    /// Removes an assignment. Returns failure if no matching assignment exists so callers can
+    /// detect stale UI state.
+    /// </summary>
+    public Result RemoveAssignment(AssignableKind kind, Guid assignableId)
+    {
+        if (assignableId == Guid.Empty)
+            return Result.Failure("Assignable ID is required");
+
+        var existing = _assignments.FirstOrDefault(a => a.AssignableKind == kind && a.AssignableId == assignableId);
+        if (existing == null)
+            return Result.Failure("Assignment not found");
+
+        _assignments.Remove(existing);
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    private Result AddAssignment(AssignableKind kind, Guid assignableId)
+    {
+        if (assignableId == Guid.Empty)
+            return Result.Failure("Assignable ID is required");
+
+        var alreadyAssigned = _assignments.Any(a => a.AssignableKind == kind && a.AssignableId == assignableId);
+        if (alreadyAssigned)
+            return Result.Success(); // idempotent
+
+        var assignmentResult = TierAssignment.Create(Id, kind, assignableId);
+        if (!assignmentResult.IsSuccess)
+            return Result.Failure(assignmentResult.Error);
+
+        _assignments.Add(assignmentResult.Value);
         MarkAsUpdated();
         return Result.Success();
     }

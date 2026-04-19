@@ -1,7 +1,46 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-19 - Seating Redesign Slice 2+3A code-complete*
+*Last Updated: 2026-04-19 - Seating Redesign Slice 4 Release N code-complete*
 
-## 🎯 Current Session Status (2026-04-19)
+## 🎯 Current Session Status (2026-04-19 — Slice 4 Release N)
+
+### Seating Redesign — Slice 4 Release N (Polymorphic Tier Assignments) — Code Complete
+
+**Status**: ✅ **CODE COMPLETE** — Full solution builds clean (0 errors). Domain tests: 458/460 pass (2 pre-existing unrelated failures). 135 Slice-4 / TicketTier / VenueLayout tests all pass.
+
+**Classification**: Architect decision #2 (polymorphic junction) + #10 (atomic single-PR for property removal + dual-read) + #11 (two-release column drop). Replaces `venue_zones.ticket_tier_id` FK with a polymorphic `tier_assignments` table supporting both `Zone` and `Table` targets. Column stays nullable in DB throughout Release N; dropped in Release N+1 after ≥1 week in production with no rollback triggered.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Domain enum | [AssignableKind.cs](../src/LankaConnect.Domain/Events/Enums/AssignableKind.cs) (new) | `Zone \| Table` discriminator. |
+| Domain entity | [TierAssignment.cs](../src/LankaConnect.Domain/Events/Entities/TierAssignment.cs) (new) | Composite-PK child of `TicketTier`. No `BaseEntity.Id` — uniqueness is `(TierId, AssignableKind, AssignableId)`. `Create(...)` factory returns `Result<TierAssignment>` with empty-Guid validation. |
+| Domain aggregate | [TicketTier.cs](../src/LankaConnect.Domain/Events/Entities/TicketTier.cs) | `AssignToZone(zoneId)` / `AssignToTable(tableId)` / `RemoveAssignment(kind, id)`. `Assignments` `IReadOnlyList` over private `_assignments` backing field. AddAssignment is idempotent (no-op on duplicate). |
+| Domain aggregate | [VenueZone.cs](../src/LankaConnect.Domain/Events/Entities/VenueZone.cs) | **Breaking change**: removed `TicketTierId` property and the parameter from `Create`/`Update` (both overloads). Zone↔tier mapping now lives solely on `TierAssignment`. |
+| Domain aggregate | [VenueLayout.cs](../src/LankaConnect.Domain/Events/Entities/VenueLayout.cs) | `AddZone(name, color, sortOrder)` and `UpdateZone(zoneId, name, color, sortOrder)` — `ticketTierId` dropped. **`ValidateForEvent(tiers)` rewritten**: builds a `zoneId → tier` dictionary from `tier.Assignments.Where(a => a.AssignableKind == Zone)` rather than reading `zone.TicketTierId`. Unmapped-zone + capacity-exceeded invariants preserved. |
+| Infra — EF configs | [TierAssignmentConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/TierAssignmentConfiguration.cs) (new), [TicketTierConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/TicketTierConfiguration.cs), [VenueZoneConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/VenueZoneConfiguration.cs), [AppDbContext.cs](../src/LankaConnect.Infrastructure/Data/AppDbContext.cs) | `tier_assignments` table (composite PK, enum-as-string `character varying(20)`, reverse-lookup index on `(assignable_kind, assignable_id)`). `TicketTier` `HasMany → Navigation.HasField("_assignments")` + cascade delete. **Shadow property pattern**: `builder.Property<Guid?>("TicketTierId").HasColumnName("ticket_tier_id")` on `VenueZone` keeps the DB column nullable during the dual-read window (Release N) so EF doesn't auto-drop it. Index preserved by string name. `DbSet<TierAssignment>` + schema mapping + whitelist entry. |
+| Migration | [20260419135921_AddTierAssignments.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260419135921_AddTierAssignments.cs) (+ `.Designer.cs` auto-generated — Phase 6A.133 ✓) | Creates `events.tier_assignments`, adds `ix_tier_assignments_assignable` index. Inline backfill SQL: `INSERT INTO events.tier_assignments SELECT ticket_tier_id, 'Zone', id, NOW() FROM events.venue_zones WHERE ticket_tier_id IS NOT NULL ON CONFLICT DO NOTHING;` — idempotent for re-apply. |
+| Application | [CreateVenueLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CreateVenueLayout/CreateVenueLayoutCommandHandler.cs), [GetVenueLayoutQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetVenueLayout/GetVenueLayoutQueryHandler.cs), [GetSeatAvailabilityQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/GetSeatAvailability/GetSeatAvailabilityQueryHandler.cs), [GenerateSeatsCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/GenerateSeats/GenerateSeatsCommandHandler.cs) | `AddZone` callsite drops `TicketTierId`. Read DTOs populate `TicketTierId = null` with a forward-looking comment pointing to Slice 5's tier-assignment endpoints. Preserves response shape → no frontend breakage in Release N. |
+| TypeScript DTOs | [events.types.ts](../web/src/infrastructure/api/types/events.types.ts) | `VenueZoneDto.ticketTierId`, `SeatAvailabilityDto.ticketTierId`, `CreateVenueZoneRequest.ticketTierId` now carry `@deprecated` JSDoc flagging Release N+1 removal. Field shape preserved — no consumer churn. |
+| Domain tests | [TierAssignmentTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/TierAssignmentTests.cs) (new), [TicketTierTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/TicketTierTests.cs), [VenueLayoutTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/VenueLayoutTests.cs), [VenueLayoutSeatingExpansionTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/VenueLayoutSeatingExpansionTests.cs) | **5 new TierAssignment tests** (valid zone/table, empty-Guid failures, distinct instances). **8 new TicketTier tests** (AssignToZone/Table, idempotency, Zone+Table-same-ID coexistence, RemoveAssignment success/not-found/kind-specific). Existing VenueLayout tests updated to the new `AddZone`/`UpdateZone` signatures; ValidateForEvent tests restructured to call `tier.AssignToZone(zone.Id)` after `AddZone`. Obsolete `ValidateForEvent_WithZoneMappedToInactiveTier_Should_Fail` removed — scenario no longer reachable under polymorphic assignments. |
+
+**Verification**:
+- Full solution build: clean (`0 Error(s)`, pre-existing package-vuln warnings only).
+- Domain tests: 458 pass, 2 pre-existing unrelated failures (FormResponseTests + DonationConfigurationTests).
+- Slice-4-scoped tests (`TierAssignment|TicketTier|VenueLayout`): **135/135 pass**.
+- Migration `.Designer.cs` present (Phase 6A.133 check ✓). Backfill uses inline SQL with `ON CONFLICT DO NOTHING` (re-apply safe).
+- Shadow property on `VenueZone.TicketTierId` verified in `AppDbContext` model snapshot — column stays as nullable `uuid` in DB.
+
+**Release N+1 follow-up (separate PR, ≥1 week after Release N ships)**:
+- Generate `DropZoneTicketTierIdColumn` migration: `ALTER TABLE events.venue_zones DROP COLUMN ticket_tier_id`.
+- Remove shadow property from `VenueZoneConfiguration`.
+- Remove `@deprecated ticketTierId` fields from TS DTOs.
+- Phase 6A.122 post-deploy check: verify `information_schema.columns` no longer reports `ticket_tier_id` for `venue_zones`.
+
+**Next**: Commit → push to `develop` → `deploy-staging.yml` applies migration → verify `__EFMigrationsHistory` includes `20260419135921_AddTierAssignments` AND `SELECT COUNT(*) FROM events.tier_assignments` on staging matches `COUNT(*) FROM events.venue_zones WHERE ticket_tier_id IS NOT NULL` (backfill row-count verification, Phase 6A.122 class). Slice 5 (API CRUD + auth + concurrency + `PUT /batch` endpoint + TierMappingPanel frontend) follows.
+
+---
+
+## ⏸️ Previous Session Status (2026-04-19 — Slice 2+3A)
 
 ### Seating Redesign — Slice 2+3A (Domain & Schema Expansion) — Code Complete
 

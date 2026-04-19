@@ -97,7 +97,7 @@ public class VenueLayoutSeatingExpansionTests
     public void AddTable_WithExistingZoneId_Should_Succeed()
     {
         var layout = NewLayout(LayoutType.Mixed);
-        var zone = layout.AddZone("VIP", "#ff0", null, 0).Value;
+        var zone = layout.AddZone("VIP", "#ff0", 0).Value;
 
         var result = layout.AddTable("T1", TableShape.Round, 8, 0, zoneId: zone.Id);
 
@@ -181,7 +181,7 @@ public class VenueLayoutSeatingExpansionTests
         var layout = NewLayout(LayoutType.Mixed);
 
         // Zone with 10 theater seats.
-        var zone = layout.AddZone("Orchestra", "#f00", null, 0).Value;
+        var zone = layout.AddZone("Orchestra", "#f00", 0).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 10);
 
         // Table with 8 round seats.

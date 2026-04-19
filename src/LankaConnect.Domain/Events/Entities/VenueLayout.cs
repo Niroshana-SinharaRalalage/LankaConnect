@@ -114,19 +114,19 @@ public class VenueLayout : BaseEntity
     // ──────────────────────────────────────
 
     /// <summary>
-    /// Adds a new zone to this layout.
+    /// Adds a new zone to this layout. Tier mapping is set separately via
+    /// <see cref="TicketTier.AssignToZone"/> (Slice 4 polymorphic tier assignments).
     /// </summary>
     public Result<VenueZone> AddZone(
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder)
     {
         // Check for duplicate zone names (case-insensitive)
         if (_zones.Any(z => z.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)))
             return Result<VenueZone>.Failure($"A zone named '{name.Trim()}' already exists in this layout");
 
-        var zoneResult = VenueZone.Create(Id, name, color, ticketTierId, sortOrder);
+        var zoneResult = VenueZone.Create(Id, name, color, sortOrder);
         if (zoneResult.IsFailure)
             return Result<VenueZone>.Failure(zoneResult.Error);
 
@@ -136,13 +136,13 @@ public class VenueLayout : BaseEntity
     }
 
     /// <summary>
-    /// Updates an existing zone's properties.
+    /// Updates an existing zone's properties. Tier mapping is managed separately via
+    /// <see cref="TicketTier.AssignToZone"/> / <see cref="TicketTier.RemoveAssignment"/>.
     /// </summary>
     public Result UpdateZone(
         Guid zoneId,
         string name,
         string color,
-        Guid? ticketTierId,
         int sortOrder)
     {
         var zone = _zones.FirstOrDefault(z => z.Id == zoneId);
@@ -154,7 +154,7 @@ public class VenueLayout : BaseEntity
             && z.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)))
             return Result.Failure($"A zone named '{name.Trim()}' already exists in this layout");
 
-        var result = zone.Update(name, color, ticketTierId, sortOrder);
+        var result = zone.Update(name, color, sortOrder);
         if (result.IsSuccess)
             MarkAsUpdated();
 
@@ -392,25 +392,33 @@ public class VenueLayout : BaseEntity
 
     /// <summary>
     /// Validates that this layout is suitable for an event with the given tiers.
-    /// Every zone must map to an active tier, and zone seat count must not exceed tier capacity.
+    /// Every zone with seats must be mapped to an active tier via <see cref="TierAssignment"/>,
+    /// and zone seat count must not exceed the mapped tier's capacity.
+    /// (Slice 4 — the legacy <c>VenueZone.TicketTierId</c> read path was replaced by the
+    /// polymorphic <c>tier_assignments</c> junction.)
     /// </summary>
     public Result ValidateForEvent(IReadOnlyList<TicketTier> eventTiers)
     {
         if (!_zones.Any())
             return Result.Failure("Layout must have at least one zone");
 
-        var activeTierIds = eventTiers.Where(t => t.IsActive).Select(t => t.Id).ToHashSet();
+        var activeTiers = eventTiers.Where(t => t.IsActive).ToList();
+
+        // Build a reverse lookup: zoneId → tier (polymorphic), picking the first assignment if multiple tiers map to a zone.
+        var zoneToTier = new Dictionary<Guid, TicketTier>();
+        foreach (var tier in activeTiers)
+        {
+            foreach (var assignment in tier.Assignments.Where(a => a.AssignableKind == AssignableKind.Zone))
+            {
+                zoneToTier.TryAdd(assignment.AssignableId, tier);
+            }
+        }
 
         foreach (var zone in _zones)
         {
-            if (!zone.TicketTierId.HasValue)
+            if (!zoneToTier.TryGetValue(zone.Id, out var tier))
                 return Result.Failure($"Zone '{zone.Name}' must be mapped to a ticket tier");
 
-            if (!activeTierIds.Contains(zone.TicketTierId.Value))
-                return Result.Failure($"Zone '{zone.Name}' is mapped to a tier that does not exist or is inactive");
-
-            // Revision #6: Zone seat count ≤ tier capacity (not strict equality)
-            var tier = eventTiers.First(t => t.Id == zone.TicketTierId.Value);
             if (zone.EnabledSeatCount > tier.Capacity)
                 return Result.Failure(
                     $"Zone '{zone.Name}' has {zone.EnabledSeatCount} enabled seats but the linked tier '{tier.Name}' only has capacity for {tier.Capacity}");

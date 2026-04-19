@@ -33,7 +33,10 @@ public class VenueZoneConfiguration : IEntityTypeConfiguration<VenueZone>
             .HasMaxLength(20)
             .IsRequired();
 
-        builder.Property(z => z.TicketTierId)
+        // Slice 4 Release N: VenueZone.TicketTierId was removed from the domain model.
+        // The DB column stays nullable for Release N (dual-read window); Release N+1 drops it.
+        // Shadow-property mapping keeps EF aware of the column so migrations don't propose DROP.
+        builder.Property<Guid?>("TicketTierId")
             .HasColumnName("ticket_tier_id");
 
         builder.Property(z => z.SortOrder)
@@ -81,7 +84,8 @@ public class VenueZoneConfiguration : IEntityTypeConfiguration<VenueZone>
             .IsUnique()
             .HasDatabaseName("ix_venue_zones_layout_id_name");
 
-        builder.HasIndex(z => z.TicketTierId)
+        // Keep the legacy index via shadow property so migrations don't drop it during Release N.
+        builder.HasIndex("TicketTierId")
             .HasDatabaseName("ix_venue_zones_ticket_tier_id")
             .HasFilter("ticket_tier_id IS NOT NULL");
 

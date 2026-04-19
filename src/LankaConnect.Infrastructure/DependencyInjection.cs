@@ -198,6 +198,10 @@ public static class DependencyInjection
             };
         });
 
+        // Phase 7B.4: Startup seeder that applies WhatsAppSettings:TwilioContentSids to
+        // communications.whatsapp_templates. No-op when Provider != Twilio. Safe to run on every startup.
+        services.AddHostedService<TwilioTemplateSeeder>();
+
         // Add Notifications Repositories (Phase 6A.6)
         services.AddScoped<INotificationRepository, NotificationRepository>();
 

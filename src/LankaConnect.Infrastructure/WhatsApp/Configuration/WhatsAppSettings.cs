@@ -101,4 +101,15 @@ public class WhatsAppSettings
     /// MUST remain false in staging/production.
     /// </summary>
     public bool SandboxMode { get; set; } = false;
+
+    /// <summary>
+    /// Phase 7B.4: Per-environment mapping of WhatsApp template name → Twilio Content API SID.
+    /// Read by <c>TwilioTemplateSeeder</c> at startup to upsert/approve each template row in
+    /// <c>communications.whatsapp_templates</c>. Keys must match <see cref="WhatsAppTemplateContract.TemplateNames"/>.
+    /// Values are Twilio Content SIDs starting with "HX" followed by 32 hex chars.
+    /// Staging and production use different Twilio accounts and therefore different SIDs —
+    /// values come from Azure App Settings env vars (e.g. <c>WhatsAppSettings__TwilioContentSids__event_registration_confirmed</c>).
+    /// An empty dictionary means the seeder is a no-op.
+    /// </summary>
+    public Dictionary<string, string> TwilioContentSids { get; set; } = new();
 }

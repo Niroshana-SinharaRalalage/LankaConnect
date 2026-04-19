@@ -841,32 +841,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
                       Free Event
                     </p>
-                  ) : event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0 ? (
-                    // Phase 8: Multi-tier ticketing display
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-neutral-600 mb-1">Ticket Tiers</p>
-                      {event.ticketTiers.filter(t => t.isActive).map((tier) => (
-                        <div key={tier.id} className="flex justify-between items-center">
-                          <span className="text-base font-semibold" style={{ color: '#8B1538' }}>
-                            {tier.name}: {tier.isFree ? 'Free' : `$${tier.adultPriceAmount.toFixed(2)}`}
-                            {tier.childPriceAmount != null && !tier.isFree && (
-                              <span className="text-sm text-neutral-500 ml-1">
-                                (Child: ${tier.childPriceAmount.toFixed(2)})
-                              </span>
-                            )}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            tier.availableQuantity === 0
-                              ? 'bg-red-100 text-red-700'
-                              : tier.availableQuantity <= 10
-                              ? 'bg-orange-100 text-orange-700'
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {tier.availableQuantity === 0 ? 'Sold Out' : `${tier.availableQuantity} left`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
                   ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                     // Session 33: Group tiered pricing display - show individual tiers
                     <div className="space-y-1">
@@ -1026,9 +1000,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
-                        seatingMode={event.seatingMode}
-                        ticketingMode={event.ticketingMode}
-                        ticketTiers={event.ticketTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
@@ -1481,8 +1452,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           childAgeLimit={event.childAgeLimit ?? undefined}
                           hasGroupPricing={event.hasGroupPricing}
                           groupPricingTiers={event.groupPricingTiers}
-                          ticketingMode={event.ticketingMode}
-                          ticketTiers={event.ticketTiers}
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
@@ -1745,8 +1714,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       childAgeLimit={event.childAgeLimit ?? undefined}
                       hasGroupPricing={event.hasGroupPricing}
                       groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
                       maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                       donationConfig={event.donationConfig}
                       addOnConfig={event.addOnConfig}
@@ -1777,8 +1744,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       childAgeLimit={event.childAgeLimit ?? undefined}
                       hasGroupPricing={event.hasGroupPricing}
                       groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
                       maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                       donationConfig={event.donationConfig}
                       addOnConfig={event.addOnConfig}
@@ -1811,8 +1776,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     childAgeLimit={event.childAgeLimit ?? undefined}
                     hasGroupPricing={event.hasGroupPricing}
                     groupPricingTiers={event.groupPricingTiers}
-                    ticketingMode={event.ticketingMode}
-                    ticketTiers={event.ticketTiers}
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}

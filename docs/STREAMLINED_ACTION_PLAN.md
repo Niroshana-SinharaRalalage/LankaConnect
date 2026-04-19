@@ -7,7 +7,31 @@
 
 ---
 
-## 🔄 CURRENT STATUS - WHATSAPP TEMPLATE EXPANSION PHASE 7B.3 (2026-04-17)
+## 🔄 CURRENT STATUS - UI POLISH: COLLAPSIBLE SECTION DISCOVERABILITY (2026-04-18)
+**Date**: 2026-04-18
+**Session**: UI Polish — CollapsibleSection affordance (frontend-only)
+**Status**: ✅ **CODE COMPLETE — 8 UNIT TESTS PASS, TYPECHECK CLEAN — awaiting commit + UI staging deploy**
+**Scope**: User feedback on event detail page — users don't recognize Register/Signup Lists/Signup Forms cards as expandable from the chevron alone. Enhanced the shared [CollapsibleSection](../web/src/presentation/components/ui/CollapsibleSection.tsx) component with (1) an explicit **"Show details" / "Hide details" pill** (text label + chevron, neutral styling) next to the title on desktop, (2) a subtle collapsed-state background tint + hover shadow so the whole header visually reads as a button, (3) a bolder mobile-only chevron, (4) an optional `summary` prop that renders preview content under the title only when collapsed. Wired a summary into the Signup Forms section on [web/src/app/events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) ("N forms available • X need your response" / "All responses submitted"). Neutral pill styling deliberately chosen to not clash with the 11 existing usages (orange Register, indigo Signup Lists, violet Signup Forms, Ticket/Sponsor/Donation/Collection/AddOns/Albums/Organizer/Newsletter Target Locations). All new props optional — backwards-compatible. New Vitest file [CollapsibleSection.test.tsx](../web/tests/unit/presentation/components/ui/CollapsibleSection.test.tsx) with 8 tests (render, toggle, summary-when-collapsed, custom labels, border color, icon/badge, aria-expanded). No backend / DB / EF changes.
+
+---
+
+## ⏸️ PREVIOUS STATUS - SEATING REDESIGN SLICE 0 (2026-04-18)
+**Date**: 2026-04-18
+**Session**: Seating System Redesign — Slice 0 (Cleanup & Baseline)
+**Status**: ✅ **SLICE 0 COMPLETE — uncommitted; awaiting user confirmation before commit**
+**Scope**: First slice of an 8-slice seating/venue-layout rewrite. Phase 2 seating was rejected by the user on hands-on testing (separate tab, flat grid, hardcoded tiers, no edit APIs, Theater/Banquet indistinguishable). A two-pass architect review produced a 14-decision plan (see `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md`). Slice 0 removes deprecated UI (`VenueLayoutTab.tsx`, ~654 lines deleted; tab registration, `Armchair` icon import, and `VenueLayoutTab` import removed from `manage/page.tsx`). Staging DB cleanup: 4 orphaned Phase-2 layouts + 9 zones + 240 seats deleted in one guarded transaction (0 reservations, 0 events referenced them; full pre-delete backup at `c:/tmp/slice0_backup.json`). TypeScript compile clean. Next: Slice 1 — inline `SeatingSection` UI shell.
+
+---
+
+## ⏸️ PREVIOUS STATUS - POST-INCIDENT FIX: FAIL-CLOSED PROXY & ENV VALIDATION (2026-04-17)
+**Date**: 2026-04-17
+**Session**: Post-Incident Fix — Fail-Closed Proxy & Env Validation
+**Status**: ✅ **COMMITTED & DEPLOYED TO STAGING** (commit `34b337e7`)
+**Scope**: After a production incident where a partial YAML update wiped all UI env vars (causing production to silently route to staging backend for ~20 min), implemented 3-layer defense-in-depth: (1) `instrumentation.ts` logs FATAL at startup but doesn't throw, (2) `/api/health` returns 500 on env validation failure so Azure probes fail, (3) `/api/proxy` returns 503 if BACKEND_URL is null — NEVER falls back to staging in production. Core module: `env-validation.ts` with pure `validateEnv()` function + cached singleton. 20 Vitest tests. Infrastructure recovery: restored 5 env vars, added 4 missing secrets, re-deployed production API, added health probes to production UI. Deferred: harden deploy-production.yml secret validation, API health probes, Twilio production creds.
+
+---
+
+## ⏸️ PREVIOUS STATUS - WHATSAPP TEMPLATE EXPANSION PHASE 7B.3 (2026-04-17)
 **Date**: 2026-04-17
 **Session**: Phase 7B.3 — WhatsApp Template Expansion (Code Complete)
 **Status**: ✅ **CODE COMPLETE — BUILD & TESTS PASS**

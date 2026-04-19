@@ -3,7 +3,31 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS - WHATSAPP TEMPLATE EXPANSION PHASE 7B.3 — CODE COMPLETE
+## 🔄 CURRENT SESSION STATUS - UI POLISH: COLLAPSIBLE SECTION DISCOVERABILITY
+**Date**: 2026-04-18
+**Session**: UI Polish — CollapsibleSection affordance (frontend-only)
+**Progress**: ✅ **CODE COMPLETE — 8 TESTS PASS, TYPECHECK CLEAN** — User feedback on event detail page: users don't realize sections are collapsible from the chevron alone. Enhanced [web/src/presentation/components/ui/CollapsibleSection.tsx](../web/src/presentation/components/ui/CollapsibleSection.tsx) to surface a clearer affordance: (1) explicit **"Show details" / "Hide details" pill** (text label + chevron) on desktop; (2) subtle collapsed-state background tint + hover shadow on the card so the whole header reads as a button; (3) bolder neutral chevron on mobile; (4) new optional `summary` prop that renders a preview line under the title only when collapsed. Neutral styling chosen so it doesn't clash with the 11 usages across the codebase (orange-bordered Register, indigo Signup Lists, violet Signup Forms, Ticket/Sponsor/Donation/Collection/Add-Ons/Albums/Organizer/Newsletter Target Locations). Backwards-compatible: all new props optional, defaults match prior behavior. Wired a `summary` into the Signup Forms section on [web/src/app/events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) showing `"N forms available • X need your response"` / "All responses submitted".
+**Status**: ⏳ **AWAITING COMMIT + UI STAGING DEPLOY** — TypeScript: clean. Vitest: 8/8 pass for [CollapsibleSection.test.tsx](../web/tests/unit/presentation/components/ui/CollapsibleSection.test.tsx) (render/toggle/summary-when-collapsed/custom labels/border color/icon/badge/aria-expanded). UI-only change; no backend, no database, no EF migration. Deploy via `deploy-ui-staging.yml` after push.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - SEATING SYSTEM REDESIGN — SLICE 0 COMPLETE (CLEANUP & BASELINE)
+**Date**: 2026-04-18
+**Session**: Seating Redesign — Slice 0 (Cleanup & Baseline)
+**Progress**: ✅ **IN PROGRESS (uncommitted)** — Two-pass architect-reviewed plan (14 decisions: 8 Pass-1 structural + 6 Pass-2 blocker fixes) persisted to `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md`. Slice 0 executed: (1) Removed `VenueLayoutTab` import + tab registration + `Armchair` icon from [web/src/app/events/[id]/manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx); (2) Deleted [web/src/presentation/components/features/events/VenueLayoutTab.tsx](../web/src/presentation/components/features/events/VenueLayoutTab.tsx) (~654 lines of rejected Phase-2 UI); (3) Cleaned staging DB — 4 orphaned Phase-2 layouts (`00e775a0`, `84e55da9`, `2ae528a1`, `462b7800`) + 9 zones + 240 seats. Pre-delete backup at `c:/tmp/slice0_backup.json`, rollback-safe transaction with row-count asserts + pre-conditions (0 reservations, 0 event refs via `venue_layout_id`).
+**Status**: ⏳ **UNCOMMITTED** — Awaiting user approval to commit Slice 0 and proceed to Slice 1 (Inline SeatingSection UI shell, gated by `TicketingMode === Tiered`, no layout creation logic — deferred to Slice 2+3 along with 3-transaction `CreateEventCommand` split). Master plan persists across sessions; 8 slices total, ~6–8 weeks.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - POST-INCIDENT FIX: FAIL-CLOSED PROXY & ENV VALIDATION — DEPLOYED
+**Date**: 2026-04-17
+**Session**: Post-Incident Fix — Fail-Closed Proxy & Env Validation
+**Progress**: ✅ **DEPLOYED** — After production incident (partial YAML update wiped all UI env vars → production silently routed to staging for ~20 min), implemented 3-layer defense-in-depth. Layer 1: `instrumentation.ts` logs FATAL at startup (no throw = no crash loop). Layer 2: `/api/health` returns 500 on env validation failure → Azure probes fail → no traffic routed. Layer 3: `/api/proxy` returns 503 when BACKEND_URL null → never falls back to staging. Core: `env-validation.ts` pure function + cached singleton. 5 files (3 new, 2 modified). 20 Vitest tests. Infrastructure: restored 5 env vars, added 4 missing secrets, re-deployed prod API, added health probes.
+**Status**: ✅ **COMMITTED & DEPLOYED** — Commit `34b337e7` on develop. Staging verified: health returns 200 with `envValidation.isValid: true`, proxy returns 200. Production recovered: all env vars restored, 18 secrets present, health probes active. Deferred: harden secret validation in deploy-production.yml, API health probes, Twilio production creds.
+
+---
+
+## ⏸️ PREVIOUS SESSION STATUS - WHATSAPP TEMPLATE EXPANSION PHASE 7B.3 — CODE COMPLETE
 **Date**: 2026-04-17
 **Session**: Phase 7B.3 — WhatsApp Template Expansion
 **Progress**: ✅ **CODE COMPLETE** — Expanded WhatsApp notification coverage from 14 to 25 templates. Created 11 new WhatsApp event handlers: EventApproved, EventRejected, DonationCompleted, CollectionCompleted, PaymentPending, AddOnPurchase, AttendeesAdded, SponsorPayment, ItemSponsor, FormResponse, EventPostponed. Modified EventReminderJob (WhatsApp broadcast after email reminders) and SendAlbumNotificationCommandHandler (WhatsApp broadcast for photo album). Added 10 new WhatsAppNotificationType enum values, 11 template names, 10 parameter classes. 22 new unit tests.

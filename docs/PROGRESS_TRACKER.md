@@ -1,7 +1,111 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-17 - Phase 7B.3: WhatsApp Template Expansion*
+*Last Updated: 2026-04-18 - UI Polish: CollapsibleSection discoverability*
 
-## 🎯 Current Session Status (2026-04-17)
+## 🎯 Current Session Status (2026-04-18)
+
+### UI Polish — CollapsibleSection Discoverability
+
+**Status**: ✅ **CODE COMPLETE — TESTS + TYPECHECK PASS** (awaiting commit + UI staging deploy)
+
+**Classification**: Frontend-only UI/UX polish — no backend, no database, no EF migration.
+
+**Background**: User feedback on the event detail page — users don't realize `Register for this Event`, `Signup Lists`, and `Signup Forms` are collapsible from the chevron alone. Needed a stronger affordance.
+
+**Changes**:
+| Area | File | Description |
+|------|------|-------------|
+| Component enhancement | [web/src/presentation/components/ui/CollapsibleSection.tsx](../web/src/presentation/components/ui/CollapsibleSection.tsx) | Added explicit **"Show details" / "Hide details" pill** (text label + chevron, neutral styling) on the desktop header; subtle collapsed-state background tint + hover shadow on the card so the whole header reads as a button; bolder mobile chevron. Three new *optional* props: `summary?` (preview content shown only when collapsed), `expandLabel?`, `collapseLabel?`. Backwards-compatible with the 11 existing usages. |
+| Preview wiring | [web/src/app/events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) | Wired `summary` on the Signup Forms section: shows `"N forms available • X need your response"` (orange) or "All responses submitted" (green) so users see actionable content before expanding. |
+| Unit tests | [web/tests/unit/presentation/components/ui/CollapsibleSection.test.tsx](../web/tests/unit/presentation/components/ui/CollapsibleSection.test.tsx) (new) | 8 tests covering render, default-open state, toggle behavior, `aria-expanded`, summary-only-when-collapsed, custom expand/collapse labels, custom `borderColor`, icon/badge rendering. |
+
+**Design Decision — Neutral Styling**: The pill uses `border-neutral-300 bg-white text-neutral-700 shadow-sm` rather than a brand-colored tint. CollapsibleSection is used across 11 sections with varying brand colors (orange-bordered Register card, indigo Signup Lists, violet Signup Forms, Ticket/Sponsor/Donation/Collection/AddOns/Albums/Organizer Contacts/Newsletter Target Locations). A neutral pill reads as a button without clashing with any of those contexts.
+
+**Verification**:
+- TypeScript compile: clean (`npx tsc --noEmit` exit 0).
+- Vitest: `tests/unit/presentation/components/ui/CollapsibleSection.test.tsx` — **8/8 pass**.
+- No backend, no DB migration, no API changes — nothing to deploy to backend staging.
+
+**Next**: Commit, push to trigger `deploy-ui-staging.yml`, verify deployed UI on the event detail page visually.
+
+---
+
+## ⏸️ Previous Session Status (2026-04-18)
+
+### Seating Redesign — Slice 0 (Cleanup & Baseline) — Complete
+
+**Status**: ✅ **IN PROGRESS — SLICE 0 DONE, TRACKING DOCS UPDATING**
+
+**Classification**: Architecture redesign — full rewrite of the seating/venue-layout system after Phase 2 was rejected by the user on hands-on testing.
+
+**Background**: The Phase-2 seating implementation (separate "Venue Layout" tab, flat row/col grid, hardcoded tier dropdown, no edit APIs, no visual distinction between Theater and Banquet) failed review. A two-pass system-architect review produced a 14-decision, 8-slice rebuild plan. Full plan at `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md`.
+
+**Slice 0 scope** (this session): Remove the broken Phase-2 UI and test data so the next slice starts clean.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| Remove deprecated tab | `web/src/app/events/[id]/manage/page.tsx` | Removed `VenueLayoutTab` import, `Armchair` icon import, `venue-layout` tab registration (lines 47, 15, 317-329) |
+| Delete dead component | `web/src/presentation/components/features/events/VenueLayoutTab.tsx` | Deleted (~654 lines) |
+| Staging DB cleanup | `events.venue_layouts` + children | 4 Phase-2 layouts, 9 zones, 240 seats removed in one guarded transaction (0 reservations, 0 events referenced them) |
+
+**Verification**:
+- TypeScript compile: clean (`npx tsc --noEmit` exit 0).
+- Staging DB post-audit: 0 venue_layouts, 0 venue_zones, 0 seats.
+- Pre-delete backup: `c:/tmp/slice0_backup.json` (full row dump for possible restore).
+- Cleanup script kept at `c:/tmp/cleanup_orphan_layouts.py` (transactional, row-count-asserted, idempotent).
+
+**Next**: Slice 1 — Inline `SeatingSection` UI shell inside `EventCreationForm` / `EventEditForm`, gated by `TicketingMode === Tiered`. NO layout creation logic yet (architect decision #9 — deferred to Slice 2+3 where the richer domain model exists).
+
+---
+
+## ⏸️ Previous Session Status (2026-04-17)
+
+### Post-Incident Fix: Fail-Closed Proxy & Env Validation — Complete
+
+**Status**: ✅ **COMMITTED & DEPLOYED TO STAGING** (commit `34b337e7`)
+
+**Classification**: Post-Incident Fix — Prevent production UI from ever silently routing to staging backend
+
+**Incident Summary**: On 2026-04-17, a partial YAML update (`az containerapp update --yaml`) wiped all env vars from the production UI container. Because the proxy route had a hardcoded staging fallback URL, production users saw staging data for ~20 minutes until manually recovered.
+
+**Root Cause**: `--yaml` replaces the entire container spec; missing `env:` block = all env vars dropped. Proxy code used hardcoded staging URL as fallback when `BACKEND_API_URL` was missing.
+
+**Prevention (3-layer defense-in-depth)**:
+| Layer | File | Behavior |
+|-------|------|----------|
+| 1. Startup validation | `web/src/instrumentation.ts` (NEW) | Logs FATAL at server start if required vars missing; does NOT throw (avoids crash loop) |
+| 2. Health endpoint | `web/src/app/api/health/route.ts` (MODIFIED) | Returns HTTP 500 when env validation fails → Azure probes fail → no traffic routed |
+| 3. Proxy guard | `web/src/app/api/proxy/[...path]/route.ts` (MODIFIED) | Returns HTTP 503 if `BACKEND_URL` is null; NEVER falls back to staging in production |
+
+**Core Module**: `web/src/lib/env-validation.ts` (NEW) — Pure `validateEnv()` function with cached singleton `getEnvValidation()`. Production: `BACKEND_API_URL` required, null if missing (fail-closed). Development: staging fallback for convenience.
+
+**Changes**:
+| Area | Files | Description |
+|------|-------|-------------|
+| env-validation.ts | 1 new | Core validation module: `validateEnv()` + `getEnvValidation()` cached singleton |
+| env-validation.test.ts | 1 new | 20 unit tests: local dev (6), production (9), caching (2), edge cases (3) |
+| instrumentation.ts | 1 new | Next.js startup hook: logs FATAL errors, does NOT throw |
+| health/route.ts | 1 modified | Returns 500 with error details when env validation fails |
+| proxy/[...path]/route.ts | 1 modified | Removed hardcoded staging fallback; 503 guard when BACKEND_URL is null |
+
+**Build**: 0 errors
+**Tests**: 20 Vitest tests passing (all new), 0 failures
+**Deployment**: Staging UI deployed and verified (run 24596210164). Health endpoint returns `envValidation.isValid: true`. Proxy returns HTTP 200.
+
+**Infrastructure Recovery (same session)**:
+- Restored 5 production UI env vars via `az containerapp update --set-env-vars` (additive, safe)
+- Added 4 missing Container App secrets (1 keyvaultref + 3 Twilio placeholders)
+- Re-triggered production API deploy successfully (all 18 secrets present)
+- Added health probes to production UI container (startup/liveness/readiness on `/api/health`)
+
+**Deferred**:
+- Harden `deploy-production.yml` to validate all 18 secrets (separate PR)
+- Add health probes to production API container (separate ticket)
+- Replace Twilio placeholder credentials with production values
+
+---
+
+## ⏸️ Previous Session Status (2026-04-17)
 
 ### Phase 7B.3: WhatsApp Template Expansion — Complete
 

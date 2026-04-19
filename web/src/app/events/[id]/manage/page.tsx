@@ -12,7 +12,6 @@ import {
   Mail,
   Camera,
   Banknote,
-  Armchair,
 } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
@@ -42,9 +41,6 @@ import { EventFormsTab } from '@/presentation/components/features/events/EventFo
 
 // Photo Album Feature: Inline management tab
 import { PhotoAlbumManagementTab } from '@/presentation/components/features/events/PhotoAlbumManagementTab';
-
-// Phase 2: Venue Layout & Seating
-import { VenueLayoutTab } from '@/presentation/components/features/events/VenueLayoutTab';
 
 /**
  * Event Management Page - Phase 6A.45 Refactored + Phase 6A.59 Cancel/Delete + Phase 6A.74 Communications
@@ -313,17 +309,6 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Communications',
       icon: Mail,
       content: <EventNewslettersTab eventId={id} eventTitle={event.title} />,
-    },
-    {
-      id: 'venue-layout',
-      label: 'Venue Layout',
-      icon: Armchair,
-      content: (
-        <VenueLayoutTab
-          eventId={id}
-          ticketTiers={event.ticketTiers?.map((t: any) => ({ id: t.id, name: t.name })) || []}
-        />
-      ),
     },
     // Photo Album tab — visible for Published/Active/Completed/Archived events
     ...(['Published', 'Active', 'Completed', 'Archived'].includes(String(event.status)) ||

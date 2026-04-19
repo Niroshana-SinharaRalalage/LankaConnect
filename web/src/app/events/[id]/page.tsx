@@ -2186,6 +2186,33 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             description="Fill out forms to provide additional information for this event"
             icon={<ClipboardList className="h-5 w-5 text-violet-600" />}
             defaultOpen={false}
+            summary={
+              !isLoadingForms && activeForms.length > 0 ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="font-medium text-neutral-700">
+                    {activeForms.length} form{activeForms.length !== 1 ? 's' : ''} available
+                  </span>
+                  {(() => {
+                    const respondedCount = activeForms.filter((f) => {
+                      const userResponse = userFormResponses[f.id];
+                      const hasUserResponse = userResponse !== null && userResponse !== undefined;
+                      const storageKey = `form_response_token_${id}_${f.id}`;
+                      const hasStoredToken = typeof window !== 'undefined' && !!localStorage.getItem(storageKey);
+                      return isAuthenticated ? hasUserResponse : (hasStoredToken || hasUserResponse);
+                    }).length;
+                    const pending = activeForms.length - respondedCount;
+                    if (pending > 0) {
+                      return (
+                        <span className="text-orange-700">
+                          • {pending} need{pending === 1 ? 's' : ''} your response
+                        </span>
+                      );
+                    }
+                    return <span className="text-green-700">• All responses submitted</span>;
+                  })()}
+                </span>
+              ) : undefined
+            }
           >
             {!isLoadingForms && activeForms.length > 0 ? (
               <div className="space-y-4">

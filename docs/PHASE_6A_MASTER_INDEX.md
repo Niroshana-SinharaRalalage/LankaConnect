@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2026-03-30
+**Last Updated**: 2026-04-19
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -237,6 +237,14 @@
 | BusinessOwner UI (disabled) | ✅ Approved | Show features available in Phase 2 |
 | Deferred 6A.10/6A.11 | ✅ Approved | Features planned, numbered for future |
 | Master index creation | ✅ Approved | Prevent phase number conflicts |
+
+---
+
+## Phase 7C: Event Details Enhancements
+
+| Phase | Feature | Status | Description |
+|-------|---------|--------|-------------|
+| 7C.1  | Event Location Name + Optional Secondary Location | ✅ Complete | Optional per-event venue name distinct from the street address + independently optional secondary location (ParkingLot \| SecondaryVenue) with its own venue name and full address. Backend commit `2afc0f5f` (migration `20260419200529_AddEventLocationNameAndSecondary`), frontend commit `861b8e58`. See PROGRESS_TRACKER.md 2026-04-19. |
 
 ---
 

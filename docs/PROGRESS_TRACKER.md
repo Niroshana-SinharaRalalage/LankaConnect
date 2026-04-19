@@ -1,7 +1,56 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-19 - Phase 7B.4 E2E staging verification + 6-template Content-API realignment (25/25 render correct)*
+*Last Updated: 2026-04-19 - Phase 7C.1 end-to-end (backend + frontend) — venue name + optional secondary location shipped to staging*
 
-## 🎯 Current Session Status (2026-04-19 — Phase 7B.4 E2E + Twilio Content-template realignment)
+## 🎯 Current Session Status (2026-04-19 — Phase 7C.1 Venue Name + Secondary Location)
+
+### Phase 7C.1 — Event Location Name + Optional Secondary Location (Parking Lot / Secondary Venue)
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — backend commit `2afc0f5f` (deploy run `24639861832`, migration `20260419200529_AddEventLocationNameAndSecondary` applied), frontend commit `861b8e58` (deploy-ui-staging run `24640836403`). 4 curl scenarios against staging backend passed end-to-end before the UI was wired: create-with-venue-name + parking-lot (round-trips all fields on GET), PUT replace with SecondaryVenue type, PUT clear (omit type → `hasSecondaryLocation:false`, all secondary fields null), PUT with type but missing address → HTTP 400 "Secondary location address and city are required when a secondary location type is selected".
+
+**Scope**: Add an optional per-event venue/location name distinct from the street address, plus an independently optional secondary location with a type dropdown (`ParkingLot` | `SecondaryVenue`), its own venue name, and a full address. Event details page renders primary as `<venue name>` (bold) over `<street, city, state>`; the secondary block only appears when a type is set and is labelled `"Parking Lot Address:"` or `"Secondary Venue:"` per type. Back-compat: all existing events show `<city>, <state>` as the bold first line until an organizer sets a venue name — no migration data backfill required.
+
+**Backend (commit `2afc0f5f`)**:
+| Layer | Files | Description |
+|-------|-------|-------------|
+| Domain | [EventLocation.cs](../src/LankaConnect.Domain/Events/ValueObjects/EventLocation.cs) | Optional `Name` (<=150, trimmed, whitespace→null); `Create` signature stays backwards-compatible. |
+| Domain | [EventSecondaryLocation.cs](../src/LankaConnect.Domain/Events/ValueObjects/EventSecondaryLocation.cs) (new) | VO composing `SecondaryLocationType` + reusing `EventLocation` for the address. |
+| Domain | [SecondaryLocationType.cs](../src/LankaConnect.Domain/Events/Enums/SecondaryLocationType.cs) (new) | `ParkingLot`, `SecondaryVenue`. |
+| Domain | [Event.cs](../src/LankaConnect.Domain/Events/Event.cs) | `SetSecondaryLocation(vo)` / `ClearSecondaryLocation()` / `HasSecondaryLocation` computed. |
+| Infra | [EventConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/EventConfiguration.cs) | Adds `location_name` + parallel `OwnsOne` for secondary with `has_secondary_location` discriminator + nested `secondary_address_*` and `secondary_coordinates_*` columns. Enum stored as string via `HasConversion<string>()` (kept non-nullable because EF Core rejects nullable-marking non-nullable CLR enums — the owned entity itself is nullable via the discriminator). |
+| Migration | `20260419200529_AddEventLocationNameAndSecondary.{cs,Designer.cs}` | EF-generated via `dotnet ef migrations add` (Phase 6A.133 `.Designer.cs` present ✓). |
+| Application | [CreateEventCommand](../src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommand.cs), [UpdateEventCommand](../src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommand.cs) + handlers | 11 new optional params (`LocationName` + 10 secondary). Handlers build/set the VO; Update also clears when type omitted. Pre-check validates address+city required when type supplied. |
+| Application | [EventDto.cs](../src/LankaConnect.Application/Events/Common/EventDto.cs), [EventMappingProfile.cs](../src/LankaConnect.Application/Common/Mappings/EventMappingProfile.cs) | `LocationName`, `Secondary*` scalars, `HasSecondaryLocation` mapped from the VO via AutoMapper ForMember. |
+| Tests | 5 new files | 8 `EventLocation.Name` tests, 6 `EventSecondaryLocation` VO tests, 7 Event aggregate property tests, 5 `CreateEventCommandHandlerTests`, 5 `UpdateEventCommandHandlerTests`. **2,093 Application tests pass.** |
+
+**Frontend (commit `861b8e58`)**:
+| Layer | Files | Description |
+|-------|-------|-------------|
+| Types | [events.types.ts](../web/src/infrastructure/api/types/events.types.ts) | New `SecondaryLocationType` string enum (matches `JsonStringEnumConverter`). `EventDto` gains `locationName`, `secondary*` scalars, `hasSecondaryLocation`. Request DTOs (`CreateEventRequest`/`UpdateEventRequest`) use `secondaryLocation*` prefix — matches backend command param names. Response uses `secondary*` — matches AutoMapper ForMember output. Reconciled naming is intentional, not a bug. |
+| Validation | [event.schemas.ts](../web/src/presentation/lib/validators/event.schemas.ts) | `locationName` (<=150) + 7 `secondaryLocation*` fields on create + edit schemas. `superRefine` mirrors backend: when `secondaryLocationType` is set, `secondaryLocationAddress` + `secondaryLocationCity` become required. |
+| Component | [SecondaryLocationFieldset.tsx](../web/src/presentation/components/features/events/SecondaryLocationFieldset.tsx) (new) | Generic `<T extends FieldValues>` component accepting `register/watch/setValue/errors` from RHF. Type dropdown clears all secondary fields when set to None. Labels swap between `"Parking Lot Name"` and `"Venue Name"` based on type. `Path<T>` casts for RHF generic typing. |
+| Forms | [EventCreationForm.tsx](../web/src/presentation/components/features/events/EventCreationForm.tsx), [EventEditForm.tsx](../web/src/presentation/components/features/events/EventEditForm.tsx) | Venue Name input added to Location card. Fieldset wired below it. Payload includes `locationName` only when trimmed non-empty, and `secondaryLocation*` fields only when type is picked. EditForm resets from `event.secondaryAddress/City/State/ZipCode/Country`. CreationForm uses `as any` casts on register/watch/setValue because `zodResolver` widens types without an explicit generic (EditForm's `useForm<EditEventFormData>()` gives it the generic for free). |
+| Rendering | [events/[id]/page.tsx](../web/src/app/events/[id]/page.tsx), [EventDetailsTab.tsx](../web/src/presentation/components/features/events/EventDetailsTab.tsx) | Primary: venue name bold first line over `<street, city, state>`. Secondary block conditional on `hasSecondaryLocation && secondaryLocationType`, labelled `"Parking Lot Address:"` or `"Secondary Venue:"`. |
+| Tests | [EventsList.test.tsx](../web/tests/unit/presentation/components/features/dashboard/EventsList.test.tsx), [eventMapper.test.ts](../web/tests/unit/presentation/utils/eventMapper.test.ts) | Added `hasSecondaryLocation: false` to mock fixtures + factory to satisfy new required DTO field. Pre-existing vitest-pool + `formatEventDateRange` failures confirmed via `git stash` to be unrelated to this change. |
+
+**Staging evidence** (backend API round-trip, `niroshhh@gmail.com` token):
+- POST `/api/events` with `locationName:"Park Community Hall"` + `secondaryLocationType:"ParkingLot"` + `secondaryLocationName:"North Lot"` + full address → 201; follow-up GET returns all 10 secondary fields with `hasSecondaryLocation:true`.
+- PUT with `secondaryLocationType:"SecondaryVenue"` + new address → replaces in place.
+- PUT with `secondaryLocationType` omitted → GET returns `hasSecondaryLocation:false`, all `secondary*` null.
+- PUT with `secondaryLocationType:"ParkingLot"` and `secondaryLocationAddress:""` → HTTP 400 `"Secondary location address and city are required when a secondary location type is selected"`.
+
+**Why this is durable**:
+- Naming asymmetry between request (`secondaryLocation*`) and response (`secondary*`) is a deliberate reflection of the backend wire contract (command params vs AutoMapper ForMember output) — documented in the type file comments.
+- `has_secondary_location` discriminator pattern matches the existing EF Core `OwnsOne` + nullable-owner convention used elsewhere in the codebase (e.g., ticket pricing). Avoids Phase 6A.129 ValueComparer trap (no mutable JSONB collections) and Phase 6A.130 `ToJson()`+`IReadOnlyList` trap (all owned entity properties are scalars).
+- Frontend superRefine mirrors backend pre-check so UX feedback is instant, not a 400 round-trip.
+- Fieldset clears all secondary fields on type=None — no stale data hidden behind a disabled flag.
+
+**Follow-up (non-blocking)**:
+- Browser smoke-test of the 4 scenarios once `deploy-ui-staging` run `24640836403` finalizes (backend already verified).
+- Geocoding for secondary address is intentionally deferred — not in scope for 7C.1.
+
+---
+
+## 🎯 Previous Session Status (2026-04-19 — Phase 7B.4 E2E + Twilio Content-template realignment)
 
 ### Phase 7B.4 — All 25 WhatsApp Templates Verified on Staging + 6 Template Bodies Reconciled
 

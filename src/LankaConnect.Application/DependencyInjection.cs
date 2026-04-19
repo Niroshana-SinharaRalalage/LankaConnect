@@ -59,6 +59,12 @@ public static class DependencyInjection
         // Cancellation enhancement: Register add-on refund service
         services.AddScoped<IAddOnRefundService, AddOnRefundService>();
 
+        // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
+        services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
+
+        // Slice 5 Chunk 3: Blocks destructive layout edits when seats are held/reserved.
+        services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
+
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer
         // The actual implementations should be registered in the Infrastructure DependencyInjection

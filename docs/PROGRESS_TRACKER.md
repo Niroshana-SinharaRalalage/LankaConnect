@@ -1,7 +1,50 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 - Phase 7D.1 Phase A — SignUpKind discriminator shipped to staging, migration applied*
+*Last Updated: 2026-04-20 - Phase 7D.1 Phase B — Volunteer API surface live on staging*
 
-## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase A: Volunteer Signup domain + migration)
+## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase B: Volunteer signup Application + API)
+
+### Phase 7D.1 Phase B — Kind-aware commands, query filter, controller
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — backend commits `c68fd24b` (B7) and `20d350a1` (B8/B9) shipped via deploy run `24680214036` (success). Six staging curl scenarios pass end-to-end: `GET ?kind=Volunteers` (empty-before-POST), no-filter includes `kind:"Items"` string on existing lists (JsonStringEnumConverter per MEMORY 6A.124), `?kind=Items` filter, `POST kind=Volunteers` with slot items creates list `e644703e-b592-469c-94ba-7b804357f918`, subsequent `?kind=Volunteers` returns the new list with 2 items / 8 total slots, and `POST kind=Volunteers` with a quantity item returns HTTP 400 with the exact handler error ("Volunteer lists only accept slot-based roles...").
+
+**Scope**: Wire the Phase A SignUpKind domain primitive through Application and API. Keep every existing caller source-compatible via positional record defaults; no breaking changes to `CreateSignUpListWithItemsCommand` / `GetEventSignUpListsQuery` / `CreateSignUpListRequest`. Volunteer invariant ("slot-only, no open items") enforced by routing `Kind=Volunteers` through `SignUpList.CreateVolunteerList` — a single named factory, not scattered `if` branches.
+
+**Changes**:
+| Layer | Files | Description |
+|-------|-------|-------------|
+| Application | [CreateSignUpListWithItemsCommand.cs](../src/LankaConnect.Application/Events/Commands/CreateSignUpListWithItems/CreateSignUpListWithItemsCommand.cs) | New trailing positional param `SignUpKind Kind = SignUpKind.Items`. Zero call-site churn. |
+| Application | [CreateSignUpListWithItemsCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CreateSignUpListWithItems/CreateSignUpListWithItemsCommandHandler.cs) | When `Kind=Volunteers`, validates every item is `SignUpItemType.Slot`, maps `SignUpItemDto` → `(roleName, volunteersNeeded, suggestedPerSlot, notes)` tuples, routes to `SignUpList.CreateVolunteerList`. Else existing `CreateWithCategoriesAndItems` path. Single source of truth for the invariant. |
+| Application | [CreateVolunteerListCommand.cs](../src/LankaConnect.Application/Events/Commands/CreateVolunteerList/CreateVolunteerListCommand.cs) + [Handler](../src/LankaConnect.Application/Events/Commands/CreateVolunteerList/CreateVolunteerListCommandHandler.cs) (new) | Role-oriented wrapper (`RoleName`, `VolunteersNeeded`, `SuggestedPerSlot?`, `Notes?`). Frontends that model volunteer roles directly don't need to shoehorn them into `SignUpItemDto`. Delegates to the same factory; logging/stopwatch/exception pattern mirrors `CreateSignUpListWithItemsCommandHandler`. |
+| Application | [SignUpListDto.cs](../src/LankaConnect.Application/Events/Common/SignUpListDto.cs) | New `SignUpKind Kind` field (default Items). System.Text.Json emits it as the string `"Items"`/`"Volunteers"` — matches frontend string-enum rule (MEMORY 6A.124). |
+| Application | [GetEventSignUpListsQuery.cs](../src/LankaConnect.Application/Events/Queries/GetEventSignUpLists/GetEventSignUpListsQuery.cs) + [Handler](../src/LankaConnect.Application/Events/Queries/GetEventSignUpLists/GetEventSignUpListsQueryHandler.cs) | Optional `SignUpKind? Kind` filter. `null` → everything; specific kind → Where-filter in memory (aggregate already loaded). `signUpList.Kind` projected into the DTO for every result. |
+| API | [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) | `GET /events/{id}/signups` accepts `[FromQuery] SignUpKind? kind = null`. `POST /events/{id}/signups` body DTO gains `SignUpKind Kind = SignUpKind.Items` (trailing positional default). Kind flows controller → command → handler → factory. |
+| Tests | [CreateVolunteerListCommandHandlerTests.cs](../tests/LankaConnect.Application.Tests/Events/Commands/CreateVolunteerListCommandHandlerTests.cs) (5), [CreateSignUpListWithItemsCommandHandlerKindTests.cs](../tests/LankaConnect.Application.Tests/Events/Commands/CreateSignUpListWithItemsCommandHandlerKindTests.cs) (3), [GetEventSignUpListsQueryHandlerKindFilterTests.cs](../tests/LankaConnect.Application.Tests/Events/Queries/GetEventSignUpListsQueryHandlerKindFilterTests.cs) (3) | Happy path, empty-roles, event-not-found, `(Kind,Category)` uniqueness, same-category-different-kind coexistence, Volunteers+quantity rejection, legacy back-compat default, and all three filter states. **11/11 pass.** Full Application suite green except the pre-existing flaky `WhatsAppEventHandlerTests.CommitmentUpdated_Handle_ValidData_SendsWhatsApp` which passes when re-run in isolation (commit `8d91f3db` already bumped the sibling delay; unrelated to this work). |
+
+**Staging evidence** (`POST /api/Auth/login` → `accessToken` len 773; event `4378a7d9-280e-4322-9ca2-a17e27061ae8`):
+| # | Scenario | Result |
+|---|----------|--------|
+| 1 | `GET /signups?kind=Volunteers` before any volunteer list exists | 200 + `[]` |
+| 2 | `GET /signups` (no filter) | 200 + 1 list, `kind:"Items"` (string) |
+| 3 | `GET /signups?kind=Items` | 200 + 1 list (the pre-existing "Phase 6A.131 Test - Mixed Item Types") |
+| 4 | `POST /signups` with `kind:"Volunteers"` + 2 slot-based roles (Setup crew 5, Serving 3) | 200 + new list ID `e644703e-b592-469c-94ba-7b804357f918` |
+| 5 | `GET /signups?kind=Volunteers` after POST | 200 + "Phase 7D.1 Test - Food Committee", 2 items, 8 total slots |
+| 6 | `POST /signups` with `kind:"Volunteers"` + one quantity item | 400 + `"Volunteer lists only accept slot-based roles (ItemType=Slot with AvailableSlots)"` |
+
+**Why this is durable**:
+- Positional record defaults everywhere — every legacy caller of `CreateSignUpListWithItemsCommand`, `GetEventSignUpListsQuery`, and `CreateSignUpListRequest` still compiles without modification.
+- The Volunteer invariant lives in exactly one place: `SignUpList.CreateVolunteerList` enforces slot-only, `HasOpenItems=false`, `Kind=Volunteers` atomically. The handler's `FirstOrDefault(i => i.ItemType != SignUpItemType.Slot)` pre-check surfaces the error as one clear domain message rather than as a downstream `AddItem` failure deep in the aggregate.
+- The optional `Kind` filter on the query means the frontend can fetch `/signups` once for the manage page and slice locally, or hit `?kind=Volunteers` for the public event page's volunteer section — both patterns are supported without a second endpoint.
+- System.Text.Json now emits `kind:"Items"|"Volunteers"` by virtue of the pre-existing `JsonStringEnumConverter` — no special serializer config needed, and the frontend can use the string enum values that MEMORY 6A.124 mandates.
+
+**Follow-up**:
+- **Phase C11–14** (next): email pipeline — `EmailTemplateContract` constants for `VolunteerCommitmentConfirmation`/`VolunteerCancellation`, inline-SQL seeding migration (MEMORY 6A.129b — no `File.ReadAllText`), existing commit/cancel handlers branch template selection by `Kind` (fire-and-forget per MEMORY 6A.122).
+- **Phase D15–17**: export services pick up volunteer labels + `VolunteersZip`/`VolunteersExcel` format enum values.
+- **Phase E–G**: frontend types (`SignUpKind` string enum), kind-filtered hooks + cache keys, organizer UI (VolunteerListsTab + create/edit pages), public UI (conditional "Volunteer" nav button + section).
+- **Phase H**: E2E staging smoke + final doc updates.
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — Phase 7D.1 Phase A: Volunteer Signup domain + migration)
 
 ### Phase 7D.1 Phase A — SignUpKind Discriminator (Volunteer Signup reuses SignUpList aggregate)
 

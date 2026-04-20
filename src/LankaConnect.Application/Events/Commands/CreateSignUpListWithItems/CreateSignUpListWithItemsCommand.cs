@@ -7,6 +7,8 @@ namespace LankaConnect.Application.Events.Commands.CreateSignUpListWithItems;
 /// Command to create a sign-up list with items in a single operation
 /// Matches requirement: POST /api/events/{eventId}/signups with items array
 /// Phase 6A.27: Added HasOpenItems for user-submitted items
+/// Phase 7D.1: Added Kind with default Items for back-compat. When Kind=Volunteers
+/// the handler routes to SignUpList.CreateVolunteerList (slot-only items).
 /// </summary>
 public record CreateSignUpListWithItemsCommand(
     Guid EventId,
@@ -16,7 +18,8 @@ public record CreateSignUpListWithItemsCommand(
     bool HasPreferredItems,
     bool HasSuggestedItems,
     List<SignUpItemDto> Items,
-    bool HasOpenItems = false // Phase 6A.27
+    bool HasOpenItems = false, // Phase 6A.27
+    SignUpKind Kind = SignUpKind.Items // Phase 7D.1
 ) : ICommand<Guid>; // Returns the created sign-up list ID
 
 /// <summary>

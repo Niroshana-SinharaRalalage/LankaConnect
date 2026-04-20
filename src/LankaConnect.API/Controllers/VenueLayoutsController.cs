@@ -8,6 +8,10 @@ using LankaConnect.Application.Events.Commands.GenerateSeats;
 using LankaConnect.Application.Events.Commands.HoldSeats;
 using LankaConnect.Application.Events.Commands.ReleaseSeats;
 using LankaConnect.Application.Events.Commands.AssignLayoutToEvent;
+using LankaConnect.Application.Events.Commands.UpdateLayout;
+using LankaConnect.Application.Events.Commands.UpdateZone;
+using LankaConnect.Application.Events.Commands.DeleteZone;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
 using LankaConnect.Application.Events.Common;
@@ -82,6 +86,155 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update a venue layout's name and/or canvas configuration.
+    /// Requires the <c>If-Match</c> header carrying the RowVersion from the last GET
+    /// — stale values return HTTP 409. At least one of <c>name</c> or <c>canvas</c>
+    /// must be supplied.
+    /// Slice 5 Chunk 4.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateLayout(Guid id, [FromBody] UpdateLayoutRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        Logger.LogInformation(
+            "Updating venue layout {LayoutId}: ExpectedRowVersion={ExpectedRowVersion}",
+            id, expectedRowVersion);
+
+        var command = new UpdateLayoutCommand(id, expectedRowVersion, request.Name, request.Canvas);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Update a zone (name, color, sort order, and/or canvas shape + geometry).
+    /// Structural changes (shape/geometry) are rejected with HTTP 422 when seats are held/reserved.
+    /// Requires the <c>If-Match</c> header. Slice 5 Chunk 5.
+    /// </summary>
+    [HttpPatch("{id:guid}/zones/{zoneId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateZone(Guid id, Guid zoneId, [FromBody] UpdateZoneRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        ZoneShape? shape = null;
+        if (!string.IsNullOrWhiteSpace(request.Shape))
+        {
+            if (!Enum.TryParse<ZoneShape>(request.Shape, ignoreCase: true, out var parsed))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Bad Request",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Invalid zone shape: '{request.Shape}'. Valid: Rect, Curve, Polygon"
+                });
+            }
+            shape = parsed;
+        }
+
+        Logger.LogInformation(
+            "Updating zone {ZoneId} in layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            zoneId, id, expectedRowVersion);
+
+        var command = new UpdateZoneCommand(
+            id, zoneId, expectedRowVersion,
+            request.Name, request.Color, request.SortOrder,
+            shape, request.Geometry);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Delete a zone from the layout. Rejected with HTTP 422 if any seat is held or reserved.
+    /// Requires the <c>If-Match</c> header. Slice 5 Chunk 5.
+    /// </summary>
+    [HttpDelete("{id:guid}/zones/{zoneId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> DeleteZone(Guid id, Guid zoneId)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        Logger.LogInformation(
+            "Deleting zone {ZoneId} from layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            zoneId, id, expectedRowVersion);
+
+        var command = new DeleteZoneCommand(id, zoneId, expectedRowVersion);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Parses the <c>If-Match</c> header into a <see cref="uint"/> RowVersion.
+    /// Accepts either raw numeric form ("42") or quoted ETag form ("\"42\"").
+    /// On failure, sets <paramref name="problem"/> to a 400 ProblemDetails response.
+    /// </summary>
+    private bool TryParseIfMatch(out uint expectedRowVersion, out IActionResult? problem)
+    {
+        expectedRowVersion = 0u;
+        problem = null;
+
+        var header = Request.Headers["If-Match"].ToString();
+        if (string.IsNullOrWhiteSpace(header))
+        {
+            problem = BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "If-Match header is required for optimistic concurrency control"
+            });
+            return false;
+        }
+
+        var trimmed = header.Trim().Trim('"');
+        if (!uint.TryParse(trimmed, out expectedRowVersion))
+        {
+            problem = BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "If-Match header must be an unsigned integer matching the layout's RowVersion"
+            });
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -208,6 +361,26 @@ public record CreateVenueLayoutRequest(
     Guid? EventId,
     bool IsTemplate,
     List<CreateVenueZoneRequest> Zones);
+
+/// <summary>
+/// Slice 5 Chunk 4: PUT body. Both fields optional — at least one must be provided.
+/// <c>If-Match</c> carries the RowVersion separately for optimistic concurrency.
+/// </summary>
+public record UpdateLayoutRequest(
+    string? Name,
+    UpdateLayoutCanvasRequest? Canvas);
+
+/// <summary>
+/// Slice 5 Chunk 5: PATCH zone body. All fields optional — at least one must be provided.
+/// Shape is accepted as a string for JSON-friendliness and parsed against <c>ZoneShape</c>
+/// at the controller layer.
+/// </summary>
+public record UpdateZoneRequest(
+    string? Name,
+    string? Color,
+    int? SortOrder,
+    string? Shape,
+    string? Geometry);
 
 public record GenerateSeatsRequest(
     string GenerationType,

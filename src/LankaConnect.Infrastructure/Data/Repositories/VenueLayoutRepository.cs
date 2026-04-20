@@ -154,6 +154,15 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
     }
 
     /// <inheritdoc />
+    public void SetOriginalRowVersion(VenueLayout layout, uint expectedRowVersion)
+    {
+        // EF Core compares OriginalValue against the DB xmin in the UPDATE WHERE clause.
+        // If the caller-supplied expected RowVersion differs from the row's actual xmin,
+        // SaveChangesAsync throws DbUpdateConcurrencyException — mapped to 409 by the handler.
+        _context.Entry(layout).Property(v => v.RowVersion).OriginalValue = expectedRowVersion;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> NameExistsForEventAsync(string name, Guid eventId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "NameExistsForEvent"))

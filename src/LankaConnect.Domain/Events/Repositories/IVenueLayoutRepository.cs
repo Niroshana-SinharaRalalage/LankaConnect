@@ -28,4 +28,15 @@ public interface IVenueLayoutRepository : IRepository<VenueLayout>
     /// Checks if a layout name is already in use for the given event.
     /// </summary>
     Task<bool> NameExistsForEventAsync(string name, Guid eventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Slice 5 Chunk 4: Overrides the tracked entity's <c>RowVersion</c> OriginalValue so
+    /// EF Core includes the caller-supplied <paramref name="expectedRowVersion"/> in the
+    /// UPDATE WHERE clause. On mismatch, <c>SaveChangesAsync</c> throws
+    /// <see cref="Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"/>, which the
+    /// handler maps to <see cref="ErrorKind.Conflict"/> → HTTP 409. The layout MUST already
+    /// be tracked by the context (i.e. loaded via <see cref="GetByIdAsync"/> without
+    /// AsNoTracking); otherwise the call is a no-op.
+    /// </summary>
+    void SetOriginalRowVersion(VenueLayout layout, uint expectedRowVersion);
 }

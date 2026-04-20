@@ -162,6 +162,34 @@ public class VenueLayout : BaseEntity
     }
 
     /// <summary>
+    /// Slice 5 Chunk 5: UpdateZone overload that also replaces the canvas shape + geometry.
+    /// Structural (shape/geometry) changes must be guarded by <c>IStructuralEditGuard</c> at
+    /// the application layer — this method does not check held/reserved seats.
+    /// </summary>
+    public Result UpdateZone(
+        Guid zoneId,
+        string name,
+        string color,
+        int sortOrder,
+        ZoneShape shape,
+        string? geometry)
+    {
+        var zone = _zones.FirstOrDefault(z => z.Id == zoneId);
+        if (zone == null)
+            return Result.Failure("Zone not found in this layout");
+
+        if (_zones.Any(z => z.Id != zoneId
+            && z.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return Result.Failure($"A zone named '{name.Trim()}' already exists in this layout");
+
+        var result = zone.Update(name, color, sortOrder, shape, geometry);
+        if (result.IsSuccess)
+            MarkAsUpdated();
+
+        return result;
+    }
+
+    /// <summary>
     /// Removes a zone from the layout. Zone must have no reserved seats.
     /// Note: Reservation checks are done at the application layer (via SeatReservation table).
     /// </summary>

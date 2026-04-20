@@ -1,7 +1,56 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — E1 attendee address optional; Phase C parked for PR-B*
+*Last Updated: 2026-04-20 — Phase 7D.1 Phase C volunteer email pipeline staging-verified*
 
-## 🎯 Current Session Status (2026-04-20 — E1: attendee address → optional)
+## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase C: Volunteer email templates + Kind-branching)
+
+### Phase 7D.1 Phase C — Volunteer commitment/cancellation email routing
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — both volunteer-specific templates now resolve and send on staging via the Kind-branched handlers. Fresh commit against volunteer list `e644703e-b592-469c-94ba-7b804357f918` item "Setup crew" resolved `template-volunteer-commitment-confirmation` (TemplateId `a31aebf0-9c8d-4b02-bb5a-80b0f523bd0b`, Azure ACS Operation `3589fe7e-044c-4760-a229-c384621cf0ac`, duration 5349ms). Cancellation on "Serving" (slotsClaimed=0) resolved `template-volunteer-commitment-cancellation` (TemplateId `3c8e082f-53a3-45fa-bc42-1c39683d8d27`, duration 5541ms). Non-volunteer signup lists remain on the original `template-signup-list-commitment-confirmation` (regression guard in `SignupCommitmentEmailParamsVolunteerTests`).
+
+**Scope**: Kind-based template-name routing only. Keep signup-list callers on the existing template; route volunteer commits/cancels to two new templates cloned from the signup-list originals via REGEXP_REPLACE. Fire-and-forget email dispatch (MEMORY 6A.122) preserved in both handlers. Inline-SQL migration (MEMORY 6A.129b — no `File.ReadAllText`). Migration Designer.cs generated via `dotnet ef migrations add` with nonzero-second timestamp (MEMORY 6A.133).
+
+**Changes**:
+| Layer | File | Change |
+|-------|------|--------|
+| Shared | [EmailTemplateContract.cs](../src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs) | Two new constants — `VolunteerCommitmentConfirmation = "template-volunteer-commitment-confirmation"` and `VolunteerCommitmentCancellation = "template-volunteer-commitment-cancellation"` — alongside the existing signup-list template names. Startup validation picks them up automatically. |
+| Shared | [SignupCommitmentEmailParams.cs](../src/LankaConnect.Shared/Email/Contracts/SignupCommitmentEmailParams.cs) | Added `AsVolunteerConfirmation()` and `AsVolunteerCancellation()` template switchers. Default `CreateConfirmation` / `CreateCancellation` paths untouched so all existing consumers stay on the signup-list templates. |
+| Application | [UserCommittedToSignUpEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/UserCommittedToSignUpEventHandler.cs) | After `CreateConfirmation`, branch `if (domainEvent.Kind == SignUpKind.Volunteers) emailParams.AsVolunteerConfirmation();` (Kind threaded through `UserCommittedToSignUpEvent` in Phase A). Fire-and-forget `Task.Run` pattern preserved. |
+| Application | [CommitmentCancelledEmailHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/CommitmentCancelledEmailHandler.cs) | After `CreateCancellation`, look up `event.SignUpLists?.FirstOrDefault(l => l.Id == domainEvent.SignUpListId)` and branch on `.Kind`. Avoids adding Kind to `CommitmentCancelledEvent` (the loaded aggregate already has the answer). |
+| Infrastructure | [20260420175444_Phase7D1_SeedVolunteerEmailTemplates.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260420175444_Phase7D1_SeedVolunteerEmailTemplates.cs) | Two `INSERT ... SELECT` clauses with REGEXP_REPLACE cloning `template-signup-list-commitment-{confirmation,cancellation}` into volunteer variants, renaming "Sign-up"/"Signed up"/"signed up" → "Volunteer"/"Volunteered"/"volunteered". `ON CONFLICT (name) DO NOTHING` for idempotency. Reversible `Down()` deletes the two rows. |
+| Tests | [EmailTemplateContractTests.cs](../tests/LankaConnect.Shared.Tests/Email/Contracts/EmailTemplateContractTests.cs) | +2 tests asserting the two constants are correctly defined (35/35 pass). |
+| Tests | [SignupCommitmentEmailParamsVolunteerTests.cs](../tests/LankaConnect.Shared.Tests/Email/Contracts/SignupCommitmentEmailParamsVolunteerTests.cs) (new) | 3 tests: `AsVolunteerConfirmation` switches template, `AsVolunteerCancellation` switches template, **regression guard** that `CreateConfirmation` default route still returns `SignupCommitmentConfirmation` (prevents breakage to existing signup-list callers). |
+
+**Deploy trail**:
+| Run | Commit | Outcome |
+|-----|--------|---------|
+| `24682332058` | `7ba600cb` | ❌ FAILED on migration apply — `PostgresException 42703: column "id" does not exist`. Root cause: my INSERT SQL used lowercase `id`, but EF Core maps the PascalCase `Id` property to case-sensitive quoted `"Id"` in PostgreSQL (convention established in prior migrations Phase6A34/53/63). |
+| `24683062394` | `a1243853` | ✅ SUCCESS — applied the one-line fix (`id, name,` → `""Id"", name,` in both INSERT statements) and seeding migration applied cleanly. |
+
+**Staging evidence** (`event 4378a7d9-280e-4322-9ca2-a17e27061ae8`, `volunteer list e644703e-b592-469c-94ba-7b804357f918`):
+| # | Scenario | Result |
+|---|----------|--------|
+| 1 | `POST .../items/4296d94d.../commit` with `slotsClaimed=0` (cancel Setup crew) | 200 |
+| 2 | `POST .../items/4296d94d.../commit` with `slotsClaimed=1` (fresh commit) | 200 — `UserCommittedToSignUpEventHandler` + `template-volunteer-commitment-confirmation` resolved, Azure ACS Operation `3589fe7e-044c-4760-a229-c384621cf0ac`, `Email sent successfully to niroshhh@gmail.com` |
+| 3 | `POST .../items/4770b6e6.../commit` with `slotsClaimed=0` (cancel Serving) | 200 — `CommitmentCancelledEmailHandler` + `template-volunteer-commitment-cancellation` resolved, duration 5541ms, `CommitmentCancelled EMAIL SENT` |
+
+**Why this is durable**:
+- Template selection lives in the typed-params object (`AsVolunteerConfirmation/Cancellation`), not sprinkled across handlers. New callers (anonymous commit, future flows) flip one method call instead of hard-coding template names.
+- The `Kind` discriminator is consulted from the domain — handler does `domainEvent.Kind` (commit) or `event.SignUpLists.First(...).Kind` (cancel). No out-of-band lookups, no extra repo hits, no Kind-on-CommitmentCancelledEvent churn.
+- Migration uses REGEXP_REPLACE instead of REPLACE (MEMORY 6A.117 — multi-line whitespace insensitivity) and is wrapped in `ON CONFLICT (name) DO NOTHING` so re-applying on a DB that already has the rows is a no-op.
+- Regression test in `SignupCommitmentEmailParamsVolunteerTests` locks in the promise that existing signup-list callers keep resolving the original template — nothing changes for them.
+
+**Follow-up (Phase C16 — non-blocking)**:
+- **Placeholder drift in cloned templates**: REGEXP_REPLACE also rewrote Handlebars block names inside the cloned HTML. Staging logs surfaced 6 unreplaced placeholders on both templates (`{{#HasVolunteerLists}}`, `{{VolunteerListUrl}}`, `{{/HasVolunteerLists}}`, `{{#HasVolunteerForms}}`, `{{VolunteerFormsUrl}}`, `{{/HasVolunteerForms}}`) because `SignupCommitmentEmailParams.ToDictionary()` still emits `HasSignupLists` / `SignUpListUrl` / `HasSignupForms` / `SignupFormsUrl`. Email is still sent successfully — the unreplaced blocks render as empty strings in both formats. Follow-up: either narrow the REGEXP to skip `{{...}}` contents, or add volunteer-specific keys to `ToDictionary()` with the same values. Minor cosmetic issue; does not affect delivery.
+- **`CommitmentUpdatedEventHandler` lacks Kind-branching**: same-user repeat-commit path routes through the update handler, which still resolves `template-signup-list-commitment-update` regardless of kind. Proven during C14 testing — three successive commits as the same user hit update, not fresh-commit. Follow-up: mirror the `AsVolunteerConfirmation` branch on the update path, or (architect decision) leave as YAGNI if volunteer updates stay rare.
+
+**Next phases**:
+- **Phase D15–17**: export services pick up volunteer labels + `VolunteersZip`/`VolunteersExcel` format enum values.
+- **Phase E–G**: frontend types (`SignUpKind` string enum), kind-filtered hooks + cache keys, organizer UI (VolunteerListsTab + create/edit pages), public UI (conditional "Volunteer" nav button + section).
+- **Phase H**: E2E staging smoke + final doc updates.
+
+---
+
+## 🎯 Parallel Workstream (2026-04-20 — E1: attendee address → optional)
 
 ### E1 — Remove required-address blocker on anonymous event registration
 

@@ -11,6 +11,9 @@ using LankaConnect.Application.Events.Commands.AssignLayoutToEvent;
 using LankaConnect.Application.Events.Commands.UpdateLayout;
 using LankaConnect.Application.Events.Commands.UpdateZone;
 using LankaConnect.Application.Events.Commands.DeleteZone;
+using LankaConnect.Application.Events.Commands.AddTable;
+using LankaConnect.Application.Events.Commands.UpdateTable;
+using LankaConnect.Application.Events.Commands.DeleteTable;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
@@ -201,6 +204,146 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     }
 
     /// <summary>
+    /// Add a table (round/square/rect) to a layout. Seats are auto-generated
+    /// based on shape and capacity. Requires the <c>If-Match</c> header.
+    /// Slice 5 Chunk 6.
+    /// </summary>
+    [HttpPost("{id:guid}/tables")]
+    [Authorize]
+    [ProducesResponseType(typeof(AddTableResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddTable(Guid id, [FromBody] AddTableRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        if (!Enum.TryParse<TableShape>(request.Shape, ignoreCase: true, out var shape))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Invalid table shape: '{request.Shape}'. Valid: Round, Square, Rect"
+            });
+        }
+
+        Logger.LogInformation(
+            "Adding table to layout {LayoutId}: Label={Label}, Shape={Shape}, Capacity={Capacity}, ExpectedRowVersion={RowVersion}",
+            id, request.Label, shape, request.Capacity, expectedRowVersion);
+
+        var command = new AddTableCommand(
+            id,
+            expectedRowVersion,
+            request.Label,
+            shape,
+            request.Capacity,
+            request.SortOrder,
+            request.ZoneId,
+            request.Geometry,
+            request.StartAngleDeg ?? 0);
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            return CreatedAtAction(nameof(GetLayout), new { id }, new AddTableResponse(result.Value));
+        }
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Update a table's metadata and/or geometry. Structural changes
+    /// (shape, capacity, geometry) are rejected with HTTP 422 when seats are
+    /// held/reserved. Requires the <c>If-Match</c> header. Slice 5 Chunk 6.
+    /// </summary>
+    [HttpPatch("{id:guid}/tables/{tableId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateTable(Guid id, Guid tableId, [FromBody] UpdateTableRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        TableShape? shape = null;
+        if (!string.IsNullOrWhiteSpace(request.Shape))
+        {
+            if (!Enum.TryParse<TableShape>(request.Shape, ignoreCase: true, out var parsed))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Bad Request",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Invalid table shape: '{request.Shape}'. Valid: Round, Square, Rect"
+                });
+            }
+            shape = parsed;
+        }
+
+        Logger.LogInformation(
+            "Updating table {TableId} in layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            tableId, id, expectedRowVersion);
+
+        var command = new UpdateTableCommand(
+            id, tableId, expectedRowVersion,
+            request.Label,
+            shape,
+            request.Capacity,
+            request.SortOrder,
+            request.ZoneId,
+            request.ClearZoneId ?? false,
+            request.Geometry);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Delete a table from the layout. Rejected with HTTP 422 when any seat
+    /// on the table is held or reserved. Requires the <c>If-Match</c> header.
+    /// Slice 5 Chunk 6.
+    /// </summary>
+    [HttpDelete("{id:guid}/tables/{tableId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> DeleteTable(Guid id, Guid tableId)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        Logger.LogInformation(
+            "Deleting table {TableId} from layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            tableId, id, expectedRowVersion);
+
+        var command = new DeleteTableCommand(id, tableId, expectedRowVersion);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
     /// Parses the <c>If-Match</c> header into a <see cref="uint"/> RowVersion.
     /// Accepts either raw numeric form ("42") or quoted ETag form ("\"42\"").
     /// On failure, sets <paramref name="problem"/> to a 400 ProblemDetails response.
@@ -380,6 +523,41 @@ public record UpdateZoneRequest(
     string? Color,
     int? SortOrder,
     string? Shape,
+    string? Geometry);
+
+/// <summary>
+/// Slice 5 Chunk 6: POST table body. Shape is accepted as string for
+/// JSON-friendliness and parsed against <c>TableShape</c> at the controller
+/// layer. <c>StartAngleDeg</c> applies only to round tables (default 0°).
+/// </summary>
+public record AddTableRequest(
+    string Label,
+    string Shape,
+    int Capacity,
+    int SortOrder,
+    Guid? ZoneId,
+    string? Geometry,
+    double? StartAngleDeg);
+
+/// <summary>
+/// Slice 5 Chunk 6: response returned from POST /tables so the client can
+/// reference the newly created table before re-fetching the layout.
+/// </summary>
+public record AddTableResponse(Guid TableId);
+
+/// <summary>
+/// Slice 5 Chunk 6: PATCH table body. All fields optional — at least one must
+/// be provided. To detach a table from its current zone pass
+/// <c>clearZoneId: true</c> (supplying <c>zoneId: null</c> alone is treated as
+/// "keep current zone" to preserve JSON omission semantics).
+/// </summary>
+public record UpdateTableRequest(
+    string? Label,
+    string? Shape,
+    int? Capacity,
+    int? SortOrder,
+    Guid? ZoneId,
+    bool? ClearZoneId,
     string? Geometry);
 
 public record GenerateSeatsRequest(

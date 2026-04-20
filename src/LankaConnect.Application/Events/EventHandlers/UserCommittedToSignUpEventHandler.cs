@@ -108,6 +108,14 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                 );
 
+                // Phase 7D.1: Route to volunteer-specific template when the signup list is
+                // a volunteer list. The Handlebars parameter shape is identical so no other
+                // population logic changes.
+                if (domainEvent.Kind == SignUpKind.Volunteers)
+                {
+                    emailParams.AsVolunteerConfirmation();
+                }
+
                 // Phase 6A.103: Add event image if available
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
                 emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");

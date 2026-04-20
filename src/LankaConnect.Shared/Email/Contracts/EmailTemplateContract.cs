@@ -63,6 +63,10 @@ public static class EmailTemplateContract
         public const string SignupCommitmentUpdate = "template-signup-list-commitment-update";
         public const string SignupCommitmentCancellation = "template-signup-list-commitment-cancellation";
 
+        // Phase 7D.1: Volunteer Recruitment Templates
+        public const string VolunteerCommitmentConfirmation = "template-volunteer-commitment-confirmation";
+        public const string VolunteerCommitmentCancellation = "template-volunteer-commitment-cancellation";
+
         // Support Templates
         public const string SupportTicketConfirmation = "template-support-ticket-confirmation"; // Phase 6A.113: Renamed from SupportTicketReceived, corrected value
         public const string SupportTicketReply = "template-support-ticket-reply";

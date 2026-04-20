@@ -108,6 +108,15 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             );
 
+            // Phase 7D.1: Route to volunteer-specific cancellation template when the
+            // signup list is a volunteer list. Look up Kind from the loaded event
+            // (no change needed to CommitmentCancelledEvent).
+            var cancelledList = @event.SignUpLists?.FirstOrDefault(l => l.Id == domainEvent.SignUpListId);
+            if (cancelledList?.Kind == SignUpKind.Volunteers)
+            {
+                emailParams.AsVolunteerCancellation();
+            }
+
             // Phase 6A.103: Add event image if available
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             emailParams.WithEventImage(primaryImage?.ImageUrl ?? @event.Images.FirstOrDefault()?.ImageUrl ?? "");

@@ -219,6 +219,26 @@ public class SignupCommitmentEmailParams : IEmailParameters
         return this;
     }
 
+    /// <summary>
+    /// Phase 7D.1: Switches template to the volunteer-commitment confirmation template.
+    /// Handlebars parameter shape is identical to the signup-list variant, so all
+    /// existing ToDictionary() population continues to work unchanged.
+    /// </summary>
+    public SignupCommitmentEmailParams AsVolunteerConfirmation()
+    {
+        _templateName = EmailTemplateContract.TemplateNames.VolunteerCommitmentConfirmation;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 7D.1: Switches template to the volunteer-commitment cancellation template.
+    /// </summary>
+    public SignupCommitmentEmailParams AsVolunteerCancellation()
+    {
+        _templateName = EmailTemplateContract.TemplateNames.VolunteerCommitmentCancellation;
+        return this;
+    }
+
     #endregion
 
     #region IEmailParameters Implementation

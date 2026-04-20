@@ -667,7 +667,7 @@ export function SignUpManagementSection({
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Suggested Quantity: {totalQty}
+                                        {isQuantityBased(item) ? 'Suggested Quantity' : 'Suggested Slots'}: {totalQty}
                                       </span>
                                     </div>
                                     {item.notes && (

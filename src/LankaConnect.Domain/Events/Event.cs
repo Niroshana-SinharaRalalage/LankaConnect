@@ -1707,8 +1707,10 @@ public partial class Event : BaseEntity
         if (signUpList == null)
             return Result.Failure("Sign-up list cannot be null");
 
-        // Check for duplicate categories
-        if (_signUpLists.Any(s => s.Category.Equals(signUpList.Category, StringComparison.OrdinalIgnoreCase)))
+        // Phase 7D.1: Uniqueness keys on (Kind, Category) so organizers can run an
+        // Items list and a Volunteers list that happen to share a category label.
+        if (_signUpLists.Any(s => s.Kind == signUpList.Kind
+                                  && s.Category.Equals(signUpList.Category, StringComparison.OrdinalIgnoreCase)))
             return Result.Failure($"A sign-up list with category '{signUpList.Category}' already exists");
 
         _signUpLists.Add(signUpList);

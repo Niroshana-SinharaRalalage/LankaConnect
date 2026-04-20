@@ -250,7 +250,8 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                             request.Notes,
                             request.ContactName,
                             request.ContactEmail,
-                            request.ContactPhone);
+                            request.ContactPhone,
+                            kind: signUpList.Kind);
                     }
                     else
                     {
@@ -260,7 +261,8 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                             request.Notes,
                             request.ContactName,
                             request.ContactEmail,
-                            request.ContactPhone);
+                            request.ContactPhone,
+                            kind: signUpList.Kind);
                     }
 
                     var newCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == anonymousUserId);

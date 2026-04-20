@@ -248,7 +248,8 @@ public class SignUpItem : BaseEntity
         string? commitNotes = null,
         string? contactName = null,
         string? contactEmail = null,
-        string? contactPhone = null)
+        string? contactPhone = null,
+        SignUpKind kind = SignUpKind.Items)
     {
         if (ItemType != SignUpItemType.Quantity)
             return Result.Failure($"This is a slot-based item. Use the slot commit endpoint with slotsClaimed instead of quantity.");
@@ -288,7 +289,8 @@ public class SignUpItem : BaseEntity
             ItemDescription,
             PhysicalQuantity: commitQuantity,
             SlotsClaimed: null,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            Kind: kind));
 
         return Result.Success();
     }
@@ -303,7 +305,8 @@ public class SignUpItem : BaseEntity
         string? commitNotes = null,
         string? contactName = null,
         string? contactEmail = null,
-        string? contactPhone = null)
+        string? contactPhone = null,
+        SignUpKind kind = SignUpKind.Items)
     {
         if (ItemType != SignUpItemType.Slot)
             return Result.Failure("This is a quantity-based item. Use the quantity commit endpoint with physicalQuantity instead of slotsClaimed.");
@@ -342,7 +345,8 @@ public class SignUpItem : BaseEntity
             ItemDescription,
             PhysicalQuantity: null,
             SlotsClaimed: slotsClaimed,
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            Kind: kind));
 
         return Result.Success();
     }

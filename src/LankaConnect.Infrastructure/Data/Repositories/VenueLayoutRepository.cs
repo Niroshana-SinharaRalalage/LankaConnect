@@ -35,9 +35,16 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
 
             try
             {
+                // Slice 5 Chunk 6: eager-load the full aggregate (zones + their seats,
+                // tables + their seats, decorations) so write handlers can call
+                // GetTable / GetDecoration on the in-memory aggregate. The method name
+                // is retained for caller back-compat — effectively "full aggregate by id".
                 var layout = await _dbSet
                     .Include(v => v.Zones)
                         .ThenInclude(z => z.Seats)
+                    .Include(v => v.Tables)
+                        .ThenInclude(t => t.Seats)
+                    .Include(v => v.Decorations)
                     .FirstOrDefaultAsync(v => v.Id == layoutId, cancellationToken);
 
                 stopwatch.Stop();
@@ -78,9 +85,14 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
 
             try
             {
+                // Slice 5 Chunk 6: match GetWithZonesAndSeatsAsync — return the full
+                // aggregate so the event's layout-scoped write surface sees tables too.
                 var layout = await _dbSet
                     .Include(v => v.Zones)
                         .ThenInclude(z => z.Seats)
+                    .Include(v => v.Tables)
+                        .ThenInclude(t => t.Seats)
+                    .Include(v => v.Decorations)
                     .FirstOrDefaultAsync(v => v.EventId == eventId, cancellationToken);
 
                 stopwatch.Stop();

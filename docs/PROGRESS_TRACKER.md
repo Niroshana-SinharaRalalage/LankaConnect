@@ -1,7 +1,41 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — Phase 7D.1 Phase C volunteer email pipeline staging-verified*
+*Last Updated: 2026-04-20 — WhatsApp Save Preferences 400 unblocked (Fix #0)*
 
-## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase C: Volunteer email templates + Kind-branching)
+## 🎯 Current Session Status (2026-04-20 — WhatsApp Preferences: Fix #0 Save 400 → 200)
+
+### WhatsApp Fix #0 — Empty-string normalization at Zod boundary (Save Preferences unblocked)
+
+**Status**: ✅ **COMMITTED + PUSHED + CI RUNNING** — commit `33ccc542` on develop, GitHub Actions run `24696324247` (deploy-ui-staging.yml) in progress.
+
+**Symptom**: Clicking "Save Preferences" on the WhatsApp Preferences card returned HTTP 400 "Request failed with status code 400" whenever quiet-hours were left empty. MVC `[ApiController]` short-circuits to `ValidationProblemDetails` before the action runs because `TimeOnly?` model binding cannot parse an empty string.
+
+**Root cause**: `<input type="time">` submits `""` when empty. Zod schema declared `quietHoursStart/End/preferredLanguage` as `.string().optional().nullable()` — empty string passes validation untouched and is sent as `""` in the JSON body. .NET rejects with 400.
+
+**Fix** — normalize at validation boundary, not sprinkled across form fields:
+| File | Change |
+|------|--------|
+| [web/src/presentation/lib/validators/whatsapp.schemas.ts](../web/src/presentation/lib/validators/whatsapp.schemas.ts) | Added `nullableTrimmedString = z.string().optional().nullable().transform(v => v ? v : null)`. Applied to `quietHoursStart`, `quietHoursEnd`, `preferredLanguage`. Split types: `UpdatePreferencesFormInput` (`z.input<>`, what react-hook-form holds — may include `""`) vs `UpdatePreferencesFormData` (`z.infer<>`, post-transform — empty → null). |
+| [web/src/presentation/components/features/whatsapp/WhatsAppPreferences.tsx](../web/src/presentation/components/features/whatsapp/WhatsAppPreferences.tsx) | `useForm<UpdatePreferencesFormInput, unknown, UpdatePreferencesFormData>(...)` — 3-generic signature so form state allows `""` but `handleSave(data)` receives the transformed null. |
+| [web/tests/unit/presentation/lib/validators/whatsapp.schemas.test.ts](../web/tests/unit/presentation/lib/validators/whatsapp.schemas.test.ts) (new) | 7 Vitest cases — `""` → null for each of the 3 fields, combined submission, populated passthrough, explicit null, omitted undefined. **RED → GREEN** verified (7/7 pass, 9ms). |
+
+**Verification**:
+- `npx vitest run web/tests/unit/presentation/lib/validators/whatsapp.schemas.test.ts` → 7/7 pass
+- `npx tsc --noEmit` → zero type errors
+- GitHub Actions `24696324247` running on commit `33ccc542`
+
+**Why this is durable**:
+- Transform lives on the schema, not in per-field `setValueAs` or `handleSubmit` massaging. Any future field of type "optional string that HTML sends as `''`" can adopt `nullableTrimmedString` in one line.
+- `z.input` vs `z.infer` split mirrors the MEMORY pattern for Axios 204 (boundary normalization) — the form sees one shape, the API sees another, enforced by types.
+- Regression-locked: the 7 tests fail if anyone regresses the transform or drops a field from the schema.
+
+**Remaining on WhatsApp plate** (the user's master TODO from the RCA):
+- **Fix 1+2+5**: Backend `EffectivelyEnabled` invariant + `WhatsAppSkipReason` taxonomy + admin metric `usersEnabledButUnverified`
+- **Fix 3**: UX enforcement — auto-request verification code on enable, persistent unverified banner on profile page only
+- **Fix 4**: Daily scheduled job to auto-disable WhatsApp after 30-day verification grace period + notification email
+
+---
+
+## 🎯 Previous Session (2026-04-20 — Phase 7D.1 Phase C: Volunteer email templates + Kind-branching)
 
 ### Phase 7D.1 Phase C — Volunteer commitment/cancellation email routing
 

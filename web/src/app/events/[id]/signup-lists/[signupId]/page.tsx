@@ -17,7 +17,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Plus, Trash2, ArrowLeft, Save, Edit2, X, Check } from 'lucide-react';
-import { SignUpItemCategory, SignUpItemType, isQuantityBased } from '@/infrastructure/api/types/events.types';
+import {
+  SignUpItemCategory,
+  SignUpItemType,
+  isQuantityBased,
+  type SignUpItemDto,
+} from '@/infrastructure/api/types/events.types';
 import { UserRole } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -71,10 +76,12 @@ export default function EditSignUpListPage() {
   const [originalHasOpenItems, setOriginalHasOpenItems] = useState(false);
 
   // Item editing state
+  // Phase 6A.131: Track the item's type so save can send the correctly discriminated field.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItemDesc, setEditingItemDesc] = useState('');
   const [editingItemQty, setEditingItemQty] = useState(1);
   const [editingItemNotes, setEditingItemNotes] = useState('');
+  const [editingItemType, setEditingItemType] = useState<SignUpItemType>(SignUpItemType.Quantity);
 
   // New item state for each category
   const [newMandatoryDesc, setNewMandatoryDesc] = useState('');
@@ -341,11 +348,15 @@ export default function EditSignUpListPage() {
   };
 
   // Handle start editing item (inline edit)
-  const handleStartEditingItem = (item: any) => {
+  // Phase 6A.131: Read the type-specific size field (targetQuantity vs totalSlots) from the
+  // discriminated DTO. Previously read `item.quantity` which doesn't exist on the Phase 6A.121
+  // shape, silently defaulting the input to 1 and overwriting the user's real value on save.
+  const handleStartEditingItem = (item: SignUpItemDto) => {
     setEditingItemId(item.id);
     setEditingItemDesc(item.itemDescription);
-    setEditingItemQty(item.quantity);
+    setEditingItemQty(isQuantityBased(item) ? item.targetQuantity : item.totalSlots);
     setEditingItemNotes(item.notes || '');
+    setEditingItemType(item.itemType);
   };
 
   // Handle cancel editing
@@ -354,30 +365,45 @@ export default function EditSignUpListPage() {
     setEditingItemDesc('');
     setEditingItemQty(1);
     setEditingItemNotes('');
+    setEditingItemType(SignUpItemType.Quantity);
   };
 
   /**
-   * Handle save edited item
-   * Phase 6A.14: Edit Sign-Up Item feature
+   * Handle save edited item.
+   * Phase 6A.14: Edit Sign-Up Item feature.
+   * Phase 6A.131: Dispatches the type-specific field (targetQuantity vs availableSlots). The
+   * backend is authoritative on type — if somehow our cached itemType drifts, the server returns
+   * 400 with an explicit message which we surface to the user.
+   *
+   * NOTE: The inline edit does not surface SuggestedPerSlot today — the handler preserves the
+   * stored value when it's omitted from the payload. Full slot-metadata editing is tracked as a
+   * follow-up enhancement.
    */
   const handleSaveEditedItem = async () => {
     if (!editingItemId) return;
 
+    const isSlot = editingItemType === SignUpItemType.Slot;
     try {
       await updateSignUpItemMutation.mutateAsync({
         eventId,
         signupId,
         itemId: editingItemId,
         itemDescription: editingItemDesc.trim(),
-        quantity: editingItemQty,
+        targetQuantity: isSlot ? null : editingItemQty,
+        availableSlots: isSlot ? editingItemQty : null,
         notes: editingItemNotes.trim() || null,
       });
 
-      // Success - clear editing state
       handleCancelEditingItem();
     } catch (error) {
-      console.error('Failed to update item:', error);
-      alert('Failed to update item. Please try again.');
+      const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string };
+      const message =
+        err?.response?.data?.detail ??
+        err?.response?.data?.message ??
+        err?.message ??
+        'Failed to update item. Please try again.';
+      console.error('Failed to update sign-up item', { itemId: editingItemId, error });
+      alert(message);
     }
   };
 

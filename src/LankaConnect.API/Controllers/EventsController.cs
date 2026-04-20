@@ -1955,7 +1955,9 @@ public class EventsController : BaseController<EventsController>
             signupId,
             itemId,
             request.ItemDescription,
-            request.Quantity,
+            request.TargetQuantity,
+            request.AvailableSlots,
+            request.SuggestedPerSlot,
             request.Notes);
 
         var result = await Mediator.Send(command);
@@ -3463,12 +3465,19 @@ public record AddSignUpItemRequest(
     string? Notes = null);
 
 /// <summary>
-/// Request to update a sign-up item
+/// Request to update a sign-up item.
 /// Phase 6A.14: Edit Sign-Up Item feature
+/// Phase 6A.131: Supports both quantity-based and slot-based items.
+/// Send <see cref="TargetQuantity"/> for quantity-based items and <see cref="AvailableSlots"/>
+/// (optionally with <see cref="SuggestedPerSlot"/>) for slot-based items. The server loads the
+/// item and uses its type as the authority; sending the wrong field returns HTTP 400 with an
+/// explicit message so the client can correct its payload.
 /// </summary>
 public record UpdateSignUpItemRequest(
     string ItemDescription,
-    int Quantity,
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
     string? Notes = null);
 
 /// <summary>

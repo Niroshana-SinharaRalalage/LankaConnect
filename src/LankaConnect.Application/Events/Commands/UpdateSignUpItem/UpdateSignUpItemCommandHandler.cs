@@ -2,14 +2,19 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
 namespace LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 
 /// <summary>
-/// Handler for updating sign-up item details
+/// Handler for updating sign-up item details.
 /// Phase 6A.14: Edit Sign-Up Item feature
+/// Phase 6A.131: Server-authoritative type routing — loads the item, inspects <c>ItemType</c>
+/// on the entity, and dispatches to the matching domain method. The client cannot spoof the type.
+/// If the client submits the wrong discriminated field (e.g. TargetQuantity for a slot item),
+/// the handler returns an explicit failure so the frontend can render a clear error.
 /// </summary>
 public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCommand>
 {
@@ -38,21 +43,19 @@ public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCo
             var stopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation(
-                "UpdateSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, Description={Description}, Quantity={Quantity}",
-                request.EventId, request.SignUpListId, request.SignUpItemId, request.ItemDescription, request.Quantity);
+                "UpdateSignUpItem START: EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, Description={Description}, TargetQuantity={TargetQuantity}, AvailableSlots={AvailableSlots}, SuggestedPerSlot={SuggestedPerSlot}",
+                request.EventId, request.SignUpListId, request.SignUpItemId, request.ItemDescription,
+                request.TargetQuantity, request.AvailableSlots, request.SuggestedPerSlot);
 
             try
             {
-                // Get the event
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
                 if (@event == null)
                 {
                     stopwatch.Stop();
-
                     _logger.LogWarning(
                         "UpdateSignUpItem FAILED: Event not found - EventId={EventId}, Duration={ElapsedMs}ms",
                         request.EventId, stopwatch.ElapsedMilliseconds);
-
                     return Result.Failure($"Event with ID {request.EventId} not found");
                 }
 
@@ -60,80 +63,104 @@ public class UpdateSignUpItemCommandHandler : ICommandHandler<UpdateSignUpItemCo
                     "UpdateSignUpItem: Event loaded - EventId={EventId}, Title={Title}",
                     @event.Id, @event.Title.Value);
 
-                // Get the sign-up list from the event
                 var signUpList = @event.SignUpLists.FirstOrDefault(s => s.Id == request.SignUpListId);
                 if (signUpList == null)
                 {
                     stopwatch.Stop();
-
                     _logger.LogWarning(
                         "UpdateSignUpItem FAILED: Sign-up list not found - EventId={EventId}, SignUpListId={SignUpListId}, Duration={ElapsedMs}ms",
                         request.EventId, request.SignUpListId, stopwatch.ElapsedMilliseconds);
-
                     return Result.Failure($"Sign-up list with ID {request.SignUpListId} not found");
                 }
 
-                // Get the sign-up item from the list
                 var signUpItem = signUpList.GetItem(request.SignUpItemId);
                 if (signUpItem == null)
                 {
                     stopwatch.Stop();
-
                     _logger.LogWarning(
                         "UpdateSignUpItem FAILED: Sign-up item not found - EventId={EventId}, SignUpListId={SignUpListId}, SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms",
                         request.EventId, request.SignUpListId, request.SignUpItemId, stopwatch.ElapsedMilliseconds);
-
                     return Result.Failure($"Sign-up item with ID {request.SignUpItemId} not found");
                 }
 
-                // Phase 6A.121: SignUpItem now uses dual nullable fields (TargetQuantity or AvailableSlots)
-                var currentQuantity = signUpItem.TargetQuantity ?? signUpItem.AvailableSlots ?? 0;
-
-                _logger.LogInformation(
-                    "UpdateSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, CurrentDescription={CurrentDescription}, CurrentQuantity={CurrentQuantity}",
-                    signUpItem.Id, signUpItem.ItemDescription, currentQuantity);
-
-                // Update the sign-up item using domain method
-                var updateResult = signUpItem.UpdateDetails(
-                    request.ItemDescription,
-                    request.Quantity,
-                    request.Notes);
-
-                if (updateResult.IsFailure)
+                using (LogContext.PushProperty("ItemType", signUpItem.ItemType))
                 {
+                    _logger.LogInformation(
+                        "UpdateSignUpItem: Sign-up item loaded - SignUpItemId={SignUpItemId}, ItemType={ItemType}, CurrentDescription={CurrentDescription}, CurrentTargetQuantity={CurrentTargetQuantity}, CurrentAvailableSlots={CurrentAvailableSlots}",
+                        signUpItem.Id, signUpItem.ItemType, signUpItem.ItemDescription,
+                        signUpItem.TargetQuantity, signUpItem.AvailableSlots);
+
+                    Result updateResult;
+                    if (signUpItem.ItemType == SignUpItemType.Quantity)
+                    {
+                        if (!request.TargetQuantity.HasValue)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogWarning(
+                                "UpdateSignUpItem FAILED: Item {SignUpItemId} is quantity-based but TargetQuantity was not supplied - Duration={ElapsedMs}ms",
+                                signUpItem.Id, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure(
+                                $"Item {signUpItem.Id} is quantity-based; provide TargetQuantity, not AvailableSlots.");
+                        }
+
+                        updateResult = signUpItem.UpdateDetails(
+                            request.ItemDescription,
+                            request.TargetQuantity.Value,
+                            request.Notes);
+                    }
+                    else
+                    {
+                        if (!request.AvailableSlots.HasValue)
+                        {
+                            stopwatch.Stop();
+                            _logger.LogWarning(
+                                "UpdateSignUpItem FAILED: Item {SignUpItemId} is slot-based but AvailableSlots was not supplied - Duration={ElapsedMs}ms",
+                                signUpItem.Id, stopwatch.ElapsedMilliseconds);
+                            return Result.Failure(
+                                $"Item {signUpItem.Id} is slot-based; provide AvailableSlots, not TargetQuantity.");
+                        }
+
+                        // If the client omits SuggestedPerSlot, preserve the current value (minimal-scope
+                        // inline edit doesn't surface this field — see Phase A plan).
+                        var suggestedPerSlot = request.SuggestedPerSlot ?? signUpItem.SuggestedPerSlot;
+
+                        updateResult = signUpItem.UpdateDetailsSlotBased(
+                            request.ItemDescription,
+                            request.AvailableSlots.Value,
+                            suggestedPerSlot,
+                            request.Notes);
+                    }
+
+                    if (updateResult.IsFailure)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "UpdateSignUpItem FAILED: Domain validation failed - EventId={EventId}, SignUpItemId={SignUpItemId}, ItemType={ItemType}, Error={Error}, Duration={ElapsedMs}ms",
+                            request.EventId, request.SignUpItemId, signUpItem.ItemType, updateResult.Error, stopwatch.ElapsedMilliseconds);
+                        return updateResult;
+                    }
+
+                    _logger.LogInformation(
+                        "UpdateSignUpItem: Domain method succeeded - SignUpItemId={SignUpItemId}, ItemType={ItemType}, NewDescription={NewDescription}",
+                        signUpItem.Id, signUpItem.ItemType, request.ItemDescription);
+
+                    await _unitOfWork.CommitAsync(cancellationToken);
+
                     stopwatch.Stop();
+                    _logger.LogInformation(
+                        "UpdateSignUpItem COMPLETE: EventId={EventId}, SignUpItemId={SignUpItemId}, ItemType={ItemType}, Duration={ElapsedMs}ms",
+                        request.EventId, request.SignUpItemId, signUpItem.ItemType, stopwatch.ElapsedMilliseconds);
 
-                    _logger.LogWarning(
-                        "UpdateSignUpItem FAILED: Domain validation failed - EventId={EventId}, SignUpItemId={SignUpItemId}, Error={Error}, Duration={ElapsedMs}ms",
-                        request.EventId, request.SignUpItemId, updateResult.Error, stopwatch.ElapsedMilliseconds);
-
-                    return updateResult;
+                    return Result.Success();
                 }
-
-                _logger.LogInformation(
-                    "UpdateSignUpItem: Domain method succeeded - SignUpItemId={SignUpItemId}, NewDescription={NewDescription}, NewQuantity={NewQuantity}",
-                    signUpItem.Id, request.ItemDescription, request.Quantity);
-
-                // Commit changes
-                await _unitOfWork.CommitAsync(cancellationToken);
-
-                stopwatch.Stop();
-
-                _logger.LogInformation(
-                    "UpdateSignUpItem COMPLETE: EventId={EventId}, SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms",
-                    request.EventId, request.SignUpItemId, stopwatch.ElapsedMilliseconds);
-
-                return Result.Success();
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-
                 _logger.LogError(ex,
                     "UpdateSignUpItem FAILED: Exception occurred - EventId={EventId}, SignUpItemId={SignUpItemId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     request.EventId, request.SignUpItemId, stopwatch.ElapsedMilliseconds, ex.Message);
-
-                throw; // Re-throw to let MediatR/API handle
+                throw;
             }
         }
     }

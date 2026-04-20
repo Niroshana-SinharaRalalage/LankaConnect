@@ -13,8 +13,9 @@ using Xunit;
 namespace LankaConnect.Application.Tests.Events.Commands;
 
 /// <summary>
-/// TDD Tests for UpdateSignUpItemCommand and Handler
+/// TDD Tests for UpdateSignUpItemCommand and Handler.
 /// Phase 6A.14: Edit Sign-Up Item feature
+/// Phase 6A.131: Extended for slot-based edits via server-authoritative type routing.
 /// </summary>
 public class UpdateSignUpItemCommandHandlerTests
 {
@@ -46,37 +47,31 @@ public class UpdateSignUpItemCommandHandlerTests
         return eventResult.Value;
     }
 
+    private (Event ev, SignUpList list) CreateEventWithList(bool mandatory = true, bool preferred = false, bool suggested = false)
+    {
+        var ev = CreateTestEvent();
+        var list = SignUpList.CreateWithCategories("Food", "Food sign-up list", mandatory, preferred, suggested).Value;
+        ev.AddSignUpList(list);
+        return (ev, list);
+    }
+
     [Fact]
     public async Task Handle_WithValidCommand_ShouldUpdateSignUpItem()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice (2 cups)", 5, SignUpItemCategory.Mandatory, "Please bring jasmine rice");
-        var item = itemResult.Value;
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice (2 cups)", 5, SignUpItemCategory.Mandatory, "Please bring jasmine rice").Value;
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "Basmati Rice (3 cups)",
-            10,
-            "Please bring basmati or jasmine rice");
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Basmati Rice (3 cups)",
+            TargetQuantity: 10,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: "Please bring basmati or jasmine rice");
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
-
-        _mockUnitOfWork
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -84,8 +79,8 @@ public class UpdateSignUpItemCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         item.ItemDescription.Should().Be("Basmati Rice (3 cups)");
-        var targetQuantity = item.TargetQuantity ?? item.AvailableSlots ?? 0;
-        targetQuantity.Should().Be(10);
+        item.TargetQuantity.Should().Be(10);
+        item.AvailableSlots.Should().BeNull();
         item.Notes.Should().Be("Please bring basmati or jasmine rice");
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -95,15 +90,14 @@ public class UpdateSignUpItemCommandHandlerTests
     {
         // Arrange
         var command = new UpdateSignUpItemCommand(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "Rice",
-            5,
-            null);
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            ItemDescription: "Rice",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
+        _mockEventRepository.Setup(x => x.GetByIdAsync(command.EventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Event?)null);
 
         // Act
@@ -119,27 +113,25 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_WhenSignUpListNotFound_ShouldReturnFailure()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var nonExistentSignUpListId = Guid.NewGuid();
+        var ev = CreateTestEvent();
+        var nonExistentListId = Guid.NewGuid();
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            nonExistentSignUpListId,
-            Guid.NewGuid(),
-            "Rice",
-            5,
-            null);
+            ev.Id, nonExistentListId, Guid.NewGuid(),
+            ItemDescription: "Rice",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain($"Sign-up list with ID {nonExistentSignUpListId} not found");
+        result.Errors.Should().Contain($"Sign-up list with ID {nonExistentListId} not found");
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -147,28 +139,18 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_WhenSignUpItemNotFound_ShouldReturnFailure()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
+        var (ev, list) = CreateEventWithList();
         var nonExistentItemId = Guid.NewGuid();
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            nonExistentItemId,
-            "Rice",
-            5,
-            null);
+            ev.Id, list.Id, nonExistentItemId,
+            ItemDescription: "Rice",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -183,29 +165,18 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_WithEmptyDescription_ShouldReturnFailure()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice", 5, SignUpItemCategory.Mandatory);
-        var item = itemResult.Value;
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 5, SignUpItemCategory.Mandatory).Value;
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "",
-            5,
-            null);
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -220,29 +191,18 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_WithInvalidQuantity_ShouldReturnFailure()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice", 5, SignUpItemCategory.Mandatory);
-        var item = itemResult.Value;
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 5, SignUpItemCategory.Mandatory).Value;
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "Rice",
-            0, // Invalid quantity
-            null);
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Rice",
+            TargetQuantity: 0,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -257,33 +217,19 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_ReducingQuantityBelowCommitted_ShouldReturnFailure()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice", 10, SignUpItemCategory.Mandatory);
-        var item = itemResult.Value;
-
-        // User commits to 5 units
-        var userId = Guid.NewGuid();
-        item.AddCommitment(userId, 5);
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 10, SignUpItemCategory.Mandatory).Value;
+        item.AddCommitment(Guid.NewGuid(), 5);
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "Rice",
-            3, // Try to reduce to 3, but 5 already committed
-            null);
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Rice",
+            TargetQuantity: 3,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -298,37 +244,20 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_IncreasingQuantityWithCommitments_ShouldSucceed()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice", 10, SignUpItemCategory.Mandatory);
-        var item = itemResult.Value;
-
-        // User commits to 5 units
-        var userId = Guid.NewGuid();
-        item.AddCommitment(userId, 5);
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 10, SignUpItemCategory.Mandatory).Value;
+        item.AddCommitment(Guid.NewGuid(), 5);
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "Basmati Rice",
-            20, // Increase to 20 (5 committed, 15 remaining)
-            "Updated notes");
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Basmati Rice",
+            TargetQuantity: 20,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: "Updated notes");
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
-
-        _mockUnitOfWork
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -336,12 +265,8 @@ public class UpdateSignUpItemCommandHandlerTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         item.ItemDescription.Should().Be("Basmati Rice");
-        var targetQty = item.TargetQuantity ?? item.AvailableSlots ?? 0;
-        targetQty.Should().Be(20);
-        var remaining = item.ItemType == SignUpItemType.Quantity
-            ? item.GetRemainingQuantity()
-            : item.GetRemainingSlots();
-        remaining.Should().Be(15); // 20 total - 5 committed
+        item.TargetQuantity.Should().Be(20);
+        item.GetRemainingQuantity().Should().Be(15);
         item.Notes.Should().Be("Updated notes");
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -350,33 +275,19 @@ public class UpdateSignUpItemCommandHandlerTests
     public async Task Handle_WithNullNotes_ShouldClearNotes()
     {
         // Arrange
-        var @event = CreateTestEvent();
-        var signUpList = SignUpList.CreateWithCategories(
-            "Food",
-            "Food sign-up list",
-            true,
-            false,
-            false).Value;
-        @event.AddSignUpList(signUpList);
-
-        var itemResult = signUpList.AddItem("Rice", 5, SignUpItemCategory.Mandatory, "Original notes");
-        var item = itemResult.Value;
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 5, SignUpItemCategory.Mandatory, "Original notes").Value;
 
         var command = new UpdateSignUpItemCommand(
-            @event.Id,
-            signUpList.Id,
-            item.Id,
-            "Rice",
-            5,
-            null); // Clear notes
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Rice",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
 
-        _mockEventRepository
-            .Setup(x => x.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(@event);
-
-        _mockUnitOfWork
-            .Setup(x => x.CommitAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -385,5 +296,163 @@ public class UpdateSignUpItemCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         item.Notes.Should().BeNull();
         _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // -------------------------------------------------------------------------
+    // Phase 6A.131: Slot-based update tests (previously a silent coverage gap)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Handle_WhenItemIsSlotBased_WithValidAvailableSlots_ShouldUpdateSlotFields()
+    {
+        // Arrange
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddSlotBasedItem(
+            itemDescription: "Salmon Curry",
+            availableSlots: 3,
+            suggestedPerSlot: 2,
+            itemCategory: SignUpItemCategory.Mandatory,
+            notes: "Half trays").Value;
+
+        var command = new UpdateSignUpItemCommand(
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Salmon Curry - Half Tray",
+            TargetQuantity: null,
+            AvailableSlots: 5,
+            SuggestedPerSlot: 3,
+            Notes: "Updated notes");
+
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.ItemDescription.Should().Be("Salmon Curry - Half Tray");
+        item.AvailableSlots.Should().Be(5);
+        item.SuggestedPerSlot.Should().Be(3);
+        item.TargetQuantity.Should().BeNull();
+        item.Notes.Should().Be("Updated notes");
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenItemIsSlotBased_WithoutSuggestedPerSlot_ShouldPreserveExistingSuggestedPerSlot()
+    {
+        // Arrange: the inline edit UI omits SuggestedPerSlot — the handler must preserve it.
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddSlotBasedItem(
+            itemDescription: "Salmon Curry",
+            availableSlots: 3,
+            suggestedPerSlot: 2,
+            itemCategory: SignUpItemCategory.Mandatory).Value;
+
+        var command = new UpdateSignUpItemCommand(
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Salmon Curry v2",
+            TargetQuantity: null,
+            AvailableSlots: 4,
+            SuggestedPerSlot: null,
+            Notes: null);
+
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+        _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        item.AvailableSlots.Should().Be(4);
+        item.SuggestedPerSlot.Should().Be(2); // preserved from original
+    }
+
+    [Fact]
+    public async Task Handle_WhenItemIsSlotBased_ButTargetQuantitySent_ShouldReturnExplicitFailure()
+    {
+        // Arrange
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddSlotBasedItem(
+            itemDescription: "Salmon Curry",
+            availableSlots: 3,
+            suggestedPerSlot: null,
+            itemCategory: SignUpItemCategory.Mandatory).Value;
+
+        var command = new UpdateSignUpItemCommand(
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Salmon Curry",
+            TargetQuantity: 5,
+            AvailableSlots: null,
+            SuggestedPerSlot: null,
+            Notes: null);
+
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Contains("slot-based") && e.Contains("AvailableSlots"));
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenItemIsQuantityBased_ButAvailableSlotsSent_ShouldReturnExplicitFailure()
+    {
+        // Arrange
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddItem("Rice", 5, SignUpItemCategory.Mandatory).Value;
+
+        var command = new UpdateSignUpItemCommand(
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Rice",
+            TargetQuantity: null,
+            AvailableSlots: 5,
+            SuggestedPerSlot: null,
+            Notes: null);
+
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Contains("quantity-based") && e.Contains("TargetQuantity"));
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenItemIsSlotBased_ReducingBelowFilled_ShouldReturnDomainFailure()
+    {
+        // Arrange
+        var (ev, list) = CreateEventWithList();
+        var item = list.AddSlotBasedItem(
+            itemDescription: "Half Trays",
+            availableSlots: 5,
+            suggestedPerSlot: 2,
+            itemCategory: SignUpItemCategory.Mandatory).Value;
+        item.AddSlotCommitment(Guid.NewGuid(), slotsClaimed: 3);
+
+        var command = new UpdateSignUpItemCommand(
+            ev.Id, list.Id, item.Id,
+            ItemDescription: "Half Trays",
+            TargetQuantity: null,
+            AvailableSlots: 2, // below filled (3)
+            SuggestedPerSlot: null,
+            Notes: null);
+
+        _mockEventRepository.Setup(x => x.GetByIdAsync(ev.Id, It.IsAny<CancellationToken>())).ReturnsAsync(ev);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Contains("Cannot reduce slots below filled amount"));
+        _mockUnitOfWork.Verify(x => x.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

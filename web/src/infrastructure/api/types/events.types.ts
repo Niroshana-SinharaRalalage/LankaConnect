@@ -1205,13 +1205,19 @@ export interface AddSignUpItemRequest {
 }
 
 /**
- * Update sign-up item request
- * Phase 6A.14: Edit Sign-Up Item feature
- * Matches backend UpdateSignUpItemRequest
+ * Update sign-up item request.
+ * Phase 6A.14: Edit Sign-Up Item feature.
+ * Phase 6A.131: Supports both quantity-based and slot-based items.
+ *
+ * Send `targetQuantity` for quantity-based items; send `availableSlots` (and optionally
+ * `suggestedPerSlot`) for slot-based items. The server uses the loaded item's type as the
+ * authority — sending the wrong field returns HTTP 400 with an explicit message.
  */
 export interface UpdateSignUpItemRequest {
   itemDescription: string;
-  quantity: number;
+  targetQuantity?: number | null;
+  availableSlots?: number | null;
+  suggestedPerSlot?: number | null;
   notes?: string | null;
 }
 

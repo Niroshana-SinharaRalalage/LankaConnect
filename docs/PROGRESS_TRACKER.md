@@ -1,7 +1,49 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-19 - Phase 7C.1 end-to-end (backend + frontend) — venue name + optional secondary location shipped to staging*
+*Last Updated: 2026-04-20 - Phase 7D.1 Phase A — SignUpKind discriminator shipped to staging, migration applied*
 
-## 🎯 Current Session Status (2026-04-19 — Phase 7C.1 Venue Name + Secondary Location)
+## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase A: Volunteer Signup domain + migration)
+
+### Phase 7D.1 Phase A — SignUpKind Discriminator (Volunteer Signup reuses SignUpList aggregate)
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commit `ddd946d2` shipped via deploy run `24646994787` (success). Migration `20260420023008_AddSignUpKindDiscriminator` applied atomically — deploy log shows `Applying migration '20260420023008_AddSignUpKindDiscriminator'` → `Done.` on the EF Migrations step. Two staging events with pre-existing signup lists (`4378a7d9-280e-4322-9ca2-a17e27061ae8`, `d9fa9a8e-2b54-47b2-bb24-09ee6f8dd656`) respond HTTP 200 on `GET /api/events/{id}/signups` — EF's SELECT includes the new `kind` column per the updated `SignUpListConfiguration`, so HTTP 200 is proof the column exists in the DB (a missing column would raise Postgres 42703 → EF throws → 500). The `kind` field is intentionally absent from the JSON response on purpose — `SignUpListDto.Kind` is deferred to Phase B8; Phase A is domain + schema only.
+
+**Scope**: Architect-approved **Option A′** — reuse the existing `SignUpList` aggregate with a `SignUpKind` discriminator (`Items=0`, `Volunteers=1`) rather than build a parallel `VolunteerList` aggregate. Volunteer-specific fields (shifts, skills) are YAGNI; refactor out only when real divergence arrives. The user-visible separation (dedicated organizer tab, dedicated public section, dedicated "Volunteer" nav button) is a presentation concern — no domain split needed. MEMORY.md records six prior silent-migration incidents; a parallel aggregate would triple the migration surface in an already-fragile area.
+
+**Changes (commit `ddd946d2`)**:
+| Layer | Files | Description |
+|-------|-------|-------------|
+| Domain | [SignUpKind.cs](../src/LankaConnect.Domain/Events/Enums/SignUpKind.cs) (new) | Enum `{ Items = 0, Volunteers = 1 }`. |
+| Domain | [SignUpList.cs](../src/LankaConnect.Domain/Events/Entities/SignUpList.cs) | New `Kind` property (defaults `Items` for back-compat). New `CreateVolunteerList` named factory that rejects quantity items (Volunteer lists are slot-only — 1 volunteer = 1 slot). Existing `Create` / `CreateWithCategoriesAndItems` unchanged. Kind invariant asserted on `AddItem` / `AddOpenItem`. Domain event raise path passes `Kind: Kind`. |
+| Domain | [Event.cs](../src/LankaConnect.Domain/Events/Event.cs#L1705) | `AddSignUpList` uniqueness changed from `Category` alone to `(Kind, Category)` — organizers can now run an Items list and a Volunteers list that happen to share a category label. |
+| Domain | [UserCommittedToSignUpEvent.cs](../src/LankaConnect.Domain/Events/DomainEvents/UserCommittedToSignUpEvent.cs) | Added `SignUpKind Kind = SignUpKind.Items` (positional record with default — preserves existing callers). Downstream email/WhatsApp handlers can now branch on `Kind` (wiring lands in Phase C). |
+| Domain | [SignUpItem.cs](../src/LankaConnect.Domain/Events/Entities/SignUpItem.cs) | `AddCommitment` / `AddSlotCommitment` accept `SignUpKind kind = SignUpKind.Items` and forward it on the raised domain event. Default param preserves back-compat for every non-volunteer caller. |
+| Application | [CommitToSignUpItemCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CommitToSignUpItem/CommitToSignUpItemCommandHandler.cs), [CommitToSignUpItemAnonymousCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CommitToSignUpItemAnonymous/CommitToSignUpItemAnonymousCommandHandler.cs) | Both handlers pass `kind: signUpList.Kind` through every AddCommitment / AddSlotCommitment call — routes the discriminator from list → item → domain event without a denormalised column. |
+| Infra | [SignUpListConfiguration.cs](../src/LankaConnect.Infrastructure/Data/Configurations/SignUpListConfiguration.cs) | `builder.Property(s => s.Kind).HasColumnName("kind").HasConversion<int>().HasDefaultValue(SignUpKind.Items).IsRequired()`. Stored as int (not string) for compact indexing in the future composite (event_id, kind, category) constraint. `HasDefaultValue(0)` pairs with the DB DEFAULT — defence-in-depth per MEMORY 6A.123 (any INSERT path that somehow skips the property still gets a valid value). Deliberately **not** `builder.Ignore`-ed (MEMORY 6A.123 — NOT NULL + Ignore = silent INSERT failure). |
+| Migration | [20260420023008_AddSignUpKindDiscriminator.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260420023008_AddSignUpKindDiscriminator.cs) + `.Designer.cs` | EF-generated via `dotnet ef migrations add` (Phase 6A.133 `.Designer.cs` companion present ✓, timestamp has nonzero seconds `023008` ✓, reversible `Down()` drops column). `AddColumn<int>("kind", schema: "events", table: "sign_up_lists", nullable: false, defaultValue: 0)`. |
+| Tests | [SignUpListVolunteerTests.cs](../tests/LankaConnect.Domain.Tests/Events/Entities/SignUpListVolunteerTests.cs) (new, 13 tests), [EventSignUpListUniquenessTests.cs](../tests/LankaConnect.Domain.Tests/Events/EventSignUpListUniquenessTests.cs) (new, 4 tests) | Covers: `CreateVolunteerList` factory sets `Kind=Volunteers`; volunteer lists reject quantity items; volunteer slot commitment raises `UserCommittedToSignUpEvent` with `Kind=Volunteers`; items list raises with `Kind=Items` by default; `(Kind, Category)` uniqueness passes when kinds differ, fails when they match (case-insensitive). **17/17 pass.** Pre-existing unrelated failures (`FormResponseTests.UpdateAnswer_Should_Succeed`, `DonationConfigurationTests.Create_WithMinGreaterThanMax_Should_Fail`) confirmed via git log to predate this work. |
+
+**Staging evidence**:
+- Deploy run `24646994787` (SHA `ddd946d2`) — workflow status `completed|success`.
+- EF Migrations job log: `Applying migration '20260420023008_AddSignUpKindDiscriminator'.` … `Done.` (quoted verbatim from `gh run view`).
+- Staging smoke: token via `POST /api/Auth/login` (niroshhh@gmail.com) → `accessToken` length 773 → `GET /api/events/{id}/signups` on 2 events-with-existing-signup-lists both return 200 with existing DTO shape unchanged — migration silently applied with zero regression to existing Items-kind data.
+
+**Why this is durable**:
+- Positional record default (`Kind = SignUpKind.Items`) on `UserCommittedToSignUpEvent` means no existing caller changes — zero ripple effect in handler signatures / tests.
+- EF `HasDefaultValue(SignUpKind.Items)` **plus** DB `DEFAULT 0` = two layers of defence-in-depth against the MEMORY 6A.123 NOT-NULL-silent-INSERT class of bug.
+- Invariant "volunteer lists contain only slot-based items" lives in one place (the `CreateVolunteerList` factory + `AddItem` guard), not scattered `if (kind == Volunteers)` branches across the codebase.
+- The domain event carries `Kind` by value — downstream email/WhatsApp routing in Phase C doesn't need to re-query the list.
+- Existing `(Category)` uniqueness was **domain-level only** (no DB unique index) — so changing it to `(Kind, Category)` requires no DDL, only the domain guard update. Phase A's migration is column-only.
+
+**Follow-up**:
+- **Phase B7–B10** (next): extend `CreateSignUpListWithItemsCommand` with `Kind`, add thin `CreateVolunteerListCommand` wrapper, extend `GetEventSignUpListsQuery` with optional `kind` filter, add `Kind` to `SignUpListDto`, update `EventsController` for `?kind=Volunteers` query param + POST-body `Kind`. Then curl-smoke on staging.
+- **Phase C11–14**: email pipeline (volunteer confirmation/cancellation templates via inline-SQL migration per MEMORY 6A.129b, handler branching by `Kind`).
+- **Phase D15–17**: export services (volunteer labels on CSV/Excel, `VolunteersZip`/`VolunteersExcel` format enums).
+- **Phase E–G**: frontend types (string enum per MEMORY 6A.124), hooks, organizer UI (VolunteerListsTab + create/edit pages), public UI (nav button + section, conditional on `signUpLists.some(l => l.kind === 'Volunteers')`).
+- **Phase H**: E2E smoke on staging + doc updates.
+
+---
+
+## 🎯 Previous Session Status (2026-04-19 — Phase 7C.1 Venue Name + Secondary Location)
 
 ### Phase 7C.1 — Event Location Name + Optional Secondary Location (Parking Lot / Secondary Venue)
 

@@ -17,6 +17,13 @@ public record VenueLayoutDto
     public List<VenueZoneDto> Zones { get; init; } = new();
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+
+    /// <summary>
+    /// Slice 5 Chunk 5b: PostgreSQL xmin exposed so clients can send it back in the
+    /// <c>If-Match</c> header on PUT / PATCH / DELETE. Without this field the write
+    /// endpoints are not reachable from the frontend.
+    /// </summary>
+    public uint RowVersion { get; init; }
 }
 
 /// <summary>

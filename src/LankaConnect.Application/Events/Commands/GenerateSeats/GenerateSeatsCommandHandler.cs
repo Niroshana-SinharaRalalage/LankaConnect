@@ -80,6 +80,7 @@ public class GenerateSeatsCommandHandler : ICommandHandler<GenerateSeatsCommand,
             TotalCapacity = layout.TotalCapacity,
             CreatedAt = layout.CreatedAt,
             UpdatedAt = layout.UpdatedAt,
+            RowVersion = layout.RowVersion,
             Zones = layout.Zones.Select(z => new VenueZoneDto
             {
                 Id = z.Id,

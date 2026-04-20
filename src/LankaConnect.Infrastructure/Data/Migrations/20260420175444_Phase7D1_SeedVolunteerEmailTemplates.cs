@@ -24,7 +24,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Cloned from template-signup-list-commitment-confirmation; wording relabeled.
             migrationBuilder.Sql(@"
                 INSERT INTO communications.email_templates
-                    (id, name, description, subject_template, text_template, html_template,
+                    (""Id"", name, description, subject_template, text_template, html_template,
                      type, category, is_active, tags, created_at)
                 SELECT
                     gen_random_uuid(),
@@ -52,7 +52,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
             // Phase 7D.1 Phase C: Seed volunteer commitment cancellation template
             migrationBuilder.Sql(@"
                 INSERT INTO communications.email_templates
-                    (id, name, description, subject_template, text_template, html_template,
+                    (""Id"", name, description, subject_template, text_template, html_template,
                      type, category, is_active, tags, created_at)
                 SELECT
                     gen_random_uuid(),

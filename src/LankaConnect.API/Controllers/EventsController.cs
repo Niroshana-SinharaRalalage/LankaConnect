@@ -1792,18 +1792,21 @@ public class EventsController : BaseController<EventsController>
     #region Sign-Up Lists Management
 
     /// <summary>
-    /// Get all sign-up lists for an event
-    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists
+    /// Get all sign-up lists for an event.
+    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists.
+    /// Phase 7D.1: Optional ?kind= filter — pass <c>Items</c> or <c>Volunteers</c>
+    /// to restrict results; omit for everything.
     /// </summary>
     [HttpGet("{id:guid}/signups")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<SignUpListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetEventSignUpLists(Guid id)
+    public async Task<IActionResult> GetEventSignUpLists(Guid id, [FromQuery] SignUpKind? kind = null)
     {
-        Logger.LogInformation("Getting sign-up lists for event {EventId}", id);
+        Logger.LogInformation("Getting sign-up lists for event {EventId} (KindFilter={KindFilter})",
+            id, kind?.ToString() ?? "All");
 
-        var query = new GetEventSignUpListsQuery(id);
+        var query = new GetEventSignUpListsQuery(id, kind);
         var result = await Mediator.Send(query);
 
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
@@ -1847,7 +1850,8 @@ public class EventsController : BaseController<EventsController>
             request.HasPreferredItems,
             request.HasSuggestedItems,
             items,
-            request.HasOpenItems); // Phase 6A.28: Open Items support
+            request.HasOpenItems, // Phase 6A.28: Open Items support
+            request.Kind);        // Phase 7D.1: Items (default) or Volunteers
 
         var result = await Mediator.Send(command);
 
@@ -3426,7 +3430,8 @@ public record CreateSignUpListRequest(
     bool HasPreferredItems,
     bool HasSuggestedItems,
     List<SignUpItemRequestDto> Items,
-    bool HasOpenItems = false); // Phase 6A.28: Open Items support
+    bool HasOpenItems = false,                // Phase 6A.28: Open Items support
+    SignUpKind Kind = SignUpKind.Items);      // Phase 7D.1: Items (default) or Volunteers
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 

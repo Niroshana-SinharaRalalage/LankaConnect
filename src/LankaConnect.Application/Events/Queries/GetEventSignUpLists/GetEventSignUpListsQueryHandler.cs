@@ -65,15 +65,20 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                 }
 
                 _logger.LogInformation(
-                    "GetEventSignUpLists: Event loaded - EventId={EventId}, Title={Title}, SignUpListCount={SignUpListCount}",
-                    @event.Id, @event.Title.Value, @event.SignUpLists.Count);
+                    "GetEventSignUpLists: Event loaded - EventId={EventId}, Title={Title}, SignUpListCount={SignUpListCount}, KindFilter={KindFilter}",
+                    @event.Id, @event.Title.Value, @event.SignUpLists.Count, request.Kind?.ToString() ?? "All");
 
-                var signUpListDtos = @event.SignUpLists.Select(signUpList => new SignUpListDto
+                var filteredLists = request.Kind.HasValue
+                    ? @event.SignUpLists.Where(l => l.Kind == request.Kind.Value)
+                    : @event.SignUpLists.AsEnumerable();
+
+                var signUpListDtos = filteredLists.Select(signUpList => new SignUpListDto
                 {
                     Id = signUpList.Id,
                     Category = signUpList.Category,
                     Description = signUpList.Description,
                     SignUpType = signUpList.SignUpType,
+                    Kind = signUpList.Kind,
 
                     // Legacy fields (for Open/Predefined sign-ups)
                     PredefinedItems = signUpList.PredefinedItems.ToList(),

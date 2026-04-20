@@ -10,6 +10,13 @@ public class SignUpListDto
     public string Description { get; set; } = string.Empty;
     public SignUpType SignUpType { get; set; }
 
+    /// <summary>
+    /// Phase 7D.1: Discriminator exposing whether this list is an Items collection
+    /// (Kind=Items) or a Volunteer roster (Kind=Volunteers). Volunteer lists are
+    /// always slot-based and never accept open items.
+    /// </summary>
+    public SignUpKind Kind { get; set; } = SignUpKind.Items;
+
     // Legacy fields (for Open/Predefined sign-ups)
     public List<string> PredefinedItems { get; set; } = new();
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();

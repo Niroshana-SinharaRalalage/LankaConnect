@@ -64,23 +64,21 @@ public class AttendeeInfoTests
     }
 
     [Theory]
-    [InlineData(null, "Address is required")]
-    [InlineData("", "Address is required")]
-    [InlineData("   ", "Address is required")]
-    public void Create_WithInvalidAddress_ShouldFail(string? address, string expectedError)
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_WithMissingAddress_ShouldSucceed(string? address)
     {
-        // Arrange
+        // Address is optional (E1): null/empty/whitespace all normalize to empty string.
         var name = "John Doe";
         var age = 30;
         var email = "test@example.com";
         var phone = "+1-614-555-1234";
 
-        // Act
         var result = AttendeeInfo.Create(name, age, address!, email, phone);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain(expectedError);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Address.Should().BeEmpty();
     }
 
     [Theory]

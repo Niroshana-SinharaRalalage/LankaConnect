@@ -301,7 +301,7 @@ export function EventRegistrationForm({
   // Phase 6A.43: Updated validation to use AgeCategory instead of age
   // GitHub Issue #30: Updated phone validation to require minimum 7 digits
   const errors = {
-    address: touched.address && !address.trim() ? 'Address is required' : '',
+    address: '',
     email: touched.email && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ? 'Valid email is required' : '',
     phoneNumber: touched.phoneNumber ? validatePhoneNumber(phoneNumber).error || '' : '',
     attendees: attendees.map((attendee, index) => {
@@ -318,7 +318,6 @@ export function EventRegistrationForm({
   // Phase 6A.43: Updated to validate AgeCategory instead of age
   // GitHub Issue #30: Use centralized phone validation
   const isFormValid =
-    address.trim() &&
     email.trim() &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
     isValidPhoneNumber(phoneNumber) &&
@@ -660,7 +659,7 @@ export function EventRegistrationForm({
           {/* Address */}
           <div className="mb-4">
             <label className="block text-sm font-medium mb-2 text-neutral-700">
-              Address <span className="text-red-500">*</span>
+              Address <span className="text-xs text-neutral-500 font-normal">(optional)</span>
             </label>
             <Input
               type="text"
@@ -768,7 +767,7 @@ export function EventRegistrationForm({
           {/* Address - Pre-filled but editable */}
           <div>
             <label className="block text-sm font-medium mb-2 text-neutral-700">
-              Address <span className="text-red-500">*</span>
+              Address <span className="text-xs text-neutral-500 font-normal">(optional)</span>
             </label>
             <Input
               type="text"

@@ -1,7 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 - Phase 7D.1 Phase B — Volunteer API surface live on staging*
+*Last Updated: 2026-04-20 — E1 attendee address optional; Phase C parked for PR-B*
 
-## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase B: Volunteer signup Application + API)
+## 🎯 Current Session Status (2026-04-20 — E1: attendee address → optional)
+
+### E1 — Remove required-address blocker on anonymous event registration
+
+**Status**: 🚧 **CODE COMPLETE LOCALLY — READY FOR COMMIT** — Anonymous event registration was rejecting submissions with a blank `address` because `AttendeeInfo.Create` enforced `!IsNullOrWhiteSpace(address)`. Domain VO now treats address as optional (null/""/whitespace → empty string on the entity); frontend form no longer blocks submit on missing address and relabels the field `(optional)`.
+
+**Scope**: Single-layer domain fix + one test flip + one frontend form tweak. No DB change, no migration, no command/handler/controller change, no API contract change (the request DTO already had `Address?` as `string?`, and the RegisterAnonymousAttendeeCommandHandler already passed `request.Address ?? string.Empty` into `AttendeeInfo.Create` — the domain VO was the only blocker).
+
+**Changes**:
+| Layer | File | Change |
+|---|---|---|
+| Domain | [AttendeeInfo.cs](../src/LankaConnect.Domain/Events/ValueObjects/AttendeeInfo.cs) | Removed the `IsNullOrWhiteSpace(address) → Failure("Address is required")` branch from `Create`. Success path now writes `string.IsNullOrWhiteSpace(address) ? string.Empty : address.Trim()` into the VO — null/empty/whitespace all normalise to `""` without losing the trim behaviour for real values. |
+| Tests | [AttendeeInfoTests.cs](../tests/LankaConnect.Infrastructure.Tests/Domain/Events/ValueObjects/AttendeeInfoTests.cs) | Flipped `Create_WithInvalidAddress_ShouldFail` to `Create_WithMissingAddress_ShouldSucceed` (null/""/whitespace all succeed with `Address == ""`). Positive-path test for valid addresses unchanged. |
+| Frontend | [EventRegistrationForm.tsx](../web/src/presentation/components/features/events/EventRegistrationForm.tsx) | `errors.address` always `''` (no more `'Address is required'`); `isFormValid` no longer requires `address.trim()`; two label sites changed from `Address <span class="text-red-500">*</span>` to `Address <span class="text-xs text-neutral-500 font-normal">(optional)</span>`. |
+| Docs | [MASTER_TODO_E1_PHASE_C.md](./MASTER_TODO_E1_PHASE_C.md) (new) | Master TODO covering PR-A (E1) + PR-B (Phase C) — mirrors in-session TodoWrite so future sessions can pick up cleanly. |
+
+**Architect-approved plan**: sequenced as two separate PRs. PR-A (E1, this entry) ships alone — orthogonal to Phase C (`AttendeeInfo`/`EventRegistrationForm` vs `SignUpItem`/`SignUpList`/sign-up UI), no shared files, small blast radius, user-facing blocker. PR-B (Phase C drag-drop reorder, C1–C7+D) starts only once PR-A is green on staging.
+
+**Tests**: 17/17 `AttendeeInfoTests` pass; 262/262 Infrastructure.Tests pass; 2151/2151 Application.Tests pass.
+
+**Why durable**: domain VO carries the null-safe normalisation so every path (legacy `AttendeeInfo` flow + new `RegistrationContact` VO which already supported optional address) converges on the same empty-string representation — no downstream string-null-vs-empty divergence. Trimming behaviour preserved for real addresses. The request DTO chain was already `string?` end-to-end, so there's no API contract change to announce.
+
+**Follow-up**: commit + push → `deploy-staging.yml` + `deploy-ui-staging.yml` → curl anonymous-registration smoke (empty-address payload → 200) → browser smoke (label shows "(optional)", blank submit works) → Azure log check. Then start PR-B at C4 per [MASTER_TODO_E1_PHASE_C.md](./MASTER_TODO_E1_PHASE_C.md).
+
+---
+
+## ⏸️ Previous Session Status (2026-04-20 — Phase 7D.1 Phase B: Volunteer signup Application + API)
 
 ### Phase 7D.1 Phase B — Kind-aware commands, query filter, controller
 

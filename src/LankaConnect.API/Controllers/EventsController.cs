@@ -70,6 +70,7 @@ using LankaConnect.Application.Events.Commands.UpdateSignUpList;
 using LankaConnect.Application.Events.Commands.AddSignUpItem;
 using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
+using LankaConnect.Application.Events.Commands.ReorderSignUpItems;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
 using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
@@ -1990,6 +1991,35 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.132: Reorder all items in a sign-up list. The client sends the full ordered ID
+    /// list; the aggregate enforces exact-set equality (missing/extra/duplicate/unknown IDs all 400).
+    /// Works for both Items and Volunteers Kind — the API is Kind-agnostic.
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}/items/reorder")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReorderSignUpItems(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] ReorderSignUpItemsRequest request)
+    {
+        Logger.LogInformation(
+            "Reordering {Count} items in sign-up list {SignUpId} for event {EventId}",
+            request?.OrderedItemIds?.Count ?? 0, signupId, eventId);
+
+        var command = new ReorderSignUpItemsCommand(
+            eventId,
+            signupId,
+            request?.OrderedItemIds ?? Array.Empty<Guid>());
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// User commits to bringing a specific item from a category-based sign-up list
     /// </summary>
     [HttpPost("{eventId:guid}/signups/{signupId:guid}/items/{itemId:guid}/commit")]
@@ -3471,6 +3501,12 @@ public record AddSignUpItemRequest(
     int? AvailableSlots = null,
     int? SuggestedPerSlot = null,
     string? Notes = null);
+
+/// <summary>
+/// Phase 6A.132: Request body for reordering sign-up items. Must contain the complete ordered list
+/// of item IDs — the aggregate rejects missing, extra, duplicate, or unknown IDs with HTTP 400.
+/// </summary>
+public record ReorderSignUpItemsRequest(IReadOnlyList<Guid> OrderedItemIds);
 
 /// <summary>
 /// Request to update a sign-up item.

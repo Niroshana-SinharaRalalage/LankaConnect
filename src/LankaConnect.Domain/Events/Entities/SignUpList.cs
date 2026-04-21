@@ -287,6 +287,8 @@ public class SignUpList : BaseEntity
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
         MarkAsUpdated();
 
@@ -321,6 +323,8 @@ public class SignUpList : BaseEntity
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
         MarkAsUpdated();
 
@@ -589,9 +593,64 @@ public class SignUpList : BaseEntity
         if (commitResult.IsFailure)
             return Result<SignUpItem>.Failure(commitResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        item.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(item);
         MarkAsUpdated();
 
         return Result<SignUpItem>.Success(item);
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Reorders items by assigning new <see cref="SignUpItem.DisplayOrder"/>
+    /// values according to the supplied <paramref name="orderedItemIds"/> sequence (index 0 =
+    /// first item). Enforces exact set equality: the supplied IDs must match the current item
+    /// set one-to-one. Missing, extra, duplicate, or unknown IDs all return failure so the
+    /// frontend can render a clear error and re-fetch. Raises
+    /// <see cref="SignUpItemsReorderedEvent"/> on success.
+    /// </summary>
+    public Result ReorderItems(IReadOnlyList<Guid> orderedItemIds)
+    {
+        if (orderedItemIds == null)
+            return Result.Failure("Ordered item IDs are required");
+
+        if (orderedItemIds.Count == 0)
+            return Result.Failure("Ordered item IDs cannot be empty");
+
+        if (orderedItemIds.Distinct().Count() != orderedItemIds.Count)
+            return Result.Failure("Ordered item IDs must not contain duplicates");
+
+        if (orderedItemIds.Count != _items.Count)
+            return Result.Failure($"Expected {_items.Count} item IDs but received {orderedItemIds.Count}");
+
+        var currentIds = _items.Select(i => i.Id).ToHashSet();
+        var submittedIds = orderedItemIds.ToHashSet();
+        if (!currentIds.SetEquals(submittedIds))
+            return Result.Failure("Ordered item IDs do not match the items in this sign-up list");
+
+        for (int position = 0; position < orderedItemIds.Count; position++)
+        {
+            var item = _items.First(i => i.Id == orderedItemIds[position]);
+            item.SetDisplayOrder(position);
+        }
+
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new SignUpItemsReorderedEvent(
+            Id,
+            orderedItemIds.ToList().AsReadOnly(),
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Next DisplayOrder to assign when appending a new item.
+    /// Leaves gaps from deleted items intact — we never reuse positions, which keeps
+    /// ordering stable across concurrent adds and removes.
+    /// </summary>
+    private int GetNextDisplayOrder()
+    {
+        return _items.Count == 0 ? 0 : _items.Max(i => i.DisplayOrder) + 1;
     }
 }

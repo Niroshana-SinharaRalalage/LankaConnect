@@ -32,6 +32,14 @@ public class SignUpItem : BaseEntity
     /// </summary>
     public Guid? CreatedByUserId { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.132: Position of this item within its sign-up list. Lower values render first.
+    /// Assigned and mutated only by the owning <see cref="SignUpList"/> aggregate — callers
+    /// go through <c>AddItem</c>/<c>AddSlotBasedItem</c>/<c>AddOpenItem</c> (append at tail)
+    /// or <c>ReorderItems</c> (batch reassign). Never set by factories or the API layer.
+    /// </summary>
+    public int DisplayOrder { get; private set; }
+
     public IReadOnlyList<SignUpCommitment> Commitments => _commitments.AsReadOnly();
 
     /// <summary>
@@ -761,5 +769,19 @@ public class SignUpItem : BaseEntity
         MarkAsUpdated();
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Internal setter for <see cref="DisplayOrder"/>. Only the owning
+    /// <see cref="SignUpList"/> aggregate may call this — it's the authority on ordering.
+    /// Negative values are rejected so a misuse surfaces loudly rather than silently
+    /// corrupting order.
+    /// </summary>
+    internal void SetDisplayOrder(int displayOrder)
+    {
+        if (displayOrder < 0)
+            throw new ArgumentOutOfRangeException(nameof(displayOrder), "DisplayOrder must be non-negative");
+
+        DisplayOrder = displayOrder;
     }
 }

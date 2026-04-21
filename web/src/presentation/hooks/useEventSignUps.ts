@@ -526,6 +526,80 @@ export function useUpdateSignUpItem() {
  * });
  * ```
  */
+/**
+ * Phase 6A.132: Mutation hook for reordering all items within a sign-up list.
+ *
+ * The aggregate enforces exact-set equality: `orderedItemIds` must be the complete
+ * current set, with no duplicates, missing, or unknown IDs — otherwise HTTP 400 and
+ * the cache is invalidated so the UI resyncs. Optimistically reorders the cached
+ * items so the drop feels instant; rolls back on error.
+ *
+ * @example
+ * ```tsx
+ * const reorder = useReorderSignUpItems();
+ * await reorder.mutateAsync({ eventId, signupId, orderedItemIds: newOrder });
+ * ```
+ */
+export function useReorderSignUpItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      signupId,
+      orderedItemIds,
+    }: {
+      eventId: string;
+      signupId: string;
+      orderedItemIds: string[];
+    }) => eventsRepository.reorderSignUpItems(eventId, signupId, orderedItemIds),
+    onMutate: async ({ eventId, signupId, orderedItemIds }) => {
+      await queryClient.cancelQueries({ queryKey: signUpKeys.list(eventId) });
+
+      const previousSignUps = queryClient.getQueryData<SignUpListDto[]>(
+        signUpKeys.list(eventId)
+      );
+
+      queryClient.setQueryData<SignUpListDto[]>(signUpKeys.list(eventId), (old) => {
+        if (!old) return old;
+
+        return old.map((signUp) => {
+          if (signUp.id !== signupId) return signUp;
+
+          const positionById = new Map(orderedItemIds.map((id, index) => [id, index]));
+          const reorderedItems = [...signUp.items]
+            .map((item, originalIndex) => ({ item, originalIndex }))
+            .sort((a, b) => {
+              const ai = positionById.get(a.item.id);
+              const bi = positionById.get(b.item.id);
+              if (ai === undefined && bi === undefined) return a.originalIndex - b.originalIndex;
+              if (ai === undefined) return 1;
+              if (bi === undefined) return -1;
+              return ai - bi;
+            })
+            .map(({ item }, newIndex) => ({ ...item, displayOrder: newIndex }));
+
+          return { ...signUp, items: reorderedItems };
+        });
+      });
+
+      return { previousSignUps };
+    },
+    onError: (err, { eventId }, context) => {
+      if (context?.previousSignUps) {
+        queryClient.setQueryData(signUpKeys.list(eventId), context.previousSignUps);
+      }
+    },
+    onSettled: (_data, _err, variables) => {
+      // Always refetch so server order (and DisplayOrder values) wins. onSettled catches
+      // both success and error — on error the rollback is visible immediately and the
+      // refetch confirms server truth.
+      queryClient.invalidateQueries({ queryKey: signUpKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+  });
+}
+
 export function useRemoveSignUpItem() {
   const queryClient = useQueryClient();
 

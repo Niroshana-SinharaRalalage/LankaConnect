@@ -29,6 +29,7 @@ const slotItem: SlotBasedItemDto = {
   itemCategory: SignUpItemCategory.Mandatory,
   itemType: SignUpItemType.Slot,
   notes: null,
+  displayOrder: 0,
   commitments: [],
   isFullyCommitted: false,
   isOpenItem: false,

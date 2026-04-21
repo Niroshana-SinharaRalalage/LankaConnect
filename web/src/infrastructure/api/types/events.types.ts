@@ -632,6 +632,8 @@ interface SignUpItemDtoBase {
   isOpenItem: boolean;
   /** Phase 6A.27: User ID who created this item (only for Open items) */
   createdByUserId?: string | null;
+  /** Phase 6A.132: Render order within the list (0-based, ascending). */
+  displayOrder: number;
 }
 
 /**

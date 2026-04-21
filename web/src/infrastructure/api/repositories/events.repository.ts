@@ -744,6 +744,24 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.132: Reorder all items in a sign-up list.
+   * The aggregate enforces exact-set equality: every current item ID must appear in
+   * orderedItemIds exactly once. 400 on missing/extra/duplicate/unknown IDs — the
+   * caller should refetch to resync on failure.
+   * Organizer-only. Maps to backend PUT /api/events/{eventId}/signups/{signupId}/items/reorder
+   */
+  async reorderSignUpItems(
+    eventId: string,
+    signupId: string,
+    orderedItemIds: string[]
+  ): Promise<void> {
+    await apiClient.put<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/items/reorder`,
+      { orderedItemIds }
+    );
+  }
+
+  /**
    * User commits to bringing a specific item
    * Maps to backend POST /api/events/{eventId}/signups/{signupId}/items/{itemId}/commit
    */

@@ -35,8 +35,28 @@ import {
   useAddOpenSignUpItemAnonymous,
   useUpdateOpenSignUpItem,
   useCancelOpenSignUpItem,
+  // Phase 6A.132: Drag-drop reorder
+  useReorderSignUpItems,
 } from '@/presentation/hooks/useEventSignUps';
 import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, SignUpKind, isQuantityBased } from '@/infrastructure/api/types/events.types';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -163,6 +183,41 @@ interface SignUpManagementSectionProps {
 }
 
 /**
+ * Phase 6A.132: dnd-kit requires `useSortable` to be called per-item, and React
+ * hooks cannot be called in a loop inside the parent component. This wrapper
+ * moves the hook out, and exposes the sortable primitives via a render prop so
+ * the large per-item JSX can continue to close over its parent-scope helpers
+ * (modals, mutations, labels) without hoisting them into props.
+ */
+interface SortableSignUpItemProps {
+  id: string;
+  disabled: boolean;
+  children: (args: {
+    setNodeRef: (node: HTMLElement | null) => void;
+    style: React.CSSProperties;
+    attributes: ReturnType<typeof useSortable>['attributes'];
+    listeners: ReturnType<typeof useSortable>['listeners'];
+    isDragging: boolean;
+  }) => React.ReactNode;
+}
+
+function SortableSignUpItem({ id, disabled, children }: SortableSignUpItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return <>{children({ setNodeRef, style, attributes, listeners, isDragging })}</>;
+}
+
+/**
  * SignUpManagementSection Component
  */
 export function SignUpManagementSection({
@@ -244,6 +299,16 @@ export function SignUpManagementSection({
   const addOpenSignUpItemAnonymous = useAddOpenSignUpItemAnonymous();
   const updateOpenSignUpItem = useUpdateOpenSignUpItem();
   const cancelOpenSignUpItem = useCancelOpenSignUpItem();
+
+  // Phase 6A.132: Drag-drop reorder (organizer-only)
+  const reorderSignUpItems = useReorderSignUpItems();
+
+  // Phase 6A.132: dnd-kit sensors — 8px activation distance lets clicks on
+  // non-handle regions still work; keyboard coordinate getter enables a11y.
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Auth store for user info
   const { user } = useAuthStore();
@@ -747,19 +812,77 @@ export function SignUpManagementSection({
                     );
                     const openItems = signUpList.items.filter(item => item.isOpenItem);
 
+                    // Phase 6A.132: Drag-drop reorder handler — operates on a single category
+                    // (Mandatory, Suggested, Open) but the backend enforces exact-set equality
+                    // across the whole list, so we merge the reordered sub-sequence back into
+                    // the full ordered item array before sending.
+                    const makeHandleCategoryDragEnd = (categoryItems: SignUpItemDto[]) =>
+                      (event: DragEndEvent) => {
+                        const { active, over } = event;
+                        if (!over || active.id === over.id) return;
+                        const oldIndex = categoryItems.findIndex(i => i.id === active.id);
+                        const newIndex = categoryItems.findIndex(i => i.id === over.id);
+                        if (oldIndex === -1 || newIndex === -1) return;
+                        const reorderedCategory = arrayMove(categoryItems, oldIndex, newIndex);
+                        const categoryIdSet = new Set(categoryItems.map(i => i.id));
+                        const reorderedIter = reorderedCategory[Symbol.iterator]();
+                        const orderedItemIds = signUpList.items.map(fullItem =>
+                          categoryIdSet.has(fullItem.id)
+                            ? (reorderedIter.next().value as SignUpItemDto).id
+                            : fullItem.id
+                        );
+                        reorderSignUpItems.mutate(
+                          { eventId, signupId: signUpList.id, orderedItemIds },
+                          {
+                            onError: (err: Error) => {
+                              toast.error(err.message || 'Reorder failed. Please try again.');
+                            },
+                          }
+                        );
+                      };
+
                     // Helper function to render items for a category
                     const renderCategoryItems = (items: SignUpItemDto[], category: SignUpItemCategory) => (
-                      <div className="space-y-3">
-                        {items.map((item) => {
-                            const userItemCommitment = item.commitments.find(c => c.userId === userId);
-                            const totalQty = isQuantityBased(item) ? item.targetQuantity : item.totalSlots;
-                            const committedQty = isQuantityBased(item) ? item.committedQuantity : item.filledSlots;
-                            const remainingQty = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
-                            const percentCommitted = Math.round((committedQty / totalQty) * 100);
-                            const isExpanded = expandedItems.has(item.id);
+                      <DndContext
+                        sensors={dragSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={makeHandleCategoryDragEnd(items)}
+                      >
+                        <SortableContext
+                          items={items.map(i => i.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-3">
+                            {items.map((item) => {
+                              const userItemCommitment = item.commitments.find(c => c.userId === userId);
+                              const totalQty = isQuantityBased(item) ? item.targetQuantity : item.totalSlots;
+                              const committedQty = isQuantityBased(item) ? item.committedQuantity : item.filledSlots;
+                              const remainingQty = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
+                              const percentCommitted = Math.round((committedQty / totalQty) * 100);
+                              const isExpanded = expandedItems.has(item.id);
 
-                            return (
-                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
+                              return (
+                                <SortableSignUpItem key={item.id} id={item.id} disabled={!isOrganizer}>
+                                  {({ setNodeRef, style, attributes, listeners, isDragging }) => (
+                                    <div
+                                      ref={setNodeRef}
+                                      style={style}
+                                      className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)} ${isDragging ? 'opacity-60 ring-2 ring-orange-400 shadow-lg' : ''}`}
+                                    >
+                                      {/* Phase 6A.132: Drag handle — organizer-only. touch-none
+                                          keeps mobile pointer events from scrolling the page during drag. */}
+                                      {isOrganizer && (
+                                        <button
+                                          type="button"
+                                          {...attributes}
+                                          {...listeners}
+                                          aria-label={`Drag to reorder ${item.itemDescription}`}
+                                          className="inline-flex items-center gap-1 rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 cursor-grab active:cursor-grabbing touch-none"
+                                        >
+                                          <GripVertical className="h-4 w-4" />
+                                          <span className="sr-only">Drag to reorder</span>
+                                        </button>
+                                      )}
                                 {/* Phase 6A.118: Item Header - Always Visible */}
                                 <div className="flex items-start gap-2">
                                   <div className="flex-1 min-w-0">
@@ -888,10 +1011,14 @@ export function SignUpManagementSection({
                                     )}
                                   </>
                                 )}
-                              </div>
-                            );
-                          })}
-                      </div>
+                                    </div>
+                                  )}
+                                </SortableSignUpItem>
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     );
 
                     // Build tabs array (only non-empty categories)

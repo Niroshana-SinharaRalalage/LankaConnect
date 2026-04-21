@@ -106,7 +106,12 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     HasOpenItems = signUpList.HasOpenItems, // Phase 6A.27
                     // Phase 6A.123: Return typed DTOs (QuantityBasedItemDto or SlotBasedItemDto)
                     // so the frontend itemType discriminator works correctly.
-                    Items = signUpList.Items.Select(item =>
+                    // Phase 6A.132: OrderBy(DisplayOrder) then ItemDescription for a stable tiebreak
+                    // when pre-backfill rows still share DisplayOrder=0.
+                    Items = signUpList.Items
+                        .OrderBy(i => i.DisplayOrder)
+                        .ThenBy(i => i.ItemDescription)
+                        .Select(item =>
                     {
                         var commitments = item.Commitments.Select(c => new SignUpCommitmentDto
                         {
@@ -133,6 +138,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                                 ItemCategory = item.ItemCategory,
                                 Notes = item.Notes,
                                 CreatedByUserId = item.CreatedByUserId,
+                                DisplayOrder = item.DisplayOrder,
                                 TotalSlots = item.AvailableSlots ?? 0,
                                 FilledSlots = filledSlots,
                                 RemainingSlots = item.GetRemainingSlots(),
@@ -150,6 +156,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                                 ItemCategory = item.ItemCategory,
                                 Notes = item.Notes,
                                 CreatedByUserId = item.CreatedByUserId,
+                                DisplayOrder = item.DisplayOrder,
                                 TargetQuantity = item.TargetQuantity ?? 0,
                                 CommittedQuantity = committed,
                                 RemainingQuantity = item.GetRemainingQuantity(),

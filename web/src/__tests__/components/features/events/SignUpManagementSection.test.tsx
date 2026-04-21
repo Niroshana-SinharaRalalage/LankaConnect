@@ -54,6 +54,7 @@ vi.mock('@/presentation/hooks/useEventSignUps', () => ({
   useAddOpenSignUpItemAnonymous: () => mockMutation,
   useUpdateOpenSignUpItem: () => mockMutation,
   useCancelOpenSignUpItem: () => mockMutation,
+  useReorderSignUpItems: () => mockMutation,
 }));
 
 vi.mock('@/presentation/store/useAuthStore', () => ({

@@ -1,7 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — Phase 7D.1 Phase E (Frontend Types + Hooks + Labels prop) local-ready, about to push*
+*Last Updated: 2026-04-20 — WhatsApp RCA Fix 1+2+5 (skip-reason enum + unverified cohort metric) pushed, deploy-staging run 24699949763 in-flight*
 
-## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase E: Frontend Types, Hooks, Zod, Labels Prop)
+## 🎯 Current Session Status (2026-04-20 — WhatsApp: Skip Reason Enum + Unverified Cohort Metric)
+
+### WhatsApp RCA — Fix 1+2+5 (bundled domain slice)
+
+**Status**: ✅ **PUSHED** — commit `4428236b` on develop, deploy-staging run `24699949763` in-flight. 146 Application + 87 Domain + 23 Infrastructure WhatsApp tests green. Follow-up to Fix #0 (commit `33ccc542`: empty-string normalization in `updatePreferencesSchema` that unblocked the Save Preferences HTTP 400 → 200 regression verified against staging on 2026-04-20).
+
+**Goal (root-cause)**: Before this change, `UserWhatsAppPreferences.ShouldNotify()` returned bool and `WhatsAppService.cs:83` logged *every* skip as `"User {UserId} opted out of {NotificationType}"`. A user who enabled WhatsApp but never verified their phone was logged identically to a user who explicitly disabled a type, so the silent drop-off cohort was invisible in production telemetry. Fix 1 introduces an invariant (`IsFullyVerified` already existed — not duplicated), Fix 2 discriminates skip reasons, Fix 5 surfaces the unverified cohort count on the admin metrics endpoint.
+
+**Changes (9 files)**:
+- [src/LankaConnect.Domain/Communications/Enums/WhatsAppSkipReason.cs](../src/LankaConnect.Domain/Communications/Enums/WhatsAppSkipReason.cs) — new enum with 7 values (`GloballyDisabled`, `NoPreferences`, `WhatsAppDisabled`, `PhoneUnverified`, `TypeDisabled`, `MissingPhoneNumber`, `Deduplicated`).
+- [src/LankaConnect.Domain/Communications/Entities/UserWhatsAppPreferences.cs](../src/LankaConnect.Domain/Communications/Entities/UserWhatsAppPreferences.cs) — new `EvaluateSkipReason(type) → WhatsAppSkipReason?` returns the ROOT cause (`WhatsAppDisabled` > `PhoneUnverified` > `TypeDisabled`); `ShouldNotify` becomes thin facade `=> EvaluateSkipReason(type) is null` so all legacy callers compile unchanged. Deliberately reused existing `IsFullyVerified` property rather than adding redundant `EffectivelyEnabled`.
+- [src/LankaConnect.Application/Common/Interfaces/IWhatsAppService.cs](../src/LankaConnect.Application/Common/Interfaces/IWhatsAppService.cs) — `WhatsAppSendResult` gains optional `WhatsAppSkipReason? SkipReasonCode`; new `Skipped(code, reason)` factory with original `Skipped(reason)` retained for back-compat.
+- [src/LankaConnect.Infrastructure/WhatsApp/Services/WhatsAppService.cs](../src/LankaConnect.Infrastructure/WhatsApp/Services/WhatsAppService.cs) — all 5 skip branches now emit structured `SkipReason={SkipReason}` with the enum value; the `EvaluateSkipReason` call replaces the old `ShouldNotify` gate. New private `BuildSkipMessage` helper keeps the human-readable skip string consistent with the enum.
+- [src/LankaConnect.Domain/Communications/IUserWhatsAppPreferencesRepository.cs](../src/LankaConnect.Domain/Communications/IUserWhatsAppPreferencesRepository.cs) + [src/LankaConnect.Infrastructure/Data/Repositories/UserWhatsAppPreferencesRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/UserWhatsAppPreferencesRepository.cs) — new `GetUsersEnabledButUnverifiedCountAsync()` (AsNoTracking `CountAsync(p => p.WhatsAppEnabled && !p.PhoneVerified)` with stopwatch + structured logging pattern-matched on existing repo methods).
+- [src/LankaConnect.Application/Communications/WhatsApp/Queries/GetWhatsAppMetrics/GetWhatsAppMetricsQuery.cs](../src/LankaConnect.Application/Communications/WhatsApp/Queries/GetWhatsAppMetrics/GetWhatsAppMetricsQuery.cs) — `WhatsAppMetricsDto` exposes `UsersEnabledButUnverified`; handler injects `IUserWhatsAppPreferencesRepository` and calls the new count method.
+
+**Tests added**:
+- [tests/LankaConnect.Domain.Tests/Communications/UserWhatsAppPreferencesTests.cs](../tests/LankaConnect.Domain.Tests/Communications/UserWhatsAppPreferencesTests.cs) — 6 new `EvaluateSkipReason` tests: `WhatsAppDisabled` path, `PhoneUnverified` path, `TypeDisabled` path (explicit + out-of-range type), happy-path null, and an invariant test iterating every `WhatsAppNotificationType` enum value to assert `ShouldNotify(type) == (EvaluateSkipReason(type) == null)` so the facade can never silently drift.
+- [tests/LankaConnect.Application.Tests/Communications/WhatsApp/Queries/GetWhatsAppMetricsQueryHandlerTests.cs](../tests/LankaConnect.Application.Tests/Communications/WhatsApp/Queries/GetWhatsAppMetricsQueryHandlerTests.cs) — new `Handle_Includes_UsersEnabledButUnverified_From_Preferences_Repository` test verifying the handler forwards the count into the DTO.
+
+**Why durable**: the facade invariant test catches any future bool-vs-enum drift before code review. The enum values are explicitly numbered so adding new reasons (e.g. `QuietHours`, `RateLimited`) never renumbers existing ones. No DB migration this slice — skip-reason persistence on `WhatsAppMessageRecord` is deliberately deferred (skipped messages aren't written to DB today; adding that is a separate larger decision).
+
+**Next**: verify staging deploy succeeds (run `24699949763`), smoke-test `GET /api/whatsapp-admin/metrics` shows the new `usersEnabledButUnverified` field, inspect Azure container logs after a send attempt to confirm `SkipReason=PhoneUnverified` appears instead of "opted out". Then pick up Fix 3 (auto-request verification code on enable + profile-only unverified banner) and Fix 4 (30-day auto-disable scheduled job).
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — Phase 7D.1 Phase E: Frontend Types, Hooks, Zod, Labels Prop)
 
 ### Phase 7D.1 Phase E — TypeScript SignUpKind + kind-filtered useEventSignUps + volunteerListSchema + labels prop
 

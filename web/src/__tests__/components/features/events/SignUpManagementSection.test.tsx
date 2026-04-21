@@ -1,7 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
-import { SignUpListDto, SignUpItemDto, SignUpCommitmentDto, SignUpItemCategory, SignUpType, SignUpItemType } from '@/infrastructure/api/types/events.types';
+import {
+  SignUpManagementSection,
+  volunteerSectionLabels,
+} from '@/presentation/components/features/events/SignUpManagementSection';
+import {
+  SignUpListDto,
+  SignUpItemDto,
+  SignUpCommitmentDto,
+  SignUpItemCategory,
+  SignUpType,
+  SignUpItemType,
+  SignUpKind,
+} from '@/infrastructure/api/types/events.types';
+
+/**
+ * Phase 7D.1 Step G3: capture SignUpCommitmentModal props to verify the
+ * section threads hideQuantitySelector correctly for volunteer lists without
+ * opening the modal (which requires a click path through collapsed items).
+ *
+ * Single-responsibility spy — records last-received props for a targeted
+ * assertion. Does not replace real modal behaviour; other tests exercise
+ * the real modal with open=true.
+ */
+const modalPropsSpy: { last?: Record<string, unknown> } = {};
+vi.mock('@/presentation/components/features/events/SignUpCommitmentModal', async () => {
+  const actual = await vi.importActual<typeof import('@/presentation/components/features/events/SignUpCommitmentModal')>(
+    '@/presentation/components/features/events/SignUpCommitmentModal'
+  );
+  return {
+    ...actual,
+    SignUpCommitmentModal: (props: Record<string, unknown>) => {
+      modalPropsSpy.last = props;
+      return null;
+    },
+  };
+});
 
 // Mock the hooks used by SignUpManagementSection
 const mockUseEventSignUps = vi.fn();
@@ -24,6 +58,12 @@ vi.mock('@/presentation/hooks/useEventSignUps', () => ({
 
 vi.mock('@/presentation/store/useAuthStore', () => ({
   useAuthStore: () => ({ user: { userId: 'user-2' }, isAuthenticated: true }),
+}));
+
+// Phase 7D.1 Phase F added `useRouter()` to SignUpManagementSection for the
+// data-driven Edit button. Tests that render the section must mock it.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
 }));
 
 /**
@@ -383,5 +423,121 @@ describe('SignUpManagementSection - Phase 6A.118 Enhancements', () => {
 
     // Should show the item
     expect(screen.getByText('Homemade Cookies')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Phase 7D.1 Phase G — kind prop + hideQuantitySelector threading.
+ *
+ * These tests verify that when the section is mounted in Volunteers mode
+ * (kind + volunteer labels), the underlying SignUpCommitmentModal is asked
+ * to hide its quantity selector. The actual rendering behaviour of the
+ * modal with the prop is covered by SignUpCommitmentModal.labels.test.tsx.
+ */
+describe('SignUpManagementSection - Phase 7D.1 Phase G kind threading', () => {
+  const mockVolunteerRole: SignUpItemDto = {
+    id: 'role-1',
+    itemDescription: 'Food Committee',
+    itemType: SignUpItemType.Slot,
+    itemCategory: SignUpItemCategory.Mandatory,
+    notes: null,
+    commitments: [],
+    isFullyCommitted: false,
+    isOpenItem: false,
+    totalSlots: 5,
+    filledSlots: 0,
+    remainingSlots: 5,
+  } as SignUpItemDto;
+
+  const mockVolunteerList: SignUpListDto = {
+    id: 'vol-list-1',
+    category: 'Event Day Volunteers',
+    description: 'Sign up to help',
+    signUpType: SignUpType.Predefined,
+    hasMandatoryItems: true,
+    hasPreferredItems: false,
+    hasSuggestedItems: false,
+    hasOpenItems: false,
+    items: [mockVolunteerRole],
+    commitments: [],
+    predefinedItems: [],
+    commitmentCount: 0,
+    kind: SignUpKind.Volunteers,
+  } as SignUpListDto;
+
+  const mockItemsList: SignUpListDto = {
+    id: 'items-list-1',
+    category: 'Food & Supplies',
+    description: 'Bring items',
+    signUpType: SignUpType.Predefined,
+    hasMandatoryItems: true,
+    hasPreferredItems: false,
+    hasSuggestedItems: false,
+    hasOpenItems: false,
+    items: [mockVolunteerRole],
+    commitments: [],
+    predefinedItems: [],
+    commitmentCount: 0,
+    kind: SignUpKind.Items,
+  } as SignUpListDto;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    modalPropsSpy.last = undefined;
+  });
+
+  it('passes hideQuantitySelector=true to the modal when kind=Volunteers', () => {
+    mockUseEventSignUps.mockReturnValue({
+      data: [mockVolunteerList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <SignUpManagementSection
+        eventId="evt-1"
+        isOrganizer={false}
+        userId="user-2"
+        kind={SignUpKind.Volunteers}
+        labels={volunteerSectionLabels}
+      />
+    );
+
+    expect(modalPropsSpy.last).toBeDefined();
+    expect(modalPropsSpy.last?.hideQuantitySelector).toBe(true);
+  });
+
+  it('(regression guard) passes hideQuantitySelector=false/undefined to the modal when kind=Items', () => {
+    mockUseEventSignUps.mockReturnValue({
+      data: [mockItemsList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(
+      <SignUpManagementSection
+        eventId="evt-1"
+        isOrganizer={false}
+        userId="user-2"
+        kind={SignUpKind.Items}
+      />
+    );
+
+    expect(modalPropsSpy.last).toBeDefined();
+    // Must not be strictly true — undefined or false are both acceptable for Items mode.
+    expect(modalPropsSpy.last?.hideQuantitySelector).not.toBe(true);
+  });
+
+  it('(regression guard) passes hideQuantitySelector=false/undefined to the modal when kind is omitted (legacy callers)', () => {
+    mockUseEventSignUps.mockReturnValue({
+      data: [mockItemsList],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<SignUpManagementSection eventId="evt-1" isOrganizer={false} userId="user-2" />);
+
+    expect(modalPropsSpy.last).toBeDefined();
+    expect(modalPropsSpy.last?.hideQuantitySelector).not.toBe(true);
   });
 });

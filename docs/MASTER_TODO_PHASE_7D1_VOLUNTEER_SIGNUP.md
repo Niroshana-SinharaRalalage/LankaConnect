@@ -102,12 +102,15 @@
 
 ---
 
-## Phase G — Frontend Public UI ⏳ PENDING
+## Phase G — Frontend Public UI 🚧 IN PROGRESS (awaiting staging smoke)
 
-- [ ] **27.** Create `VolunteerListSection.tsx` (wraps `SignUpManagementSection` with kind filter + volunteer labels)
-- [ ] **28.** Add "Volunteer" nav button to [events/[id]/page.tsx#L744](../web/src/app/events/%5Bid%5D/page.tsx#L744) button array (conditional on `signUpLists.some(l => l.kind === 'Volunteers')`)
-- [ ] **29.** Add `<div id="volunteers">` + `<CollapsibleSection>` wrapping `VolunteerListSection` below existing sections
-- [ ] **30.** Commit + push → frontend staging deploy
+- [x] **G1–G5.** RED→GREEN: `hideQuantitySelector` prop on `SignUpCommitmentModal` + kind-conditional threading from `SignUpManagementSection` (14/14 Phase G tests green; 4 unrelated pre-existing Phase 6A.118 failures flagged separately — stash test confirmed 10→4 net-improvement)
+- [x] **G6/G7.** RED scope decision: page-level render tests skipped (cost/value — 2800-line page with 20+ hooks); coverage deferred to G3 kind-thread test + staging smoke in G11. Architect approved.
+- [x] **G8.** GREEN: edit [events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) — add `HandHeart` + `SignUpKind` + `volunteerSectionLabels` imports, page-scope `useEventSignUps(id, SignUpKind.Volunteers)` to derive `hasVolunteerLists`, insert conditional "Volunteer" nav button, add `kind={SignUpKind.Items}` to existing signup-lists mount, add new `<div id="volunteers">` CollapsibleSection mounting `<SignUpManagementSection kind={Volunteers} labels={volunteerSectionLabels}/>` (YAGNI: skipped `VolunteerListSection.tsx` wrapper — direct mount is clearer)
+- [x] **G9.** `tsc --noEmit` clean. Phase G vitest subset 14/14 green.
+- [ ] **G10.** Commit + push develop → watch deploy-ui-staging.yml (CURRENT)
+- [ ] **G11.** Staging smoke: (a) Volunteer nav button appears when volunteer lists exist; (b) scroll-to-section works; (c) Signup Lists no longer shows volunteer tabs (filtered by `kind=Items`); (d) volunteer modal renders "Volunteer for This Role" title with NO slots input; (e) submit decrements `remainingSlots` by 1 and commitment `quantity=1`; (f) cancel flow works
+- [ ] **G12.** Email smoke: confirmation email resolves `template-volunteer-commitment-confirmation` copy ("Thank you for volunteering")
 
 ---
 

@@ -1182,6 +1182,7 @@ export function SignUpManagementSection({
         onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
         labels={effectiveLabels.commitmentModal}
+        hideQuantitySelector={kind === SignUpKind.Volunteers}
       />
 
       {/* Phase 6A.27: Open Item Sign-Up Modal */}

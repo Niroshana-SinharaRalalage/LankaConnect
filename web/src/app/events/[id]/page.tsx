@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -10,7 +10,8 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
-import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
+import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
@@ -21,7 +22,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -282,6 +283,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 7.3: Fetch custom forms for this event
   const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
+
+  // Phase 7D.1 Phase G: page-scope volunteer-list probe used to gate the nav
+  // button + section. Separate query key per kind (see useEventSignUps) so it
+  // cannot collide with the kind-Items query mounted inside SignUpManagementSection.
+  const { data: volunteerLists, isFetched: volunteersFetched } = useEventSignUps(
+    id,
+    SignUpKind.Volunteers,
+  );
+  const hasVolunteerLists = volunteersFetched && (volunteerLists?.length ?? 0) > 0;
 
   // Filter to show only Active forms to attendees
   // Note: Backend sends enum as string ('Active'), frontend enum is numeric (1)
@@ -748,6 +758,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
                   { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
                   { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
+                  { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
                   { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
                   { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
                 ].filter(btn => btn.show).map(btn => (
@@ -2193,9 +2204,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               eventId={id}
               userId={user?.userId}
               isOrganizer={false}
+              kind={SignUpKind.Items}
             />
           </CollapsibleSection>
         </div>
+
+        {/* Phase 7D.1 Phase G: Volunteer Roles — dedicated section, separate from Signup Lists */}
+        {hasVolunteerLists && (
+          <div id="volunteers" className="mt-8">
+            <CollapsibleSection
+              title="Volunteer Roles"
+              icon={<HandHeart className="h-5 w-5 text-rose-600" />}
+              defaultOpen={false}
+            >
+              <SignUpManagementSection
+                eventId={id}
+                userId={user?.userId}
+                isOrganizer={false}
+                kind={SignUpKind.Volunteers}
+                labels={volunteerSectionLabels}
+              />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Signup Forms Section — CollapsibleSection */}
         <div id="signup-forms" className="mt-8">

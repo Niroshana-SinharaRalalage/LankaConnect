@@ -99,6 +99,13 @@ interface SignUpCommitmentModalProps {
    * Optional copy overrides. Omit to keep existing UX unchanged.
    */
   labels?: SignUpCommitmentLabels;
+  /**
+   * Phase 7D.1 Phase G: when true, hides the numeric quantity input and
+   * forces submissions to quantity=1. Used for volunteer signups where one
+   * commitment = one person. Defaults to false so every existing caller
+   * keeps the quantity selector unchanged (CLAUDE.md Section 3 guard).
+   */
+  hideQuantitySelector?: boolean;
 }
 
 export interface CommitmentFormData {
@@ -133,6 +140,7 @@ export function SignUpCommitmentModal({
   onCommitAnonymous,
   isSubmitting = false,
   labels,
+  hideQuantitySelector = false,
 }: SignUpCommitmentModalProps) {
   const effectiveLabels = labels ?? defaultSignUpCommitmentLabels;
   const { user } = useAuthStore();
@@ -212,12 +220,19 @@ export function SignUpCommitmentModal({
       newErrors.email = 'Invalid email format';
     }
 
-    if (quantity < 0) {
-      newErrors.quantity = 'Quantity cannot be negative';
-    }
+    // Phase 7D.1 Phase G: when hideQuantitySelector is true the submission is
+    // locked to quantity=1 and the user has no affordance to change it, so the
+    // <0 and >max checks are unreachable. Skipping them prevents spurious
+    // validation errors if an existing commitment ever persisted an
+    // out-of-range value.
+    if (!hideQuantitySelector) {
+      if (quantity < 0) {
+        newErrors.quantity = 'Quantity cannot be negative';
+      }
 
-    if (quantity > maxQuantity) {
-      newErrors.quantity = `Maximum ${maxQuantity} available`;
+      if (quantity > maxQuantity) {
+        newErrors.quantity = `Maximum ${maxQuantity} available`;
+      }
     }
 
     setErrors(newErrors);
@@ -244,6 +259,12 @@ export function SignUpCommitmentModal({
 
     setErrors({});
 
+    // Phase 7D.1 Phase G: volunteer signups are one-person-per-commitment.
+    // The quantity selector is hidden in that mode; the submit payload must
+    // always be 1 regardless of any stale state (e.g. prior existingCommitment
+    // with a legacy out-of-range quantity).
+    const effectiveQuantity = hideQuantitySelector ? 1 : quantity;
+
     try {
       // PATH 1: User is LOGGED IN - skip email validation, use authenticated endpoint
       if (isLoggedIn && user?.userId) {
@@ -251,7 +272,7 @@ export function SignUpCommitmentModal({
           userId: user.userId,
           signUpListId,
           itemId: item.id,
-          quantity,
+          quantity: effectiveQuantity,
           notes: notes.trim() || undefined,
           contactName: name.trim() || undefined,
           contactEmail: email.trim() || undefined,
@@ -295,7 +316,7 @@ export function SignUpCommitmentModal({
         const anonymousData: AnonymousCommitmentFormData = {
           signUpListId,
           itemId: item.id,
-          quantity,
+          quantity: effectiveQuantity,
           notes: notes.trim() || undefined,
           contactName: name.trim() || undefined,
           contactEmail: email.trim(),
@@ -473,7 +494,8 @@ export function SignUpCommitmentModal({
               />
             </div>
 
-            {/* Quantity / Slots Selector */}
+            {/* Quantity / Slots Selector — hidden for single-person flows (volunteer signups) */}
+            {!hideQuantitySelector && (
             <div>
               <label
                 htmlFor="quantity"
@@ -508,6 +530,7 @@ export function SignUpCommitmentModal({
                 </p>
               )}
             </div>
+            )}
 
             {/* Notes Field */}
             <div>

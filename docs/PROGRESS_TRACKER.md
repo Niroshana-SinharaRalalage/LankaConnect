@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Phase 7D.1 Phase G (public volunteer UI) deployed + API-smoke verified; UI-interactive smoke deferred to user browser. Phase 7D.1 feature end-to-end functional pending G13 user smoke.*
+*Last Updated: 2026-04-21 — Phase 7D.1 G14 (volunteer email template placeholder fix) deployed + staging-verified. Phase 7D.1 feature end-to-end functional pending only G13 (user browser smoke).*
 
-## 🎯 Current Session Status (2026-04-20 — WhatsApp RCA Fix 3: UX enforcement)
+## 🎯 Current Session Status (2026-04-21 — Phase 7D.1 G14: Fix volunteer email template placeholders)
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commit `a81b16b7` on develop, `deploy-staging.yml` run `24741539754` succeeded (EF Migrations step ✓ proves row-count assertion passed).
+
+**Root cause**: The Phase 7D.1 Phase C seed migration `20260420175444_Phase7D1_SeedVolunteerEmailTemplates` used `REGEXP_REPLACE(..., 'Sign[- ]?[Uu]p', 'Volunteer', 'g')` to relabel visible wording when cloning the signup-list confirmation/cancellation templates into the new volunteer templates. The regex was greedy and case-sensitive on `S`, matching INSIDE Handlebars `{{...}}` tokens as well as body text — so parameter names got rewritten: `{{SignupListUrl}}`→`{{VolunteerListUrl}}`, `{{HasSignUpLists}}`→`{{HasVolunteerLists}}` (and block forms `{{#...}}`/`{{/...}}`), matching pair for `{{SignupFormsUrl}}`→`{{VolunteerFormsUrl}}` / `{{HasSignupForms}}`→`{{HasVolunteerForms}}`. But `SignupCommitmentEmailParams.ToDictionary()` still emits the ORIGINAL key names — so the custom Handlebars renderer found no match and delivered literal `{{VolunteerListUrl}}` etc. in the email body.
+
+**Fix**: New data-fix migration `20260421190623_Phase7D1_FixVolunteerEmailTemplatePlaceholders` with narrow `REPLACE()` SQL chained over `html_template`/`text_template`/`subject_template` on both volunteer templates, restoring the ToDictionary-compatible token names. Row-count assertion per MEMORY Phase 6A.117: `DO $migration$ DECLARE affected INT; BEGIN UPDATE ... GET DIAGNOSTICS affected = ROW_COUNT; IF affected = 0 THEN RAISE EXCEPTION ...; END $migration$;` — prevents silent 0-row apply on both templates independently. `Down()` reverses all REPLACEs for migration parity (rollback restores broken state — not useful but symmetric).
+
+**Evidence**:
+- CI `Run EF Migrations` step ✓ on deploy run `24741539754` → RAISE EXCEPTION did NOT fire → WHERE-clause matched broken tokens → UPDATE ran → `affected ≥ 1` on BOTH templates (deterministic proof of token replacement)
+- Staging cancel-flow smoke: `POST /api/events/d543629f-a5ba-4475-b124-3d0fc5200f2f/signups/3ea0d650-94c1-46fe-946d-efd6101a0655/items/ac91f61d-a620-4666-8431-69f1297e993a/commit {"userId":"5e782b4d-...","quantity":0,"slotsClaimed":0}` → 200 OK
+- Azure Container Apps logs: `template-volunteer-commitment-cancellation` rendered with **zero** `[PLACEHOLDER-BUG]` diagnostic warnings — contrast the same log run showed `template-signup-list-commitment-update` still has 5 unreplaced `{{ItemName}}`/`{{Notes}}`/`{{EventStartDate}}`/`{{EventStartTime}}`/`{{ManageCommitmentUrl}}` tokens (pre-existing Phase 6A.102 source-template defect, out-of-scope)
+- Azure ACS send succeeded in 10803ms, Operation ID `89dd53f0-0e7d-4a55-bb0c-553329561cca`
+
+**Scope discipline**: Fixed ONLY the tokens Phase 7D.1 introduced. `{{ItemName}}` in volunteer text body is a pre-existing source-template defect in signup-list templates (affects both Items and Volunteers, since volunteer templates were cloned from signup-list templates). Retracked as `C16c` for the Email Template Contract audit.
+
+**Follow-ups**:
+- G13 (user action) — browser smoke on staging: nav button click → scroll, modal render without slots input, cancel dialog
+- C16c (pre-existing, out-of-scope) — signup-list source templates have `{{ItemName}}`/`{{Notes}}`/etc. without matching ToDictionary keys; needs Email Template Contract audit
+- PR-2 (deferred, non-blocking) — backend domain guard: `SignUpItem.CommitSlots(count)` should reject `count>1` when `parent.Kind == Volunteers`
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — WhatsApp RCA Fix 3: UX enforcement)
+
+## 🎯 Earlier Session Status (2026-04-20 — WhatsApp RCA Fix 3: UX enforcement)
 
 ### WhatsApp RCA — Fix 3 (UX enforcement, web-only slice)
 

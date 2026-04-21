@@ -14,6 +14,9 @@ using LankaConnect.Application.Events.Commands.DeleteZone;
 using LankaConnect.Application.Events.Commands.AddTable;
 using LankaConnect.Application.Events.Commands.UpdateTable;
 using LankaConnect.Application.Events.Commands.DeleteTable;
+using LankaConnect.Application.Events.Commands.AddDecoration;
+using LankaConnect.Application.Events.Commands.UpdateDecoration;
+using LankaConnect.Application.Events.Commands.DeleteDecoration;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
@@ -344,6 +347,141 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     }
 
     /// <summary>
+    /// Add a decoration (stage, dance floor, aisle, door, wall, text, image)
+    /// to a layout. Decorations have no seats — no structural guard runs.
+    /// Requires the <c>If-Match</c> header. Slice 5 Chunk 7.
+    /// </summary>
+    [HttpPost("{id:guid}/decorations")]
+    [Authorize]
+    [ProducesResponseType(typeof(AddDecorationResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddDecoration(Guid id, [FromBody] AddDecorationRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        if (!Enum.TryParse<DecorationKind>(request.Kind, ignoreCase: true, out var kind))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Invalid decoration kind: '{request.Kind}'. Valid: Stage, DanceFloor, Aisle, Door, Wall, Text, Image"
+            });
+        }
+
+        Logger.LogInformation(
+            "Adding decoration to layout {LayoutId}: Kind={Kind}, Label={Label}, ExpectedRowVersion={RowVersion}",
+            id, kind, request.Label, expectedRowVersion);
+
+        var command = new AddDecorationCommand(
+            id,
+            expectedRowVersion,
+            kind,
+            request.Label,
+            request.SortOrder,
+            request.Geometry,
+            request.Properties);
+
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            return CreatedAtAction(nameof(GetLayout), new { id }, new AddDecorationResponse(result.Value));
+        }
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Update a decoration's kind, label, sort order, geometry, or properties.
+    /// All fields are optional — at least one must be supplied. Pass
+    /// <c>clearLabel: true</c> to explicitly detach the label (not valid for
+    /// Text kind). Requires the <c>If-Match</c> header. Slice 5 Chunk 7.
+    /// </summary>
+    [HttpPatch("{id:guid}/decorations/{decorationId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateDecoration(Guid id, Guid decorationId, [FromBody] UpdateDecorationRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        DecorationKind? kind = null;
+        if (!string.IsNullOrWhiteSpace(request.Kind))
+        {
+            if (!Enum.TryParse<DecorationKind>(request.Kind, ignoreCase: true, out var parsed))
+            {
+                return BadRequest(new ProblemDetails
+                {
+                    Title = "Bad Request",
+                    Status = StatusCodes.Status400BadRequest,
+                    Detail = $"Invalid decoration kind: '{request.Kind}'. Valid: Stage, DanceFloor, Aisle, Door, Wall, Text, Image"
+                });
+            }
+            kind = parsed;
+        }
+
+        Logger.LogInformation(
+            "Updating decoration {DecorationId} in layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            decorationId, id, expectedRowVersion);
+
+        var command = new UpdateDecorationCommand(
+            id, decorationId, expectedRowVersion,
+            kind,
+            request.Label,
+            request.ClearLabel ?? false,
+            request.SortOrder,
+            request.Geometry,
+            request.Properties);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Delete a decoration from a layout. No structural guard — decorations
+    /// have no seats. Requires the <c>If-Match</c> header. Slice 5 Chunk 7.
+    /// </summary>
+    [HttpDelete("{id:guid}/decorations/{decorationId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteDecoration(Guid id, Guid decorationId)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        Logger.LogInformation(
+            "Deleting decoration {DecorationId} from layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            decorationId, id, expectedRowVersion);
+
+        var command = new DeleteDecorationCommand(id, decorationId, expectedRowVersion);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
     /// Parses the <c>If-Match</c> header into a <see cref="uint"/> RowVersion.
     /// Accepts either raw numeric form ("42") or quoted ETag form ("\"42\"").
     /// On failure, sets <paramref name="problem"/> to a 400 ProblemDetails response.
@@ -559,6 +697,37 @@ public record UpdateTableRequest(
     Guid? ZoneId,
     bool? ClearZoneId,
     string? Geometry);
+
+/// <summary>
+/// Slice 5 Chunk 7: POST decoration body. Kind is accepted as a string for
+/// JSON-friendliness and parsed against <c>DecorationKind</c> at the controller
+/// layer. <c>Label</c> is required only for the <c>Text</c> kind.
+/// </summary>
+public record AddDecorationRequest(
+    string Kind,
+    string? Label,
+    int SortOrder,
+    string? Geometry,
+    string? Properties);
+
+/// <summary>
+/// Slice 5 Chunk 7: response returned from POST /decorations so the client can
+/// reference the newly created decoration before re-fetching the layout.
+/// </summary>
+public record AddDecorationResponse(Guid DecorationId);
+
+/// <summary>
+/// Slice 5 Chunk 7: PATCH decoration body. All fields optional — at least one
+/// must be provided. Pass <c>clearLabel: true</c> to detach the label (not
+/// valid when target kind is <c>Text</c>).
+/// </summary>
+public record UpdateDecorationRequest(
+    string? Kind,
+    string? Label,
+    bool? ClearLabel,
+    int? SortOrder,
+    string? Geometry,
+    string? Properties);
 
 public record GenerateSeatsRequest(
     string GenerationType,

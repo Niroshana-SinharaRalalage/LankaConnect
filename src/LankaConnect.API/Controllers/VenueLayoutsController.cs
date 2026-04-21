@@ -9,6 +9,7 @@ using LankaConnect.Application.Events.Commands.HoldSeats;
 using LankaConnect.Application.Events.Commands.ReleaseSeats;
 using LankaConnect.Application.Events.Commands.AssignLayoutToEvent;
 using LankaConnect.Application.Events.Commands.UpdateLayout;
+using LankaConnect.Application.Events.Commands.DeleteLayout;
 using LankaConnect.Application.Events.Commands.UpdateZone;
 using LankaConnect.Application.Events.Commands.DeleteZone;
 using LankaConnect.Application.Events.Commands.AddTable;
@@ -123,6 +124,39 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
             id, expectedRowVersion);
 
         var command = new UpdateLayoutCommand(id, expectedRowVersion, request.Name, request.Canvas);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Hard-delete a venue layout (and cascade its zones/tables/decorations/seats).
+    /// Rejected with HTTP 422 when any seat is held or reserved, or when the owning
+    /// event has preliminary/confirmed registrations. Event is detached (seating mode
+    /// flipped back to GA) before the delete commits. Requires <c>If-Match</c>.
+    /// Slice 5 Chunk 9.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> DeleteLayout(Guid id)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        Logger.LogInformation(
+            "Deleting venue layout {LayoutId}: ExpectedRowVersion={ExpectedRowVersion}",
+            id, expectedRowVersion);
+
+        var command = new DeleteLayoutCommand(id, expectedRowVersion);
         var result = await Mediator.Send(command);
 
         return HandleResultNoContent(result);

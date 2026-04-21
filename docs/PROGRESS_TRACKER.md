@@ -1,7 +1,38 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — WhatsApp Save Preferences 400 unblocked (Fix #0)*
+*Last Updated: 2026-04-21 — Phase 7D.1 Phase D (Exports) deployed + staging-verified*
 
-## 🎯 Current Session Status (2026-04-20 — WhatsApp Preferences: Fix #0 Save 400 → 200)
+## 🎯 Current Session Status (2026-04-21 — Phase 7D.1 Phase D: Volunteer Export Pipeline)
+
+### Phase 7D.1 Phase D — Volunteer CSV + Excel exports with Kind-filtered dispatch
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commits `9f8d6997` (labels record), `6029236d` (enum + handler), `9dda25bb` (controller mapping). Deploy run `24696959681` succeeded. Staging curl via `scripts/test_volunteer_export_staging.py` passed all four assertions on event `4378a7d9-280e-4322-9ca2-a17e27061ae8`, list "Phase 7D.1 Test - Food Committee".
+
+**Goal**: Volunteer lists export with role-specific column labels ("Volunteer Role / Volunteers Needed / Volunteer Name / Committed") via two new `ExportFormat` values (`VolunteersZip`, `VolunteersExcel`), without breaking the existing Items export.
+
+**Changes**:
+- [src/LankaConnect.Application/Events/Common/SignUpExportLabels.cs](../src/LankaConnect.Application/Events/Common/SignUpExportLabels.cs) — new record. `ForItems()` preserves legacy headers exactly; `ForVolunteers()` relabels all seven columns.
+- [ICsvExportService.cs](../src/LankaConnect.Application/Common/Interfaces/ICsvExportService.cs) + [IExcelExportService.cs](../src/LankaConnect.Application/Common/Interfaces/IExcelExportService.cs) — optional `SignUpExportLabels? labels = null` parameter on the signup-list export methods. Default `null` → `ForItems()` so existing callers see zero behavioural change.
+- [CsvExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs) + [ExcelExportService.cs](../src/LankaConnect.Infrastructure/Services/Export/ExcelExportService.cs) — replaced 7 hardcoded header strings per service with `columnLabels.ItemDescription` etc.
+- [ExportEventAttendeesQuery.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQuery.cs) — added `VolunteersZip` + `VolunteersExcel` enum values.
+- [ExportEventAttendeesQueryHandler.cs](../src/LankaConnect.Application/Events/Queries/ExportEventAttendees/ExportEventAttendeesQueryHandler.cs) — restructured the signup branch: filters `SignUpLists.Where(s => s.Kind == SignUpKind.Items)` for legacy formats and `Kind == SignUpKind.Volunteers` for new formats so the two sets are disjoint. Passes `SignUpExportLabels.ForVolunteers()` through on the volunteer branch. Missing-list error is Kind-specific ("No volunteer lists found for this event" vs "No signup lists found").
+- [EventsController.cs](../src/LankaConnect.API/Controllers/EventsController.cs) — added `"volunteerszip" => ExportFormat.VolunteersZip`, `"volunteersexcel" => ExportFormat.VolunteersExcel` to the format-string switch.
+
+**Tests** (all green):
+- [CsvExportServiceVolunteerLabelsTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/CsvExportServiceVolunteerLabelsTests.cs) — 2 tests (volunteer headers, default-items headers regression).
+- [ExcelExportServiceSignUpListsTests.cs](../tests/LankaConnect.Infrastructure.Tests/Services/Export/ExcelExportServiceSignUpListsTests.cs) — 2 tests (volunteer headers, default-items headers regression).
+
+**Staging evidence** (`scripts/test_volunteer_export_staging.py`):
+1. `GET /export?format=volunteersexcel` → HTTP 200, outer ZIP with `Phase-7D.1-Test---Food-Committee.xlsx` inside; sharedStrings contain "Volunteer Role", "Volunteers Needed", "Volunteer Name", "Committed".
+2. `GET /export?format=volunteerszip` → HTTP 200, ZIP with `.csv` entries, header line `"Volunteer Role","Volunteers Needed","Volunteers Remaining","Volunteer Name","Volunteer Email","Volunteer Phone","Committed"`.
+3. `GET /export?format=signuplistsexcel` → HTTP 200, sharedStrings contain "Item Description", "Requested Quantity", "Contact Name"; "Volunteer Role" absent (regression guard passes).
+
+**Why durable**: single `SignUpExportLabels` record serves both CSV and Excel services — zero duplication, one place to relabel. Default-preservation via null-coalesce keeps legacy Items call-sites bit-for-bit identical. Kind-discriminator filter at the handler enforces disjoint export sets at one point rather than scattered through callers. Filename slug distinct (`event-{id}-volunteers-*` vs `event-{id}-signup-lists-*`) so downloaded files are self-describing.
+
+**Next phases** (Phase E–G frontend, Phase H E2E): TypeScript `SignUpKind` string enum + kind-filtered hooks → organizer `VolunteerListsTab` + create/edit pages → public `VolunteerListSection` + conditional "Volunteer" nav button on event details → E2E staging smoke.
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — WhatsApp Preferences: Fix #0 Save 400 → 200)
 
 ### WhatsApp Fix #0 — Empty-string normalization at Zod boundary (Save Preferences unblocked)
 

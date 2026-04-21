@@ -61,19 +61,21 @@
 
 ---
 
-## Phase D — Exports 🚧 IN PROGRESS
+## Phase D — Exports ✅ COMPLETE
+
+**Status**: ✅ deployed + staging-verified (commits `9f8d6997` + `6029236d` + `9dda25bb`, deploy `24696959681`)
 
 **Goal:** Volunteer-list CSV + Excel exports show volunteer-specific column labels ("Volunteer Role / Volunteers Needed / Volunteer Name / Committed"). Two new `ExportFormat` enum values (`VolunteersZip`, `VolunteersExcel`).
 
 - [x] **15.** Export service: `SignUpExportLabels` record + optional `labels` parameter on `ExportSignUpListsToZip` / `ExportSignUpListsToExcelZip`. Default `ForItems()` keeps existing callers unchanged; `ForVolunteers()` relabels to "Volunteer Role / Volunteers Needed / Volunteer Name / Committed". Covered by 4 unit tests (2 CSV + 2 Excel) — all green.
 - [x] **16.** Query: `ExportFormat.VolunteersZip` / `VolunteersExcel` enum values added. Handler filters `SignUpLists` by `Kind` (Volunteers vs Items) so the two export endpoints return disjoint sets; volunteer branch passes `SignUpExportLabels.ForVolunteers()` through the shared export services. Missing-lists returns a Kind-specific error ("No volunteer lists found for this event" vs "No signup lists found").
-- [ ] **17.** Controller: map new format values; curl-test post-deploy
+- [x] **17.** Controller: `volunteerszip` / `volunteersexcel` query-param values mapped in `EventsController.ExportEventAttendees`. Staging curl-test script `scripts/test_volunteer_export_staging.py` exercises all four scenarios and passed end-to-end on event `4378a7d9-280e-4322-9ca2-a17e27061ae8` (list "Phase 7D.1 Test - Food Committee").
 
 ### Phase D acceptance
-- [ ] Unit tests for volunteer-label CSV + Excel exports (TDD red-first).
-- [ ] Integration test: 3-slot volunteer role + 2 commitments → Excel has correct headers + row count.
-- [ ] Staging curl: `GET /api/events/{id}/export?format=VolunteersExcel` returns xlsx with volunteer headers.
-- [ ] Existing sign-up list export regression-guarded (no header change for Items kind).
+- [x] Unit tests for volunteer-label CSV + Excel exports (TDD red-first) — 4 tests, all green.
+- [ ] Integration test: 3-slot volunteer role + 2 commitments → Excel has correct headers + row count. *(Deferred — covered by staging curl + unit-level header assertions; revisit if regression found.)*
+- [x] Staging curl: `GET /api/events/{id}/export?format=volunteersexcel` returns xlsx with volunteer headers ("Volunteer Role / Volunteers Needed / Volunteer Name / Committed" — verified via sharedStrings probe).
+- [x] Existing sign-up list export regression-guarded: `format=signuplistsexcel` keeps "Item Description / Requested Quantity / Contact Name" headers; no leak of "Volunteer Role".
 
 ---
 

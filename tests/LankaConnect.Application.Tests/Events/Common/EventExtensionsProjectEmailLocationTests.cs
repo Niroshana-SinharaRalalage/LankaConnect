@@ -64,7 +64,10 @@ public class EventExtensionsProjectEmailLocationTests
         var projected = @event.ProjectEmailLocation();
 
         projected.LocationName.Should().BeEmpty();
-        projected.LocationAddress.Should().BeEmpty();
+        // Custom template engine has no {{else}} support, so LocationAddress must
+        // always be renderable on its own — online events fall back to "Online Event"
+        // rather than an empty string.
+        projected.LocationAddress.Should().Be("Online Event");
         projected.HasLocationName.Should().BeFalse();
         projected.HasSecondaryLocation.Should().BeFalse();
         projected.SecondaryLocationLabel.Should().BeEmpty();

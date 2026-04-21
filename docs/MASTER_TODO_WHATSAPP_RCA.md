@@ -84,7 +84,8 @@ Goal: eliminate the "enabled but never verified" silent drop-off cohort at the s
 - [x] Banner appears on profile page ONLY — wired in `app/(dashboard)/profile/page.tsx` at top of main content; self-hides via guard clauses so safe to drop elsewhere later
 - [x] Banner includes one-click resend + inline 6-digit code entry
 - [x] Vitest coverage: 3 tests for auto-request (happy path, enable-fails-no-auto-request, manual-send-button regression guard) + 10 tests for banner (visibility truth table, phone masking, 6-digit gating, rate-limit lockout branch)
-- [ ] Browser smoke on staging (after deploy-ui-staging.yml completes)
+- [x] Deploy-ui-staging run `24736264892` succeeded (commit `453c37f2`); `GET https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/profile` → HTTP 200
+- [ ] Browser smoke on staging (user to drive — CLI can't open browser): (a) log in as fresh user, (b) toggle WhatsApp on → expect Twilio SMS to arrive without a separate "Send Verification Code" click, (c) navigate to `/profile` → expect amber banner with masked phone (last-4 digits only), (d) enter code → expect banner to disappear
 
 ### Non-goals
 - No banner on other pages

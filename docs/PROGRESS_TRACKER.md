@@ -5,7 +5,7 @@
 
 ### WhatsApp RCA — Fix 3 (UX enforcement, web-only slice)
 
-**Status**: ✅ **LOCAL-READY** — 13/13 new vitest tests green (3 for auto-request on enable, 10 for `WhatsAppUnverifiedBanner`), `npx tsc --noEmit` clean, 26 pre-existing profile-test failures (`No QueryClient set` in `CulturalInterestsSection` + `PreferredMetroAreasSection`) reproduced with Fix 3 stashed → NOT a regression caused by this slice. About to commit and trigger `deploy-ui-staging.yml`. Master TODO Fix 3 boxes ticked; staging browser smoke pending.
+**Status**: ✅ **DEPLOYED TO STAGING** — commit `453c37f2` on develop; `deploy-ui-staging.yml` run `24736264892` **succeeded**; `GET https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/profile` → HTTP 200. 13/13 new vitest tests green (3 for auto-request on enable, 10 for `WhatsAppUnverifiedBanner`), `npx tsc --noEmit` clean, 26 pre-existing profile-test failures (`No QueryClient set` in `CulturalInterestsSection` + `PreferredMetroAreasSection`) reproduced with Fix 3 stashed → NOT a regression caused by this slice. Master TODO Fix 3 boxes ticked; user-driven browser smoke pending (CLI can't open browser).
 
 **Goal (root-cause)**: Fix 1+2+5 made the silent-drop-off cohort *observable* (admin metric `usersEnabledButUnverified` returned `2` on staging today). Fix 3 prevents the cohort from growing: new users who toggle WhatsApp on now receive a verification code immediately (no separate "Send Verification Code" click), and the persistent amber banner on `/profile` surfaces the unverified state with inline resend + code entry so users cannot drift into the limbo state unnoticed.
 

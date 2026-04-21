@@ -123,7 +123,14 @@ public static class EventExtensions
 
         if (@event.Location?.Address == null)
         {
-            return LocationEmailProjection.Online with { LegacyFlatString = legacyFlatString };
+            // Custom template engine (AzureEmailService.RenderTemplateContent) has no
+            // {{else}} support, so LocationAddress must always be renderable on its own.
+            // For online / address-less events, reuse the legacy "Online Event" string.
+            return LocationEmailProjection.Online with
+            {
+                LocationAddress = legacyFlatString,
+                LegacyFlatString = legacyFlatString,
+            };
         }
 
         var locationName = @event.Location.Name ?? string.Empty;

@@ -1,7 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Phase 7D.1 G14 (volunteer email template placeholder fix) deployed + staging-verified. Phase 7D.1 feature end-to-end functional pending only G13 (user browser smoke).*
+*Last Updated: 2026-04-21 — Seating Redesign Slice 5 Chunk 9 (hard-delete venue layout) deployed + staging-smoke-verified. Phase 7D.1 G14 deployed + staging-verified earlier same day.*
 
-## 🎯 Current Session Status (2026-04-21 — Phase 7D.1 G14: Fix volunteer email template placeholders)
+## 🎯 Current Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 9: hard-delete venue layout)
+
+**Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED** — commit `5a881bc6` on develop; `deploy-staging.yml` run `24743842856` succeeded. 9/9 `DeleteLayoutCommandHandlerTests` green; overall 2228/2230 pass (2 pre-existing WhatsApp flakes). Staging smoke [smoke_chunk9_delete_layout.py](../../tmp/smoke_chunk9_delete_layout.py) all 7 scenarios pass: A) missing `If-Match` → 400, B) unknown id → 404, C) template delete → 204, D) double-delete → 404, E) stale If-Match → 409, F) event-attached delete → 204 + `event.seatingMode` flipped to `GeneralAdmission` + `event.venueLayoutId=null`, G) held seat blocks delete → 422 with detail `layout.structural_edit_rejected`.
+
+**Root cause addressed**: Slice 5 API CRUD needs a durable DELETE path for venue layouts that (a) prevents structural edits while seats are actively held or reserved, (b) detaches the event cleanly (flipping `SeatingMode` back to `GeneralAdmission` + clearing `VenueLayoutId`) if the layout was assigned, (c) respects optimistic concurrency so organizers can't race-delete a layout someone else is editing, and (d) still works for template layouts (`EventId=null`) where there's no event to detach. Prior to Chunk 9 only template CRUD was wired — deleting an event-attached layout would have orphaned the event in `AssignedSeating` mode with a dangling `VenueLayoutId` FK.
+
+**Fix**: Single handler enforcing four gates in order: authorization (two-branch via `ILayoutAuthorizationService` — event.CreatedBy for attached, OwnerUserId for templates) → concurrency (`SetOriginalRowVersion(expectedRowVersion)` + `DbUpdateConcurrencyException` → 409) → structural guard (`IStructuralEditGuard.CheckSeatsAsync` over the **union of zone and table seat IDs** so round-table seats count too) → event detach (`Event.DisableAssignedSeating()` which refuses if preliminary/confirmed registrations exist, surfaced as 422 `layout.structural_edit_rejected`). Template path (`EventId=null`) skips the event load entirely.
+
+**Evidence**:
+- Unit tests: 9/9 `DeleteLayoutCommandHandlerTests` green covering forbidden-from-auth, not-found-layout, conflict-stale-rowversion, guard-rejected (held/reserved), template-delete no-event-load, happy-path event-attached (verifies Remove + SetOriginalRowVersion + SeatingMode flip + VenueLayoutId=null), event-has-registrations (422 via DisableAssignedSeating), owning-event-missing (logs warning + proceeds), DbUpdateConcurrencyException → Conflict
+- Full suite: 2228/2230 pass (2 unrelated WhatsApp flakes)
+- Staging deploy: run `24743842856` status=completed conclusion=success
+- Staging smoke: all 7 scenarios A-G pass end-to-end — commits IDs logged in the smoke output
+
+**Scope discipline**: Chunk 9 ships DELETE only. Chunk 10 (`PUT /batch` atomic batch update per architect decision #14) and Chunks 11-15 (frontend hook + TierMappingPanel + integration tests + tracking docs + factory-shim cleanup) remain. Pre-existing GET endpoint returns 400 instead of 404 for layout-not-found — noted for separate cleanup, not in Chunk 9 scope.
+
+**Follow-ups**:
+- Chunk 10 — `PUT /api/venue-layouts/{id}/batch` atomic batch update endpoint for the Slice 8 canvas editor save path
+- Chunk 11 — Frontend `useDeleteVenueLayout` hook + wiring into the (still-deferred) Slice 7+8 UI surfaces
+- Chunk 12 — Integration tests covering the full DELETE pipeline through EF Core (not just mocked handler tests)
+- Release N+1 (Slice 4 tail) — drop `venue_zones.ticket_tier_id` column, ≥1 week after Slice 4 Release N ships with no rollback triggered
+- Pre-existing GET-layout 400-instead-of-404 — track as tech debt
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Phase 7D.1 G14: Fix volunteer email template placeholders)
 
 **Status**: ✅ **DEPLOYED + STAGING-VERIFIED** — commit `a81b16b7` on develop, `deploy-staging.yml` run `24741539754` succeeded (EF Migrations step ✓ proves row-count assertion passed).
 

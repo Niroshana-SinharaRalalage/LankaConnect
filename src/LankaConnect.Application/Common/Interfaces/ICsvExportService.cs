@@ -21,8 +21,9 @@ public interface ICsvExportService
     /// </summary>
     /// <param name="signUpLists">Signup list data with items and commitments</param>
     /// <param name="eventId">Event ID for filename generation</param>
+    /// <param name="labels">Optional column-label override (defaults to Items labels). Phase 7D.1 Step 15.</param>
     /// <returns>ZIP file content as byte array</returns>
-    byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId);
+    byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId, SignUpExportLabels? labels = null);
 
     /// <summary>
     /// Exports custom form responses to CSV format.

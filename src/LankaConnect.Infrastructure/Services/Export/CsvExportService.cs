@@ -180,10 +180,12 @@ public class CsvExportService : ICsvExportService
     /// Phase 6A.69: Exports event signup lists to ZIP archive containing multiple CSV files.
     /// Each CSV represents one SignUpList-ItemCategory combination.
     /// </summary>
-    public byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId)
+    public byte[] ExportSignUpListsToZip(List<SignUpListDto> signUpLists, Guid eventId, SignUpExportLabels? labels = null)
     {
         if (signUpLists == null || !signUpLists.Any())
             throw new ArgumentException("No signup lists to export", nameof(signUpLists));
+
+        var columnLabels = labels ?? SignUpExportLabels.ForItems();
 
         using var zipStream = new MemoryStream();
         using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: true))
@@ -243,14 +245,14 @@ public class CsvExportService : ICsvExportService
                 });
 
                 // Phase 6A.69 - Revised CSV format: Grouped layout
-                // Write CSV headers (removed "Sign-up List" and "Committed At")
-                csv.WriteField("Item Description");
-                csv.WriteField("Requested Quantity");
-                csv.WriteField("Remaining Quantity");
-                csv.WriteField("Contact Name");
-                csv.WriteField("Contact Email");
-                csv.WriteField("Contact Phone");
-                csv.WriteField("Quantity Committed");
+                // Phase 7D.1 Step 15: Headers sourced from label set (default: Items; volunteer exports override).
+                csv.WriteField(columnLabels.ItemDescription);
+                csv.WriteField(columnLabels.RequestedQuantity);
+                csv.WriteField(columnLabels.RemainingQuantity);
+                csv.WriteField(columnLabels.ContactName);
+                csv.WriteField(columnLabels.ContactEmail);
+                csv.WriteField(columnLabels.ContactPhone);
+                csv.WriteField(columnLabels.QuantityCommitted);
                 csv.NextRecord();
 
                 // Write data rows - grouped by item

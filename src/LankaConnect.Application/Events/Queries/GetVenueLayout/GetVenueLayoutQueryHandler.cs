@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
@@ -10,13 +11,16 @@ namespace LankaConnect.Application.Events.Queries.GetVenueLayout;
 public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, VenueLayoutDto>
 {
     private readonly IVenueLayoutRepository _venueLayoutRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly ILogger<GetVenueLayoutQueryHandler> _logger;
 
     public GetVenueLayoutQueryHandler(
         IVenueLayoutRepository venueLayoutRepository,
+        IEventRepository eventRepository,
         ILogger<GetVenueLayoutQueryHandler> logger)
     {
         _venueLayoutRepository = venueLayoutRepository;
+        _eventRepository = eventRepository;
         _logger = logger;
     }
 
@@ -40,11 +44,39 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
         if (layout == null)
             return Result<VenueLayoutDto>.Failure("Venue layout not found");
 
-        return Result<VenueLayoutDto>.Success(MapToDto(layout));
+        // Slice 5 Chunk 8: populate zone/table → tier-assignment read path by loading the
+        // owning event (if any) and building a polymorphic reverse-lookup from
+        // assignable-id → tier-ids. Template layouts (EventId == null) have no tier
+        // assignments — lookup stays empty.
+        var tiersByAssignable = new Dictionary<Guid, List<Guid>>();
+        if (layout.EventId.HasValue)
+        {
+            var @event = await _eventRepository.GetByIdAsync(layout.EventId.Value, trackChanges: false, cancellationToken);
+            if (@event != null)
+            {
+                foreach (var tier in @event.TicketTiers)
+                {
+                    foreach (var assignment in tier.Assignments)
+                    {
+                        if (!tiersByAssignable.TryGetValue(assignment.AssignableId, out var list))
+                        {
+                            list = new List<Guid>();
+                            tiersByAssignable[assignment.AssignableId] = list;
+                        }
+                        list.Add(tier.Id);
+                    }
+                }
+            }
+        }
+
+        return Result<VenueLayoutDto>.Success(MapToDto(layout, tiersByAssignable));
     }
 
-    private static VenueLayoutDto MapToDto(VenueLayout layout)
+    private static VenueLayoutDto MapToDto(VenueLayout layout, Dictionary<Guid, List<Guid>> tiersByAssignable)
     {
+        List<Guid> TierIdsFor(Guid assignableId) =>
+            tiersByAssignable.TryGetValue(assignableId, out var tiers) ? tiers : new List<Guid>();
+
         return new VenueLayoutDto
         {
             Id = layout.Id,
@@ -62,10 +94,11 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
                 Id = z.Id,
                 Name = z.Name,
                 Color = z.Color,
-                TicketTierId = null, // Slice 4: zone→tier mapping moved to tier_assignments; Slice 5 wires the read path with event tier join
+                TicketTierId = null, // Slice 4: legacy scalar always null — use TicketTierIds instead
                 SortOrder = z.SortOrder,
                 EnabledSeatCount = z.EnabledSeatCount,
                 TotalSeatCount = z.Seats.Count,
+                TicketTierIds = TierIdsFor(z.Id),
                 Seats = z.Seats.Select(s => new SeatDto
                 {
                     Id = s.Id,
@@ -90,6 +123,7 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
                 SortOrder = t.SortOrder,
                 EnabledSeatCount = t.EnabledSeatCount,
                 TotalSeatCount = t.Seats.Count,
+                TicketTierIds = TierIdsFor(t.Id),
                 Seats = t.Seats.Select(s => new SeatDto
                 {
                     Id = s.Id,

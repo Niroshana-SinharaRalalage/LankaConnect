@@ -53,6 +53,13 @@ public record VenueZoneDto
     public int EnabledSeatCount { get; init; }
     public int TotalSeatCount { get; init; }
     public List<SeatDto> Seats { get; init; } = new();
+
+    /// <summary>
+    /// Slice 5 Chunk 8: every tier currently assigned to this zone via the
+    /// polymorphic <c>tier_assignments</c> junction. Superset of the legacy
+    /// <c>TicketTierId</c> scalar (which is now always null — see Slice 4 notes).
+    /// </summary>
+    public List<Guid> TicketTierIds { get; init; } = new();
 }
 
 /// <summary>
@@ -86,6 +93,12 @@ public record VenueTableDto
     public int EnabledSeatCount { get; init; }
     public int TotalSeatCount { get; init; }
     public List<SeatDto> Seats { get; init; } = new();
+
+    /// <summary>
+    /// Slice 5 Chunk 8: every tier currently assigned to this table via the
+    /// polymorphic <c>tier_assignments</c> junction.
+    /// </summary>
+    public List<Guid> TicketTierIds { get; init; } = new();
 }
 
 /// <summary>

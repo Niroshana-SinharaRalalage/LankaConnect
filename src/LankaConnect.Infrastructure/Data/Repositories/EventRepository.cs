@@ -133,6 +133,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
                     .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
                     .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers for tiered ticketing
+                        .ThenInclude(t => t.Assignments)  // Slice 4 Chunk 8: polymorphic tier→zone/table assignments (required by VenueLayout.ValidateForEvent)
                     .Include(e => e.SignUpLists)
                         .ThenInclude(s => s.Items)
                             .ThenInclude(i => i.Commitments);
@@ -852,5 +853,20 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for commitment update emails
             .Where(e => e.SignUpLists.Any(sl => sl.Items.Any(item => item.Id == signUpItemId)))
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Slice 5 Chunk 8: loads a <see cref="Domain.Events.Entities.TicketTier"/> with its
+    /// polymorphic <c>Assignments</c> collection eager-loaded. Tracked so
+    /// <c>AssignToZone</c> / <c>RemoveAssignment</c> domain mutations persist through
+    /// <c>SaveChanges</c>.
+    /// </summary>
+    public async Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
+        Guid tierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Set<Domain.Events.Entities.TicketTier>()
+            .Include(t => t.Assignments)
+            .FirstOrDefaultAsync(t => t.Id == tierId, cancellationToken);
     }
 }

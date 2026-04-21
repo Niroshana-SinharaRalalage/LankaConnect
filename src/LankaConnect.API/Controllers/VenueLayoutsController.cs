@@ -15,9 +15,11 @@ using LankaConnect.Application.Events.Commands.AddTable;
 using LankaConnect.Application.Events.Commands.UpdateTable;
 using LankaConnect.Application.Events.Commands.DeleteTable;
 using LankaConnect.Application.Events.Commands.AddDecoration;
+using LankaConnect.Application.Events.Commands.AssignTier;
+using LankaConnect.Application.Events.Commands.RemoveTierAssignment;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Commands.UpdateDecoration;
 using LankaConnect.Application.Events.Commands.DeleteDecoration;
-using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
 using LankaConnect.Application.Events.Common;
@@ -481,6 +483,102 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
         return HandleResultNoContent(result);
     }
 
+    // ==================== TIER ASSIGNMENTS (Slice 5 Chunk 8) ====================
+
+    /// <summary>
+    /// Assign a ticket tier to a zone or table on the layout via the polymorphic
+    /// <c>tier_assignments</c> junction. Idempotent — re-assigning an existing
+    /// tuple is a no-op. Requires the <c>If-Match</c> header (validated against
+    /// the layout's current RowVersion). Does NOT bump the layout's xmin
+    /// (assignments live on the <c>TicketTier</c> aggregate). Slice 5 Chunk 8.
+    /// </summary>
+    [HttpPost("{id:guid}/tier-assignments")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AssignTier(Guid id, [FromBody] AssignTierRequest request)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        if (!Enum.TryParse<AssignableKind>(request.Kind, ignoreCase: true, out var kind))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Invalid assignable kind: '{request.Kind}'. Valid: Zone, Table"
+            });
+        }
+
+        Logger.LogInformation(
+            "Assigning tier {TierId} to {Kind} {AssignableId} on layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            request.TierId, kind, request.AssignableId, id, expectedRowVersion);
+
+        var command = new AssignTierCommand(
+            id,
+            expectedRowVersion,
+            request.TierId,
+            kind,
+            request.AssignableId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Remove a ticket tier from a zone or table. Returns 404 when the tuple
+    /// does not exist (so the client can distinguish stale UI state from
+    /// success). Requires the <c>If-Match</c> header. Slice 5 Chunk 8.
+    /// </summary>
+    [HttpDelete("{id:guid}/tier-assignments/{tierId:guid}/{kind}/{assignableId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RemoveTierAssignment(Guid id, Guid tierId, string kind, Guid assignableId)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        if (!Enum.TryParse<AssignableKind>(kind, ignoreCase: true, out var parsedKind))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = $"Invalid assignable kind: '{kind}'. Valid: Zone, Table"
+            });
+        }
+
+        Logger.LogInformation(
+            "Removing tier {TierId} from {Kind} {AssignableId} on layout {LayoutId}: ExpectedRowVersion={RowVersion}",
+            tierId, parsedKind, assignableId, id, expectedRowVersion);
+
+        var command = new RemoveTierAssignmentCommand(
+            id,
+            expectedRowVersion,
+            tierId,
+            parsedKind,
+            assignableId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
     /// <summary>
     /// Parses the <c>If-Match</c> header into a <see cref="uint"/> RowVersion.
     /// Accepts either raw numeric form ("42") or quoted ETag form ("\"42\"").
@@ -728,6 +826,16 @@ public record UpdateDecorationRequest(
     int? SortOrder,
     string? Geometry,
     string? Properties);
+
+/// <summary>
+/// Slice 5 Chunk 8: POST tier-assignment body. <c>Kind</c> is a string
+/// ("Zone" or "Table") parsed against <see cref="AssignableKind"/> at the
+/// controller layer for JSON-friendliness.
+/// </summary>
+public record AssignTierRequest(
+    Guid TierId,
+    string Kind,
+    Guid AssignableId);
 
 public record GenerateSeatsRequest(
     string GenerationType,

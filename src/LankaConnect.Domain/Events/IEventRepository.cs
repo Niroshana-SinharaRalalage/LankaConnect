@@ -70,4 +70,14 @@ public interface IEventRepository : IRepository<Event>
     /// Used by commitment update confirmation email handler
     /// </summary>
     Task<Event?> GetEventBySignUpItemIdAsync(Guid signUpItemId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Slice 5 Chunk 8: loads a single <c>TicketTier</c> with its polymorphic
+    /// <c>Assignments</c> collection eager-loaded so the domain methods
+    /// <c>AssignToZone</c> / <c>AssignToTable</c> / <c>RemoveAssignment</c> operate
+    /// on a fully-materialized aggregate. Returns null when the tier does not exist.
+    /// </summary>
+    Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
+        Guid tierId,
+        CancellationToken cancellationToken = default);
 }

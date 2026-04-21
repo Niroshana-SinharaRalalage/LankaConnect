@@ -1,46 +1,59 @@
 /**
- * SignUpListsTab Component
+ * VolunteerListsTab Component
  *
- * Phase 6A.45: Signup lists tab for manage page
- * Displays and manages event signup lists
+ * Phase 7D.1 step 22: Organizer-facing tab for managing volunteer lists.
+ * Mirrors SignUpListsTab but filters to volunteer-kind lists and exports via
+ * the volunteer-specific backend formats (`volunteerszip` / `volunteersexcel`).
  *
- * Extracted from original manage page to support tabbed layout
+ * Copy, create-button route, and commitment modal labels are swapped to use
+ * the volunteer variants from SignUpManagementSection + SignUpCommitmentModal.
  */
 
 'use client';
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Download } from 'lucide-react';
+import { Download, Users } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import {
+  SignUpManagementSection,
+  volunteerSectionLabels,
+} from '@/presentation/components/features/events/SignUpManagementSection';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { SignUpKind, type SignUpListDto } from '@/infrastructure/api/types/events.types';
 
-interface SignUpListsTabProps {
+interface VolunteerListsTabProps {
   eventId: string;
+  /**
+   * Full (unfiltered) list of sign-up lists from the manage page. Used here
+   * only to derive the volunteer-only subset for enabling/disabling the
+   * export buttons — the nested SignUpManagementSection fetches its own
+   * kind-filtered copy via useEventSignUps(eventId, SignUpKind.Volunteers).
+   */
   signUpLists: SignUpListDto[];
 }
 
-export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
+export function VolunteerListsTab({ eventId, signUpLists }: VolunteerListsTabProps) {
   const router = useRouter();
 
-  // Phase 6A.69: Handle export CSV (ZIP with multiple CSV files)
+  const volunteerLists = React.useMemo(
+    () => (signUpLists ?? []).filter((list) => list.kind === SignUpKind.Volunteers),
+    [signUpLists]
+  );
+
   const handleExportCSV = async () => {
-    if (!signUpLists || signUpLists.length === 0) {
-      alert('No sign-up lists to export');
+    if (volunteerLists.length === 0) {
+      alert('No volunteer lists to export');
       return;
     }
 
     try {
-      const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistszip');
+      const blob = await eventsRepository.exportEventAttendees(eventId, 'volunteerszip');
 
-      // Generate filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `event-${eventId}-signup-lists-csv-${timestamp}.zip`;
+      const filename = `event-${eventId}-volunteer-lists-csv-${timestamp}.zip`;
 
-      // Trigger download
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -52,36 +65,32 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error('Error exporting sign-up lists to CSV:', error);
+      console.error('Error exporting volunteer lists to CSV:', error);
 
-      // Handle specific error cases
       if (error.response?.status === 403) {
-        alert('You do not have permission to export sign-up lists');
+        alert('You do not have permission to export volunteer lists');
       } else if (error.response?.status === 404) {
         alert('Event not found');
       } else if (error.response?.status === 400) {
-        alert(error.response?.data?.message || 'Failed to export sign-up lists');
+        alert(error.response?.data?.message || 'Failed to export volunteer lists');
       } else {
-        alert('An error occurred while exporting sign-up lists');
+        alert('An error occurred while exporting volunteer lists');
       }
     }
   };
 
-  // Phase 6A.73 (Revised): Handle export Excel (ZIP with multiple Excel files - one per signup list)
   const handleExportExcel = async () => {
-    if (!signUpLists || signUpLists.length === 0) {
-      alert('No sign-up lists to export');
+    if (volunteerLists.length === 0) {
+      alert('No volunteer lists to export');
       return;
     }
 
     try {
-      const blob = await eventsRepository.exportEventAttendees(eventId, 'signuplistsexcel');
+      const blob = await eventsRepository.exportEventAttendees(eventId, 'volunteersexcel');
 
-      // Generate filename with timestamp - now returns ZIP file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `event-${eventId}-signup-lists-excel-${timestamp}.zip`;
+      const filename = `event-${eventId}-volunteer-lists-excel-${timestamp}.zip`;
 
-      // Trigger download
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -93,17 +102,16 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      console.error('Error exporting sign-up lists to Excel:', error);
+      console.error('Error exporting volunteer lists to Excel:', error);
 
-      // Handle specific error cases
       if (error.response?.status === 403) {
-        alert('You do not have permission to export sign-up lists');
+        alert('You do not have permission to export volunteer lists');
       } else if (error.response?.status === 404) {
         alert('Event not found');
       } else if (error.response?.status === 400) {
-        alert(error.response?.data?.message || 'Failed to export sign-up lists');
+        alert(error.response?.data?.message || 'Failed to export volunteer lists');
       } else {
-        alert('An error occurred while exporting sign-up lists');
+        alert('An error occurred while exporting volunteer lists');
       }
     }
   };
@@ -113,11 +121,11 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle style={{ color: '#8B1538' }}>Sign-Up Lists</CardTitle>
-            <CardDescription>Manage items that attendees can volunteer to bring</CardDescription>
+            <CardTitle style={{ color: '#8B1538' }}>Volunteer Roles</CardTitle>
+            <CardDescription>Recruit volunteers for specific roles on this event</CardDescription>
           </div>
           <div className="flex gap-3">
-            {signUpLists && signUpLists.length > 0 && (
+            {volunteerLists.length > 0 && (
               <>
                 <Button
                   variant="outline"
@@ -138,18 +146,23 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
               </>
             )}
             <Button
-              onClick={() => router.push(`/events/${eventId}/manage/create-signup-list`)}
+              onClick={() => router.push(`/events/${eventId}/manage/create-volunteer-list`)}
               className="flex items-center gap-2 text-white"
               style={{ background: '#FF7900', color: 'white' }}
             >
-              <Upload className="h-4 w-4" />
-              Create Sign-Up List
+              <Users className="h-4 w-4" />
+              Create Volunteer List
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <SignUpManagementSection eventId={eventId} isOrganizer={true} kind={SignUpKind.Items} />
+        <SignUpManagementSection
+          eventId={eventId}
+          isOrganizer={true}
+          kind={SignUpKind.Volunteers}
+          labels={volunteerSectionLabels}
+        />
       </CardContent>
     </Card>
   );

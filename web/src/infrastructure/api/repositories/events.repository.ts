@@ -1055,12 +1055,19 @@ export class EventsRepository {
    * Maps to backend GET /api/events/{eventId}/export?format={format}
    *
    * @param eventId - Event ID (GUID)
-   * @param format - Export format ('excel', 'csv', 'signuplistszip', or 'signuplistsexcel')
+   * @param format - Export format. Phase 7D.1 adds 'volunteerszip' / 'volunteersexcel'
+   *                 (volunteer-role lists only) alongside the existing sign-up-list variants.
    * @returns Blob for file download (Excel .xlsx, CSV .csv, or ZIP with multiple CSVs)
    */
   async exportEventAttendees(
     eventId: string,
-    format: 'excel' | 'csv' | 'signuplistszip' | 'signuplistsexcel' = 'excel'
+    format:
+      | 'excel'
+      | 'csv'
+      | 'signuplistszip'
+      | 'signuplistsexcel'
+      | 'volunteerszip'
+      | 'volunteersexcel' = 'excel'
   ): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/export?format=${format}`,

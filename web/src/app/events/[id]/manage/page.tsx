@@ -12,6 +12,7 @@ import {
   Mail,
   Camera,
   Banknote,
+  Users,
 } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
@@ -27,6 +28,7 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 // Phase 6A.45: Import new components
 import { EventDetailsTab } from '@/presentation/components/features/events/EventDetailsTab';
 import { SignUpListsTab } from '@/presentation/components/features/events/SignUpListsTab';
+import { VolunteerListsTab } from '@/presentation/components/features/events/VolunteerListsTab';
 import { UnpublishEventModal } from '@/presentation/components/features/events/UnpublishEventModal';
 import { DeleteEventModal } from '@/presentation/components/features/events/DeleteEventModal';
 
@@ -297,6 +299,12 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
       label: 'Signup Lists',
       icon: ListChecks,
       content: <SignUpListsTab eventId={id} signUpLists={signUpLists || []} />,
+    },
+    {
+      id: 'volunteers',
+      label: 'Volunteers',
+      icon: Users,
+      content: <VolunteerListsTab eventId={id} signUpLists={signUpLists || []} />,
     },
     {
       id: 'forms',

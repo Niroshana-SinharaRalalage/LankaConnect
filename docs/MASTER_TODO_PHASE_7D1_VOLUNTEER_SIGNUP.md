@@ -90,13 +90,15 @@
 
 ---
 
-## Phase F — Frontend Organizer UI ⏳ PENDING
+## Phase F — Frontend Organizer UI 🚧 IN PROGRESS
 
-- [ ] **22.** Create `VolunteerListsTab.tsx` (reuses `SignUpManagementSection` with `kind="Volunteers"` + relabeled copy)
-- [ ] **23.** Wire into event manage-page tab array
-- [ ] **24.** Create `create-volunteer-list/page.tsx` (mirror `create-signup-list`, constrain to slot-based)
-- [ ] **25.** Create `volunteer-lists/[signupId]/page.tsx` edit page
+- [x] **22.** Create `VolunteerListsTab.tsx` (reuses `SignUpManagementSection` with `kind={SignUpKind.Volunteers}` + `volunteerSectionLabels`). Also threaded new optional `kind?: SignUpKind` prop through `SignUpManagementSection` → `useEventSignUps` so kind-scoped fetches cache independently. `SignUpListsTab` now passes `kind={SignUpKind.Items}` to isolate the existing tab. Edit-button routes now branch on `list.kind` (`/volunteer-lists/:id` vs `/signup-lists/:id`).
+- [x] **23.** Added new `volunteers` tab to [manage/page.tsx](../web/src/app/events/%5Bid%5D/manage/page.tsx) tab array using the `Users` lucide icon.
+- [x] **24.** Created [create-volunteer-list/page.tsx](../web/src/app/events/%5Bid%5D/manage/create-volunteer-list/page.tsx) — streamlined slot-only form (role name + volunteers-needed + notes), submits with `kind: SignUpKind.Volunteers`, `hasOpenItems: false`, items categorised as `Mandatory` per architect plan, redirects to `?tab=volunteers` after create.
+- [x] **25.** Created [volunteer-lists/[signupId]/page.tsx](../web/src/app/events/%5Bid%5D/volunteer-lists/%5BsignupId%5D/page.tsx) — slot-only edit page with list-details save + inline per-role edit/remove/add. Fetches via `useEventSignUps(eventId, SignUpKind.Volunteers)` so the cached volunteer slice is reused.
 - [ ] **26.** Commit + push → frontend staging deploy. Manual UI verification (create "Food Committee: 5 slots")
+
+**Evidence (pre-deploy):** `npx tsc --noEmit` clean. 20 regression-guard unit tests green (5 hook, 8 Zod, 7 modal labels). No existing consumers of `SignUpManagementSection` affected — `kind` prop defaults to undefined (unfiltered fetch).
 
 ---
 

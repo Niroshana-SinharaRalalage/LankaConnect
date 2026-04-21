@@ -1,7 +1,35 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — WhatsApp RCA Fix 1+2+5 (skip-reason enum + unverified cohort metric) pushed, deploy-staging run 24699949763 in-flight*
+*Last Updated: 2026-04-20 — Phase 7D.1 Phase F local-ready: organizer Volunteer tab + create/edit pages, awaiting UI staging deploy.*
 
-## 🎯 Current Session Status (2026-04-20 — WhatsApp: Skip Reason Enum + Unverified Cohort Metric)
+## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase F: Organizer Volunteer UI)
+
+### Phase 7D.1 Phase F — Volunteers tab + create-volunteer-list + edit page
+
+**Status**: ✅ **LOCAL-READY** (tsc `--noEmit` clean, 20 Phase-E regression-guard tests still green) — about to commit and trigger `deploy-ui-staging.yml`. Master TODO steps 22/23/24/25 ticked; step 26 in progress (this commit + staging smoke).
+
+**Goal**: Organizer-facing UI for volunteer lists. Reuse `SignUpManagementSection` via the Phase-E `labels` prop + new `kind` filter so the Volunteers tab, Sign-Up Lists tab, create form, and edit page all share the same commitment/edit UX but with volunteer-specific copy and cache isolation. Zero regression on existing Sign-Up Lists UX.
+
+**Changes**:
+- [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) — added `kind?: SignUpKind` prop threaded into `useEventSignUps(eventId, kind)`. Exported `volunteerSectionLabels` (section heading, org/attendee empty states, Volunteer / Update Volunteer Sign Up / Cancel Volunteer Sign Up buttons, all 3 cancel-dialog pairs, modal `labels` = `volunteerCommitmentLabels`). Edit button is now data-driven: branches on `signUpList.kind` to route to `/volunteer-lists/:id` or `/signup-lists/:id`.
+- [SignUpListsTab.tsx](../web/src/presentation/components/features/events/SignUpListsTab.tsx) — passes `kind={SignUpKind.Items}` so the Sign-Up Lists tab cache is disjoint from Volunteers. Once a volunteer list exists it won't bleed into the legacy tab.
+- [VolunteerListsTab.tsx](../web/src/presentation/components/features/events/VolunteerListsTab.tsx) — new (~160 lines). Mirrors `SignUpListsTab` but uses `kind={SignUpKind.Volunteers}`, `volunteerSectionLabels`, Users lucide icon, orange `#FF7900` create button → `/manage/create-volunteer-list`. `useMemo`-filters passed `signUpLists` prop to Volunteers for the export enable/disable. Export buttons use new `volunteerszip` / `volunteersexcel` formats.
+- [events.repository.ts](../web/src/infrastructure/api/repositories/events.repository.ts) — extended `exportEventAttendees` format union with `'volunteerszip' | 'volunteersexcel'`.
+- [manage/page.tsx](../web/src/app/events/[id]/manage/page.tsx) — added `Users` lucide import + `VolunteerListsTab` import + new tab object between `signups` and `forms` → `{ id: 'volunteers', label: 'Volunteers', icon: Users, content: <VolunteerListsTab eventId={id} signUpLists={signUpLists || []} /> }`.
+- [create-volunteer-list/page.tsx](../web/src/app/events/[id]/manage/create-volunteer-list/page.tsx) — new (~350 lines). Streamlined slot-only form — no Mandatory/Preferred/Suggested/Open toggles (volunteer roles are a flat list). Per-role inputs: name + volunteers-needed (1-500, matches Phase E `volunteerListSchema`) + notes. Submits `kind: SignUpKind.Volunteers`, `hasMandatoryItems: true` (others false), items with `itemType: Slot`, `itemCategory: Mandatory`, `availableSlots: n`. Redirects to `?tab=volunteers` on success.
+- [volunteer-lists/[signupId]/page.tsx](../web/src/app/events/[id]/volunteer-lists/[signupId]/page.tsx) — new (~450 lines). Edit page; fetches via `useEventSignUps(eventId, SignUpKind.Volunteers)` to share the kind-scoped cache. Two cards: List Details (rename/describe dirty-state save/revert) + Volunteer Roles (inline edit + add-new-role form). Uses `isQuantityBased` type guard when displaying slot counts since `SignUpItemDto` is discriminated.
+
+**Why durable**:
+- `kind?: SignUpKind` is purely additive — all existing `SignUpManagementSection` consumers (public event page, previous-week backup pages, existing tests) keep passing `undefined` and get the pre-Phase-7D.1 unfiltered fetch behaviour verbatim.
+- Data-driven Edit routing means the single shared component renders correctly inside either tab; no duplicated JSX branches to drift.
+- Cache keys from Phase E (`['signups', 'list', eventId, { kind }]`) stay disjoint between tabs, and the shared prefix still lets mutation hooks invalidate both kinds via `signUpKeys.list(eventId)`.
+- Volunteer create/edit UIs never surface quantity-item or open-item controls, so the UI physically cannot submit a payload the `SignUpList.CreateVolunteerList` domain factory would reject — defence-in-depth matches the domain invariant.
+- 20 Phase-E regression-guard unit tests (5 hook + 8 Zod + 7 modal) still green → no behavioural drift in the shared components.
+
+**Next**: commit + push develop → watch `deploy-ui-staging.yml` → staging smoke (log in as `niroshhh@gmail.com`, navigate to an event's manage page, open Volunteers tab, create "Food Committee: 5 volunteers", edit a role, verify Sign-Up Lists tab shows zero volunteer entries). Then Phase G (public event details `VolunteerListSection` + conditional nav button).
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — WhatsApp: Skip Reason Enum + Unverified Cohort Metric)
 
 ### WhatsApp RCA — Fix 1+2+5 (bundled domain slice)
 
@@ -177,7 +205,7 @@
 
 ### E1 — Remove required-address blocker on anonymous event registration
 
-**Status**: 🚧 **CODE COMPLETE LOCALLY — READY FOR COMMIT** — Anonymous event registration was rejecting submissions with a blank `address` because `AttendeeInfo.Create` enforced `!IsNullOrWhiteSpace(address)`. Domain VO now treats address as optional (null/""/whitespace → empty string on the entity); frontend form no longer blocks submit on missing address and relabels the field `(optional)`.
+**Status**: ✅ **SHIPPED TO STAGING — GREEN** (commit `e2d7a66c` on develop). Anonymous event registration was rejecting submissions with a blank `address` because `AttendeeInfo.Create` enforced `!IsNullOrWhiteSpace(address)`. Domain VO now treats address as optional (null/""/whitespace → empty string on the entity); frontend form no longer blocks submit on missing address and relabels the field `(optional)`. Both `Deploy to Azure Staging` (run `24688502502`, 8m25s) and `Deploy UI to Azure Staging` (run `24688502498`, 4m33s) succeeded.
 
 **Scope**: Single-layer domain fix + one test flip + one frontend form tweak. No DB change, no migration, no command/handler/controller change, no API contract change (the request DTO already had `Address?` as `string?`, and the RegisterAnonymousAttendeeCommandHandler already passed `request.Address ?? string.Empty` into `AttendeeInfo.Create` — the domain VO was the only blocker).
 
@@ -195,7 +223,12 @@
 
 **Why durable**: domain VO carries the null-safe normalisation so every path (legacy `AttendeeInfo` flow + new `RegistrationContact` VO which already supported optional address) converges on the same empty-string representation — no downstream string-null-vs-empty divergence. Trimming behaviour preserved for real addresses. The request DTO chain was already `string?` end-to-end, so there's no API contract change to announce.
 
-**Follow-up**: commit + push → `deploy-staging.yml` + `deploy-ui-staging.yml` → curl anonymous-registration smoke (empty-address payload → 200) → browser smoke (label shows "(optional)", blank submit works) → Azure log check. Then start PR-B at C4 per [MASTER_TODO_E1_PHASE_C.md](./MASTER_TODO_E1_PHASE_C.md).
+**Staging verification**:
+- **Backend smoke (3 variants)** against `POST /api/events/0458806b-8672-4ad5-a7cb-f5346f1b282a/register-anonymous` (free event "Monthly Dana January 2026"): no `address` key → HTTP 200 `{"success":true,...}`, `address:""` → HTTP 200, `address:"   "` → HTTP 200. All returned the expected `Registration successful! You will receive a confirmation email shortly.` response body.
+- **Azure container logs** (last 150 lines via `az containerapp logs show --name lankaconnect-api-staging --resource-group lankaconnect-staging`): no `[ERR]` or `[FTL]`. Only pre-existing `[WRN] EmailEncryptionService: Encryption:EmailKey not configured. Using development fallback key.` (unrelated).
+- **Browser smoke**: deferred to user — not runnable from CLI. Please confirm the registration form label reads `Address (optional)` and a blank-address submission succeeds.
+
+**Follow-up**: PR-B starts at C4 per [MASTER_TODO_E1_PHASE_C.md](./MASTER_TODO_E1_PHASE_C.md).
 
 ---
 

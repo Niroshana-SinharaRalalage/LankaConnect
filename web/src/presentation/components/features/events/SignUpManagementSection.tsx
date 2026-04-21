@@ -36,7 +36,7 @@ import {
   useUpdateOpenSignUpItem,
   useCancelOpenSignUpItem,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, isQuantityBased } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, SignUpKind, isQuantityBased } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -46,7 +46,13 @@ import {
   CardTitle,
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData, SignUpCommitmentLabels } from './SignUpCommitmentModal';
+import {
+  SignUpCommitmentModal,
+  CommitmentFormData,
+  AnonymousCommitmentFormData,
+  SignUpCommitmentLabels,
+  volunteerCommitmentLabels,
+} from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { Plus, Edit, Trash2, ChevronDown, AlertCircle, Lightbulb } from 'lucide-react';
 import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
@@ -103,6 +109,42 @@ export const defaultSignUpListsSectionLabels: SignUpListsSectionLabels = {
 };
 
 /**
+ * Phase 7D.1 step 22: volunteer-facing copy. Mirrors the default shape but
+ * relabels list-, button-, and dialog-level text for volunteer lists. Uses
+ * `volunteerCommitmentLabels` for the nested modal so the experience is
+ * end-to-end volunteer-branded.
+ */
+export const volunteerSectionLabels: SignUpListsSectionLabels = {
+  sectionHeading: (count) =>
+    `Volunteer Roles (This event has ${count} volunteer ${count === 1 ? 'list' : 'lists'})`,
+  emptyStateOrganizer: {
+    title: 'No volunteer lists for this event yet.',
+    helperText: 'Create one to let attendees volunteer for specific roles!',
+  },
+  emptyStateAttendeeTitle: 'Volunteer Roles',
+  emptyStateAttendeeDescription: 'No volunteer roles for this event yet.',
+  signUpButton: 'Volunteer',
+  updateSignUpButton: 'Update Volunteer Sign Up',
+  cancelSignUpButton: 'Cancel Volunteer Sign Up',
+  cancelCommitmentDialog: {
+    title: 'Cancel Volunteer Commitment',
+    description:
+      'Are you sure you want to cancel your volunteer commitment? This action cannot be undone.',
+  },
+  cancelSignUpDialog: {
+    title: 'Cancel Volunteer Sign-Up',
+    description:
+      'Are you sure you want to cancel your volunteer sign-up for this role? This action cannot be undone.',
+  },
+  cancelOpenItemDialog: {
+    title: 'Cancel Volunteer Sign-Up',
+    description:
+      'Are you sure you want to cancel this volunteer sign-up? This action cannot be undone.',
+  },
+  commitmentModal: volunteerCommitmentLabels,
+};
+
+/**
  * Props for SignUpManagementSection
  */
 interface SignUpManagementSectionProps {
@@ -113,6 +155,11 @@ interface SignUpManagementSectionProps {
    * Optional copy overrides. Omit to keep existing UX unchanged.
    */
   labels?: SignUpListsSectionLabels;
+  /**
+   * Phase 7D.1 step 22: filter fetched lists by kind. Omit to fetch unfiltered
+   * (existing behaviour — backward compatible with all pre-7D.1 callers).
+   */
+  kind?: SignUpKind;
 }
 
 /**
@@ -123,6 +170,7 @@ export function SignUpManagementSection({
   userId,
   isOrganizer = false,
   labels,
+  kind,
 }: SignUpManagementSectionProps) {
   const router = useRouter();
   const effectiveLabels = labels ?? defaultSignUpListsSectionLabels;
@@ -181,8 +229,8 @@ export function SignUpManagementSection({
   const [openItemSignUpListCategory, setOpenItemSignUpListCategory] = useState<string>('');
   const [editingOpenItem, setEditingOpenItem] = useState<SignUpItemDto | null>(null);
 
-  // Fetch sign-up lists
-  const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
+  // Fetch sign-up lists (Phase 7D.1: optional kind filter)
+  const { data: signUpLists, isLoading, error } = useEventSignUps(eventId, kind);
 
   // Mutations
   const commitToSignUp = useCommitToSignUp();
@@ -656,7 +704,13 @@ export function SignUpManagementSection({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/events/${eventId}/signup-lists/${signUpList.id}`)}
+                          onClick={() =>
+                            router.push(
+                              signUpList.kind === SignUpKind.Volunteers
+                                ? `/events/${eventId}/volunteer-lists/${signUpList.id}`
+                                : `/events/${eventId}/signup-lists/${signUpList.id}`
+                            )
+                          }
                           className="text-orange-600 hover:text-orange-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />

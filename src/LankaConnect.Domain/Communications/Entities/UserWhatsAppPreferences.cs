@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Communications.DomainEvents;
 using LankaConnect.Domain.Communications.Enums;
 
 namespace LankaConnect.Domain.Communications.Entities;
@@ -25,6 +26,14 @@ public class UserWhatsAppPreferences : BaseEntity
     public DateTime? VerificationCodeExpires { get; private set; }
     public int VerificationAttempts { get; private set; }
     public DateTime? VerificationLockedUntil { get; private set; }
+
+    // Phase 7D Fix 4: grace-clock + audit columns for auto-disable-on-unverified.
+    // WhatsAppEnabledAt is the *dedicated* enable timestamp — we cannot reuse UpdatedAt
+    // because any preference edit (quiet hours, per-type toggles) touches that field and
+    // would silently reset the grace period.
+    public DateTime? WhatsAppEnabledAt { get; private set; }
+    public DateTime? WhatsAppAutoDisabledAt { get; private set; }
+    public WhatsAppAutoDisableReason? WhatsAppAutoDisableReason { get; private set; }
 
     // Per-notification preferences (all default to true when WhatsApp is enabled)
     public bool NotifyEventRegistration { get; private set; } = true;
@@ -78,6 +87,11 @@ public class UserWhatsAppPreferences : BaseEntity
 
         WhatsAppPhoneNumber = phoneNumber;
         WhatsAppEnabled = true;
+        // Fix 4: restart the grace clock on every enable (new phone = new 30-day window).
+        WhatsAppEnabledAt = DateTime.UtcNow;
+        // Re-enabling clears any prior auto-disable audit so the row reads cleanly.
+        WhatsAppAutoDisabledAt = null;
+        WhatsAppAutoDisableReason = null;
         // Reset verification when phone number changes
         PhoneVerified = false;
         PhoneVerifiedAt = null;
@@ -96,7 +110,37 @@ public class UserWhatsAppPreferences : BaseEntity
     public Result DisableWhatsApp()
     {
         WhatsAppEnabled = false;
+        WhatsAppEnabledAt = null;
         MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7D Fix 4: background-job-driven auto-disable after the verification grace
+    /// period elapses. Guards protect against:
+    /// - disabling a user who has actually verified (invariant: never auto-disable a working channel)
+    /// - disabling a row that is already disabled (idempotency: a second job run must not re-fire the email)
+    /// Raises <see cref="WhatsAppAutoDisabledDomainEvent"/> so the application layer can send
+    /// the "we turned WhatsApp off" notification email via the standard domain-event pipeline.
+    /// </summary>
+    public Result AutoDisableUnverified(WhatsAppAutoDisableReason reason)
+    {
+        if (PhoneVerified)
+            return Result.Failure("Cannot auto-disable a verified WhatsApp preference.");
+
+        if (!WhatsAppEnabled)
+            return Result.Failure("WhatsApp is already disabled.");
+
+        var phoneForEvent = WhatsAppPhoneNumber ?? string.Empty;
+
+        WhatsAppEnabled = false;
+        WhatsAppEnabledAt = null;
+        WhatsAppAutoDisabledAt = DateTime.UtcNow;
+        WhatsAppAutoDisableReason = reason;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new WhatsAppAutoDisabledDomainEvent(UserId, phoneForEvent, reason));
+
         return Result.Success();
     }
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LankaConnect.Domain.Communications.DomainEvents;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.Enums;
 using Xunit;
@@ -577,6 +578,113 @@ public class UserWhatsAppPreferencesTests
             shouldNotify.Should().Be(skipReason == null,
                 $"ShouldNotify({type}) should equal (EvaluateSkipReason({type}) == null)");
         }
+    }
+
+    #endregion
+
+    #region Fix 4 — WhatsAppEnabledAt grace clock + AutoDisableUnverified
+
+    [Fact]
+    public void EnableWhatsApp_Should_Set_WhatsAppEnabledAt_Timestamp()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        var before = DateTime.UtcNow;
+
+        prefs.EnableWhatsApp(ValidE164Phone);
+
+        prefs.WhatsAppEnabledAt.Should().NotBeNull();
+        prefs.WhatsAppEnabledAt!.Value.Should().BeOnOrAfter(before)
+            .And.BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void EnableWhatsApp_With_New_Number_Should_Refresh_WhatsAppEnabledAt()
+    {
+        // Re-enabling with a new number must restart the grace clock — otherwise a user
+        // who switches phones would be auto-disabled based on the old number's enable date.
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        prefs.EnableWhatsApp(ValidE164Phone);
+        var firstEnabledAt = prefs.WhatsAppEnabledAt;
+
+        Thread.Sleep(10);
+        prefs.EnableWhatsApp("+94771234567");
+
+        prefs.WhatsAppEnabledAt.Should().NotBeNull();
+        prefs.WhatsAppEnabledAt!.Value.Should().BeAfter(firstEnabledAt!.Value);
+    }
+
+    [Fact]
+    public void DisableWhatsApp_Should_Clear_WhatsAppEnabledAt()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        prefs.EnableWhatsApp(ValidE164Phone);
+
+        prefs.DisableWhatsApp();
+
+        prefs.WhatsAppEnabledAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void AutoDisableUnverified_When_Enabled_But_Unverified_Should_Succeed_And_Set_Audit_Columns()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        prefs.EnableWhatsApp(ValidE164Phone);
+        var before = DateTime.UtcNow;
+
+        var result = prefs.AutoDisableUnverified(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+
+        result.IsSuccess.Should().BeTrue();
+        prefs.WhatsAppEnabled.Should().BeFalse();
+        prefs.WhatsAppEnabledAt.Should().BeNull();
+        prefs.WhatsAppAutoDisabledAt.Should().NotBeNull();
+        prefs.WhatsAppAutoDisabledAt!.Value.Should().BeOnOrAfter(before)
+            .And.BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        prefs.WhatsAppAutoDisableReason.Should().Be(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+    }
+
+    [Fact]
+    public void AutoDisableUnverified_Should_Raise_Domain_Event_With_User_And_Phone()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        prefs.EnableWhatsApp(ValidE164Phone);
+        prefs.ClearDomainEvents();
+
+        prefs.AutoDisableUnverified(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+
+        var evt = prefs.DomainEvents.OfType<WhatsAppAutoDisabledDomainEvent>().SingleOrDefault();
+        evt.Should().NotBeNull();
+        evt!.UserId.Should().Be(_userId);
+        evt.PhoneNumber.Should().Be(ValidE164Phone);
+        evt.Reason.Should().Be(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+    }
+
+    [Fact]
+    public void AutoDisableUnverified_When_Phone_Already_Verified_Should_Fail()
+    {
+        // Guardrail: job must never disable a user who has actually verified.
+        // If the repo query is correct this shouldn't happen, but the domain
+        // enforces the invariant at the aggregate boundary.
+        var prefs = CreateEnabledAndVerifiedPreferences();
+
+        var result = prefs.AutoDisableUnverified(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+
+        result.IsFailure.Should().BeTrue();
+        prefs.WhatsAppEnabled.Should().BeTrue();
+        prefs.WhatsAppAutoDisabledAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void AutoDisableUnverified_When_WhatsApp_Already_Disabled_Should_Fail()
+    {
+        // Idempotency guard: a second run of the job on a row that was already auto-disabled
+        // must not double-fire the email (domain event) or touch audit columns.
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+
+        var result = prefs.AutoDisableUnverified(WhatsAppAutoDisableReason.UnverifiedGraceExpired);
+
+        result.IsFailure.Should().BeTrue();
+        prefs.WhatsAppAutoDisabledAt.Should().BeNull();
+        prefs.DomainEvents.OfType<WhatsAppAutoDisabledDomainEvent>().Should().BeEmpty();
     }
 
     #endregion

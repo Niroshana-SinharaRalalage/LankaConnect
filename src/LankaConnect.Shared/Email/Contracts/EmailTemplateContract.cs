@@ -67,6 +67,9 @@ public static class EmailTemplateContract
         public const string VolunteerCommitmentConfirmation = "template-volunteer-commitment-confirmation";
         public const string VolunteerCommitmentCancellation = "template-volunteer-commitment-cancellation";
 
+        // Phase 7D Fix 4: Auto-disabled WhatsApp notification (30-day unverified grace expired)
+        public const string WhatsAppAutoDisabled = "template-whatsapp-auto-disabled";
+
         // Support Templates
         public const string SupportTicketConfirmation = "template-support-ticket-confirmation"; // Phase 6A.113: Renamed from SupportTicketReceived, corrected value
         public const string SupportTicketReply = "template-support-ticket-reply";
@@ -1116,6 +1119,29 @@ public static class EmailTemplateContract
         public const string RefundedAt = "RefundedAt";
         public const string PaymentIntentId = "PaymentIntentId";
         public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region WhatsApp Auto-Disabled Parameters
+
+    /// <summary>
+    /// Phase 7D Fix 4: parameters for the "we turned WhatsApp off because you never verified"
+    /// email. Sent by the daily <c>ExpireUnverifiedWhatsAppPreferencesJob</c> — never user-triggered.
+    /// </summary>
+    public static class WhatsAppAutoDisabled
+    {
+        /// <summary>Last 4 digits of the phone number, e.g. "•••• 3717" — never the full number.</summary>
+        public const string MaskedPhone = "MaskedPhone";
+
+        /// <summary>Formatted enable date, e.g. "March 22, 2026".</summary>
+        public const string EnabledAt = "EnabledAt";
+
+        /// <summary>Grace window size in days (e.g. 30) so the copy reads "after 30 days".</summary>
+        public const string GracePeriodDays = "GracePeriodDays";
+
+        /// <summary>URL to the WhatsApp preferences page where the user can re-enable.</summary>
+        public const string ReEnableUrl = "ReEnableUrl";
     }
 
     #endregion

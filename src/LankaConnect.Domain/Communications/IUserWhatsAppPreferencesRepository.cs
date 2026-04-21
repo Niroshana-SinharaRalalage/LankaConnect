@@ -21,4 +21,13 @@ public interface IUserWhatsAppPreferencesRepository : IRepository<UserWhatsAppPr
     /// verification flow is dropping conversions.
     /// </summary>
     Task<int> GetUsersEnabledButUnverifiedCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Phase 7D Fix 4: preferences that are enabled + unverified where the grace clock
+    /// (<c>WhatsAppEnabledAt</c>) elapsed before <paramref name="cutoff"/>. Returns a tracked
+    /// entity list so the auto-disable job can call <see cref="Entities.UserWhatsAppPreferences.AutoDisableUnverified"/>
+    /// and persist the change in one UoW.
+    /// </summary>
+    Task<IReadOnlyList<UserWhatsAppPreferences>> GetStaleUnverifiedAsync(
+        DateTime cutoff, CancellationToken ct = default);
 }

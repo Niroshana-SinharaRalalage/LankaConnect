@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -92,6 +93,10 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 return; // Fail-silent
             }
 
+            // Phase 7C.2: Project event's primary + optional secondary location into the
+            // 8 decomposed email keys. Fixes GPS-coordinate leak from @event.Location?.ToString().
+            var locationProjection = @event.ProjectEmailLocation();
+
             // Phase 6A.87: Use typed email parameters for compile-time safety
             // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
             var emailParams = SignupCommitmentEmailParams.CreateCancellation(
@@ -104,9 +109,12 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
                 quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
                 eventStartDate: @event.StartDate,
                 timeZoneId: @event.TimeZoneId,
-                eventLocation: @event.Location?.ToString() ?? "Location TBD",
+                eventLocation: locationProjection.LegacyFlatString,
                 eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
             );
+
+            // Phase 7C.2: Populate decomposed LocationName / LocationAddress / secondary block fields.
+            emailParams.WithLocationDetails(locationProjection);
 
             // Phase 7D.1: Route to volunteer-specific cancellation template when the
             // signup list is a volunteer list. Look up Kind from the loaded event

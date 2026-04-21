@@ -82,9 +82,22 @@ public class SignupCommitmentEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location.
+    /// Event location (legacy flat fallback — "Street, City" or "Online Event").
+    /// Phase 7C.2: Prefer <see cref="WithLocationDetails"/> to populate the 8
+    /// decomposed keys. This string is kept so un-migrated templates that still
+    /// reference {{EventLocation}} continue to render.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: Full projection of the event's primary + optional secondary
+    /// location. When non-null, <see cref="ToDictionary"/> emits the 8 decomposed
+    /// keys (LocationName, LocationAddress, HasLocationName, HasSecondaryLocation,
+    /// SecondaryLocationLabel, SecondaryLocationName, HasSecondaryLocationName,
+    /// SecondaryLocationAddress) and overwrites EventLocation with the projection's
+    /// LegacyFlatString. Populated via <see cref="WithLocationDetails"/>.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// URL to view event details.
@@ -249,7 +262,7 @@ public class SignupCommitmentEmailParams : IEmailParameters
     /// </summary>
     public Dictionary<string, object> ToDictionary()
     {
-        return new Dictionary<string, object>
+        var dict = new Dictionary<string, object>
         {
             // Core params
             { "UserName", UserName },
@@ -258,6 +271,8 @@ public class SignupCommitmentEmailParams : IEmailParameters
             { "SignupItem", SignupItem },       // Keep for backward compatibility
             { "Quantity", Quantity },
             { "EventDateTime", EmailDateTimeHelper.FormatDateTimeWithTz(EventStartDate, TimeZoneId) },
+            // Phase 7C.2: LocationDetails (when set) overwrites EventLocation with its
+            // legacy flat string AND adds the 8 decomposed keys via the writer below.
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "CommitmentType", CommitmentType },
@@ -290,6 +305,15 @@ public class SignupCommitmentEmailParams : IEmailParameters
             // Footer params
             { "Year", DateTime.UtcNow.Year }
         };
+
+        // Phase 7C.2: Emit 8 decomposed location keys (+ legacy EventLocation override).
+        // When no projection was supplied we still emit the keys as empty/false so
+        // templates containing {{#if HasSecondaryLocation}} don't see an "undefined".
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+
+        return dict;
     }
 
     /// <summary>
@@ -395,6 +419,24 @@ public class SignupCommitmentEmailParams : IEmailParameters
     {
         HasSignupForms = !string.IsNullOrWhiteSpace(url);
         SignupFormsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 7C.2: Copies the full location projection into this params instance
+    /// and overwrites <see cref="EventLocation"/> with <c>projection.LegacyFlatString</c>
+    /// so legacy and Phase-7C.2 templates both render correctly. Throws when
+    /// <paramref name="projection"/> is null (caller bug — projections are always
+    /// non-null since <c>EventExtensions.ProjectEmailLocation</c> returns the
+    /// <see cref="LocationEmailProjection.Online"/> sentinel for address-less events).
+    /// </summary>
+    public SignupCommitmentEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
         return this;
     }
 

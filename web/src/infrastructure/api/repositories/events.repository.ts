@@ -20,6 +20,7 @@ import type {
   EventImageDto,
   EventVideoDto,
   SignUpListDto,
+  SignUpKind,
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
@@ -617,10 +618,15 @@ export class EventsRepository {
   /**
    * Get all sign-up lists for an event
    * Returns sign-up lists with commitments
-   * Maps to backend GET /api/events/{id}/signups
+   * Maps to backend GET /api/events/{id}/signups[?kind=Items|Volunteers]
+   *
+   * Phase 7D.1: Optional `kind` filter narrows the response to item lists or
+   * volunteer-role lists. Omitting the argument preserves the pre-Phase-7D.1
+   * behaviour of returning every list for the event.
    */
-  async getEventSignUpLists(eventId: string): Promise<SignUpListDto[]> {
-    return await apiClient.get<SignUpListDto[]>(`${this.basePath}/${eventId}/signups`);
+  async getEventSignUpLists(eventId: string, kind?: SignUpKind): Promise<SignUpListDto[]> {
+    const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
+    return await apiClient.get<SignUpListDto[]>(`${this.basePath}/${eventId}/signups${query}`);
   }
 
   /**

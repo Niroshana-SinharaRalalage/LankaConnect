@@ -35,6 +35,56 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { SignUpItemCategory, isQuantityBased, isSlotBased, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
+/**
+ * Phase 7D.1 Step 21: labels prop lets wrapper components (e.g. volunteer UI)
+ * relabel the modal without forking the component. Defaults keep the existing
+ * sign-up UX 100% identical — no caller needs to change.
+ */
+export interface SignUpCommitmentLabels {
+  createTitle: string;
+  updateTitle: string;
+  createDescription: string;
+  updateDescription: string;
+  quantityLabel: (slotBased: boolean) => string;
+  unitLabel: (slotBased: boolean) => string;
+  availabilityAddVerb: string;
+  availabilitySignUpVerb: string;
+  submitCreate: string;
+  submitUpdate: string;
+  submitCreateBusy: string;
+  submitUpdateBusy: string;
+}
+
+export const defaultSignUpCommitmentLabels: SignUpCommitmentLabels = {
+  createTitle: 'Sign Up to Bring Item',
+  updateTitle: 'Update Sign Up',
+  createDescription: 'Fill in your details to sign up for bringing this item',
+  updateDescription: 'Update your sign-up details (set quantity to 0 to cancel)',
+  quantityLabel: (slotBased) => (slotBased ? 'Number of Slots' : 'Quantity'),
+  unitLabel: (slotBased) => (slotBased ? 'slot(s)' : 'item(s)'),
+  availabilityAddVerb: 'add',
+  availabilitySignUpVerb: 'sign up',
+  submitCreate: 'Confirm Sign Up',
+  submitUpdate: 'Update Sign Up',
+  submitCreateBusy: 'Signing up...',
+  submitUpdateBusy: 'Updating...',
+};
+
+export const volunteerCommitmentLabels: SignUpCommitmentLabels = {
+  createTitle: 'Volunteer for This Role',
+  updateTitle: 'Update Volunteer Sign Up',
+  createDescription: 'Fill in your details to volunteer for this role',
+  updateDescription: 'Update your volunteer sign-up (set quantity to 0 to cancel)',
+  quantityLabel: () => 'Number of Volunteers',
+  unitLabel: () => 'volunteer(s)',
+  availabilityAddVerb: 'add',
+  availabilitySignUpVerb: 'volunteer',
+  submitCreate: 'Confirm Volunteer',
+  submitUpdate: 'Update Volunteer Sign Up',
+  submitCreateBusy: 'Signing up...',
+  submitUpdateBusy: 'Updating...',
+};
+
 interface SignUpCommitmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,6 +95,10 @@ interface SignUpCommitmentModalProps {
   onCommit: (data: CommitmentFormData) => Promise<void>;
   onCommitAnonymous?: (data: AnonymousCommitmentFormData) => Promise<void>;
   isSubmitting?: boolean;
+  /**
+   * Optional copy overrides. Omit to keep existing UX unchanged.
+   */
+  labels?: SignUpCommitmentLabels;
 }
 
 export interface CommitmentFormData {
@@ -78,7 +132,9 @@ export function SignUpCommitmentModal({
   onCommit,
   onCommitAnonymous,
   isSubmitting = false,
+  labels,
 }: SignUpCommitmentModalProps) {
+  const effectiveLabels = labels ?? defaultSignUpCommitmentLabels;
   const { user } = useAuthStore();
   const isLoggedIn = !!user?.userId;
 
@@ -135,7 +191,7 @@ export function SignUpCommitmentModal({
   if (!item) return null;
 
   const slotBased = isSlotBased(item);
-  const unitLabel = slotBased ? 'slot(s)' : 'item(s)';
+  const unitLabel = effectiveLabels.unitLabel(slotBased);
   const currentlyCommitted = existingCommitment?.quantity || 0;
   const itemRemainingQuantity = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
   const maxQuantity = existingCommitment
@@ -291,11 +347,11 @@ export function SignUpCommitmentModal({
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{existingCommitment ? 'Update Sign Up' : 'Sign Up to Bring Item'}</DialogTitle>
+            <DialogTitle>{existingCommitment ? effectiveLabels.updateTitle : effectiveLabels.createTitle}</DialogTitle>
             <DialogDescription>
               {existingCommitment
-                ? 'Update your sign-up details (set quantity to 0 to cancel)'
-                : 'Fill in your details to sign up for bringing this item'}
+                ? effectiveLabels.updateDescription
+                : effectiveLabels.createDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -324,7 +380,7 @@ export function SignUpCommitmentModal({
                   </p>
                 )}
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Available to {existingCommitment ? 'add' : 'sign up'}: {itemRemainingQuantity} of {isQuantityBased(item) ? item.targetQuantity : item.totalSlots} {unitLabel}
+                  Available to {existingCommitment ? effectiveLabels.availabilityAddVerb : effectiveLabels.availabilitySignUpVerb}: {itemRemainingQuantity} of {isQuantityBased(item) ? item.targetQuantity : item.totalSlots} {unitLabel}
                 </p>
                 {existingCommitment && (
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
@@ -423,7 +479,7 @@ export function SignUpCommitmentModal({
                 htmlFor="quantity"
                 className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1"
               >
-                {slotBased ? 'Number of Slots' : 'Quantity'} * {existingCommitment && <span className="text-xs text-neutral-500">(0 to cancel)</span>} (max: {maxQuantity})
+                {effectiveLabels.quantityLabel(slotBased)} * {existingCommitment && <span className="text-xs text-neutral-500">(0 to cancel)</span>} (max: {maxQuantity})
               </label>
               <input
                 id="quantity"
@@ -499,8 +555,8 @@ export function SignUpCommitmentModal({
                 {isValidatingEmail
                   ? 'Validating...'
                   : isSubmitting
-                    ? existingCommitment ? 'Updating...' : 'Signing up...'
-                    : existingCommitment ? 'Update Sign Up' : 'Confirm Sign Up'}
+                    ? existingCommitment ? effectiveLabels.submitUpdateBusy : effectiveLabels.submitCreateBusy
+                    : existingCommitment ? effectiveLabels.submitUpdate : effectiveLabels.submitCreate}
               </Button>
             </div>
           </DialogFooter>

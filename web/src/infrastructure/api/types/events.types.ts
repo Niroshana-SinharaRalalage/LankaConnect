@@ -607,6 +607,19 @@ export enum SignUpItemType {
 }
 
 /**
+ * Phase 7D.1: Discriminator for the kind of sign-up list.
+ * - `Items` — traditional bring-an-item lists (e.g. potluck dishes).
+ * - `Volunteers` — volunteer-role lists (e.g. food committee, setup crew).
+ *
+ * String values match the backend's JsonStringEnumConverter output so JSON
+ * round-trips work without a numeric-to-string shim (MEMORY 6A.124).
+ */
+export enum SignUpKind {
+  Items = 'Items',
+  Volunteers = 'Volunteers',
+}
+
+/**
  * Phase 6A.121: Base interface for discriminated union of sign-up item DTOs
  */
 interface SignUpItemDtoBase {
@@ -676,6 +689,12 @@ export interface SignUpListDto {
   category: string;
   description: string;
   signUpType: SignUpType;
+  /**
+   * Phase 7D.1: Discriminator between bring-an-item lists and volunteer-role lists.
+   * Optional for backward compatibility with any cached payloads that predate the
+   * Phase A backend; consumers should default missing values to `SignUpKind.Items`.
+   */
+  kind?: SignUpKind;
 
   // Legacy fields (for Open/Predefined sign-ups)
   predefinedItems: string[];
@@ -1156,6 +1175,12 @@ export interface CreateSignUpListRequest {
   hasSuggestedItems: boolean;
   /** Phase 6A.27: Allow users to add their own Open items */
   hasOpenItems?: boolean;
+  /**
+   * Phase 7D.1: Discriminator for volunteer-role lists vs item lists.
+   * Optional; backend defaults to `SignUpKind.Items` when absent so existing
+   * create-signup-list flows remain unchanged.
+   */
+  kind?: SignUpKind;
   items: SignUpItemRequestDto[];
 }
 

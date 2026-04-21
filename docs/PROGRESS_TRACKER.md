@@ -1,7 +1,39 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Phase 7D.1 Phase D (Exports) deployed + staging-verified*
+*Last Updated: 2026-04-20 — Phase 7D.1 Phase E (Frontend Types + Hooks + Labels prop) local-ready, about to push*
 
-## 🎯 Current Session Status (2026-04-21 — Phase 7D.1 Phase D: Volunteer Export Pipeline)
+## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase E: Frontend Types, Hooks, Zod, Labels Prop)
+
+### Phase 7D.1 Phase E — TypeScript SignUpKind + kind-filtered useEventSignUps + volunteerListSchema + labels prop
+
+**Status**: ✅ **LOCAL-READY** (20 unit tests green, `tsc --noEmit` clean) — about to commit and push to trigger `deploy-ui-staging.yml`.
+
+**Goal**: Frontend foundation for the volunteer UI — string enum that matches the backend's `JsonStringEnumConverter`, kind-filtered React Query hook + cache-isolated keys, Zod schema that rejects quantity-based items at the validation boundary, and optional `labels` props on `SignUpCommitmentModal` + `SignUpManagementSection` so Phase F/G wrappers can inject volunteer-specific copy without forking components. Existing Items sign-up UX must remain bit-for-bit identical.
+
+**Changes**:
+- [events.types.ts](../web/src/infrastructure/api/types/events.types.ts) — new `SignUpKind` string enum (`'Items' | 'Volunteers'` — matches `JsonStringEnumConverter` per MEMORY 6A.124). Added `kind?: SignUpKind` to `SignUpListDto` and `CreateSignUpListRequest` (optional — pre-Phase-A cached payloads don't break; consumers default missing to Items).
+- [events.repository.ts](../web/src/infrastructure/api/repositories/events.repository.ts) — `getEventSignUpLists(eventId, kind?)` now forwards `?kind=<string>` when supplied.
+- [useEventSignUps.ts](../web/src/presentation/hooks/useEventSignUps.ts) — `signUpKeys.list` kind-separated so Items and Volunteers caches can't cross-pollinate. `useEventSignUps(eventId, kindOrOptions?, maybeOptions?)` overload pattern: `typeof === 'string'` means kind, object means options. All existing callers (options-as-2nd-arg) keep working unchanged.
+- [event.schemas.ts](../web/src/presentation/lib/validators/event.schemas.ts) — new `volunteerRoleItemSchema` + `volunteerListSchema`. Rejects `itemType=Quantity`, rejects `targetQuantity`, rejects `hasOpenItems=true`, requires ≥1 role, requires `availableSlots ∈ [1, 500]`, requires non-empty category. Zod v4 API (no `errorMap`, no `invalid_type_error`).
+- [SignUpCommitmentModal.tsx](../web/src/presentation/components/features/events/SignUpCommitmentModal.tsx) — new `SignUpCommitmentLabels` interface + `defaultSignUpCommitmentLabels` + `volunteerCommitmentLabels` factories (exported). Optional `labels?` prop — defaults keep existing UX verbatim. 8 hardcoded strings replaced (create/update title + description, quantity label, unit label, availability verb, 4 submit/busy button states).
+- [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) — new `SignUpListsSectionLabels` interface + `defaultSignUpListsSectionLabels` factory. Optional `labels?` prop — defaults keep existing UX verbatim. Section heading, organizer/attendee empty states, Sign Up / Update Sign Up / Cancel Sign Up buttons, all 3 cancel-dialog title+description pairs, and the nested modal `labels` are now injectable.
+
+**Tests** (all 20 green):
+- [useEventSignUps.kind.test.ts](../web/tests/unit/presentation/hooks/useEventSignUps.kind.test.ts) — 5 tests: distinct keys per kind, deterministic serialization, repo called with `undefined` when kind omitted, repo called with `SignUpKind.Volunteers` when supplied, legacy options-as-2nd-arg still works.
+- [volunteer-list.schema.test.ts](../web/src/presentation/lib/validators/__tests__/volunteer-list.schema.test.ts) — 8 tests: happy paths (single and multi-role), rejects `itemType=Quantity`, rejects `targetQuantity`, requires ≥1 role, rejects `availableSlots < 1`, rejects empty category, rejects `hasOpenItems=true`.
+- [SignUpCommitmentModal.labels.test.tsx](../web/tests/unit/presentation/components/features/events/SignUpCommitmentModal.labels.test.tsx) — 7 tests (CLAUDE.md Section 3 regression guard): default title/description/button copy unchanged when `labels` prop omitted, `defaultSignUpCommitmentLabels` constant values match pre-refactor strings bit-for-bit, `volunteerCommitmentLabels` override correctly relabels title/quantity/submit-button.
+
+**Why durable**:
+- String enum + interface-level `kind` field on `SignUpListDto` ensures JSON round-trips work the moment backend starts emitting `"Volunteers"` (MEMORY 6A.124).
+- Overload pattern on `useEventSignUps` = zero-churn to existing call-sites. All 80+ consumers can stay untouched while new volunteer code opts in.
+- Separated query keys guarantee `queryClient.invalidateQueries(['signups', eventId])` still blows away both kinds together (shared prefix), while `['signups', eventId, { kind: 'Volunteers' }]` remains independently addressable.
+- Zod rejections happen client-side so the volunteer form surfaces specific field errors rather than a generic API-400. The backend's `CreateVolunteerListCommand` handler still enforces the same invariants as defence-in-depth.
+- `labels` prop defaults to the exact pre-refactor strings — verified by the regression-guard tests asserting both the rendered DOM and the constant values. Phase F/G wrappers inject `volunteerCommitmentLabels` + a volunteer `SignUpListsSectionLabels` without touching the inner component.
+
+**Next phases** (F, G, H): organizer `VolunteerListsTab` + create/edit pages → public `VolunteerListSection` + conditional "Volunteer" nav button on event details → E2E staging smoke.
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Phase 7D.1 Phase D: Volunteer Export Pipeline)
 
 ### Phase 7D.1 Phase D — Volunteer CSV + Excel exports with Kind-filtered dispatch
 

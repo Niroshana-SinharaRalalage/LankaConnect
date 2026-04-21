@@ -79,12 +79,14 @@
 
 ---
 
-## Phase E — Frontend Types & Hooks ⏳ PENDING
+## Phase E — Frontend Types & Hooks ✅ COMPLETE
 
-- [ ] **18.** Types: add `SignUpKind` string enum (`'Items' | 'Volunteers'` — MEMORY 6A.124) + `kind` field on DTOs
-- [ ] **19.** Hooks: extend `useEventSignUps` with optional `kind` filter; separate query keys per kind
-- [ ] **20.** Zod: new `volunteerListSchema` (slot-based only, relabeled)
-- [ ] **21.** Component refactor: add optional `labels` prop to `SignUpManagementSection` + `SignUpCommitmentModal` (default labels keep existing UX 100% identical — CLAUDE.md Section 3)
+- [x] **18.** Types: add `SignUpKind` string enum (`'Items' | 'Volunteers'` — MEMORY 6A.124) + `kind` field on DTOs
+- [x] **19.** Hooks: extend `useEventSignUps` with optional `kind` filter; separate query keys per kind
+- [x] **20.** Zod: new `volunteerListSchema` (slot-based only, relabeled)
+- [x] **21.** Component refactor: add optional `labels` prop to `SignUpManagementSection` + `SignUpCommitmentModal` (default labels keep existing UX 100% identical — CLAUDE.md Section 3)
+
+**Evidence:** 20 unit tests green — 5 hook key/filter tests ([useEventSignUps.kind.test.ts](../web/tests/unit/presentation/hooks/useEventSignUps.kind.test.ts)), 8 Zod schema tests ([volunteer-list.schema.test.ts](../web/src/presentation/lib/validators/__tests__/volunteer-list.schema.test.ts)), 7 modal-labels regression-guard tests ([SignUpCommitmentModal.labels.test.tsx](../web/tests/unit/presentation/components/features/events/SignUpCommitmentModal.labels.test.tsx)). `npx tsc --noEmit` clean. Defaults preserve pre-Phase-7D.1 UX verbatim.
 
 ---
 

@@ -46,7 +46,7 @@ import {
   CardTitle,
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
+import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData, SignUpCommitmentLabels } from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
 import { Plus, Edit, Trash2, ChevronDown, AlertCircle, Lightbulb } from 'lucide-react';
 import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
@@ -55,12 +55,64 @@ import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 /**
+ * Phase 7D.1 Step 21: section-level copy overrides let the volunteer UI (Phase F/G)
+ * inject volunteer-specific labels without forking the component. Omit to keep
+ * existing sign-up UX 100% identical.
+ */
+export interface SignUpListsSectionLabels {
+  sectionHeading: (count: number) => string;
+  emptyStateOrganizer: { title: string; helperText: string };
+  emptyStateAttendeeTitle: string;
+  emptyStateAttendeeDescription: string;
+  signUpButton: string;
+  updateSignUpButton: string;
+  cancelSignUpButton: string;
+  cancelCommitmentDialog: { title: string; description: string };
+  cancelSignUpDialog: { title: string; description: string };
+  cancelOpenItemDialog: { title: string; description: string };
+  commitmentModal?: SignUpCommitmentLabels;
+}
+
+export const defaultSignUpListsSectionLabels: SignUpListsSectionLabels = {
+  sectionHeading: (count) =>
+    `Sign-Up Lists (This event has ${count} sign-up ${count === 1 ? 'list' : 'lists'})`,
+  emptyStateOrganizer: {
+    title: 'No sign-up lists for this event yet.',
+    helperText: 'Create one to let attendees volunteer to bring items!',
+  },
+  emptyStateAttendeeTitle: 'Sign-Up Lists',
+  emptyStateAttendeeDescription: 'No sign-up lists for this event yet.',
+  signUpButton: 'Sign Up',
+  updateSignUpButton: 'Update Sign Up',
+  cancelSignUpButton: 'Cancel Sign Up',
+  cancelCommitmentDialog: {
+    title: 'Cancel Commitment',
+    description:
+      'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
+  },
+  cancelSignUpDialog: {
+    title: 'Cancel Sign-Up',
+    description:
+      'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
+  },
+  cancelOpenItemDialog: {
+    title: 'Cancel Sign-Up',
+    description:
+      'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
+  },
+};
+
+/**
  * Props for SignUpManagementSection
  */
 interface SignUpManagementSectionProps {
   eventId: string;
   userId?: string; // Current user ID (undefined if not logged in)
   isOrganizer?: boolean; // Is current user the event organizer
+  /**
+   * Optional copy overrides. Omit to keep existing UX unchanged.
+   */
+  labels?: SignUpListsSectionLabels;
 }
 
 /**
@@ -70,8 +122,10 @@ export function SignUpManagementSection({
   eventId,
   userId,
   isOrganizer = false,
+  labels,
 }: SignUpManagementSectionProps) {
   const router = useRouter();
+  const effectiveLabels = labels ?? defaultSignUpListsSectionLabels;
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [selectedSignUpId, setSelectedSignUpId] = useState<string | null>(null);
   const [itemDescription, setItemDescription] = useState('');
@@ -157,20 +211,11 @@ export function SignUpManagementSection({
   const getCancelDialogContent = (type: CancelDialogType | null) => {
     switch (type) {
       case 'commitment':
-        return {
-          title: 'Cancel Commitment',
-          description: 'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelCommitmentDialog;
       case 'signUpItem':
-        return {
-          title: 'Cancel Sign-Up',
-          description: 'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelSignUpDialog;
       case 'openItem':
-        return {
-          title: 'Cancel Sign-Up',
-          description: 'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelOpenItemDialog;
       default:
         return { title: '', description: '' };
     }
@@ -512,8 +557,8 @@ export function SignUpManagementSection({
     if (isOrganizer) {
       return (
         <div className="py-8 text-center text-muted-foreground">
-          <p>No sign-up lists for this event yet.</p>
-          <p className="text-sm mt-2">Create one to let attendees volunteer to bring items!</p>
+          <p>{effectiveLabels.emptyStateOrganizer.title}</p>
+          <p className="text-sm mt-2">{effectiveLabels.emptyStateOrganizer.helperText}</p>
         </div>
       );
     }
@@ -523,9 +568,9 @@ export function SignUpManagementSection({
       <div className="py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Sign-Up Lists</CardTitle>
+            <CardTitle>{effectiveLabels.emptyStateAttendeeTitle}</CardTitle>
             <CardDescription>
-              No sign-up lists for this event yet.
+              {effectiveLabels.emptyStateAttendeeDescription}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -541,7 +586,7 @@ export function SignUpManagementSection({
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">
-        Sign-Up Lists (This event has {signUpLists.length} sign-up {signUpLists.length === 1 ? 'list' : 'lists'})
+        {effectiveLabels.sectionHeading(signUpLists.length)}
       </h2>
 
       {/* Tab navigation - Only show if multiple lists */}
@@ -708,7 +753,7 @@ export function SignUpManagementSection({
                                       size="sm"
                                       variant={userItemCommitment ? "default" : "outline"}
                                     >
-                                      {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
+                                      {userItemCommitment ? effectiveLabels.updateSignUpButton : effectiveLabels.signUpButton}
                                     </Button>
                                     {userItemCommitment && (
                                       <Button
@@ -716,7 +761,7 @@ export function SignUpManagementSection({
                                         size="sm"
                                         variant="destructive"
                                       >
-                                        Cancel Sign Up
+                                        {effectiveLabels.cancelSignUpButton}
                                       </Button>
                                     )}
                                   </div>
@@ -1082,6 +1127,7 @@ export function SignUpManagementSection({
         onCommit={handleCommitToItem}
         onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
+        labels={effectiveLabels.commitmentModal}
       />
 
       {/* Phase 6A.27: Open Item Sign-Up Modal */}

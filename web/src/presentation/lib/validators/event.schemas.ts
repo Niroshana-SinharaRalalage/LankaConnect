@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType, SecondaryLocationType } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -957,3 +957,59 @@ export const editEventSchema = baseEditEventSchema.refine(
 });
 
 export type EditEventFormData = z.infer<typeof editEventSchema>;
+
+/**
+ * Phase 7D.1: Volunteer-list validation schema.
+ *
+ * Volunteer lists are a constrained flavour of sign-up list where every item
+ * is slot-based (1 volunteer = 1 slot). Quantity-based items are rejected at
+ * the validation boundary so the volunteer UI never sends a payload the
+ * backend would refuse. Schema rejects instead of silently coercing so the
+ * user sees an obvious form error rather than a cryptic API failure.
+ */
+export const volunteerRoleItemSchema = z.object({
+  itemDescription: z
+    .string()
+    .min(1, 'Volunteer role is required')
+    .max(200, 'Volunteer role must be less than 200 characters'),
+  itemType: z.literal(SignUpItemType.Slot, {
+    message: 'Volunteer lists only support slot-based roles',
+  }),
+  itemCategory: z.nativeEnum(SignUpItemCategory),
+  availableSlots: z
+    .number({ message: 'Volunteers needed must be a whole number' })
+    .int('Volunteers needed must be a whole number')
+    .min(1, 'At least 1 volunteer slot is required')
+    .max(500, 'Volunteer slots cannot exceed 500'),
+  suggestedPerSlot: z.number().optional().nullable(),
+  notes: z
+    .string()
+    .max(1000, 'Notes must be less than 1000 characters')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  // Accept but forbid quantity-based fields. Sending targetQuantity flips the
+  // item into quantity-based mode server-side; the schema refuses before the
+  // request leaves the browser.
+  targetQuantity: z.undefined().optional(),
+});
+
+export const volunteerListSchema = z.object({
+  category: z
+    .string()
+    .min(1, 'Volunteer list name is required')
+    .max(100, 'Volunteer list name must be less than 100 characters'),
+  description: z
+    .string()
+    .max(1000, 'Description must be less than 1000 characters')
+    .optional()
+    .default(''),
+  hasOpenItems: z
+    .literal(false, { message: 'Volunteer lists cannot allow user-added roles' })
+    .default(false),
+  items: z
+    .array(volunteerRoleItemSchema)
+    .min(1, 'At least one volunteer role is required'),
+});
+
+export type VolunteerListFormData = z.infer<typeof volunteerListSchema>;

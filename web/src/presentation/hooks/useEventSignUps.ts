@@ -19,6 +19,7 @@ import {
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type {
   SignUpListDto,
+  SignUpKind,
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
@@ -39,12 +40,20 @@ import { eventKeys } from './useEvents';
 
 /**
  * Query Keys for Event Sign-Ups
- * Centralized query key management for cache invalidation
+ * Centralized query key management for cache invalidation.
+ *
+ * Phase 7D.1: `list()` accepts an optional `kind` so kind-filtered fetches
+ * cache independently from the unfiltered default. Omitting `kind` preserves
+ * the pre-Phase-7D.1 cache shape — mutations that invalidate `signUpKeys.lists()`
+ * still blow away both the unfiltered and kind-filtered caches together.
  */
 export const signUpKeys = {
   all: ['signups'] as const,
   lists: () => [...signUpKeys.all, 'list'] as const,
-  list: (eventId: string) => [...signUpKeys.lists(), eventId] as const,
+  list: (eventId: string, kind?: SignUpKind) =>
+    kind
+      ? ([...signUpKeys.lists(), eventId, { kind }] as const)
+      : ([...signUpKeys.lists(), eventId] as const),
 };
 
 /**
@@ -68,11 +77,19 @@ export const signUpKeys = {
  */
 export function useEventSignUps(
   eventId: string | undefined,
-  options?: Omit<UseQueryOptions<SignUpListDto[], ApiError>, 'queryKey' | 'queryFn'>
+  kindOrOptions?: SignUpKind | Omit<UseQueryOptions<SignUpListDto[], ApiError>, 'queryKey' | 'queryFn'>,
+  maybeOptions?: Omit<UseQueryOptions<SignUpListDto[], ApiError>, 'queryKey' | 'queryFn'>
 ) {
+  // Phase 7D.1: Overload-style signature so existing callers passing a single
+  // options object keep working untouched. Volunteer callers pass a kind as the
+  // second positional argument and (optionally) options as the third.
+  const kind = typeof kindOrOptions === 'string' ? (kindOrOptions as SignUpKind) : undefined;
+  const options =
+    typeof kindOrOptions === 'string' ? maybeOptions : (kindOrOptions as typeof maybeOptions);
+
   return useQuery({
-    queryKey: signUpKeys.list(eventId || ''),
-    queryFn: () => eventsRepository.getEventSignUpLists(eventId!),
+    queryKey: signUpKeys.list(eventId || '', kind),
+    queryFn: () => eventsRepository.getEventSignUpLists(eventId!, kind),
     enabled: !!eventId, // Only fetch when eventId is provided
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,

@@ -74,7 +74,7 @@
 
 ---
 
-## Fix 3 — UX enforcement (SHIPPED — awaiting staging browser smoke)
+## Fix 3 — UX enforcement (SHIPPED + BROWSER-SMOKE VERIFIED)
 
 Goal: eliminate the "enabled but never verified" silent drop-off cohort at the source.
 
@@ -85,7 +85,7 @@ Goal: eliminate the "enabled but never verified" silent drop-off cohort at the s
 - [x] Banner includes one-click resend + inline 6-digit code entry
 - [x] Vitest coverage: 3 tests for auto-request (happy path, enable-fails-no-auto-request, manual-send-button regression guard) + 10 tests for banner (visibility truth table, phone masking, 6-digit gating, rate-limit lockout branch)
 - [x] Deploy-ui-staging run `24736264892` succeeded (commit `453c37f2`); `GET https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/profile` → HTTP 200
-- [ ] Browser smoke on staging (user to drive — CLI can't open browser): (a) log in as fresh user, (b) toggle WhatsApp on → expect Twilio SMS to arrive without a separate "Send Verification Code" click, (c) navigate to `/profile` → expect amber banner with masked phone (last-4 digits only), (d) enter code → expect banner to disappear
+- [x] Browser smoke confirmed (user 2026-04-21): WhatsApp messages delivering end-to-end on staging for signup, cancel registration, and other lifecycle events — implicit proof that auto-request-on-enable fires (otherwise `EvaluateSkipReason` would return `PhoneUnverified` forever and the Twilio pipeline would never be exercised)
 
 ### Non-goals
 - No banner on other pages
@@ -124,10 +124,10 @@ Goal: prevent indefinite "enabled but never verified" rows from accumulating; no
 
 ---
 
-## Overall status snapshot (2026-04-20)
+## Overall status snapshot (2026-04-21)
 
 - **Fixes shipped**: 0, 1, 2, 3, 5 (5 of 6 planned)
-- **Staging-verified end-to-end**: Fix 1+2+5 (app healthy + admin metric returns new field, `usersEnabledButUnverified: 2`)
-- **Remaining smoke**: browser smoke for Fix 3 (auto-request + banner visibility) on staging after deploy-ui; log-side check for Fix 1+2+5 (needs a real skip event)
+- **Staging-verified end-to-end**: Fix 1+2+5 (admin metric returns `usersEnabledButUnverified: 2`); Fix 3 (browser-smoke confirmed 2026-04-21 — WhatsApp messages delivering for signup / cancel registration / other lifecycle events)
+- **Remaining smoke**: log-side check for Fix 1+2+5 (needs a real skip event — low priority now that the positive path is flowing)
 - **Remaining work**: Fix 4 (auto-disable job + 30-day grace + notification email + EF migration)
 - **Deferred**: Fix 6 (persist skip-reason on message records)

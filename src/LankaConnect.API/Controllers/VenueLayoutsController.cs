@@ -10,6 +10,7 @@ using LankaConnect.Application.Events.Commands.ReleaseSeats;
 using LankaConnect.Application.Events.Commands.AssignLayoutToEvent;
 using LankaConnect.Application.Events.Commands.UpdateLayout;
 using LankaConnect.Application.Events.Commands.DeleteLayout;
+using LankaConnect.Application.Events.Commands.BatchUpdateLayout;
 using LankaConnect.Application.Events.Commands.UpdateZone;
 using LankaConnect.Application.Events.Commands.DeleteZone;
 using LankaConnect.Application.Events.Commands.AddTable;
@@ -157,6 +158,55 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
             id, expectedRowVersion);
 
         var command = new DeleteLayoutCommand(id, expectedRowVersion);
+        var result = await Mediator.Send(command);
+
+        return HandleResultNoContent(result);
+    }
+
+    /// <summary>
+    /// Atomic batch update of a venue layout — consumed by the Slice 8 canvas
+    /// editor's save flow. The body replaces the full layout snapshot: name +
+    /// canvas + zones/tables/decorations. Within each child list, items with
+    /// <c>null</c> Id are created, items with matching Id are updated in place,
+    /// and omitted existing children are removed. Removals are rejected with
+    /// HTTP 422 when any orphaned seat is held or reserved. Requires the
+    /// <c>If-Match</c> header for optimistic concurrency (409 on stale).
+    /// Slice 5 Chunk 10.
+    /// </summary>
+    [HttpPut("{id:guid}/batch")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> BatchUpdateLayout(Guid id, [FromBody] BatchLayoutPayload payload)
+    {
+        if (!TryParseIfMatch(out var expectedRowVersion, out var badRequest))
+        {
+            return badRequest!;
+        }
+
+        if (payload is null)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Batch payload body is required"
+            });
+        }
+
+        Logger.LogInformation(
+            "BatchUpdateLayout {LayoutId}: ExpectedRowVersion={RowVersion}, Zones={ZoneCount}, Tables={TableCount}, Decorations={DecorationCount}",
+            id, expectedRowVersion,
+            payload.Zones?.Count ?? 0,
+            payload.Tables?.Count ?? 0,
+            payload.Decorations?.Count ?? 0);
+
+        var command = new BatchUpdateLayoutCommand(id, expectedRowVersion, payload);
         var result = await Mediator.Send(command);
 
         return HandleResultNoContent(result);

@@ -1,5 +1,5 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — WhatsApp RCA Fix 3 local-ready: auto-request on enable + persistent unverified banner on /profile, awaiting UI staging deploy.*
+*Last Updated: 2026-04-21 — Phase 7D.1 Phase G (public volunteer UI) deployed + API-smoke verified; UI-interactive smoke deferred to user browser. Phase 7D.1 feature end-to-end functional pending G13 user smoke.*
 
 ## 🎯 Current Session Status (2026-04-20 — WhatsApp RCA Fix 3: UX enforcement)
 
@@ -24,6 +24,46 @@
 - All frontend — no backend / migration / webhook churn. Rollback is a single revert commit.
 
 **Next**: commit + push develop → watch `deploy-ui-staging.yml` → staging browser smoke (fresh user enables WhatsApp → verify Twilio SMS arrives without clicking "Send Verification Code" → verify banner appears on `/profile` with masked number → enter code → verify banner disappears). Then Fix 4 (daily `ExpireUnverifiedWhatsAppPreferencesJob` with 30-day grace + notification email + EF migration with `.Designer.cs` companion per MEMORY 6A.133).
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Phase 7D.1 Phase G: Public Volunteer UI)
+
+### Phase 7D.1 Phase G — Dedicated Volunteer section + conditional nav button + 1-person modal on public event page
+
+**Status**: ✅ **DEPLOYED + API-SMOKE VERIFIED** — commit `8626a7c1` on develop; `deploy-ui-staging.yml` run `24734887290` **succeeded** (4m35s). Staging curl covered: kind-filtered lists endpoint returns disjoint sets, volunteer slot item shape (`itemType=Slot`, `totalSlots=3`), commit `{quantity:1}` decrements remaining slots 3→2 and persists `quantity=1`, cancel via `{quantity:0}` restores slots 2→3. Azure Container Apps logs confirm volunteer-specific email template routing (cancel side: `template-volunteer-commitment-cancellation` sent to `niroshhh@gmail.com` in 9145ms). **UI-interactive checks** (nav button click, scroll-to-section, modal render without slots input, cancel dialog) **deferred to user browser smoke** — cannot be verified via curl. Master TODO G1–G12 all ticked; G13 (browser smoke) + G14 (pre-existing template placeholder bug) flagged as non-blocking follow-ups.
+
+**Goal**: Give public-event attendees a dedicated Volunteers surface — separate from Signup Lists — so volunteer roles are discoverable via a top-of-page nav button and committed through a 1-person-per-row modal (no slot-count input). Surface the button only when the event has at least one volunteer list (mirrors Donate/Contribute/Sponsor visibility pattern). Zero regression on existing Signup Lists section.
+
+**Changes** (6 files, 295 insertions / 19 deletions):
+- [SignUpCommitmentModal.tsx](../web/src/presentation/components/features/events/SignUpCommitmentModal.tsx) — new `hideQuantitySelector?: boolean` prop (default `false`). `const effectiveQuantity = hideQuantitySelector ? 1 : quantity;` applied to both logged-in + anonymous submit paths. Quantity-selector JSX wrapped in `{!hideQuantitySelector && (...)}`. Quantity validation gated behind `!hideQuantitySelector`. Regression-guard verified: omitting the prop OR passing `false` preserves pre-refactor UX (tests in `SignUpCommitmentModal.labels.test.tsx`).
+- [SignUpManagementSection.tsx](../web/src/presentation/components/features/events/SignUpManagementSection.tsx) — threads `hideQuantitySelector={kind === SignUpKind.Volunteers}` into `SignUpCommitmentModal` so the volunteer UX auto-derives from the existing `kind` prop; Items UX untouched.
+- [events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) — added `HandHeart` lucide import + `SignUpKind` + `volunteerSectionLabels` imports + `useEventSignUps` import. Page-scope query derives `hasVolunteerLists = volunteersFetched && (volunteerLists?.length ?? 0) > 0`. New conditional nav-button entry `{ id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists }` placed after signup-lists, before signup-forms. Added `kind={SignUpKind.Items}` to the existing Signup Lists `SignUpManagementSection` mount so volunteer lists no longer bleed into the Signup Lists section. New `<div id="volunteers">` containing `<CollapsibleSection title="Volunteer Roles" icon={<HandHeart ... />} defaultOpen={false}>` wrapping `<SignUpManagementSection kind={SignUpKind.Volunteers} labels={volunteerSectionLabels} />`. **YAGNI**: skipped a `VolunteerListSection.tsx` wrapper — a direct mount with two props is clearer than a 5-line pass-through component.
+- [SignUpCommitmentModal.labels.test.tsx](../web/tests/unit/presentation/components/features/events/SignUpCommitmentModal.labels.test.tsx) — +4 `hideQuantitySelector` guards: hides quantity input when `true`, forces `quantity=1` on submit, regression guards for omitted prop + explicit `false`. All 11 tests in file GREEN.
+- [SignUpManagementSection.test.tsx](../web/src/__tests__/components/features/events/SignUpManagementSection.test.tsx) — mock `SignUpCommitmentModal` with `modalPropsSpy`, mock `next/navigation.useRouter` (net-fixed 6 pre-existing Phase F `useRouter` invariant failures). +3 kind-threading tests (`hideQuantitySelector` passed when kind=Volunteers / omitted when kind=Items / not passed when kind undefined). 3/3 GREEN.
+
+**API-smoke evidence** (staging, event "Christmas Dinner Dance 2025"):
+| # | Scenario | Result |
+|---|----------|--------|
+| 1 | `GET /signups?kind=Volunteers` | HTTP 200 + only volunteer lists |
+| 2 | `GET /signups?kind=Items` | HTTP 200 + only signup lists (disjoint) |
+| 3 | Inspect volunteer slot item | `itemType=Slot`, `totalSlots=3`, `remainingSlots=3` |
+| 4 | `POST /commit {quantity:1}` | 200, `remainingSlots` 3→2, commitment row persists `quantity=1` |
+| 5 | `POST /commit {quantity:0}` (cancel path) | 200, slots restore 2→3 |
+| 6 | Azure logs after cancel | `template-volunteer-commitment-cancellation` resolved + sent (9145ms) to `niroshhh@gmail.com` |
+
+**Why durable**:
+- `hideQuantitySelector` prop is additive with `false` default → no existing caller affected (CLAUDE.md Section 3). Kind-conditional auto-derivation in `SignUpManagementSection` means Phase F/G volunteer UIs get the 1-person modal without wrapper components.
+- Page-scope `useEventSignUps(id, Volunteers)` reuses Phase E's kind-scoped cache — volunteer list fetch is shared with `SignUpManagementSection`'s internal fetch (same TanStack Query key).
+- `show: hasVolunteerLists` means the nav button is fully absent on events with no volunteers — matches Donate/Contribute/Sponsor conditional-visibility pattern already in production.
+- Adding `kind={SignUpKind.Items}` to the existing Signup Lists mount closes the bleed-through where a newly-created volunteer list would have appeared as a tab inside Signup Lists.
+- YAGNI: the 5-line `VolunteerListSection.tsx` wrapper was deleted before it was written; the two-prop direct mount is clearer and reads straight on the page.
+
+**Known follow-ups** (NOT regressions, pre-existing):
+- **G14 / C16a** — `template-volunteer-commitment-cancellation` rendered with 6 unreplaced HTML Handlebars tokens (`{{#HasVolunteerLists}}`, `{{VolunteerListUrl}}`, `{{/HasVolunteerLists}}`, `{{#HasVolunteerForms}}`, `{{VolunteerFormsUrl}}`, `{{/HasVolunteerForms}}`) + 1 text token (`{{ItemName}}`). Phase C REGEXP_REPLACE rewrote the Handlebars block-names inside the cloned HTML while `SignupCommitmentEmailParams.ToDictionary()` still emits the pre-clone parameter names. Email still delivers; visible placeholders in the recipient's inbox. Architect call: narrow the REGEXP to skip `{{...}}` contents, or emit dual-keyed params.
+- **4 pre-existing Phase 6A.118 test failures** (`SignUpManagementSection - Phase 6A.118 Enhancements` suite, `expandButtons.length expected 2, received 1`) — fixture/rendering issues unrelated to Phase G. Stash-test confirmed: 10 failures before Phase G work, 4 after → Phase G work net-fixed 6 tests.
+
+**Next**: G13 — user-driven browser smoke on staging (nav button visibility + click scroll + Signup Lists no longer shows volunteer tabs + modal title "Volunteer for This Role" with no slots input + cancel-dialog flow). Then Phase H — E2E staging smoke summary + final PR + PR-2 (deferred backend domain guard `SignUpItem.CommitSlots(count)` rejecting count>1 when parent `SignUpList.Kind == Volunteers`).
 
 ---
 

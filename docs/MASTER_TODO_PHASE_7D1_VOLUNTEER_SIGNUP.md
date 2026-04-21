@@ -102,15 +102,19 @@
 
 ---
 
-## Phase G — Frontend Public UI 🚧 IN PROGRESS (awaiting staging smoke)
+## Phase G — Frontend Public UI ✅ COMPLETE (API-smoke verified; UI-interactive deferred to user)
 
 - [x] **G1–G5.** RED→GREEN: `hideQuantitySelector` prop on `SignUpCommitmentModal` + kind-conditional threading from `SignUpManagementSection` (14/14 Phase G tests green; 4 unrelated pre-existing Phase 6A.118 failures flagged separately — stash test confirmed 10→4 net-improvement)
 - [x] **G6/G7.** RED scope decision: page-level render tests skipped (cost/value — 2800-line page with 20+ hooks); coverage deferred to G3 kind-thread test + staging smoke in G11. Architect approved.
 - [x] **G8.** GREEN: edit [events/[id]/page.tsx](../web/src/app/events/%5Bid%5D/page.tsx) — add `HandHeart` + `SignUpKind` + `volunteerSectionLabels` imports, page-scope `useEventSignUps(id, SignUpKind.Volunteers)` to derive `hasVolunteerLists`, insert conditional "Volunteer" nav button, add `kind={SignUpKind.Items}` to existing signup-lists mount, add new `<div id="volunteers">` CollapsibleSection mounting `<SignUpManagementSection kind={Volunteers} labels={volunteerSectionLabels}/>` (YAGNI: skipped `VolunteerListSection.tsx` wrapper — direct mount is clearer)
 - [x] **G9.** `tsc --noEmit` clean. Phase G vitest subset 14/14 green.
-- [ ] **G10.** Commit + push develop → watch deploy-ui-staging.yml (CURRENT)
-- [ ] **G11.** Staging smoke: (a) Volunteer nav button appears when volunteer lists exist; (b) scroll-to-section works; (c) Signup Lists no longer shows volunteer tabs (filtered by `kind=Items`); (d) volunteer modal renders "Volunteer for This Role" title with NO slots input; (e) submit decrements `remainingSlots` by 1 and commitment `quantity=1`; (f) cancel flow works
-- [ ] **G12.** Email smoke: confirmation email resolves `template-volunteer-commitment-confirmation` copy ("Thank you for volunteering")
+- [x] **G10.** Commit `8626a7c1` pushed to develop → `deploy-ui-staging.yml` run `24734887290` **succeeded** (4m35s).
+- [x] **G11.** API-smoke (curl on staging) PASS: (a) `GET /signups?kind=Volunteers` returns disjoint list from `?kind=Items`; (b) volunteer slot item has `itemType=Slot`, `totalSlots=3`; (c) `POST /commit {quantity:1}` → `remainingSlots` decrements 3→2, commitment persists `quantity=1`; (d) cancel via `POST {quantity:0}` → slots restore 2→3. **UI-interactive checks deferred to user browser smoke** (nav-button click + scroll + modal render without slots input + cancel-dialog flow require a browser — cannot be verified via curl).
+- [x] **G12.** Email routing verified via Azure Container Apps logs — cancel flow resolved `template-volunteer-commitment-cancellation` (send to `niroshhh@gmail.com` succeeded in 9145ms, subject "Commitment Cancelled for Christmas Dinner Dance 2025"). WhatsApp side sent via `signup_commitment_cancelled` Twilio template. Commit-confirmation template routing inherited from Phase C staging evidence (commit `7ba600cb` / deploy `24683062394`). **Follow-up flagged**: `template-volunteer-commitment-cancellation` has 7 unreplaced placeholders (6 HTML `{{#HasVolunteerLists}}`/`{{VolunteerListUrl}}`/`{{#HasVolunteerForms}}`/`{{VolunteerFormsUrl}}` + 1 text `{{ItemName}}`) — Phase C/D EmailTemplateContract/TypedEmailParams mismatch, **not a Phase G regression**, email still sends. See `C16a` follow-up box and new `G14` below.
+
+### Phase G follow-ups (non-blocking)
+- [ ] **G13.** Full-browser UI smoke on staging (user action) — event "Christmas Dinner Dance 2025": (a) Volunteer nav button appears in quick-nav bar; (b) click scrolls to `#volunteers` section; (c) Signup Lists section no longer contains volunteer tabs (kind-filtered); (d) volunteer modal title reads "Volunteer for This Role" with NO slots input visible; (e) submit + cancel work visually end-to-end.
+- [ ] **G14.** Fix `template-volunteer-commitment-cancellation` placeholder mismatches — 7 unreplaced Handlebars tokens observed in delivered email. Same class of issue as `C16a` (REGEXP_REPLACE rewrote block/param names but `SignupCommitmentEmailParams.ToDictionary()` still emits the pre-clone names). Architect call on narrow-REGEXP vs. dual-key-dictionary.
 
 ---
 

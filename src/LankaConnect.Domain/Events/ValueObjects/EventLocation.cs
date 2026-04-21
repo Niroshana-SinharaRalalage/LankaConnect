@@ -71,6 +71,15 @@ public class EventLocation : ValueObject
     /// </summary>
     public bool HasName() => !string.IsNullOrWhiteSpace(Name);
 
+    /// <summary>
+    /// Phase 7C.2: Returns the address portion formatted for email/UI display.
+    /// Format: "{Street}, {City}, {State}, {ZipCode}, {Country}" — uniform comma separation.
+    /// Never includes the venue <see cref="Name"/> (the caller composes name + address) and
+    /// never leaks the "(coordinates not set)" suffix that <see cref="ToString"/> adds for debug.
+    /// </summary>
+    public string GetAddressDisplayString()
+        => $"{Address.Street}, {Address.City}, {Address.State}, {Address.ZipCode}, {Address.Country}";
+
     public override IEnumerable<object> GetEqualityComponents()
     {
         if (Name != null)

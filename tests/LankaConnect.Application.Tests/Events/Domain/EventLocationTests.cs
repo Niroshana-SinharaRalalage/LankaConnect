@@ -380,4 +380,72 @@ public class EventLocationTests
     }
 
     #endregion
+
+    #region GetAddressDisplayString Tests — Phase 7C.2
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldReturnFullAddressCommaSeparated()
+    {
+        // Arrange: Phase 7C.2 requires uniform comma separation (including between State and Zip)
+        // so the email rendering matches the user-agreed format:
+        // "Street, City, State, Zip, Country"
+        var address = Address.Create("4314 Clark Ave", "Cleveland", "Ohio", "44120", "USA").Value;
+        var location = EventLocation.Create(address).Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().Be("4314 Clark Ave, Cleveland, Ohio, 44120, USA");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldNotIncludeCoordinatesNotSetSuffix()
+    {
+        // Arrange: unlike ToString(), the email-display variant must never leak "(coordinates not set)"
+        var address = Address.Create("1 Main St", "Boston", "MA", "02108", "USA").Value;
+        var location = EventLocation.Create(address).Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().NotContain("coordinates");
+        result.Should().NotContain("(");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldNotIncludeVenueName()
+    {
+        // Arrange: the venue Name is rendered on its own line in emails; GetAddressDisplayString
+        // returns ONLY the street-through-country block so the caller can compose them freely.
+        var address = Address.Create("1 Main St", "Boston", "MA", "02108", "USA").Value;
+        var location = EventLocation.Create(address, name: "Aurora Clubhouse").Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().NotContain("Aurora Clubhouse");
+        result.Should().Be("1 Main St, Boston, MA, 02108, USA");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldBeStableAcrossCoordinateStates()
+    {
+        // Arrange: presence/absence of coordinates must not affect the displayed address string
+        var address = Address.Create("500 Oak Ave", "Austin", "TX", "78701", "USA").Value;
+        var locationWithoutCoords = EventLocation.Create(address).Value;
+        var coordinates = GeoCoordinate.Create(30.2672m, -97.7431m).Value;
+        var locationWithCoords = EventLocation.Create(address, coordinates).Value;
+
+        // Act
+        var withoutCoords = locationWithoutCoords.GetAddressDisplayString();
+        var withCoords = locationWithCoords.GetAddressDisplayString();
+
+        // Assert
+        withoutCoords.Should().Be(withCoords);
+    }
+
+    #endregion
 }

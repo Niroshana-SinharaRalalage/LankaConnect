@@ -245,6 +245,7 @@
 | Phase | Feature | Status | Description |
 |-------|---------|--------|-------------|
 | 7C.1  | Event Location Name + Optional Secondary Location | ✅ Complete | Optional per-event venue name distinct from the street address + independently optional secondary location (ParkingLot \| SecondaryVenue) with its own venue name and full address. Backend commit `2afc0f5f` (migration `20260419200529_AddEventLocationNameAndSecondary`), frontend commit `861b8e58`. See PROGRESS_TRACKER.md 2026-04-19. |
+| 7C.2  | Email Event Details — Venue Name + Secondary Location Rendering | 🔧 In Progress | Surfaces the Phase 7C.1 venue name and secondary location (ParkingLot \| SecondaryVenue) in every email that renders Event Details. Decomposed email params (`LocationName`, `LocationAddress`, `HasSecondaryLocation`, `SecondaryLocationLabel`, `SecondaryLocationName`, `SecondaryLocationAddress`) + shared `EventLocationEmailProjection` helper eliminating duplicate `GetEventLocationString()` methods across 7 handlers. DB template rewrite via EF Core migration (REGEXP_REPLACE + backup table). 14 templates touched. Started 2026-04-20. |
 
 ---
 

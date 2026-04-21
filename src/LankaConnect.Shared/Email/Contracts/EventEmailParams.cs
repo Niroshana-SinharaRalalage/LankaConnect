@@ -39,10 +39,61 @@ public class EventEmailParams
     public string EventTitle { get; set; } = string.Empty;
 
     /// <summary>
-    /// Event venue address (e.g., "123 Main St, Boston, MA").
-    /// May include virtual meeting links for online events.
+    /// Phase 7C.2 (legacy): Single-line venue address (e.g., "123 Main St, Boston, MA").
+    /// Preserved for backward compatibility with un-migrated templates that still reference
+    /// <c>{{EventLocation}}</c>. New templates MUST use the decomposed fields below.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: Bold first line of the primary location block — the venue name
+    /// (e.g., "Aurora Clubhouse"). Empty string when the event has no venue name
+    /// or no physical location.
+    /// </summary>
+    public string LocationName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: Second line of the primary location block — the full comma-separated
+    /// address "Street, City, State, ZipCode, Country". Empty string for online events.
+    /// </summary>
+    public string LocationAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: True when a venue name is present on the primary location.
+    /// Drives {{#if HasLocationName}} in the template.
+    /// </summary>
+    public bool HasLocationName { get; set; }
+
+    /// <summary>
+    /// Phase 7C.2: True when the event has a secondary (parking lot / secondary venue)
+    /// address configured. Drives {{#if HasSecondaryLocation}} in the template.
+    /// </summary>
+    public bool HasSecondaryLocation { get; set; }
+
+    /// <summary>
+    /// Phase 7C.2: Visible label for the secondary location block — "Parking Lot" or
+    /// "Secondary Venue" based on the configured <c>SecondaryLocationType</c>. No
+    /// trailing colon; the template itself supplies the colon.
+    /// </summary>
+    public string SecondaryLocationLabel { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: Bold first line of the secondary location block — the venue name
+    /// (e.g., "Geoga Lake Parking"). Empty string when the secondary location is unnamed.
+    /// </summary>
+    public string SecondaryLocationName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: True when the secondary location has a venue name. Drives
+    /// {{#if HasSecondaryLocationName}} in the template.
+    /// </summary>
+    public bool HasSecondaryLocationName { get; set; }
+
+    /// <summary>
+    /// Phase 7C.2: Second line of the secondary location block — the full comma-separated
+    /// address. Empty string when no secondary location.
+    /// </summary>
+    public string SecondaryLocationAddress { get; set; } = string.Empty;
 
     /// <summary>
     /// Date when the event starts.
@@ -83,14 +134,25 @@ public class EventEmailParams
 
         return new Dictionary<string, object>
         {
+            { EmailTemplateContract.Event.EventTitle, EventTitle },
             { "EventId", EventId.ToString() },
-            { "EventTitle", EventTitle },
-            { "EventLocation", EventLocation },
-            { "EventStartDate", formattedDate },
-            { "EventStartTime", !string.IsNullOrEmpty(EventStartTime) ? EventStartTime : formattedTime }, // Use pre-set time or formatted
-            { "EventDateTime", $"{formattedDate} at {formattedTime}" }, // Combined with timezone
-            { "EventDetailsUrl", EventDetailsUrl },
-            { "TimeZoneAbbreviation", tzAbbreviation } // Phase 6A.97: Include timezone abbreviation
+            // Phase 7C.2 (legacy): keep EventLocation for un-migrated templates.
+            { EmailTemplateContract.Event.EventLocation, EventLocation },
+            { EmailTemplateContract.Event.EventStartDate, formattedDate },
+            { EmailTemplateContract.Event.EventStartTime, !string.IsNullOrEmpty(EventStartTime) ? EventStartTime : formattedTime },
+            { EmailTemplateContract.Event.EventDateTime, $"{formattedDate} at {formattedTime}" },
+            { EmailTemplateContract.Event.EventDetailsUrl, EventDetailsUrl },
+            { "TimeZoneAbbreviation", tzAbbreviation },
+
+            // Phase 7C.2: Decomposed primary + secondary location (rendered by new templates).
+            { EmailTemplateContract.Event.LocationName, LocationName },
+            { EmailTemplateContract.Event.LocationAddress, LocationAddress },
+            { EmailTemplateContract.Event.HasLocationName, HasLocationName },
+            { EmailTemplateContract.Event.HasSecondaryLocation, HasSecondaryLocation },
+            { EmailTemplateContract.Event.SecondaryLocationLabel, SecondaryLocationLabel },
+            { EmailTemplateContract.Event.SecondaryLocationName, SecondaryLocationName },
+            { EmailTemplateContract.Event.HasSecondaryLocationName, HasSecondaryLocationName },
+            { EmailTemplateContract.Event.SecondaryLocationAddress, SecondaryLocationAddress },
         };
     }
 

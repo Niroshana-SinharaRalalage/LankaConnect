@@ -1,7 +1,20 @@
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Shared.Email.Helpers;
 
 namespace LankaConnect.Application.Events.Common;
+
+/// <summary>
+/// Phase 7C.2: Static labels rendered in email templates next to the event's secondary location.
+/// User-confirmed 2026-04-20: labels are the enum name in space-cased form with no trailing colon,
+/// no "Address:" suffix — the template itself provides the colon.
+/// </summary>
+internal static class SecondaryLocationEmailLabels
+{
+    public const string ParkingLot = "Parking Lot";
+    public const string SecondaryVenue = "Secondary Venue";
+}
 
 /// <summary>
 /// Phase 6A.46: Extension methods for Event entity
@@ -83,5 +96,73 @@ public static class EventExtensions
             return street;
 
         return $"{street}, {city}";
+    }
+
+    /// <summary>
+    /// Phase 7C.2: Projects an event's primary + optional secondary location into a flat
+    /// record consumed by email templates. Replaces ~13 duplicated GetEventLocationString()
+    /// helpers across handlers/jobs so the label text, address format, and legacy fallback
+    /// all live in one place.
+    ///
+    /// <para>Label contract (user-confirmed 2026-04-20):</para>
+    /// <list type="bullet">
+    /// <item><see cref="SecondaryLocationType.ParkingLot"/> → <c>"Parking Lot"</c></item>
+    /// <item><see cref="SecondaryLocationType.SecondaryVenue"/> → <c>"Secondary Venue"</c></item>
+    /// </list>
+    ///
+    /// <para>Address format: <c>"Street, City, State, ZipCode, Country"</c> (all five parts,
+    /// comma-separated). <see cref="ProjectedEmailLocation.LegacyFlatString"/> keeps the old
+    /// <c>"Street, City"</c> / <c>"Online Event"</c> output for un-migrated templates.</para>
+    /// </summary>
+    public static LocationEmailProjection ProjectEmailLocation(this Event @event)
+    {
+        if (@event == null)
+            throw new ArgumentNullException(nameof(@event));
+
+        var legacyFlatString = @event.GetLocationDisplayString();
+
+        if (@event.Location?.Address == null)
+        {
+            return LocationEmailProjection.Online with { LegacyFlatString = legacyFlatString };
+        }
+
+        var locationName = @event.Location.Name ?? string.Empty;
+        var locationAddress = @event.Location.GetAddressDisplayString();
+        var hasLocationName = @event.Location.HasName();
+
+        var secondary = @event.SecondaryLocation;
+        var secondaryInner = secondary?.Location;
+        var hasSecondary = secondary != null
+            && secondaryInner != null
+            && secondaryInner.Address != null;
+
+        var secondaryLabel = string.Empty;
+        var secondaryName = string.Empty;
+        var hasSecondaryName = false;
+        var secondaryAddress = string.Empty;
+
+        if (hasSecondary)
+        {
+            secondaryLabel = secondary!.Type switch
+            {
+                SecondaryLocationType.ParkingLot => SecondaryLocationEmailLabels.ParkingLot,
+                SecondaryLocationType.SecondaryVenue => SecondaryLocationEmailLabels.SecondaryVenue,
+                _ => string.Empty,
+            };
+            secondaryName = secondaryInner!.Name ?? string.Empty;
+            hasSecondaryName = secondaryInner.HasName();
+            secondaryAddress = secondaryInner.GetAddressDisplayString();
+        }
+
+        return new LocationEmailProjection(
+            LocationName: locationName,
+            LocationAddress: locationAddress,
+            HasLocationName: hasLocationName,
+            HasSecondaryLocation: hasSecondary,
+            SecondaryLocationLabel: secondaryLabel,
+            SecondaryLocationName: secondaryName,
+            HasSecondaryLocationName: hasSecondaryName,
+            SecondaryLocationAddress: secondaryAddress,
+            LegacyFlatString: legacyFlatString);
     }
 }

@@ -178,8 +178,62 @@ public static class EmailTemplateContract
 
         /// <summary>
         /// Event location/address.
+        /// Phase 7C.2: Legacy single-line format preserved for backward compatibility with
+        /// un-migrated templates. Prefer the decomposed <see cref="LocationName"/> +
+        /// <see cref="LocationAddress"/> pair introduced in Phase 7C.2.
         /// </summary>
         public const string EventLocation = "EventLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the primary location block — the venue name
+        /// (e.g., "Aurora Clubhouse"). Empty string when the event has no venue name
+        /// or no physical location.
+        /// </summary>
+        public const string LocationName = "LocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the primary location block — the full comma-separated
+        /// address: "Street, City, State, ZipCode, Country". Empty string for online events.
+        /// </summary>
+        public const string LocationAddress = "LocationAddress";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasLocationName}} — true when a venue name
+        /// is present on the primary location.
+        /// </summary>
+        public const string HasLocationName = "HasLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocation}} — true when the event
+        /// has a secondary (parking lot / secondary venue) address configured.
+        /// </summary>
+        public const string HasSecondaryLocation = "HasSecondaryLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Visible label for the secondary location block — "Parking Lot" or
+        /// "Secondary Venue" based on <c>SecondaryLocationType</c>. No trailing colon
+        /// (the template supplies the colon).
+        /// </summary>
+        public const string SecondaryLocationLabel = "SecondaryLocationLabel";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the secondary location block — the venue name
+        /// (e.g., "Geoga Lake Parking"). Empty string when the secondary location is
+        /// unnamed.
+        /// </summary>
+        public const string SecondaryLocationName = "SecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocationName}} — true when the
+        /// secondary location has a venue name.
+        /// </summary>
+        public const string HasSecondaryLocationName = "HasSecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the secondary location block — the full
+        /// comma-separated address. Empty string when no secondary location.
+        /// </summary>
+        public const string SecondaryLocationAddress = "SecondaryLocationAddress";
 
         /// <summary>
         /// URL to the event details page.

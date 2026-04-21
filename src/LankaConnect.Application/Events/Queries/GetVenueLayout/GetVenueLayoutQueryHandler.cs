@@ -78,6 +78,39 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
                     X = s.X,
                     Y = s.Y
                 }).ToList()
+            }).ToList(),
+            Tables = layout.Tables.Select(t => new VenueTableDto
+            {
+                Id = t.Id,
+                VenueZoneId = t.VenueZoneId,
+                Label = t.Label,
+                Shape = t.Shape.ToString(),
+                Geometry = t.Geometry,
+                Capacity = t.Capacity,
+                SortOrder = t.SortOrder,
+                EnabledSeatCount = t.EnabledSeatCount,
+                TotalSeatCount = t.Seats.Count,
+                Seats = t.Seats.Select(s => new SeatDto
+                {
+                    Id = s.Id,
+                    Row = s.Row,
+                    Number = s.Number,
+                    Label = s.Label,
+                    SortOrder = s.SortOrder,
+                    IsEnabled = s.IsEnabled,
+                    IsAccessible = s.IsAccessible,
+                    X = s.X,
+                    Y = s.Y
+                }).ToList()
+            }).ToList(),
+            Decorations = layout.Decorations.Select(d => new VenueDecorationDto
+            {
+                Id = d.Id,
+                Kind = d.Kind.ToString(),
+                Label = d.Label,
+                Geometry = d.Geometry,
+                Properties = d.Properties,
+                SortOrder = d.SortOrder
             }).ToList()
         };
     }

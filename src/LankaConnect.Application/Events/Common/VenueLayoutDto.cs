@@ -15,6 +15,19 @@ public record VenueLayoutDto
     public Guid CreatedByUserId { get; init; }
     public int TotalCapacity { get; init; }
     public List<VenueZoneDto> Zones { get; init; } = new();
+
+    /// <summary>
+    /// Slice 5 Chunk 6: banquet / dining tables attached to the layout. Empty when
+    /// the layout has no tables (typical for pure theater layouts).
+    /// </summary>
+    public List<VenueTableDto> Tables { get; init; } = new();
+
+    /// <summary>
+    /// Slice 5 Chunk 7: non-seating decorative / structural elements (stage, aisle,
+    /// text label, etc.). Empty when the layout has no decorations.
+    /// </summary>
+    public List<VenueDecorationDto> Decorations { get; init; } = new();
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 
@@ -56,6 +69,36 @@ public record SeatDto
     public bool IsAccessible { get; init; }
     public double? X { get; init; }
     public double? Y { get; init; }
+}
+
+/// <summary>
+/// DTO for a banquet / dining table within a venue layout (Slice 5 Chunk 6).
+/// </summary>
+public record VenueTableDto
+{
+    public Guid Id { get; init; }
+    public Guid? VenueZoneId { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public string Shape { get; init; } = string.Empty;
+    public string Geometry { get; init; } = "{}";
+    public int Capacity { get; init; }
+    public int SortOrder { get; init; }
+    public int EnabledSeatCount { get; init; }
+    public int TotalSeatCount { get; init; }
+    public List<SeatDto> Seats { get; init; } = new();
+}
+
+/// <summary>
+/// DTO for a decorative / structural element within a venue layout (Slice 5 Chunk 7).
+/// </summary>
+public record VenueDecorationDto
+{
+    public Guid Id { get; init; }
+    public string Kind { get; init; } = string.Empty;
+    public string? Label { get; init; }
+    public string Geometry { get; init; } = "{}";
+    public string Properties { get; init; } = "{}";
+    public int SortOrder { get; init; }
 }
 
 /// <summary>

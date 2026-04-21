@@ -1,7 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-20 — Phase 7D.1 Phase F local-ready: organizer Volunteer tab + create/edit pages, awaiting UI staging deploy.*
+*Last Updated: 2026-04-20 — WhatsApp RCA Fix 3 local-ready: auto-request on enable + persistent unverified banner on /profile, awaiting UI staging deploy.*
 
-## 🎯 Current Session Status (2026-04-20 — Phase 7D.1 Phase F: Organizer Volunteer UI)
+## 🎯 Current Session Status (2026-04-20 — WhatsApp RCA Fix 3: UX enforcement)
+
+### WhatsApp RCA — Fix 3 (UX enforcement, web-only slice)
+
+**Status**: ✅ **LOCAL-READY** — 13/13 new vitest tests green (3 for auto-request on enable, 10 for `WhatsAppUnverifiedBanner`), `npx tsc --noEmit` clean, 26 pre-existing profile-test failures (`No QueryClient set` in `CulturalInterestsSection` + `PreferredMetroAreasSection`) reproduced with Fix 3 stashed → NOT a regression caused by this slice. About to commit and trigger `deploy-ui-staging.yml`. Master TODO Fix 3 boxes ticked; staging browser smoke pending.
+
+**Goal (root-cause)**: Fix 1+2+5 made the silent-drop-off cohort *observable* (admin metric `usersEnabledButUnverified` returned `2` on staging today). Fix 3 prevents the cohort from growing: new users who toggle WhatsApp on now receive a verification code immediately (no separate "Send Verification Code" click), and the persistent amber banner on `/profile` surfaces the unverified state with inline resend + code entry so users cannot drift into the limbo state unnoticed.
+
+**Changes**:
+- [WhatsAppOptIn.tsx](../web/src/presentation/components/features/whatsapp/WhatsAppOptIn.tsx) — `handleEnable` now chains `requestVerificationMutation.mutateAsync()` after a successful enable, with an inner try/catch so an auto-request failure (rate-limit, network) falls back to the existing manual "Send Verification Code" button. The existing `codeSent` state machine is preserved for the regression path.
+- [WhatsAppUnverifiedBanner.tsx](../web/src/presentation/components/features/whatsapp/WhatsAppUnverifiedBanner.tsx) — new (~120 lines). Three guard clauses at top (`!preferences`, `!whatsAppEnabled`, `phoneVerified`) return `null` so the component is safe to drop anywhere — scoped to `/profile` for now. `maskPhone()` keeps only last 4 digits (`•••••••8901`) — PII minimization. Amber palette (`border-amber-300 bg-amber-50`) matches existing `SeatingSection.tsx` warning tone. `role="alert" aria-live="polite"` for a11y. Numeric-only input sanitization `e.target.value.replace(/\D/g, '').slice(0, 6)`. `isLocked` branch surfaces `verificationLockedUntil` so users understand the 5-attempt/1h lockout on `UserWhatsAppPreferences`.
+- [profile/page.tsx](../web/src/app/(dashboard)/profile/page.tsx) — import + render `<WhatsAppUnverifiedBanner />` at top of main content above `ProfilePhotoSection`.
+- [WhatsAppOptIn.autoRequest.test.tsx](../web/tests/unit/presentation/components/features/whatsapp/WhatsAppOptIn.autoRequest.test.tsx) — new (3 tests). Happy path uses `invocationCallOrder` assertion to prove enable fires *before* request-verification. Enable-fails path proves request-verification is NOT called. Regression guard keeps the manual "Send Verification Code" button present for users who were enabled by a past session.
+- [WhatsAppUnverifiedBanner.test.tsx](../web/tests/unit/presentation/components/features/whatsapp/WhatsAppUnverifiedBanner.test.tsx) — new (10 tests). Visibility truth table (4 cases: null prefs / disabled / already verified / unverified). Content (phone masking + null-phone fallback). Interactions (resend hook call, verify with 6-digit, reject <6-digit). Rate-limit lockout branch.
+
+**Why durable**:
+- Banner's three guard clauses mean it self-hides for every cohort except silent-drop-off — no "nag mid-flow" concerns, safe to drop on other pages later if product ever wants it.
+- Auto-request's inner try/catch means rate-limit or network failure falls back to the existing manual flow — no regression for users who were already mid-verification.
+- `maskPhone()` logs nothing; the full number is never rendered in the banner — no PII leak in screenshots / screen-share.
+- ARIA `role="alert"` announces the banner to assistive tech on page load; `aria-live="polite"` lets it be re-announced when `preferences` refreshes after a verify attempt.
+- All frontend — no backend / migration / webhook churn. Rollback is a single revert commit.
+
+**Next**: commit + push develop → watch `deploy-ui-staging.yml` → staging browser smoke (fresh user enables WhatsApp → verify Twilio SMS arrives without clicking "Send Verification Code" → verify banner appears on `/profile` with masked number → enter code → verify banner disappears). Then Fix 4 (daily `ExpireUnverifiedWhatsAppPreferencesJob` with 30-day grace + notification email + EF migration with `.Designer.cs` companion per MEMORY 6A.133).
+
+---
+
+## 🎯 Previous Session Status (2026-04-20 — Phase 7D.1 Phase F: Organizer Volunteer UI)
 
 ### Phase 7D.1 Phase F — Volunteers tab + create-volunteer-list + edit page
 

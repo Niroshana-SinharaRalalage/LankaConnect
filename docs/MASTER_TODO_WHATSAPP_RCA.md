@@ -74,22 +74,33 @@
 
 ---
 
-## Fix 3 — UX enforcement (UNSTARTED)
+## Fix 3 — UX enforcement (SHIPPED — awaiting staging browser smoke)
 
 Goal: eliminate the "enabled but never verified" silent drop-off cohort at the source.
 
 ### Planned work
-- [ ] When user toggles WhatsApp on, auto-fire `POST /api/whatsapp/request-verification` immediately (no separate "send code" click)
-- [ ] Persistent amber banner on `/profile` page only when `whatsAppEnabled && !phoneVerified` — copy: "WhatsApp is enabled but your phone isn't verified. Enter the code we sent to {masked phone} or [resend]."
-- [ ] Banner appears on profile page ONLY — not on every page (scope-control: don't nag users mid-flow)
-- [ ] Banner includes one-click resend + code entry inline
-- [ ] Vitest coverage for: auto-request firing on enable, banner visibility truth table, resend rate limiting surfacing the existing 5-attempts/1h-lockout cap
-- [ ] Browser smoke on staging
+- [x] When user toggles WhatsApp on, auto-fire `POST /api/whatsapp/request-verification` immediately (no separate "send code" click) — `WhatsAppOptIn.tsx::handleEnable`
+- [x] Persistent amber banner on `/profile` page only when `whatsAppEnabled && !phoneVerified` — new `WhatsAppUnverifiedBanner.tsx`, masks phone to last 4 digits
+- [x] Banner appears on profile page ONLY — wired in `app/(dashboard)/profile/page.tsx` at top of main content; self-hides via guard clauses so safe to drop elsewhere later
+- [x] Banner includes one-click resend + inline 6-digit code entry
+- [x] Vitest coverage: 3 tests for auto-request (happy path, enable-fails-no-auto-request, manual-send-button regression guard) + 10 tests for banner (visibility truth table, phone masking, 6-digit gating, rate-limit lockout branch)
+- [ ] Browser smoke on staging (after deploy-ui-staging.yml completes)
 
 ### Non-goals
 - No banner on other pages
 - No modal / blocking UX
 - No changes to the existing 5-attempts/1h-lockout on `UserWhatsAppPreferences` (already correct)
+
+### Files shipped
+- **MODIFIED** `web/src/presentation/components/features/whatsapp/WhatsAppOptIn.tsx` — `handleEnable` now chains auto-request after enable, with inner try/catch so auto-request failure falls back to manual button
+- **NEW** `web/src/presentation/components/features/whatsapp/WhatsAppUnverifiedBanner.tsx` — self-hiding amber banner, `role="alert" aria-live="polite"`, `maskPhone()` helper, rate-limit lockout branch
+- **MODIFIED** `web/src/app/(dashboard)/profile/page.tsx` — import + render `<WhatsAppUnverifiedBanner />` at top of main content
+- **NEW** `web/tests/unit/presentation/components/features/whatsapp/WhatsAppOptIn.autoRequest.test.tsx` (3 tests)
+- **NEW** `web/tests/unit/presentation/components/features/whatsapp/WhatsAppUnverifiedBanner.test.tsx` (10 tests)
+
+### Regression verification
+- 13/13 Fix 3 tests green; `npx tsc --noEmit` clean
+- Broader profile-component batch shows 26 pre-existing failures in `CulturalInterestsSection.test.tsx` + `PreferredMetroAreasSection.test.tsx` (missing `QueryClientProvider` wrapper in test harness) — reproduced with Fix 3 stashed, NOT caused by this slice
 
 ---
 
@@ -112,10 +123,10 @@ Goal: prevent indefinite "enabled but never verified" rows from accumulating; no
 
 ---
 
-## Overall status snapshot (2026-04-21)
+## Overall status snapshot (2026-04-20)
 
-- **Fixes shipped**: 0, 1, 2, 5 (4 of 6 planned)
-- **Staging-verified end-to-end**: Fix 1+2+5 (app healthy + admin metric returns new field)
-- **Remaining smoke**: one log-side check for Fix 1+2+5 (needs a real skip event); full browser smoke for Fix 0 (deferred to Fix 3 session)
-- **Remaining work**: Fix 3 (UX) and Fix 4 (auto-disable job)
+- **Fixes shipped**: 0, 1, 2, 3, 5 (5 of 6 planned)
+- **Staging-verified end-to-end**: Fix 1+2+5 (app healthy + admin metric returns new field, `usersEnabledButUnverified: 2`)
+- **Remaining smoke**: browser smoke for Fix 3 (auto-request + banner visibility) on staging after deploy-ui; log-side check for Fix 1+2+5 (needs a real skip event)
+- **Remaining work**: Fix 4 (auto-disable job + 30-day grace + notification email + EF migration)
 - **Deferred**: Fix 6 (persist skip-reason on message records)

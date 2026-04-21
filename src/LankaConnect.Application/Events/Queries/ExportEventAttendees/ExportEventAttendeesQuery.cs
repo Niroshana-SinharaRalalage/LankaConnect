@@ -17,8 +17,10 @@ public enum ExportFormat
 {
     Excel,
     Csv,
-    SignUpListsZip,  // Phase 6A.69: ZIP archive with multiple CSV files (one per signup list category)
-    SignUpListsExcel // Phase 6A.73: Excel file with signup lists (one sheet per category)
+    SignUpListsZip,   // Phase 6A.69: ZIP archive with multiple CSV files (one per signup list category)
+    SignUpListsExcel, // Phase 6A.73: Excel file with signup lists (one sheet per category)
+    VolunteersZip,    // Phase 7D.1 Step 16: ZIP with CSV files, volunteer labels, Kind=Volunteers lists only
+    VolunteersExcel   // Phase 7D.1 Step 16: ZIP with Excel files, volunteer labels, Kind=Volunteers lists only
 }
 
 /// <summary>

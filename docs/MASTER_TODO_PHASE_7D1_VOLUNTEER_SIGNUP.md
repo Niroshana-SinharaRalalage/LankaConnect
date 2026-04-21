@@ -66,7 +66,7 @@
 **Goal:** Volunteer-list CSV + Excel exports show volunteer-specific column labels ("Volunteer Role / Volunteers Needed / Volunteer Name / Committed"). Two new `ExportFormat` enum values (`VolunteersZip`, `VolunteersExcel`).
 
 - [x] **15.** Export service: `SignUpExportLabels` record + optional `labels` parameter on `ExportSignUpListsToZip` / `ExportSignUpListsToExcelZip`. Default `ForItems()` keeps existing callers unchanged; `ForVolunteers()` relabels to "Volunteer Role / Volunteers Needed / Volunteer Name / Committed". Covered by 4 unit tests (2 CSV + 2 Excel) — all green.
-- [ ] **16.** Query: add `VolunteersZip` / `VolunteersExcel` enum values + handler routing
+- [x] **16.** Query: `ExportFormat.VolunteersZip` / `VolunteersExcel` enum values added. Handler filters `SignUpLists` by `Kind` (Volunteers vs Items) so the two export endpoints return disjoint sets; volunteer branch passes `SignUpExportLabels.ForVolunteers()` through the shared export services. Missing-lists returns a Kind-specific error ("No volunteer lists found for this event" vs "No signup lists found").
 - [ ] **17.** Controller: map new format values; curl-test post-deploy
 
 ### Phase D acceptance

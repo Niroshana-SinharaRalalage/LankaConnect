@@ -63,34 +63,51 @@ public class WhatsAppService : IWhatsAppService
             // Step 1: Check global feature flag
             if (!_settings.Enabled)
             {
-                _logger.LogInformation("[Phase 7A] WhatsApp DISABLED globally. Skipping send for UserId={UserId}", userId);
+                _logger.LogInformation(
+                    "[Phase 7A] WhatsApp skipped: UserId={UserId}, SkipReason={SkipReason}",
+                    userId, WhatsAppSkipReason.GloballyDisabled);
                 return Result<WhatsAppSendResult>.Success(
-                    WhatsAppSendResult.Skipped("WhatsApp messaging is disabled globally."));
+                    WhatsAppSendResult.Skipped(
+                        WhatsAppSkipReason.GloballyDisabled,
+                        "WhatsApp messaging is disabled globally."));
             }
 
             // Step 2: Lookup user preferences and validate opt-in
             var preferences = await _preferencesRepository.GetByUserIdAsync(userId, ct);
             if (preferences == null)
             {
-                _logger.LogInformation("[Phase 7A] No WhatsApp preferences for UserId={UserId}. Skipping.", userId);
+                _logger.LogInformation(
+                    "[Phase 7A] WhatsApp skipped: UserId={UserId}, SkipReason={SkipReason}",
+                    userId, WhatsAppSkipReason.NoPreferences);
                 return Result<WhatsAppSendResult>.Success(
-                    WhatsAppSendResult.Skipped("User has no WhatsApp preferences configured."));
+                    WhatsAppSendResult.Skipped(
+                        WhatsAppSkipReason.NoPreferences,
+                        "User has no WhatsApp preferences configured."));
             }
 
-            if (!preferences.ShouldNotify(notificationType))
+            var skipReason = preferences.EvaluateSkipReason(notificationType);
+            if (skipReason.HasValue)
             {
+                // Pre-fix: every skip here was logged as "opted out" regardless of cause,
+                // so a never-verified user looked identical to a user who toggled off a type.
                 _logger.LogInformation(
-                    "[Phase 7A] User {UserId} opted out of {NotificationType}. Skipping.",
-                    userId, notificationType);
+                    "[Phase 7A] WhatsApp skipped: UserId={UserId}, NotificationType={NotificationType}, SkipReason={SkipReason}",
+                    userId, notificationType, skipReason.Value);
                 return Result<WhatsAppSendResult>.Success(
-                    WhatsAppSendResult.Skipped($"User opted out of {notificationType} notifications."));
+                    WhatsAppSendResult.Skipped(
+                        skipReason.Value,
+                        BuildSkipMessage(skipReason.Value, notificationType)));
             }
 
             if (string.IsNullOrWhiteSpace(preferences.WhatsAppPhoneNumber))
             {
-                _logger.LogWarning("[Phase 7A] User {UserId} has no verified phone number. Skipping.", userId);
+                _logger.LogWarning(
+                    "[Phase 7A] WhatsApp skipped: UserId={UserId}, SkipReason={SkipReason} (IsFullyVerified={IsFullyVerified})",
+                    userId, WhatsAppSkipReason.MissingPhoneNumber, preferences.IsFullyVerified);
                 return Result<WhatsAppSendResult>.Success(
-                    WhatsAppSendResult.Skipped("User has no verified WhatsApp phone number."));
+                    WhatsAppSendResult.Skipped(
+                        WhatsAppSkipReason.MissingPhoneNumber,
+                        "User has no verified WhatsApp phone number."));
             }
 
             // Step 3: Check deduplication (FIX E2)
@@ -99,10 +116,12 @@ public class WhatsAppService : IWhatsAppService
             if (isDuplicate)
             {
                 _logger.LogInformation(
-                    "[Phase 7A] Duplicate detected within {Minutes}m: UserId={UserId}, Template={TemplateName}, EventId={EventId}. Skipping.",
-                    DeduplicationWindowMinutes, userId, templateName, eventId);
+                    "[Phase 7A] WhatsApp skipped: UserId={UserId}, Template={TemplateName}, EventId={EventId}, SkipReason={SkipReason}, WindowMinutes={WindowMinutes}",
+                    userId, templateName, eventId, WhatsAppSkipReason.Deduplicated, DeduplicationWindowMinutes);
                 return Result<WhatsAppSendResult>.Success(
-                    WhatsAppSendResult.Skipped($"Duplicate message detected within {DeduplicationWindowMinutes} minutes."));
+                    WhatsAppSendResult.Skipped(
+                        WhatsAppSkipReason.Deduplicated,
+                        $"Duplicate message detected within {DeduplicationWindowMinutes} minutes."));
             }
 
             // Step 4-6: Lookup template, build params, send
@@ -377,4 +396,19 @@ public class WhatsAppService : IWhatsAppService
 
         return Result<WhatsAppSendResult>.Failure(sendResult.Error);
     }
+
+    private static string BuildSkipMessage(
+        WhatsAppSkipReason reason,
+        WhatsAppNotificationType notificationType) => reason switch
+    {
+        WhatsAppSkipReason.WhatsAppDisabled =>
+            "User has not enabled WhatsApp notifications.",
+        WhatsAppSkipReason.PhoneUnverified =>
+            "User enabled WhatsApp but has not completed phone verification.",
+        WhatsAppSkipReason.TypeDisabled =>
+            $"User opted out of {notificationType} notifications.",
+        WhatsAppSkipReason.MissingPhoneNumber =>
+            "User has no verified WhatsApp phone number.",
+        _ => $"WhatsApp send skipped ({reason})."
+    };
 }

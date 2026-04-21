@@ -14,4 +14,11 @@ public interface IUserWhatsAppPreferencesRepository : IRepository<UserWhatsAppPr
         IEnumerable<Guid> userIds, CancellationToken ct = default);
     Task<IReadOnlyList<UserWhatsAppPreferences>> GetUsersOptedInForNotificationTypeAsync(
         Enums.WhatsAppNotificationType notificationType, CancellationToken ct = default);
+
+    /// <summary>
+    /// Count of users who turned WhatsApp on but never completed phone verification.
+    /// These users silently do not receive any notifications — an admin signal that the
+    /// verification flow is dropping conversions.
+    /// </summary>
+    Task<int> GetUsersEnabledButUnverifiedCountAsync(CancellationToken ct = default);
 }

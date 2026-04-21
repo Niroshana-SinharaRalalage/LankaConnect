@@ -47,6 +47,12 @@ public class WhatsAppSendResult
     public bool WasSkipped { get; init; }
     public string? SkipReason { get; init; }
 
+    /// <summary>
+    /// Structured skip discriminator for observability / tests.
+    /// <c>null</c> when the message was sent or the skip predates enum support.
+    /// </summary>
+    public WhatsAppSkipReason? SkipReasonCode { get; init; }
+
     /// <summary>Backward-compatible alias for ProviderMessageId.</summary>
     [Obsolete("Use ProviderMessageId instead. Will be removed in a future version.")]
     public string? AcsMessageId => ProviderMessageId;
@@ -56,4 +62,7 @@ public class WhatsAppSendResult
 
     public static WhatsAppSendResult Skipped(string reason) =>
         new() { WasSkipped = true, SkipReason = reason };
+
+    public static WhatsAppSendResult Skipped(WhatsAppSkipReason code, string reason) =>
+        new() { WasSkipped = true, SkipReason = reason, SkipReasonCode = code };
 }

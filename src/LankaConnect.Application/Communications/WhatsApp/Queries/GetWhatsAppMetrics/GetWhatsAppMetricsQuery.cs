@@ -27,6 +27,13 @@ public class WhatsAppMetricsDto
     public Dictionary<string, int> ByTemplate { get; init; } = new();
     public DateTime From { get; init; }
     public DateTime To { get; init; }
+
+    /// <summary>
+    /// Count of users who turned WhatsApp on but never completed phone verification.
+    /// Point-in-time snapshot (not scoped to From/To) — surfaces the silent-drop-off
+    /// cohort so admins can see when the verification flow is leaking conversions.
+    /// </summary>
+    public int UsersEnabledButUnverified { get; init; }
 }
 
 /// <summary>
@@ -36,13 +43,16 @@ public class WhatsAppMetricsDto
 public class GetWhatsAppMetricsQueryHandler : IRequestHandler<GetWhatsAppMetricsQuery, Result<WhatsAppMetricsDto>>
 {
     private readonly IWhatsAppMessageRepository _messageRepository;
+    private readonly IUserWhatsAppPreferencesRepository _preferencesRepository;
     private readonly ILogger<GetWhatsAppMetricsQueryHandler> _logger;
 
     public GetWhatsAppMetricsQueryHandler(
         IWhatsAppMessageRepository messageRepository,
+        IUserWhatsAppPreferencesRepository preferencesRepository,
         ILogger<GetWhatsAppMetricsQueryHandler> logger)
     {
         _messageRepository = messageRepository;
+        _preferencesRepository = preferencesRepository;
         _logger = logger;
     }
 
@@ -70,6 +80,8 @@ public class GetWhatsAppMetricsQueryHandler : IRequestHandler<GetWhatsAppMetrics
                 }
 
                 var metrics = await _messageRepository.GetMetricsAsync(request.From, request.To, cancellationToken);
+                var usersEnabledButUnverified =
+                    await _preferencesRepository.GetUsersEnabledButUnverifiedCountAsync(cancellationToken);
 
                 var dto = new WhatsAppMetricsDto
                 {
@@ -81,13 +93,14 @@ public class GetWhatsAppMetricsQueryHandler : IRequestHandler<GetWhatsAppMetrics
                     ReadRate = metrics.ReadRate,
                     ByTemplate = metrics.ByTemplate,
                     From = request.From,
-                    To = request.To
+                    To = request.To,
+                    UsersEnabledButUnverified = usersEnabledButUnverified
                 };
 
                 stopwatch.Stop();
                 _logger.LogInformation(
-                    "GetWhatsAppMetrics COMPLETE: From={From}, To={To}, TotalSent={TotalSent}, DeliveryRate={DeliveryRate}%, Duration={ElapsedMs}ms",
-                    request.From, request.To, metrics.TotalSent, metrics.DeliveryRate.ToString("F1"), stopwatch.ElapsedMilliseconds);
+                    "GetWhatsAppMetrics COMPLETE: From={From}, To={To}, TotalSent={TotalSent}, DeliveryRate={DeliveryRate}%, UsersEnabledButUnverified={UsersEnabledButUnverified}, Duration={ElapsedMs}ms",
+                    request.From, request.To, metrics.TotalSent, metrics.DeliveryRate.ToString("F1"), usersEnabledButUnverified, stopwatch.ElapsedMilliseconds);
 
                 return Result<WhatsAppMetricsDto>.Success(dto);
             }

@@ -173,14 +173,29 @@ public class UserWhatsAppPreferences : BaseEntity
 
     /// <summary>
     /// Check if user should receive a WhatsApp notification for the given type.
-    /// Uses enum per architect review D2 — no magic strings.
+    /// Thin facade over <see cref="EvaluateSkipReason"/> — kept so legacy callers
+    /// that only need a boolean do not have to change.
     /// </summary>
     public bool ShouldNotify(WhatsAppNotificationType notificationType)
-    {
-        if (!WhatsAppEnabled || !PhoneVerified)
-            return false;
+        => EvaluateSkipReason(notificationType) is null;
 
-        return notificationType switch
+    /// <summary>
+    /// Returns the single discriminator explaining why a WhatsApp send for this
+    /// notification type must be skipped, or <c>null</c> if the send may proceed.
+    /// Order matters: we report the root cause, not a downstream symptom
+    /// (e.g. a user who turned WhatsApp on but never verified yields
+    /// <see cref="WhatsAppSkipReason.PhoneUnverified"/>, not
+    /// <see cref="WhatsAppSkipReason.TypeDisabled"/>).
+    /// </summary>
+    public WhatsAppSkipReason? EvaluateSkipReason(WhatsAppNotificationType notificationType)
+    {
+        if (!WhatsAppEnabled)
+            return WhatsAppSkipReason.WhatsAppDisabled;
+
+        if (!PhoneVerified)
+            return WhatsAppSkipReason.PhoneUnverified;
+
+        var typeEnabled = notificationType switch
         {
             WhatsAppNotificationType.EventRegistration => NotifyEventRegistration,
             WhatsAppNotificationType.EventReminder => NotifyEventReminder,
@@ -191,8 +206,10 @@ public class UserWhatsAppPreferences : BaseEntity
             WhatsAppNotificationType.Newsletter => NotifyNewsletter,
             WhatsAppNotificationType.NewEvent => NotifyNewEvent,
             WhatsAppNotificationType.Payment => NotifyPayment,
-            _ => false
+            _ => false // Phase 7B.3 additions not yet mapped to dedicated toggles
         };
+
+        return typeEnabled ? null : WhatsAppSkipReason.TypeDisabled;
     }
 
     /// <summary>

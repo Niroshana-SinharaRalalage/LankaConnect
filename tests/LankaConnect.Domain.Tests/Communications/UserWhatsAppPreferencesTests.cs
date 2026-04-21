@@ -496,6 +496,91 @@ public class UserWhatsAppPreferencesTests
 
     #endregion
 
+    #region EvaluateSkipReason Tests
+
+    [Fact]
+    public void EvaluateSkipReason_When_Disabled_Should_Return_WhatsAppDisabled()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+
+        var reason = prefs.EvaluateSkipReason(WhatsAppNotificationType.EventRegistration);
+
+        reason.Should().Be(WhatsAppSkipReason.WhatsAppDisabled);
+    }
+
+    [Fact]
+    public void EvaluateSkipReason_When_Enabled_But_Not_Verified_Should_Return_PhoneUnverified()
+    {
+        var prefs = UserWhatsAppPreferences.Create(_userId);
+        prefs.EnableWhatsApp(ValidE164Phone);
+
+        var reason = prefs.EvaluateSkipReason(WhatsAppNotificationType.EventRegistration);
+
+        reason.Should().Be(WhatsAppSkipReason.PhoneUnverified);
+    }
+
+    [Fact]
+    public void EvaluateSkipReason_When_Verified_And_Type_Disabled_Should_Return_TypeDisabled()
+    {
+        var prefs = CreateEnabledAndVerifiedPreferences();
+        prefs.UpdateNotificationPreferences(
+            notifyRegistration: false,
+            notifyReminder: true,
+            notifyCancellation: true,
+            notifyUpdate: true,
+            notifySignup: true,
+            notifyRefund: true,
+            notifyNewsletter: true,
+            notifyNewEvent: true,
+            notifyPayment: true);
+
+        var reason = prefs.EvaluateSkipReason(WhatsAppNotificationType.EventRegistration);
+
+        reason.Should().Be(WhatsAppSkipReason.TypeDisabled);
+    }
+
+    [Fact]
+    public void EvaluateSkipReason_When_Type_Outside_Supported_Should_Return_TypeDisabled()
+    {
+        // Several Phase 7B.3 notification types (e.g. PhotoAlbum) are not mapped onto
+        // a dedicated boolean yet — from the caller's perspective that still means
+        // "this specific type will not be sent", which is TypeDisabled semantics.
+        var prefs = CreateEnabledAndVerifiedPreferences();
+
+        var reason = prefs.EvaluateSkipReason(WhatsAppNotificationType.PhotoAlbum);
+
+        reason.Should().Be(WhatsAppSkipReason.TypeDisabled);
+    }
+
+    [Fact]
+    public void EvaluateSkipReason_When_Verified_And_Type_Enabled_Should_Return_Null()
+    {
+        var prefs = CreateEnabledAndVerifiedPreferences();
+
+        var reason = prefs.EvaluateSkipReason(WhatsAppNotificationType.EventRegistration);
+
+        reason.Should().BeNull();
+    }
+
+    [Fact]
+    public void ShouldNotify_Matches_EvaluateSkipReason_Null_Contract()
+    {
+        // ShouldNotify must stay a thin facade over EvaluateSkipReason so the two
+        // never drift apart (the production bug that motivated this refactor).
+        var prefs = CreateEnabledAndVerifiedPreferences();
+
+        foreach (var type in Enum.GetValues<WhatsAppNotificationType>())
+        {
+            var shouldNotify = prefs.ShouldNotify(type);
+            var skipReason = prefs.EvaluateSkipReason(type);
+
+            shouldNotify.Should().Be(skipReason == null,
+                $"ShouldNotify({type}) should equal (EvaluateSkipReason({type}) == null)");
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private UserWhatsAppPreferences CreateEnabledAndVerifiedPreferences()

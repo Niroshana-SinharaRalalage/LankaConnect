@@ -139,6 +139,39 @@ public class UserWhatsAppPreferencesRepository : Repository<UserWhatsAppPreferen
         }
     }
 
+    public async Task<int> GetUsersEnabledButUnverifiedCountAsync(CancellationToken ct = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetUsersEnabledButUnverifiedCount"))
+        using (LogContext.PushProperty("EntityType", "UserWhatsAppPreferences"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _repoLogger.LogDebug("GetUsersEnabledButUnverifiedCountAsync START");
+
+            try
+            {
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(p => p.WhatsAppEnabled && !p.PhoneVerified, ct);
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "GetUsersEnabledButUnverifiedCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "GetUsersEnabledButUnverifiedCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+                throw;
+            }
+        }
+    }
+
     public async Task<IReadOnlyList<UserWhatsAppPreferences>> GetUsersOptedInForNotificationTypeAsync(
         WhatsAppNotificationType notificationType, CancellationToken ct = default)
     {

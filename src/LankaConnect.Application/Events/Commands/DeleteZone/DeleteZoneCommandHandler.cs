@@ -17,6 +17,7 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILayoutMetrics _metrics;
     private readonly ILogger<DeleteZoneCommandHandler> _logger;
 
     public DeleteZoneCommandHandler(
@@ -24,12 +25,14 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
         IUnitOfWork unitOfWork,
+        ILayoutMetrics metrics,
         ILogger<DeleteZoneCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -42,6 +45,7 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
         var authResult = await _authorizationService.AuthorizeAsync(request.LayoutId, cancellationToken);
         if (authResult.IsFailure)
         {
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.AuthFailed);
             return Result.Failure(authResult.Error, authResult.ErrorKind);
         }
 
@@ -82,6 +86,7 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
         var guardResult = await _structuralGuard.CheckSeatsAsync(seatIds, cancellationToken);
         if (guardResult.IsFailure)
         {
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.SeatsReserved);
             return guardResult;
         }
 
@@ -102,6 +107,7 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
             _logger.LogWarning(ex,
                 "DeleteZone: concurrency conflict. LayoutId={LayoutId}, ZoneId={ZoneId}, ExpectedRowVersion={RowVersion}",
                 request.LayoutId, request.ZoneId, request.ExpectedRowVersion);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified by someone else. Reload the layout and retry with the current version.");
         }

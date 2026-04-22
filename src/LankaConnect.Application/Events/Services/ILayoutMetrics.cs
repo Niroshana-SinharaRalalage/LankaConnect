@@ -1,0 +1,55 @@
+using LankaConnect.Domain.Events.Enums;
+
+namespace LankaConnect.Application.Events.Services;
+
+/// <summary>
+/// Slice 5 Chunk 13: named-metric emission for the seating-layout surface.
+///
+/// Per architect decision, Slices 5-8 emit a fixed set of 6 named metrics. This interface
+/// owns the two metrics that belong to the Slice 5 mutation surface:
+///
+/// <list type="bullet">
+///   <item><c>layout.created</c> (tags: <c>LayoutType</c>, <c>FromPreset</c>)</item>
+///   <item><c>layout.structural_edit_rejected</c> (tags: <c>LayoutId</c>, <c>Reason</c>)</item>
+/// </list>
+///
+/// The remaining four metrics (<c>layout.preset_selected</c>, <c>layout.canvas_editor_opened</c>,
+/// <c>layout.canvas_editor_saved</c>, <c>seatpicker.selection_completed</c>) ship with Slices 6-8
+/// and will be added to this interface (or a sibling) as those slices land.
+///
+/// Emission channel: structured Serilog log events with a stable template. Azure Container Apps
+/// log analytics queries pick them up by <c>MetricName</c> property.
+/// </summary>
+public interface ILayoutMetrics
+{
+    /// <summary>
+    /// Fires when a venue layout has been successfully created and committed. For Slice 5 this is
+    /// called from <c>CreateVenueLayoutCommandHandler</c> with <paramref name="fromPreset"/> always
+    /// <c>false</c>; Slice 6's preset command will call with <c>true</c>.
+    /// </summary>
+    void LayoutCreated(LayoutType layoutType, bool fromPreset);
+
+    /// <summary>
+    /// Fires when a structural-mutation endpoint rejects an edit. The <paramref name="reason"/>
+    /// tag distinguishes the rejection path so a dashboard can separate user-visible friction
+    /// (<c>SeatsReserved</c>) from security (<c>AuthFailed</c>) and race conditions
+    /// (<c>ConcurrencyConflict</c>).
+    /// </summary>
+    void StructuralEditRejected(Guid layoutId, StructuralEditRejectionReason reason);
+}
+
+/// <summary>
+/// The three rejection reasons the Slice 5 mutation surface can emit for a structural edit.
+/// Mapped to snake_case tag values by the emitter so log queries match the architect's spec.
+/// </summary>
+public enum StructuralEditRejectionReason
+{
+    /// <summary>Structural guard found held or reserved seats on the affected set.</summary>
+    SeatsReserved,
+
+    /// <summary>Authorization service refused the caller (wrong user / missing admin role).</summary>
+    AuthFailed,
+
+    /// <summary>Optimistic-concurrency check (<c>RowVersion</c> mismatch) failed at commit.</summary>
+    ConcurrencyConflict,
+}

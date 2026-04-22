@@ -25,6 +25,7 @@ public class BatchUpdateLayoutCommandHandlerTests
     private readonly Mock<IStructuralEditGuard> _mockGuard = new();
     private readonly Mock<IVenueLayoutRepository> _mockLayoutRepo = new();
     private readonly Mock<IUnitOfWork> _mockUow = new();
+    private readonly Mock<ILayoutMetrics> _mockMetrics = new();
     private readonly BatchUpdateLayoutCommandHandler _sut;
 
     public BatchUpdateLayoutCommandHandlerTests()
@@ -34,6 +35,7 @@ public class BatchUpdateLayoutCommandHandlerTests
             _mockGuard.Object,
             _mockLayoutRepo.Object,
             _mockUow.Object,
+            _mockMetrics.Object,
             Mock.Of<ILogger<BatchUpdateLayoutCommandHandler>>());
     }
 
@@ -94,6 +96,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.Forbidden);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            It.IsAny<Guid>(), StructuralEditRejectionReason.AuthFailed), Times.Once);
     }
 
     [Fact]
@@ -134,6 +138,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockGuard.Verify(g => g.CheckSeatsAsync(
             It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
     }
 
     [Fact]
@@ -164,6 +170,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         result.ErrorKind.Should().Be(ErrorKind.StructuralEditRejected);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
         layout.Zones.Should().HaveCount(1);   // unchanged
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.SeatsReserved), Times.Once);
     }
 
     [Fact]
@@ -372,6 +380,8 @@ public class BatchUpdateLayoutCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
     }
 
     [Fact]

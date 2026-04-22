@@ -33,6 +33,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILayoutMetrics _metrics;
     private readonly ILogger<BatchUpdateLayoutCommandHandler> _logger;
 
     public BatchUpdateLayoutCommandHandler(
@@ -40,12 +41,14 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
         IUnitOfWork unitOfWork,
+        ILayoutMetrics metrics,
         ILogger<BatchUpdateLayoutCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -67,6 +70,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         var authResult = await _authorizationService.AuthorizeAsync(request.LayoutId, cancellationToken);
         if (authResult.IsFailure)
         {
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.AuthFailed);
             return Result.Failure(authResult.Error, authResult.ErrorKind);
         }
 
@@ -93,6 +97,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             _logger.LogWarning(
                 "BatchUpdateLayout: early concurrency conflict. LayoutId={LayoutId}, Expected={Expected}, Actual={Actual}",
                 request.LayoutId, request.ExpectedRowVersion, layout.RowVersion);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified by someone else. Reload the layout and retry with the current version.");
         }
@@ -123,6 +128,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 _logger.LogWarning(
                     "BatchUpdateLayout: structural guard rejected removals. LayoutId={LayoutId}, SeatsAtRisk={Count}",
                     request.LayoutId, seatsAtRisk.Count);
+                _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.SeatsReserved);
                 return guardResult;
             }
         }
@@ -258,6 +264,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             _logger.LogWarning(ex,
                 "BatchUpdateLayout: db concurrency conflict on commit. LayoutId={LayoutId}",
                 request.LayoutId);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified concurrently. Reload and retry.");
         }

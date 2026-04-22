@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
@@ -12,15 +13,18 @@ public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayout
 {
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILayoutMetrics _metrics;
     private readonly ILogger<CreateVenueLayoutCommandHandler> _logger;
 
     public CreateVenueLayoutCommandHandler(
         IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
+        ILayoutMetrics metrics,
         ILogger<CreateVenueLayoutCommandHandler> logger)
     {
         _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -64,6 +68,10 @@ public class CreateVenueLayoutCommandHandler : ICommandHandler<CreateVenueLayout
         _logger.LogInformation(
             "Venue layout created: LayoutId={LayoutId}, Zones={ZoneCount}",
             layout.Id, layout.Zones.Count);
+
+        // Slice 5 Chunk 13: always fromPreset=false here; Slice 6's preset command will
+        // emit its own LayoutCreated with fromPreset=true.
+        _metrics.LayoutCreated(layout.LayoutType, fromPreset: false);
 
         return Result<VenueLayoutDto>.Success(MapToDto(layout));
     }

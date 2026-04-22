@@ -20,6 +20,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILayoutMetrics _metrics;
     private readonly ILogger<UpdateTableCommandHandler> _logger;
 
     public UpdateTableCommandHandler(
@@ -27,12 +28,14 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
         IUnitOfWork unitOfWork,
+        ILayoutMetrics metrics,
         ILogger<UpdateTableCommandHandler> logger)
     {
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -55,6 +58,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
         var authResult = await _authorizationService.AuthorizeAsync(request.LayoutId, cancellationToken);
         if (authResult.IsFailure)
         {
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.AuthFailed);
             return Result.Failure(authResult.Error, authResult.ErrorKind);
         }
 
@@ -89,6 +93,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
             var guardResult = await _structuralGuard.CheckSeatsAsync(seatIds, cancellationToken);
             if (guardResult.IsFailure)
             {
+                _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.SeatsReserved);
                 return guardResult;
             }
         }
@@ -127,6 +132,7 @@ public class UpdateTableCommandHandler : ICommandHandler<UpdateTableCommand>
             _logger.LogWarning(ex,
                 "UpdateTable: concurrency conflict. LayoutId={LayoutId}, TableId={TableId}, ExpectedRowVersion={RowVersion}",
                 request.LayoutId, request.TableId, request.ExpectedRowVersion);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified by someone else. Reload the layout and retry with the current version.");
         }

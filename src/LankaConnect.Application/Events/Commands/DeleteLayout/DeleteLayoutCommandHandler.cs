@@ -22,6 +22,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
     private readonly IVenueLayoutRepository _layoutRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILayoutMetrics _metrics;
     private readonly ILogger<DeleteLayoutCommandHandler> _logger;
 
     public DeleteLayoutCommandHandler(
@@ -30,6 +31,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
         IVenueLayoutRepository layoutRepository,
         IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
+        ILayoutMetrics metrics,
         ILogger<DeleteLayoutCommandHandler> logger)
     {
         _authorizationService = authorizationService;
@@ -37,6 +39,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
         _layoutRepository = layoutRepository;
         _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
+        _metrics = metrics;
         _logger = logger;
     }
 
@@ -49,6 +52,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
         var authResult = await _authorizationService.AuthorizeAsync(request.LayoutId, cancellationToken);
         if (authResult.IsFailure)
         {
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.AuthFailed);
             return Result.Failure(authResult.Error, authResult.ErrorKind);
         }
 
@@ -75,6 +79,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
             _logger.LogWarning(
                 "DeleteLayout: concurrency conflict. LayoutId={LayoutId}, ExpectedRowVersion={Expected}, ActualRowVersion={Actual}",
                 request.LayoutId, request.ExpectedRowVersion, layout.RowVersion);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified by someone else. Reload the layout and retry with the current version.");
         }
@@ -91,6 +96,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
             _logger.LogWarning(
                 "DeleteLayout: structural guard rejected delete. LayoutId={LayoutId}, AffectedSeatCount={Count}",
                 request.LayoutId, seatIds.Count);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.SeatsReserved);
             return guardResult;
         }
 
@@ -144,6 +150,7 @@ public class DeleteLayoutCommandHandler : ICommandHandler<DeleteLayoutCommand>
             _logger.LogWarning(ex,
                 "DeleteLayout: db concurrency conflict on commit. LayoutId={LayoutId}",
                 request.LayoutId);
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
             return Result.Conflict(
                 "Layout was modified concurrently. Reload and retry.");
         }

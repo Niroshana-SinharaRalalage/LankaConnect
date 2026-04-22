@@ -30,6 +30,7 @@ public class DeleteLayoutCommandHandlerTests
     private readonly Mock<IVenueLayoutRepository> _mockLayoutRepo = new();
     private readonly Mock<IEventRepository> _mockEventRepo = new();
     private readonly Mock<IUnitOfWork> _mockUow = new();
+    private readonly Mock<ILayoutMetrics> _mockMetrics = new();
     private readonly DeleteLayoutCommandHandler _sut;
 
     public DeleteLayoutCommandHandlerTests()
@@ -40,6 +41,7 @@ public class DeleteLayoutCommandHandlerTests
             _mockLayoutRepo.Object,
             _mockEventRepo.Object,
             _mockUow.Object,
+            _mockMetrics.Object,
             Mock.Of<ILogger<DeleteLayoutCommandHandler>>());
     }
 
@@ -110,6 +112,8 @@ public class DeleteLayoutCommandHandlerTests
         result.ErrorKind.Should().Be(ErrorKind.Forbidden);
         _mockLayoutRepo.Verify(r => r.Remove(It.IsAny<VenueLayout>()), Times.Never);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            It.IsAny<Guid>(), StructuralEditRejectionReason.AuthFailed), Times.Once);
     }
 
     [Fact]
@@ -147,6 +151,8 @@ public class DeleteLayoutCommandHandlerTests
         _mockGuard.Verify(g => g.CheckSeatsAsync(
             It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockLayoutRepo.Verify(r => r.Remove(It.IsAny<VenueLayout>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
     }
 
     [Fact]
@@ -169,6 +175,8 @@ public class DeleteLayoutCommandHandlerTests
         _mockEventRepo.Verify(r => r.GetByIdAsync(
             It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockLayoutRepo.Verify(r => r.Remove(It.IsAny<VenueLayout>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.SeatsReserved), Times.Once);
     }
 
     [Fact]
@@ -301,5 +309,7 @@ public class DeleteLayoutCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
     }
 }

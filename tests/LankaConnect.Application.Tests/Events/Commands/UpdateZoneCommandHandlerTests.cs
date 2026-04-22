@@ -23,6 +23,7 @@ public class UpdateZoneCommandHandlerTests
     private readonly Mock<IStructuralEditGuard> _mockGuard = new();
     private readonly Mock<IVenueLayoutRepository> _mockRepo = new();
     private readonly Mock<IUnitOfWork> _mockUow = new();
+    private readonly Mock<ILayoutMetrics> _mockMetrics = new();
     private readonly UpdateZoneCommandHandler _sut;
 
     public UpdateZoneCommandHandlerTests()
@@ -32,6 +33,7 @@ public class UpdateZoneCommandHandlerTests
             _mockGuard.Object,
             _mockRepo.Object,
             _mockUow.Object,
+            _mockMetrics.Object,
             Mock.Of<ILogger<UpdateZoneCommandHandler>>());
     }
 
@@ -67,6 +69,8 @@ public class UpdateZoneCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.Forbidden);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            It.IsAny<Guid>(), StructuralEditRejectionReason.AuthFailed), Times.Once);
     }
 
     [Fact]
@@ -150,6 +154,8 @@ public class UpdateZoneCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.StructuralEditRejected);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.SeatsReserved), Times.Once);
     }
 
     [Fact]
@@ -170,5 +176,7 @@ public class UpdateZoneCommandHandlerTests
 
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
     }
 }

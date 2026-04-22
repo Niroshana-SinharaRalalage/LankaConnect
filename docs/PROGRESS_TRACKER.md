@@ -1,7 +1,37 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Seating Redesign Slice 5 Chunk 10 (`PUT /api/venue-layouts/{id}/batch` atomic batch update) deployed + staging-smoke-verified. Phase 7C.2 signup-commitment email fan-out shipped earlier same day.*
+*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 11 (frontend repository + React Query mutation hooks for the full layout CRUD surface) shipped to UI-staging as commit `dd0ad446` on develop.*
 
-## 🎯 Current Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 10: atomic batch update endpoint)
+## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 11: frontend repository + hooks for layout CRUD)
+
+**Status**: ✅ **DEPLOYED + UNIT-TEST-VERIFIED** — commit `dd0ad446` on develop; `deploy-ui-staging.yml` run `24755454440` in progress at push time. 31/31 new frontend tests green: 16 repository URL/If-Match wiring tests + 15 hook cache-invalidation tests. `npx tsc --noEmit` clean. No backend changes in this chunk — Slice 5 backend endpoints delivered by Chunks 4-10 are now reachable from the web client.
+
+**Scope**: Wire the full Slice 5 backend surface (Chunks 4-10) into the web layer. Three files + two test files, ~1,400 LOC net add. `TierMappingPanel` UI component remains deferred to Slice 8 per master plan — Slice 8 canvas editor hosts it. This chunk delivers data-layer plumbing only.
+
+**Fix**: (1) [events.types.ts](../web/src/infrastructure/api/types/events.types.ts) — added `rowVersion: number` to `VenueLayoutDto`; added 11 new request/response types: `UpdateVenueLayoutRequest`, `UpdateLayoutCanvasRequest`, `UpdateZoneRequest`, `AddTableRequest`, `AddTableResponse`, `UpdateTableRequest`, `AddDecorationRequest`, `AddDecorationResponse`, `UpdateDecorationRequest`, `AssignableKind` enum, `AssignTierRequest`, `BatchLayoutPayload` + `BatchCanvasConfig`/`BatchZone`/`BatchTable`/`BatchDecoration`. All fields camelCase-aligned with backend DTOs; enum values use string literals matching `JsonStringEnumConverter` output (MEMORY.md Phase 6A.124 rule). (2) [venue-layouts.repository.ts](../web/src/infrastructure/api/repositories/venue-layouts.repository.ts) — added private `ifMatch(rowVersion)` helper building `{ headers: { 'If-Match': rowVersion.toString() } }` + 13 new methods: `updateLayout`, `deleteLayout`, `batchUpdateLayout`, `updateZone`, `deleteZone`, `addTable`/`updateTable`/`deleteTable`, `addDecoration`/`updateDecoration`/`deleteDecoration`, `assignTier`/`removeTierAssignment`. Each mutation accepts `rowVersion` explicitly and threads it into the `If-Match` header. (3) [useVenueLayouts.ts](../web/src/presentation/hooks/useVenueLayouts.ts) — added 13 React Query mutation hooks with scoped cache invalidation via a private `invalidateLayoutScopes(queryClient, layoutId, eventId?, includeSeatAvailability?)` helper. Invalidation strategy: `venueLayoutKeys.detail(layoutId)` always; `byEvent(eventId)` only when the layout is event-attached; `seatAvailability(eventId)` only when the mutation affects seats (zone/table/batch); `eventKeys.detail(eventId)` only on layout-level delete (because `event.seatingMode` flips back to `GeneralAdmission`). Delete-layout hook also uses `queryClient.removeQueries` to evict the detail cache entirely rather than refetching a dead ID.
+
+**Evidence**:
+- Repository tests ([venue-layouts.repository.test.ts](../web/src/infrastructure/api/repositories/__tests__/venue-layouts.repository.test.ts)): 16/16 green covering URL construction, `If-Match` header wiring, rowVersion stringification (incl. int-max), error propagation through `apiClient`, read-path unchanged
+- Hook tests ([useVenueLayouts.test.tsx](../web/src/presentation/hooks/__tests__/useVenueLayouts.test.tsx)): 15/15 green covering repository-argument forwarding + cache-invalidation scoping (template vs event-attached, seat-affecting vs non-seat-affecting, layout-level delete evicts + invalidates event detail)
+- Type-check: `npx tsc --noEmit` → exit 0
+- Git: commit `dd0ad446` on develop, pushed to origin, `deploy-ui-staging.yml` run `24755454440` triggered (status=in_progress at push time)
+
+**Recovery incident**: Mid-session a parallel agent briefly checked out `fix/phase-7c2-restore-signup-commitment-templates` from develop, the Chunk 11 commit landed on that branch, the agent switched back to develop, and the branch was deleted — leaving `dd0ad446` orphaned (no branch pointed at it). Recovered cleanly via `git merge --ff-only dd0ad446` (commit's parent matched develop's tip exactly → fast-forward-only, same hash preserved, no rewrite). All 31 tests re-verified post-recovery. Reflog preserved the orphan; no work lost.
+
+**Scope discipline**: Chunk 11 ships hooks+types only. No UI components. `TierMappingPanel` deferred to Slice 8 (canvas editor is its only host). Staging smoke for these hooks is out-of-scope this chunk — backend endpoints were already smoke-verified in Chunks 4-10; the hooks are thin wrappers whose behavior is fully covered by the 15 hook unit tests against a mocked repository, and the backend wire-format compatibility is covered by the 16 repository tests.
+
+**Follow-ups**:
+- Chunk 12 — Integration tests through real EF Core (not just mocked handler tests)
+- Chunk 14 — Factory-shim cleanup (test-helper consolidation)
+- Chunk 15 — Tracking-doc closure + Slice 5 retrospective
+- Slice 6 — Preset library (8 static-code presets + `GET /presets` + `POST /from-preset`)
+- Slice 7 — Registration UX rewrite (SeatPicker via react-konva)
+- Slice 8 — Canvas editor modal (react-konva, consumes `PUT /batch` + hosts `TierMappingPanel`)
+- GET-layout DTO gap — add `canvas` field to the venue-layout response so the batch endpoint's Canvas mutation is observable (tech debt flagged inline in Chunk 10 smoke script)
+- Release N+1 (Slice 4 tail) — drop `venue_zones.ticket_tier_id` column, ≥1 week after Slice 4 Release N ships with no rollback triggered
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 10: atomic batch update endpoint)
 
 **Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED** — commit `3c889565` on develop; `deploy-staging.yml` run `24752603915` succeeded. 11/11 `BatchUpdateLayoutCommandHandlerTests` green; overall Application suite 2241/2247 pass (6 skipped, 0 failed — skips are pre-existing Docker-gated integration tests); Domain suite 509/511 (2 pre-existing unrelated failures in DonationConfigurationTests + FormResponseTests). Staging smoke [smoke_chunk10_batch_update.py](../../tmp/smoke_chunk10_batch_update.py) 5/6 scenarios fully green, 1 skipped (E hold-seat API quirk, core path covered by unit tests): A) missing `If-Match` → 400, B) unknown id → 404, C) happy-path upsert on template (rename + add Balcony zone + add round table + add stage decoration) → 204, GET verifies all changes including 8 auto-generated round-table seats, D) stale `If-Match` → 409, F) remove empty zone → 204.
 
@@ -47,6 +77,36 @@
 **Follow-ups**:
 - User-driven visual inbox smoke — commit to a signup item on an event with a physical location, confirm no duplicate Location row + no GPS suffix + bold venue name renders
 - Audit remaining event-email params classes for `Location?.ToString()` callers that still leak the GPS suffix — tracked as Phase 7C.2 continuation
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Phase 6A.132: drag-drop reorder of sign-up items)
+
+**Status**: ✅ **DEPLOYED + STAGING-API-VERIFIED** — commit `73e0c25b` on develop; combined deploy run `24752603915` succeeded (both `deploy-staging.yml` and `deploy-ui-staging.yml` green). API smoke round-trip against event `d9fa9a8e-2b54-47b2-bb24-09ee6f8dd656` (list `1c91dcc9-fd52-43ab-bc8e-856c4823acf5`, 3 items: Rice Tray / Plates / Test Slot Item) passes all four checks: (1) PUT fully-reversed order → 200 + subsequent GET confirms `displayOrder` [0,1,2] matches the reversed request exactly, (2) negative PUT missing one ID → 400 `"Expected 3 item IDs but received 2"`, (3) negative PUT with duplicate ID → 400 `"Ordered item IDs must not contain duplicates"`, (4) restore original order → 200. Application suite 2230 pass / 0 fail / 6 skipped. Browser/mobile/keyboard manual smoke remains the one human-confirmation gap.
+
+**Root cause addressed**: Sign-up items lacked a persisted order — they came back in an implicit, non-deterministic sequence tied to insertion/update time, so organizers had no way to promote the "bring the cake" item above "bring drinks" without recreating rows. Display order needed to (a) be an aggregate-enforced invariant (no gaps, no duplicates within a list), (b) survive migration of existing rows deterministically (not all-zero), (c) serialize through the `List<ISignUpItemDto>` discriminator pattern (Phase 6A.124 rule), and (d) drive a drag-drop UI on the organizer view only — never on the public anon-commit path.
+
+**Fix**: Five-layer change.
+(1) **Domain** — `SignUpItem.DisplayOrder` (int) + `SetDisplayOrder()`; `SignUpList.ReorderItems(orderedItemIds)` enforces exact-set equality (no omissions, no extras, no duplicates) and re-assigns dense 0..N-1 order; `AddQuantityBasedItem`/`AddSlotBasedItem`/`AddOpenSignUpItem`/role seeding inherit the next sequential DisplayOrder so the invariant holds for new items. `SignUpItemsReorderedDomainEvent` raised on successful reorder.
+(2) **Application** — `ReorderSignUpItemsCommand` + handler (validates ownership, 404 on unknown event/list, surfaces Result failures); FluentValidation for non-empty Guid list + duplicate detection; `GetEventSignUpListsQueryHandler` now `OrderBy(DisplayOrder).ThenBy(ItemDescription)` (stable tiebreak for pre-backfill rows).
+(3) **Infrastructure** — EF migration `20260420040155_AddSignUpItemDisplayOrder`: `ADD display_order integer NOT NULL DEFAULT 0`, backfill via `row_number() OVER (PARTITION BY sign_up_list_id ORDER BY created_at, id) - 1` so existing rows get deterministic dense ordering, composite index `ix_sign_up_items_list_id_display_order` matching the read-path `ORDER BY`. `.Designer.cs` present (Phase 6A.133 rule).
+(4) **API** — `PUT /api/events/{eventId}/signups/{signupId}/items/reorder` with `ReorderSignUpItemsRequest(IReadOnlyList<Guid> OrderedItemIds)` record; `[Authorize]`, `HandleResult` → 200 OK, `[ProducesResponseType]` 200/400/401/404 matching siblings. `ISignUpItemDto.DisplayOrder` promoted to interface-level so `System.Text.Json` actually serializes it (Phase 6A.124 rule).
+(5) **Web** — TS `ISignUpItemDto.displayOrder` + `events.repository.reorderSignUpItems`; React Query `useReorderSignUpItems` hook with `onMutate` optimistic cache update, `onError` rollback, `onSettled` invalidate-queries (so a 400 triggers refetch, resolving any stale-set race). `SignUpManagementSection.tsx` wraps per-category item lists with `DndContext` + `SortableContext` + `PointerSensor` (`activationConstraint: { distance: 8 }`) + `KeyboardSensor` (`sortableKeyboardCoordinates`); module-scope `SortableSignUpItem` render-prop wrapper hoists `useSortable` out of the loop to comply with hooks rules; GripVertical drag handle is rendered organizer-only (`disabled={!isOrganizer}`). Per-category drag handler reorders the category sub-sequence and merges it back into the full list before the PUT, satisfying backend's exact-set invariant.
+
+**Evidence**:
+- Domain tests: 10/10 new `SignUpListReorderTests` green (exact-set equality, duplicate rejection, happy-path dense assignment, empty list, single-item list, etc.)
+- Application tests: 5/5 new `ReorderSignUpItemsCommandHandlerTests` green (happy path, list-not-found, event-not-found, validator failure, domain failure)
+- Application suite: 2230/2236 pass, 6 skipped, 0 failed. Integration suite's 152 failures all Docker-container-environmental (not reorder-related — confirmed by stash/baseline diff)
+- Build: 0 errors, 6 pre-existing NuGet vulnerability warnings only
+- Staging deploy: run `24752603915` status=completed conclusion=success; EF Migrations step log confirms all 4 Up() ops executed (ALTER TABLE, backfill SQL, CREATE INDEX, `__EFMigrationsHistory` insert)
+- Staging API smoke: happy-path round-trip (reverse → persist → read-back) + two negative (missing / duplicate) + restore — all responses match expected codes and validator messages
+
+**Scope discipline**: Ships reorder endpoint + read-path ordering + frontend drag-drop on the organizer view only. No change to anon-commit path, no change to volunteer lifecycle. Inactive items ordering and displayOrder-exposure in public event pages not in scope.
+
+**Follow-ups**:
+- Human-gated browser smoke: (a) drag + drop in organizer sign-up list, refresh, confirm persistence; (b) keyboard accessibility (Tab → Space → Arrows → Space); (c) mobile touch
+- Organizer/admin auth check across the four sign-up item mutation endpoints (`UpdateSignUpItem`, `AddSignUpItem`, `RemoveSignUpItem`, `ReorderSignUpItems`) — P1 deferred, already tracked in `MASTER_TODO_E1_PHASE_C.md` "Deferred / out-of-scope"
+- 409 Conflict vs 400 for set-mismatch — deferred unless UX demand surfaces
 
 ---
 

@@ -69,7 +69,16 @@ public class DeleteZoneCommandHandler : ICommandHandler<DeleteZoneCommand>
             return Result.NotFound("Zone not found in this layout");
         }
 
-        var seatIds = zone.Seats.Select(s => s.Id).ToList();
+        // Structural guard must consider every seat that becomes unreachable when
+        // this zone goes away — zone seats (XOR partition) AND seats under tables
+        // scoped to this zone. Without the table-seat leg, a banquet layout with a
+        // held table seat would silently pass the guard and the DELETE would
+        // orphan the hold against a deleted zone.
+        var seatIds = zone.Seats.Select(s => s.Id)
+            .Concat(layout.Tables
+                .Where(t => t.VenueZoneId == request.ZoneId)
+                .SelectMany(t => t.Seats.Select(s => s.Id)))
+            .ToList();
         var guardResult = await _structuralGuard.CheckSeatsAsync(seatIds, cancellationToken);
         if (guardResult.IsFailure)
         {

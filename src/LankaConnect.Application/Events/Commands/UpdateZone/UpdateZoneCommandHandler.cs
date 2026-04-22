@@ -85,7 +85,15 @@ public class UpdateZoneCommandHandler : ICommandHandler<UpdateZoneCommand>
         var isStructural = request.Shape.HasValue || request.Geometry is not null;
         if (isStructural)
         {
-            var seatIds = zone.Seats.Select(s => s.Id).ToList();
+            // Mirror DeleteZone: a structural edit (shape/geometry) also invalidates
+            // layout positions of tables scoped to this zone, so the guard must see
+            // their seats too. Without this, a held table seat inside the zone
+            // would be silently approved for a geometry change.
+            var seatIds = zone.Seats.Select(s => s.Id)
+                .Concat(layout.Tables
+                    .Where(t => t.VenueZoneId == request.ZoneId)
+                    .SelectMany(t => t.Seats.Select(s => s.Id)))
+                .ToList();
             var guardResult = await _structuralGuard.CheckSeatsAsync(seatIds, cancellationToken);
             if (guardResult.IsFailure)
             {

@@ -13,9 +13,9 @@ namespace LankaConnect.Application.Events.Services;
 ///   <item><c>layout.structural_edit_rejected</c> (tags: <c>LayoutId</c>, <c>Reason</c>)</item>
 /// </list>
 ///
-/// The remaining four metrics (<c>layout.preset_selected</c>, <c>layout.canvas_editor_opened</c>,
-/// <c>layout.canvas_editor_saved</c>, <c>seatpicker.selection_completed</c>) ship with Slices 6-8
-/// and will be added to this interface (or a sibling) as those slices land.
+/// Slice 6 adds <c>layout.preset_selected</c>. The remaining three metrics
+/// (<c>layout.canvas_editor_opened</c>, <c>layout.canvas_editor_saved</c>,
+/// <c>seatpicker.selection_completed</c>) ship with Slices 7-8.
 ///
 /// Emission channel: structured Serilog log events with a stable template. Azure Container Apps
 /// log analytics queries pick them up by <c>MetricName</c> property.
@@ -36,6 +36,14 @@ public interface ILayoutMetrics
     /// (<c>ConcurrencyConflict</c>).
     /// </summary>
     void StructuralEditRejected(Guid layoutId, StructuralEditRejectionReason reason);
+
+    /// <summary>
+    /// Slice 6: fires when an organizer picks a preset from the preset-library modal
+    /// and the preset layout is successfully committed. <paramref name="presetId"/> is
+    /// the stable preset identifier (e.g. <c>theater-classic</c>) — low cardinality,
+    /// safe to use as a dashboard grouping tag.
+    /// </summary>
+    void PresetSelected(string presetId);
 }
 
 /// <summary>

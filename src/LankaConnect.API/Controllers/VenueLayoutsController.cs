@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Commands.CreateVenueLayout;
+using LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
 using LankaConnect.Application.Events.Commands.GenerateSeats;
 using LankaConnect.Application.Events.Commands.HoldSeats;
 using LankaConnect.Application.Events.Commands.ReleaseSeats;
@@ -24,6 +25,7 @@ using LankaConnect.Application.Events.Commands.UpdateDecoration;
 using LankaConnect.Application.Events.Commands.DeleteDecoration;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
+using LankaConnect.Application.Events.Queries.GetLayoutPresets;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.API.Extensions;
 
@@ -97,6 +99,61 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
 
         return HandleResult(result);
     }
+
+    // ==================== PRESET LIBRARY (Slice 6) ====================
+
+    /// <summary>
+    /// Slice 6: returns metadata for the 8 built-in layout presets the organizer
+    /// can pick from in the preset-library modal. Thumbnails are static PNGs.
+    /// </summary>
+    [HttpGet("presets")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<LayoutPresetDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetLayoutPresets()
+    {
+        var result = await Mediator.Send(new GetLayoutPresetsQuery());
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Slice 6: clones a preset into a new venue layout owned by the current user.
+    /// Supply <c>eventId</c> to attach the layout directly to an event you own;
+    /// omit to create a personal template.
+    /// </summary>
+    [HttpPost("from-preset")]
+    [Authorize]
+    [ProducesResponseType(typeof(VenueLayoutDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateLayoutFromPreset(
+        [FromBody] CreateLayoutFromPresetRequest request)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "CreateLayoutFromPreset: user={UserId}, preset={PresetId}, event={EventId}",
+            userId, request.PresetId, request.EventId);
+
+        var command = new CreateLayoutFromPresetCommand(
+            request.PresetId,
+            userId,
+            request.EventId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultWithCreated(
+            result,
+            nameof(GetLayout),
+            new { id = result.IsSuccess ? result.Value!.Id : Guid.Empty });
+    }
+
+    /// <summary>
+    /// Request body for <see cref="CreateLayoutFromPreset"/>.
+    /// </summary>
+    public record CreateLayoutFromPresetRequest(string PresetId, Guid? EventId);
 
     /// <summary>
     /// Update a venue layout's name and/or canvas configuration.

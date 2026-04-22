@@ -37,6 +37,14 @@ public class LayoutMetrics : ILayoutMetrics
             ToTag(reason));
     }
 
+    public void PresetSelected(string presetId)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} PresetId={PresetId}",
+            "layout.preset_selected",
+            presetId);
+    }
+
     private static string ToTag(StructuralEditRejectionReason reason) => reason switch
     {
         StructuralEditRejectionReason.SeatsReserved => "seats_reserved",

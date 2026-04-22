@@ -121,12 +121,25 @@ public class VenueLayout : BaseEntity
         string name,
         string color,
         int sortOrder)
+        => AddZone(name, color, sortOrder, ZoneShape.Rect, geometry: null);
+
+    /// <summary>
+    /// Adds a new zone with an explicit canvas shape + geometry. Used by preset
+    /// factories (Slice 6) and the canvas editor (Slice 8) to stamp the zone's
+    /// rendered shape at creation time rather than through a follow-up UpdateZone.
+    /// </summary>
+    public Result<VenueZone> AddZone(
+        string name,
+        string color,
+        int sortOrder,
+        ZoneShape shape,
+        string? geometry)
     {
         // Check for duplicate zone names (case-insensitive)
-        if (_zones.Any(z => z.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)))
-            return Result<VenueZone>.Failure($"A zone named '{name.Trim()}' already exists in this layout");
+        if (_zones.Any(z => z.Name.Equals(name?.Trim() ?? string.Empty, StringComparison.OrdinalIgnoreCase)))
+            return Result<VenueZone>.Failure($"A zone named '{name?.Trim()}' already exists in this layout");
 
-        var zoneResult = VenueZone.Create(Id, name, color, sortOrder);
+        var zoneResult = VenueZone.Create(Id, name!, color, sortOrder, shape, geometry);
         if (zoneResult.IsFailure)
             return Result<VenueZone>.Failure(zoneResult.Error);
 

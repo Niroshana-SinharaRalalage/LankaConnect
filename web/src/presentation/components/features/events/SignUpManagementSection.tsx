@@ -802,13 +802,25 @@ export function SignUpManagementSection({
                                   className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}
                                 >
                                   {/* Phase 6A.132: Up/Down reorder buttons — organizer-only.
-                                      Up disabled on the first item, Down disabled on the last. */}
+                                      Up disabled on the first item, Down disabled on the last.
+                                      Phase 6A.132 UX follow-up 4: intentionally NOT gated on
+                                      `reorderSignUpItems.isPending`. The mutation's optimistic
+                                      update (`onMutate` in useReorderSignUpItems) already
+                                      updates the cache synchronously, so the visual move is
+                                      instant. Gating on `isPending` locked both buttons for
+                                      the full mutation + onSettled-refetch window (~500-1500ms),
+                                      which the user perceived as "I have to click twice" (the
+                                      first click landed on a disabled button → no-op). React
+                                      Query handles concurrent in-flight mutations; each click
+                                      fires `onMutate` → `cancelQueries` → new optimistic state,
+                                      and the server processes PUTs in arrival order. Exact-set
+                                      equality is enforced per-request, so rapid clicks are safe. */}
                                   {isOrganizer && items.length > 1 && (
                                     <div className="flex items-center gap-1">
                                       <button
                                         type="button"
                                         onClick={() => moveItemInCategory(items, itemIndex, 'up')}
-                                        disabled={isFirstInCategory || reorderSignUpItems.isPending}
+                                        disabled={isFirstInCategory}
                                         aria-label={`Move ${item.itemDescription} up`}
                                         className="inline-flex items-center justify-center rounded border border-neutral-300 bg-white p-1 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
                                       >
@@ -817,7 +829,7 @@ export function SignUpManagementSection({
                                       <button
                                         type="button"
                                         onClick={() => moveItemInCategory(items, itemIndex, 'down')}
-                                        disabled={isLastInCategory || reorderSignUpItems.isPending}
+                                        disabled={isLastInCategory}
                                         aria-label={`Move ${item.itemDescription} down`}
                                         className="inline-flex items-center justify-center rounded border border-neutral-300 bg-white p-1 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
                                       >

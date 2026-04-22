@@ -42,6 +42,20 @@ const mockUseEventSignUps = vi.fn();
 const mockMutate = vi.fn();
 const mockMutation = { mutate: mockMutate, mutateAsync: vi.fn(), isPending: false, isError: false, error: null };
 
+// Phase 6A.132 UX follow-up 4: dedicated reorder mock so individual tests can
+// flip `isPending` to simulate an in-flight reorder without affecting other
+// mutations. The arrow buttons must stay clickable even while a reorder is
+// in flight (back-to-back reorders rely on React Query's optimistic-update
+// queue + cancelQueries in onMutate).
+const mockReorderMutate = vi.fn();
+const mockReorderMutation = {
+  mutate: mockReorderMutate,
+  mutateAsync: vi.fn(),
+  isPending: false,
+  isError: false,
+  error: null,
+};
+
 vi.mock('@/presentation/hooks/useEventSignUps', () => ({
   useEventSignUps: (...args: unknown[]) => mockUseEventSignUps(...args),
   useCommitToSignUp: () => mockMutation,
@@ -54,7 +68,7 @@ vi.mock('@/presentation/hooks/useEventSignUps', () => ({
   useAddOpenSignUpItemAnonymous: () => mockMutation,
   useUpdateOpenSignUpItem: () => mockMutation,
   useCancelOpenSignUpItem: () => mockMutation,
-  useReorderSignUpItems: () => mockMutation,
+  useReorderSignUpItems: () => mockReorderMutation,
 }));
 
 vi.mock('@/presentation/store/useAuthStore', () => ({
@@ -540,5 +554,122 @@ describe('SignUpManagementSection - Phase 7D.1 Phase G kind threading', () => {
 
     expect(modalPropsSpy.last).toBeDefined();
     expect(modalPropsSpy.last?.hideQuantitySelector).not.toBe(true);
+  });
+});
+
+/**
+ * Phase 6A.132 UX follow-up 4 — arrow buttons must stay clickable during an
+ * in-flight reorder mutation.
+ *
+ * Bug reported by organizer 2026-04-22: "Items moving up and down is not
+ * smooth, it takes a lot of time to go up or down and sometimes we have to
+ * click the same button two times to move it up/down."
+ *
+ * Root cause: `disabled={isFirstInCategory || reorderSignUpItems.isPending}`
+ * locked both arrow buttons for the entire mutation + onSettled-refetch
+ * window (~500-1500ms). The optimistic update made the visual move look
+ * instant, but the user could not click the next arrow until the cycle
+ * finished. A fast click during the pending window landed on a disabled
+ * button (no-op) → the user clicked again and attributed the first click
+ * to a missed press.
+ *
+ * Fix: boundary-only disable (`isFirstInCategory` / `isLastInCategory`).
+ * React Query handles concurrent mutations — onMutate's `cancelQueries`
+ * aborts in-flight refetches so each new optimistic update builds on the
+ * previous one. Server processes PUTs in arrival order; exact-set
+ * equality invariant holds per-PUT so rapid clicks are safe.
+ */
+describe('SignUpManagementSection - Phase 6A.132 UX follow-up 4: arrow buttons stay clickable during pending reorder', () => {
+  const makeItem = (id: string, desc: string): SignUpItemDto => ({
+    id,
+    itemDescription: desc,
+    itemType: SignUpItemType.Quantity,
+    targetQuantity: 10,
+    committedQuantity: 0,
+    remainingQuantity: 10,
+    itemCategory: SignUpItemCategory.Mandatory,
+    notes: null,
+    commitments: [],
+    isFullyCommitted: false,
+    isOpenItem: false,
+    displayOrder: 0,
+  } as SignUpItemDto);
+
+  const threeItemList: SignUpListDto = {
+    id: 'list-reorder',
+    category: 'Food',
+    description: 'Potluck',
+    signUpType: SignUpType.Predefined,
+    hasMandatoryItems: true,
+    hasPreferredItems: false,
+    hasSuggestedItems: false,
+    hasOpenItems: false,
+    items: [makeItem('a', 'Rice'), makeItem('b', 'Curry'), makeItem('c', 'Salad')],
+    commitments: [],
+    predefinedItems: [],
+    commitmentCount: 0,
+  } as SignUpListDto;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset shared reorder mock between tests so `isPending` doesn't leak.
+    mockReorderMutation.isPending = false;
+    mockUseEventSignUps.mockReturnValue({
+      data: [threeItemList],
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it('middle item Down button stays enabled while a reorder is in flight (isPending=true)', () => {
+    // Simulate: user just clicked Down on item "a", mutation is mid-flight.
+    mockReorderMutation.isPending = true;
+
+    render(<SignUpManagementSection eventId="evt-1" isOrganizer={true} userId="user-2" />);
+
+    // Middle item ("Curry") — neither first nor last. Its Down button must be
+    // clickable so the user can chain reorders without waiting.
+    const downButton = screen.getByRole('button', { name: /Move Curry down/i });
+    expect(downButton).not.toBeDisabled();
+
+    const upButton = screen.getByRole('button', { name: /Move Curry up/i });
+    expect(upButton).not.toBeDisabled();
+  });
+
+  it('rapid consecutive Down clicks fire the mutation every time (no swallowed clicks)', () => {
+    const { rerender } = render(
+      <SignUpManagementSection eventId="evt-1" isOrganizer={true} userId="user-2" />
+    );
+
+    const downRice = screen.getByRole('button', { name: /Move Rice down/i });
+
+    // First click. Realistically isPending would flip to true synchronously
+    // inside React Query's onMutate — simulate that AFTER the click, then
+    // force a re-render so the component re-evaluates the disabled attr
+    // with the new isPending value. If the button stays enabled, the second
+    // click must also reach the mutation. If the pre-fix code is in play,
+    // the re-rendered disabled button will swallow the second click.
+    fireEvent.click(downRice);
+    mockReorderMutation.isPending = true;
+    rerender(<SignUpManagementSection eventId="evt-1" isOrganizer={true} userId="user-2" />);
+
+    const downRiceAfter = screen.getByRole('button', { name: /Move Rice down/i });
+    fireEvent.click(downRiceAfter);
+
+    expect(mockReorderMutate).toHaveBeenCalledTimes(2);
+  });
+
+  it('(regression guard) first-item Up button still disabled (boundary)', () => {
+    render(<SignUpManagementSection eventId="evt-1" isOrganizer={true} userId="user-2" />);
+
+    const upRice = screen.getByRole('button', { name: /Move Rice up/i });
+    expect(upRice).toBeDisabled();
+  });
+
+  it('(regression guard) last-item Down button still disabled (boundary)', () => {
+    render(<SignUpManagementSection eventId="evt-1" isOrganizer={true} userId="user-2" />);
+
+    const downSalad = screen.getByRole('button', { name: /Move Salad down/i });
+    expect(downSalad).toBeDisabled();
   });
 });

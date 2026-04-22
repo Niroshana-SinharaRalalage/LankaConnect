@@ -1,10 +1,21 @@
 # Master TODO — E1 (Address Optional) + Phase C (Sign-Up Item Reorder)
 
 **Created:** 2026-04-20
-**Owner:** current session
+**Closed:** 2026-04-22 — both PRs shipped to staging and verified end-to-end (API smoke + UX-follow-up deploys). Browser-smoke confirmation of the final arrow-button UX remains the one human-gated gap.
+**Owner:** closed
 **Architect approval:** ✅ system-architect reviewed plan; revised & approved 2026-04-20
 **Scope:** Two orthogonal PRs — PR-A ships E1 now; PR-B ships Phase C (C1-C7 + D) after PR-A is green on staging
 **Source of truth:** This file. Mirrored into in-session TodoWrite. Tracking docs (`PROGRESS_TRACKER.md`, `STREAMLINED_ACTION_PLAN.md`, `TASK_SYNCHRONIZATION_STRATEGY.md`) get a closing entry per PR.
+
+---
+
+## 🏁 Final status (2026-04-22)
+
+- **PR-A (E1 address optional):** ✅ shipped — commit `e2d7a66c` on develop; `deploy-staging.yml` run `24688502502` + `deploy-ui-staging.yml` run `24688502498` green. API-smoke verified anonymous registration with blank address → 200. Recorded in `PROGRESS_TRACKER.md` line 455+.
+- **PR-B (Phase C reorder C1–D):** ✅ shipped — commit `73e0c25b`; combined deploy run `24752603915` green. Staging API-smoke all four scenarios pass (reversed order → 200 + persisted, missing-ID → 400, duplicate-ID → 400, restore → 200). Docs entry in `PROGRESS_TRACKER.md` line 109+.
+- **UX follow-up 1 — tab snap-back fix:** ✅ commit `858b37a3`; `deploy-ui-staging.yml` run `24756456271` green. Scoped `useReorderSignUpItems` invalidation down from `eventKeys.detail` to `signUpKeys.list` only, eliminating the Tabs unmount/remount that was snapping organizers back to "Event Details" after every reorder.
+- **UX follow-up 2 — arrow buttons over drag handle:** ✅ commit `350a9d0b`; `deploy-ui-staging.yml` run `24756740783` green. Replaced `GripVertical` dnd-kit affordance with Up/Down chevron buttons (organizer-only, boundary-disabled). Arrows are universally discoverable; reuses `useReorderSignUpItems` verbatim. Net −61 lines in `SignUpManagementSection.tsx`.
+- **Human-gated gap:** browser/mobile/keyboard smoke on staging UI for the final arrow-button UX — cannot be automated from CLI.
 
 ---
 

@@ -1,6 +1,32 @@
 # LankaConnect Development Progress Tracker
 *Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 11 (frontend repository + React Query mutation hooks for the full layout CRUD surface) shipped to UI-staging as commit `dd0ad446` on develop.*
 
+---
+
+## 🔒 RECOVERY IN FLIGHT — Phase 7C.2 signup/volunteer commitment email templates (2026-04-22)
+
+**Status**: 🚧 **IN PROGRESS — DO NOT EDIT THE 5 SIGNUP/VOLUNTEER COMMITMENT EMAIL TEMPLATES UNTIL CLEARED**
+
+**What broke**: Migration `20260421213355_Phase7C2_RemoveDuplicateLocationFromSignupCommitmentTemplates.cs` shipped with an over-greedy regex (`<tr>[\s\S]*?Event Date[\s\S]*?</tr>\s*<tr>[\s\S]*?Location[\s\S]*?\{\{EventLocation\}\}[\s\S]*?</tr>`). The leftmost `<tr>` anchor matched the FIRST `<tr>` in the template (banner area), so instead of removing two rows in the COMMITMENT DETAILS card, it deleted the entire banner + greeting + COMMITMENT DETAILS block from 5 staging templates. **Production DB is untouched** (not yet deployed to prod).
+
+**Affected templates (staging only)**:
+- `template-signup-list-commitment-confirmation`
+- `template-signup-list-commitment-update`
+- `template-signup-list-commitment-cancellation`
+- `template-volunteer-commitment-confirmation`
+- `template-volunteer-commitment-cancellation`
+
+**Parallel-agent guard rails**:
+- 🛑 Do NOT run `dotnet ef migrations add …` touching `email_templates` for any of the 5 names above.
+- 🛑 Do NOT edit `src/LankaConnect.Application/Events/EventHandlers/CommitmentCancelledEmailHandler.cs`, `CommitmentUpdatedEventHandler.cs`, or `UserCommittedToSignUpEventHandler.cs` for the email-body shape during this window — handler param contracts are also in the blast radius.
+- ✅ SAFE to work on: venue layout (Slice 5/6/7/8), marketplace, auth, events non-email code paths, all other modules.
+
+**Recovery owner**: main Claude session (opus 4.7). Architect-approved plan: reconstruct the 5 bodies deterministically from source-migration history (literal `string.Replace` only — no regex), write unit-test invariants (`UserName`, `COMMITMENT DETAILS`, no `{{EventLocation}}`, exactly one `Location`, 8-placeholder block, Handlebars balance, body ±5% byte-length), ship as a NEW forward migration on develop, deploy via `deploy-staging.yml`, re-seed in staging, and inbox-verify all 5 flows.
+
+**This lock will be removed** when the replacement migration is merged to develop AND staging inbox verification passes AND PROGRESS_TRACKER is updated with an honest DEPLOYED+VERIFIED entry for Phase 7C.2.
+
+---
+
 ## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 11: frontend repository + hooks for layout CRUD)
 
 **Status**: ✅ **DEPLOYED + UNIT-TEST-VERIFIED** — commit `dd0ad446` on develop; `deploy-ui-staging.yml` run `24755454440` in progress at push time. 31/31 new frontend tests green: 16 repository URL/If-Match wiring tests + 15 hook cache-invalidation tests. `npx tsc --noEmit` clean. No backend changes in this chunk — Slice 5 backend endpoints delivered by Chunks 4-10 are now reachable from the web client.

@@ -553,41 +553,57 @@ export function useReorderSignUpItems() {
       signupId: string;
       orderedItemIds: string[];
     }) => eventsRepository.reorderSignUpItems(eventId, signupId, orderedItemIds),
+    // Phase 6A.132 UX follow-up 5: iterate EVERY cache entry matching the
+    // `signUpKeys.list(eventId)` prefix — not just the unfiltered one.
+    // Phase 7D.1 introduced kind-filtered keys (`[..., { kind }]`) and the
+    // manage page subscribes via `useEventSignUps(eventId, kind)`, so the
+    // previous `setQueryData(signUpKeys.list(eventId), ...)` wrote to a cache
+    // entry that the component did NOT subscribe to. The optimistic update
+    // was effectively invisible and the user waited the full PUT + refetch
+    // round trip (~1-4s) before seeing any movement. `setQueriesData` +
+    // `getQueriesData` with a prefix filter covers both the unfiltered
+    // legacy callers AND every kind-filtered variant in one pass.
     onMutate: async ({ eventId, signupId, orderedItemIds }) => {
       await queryClient.cancelQueries({ queryKey: signUpKeys.list(eventId) });
 
-      const previousSignUps = queryClient.getQueryData<SignUpListDto[]>(
-        signUpKeys.list(eventId)
-      );
-
-      queryClient.setQueryData<SignUpListDto[]>(signUpKeys.list(eventId), (old) => {
-        if (!old) return old;
-
-        return old.map((signUp) => {
-          if (signUp.id !== signupId) return signUp;
-
-          const positionById = new Map(orderedItemIds.map((id, index) => [id, index]));
-          const reorderedItems = [...signUp.items]
-            .map((item, originalIndex) => ({ item, originalIndex }))
-            .sort((a, b) => {
-              const ai = positionById.get(a.item.id);
-              const bi = positionById.get(b.item.id);
-              if (ai === undefined && bi === undefined) return a.originalIndex - b.originalIndex;
-              if (ai === undefined) return 1;
-              if (bi === undefined) return -1;
-              return ai - bi;
-            })
-            .map(({ item }, newIndex) => ({ ...item, displayOrder: newIndex }));
-
-          return { ...signUp, items: reorderedItems };
-        });
+      const previousEntries = queryClient.getQueriesData<SignUpListDto[]>({
+        queryKey: signUpKeys.list(eventId),
       });
 
-      return { previousSignUps };
+      queryClient.setQueriesData<SignUpListDto[]>(
+        { queryKey: signUpKeys.list(eventId) },
+        (old) => {
+          if (!old) return old;
+
+          return old.map((signUp) => {
+            if (signUp.id !== signupId) return signUp;
+
+            const positionById = new Map(orderedItemIds.map((id, index) => [id, index]));
+            const reorderedItems = [...signUp.items]
+              .map((item, originalIndex) => ({ item, originalIndex }))
+              .sort((a, b) => {
+                const ai = positionById.get(a.item.id);
+                const bi = positionById.get(b.item.id);
+                if (ai === undefined && bi === undefined) return a.originalIndex - b.originalIndex;
+                if (ai === undefined) return 1;
+                if (bi === undefined) return -1;
+                return ai - bi;
+              })
+              .map(({ item }, newIndex) => ({ ...item, displayOrder: newIndex }));
+
+            return { ...signUp, items: reorderedItems };
+          });
+        }
+      );
+
+      return { previousEntries };
     },
-    onError: (err, { eventId }, context) => {
-      if (context?.previousSignUps) {
-        queryClient.setQueryData(signUpKeys.list(eventId), context.previousSignUps);
+    onError: (_err, _variables, context) => {
+      if (context?.previousEntries) {
+        // Restore every cache entry we touched.
+        for (const [key, data] of context.previousEntries) {
+          queryClient.setQueryData(key, data);
+        }
       }
     },
     onSettled: (_data, _err, variables) => {

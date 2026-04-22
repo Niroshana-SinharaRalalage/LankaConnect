@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS communications.email_templates_backup_phase7c2 (
 );
 
 INSERT INTO communications.email_templates_backup_phase7c2 (id, name, html_template)
-SELECT id, name, html_template
+SELECT ""Id"", name, html_template
 FROM communications.email_templates
 WHERE name IN (
     'template-signup-list-commitment-confirmation',
@@ -127,7 +127,7 @@ BEGIN
     UPDATE communications.email_templates t
        SET html_template = b.html_template
       FROM communications.email_templates_backup_phase7c2 b
-     WHERE t.id = b.id
+     WHERE t.""Id"" = b.id
        AND b.migration_name = '20260422163346_Phase7C2_RestoreSignupCommitmentTemplates';
 END $$;
 ");

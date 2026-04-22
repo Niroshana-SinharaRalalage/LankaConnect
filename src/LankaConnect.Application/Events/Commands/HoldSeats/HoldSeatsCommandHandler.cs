@@ -46,9 +46,12 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         if (layout == null)
             return Result<HoldSeatsResult>.Failure("No venue layout found for this event");
 
-        // Validate all seat IDs belong to this layout and are enabled
-        var layoutSeatIds = layout.Zones
-            .SelectMany(z => z.Seats)
+        // Validate all seat IDs belong to this layout and are enabled.
+        // Slice 2+3 split seats into two buckets (Seat.VenueZoneId XOR Seat.VenueTableId);
+        // the hold check must consider BOTH — banquet/table-based events would otherwise
+        // reject every table seat as "not belonging to this event".
+        var layoutSeatIds = layout.Zones.SelectMany(z => z.Seats)
+            .Concat(layout.Tables.SelectMany(t => t.Seats))
             .Where(s => s.IsEnabled)
             .Select(s => s.Id)
             .ToHashSet();

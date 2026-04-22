@@ -89,6 +89,13 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
             CreatedAt = layout.CreatedAt,
             UpdatedAt = layout.UpdatedAt,
             RowVersion = layout.RowVersion,
+            Canvas = new CanvasConfigDto
+            {
+                Width = layout.Canvas.Width,
+                Height = layout.Canvas.Height,
+                Scale = layout.Canvas.Scale,
+                BackgroundColor = layout.Canvas.BackgroundColor,
+            },
             Zones = layout.Zones.Select(z => new VenueZoneDto
             {
                 Id = z.Id,
@@ -98,6 +105,8 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
                 SortOrder = z.SortOrder,
                 EnabledSeatCount = z.EnabledSeatCount,
                 TotalSeatCount = z.Seats.Count,
+                Shape = z.Shape.ToString(),
+                Geometry = z.Geometry,
                 TicketTierIds = TierIdsFor(z.Id),
                 Seats = z.Seats.Select(s => new SeatDto
                 {

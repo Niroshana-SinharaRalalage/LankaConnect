@@ -28,6 +28,15 @@ public record VenueLayoutDto
     /// </summary>
     public List<VenueDecorationDto> Decorations { get; init; } = new();
 
+    /// <summary>
+    /// Slice 5 Chunk 12: canvas rendering configuration (width/height/scale/background)
+    /// projected so the Slice 8 canvas editor can restore the authoring viewport and
+    /// integration tests can observe <see cref="Domain.Events.Entities.VenueLayout.UpdateCanvas"/>
+    /// effects via GET. Defaults to <c>CanvasConfig.Default</c> when the layout hasn't
+    /// been customized yet.
+    /// </summary>
+    public CanvasConfigDto Canvas { get; init; } = new();
+
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 
@@ -37,6 +46,19 @@ public record VenueLayoutDto
     /// endpoints are not reachable from the frontend.
     /// </summary>
     public uint RowVersion { get; init; }
+}
+
+/// <summary>
+/// Slice 5 Chunk 12: flat projection of <see cref="Domain.Events.ValueObjects.CanvasConfig"/>
+/// for the layout GET response. Matches the canvas editor save payload so the
+/// round-trip (save → reload) is symmetric.
+/// </summary>
+public record CanvasConfigDto
+{
+    public int Width { get; init; } = 1200;
+    public int Height { get; init; } = 800;
+    public double Scale { get; init; } = 1.0;
+    public string BackgroundColor { get; init; } = "#ffffff";
 }
 
 /// <summary>
@@ -53,6 +75,20 @@ public record VenueZoneDto
     public int EnabledSeatCount { get; init; }
     public int TotalSeatCount { get; init; }
     public List<SeatDto> Seats { get; init; } = new();
+
+    /// <summary>
+    /// Slice 5 Chunk 12: zone shape (Rect | Curve | Polygon), projected so the
+    /// canvas editor can re-render the zone and integration tests can assert
+    /// <see cref="Domain.Events.Entities.VenueZone.UpdateShapeAndGeometry"/> effects via GET.
+    /// </summary>
+    public string Shape { get; init; } = "Rect";
+
+    /// <summary>
+    /// Slice 5 Chunk 12: JSONB geometry blob (shape-specific — x/y/width/height for Rect,
+    /// centerX/centerY/radius/... for Curve, points[] for Polygon). Stored verbatim as
+    /// the domain's raw JSON string; frontend parses by shape.
+    /// </summary>
+    public string Geometry { get; init; } = "{}";
 
     /// <summary>
     /// Slice 5 Chunk 8: every tier currently assigned to this zone via the

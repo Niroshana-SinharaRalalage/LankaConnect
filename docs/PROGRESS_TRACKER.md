@@ -1,5 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 13 (observability metrics — 2 of 6 architect-spec metrics wired through 7 structural-mutation handlers, Serilog-backed, wire-verified on staging via Log Analytics KQL). Commit `e26cb466` on develop. `deploy-staging.yml` run `24795887325` green. Previous session: Chunk 12 (integration smoke + 4 latent-bug fixes) remains below.*
+*Last Updated: 2026-04-22 — Phase 7C.2b Chunk 0 (foundation only: canonical `EmailLocationBlockHtml.DecomposedBlock` constant + `CommitmentCancelledEmailHandler` structured diagnostic log + full 15-template MASTER_TODO). Commit `2635c91d` on develop. `deploy-staging.yml` run `24802943356` triggered. No template bodies touched; no EF migration — pure TDD foundation for Chunks 1/2/3 which will retrofit the remaining 15 event-email templates.*
+
+---
+
+## 🎯 Current Session Status (2026-04-22 — Phase 7C.2b Chunk 0: canonical location block + cancellation-handler diagnostic log)
+
+**Status**: ✅ **COMMITTED TO DEVELOP — DEPLOY IN FLIGHT** — commit `2635c91d` on develop; `deploy-staging.yml` run `24802943356` triggered at 21:12 UTC. No user-visible change — Chunk 0 is the foundation-only step of the expanded Phase 7C.2b / Phase 7C.3 plan approved by the user and architect on 2026-04-22. Template bodies are unchanged this chunk; EF migration will land in Chunk 1. 8 new tests added (6 `EmailLocationBlockHtmlTests` + 2 `CommitmentCancelledEmailHandlerDiagnosticLogTests`), all green. Application suite 2253/2259 (6 pre-existing Docker-gated skips, 0 failures), Shared suite 284/289 (5 pre-existing timezone flakes — `BaseParameterContractsTests.*_ShouldFormatDateCorrectly` and relatives — unchanged, unrelated).
+
+**Scope context (user's 2026-04-22 clarification)**: the user flagged that my earlier framing of "10 templates never in scope" was wrong. The original Phase 7C.2 intent was: *every email template that shows Event Details should render the Phase 7C.1 decomposed Venue Name + Address + optional Secondary Location block*. Phase 7C.2 was phased delivery (1 pilot + 5 fan-out damaged+recovered); the remaining 10 event-detail-showing templates were left behind as phased-out-of-scope, not deliberately excluded. The architect's expanded plan (Chunks 0 → 1 → 2 → 3) closes the full 15-template gap. This chunk is the foundation step.
+
+**Fix**:
+(1) **`src/LankaConnect.Shared/Email/Helpers/EmailLocationBlockHtml.cs`** — new static class carrying `public const string DecomposedBlock`. Byte-identical to `Phase7C2_FreeEventTemplate_FixElseClause.NewBlock` (the one template rendering multi-venue correctly today). Every Chunk 1/2/3 migration will `REPLACE(html_template, '{{EventLocation}}', EmailLocationBlockHtml.DecomposedBlock)` against its batch of templates — keeping the block in exactly one place prevents per-template drift.
+(2) **`src/LankaConnect.Application/Events/EventHandlers/CommitmentCancelledEmailHandler.cs`** — one new `LogInformation` line emitted right after `@event.ProjectEmailLocation()` (line ~100), capturing `EventId` / `EventTitle` / `HasLocationName` / `LocationName` / `LocationAddress` / `HasSecondaryLocation` / `SecondaryLocationName` / `UserId` / `CommitmentId` / `SignUpListId`. Lets operators grep Azure container logs to disambiguate which event the handler resolved for a given cancellation — the cheap-and-zero-risk diagnostic for Symptom 2 of the 2026-04-22 inbox report ("wrong event's address apparently appearing in cancel email") without needing another live inbox round-trip.
+(3) **`tests/LankaConnect.Shared.Tests/Email/Helpers/EmailLocationBlockHtmlTests.cs`** — 6 invariant tests (all required placeholders present; no `{{else}}`; no recursive `{{EventLocation}}`; balanced `{{#if}}`/`{{/if}}`; `<span>` not `<p>`/`<div>`; byte-for-byte equality with pilot NewBlock).
+(4) **`tests/LankaConnect.Application.Tests/Events/EventHandlers/CommitmentCancelledEmailHandlerDiagnosticLogTests.cs`** — 2 handler-wiring tests (diagnostic log fires on happy path with resolved eventId; structured-log key set contains all 10 required fields).
+(5) **`docs/MASTER_TODO_PHASE_7C2B_7C3_EMAIL_LOCATION.md`** — full 15-template checklist split across Chunk 1 (signup/volunteer commitments × 5, re-applies the rewrite that my earlier recovery erased), Chunk 2 (paid-ticket + registration-cancellation + event-cancellation-notifications + event-approval + event-reminder + attendees-added + preliminary-payment × 7), Chunk 3 (form-response × 3). Cross-chunk discipline rules baked in: no regex on email HTML (MEMORY `feedback_regex_on_email_html.md`), chunk-scoped backup tables (never reuse), per-template `RAISE EXCEPTION` invariants on every UPDATE.
+
+**Evidence**:
+- Tests: 6/6 EmailLocationBlockHtmlTests + 2/2 CommitmentCancelledEmailHandlerDiagnosticLogTests green; Application suite 2253 pass / 0 fail; Shared suite 284 pass / 5 pre-existing-flake fail; full solution `dotnet build` 0 errors
+- Commit `2635c91d` pushed to develop; deploy run `24802943356` in_progress
+- Deploy proves nothing user-visible today (no template SQL, no migration) but confirms the Shared DLL + handler refactor boot cleanly in the staging container
+
+**Scope discipline**: Foundation only. No template body change, no EF migration, no user-visible fix. That lands in Chunk 1 (commitments), then Chunk 2, then Chunk 3.
+
+**Follow-ups**:
+- Chunk 1 (commitments × 5) — `Phase7C2b_ReapplyDecomposedLocationInCommitmentTemplates` migration + Testcontainers integration + render-snapshot tests + live inbox smoke on event `d543629f`. Closes the primary user-reported regression.
+- Chunk 2 (registration + lifecycle × 7) — 7 params classes extended + migration + backup table `_phase7c3a`.
+- Chunk 3 (form-response × 3) — `FormResponseEmailParams` extended + migration + backup table `_phase7c3b`.
+- Operator log-probe — once Chunk 0 is live on staging, grep Azure container logs for `CommitmentCancelled DIAGNOSTIC` next time a cancellation fires and confirm which event's location actually got rendered (resolves Symptom 2 without another inbox test).
 
 ---
 

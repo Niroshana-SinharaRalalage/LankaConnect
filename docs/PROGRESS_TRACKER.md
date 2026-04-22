@@ -1,9 +1,45 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 11 (frontend repository + React Query mutation hooks for the full layout CRUD surface) shipped to UI-staging as commit `dd0ad446` on develop.*
+*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 12 (cross-chunk integration smoke through real EF Core against Azure staging) landed end-to-end green. Four commits on develop: `b92d1dfb` (DTO expansion), `49078dcc` (seats.row/label column widen), `26012804` (HoldSeats table-seat ownership), `f53053bd` (DeleteZone + UpdateZone structural guard).*
 
 ---
 
-## 🎯 Current Session Status (2026-04-22 — Phase 7C.2 recovery: restore signup/volunteer commitment email templates)
+## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 12: cross-chunk integration smoke + latent table-seat bug fixes)
+
+**Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED — ALL 5 SCENARIOS PASS**. Four commits on develop: `b92d1dfb`, `49078dcc`, `26012804`, `f53053bd`. `deploy-staging.yml` runs `24760327649`, `24781710571`, `24791651552`, `24792687459` all green. [smoke_slice5_integration.py](../../tmp/smoke_slice5_integration.py) scenarios A (10-step round-trip with strictly monotonic RowVersion trace) + B (JSONB persistence round-trip, MEMORY 6A.129 ValueComparer guard) + C (optimistic concurrency 204→409→204 interleave) + D (CASCADE on layout delete) + E (structural guard: DELETE zone with held table-seat → 422 `Cannot modify layout structure: 1 seat(s) currently held, 0 seat(s) reserved`) all end-to-end green against real Azure staging.
+
+**Scope**: Cross-chunk cohesion against real EF Core → Postgres. Per the established project pattern (see Chunk 9/10 smokes), real-EF-Core integration coverage runs against the deployed staging backend, not Testcontainers. Each per-chunk smoke (6–10) covered a single endpoint in isolation. Chunk 12's unique contribution is verifying that the Slice 5 mutation surface behaves as a *system*: RowVersion monotonicity across heterogeneous writes, JSONB persistence under repeated PATCH, concurrency interleave under a real HTTP client, CASCADE semantics at the DB level, and structural-guard firing for table-seat holds on a published event.
+
+**Fixes landed during Chunk 12** (each a real latent bug surfaced by the integration smoke, not a smoke-script artifact):
+
+1. **DTO projection gap** (commit `b92d1dfb`) — `GetVenueLayoutQueryHandler.MapToDto` did not project `CanvasConfig` onto `VenueLayoutDto`, nor `Shape`/`Geometry` onto `VenueZoneDto`. The smoke's A1 `PUT /api/venue-layouts/{id}` with a canvas update could not verify the write via GET. Fixed: added `CanvasConfigDto` record, `Canvas` field on `VenueLayoutDto`, and `Shape`/`Geometry` on `VenueZoneDto`, wired through all three MapToDto call sites (`GetVenueLayoutQueryHandler`, `CreateVenueLayoutCommandHandler`, `GenerateSeatsCommandHandler`).
+
+2. **`seats.row` / `seats.label` column width** (commit `49078dcc`) — `Seat.CreateAtTable` stores the parent table's label in `seats.row` (polymorphic column: theater zone seats use `"A".."ZZ"`; table seats reuse it for the table label). The domain allows table labels up to `VenueTable.MaxLabelLength` (50), but the DB column was `character varying(10)`. Any table label longer than 10 chars produced `Npgsql 22001 "value too long"` — surfaced by A3 `POST /tables` with label `"Round Table 1"` (13 chars). Same pattern on `seats.label` which is `"{row}-S{n}"` for table seats. Fixed via migration `20260422133552_WidenSeatRowAndLabelForTableSeats`: row → `varchar(50)`, label → `varchar(58)` (50 + `-S{n}` headroom). `SeatConfiguration` now derives the widths from `VenueTable.MaxLabelLength` + a `TableSeatLabelSuffixLength = 8` constant so the domain and DB cannot drift (user-flagged this magic-number smell mid-session — refactored before the migration was generated).
+
+3. **HoldSeats ignored table seats** (commit `26012804`) — `HoldSeatsCommandHandler` built its set of valid layout seat IDs from `layout.Zones.SelectMany(z => z.Seats)` only. Slice 2+3 introduced `layout.Tables` with their own seats under the Seat XOR invariant (`VenueZoneId` XOR `VenueTableId`), so every table seat submitted to `/hold` was rejected with `One or more selected seats are not available or don't belong to this event`. Banquet-layout events could not hold any seat. Fixed by unioning zone seats with table seats before the ownership check; the repository already eager-loaded `layout.Tables.ThenInclude(Seats)` (Chunk 6).
+
+4. **DeleteZone + UpdateZone structural guards ignored zone-scoped table seats** (commit `f53053bd`) — `DeleteZoneCommandHandler` and the structural branch of `UpdateZoneCommandHandler` built the at-risk seat set from `zone.Seats` only. A `VenueTable` can be scoped to a zone via `VenueTable.VenueZoneId`; a held seat under such a table silently passed the guard, orphaning the hold when the zone was deleted / its geometry was changed. Fixed by unioning `zone.Seats` with the seats of every table where `table.VenueZoneId == zoneId`. `DeleteLayoutCommandHandler` already used the full-aggregate union pattern — no change needed. `DeleteTableCommandHandler` / `UpdateTableCommandHandler` unchanged (table owns its seats directly, `table.Seats.Select(s => s.Id)` is correct).
+
+**Evidence**:
+- Smoke green: `Slice 5 Chunk 12 integration smoke: ALL ASSERTIONS PASSED`. A trace (10 RowVersions strictly monotonic across CREATE→PUT→PATCH zone→POST table→PATCH table→POST decoration→PATCH decoration→DELETE decoration→DELETE table→DELETE zone). B round-trip persists both geometry versions. C stale PUT → 409; fresh PUT → 204. D DELETE layout → subsequent GET returns 400/`not found` (pre-existing controller convention — smoke accepts 400 or 404 with `not found` body). E DELETE zone with held table-seat → 422 with detail quoted above.
+- Staging deploys: `24781710571` (seat-widen migration), `24791651552` (HoldSeats fix), `24792687459` (guard fix) — all status=completed conclusion=success.
+- `smoke_slice5_integration.py` hardening: added `json_eq()` helper that parses JSON payloads structurally before comparison (Postgres jsonb re-serializes with spaces between keys/values — raw string compare is wrong). Used at A2, B1, B2 geometry assertions.
+
+**Scope discipline**: Chunk 12 ships smoke coverage + four latent-bug fixes exposed by the smoke. No new endpoints, no new domain model. The pre-existing `GET /api/venue-layouts/{id}` returning 400 (with `detail: "Venue layout not found"`) instead of 404 for missing layouts is a separate controller-convention quirk — smoke accepts either and verifies the body text; the REST-convention fix is deferred (out of Chunk 12 scope; same deferral logged in Chunk 9 entry).
+
+**Follow-ups**:
+- Chunk 13 — Observability metrics (6 named events per architect decision) against the Slice 5 surface
+- Chunk 14 — Factory-shim cleanup (test-helper consolidation)
+- Chunk 15 — Tracking-doc closure + Slice 5 retrospective
+- `GET /api/venue-layouts/{id}` returning 400-with-"not found" instead of 404 — REST-convention cleanup (separate from Chunk 12)
+- Orphaned `venue_tables.venue_zone_id` after zone delete — there is no FK CASCADE; tables scoped to a deleted zone retain a dangling reference. Guard now protects *held* seats, but orphan-reference cleanup is a separate data-integrity concern for a later chunk or Slice 5 retro
+- Release N+1 (Slice 4 tail) — drop `venue_zones.ticket_tier_id` column, ≥1 week after Slice 4 Release N ships with no rollback triggered
+- Slice 6 — Preset library (8 static-code presets + `GET /presets` + `POST /from-preset`)
+- Slice 7 — Registration UX rewrite (SeatPicker via react-konva)
+- Slice 8 — Canvas editor modal (react-konva, consumes `PUT /batch` + hosts `TierMappingPanel`)
+
+---
+
+## 🎯 Previous Session Status (2026-04-22 — Phase 7C.2 recovery: restore signup/volunteer commitment email templates)
 
 **Status**: ✅ **RECOVERED + DEPLOYED TO STAGING** — commits `2aac8641` (lock), `2e8ec427` (migration + embedded-resource HTML + tests), `e27970b2` (Postgres case-sensitive `"Id"` quoting fix) on develop. `deploy-staging.yml` run `24792715739` succeeded. Migration `20260422163346_Phase7C2_RestoreSignupCommitmentTemplates` applied cleanly; in-migration post-UPDATE assertions all green (5 UPDATEs × exactly 1 row matched, `{{UserName}}` greeting present in every stored body, every body ≥ 50K bytes — `DO $$ ... RAISE EXCEPTION ...` would have aborted boot otherwise). Backup table `communications.email_templates_backup_phase7c2` created with pre-restore snapshot for `Down()`-safe rollback. **Visual inbox render verification remains the one human-gated step.**
 

@@ -591,11 +591,7 @@ export function useReorderSignUpItems() {
       }
     },
     onSettled: (_data, _err, variables) => {
-      // Always refetch so server order (and DisplayOrder values) wins. onSettled catches
-      // both success and error — on error the rollback is visible immediately and the
-      // refetch confirms server truth.
-      queryClient.invalidateQueries({ queryKey: signUpKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: signUpKeys.list(variables.eventId) });
     },
   });
 }

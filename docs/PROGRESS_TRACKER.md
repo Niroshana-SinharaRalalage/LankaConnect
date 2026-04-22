@@ -1,7 +1,30 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Seating Redesign Slice 5 Chunk 9 (hard-delete venue layout) deployed + staging-smoke-verified. Phase 7D.1 G14 deployed + staging-verified earlier same day.*
+*Last Updated: 2026-04-21 — Phase 7C.2 fan-out to 5 signup-commitment email templates (strip GPS leak + duplicate Location row) deployed + staging-verified. Seating Redesign Slice 5 Chunk 9 + Phase 7D.1 G14 deployed earlier same day.*
 
-## 🎯 Current Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 9: hard-delete venue layout)
+## 🎯 Current Session Status (2026-04-21 — Phase 7C.2 fan-out: strip GPS leak + duplicate Location row from 5 signup-commitment email templates)
+
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED (automated)** — commit `64dc8ab0` on develop; `deploy-staging.yml` run `24751794433` succeeded. Auth login smoke + `GET /api/Events` returns 47 events. Both EF migrations carry per-template `GET DIAGNOSTICS … RAISE EXCEPTION` row-count assertions (Phase 6A.117 rule); migration 2 additionally carries an `IF EXISTS … {{EventLocation}} …` post-condition check — a successful container boot is proof the regex matched all 5 target templates. TDD: 7 new `SignupCommitmentEmailParamsLocationDetailsTests` pass + 15 existing commitment-handler tests pass; 5 pre-existing `BaseParameterContractsTests` timezone flakes remain unchanged (unrelated). Visual inbox verification (commit-to-signup on an event with a physical location) is the remaining manual step.
+
+**Root cause addressed**: Christmas Dinner Dance 2025 signup-commitment email surfaced two bugs — (A) Location row duplicated in COMMITMENT DETAILS card AND EVENT DETAILS card, (B) EVENT DETAILS card address rendered with a `(41.4697589, -81.7155996)` GPS-coordinate suffix. Bug B traced to `EventLocation.ToString()` which returns `"{Street}, {City}, {State}, {ZipCode}, {Country} ({Coordinates})"` by design (admin UI + diaspora sync depend on that shape, per `EventLocation.cs:100`), so the fix lives at the email-caller layer — three handlers still bound `{{EventLocation}}` directly to `@event.Location?.ToString()`.
+
+**Fix**: Three layers. (1) **Shared**: `SignupCommitmentEmailParams` gains `LocationDetails` property + `WithLocationDetails(projection)` fluent setter; `ToDictionary()` writes the 8 decomposed location keys via `LocationEmailDictionaryWriter` and resolves legacy `{{EventLocation}}` to `projection.LegacyFlatString` (no GPS suffix). (2) **Application**: three handlers (`UserCommittedToSignUpEventHandler`, `CommitmentUpdatedEventHandler`, `CommitmentCancelledEmailHandler`) replace `@event.Location?.ToString()` with `@event.ProjectEmailLocation()` and pipe the projection into the params. (3) **Infrastructure**: two surgical EF migrations — `20260421213355_Phase7C2_RemoveDuplicateLocationFromSignupCommitmentTemplates` strips the duplicate Event Date + Location row pair from the COMMITMENT DETAILS card (anchored on the UNIQUE "Event Date" label — the event-details card uses "Date &amp; Time"); `20260421232025_Phase7C2_RewriteEventLocationInSignupCommitmentTemplates` replaces `<p>{{EventLocation}}</p>` with the Phase 7C.2 two-sibling-if block (`{{#if HasLocationName}}<bold>{{/if}} <address> {{#if HasSecondaryLocation}}<block>{{/if}}`). No `{{else}}` — custom engine in `AzureEmailService.RenderTemplateContent` does not branch on it (mirrors `Phase7C2_FreeEventTemplate_FixElseClause`).
+
+**Evidence**:
+- Unit tests: 7/7 new `SignupCommitmentEmailParamsLocationDetailsTests` + 15/15 commitment-handler tests green
+- Full Shared.Tests run: 278/283 pass (5 pre-existing timezone flakes unchanged)
+- Infrastructure build: 0 errors after migration scaffold (AppDbContextModelSnapshot regenerated — only benign `reference_values` timestamp diffs)
+- Staging deploy: run `24751794433` status=completed conclusion=success
+- Staging smoke: auth login + `GET /api/Events` returns 47 events (container up, migrations applied — RAISE EXCEPTION would have aborted boot)
+
+**Scope discipline**: Only the 5 signup/volunteer commitment templates touched. Free-Event template (pilot) already landed in prior commits. Other event-email templates (e.g. event-cancellation-notifications, registration-cancellation) are out-of-scope for this push.
+
+**Follow-ups**:
+- User-driven visual inbox smoke — commit to a signup item on an event with a physical location, confirm no duplicate Location row + no GPS suffix + bold venue name renders
+- Audit remaining event-email params classes for `Location?.ToString()` callers that still leak the GPS suffix — tracked as Phase 7C.2 continuation
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 9: hard-delete venue layout)
 
 **Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED** — commit `5a881bc6` on develop; `deploy-staging.yml` run `24743842856` succeeded. 9/9 `DeleteLayoutCommandHandlerTests` green; overall 2228/2230 pass (2 pre-existing WhatsApp flakes). Staging smoke [smoke_chunk9_delete_layout.py](../../tmp/smoke_chunk9_delete_layout.py) all 7 scenarios pass: A) missing `If-Match` → 400, B) unknown id → 404, C) template delete → 204, D) double-delete → 404, E) stale If-Match → 409, F) event-attached delete → 204 + `event.seatingMode` flipped to `GeneralAdmission` + `event.venueLayoutId=null`, G) held seat blocks delete → 422 with detail `layout.structural_edit_rejected`.
 

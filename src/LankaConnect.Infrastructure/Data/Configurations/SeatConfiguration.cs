@@ -10,6 +10,11 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 /// </summary>
 public class SeatConfiguration : IEntityTypeConfiguration<Seat>
 {
+    // Table seats derive their Label as "{Row}-S{Number}" where Row == parent
+    // table label. "-S" (2 chars) + up to 3 digits for seat number = 5 chars
+    // suffix. We round up to 8 to leave headroom without overcommitting.
+    private const int TableSeatLabelSuffixLength = 8;
+
     public void Configure(EntityTypeBuilder<Seat> builder)
     {
         builder.ToTable("seats");
@@ -31,18 +36,25 @@ public class SeatConfiguration : IEntityTypeConfiguration<Seat>
         builder.Property(s => s.AngleDeg)
             .HasColumnName("angle_deg");
 
+        // Seat.Row semantic differs by container: theater zone seats use "A".."ZZ";
+        // table seats reuse the column to store the parent table's label. Cap
+        // matches VenueTable.MaxLabelLength so the domain invariant and DB
+        // constraint cannot drift.
         builder.Property(s => s.Row)
             .HasColumnName("row")
-            .HasMaxLength(10)
+            .HasMaxLength(VenueTable.MaxLabelLength)
             .IsRequired();
 
         builder.Property(s => s.Number)
             .HasColumnName("number")
             .IsRequired();
 
+        // Label is "{row}-S{number}" for table seats — derived from the parent
+        // table label plus a small suffix. Cap = domain MaxLabelLength + room
+        // for "-S{n}".
         builder.Property(s => s.Label)
             .HasColumnName("label")
-            .HasMaxLength(20)
+            .HasMaxLength(VenueTable.MaxLabelLength + TableSeatLabelSuffixLength)
             .IsRequired();
 
         builder.Property(s => s.SortOrder)

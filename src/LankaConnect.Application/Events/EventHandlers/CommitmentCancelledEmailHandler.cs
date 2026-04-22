@@ -97,6 +97,24 @@ public class CommitmentCancelledEmailHandler : INotificationHandler<DomainEventN
             // 8 decomposed email keys. Fixes GPS-coordinate leak from @event.Location?.ToString().
             var locationProjection = @event.ProjectEmailLocation();
 
+            // Phase 7C.2b (Chunk 0): Emit one structured diagnostic line capturing the
+            // resolved event id, title, and projected location fields so operators can grep
+            // Azure container logs to confirm which event's data actually ended up in the
+            // rendered cancellation email — disambiguates Symptom 2 of the 2026-04-22 inbox
+            // report (wrong event's address apparently appearing in a cancellation email).
+            _logger.LogInformation(
+                "CommitmentCancelled DIAGNOSTIC: EventId={EventId}, EventTitle={EventTitle}, HasLocationName={HasLocationName}, LocationName={LocationName}, LocationAddress={LocationAddress}, HasSecondaryLocation={HasSecondaryLocation}, SecondaryLocationName={SecondaryLocationName}, UserId={UserId}, CommitmentId={CommitmentId}, SignUpListId={SignUpListId}",
+                @event.Id,
+                @event.Title?.Value ?? string.Empty,
+                locationProjection.HasLocationName,
+                locationProjection.LocationName,
+                locationProjection.LocationAddress,
+                locationProjection.HasSecondaryLocation,
+                locationProjection.SecondaryLocationName,
+                domainEvent.UserId,
+                domainEvent.CommitmentId,
+                domainEvent.SignUpListId);
+
             // Phase 6A.87: Use typed email parameters for compile-time safety
             // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
             var emailParams = SignupCommitmentEmailParams.CreateCancellation(

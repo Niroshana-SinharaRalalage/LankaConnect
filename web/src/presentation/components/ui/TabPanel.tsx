@@ -25,18 +25,28 @@ export interface TabPanelProps {
  * Features: Sri Lankan flag colors, smooth transitions, keyboard navigation
  * Phase: Epic 1 Dashboard Enhancements
  * Phase 6A.74 Part 14 Fix #3: Added useEffect to sync with defaultTab from URL
+ * Phase 6A.132 UX follow-up 3: sync effect depends on `defaultTab` ONLY — parents
+ * typically rebuild `tabs` inline (new array per render), so including it in the
+ * dep array caused the effect to re-fire on every unrelated re-render (e.g. a
+ * React Query refetch) and snap the user back from their chosen tab to the
+ * URL-derived default. `tabs` is still read inside via closure for the
+ * membership check, so an unknown `defaultTab` is still ignored correctly.
  */
 export function TabPanel({ tabs, defaultTab, onChange, className = '' }: TabPanelProps) {
   const [activeTab, setActiveTab] = React.useState<string>(
     defaultTab || (tabs.length > 0 ? tabs[0].id : '')
   );
 
-  // Phase 6A.74 Part 14 Fix #3: Sync active tab with defaultTab when it changes (e.g., URL param)
+  // Phase 6A.74 Part 14 Fix #3 + Phase 6A.132 UX follow-up 3: sync only when
+  // `defaultTab` actually changes (URL-driven). Do NOT depend on `tabs` — a
+  // fresh array reference on every parent render would otherwise reset the
+  // user's selection on every unrelated refetch.
   React.useEffect(() => {
     if (defaultTab && tabs.some(tab => tab.id === defaultTab)) {
       setActiveTab(defaultTab);
     }
-  }, [defaultTab, tabs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultTab]);
 
   const activeTabContent = React.useMemo(
     () => tabs.find((tab) => tab.id === activeTab)?.content,

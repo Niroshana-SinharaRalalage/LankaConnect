@@ -161,4 +161,71 @@ describe('TabPanel', () => {
     const unselectedTab = tabs[1];
     expect(unselectedTab).toHaveAttribute('aria-selected', 'false');
   });
+
+  // Phase 6A.132 UX follow-up 3: user-selected tab must survive parent re-renders that
+  // only change the `tabs` array reference (new array, same IDs + same defaultTab).
+  // Before this fix, the sync effect depended on both [defaultTab, tabs] — because
+  // parents typically build `tabs` inline, every re-render produced a new array
+  // reference and the effect would re-run `setActiveTab(defaultTab)`, snapping the
+  // user back to the default. Manifested on the Event Management page: clicking an
+  // up/down arrow in a sign-up list triggered a signup-list refetch → parent
+  // re-render → `tabs` array new reference → TabPanel reset to "Event Details".
+  it('should preserve user-clicked tab when parent re-renders with a new tabs array reference', () => {
+    const buildTabs = () => [
+      { id: 'tab1', label: 'Tab 1', icon: Calendar, content: <div>Tab 1 Content</div> },
+      { id: 'tab2', label: 'Tab 2', icon: User, content: <div>Tab 2 Content</div> },
+      { id: 'tab3', label: 'Tab 3', icon: Settings, content: <div>Tab 3 Content</div> },
+    ];
+
+    const { rerender } = render(<TabPanel tabs={buildTabs()} defaultTab="tab1" />);
+    expect(screen.getByText('Tab 1 Content')).toBeInTheDocument();
+
+    // User clicks Tab 2 → active tab becomes tab2
+    fireEvent.click(screen.getByText('Tab 2'));
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+    expect(screen.queryByText('Tab 1 Content')).not.toBeInTheDocument();
+
+    // Parent re-renders: fresh `tabs` array reference, same defaultTab value.
+    // This simulates the React Query refetch → parent re-render scenario.
+    rerender(<TabPanel tabs={buildTabs()} defaultTab="tab1" />);
+
+    // Active tab must stay on user's choice, NOT snap back to defaultTab.
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+    expect(screen.queryByText('Tab 1 Content')).not.toBeInTheDocument();
+
+    // And a second re-render (e.g. another refetch) must still not reset.
+    rerender(<TabPanel tabs={buildTabs()} defaultTab="tab1" />);
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+  });
+
+  // Regression guard: when defaultTab genuinely changes (e.g. URL param change
+  // via browser back/forward), TabPanel must still sync to the new value.
+  // This is the originally-intended behaviour of the sync effect (Phase 6A.74
+  // Part 14 Fix #3) and must be preserved.
+  it('should sync active tab when defaultTab prop actually changes value', () => {
+    const { rerender } = render(<TabPanel tabs={mockTabs} defaultTab="tab1" />);
+    expect(screen.getByText('Tab 1 Content')).toBeInTheDocument();
+
+    // Simulate URL change: ?tab=tab3
+    rerender(<TabPanel tabs={mockTabs} defaultTab="tab3" />);
+    expect(screen.getByText('Tab 3 Content')).toBeInTheDocument();
+    expect(screen.queryByText('Tab 1 Content')).not.toBeInTheDocument();
+
+    // Simulate another URL change: ?tab=tab2
+    rerender(<TabPanel tabs={mockTabs} defaultTab="tab2" />);
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+    expect(screen.queryByText('Tab 3 Content')).not.toBeInTheDocument();
+  });
+
+  // Regression guard: a defaultTab that doesn't match any tab id must not
+  // change the active tab (mirrors the `tabs.some(...)` guard in the effect).
+  it('should ignore defaultTab changes that do not match any tab id', () => {
+    const { rerender } = render(<TabPanel tabs={mockTabs} defaultTab="tab2" />);
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+
+    rerender(<TabPanel tabs={mockTabs} defaultTab="non-existent-tab" />);
+
+    // Active tab should still be tab2
+    expect(screen.getByText('Tab 2 Content')).toBeInTheDocument();
+  });
 });

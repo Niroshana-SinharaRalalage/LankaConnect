@@ -1,9 +1,49 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 12 (cross-chunk integration smoke through real EF Core against Azure staging) landed end-to-end green. Four commits on develop: `b92d1dfb` (DTO expansion), `49078dcc` (seats.row/label column widen), `26012804` (HoldSeats table-seat ownership), `f53053bd` (DeleteZone + UpdateZone structural guard).*
+*Last Updated: 2026-04-22 — Seating Redesign Slice 5 Chunk 13 (observability metrics — 2 of 6 architect-spec metrics wired through 7 structural-mutation handlers, Serilog-backed, wire-verified on staging via Log Analytics KQL). Commit `e26cb466` on develop. `deploy-staging.yml` run `24795887325` green. Previous session: Chunk 12 (integration smoke + 4 latent-bug fixes) remains below.*
 
 ---
 
-## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 12: cross-chunk integration smoke + latent table-seat bug fixes)
+## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 13: observability metrics)
+
+**Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Commit `e26cb466` on develop. `deploy-staging.yml` run `24795887325` status=completed conclusion=success. Probe sequence against staging API: `POST /api/venue-layouts` (Theater, 1 zone) → 201 → log line `Metric layout.created LayoutType=Theater FromPreset=False`; `DELETE /api/venue-layouts/{id}` with stale `If-Match: "1"` → 409 → log line `Metric layout.structural_edit_rejected LayoutId=7a89cdde-5b0b-476e-9a68-6db278287b8f Reason=concurrency_conflict`. Both confirmed via Log Analytics KQL against workspace `dc92fcf2-7f80-4e1d-b391-fdadac65befe`, table `ContainerAppConsoleLogs_CL`, logger category `LankaConnect.Application.Events.Services.LayoutMetrics`.
+
+**Scope**: Architect spec calls for 6 named metrics total (see plan §Observability Metrics). Slice 5 owns 2 of them: `layout.created` (tags: `LayoutType`, `FromPreset`) and `layout.structural_edit_rejected` (tags: `LayoutId`, `Reason` — 3-value enum `SeatsReserved` / `AuthFailed` / `ConcurrencyConflict`, projected to snake_case strings `seats_reserved` / `auth_failed` / `concurrency_conflict` in the emitted log). The other 4 (`preset_selected`, `canvas_editor_opened`, `canvas_editor_saved`, `seatpicker.selection_completed`) are owned by Slices 6–8 — deliberately out of scope for this chunk.
+
+**What shipped**:
+
+1. **Contract**: [ILayoutMetrics.cs](../src/LankaConnect.Application/Events/Services/ILayoutMetrics.cs) — 2 methods; `StructuralEditRejectionReason` enum with exactly 3 values matching the architect's taxonomy. Implementation [LayoutMetrics.cs](../src/LankaConnect.Application/Events/Services/LayoutMetrics.cs) is a Serilog emitter using stable templates `"Metric {MetricName} LayoutType={LayoutType} FromPreset={FromPreset}"` and `"Metric {MetricName} LayoutId={LayoutId} Reason={Reason}"` so Log Analytics can group on `MetricName`. Serilog was chosen because the project has no Application Insights / OpenTelemetry wiring despite package refs — adding a second telemetry channel was rejected as scope creep; log-analytics KQL is the observability surface the project already uses.
+
+2. **Emission sites (7 handlers, 18 call sites)**: `CreateVenueLayoutCommandHandler` (1 — post-commit `LayoutCreated`, tags Theater/Banquet/Mixed + `FromPreset=false` since preset-based creation lands in Slice 6). `DeleteLayoutCommandHandler`, `UpdateZoneCommandHandler`, `DeleteZoneCommandHandler`, `UpdateTableCommandHandler`, `DeleteTableCommandHandler` each fire `StructuralEditRejected` on 3 paths: auth fail (`AuthFailed`), guard fail (`SeatsReserved`), `DbUpdateConcurrencyException` catch (`ConcurrencyConflict`). `BatchUpdateLayoutCommandHandler` has **4** call sites because it has two concurrency branches — an explicit `layout.RowVersion != request.ExpectedRowVersion` early check (pre-mutation) + a `DbUpdateConcurrencyException` catch after `SaveChanges` — both emit `ConcurrencyConflict`. Update handlers (`UpdateZone`, `UpdateTable`) gate the guard-fail emission inside their `if (isStructural)` branch so name/label/sort-only updates don't spuriously emit.
+
+3. **Scope boundary honored**: `DeleteLayoutCommandHandler` also rejects when an event has confirmed registrations (the `DisableAssignedSeating` precondition fails). That is a 4th rejection reason **outside** the architect's 3-value enum, so it is intentionally NOT emitted as `StructuralEditRejected`. Adding a 4th enum value without architect sign-off would violate the spec; the registration-path rejection will get its own `registration.*` metric in a future chunk if needed. Documented in the commit body.
+
+4. **Tests**: 6 handler test files updated with `private readonly Mock<ILayoutMetrics> _mockMetrics = new();`, ctor-threaded, and `_mockMetrics.Verify(m => m.StructuralEditRejected(..., StructuralEditRejectionReason.{reason}), Times.Once)` assertions on every rejection-path test. Uses `layout.Id` when a layout is in scope; `It.IsAny<Guid>()` in auth-fail tests where the command uses a random Guid and the handler never loads a layout. 279/279 pass under the `Events.Commands` filter; full suite 2239 passed / 2 failed — both failures are the pre-existing `WhatsAppEventHandlerTests` flakes (`CommitmentCancelled_Handle_ValidData_SendsWhatsApp`, `SponsorPayment_Handle_ValidData_SendsWhatsApp`) that pass in isolation, already acknowledged in prior fix commits `8d91f3db` / `41f158b4`.
+
+5. **DI wiring**: `services.AddScoped<ILayoutMetrics, LayoutMetrics>()` in the Application module's DI extension — wired once, resolved by all 7 handlers.
+
+**Evidence (wire-level, not just "tests pass")**:
+- Log Analytics KQL query run post-deploy against live staging probe:
+  - `Metric layout.created LayoutType=Theater FromPreset=False` at `2026-04-22 19:24:24.976` (layout id `7a89cdde-...`)
+  - `Metric layout.structural_edit_rejected LayoutId=7a89cdde-5b0b-476e-9a68-6db278287b8f Reason=concurrency_conflict` at `2026-04-22 19:24:32.782`
+  - Both tagged with logger `LankaConnect.Application.Events.Services.LayoutMetrics`
+- Staging deploy: run `24795887325`, SHA `e26cb466`, status=completed conclusion=success
+- Probe layout (`7a89cdde-5b0b-476e-9a68-6db278287b8f`) cleaned up with fresh-`If-Match` DELETE → 204 (staging DB is clean)
+
+**Scope discipline**: 2 metrics out of 6, exactly as the architect partitioned. No metrics added for rejection reasons the architect didn't enumerate. No second telemetry backend. No infrastructure beyond a stable Serilog template. Tests assert emission on every documented rejection path but do NOT attempt to count per-tag cardinality (that's a dashboard concern, not a unit-test concern). 4 metrics from Slices 6–8 remain.
+
+**Follow-ups**:
+- Chunk 14 — Factory-shim cleanup (test-helper consolidation)
+- Chunk 15 — Tracking-doc closure + Slice 5 retrospective
+- Slice 6 — `layout.preset_selected` metric (tags: `preset_name`) lands here
+- Slice 8 — `layout.canvas_editor_opened` + `layout.canvas_editor_saved` metrics land here; dashboard ratio `opened / saved` measures editor abandonment
+- Slice 7 — `seatpicker.selection_completed` metric (tags: `event_id`, `attendee_count`, `time_to_complete_ms`)
+- Release N+1 (Slice 4 tail) — drop `venue_zones.ticket_tier_id` column, ≥1 week after Slice 4 Release N ships with no rollback triggered
+- `GET /api/venue-layouts/{id}` returning 400-with-"not found" instead of 404 — REST-convention cleanup (flagged in Chunk 12; still open)
+- Orphaned `venue_tables.venue_zone_id` after zone delete — data-integrity concern flagged in Chunk 12; still open
+
+---
+
+## 🎯 Previous Session Status (2026-04-22 — Seating Redesign Slice 5 Chunk 12: cross-chunk integration smoke + latent table-seat bug fixes)
 
 **Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED — ALL 5 SCENARIOS PASS**. Four commits on develop: `b92d1dfb`, `49078dcc`, `26012804`, `f53053bd`. `deploy-staging.yml` runs `24760327649`, `24781710571`, `24791651552`, `24792687459` all green. [smoke_slice5_integration.py](../../tmp/smoke_slice5_integration.py) scenarios A (10-step round-trip with strictly monotonic RowVersion trace) + B (JSONB persistence round-trip, MEMORY 6A.129 ValueComparer guard) + C (optimistic concurrency 204→409→204 interleave) + D (CASCADE on layout delete) + E (structural guard: DELETE zone with held table-seat → 422 `Cannot modify layout structure: 1 seat(s) currently held, 0 seat(s) reserved`) all end-to-end green against real Azure staging.
 

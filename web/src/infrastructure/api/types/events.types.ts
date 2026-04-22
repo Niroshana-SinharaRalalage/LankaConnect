@@ -2562,6 +2562,12 @@ export interface VenueLayoutDto {
   canvas?: CanvasConfigDto;
   tables?: VenueTableDto[];
   decorations?: VenueDecorationDto[];
+  /**
+   * Slice 5: PostgreSQL xmin serialized as uint. Sent back as the
+   * `If-Match` header on PUT/PATCH/DELETE for optimistic concurrency
+   * (409 on mismatch).
+   */
+  rowVersion: number;
 }
 
 /**
@@ -2709,4 +2715,179 @@ export interface HoldSeatsRequest {
 
 export interface ReleaseSeatsRequest {
   sessionId: string;
+}
+
+// ==================== Slice 5 Chunk 11 — layout CRUD request types ====================
+
+/**
+ * Slice 5 Chunk 4: PUT /api/venue-layouts/{id} — update layout name and/or canvas.
+ * Both fields optional; at least one must be supplied. `If-Match` header carries
+ * the expected RowVersion separately.
+ */
+export interface UpdateVenueLayoutRequest {
+  name?: string | null;
+  canvas?: UpdateLayoutCanvasRequest | null;
+}
+
+export interface UpdateLayoutCanvasRequest {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+/**
+ * Slice 5 Chunk 5: PATCH /api/venue-layouts/{id}/zones/{zoneId}. All fields
+ * optional — send only what changed. Structural changes (shape/geometry) are
+ * rejected with 422 when seats on the zone are held/reserved.
+ */
+export interface UpdateZoneRequest {
+  name?: string | null;
+  color?: string | null;
+  sortOrder?: number | null;
+  /** Stringified `ZoneShape` enum value for JSON-friendliness. */
+  shape?: string | null;
+  geometry?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 6: POST /api/venue-layouts/{id}/tables. Seats are auto-generated
+ * based on shape + capacity. `startAngleDeg` applies to round tables only
+ * (default 0° when omitted).
+ */
+export interface AddTableRequest {
+  label: string;
+  /** Stringified `TableShape` enum value. */
+  shape: string;
+  capacity: number;
+  sortOrder: number;
+  zoneId?: string | null;
+  geometry?: string | null;
+  startAngleDeg?: number | null;
+}
+
+export interface AddTableResponse {
+  tableId: string;
+}
+
+/**
+ * Slice 5 Chunk 6: PATCH /api/venue-layouts/{id}/tables/{tableId}. Pass
+ * `clearZoneId: true` to explicitly detach the table from its zone (supplying
+ * `zoneId: null` alone is treated as "keep current zone" so callers can omit
+ * unchanged fields safely).
+ */
+export interface UpdateTableRequest {
+  label?: string | null;
+  /** Stringified `TableShape` enum value. */
+  shape?: string | null;
+  capacity?: number | null;
+  sortOrder?: number | null;
+  zoneId?: string | null;
+  clearZoneId?: boolean | null;
+  geometry?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 7: POST /api/venue-layouts/{id}/decorations. `label` is
+ * required only for the `Text` kind; others accept it as optional metadata.
+ */
+export interface AddDecorationRequest {
+  /** Stringified `DecorationKind` enum value. */
+  kind: string;
+  label?: string | null;
+  sortOrder: number;
+  geometry?: string | null;
+  properties?: string | null;
+}
+
+export interface AddDecorationResponse {
+  decorationId: string;
+}
+
+/**
+ * Slice 5 Chunk 7: PATCH /api/venue-layouts/{id}/decorations/{decorationId}.
+ * Pass `clearLabel: true` to detach the label (rejected when kind is `Text`).
+ */
+export interface UpdateDecorationRequest {
+  /** Stringified `DecorationKind` enum value. */
+  kind?: string | null;
+  label?: string | null;
+  clearLabel?: boolean | null;
+  sortOrder?: number | null;
+  geometry?: string | null;
+  properties?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 8: `AssignableKind` for the polymorphic tier-assignment junction.
+ * Matches backend `LankaConnect.Domain.Events.Enums.AssignableKind`.
+ */
+export enum AssignableKind {
+  Zone = 'Zone',
+  Table = 'Table',
+}
+
+/**
+ * Slice 5 Chunk 8: POST /api/venue-layouts/{id}/tier-assignments.
+ * Idempotent — re-assigning an existing tuple is a no-op. Does NOT bump the
+ * layout RowVersion (assignments live on the `TicketTier` aggregate), but
+ * `If-Match` is still required for authorization-context freshness.
+ */
+export interface AssignTierRequest {
+  tierId: string;
+  /** Stringified `AssignableKind` enum value. */
+  kind: string;
+  assignableId: string;
+}
+
+/**
+ * Slice 5 Chunk 10: PUT /api/venue-layouts/{id}/batch body — atomic full-layout
+ * replacement consumed by the Slice 8 canvas editor save path. Within each
+ * child list: items with `id = null` are created, items with matching `id` are
+ * updated in place, and existing children omitted from the payload are removed
+ * (guarded against held/reserved seats).
+ */
+export interface BatchLayoutPayload {
+  name?: string | null;
+  canvas?: BatchCanvasConfig | null;
+  zones?: BatchZone[] | null;
+  tables?: BatchTable[] | null;
+  decorations?: BatchDecoration[] | null;
+}
+
+export interface BatchCanvasConfig {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+export interface BatchZone {
+  /** `null` → create; matching id → update; omitted existing → remove. */
+  id?: string | null;
+  name: string;
+  color: string;
+  sortOrder: number;
+  /** `ZoneShape` enum value serialized as a string (matches backend converter). */
+  shape: ZoneShape;
+  geometry?: string | null;
+}
+
+export interface BatchTable {
+  id?: string | null;
+  label: string;
+  shape: TableShape;
+  capacity: number;
+  sortOrder: number;
+  zoneId?: string | null;
+  geometry?: string | null;
+}
+
+export interface BatchDecoration {
+  id?: string | null;
+  kind: DecorationKind;
+  label?: string | null;
+  sortOrder: number;
+  geometry?: string | null;
+  properties?: string | null;
 }

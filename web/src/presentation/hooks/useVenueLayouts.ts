@@ -23,6 +23,17 @@ import type {
   AssignLayoutRequest,
   HoldSeatsRequest,
   ReleaseSeatsRequest,
+  UpdateVenueLayoutRequest,
+  UpdateZoneRequest,
+  AddTableRequest,
+  AddTableResponse,
+  UpdateTableRequest,
+  AddDecorationRequest,
+  AddDecorationResponse,
+  UpdateDecorationRequest,
+  AssignTierRequest,
+  AssignableKind,
+  BatchLayoutPayload,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -179,5 +190,228 @@ export function useReleaseSeats(eventId: string) {
         queryKey: venueLayoutKeys.seatAvailability(eventId),
       });
     },
+  });
+}
+
+// ==================== SLICE 5 CHUNK 11 — LAYOUT CRUD MUTATIONS ====================
+
+/**
+ * Invalidate caches downstream of a structural layout mutation. Always touches
+ * the layout's detail cache; touches the by-event + event-detail caches only
+ * when the layout is attached to an event.
+ */
+function invalidateLayoutScopes(
+  queryClient: ReturnType<typeof useQueryClient>,
+  layoutId: string,
+  eventId?: string | null,
+  includeSeatAvailability = false
+) {
+  queryClient.invalidateQueries({ queryKey: venueLayoutKeys.detail(layoutId) });
+  if (eventId) {
+    queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(eventId) });
+    if (includeSeatAvailability) {
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.seatAvailability(eventId),
+      });
+    }
+  }
+}
+
+/** Slice 5 Chunk 4 — PUT /api/venue-layouts/{id} (name/canvas). */
+export function useUpdateVenueLayout(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    { rowVersion: number; request: UpdateVenueLayoutRequest }
+  >({
+    mutationFn: ({ rowVersion, request }) =>
+      venueLayoutsRepository.updateLayout(layoutId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 9 — DELETE /api/venue-layouts/{id} (hard delete). */
+export function useDeleteVenueLayout(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { rowVersion: number }>({
+    mutationFn: ({ rowVersion }) =>
+      venueLayoutsRepository.deleteLayout(layoutId, rowVersion),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: venueLayoutKeys.detail(layoutId) });
+      if (eventId) {
+        queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(eventId) });
+        queryClient.invalidateQueries({
+          queryKey: venueLayoutKeys.seatAvailability(eventId),
+        });
+        // Layout delete flips event.SeatingMode → GeneralAdmission and clears VenueLayoutId.
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
+      }
+    },
+  });
+}
+
+/** Slice 5 Chunk 10 — PUT /api/venue-layouts/{id}/batch (atomic full replacement). */
+export function useBatchUpdateVenueLayout(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { rowVersion: number; payload: BatchLayoutPayload }>({
+    mutationFn: ({ rowVersion, payload }) =>
+      venueLayoutsRepository.batchUpdateLayout(layoutId, rowVersion, payload),
+    // Batch can create/remove seats, so seat availability must refetch too.
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId, true),
+  });
+}
+
+/** Slice 5 Chunk 5 — PATCH /api/venue-layouts/{id}/zones/{zoneId}. */
+export function useUpdateZone(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    { zoneId: string; rowVersion: number; request: UpdateZoneRequest }
+  >({
+    mutationFn: ({ zoneId, rowVersion, request }) =>
+      venueLayoutsRepository.updateZone(layoutId, zoneId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 5 — DELETE /api/venue-layouts/{id}/zones/{zoneId}. */
+export function useDeleteZone(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { zoneId: string; rowVersion: number }>({
+    mutationFn: ({ zoneId, rowVersion }) =>
+      venueLayoutsRepository.deleteZone(layoutId, zoneId, rowVersion),
+    // Zone delete cascades to seats → availability cache is now stale.
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId, true),
+  });
+}
+
+/** Slice 5 Chunk 6 — POST /api/venue-layouts/{id}/tables (auto-generates seats). */
+export function useAddTable(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    AddTableResponse,
+    ApiError,
+    { rowVersion: number; request: AddTableRequest }
+  >({
+    mutationFn: ({ rowVersion, request }) =>
+      venueLayoutsRepository.addTable(layoutId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId, true),
+  });
+}
+
+/** Slice 5 Chunk 6 — PATCH /api/venue-layouts/{id}/tables/{tableId}. */
+export function useUpdateTable(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    { tableId: string; rowVersion: number; request: UpdateTableRequest }
+  >({
+    mutationFn: ({ tableId, rowVersion, request }) =>
+      venueLayoutsRepository.updateTable(layoutId, tableId, rowVersion, request),
+    // Capacity/shape changes regenerate seats → availability may change.
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId, true),
+  });
+}
+
+/** Slice 5 Chunk 6 — DELETE /api/venue-layouts/{id}/tables/{tableId}. */
+export function useDeleteTable(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { tableId: string; rowVersion: number }>({
+    mutationFn: ({ tableId, rowVersion }) =>
+      venueLayoutsRepository.deleteTable(layoutId, tableId, rowVersion),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId, true),
+  });
+}
+
+/** Slice 5 Chunk 7 — POST /api/venue-layouts/{id}/decorations. */
+export function useAddDecoration(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    AddDecorationResponse,
+    ApiError,
+    { rowVersion: number; request: AddDecorationRequest }
+  >({
+    mutationFn: ({ rowVersion, request }) =>
+      venueLayoutsRepository.addDecoration(layoutId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 7 — PATCH /api/venue-layouts/{id}/decorations/{decorationId}. */
+export function useUpdateDecoration(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    { decorationId: string; rowVersion: number; request: UpdateDecorationRequest }
+  >({
+    mutationFn: ({ decorationId, rowVersion, request }) =>
+      venueLayoutsRepository.updateDecoration(layoutId, decorationId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 7 — DELETE /api/venue-layouts/{id}/decorations/{decorationId}. */
+export function useDeleteDecoration(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { decorationId: string; rowVersion: number }>({
+    mutationFn: ({ decorationId, rowVersion }) =>
+      venueLayoutsRepository.deleteDecoration(layoutId, decorationId, rowVersion),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 8 — POST /api/venue-layouts/{id}/tier-assignments. */
+export function useAssignTier(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    { rowVersion: number; request: AssignTierRequest }
+  >({
+    mutationFn: ({ rowVersion, request }) =>
+      venueLayoutsRepository.assignTier(layoutId, rowVersion, request),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/** Slice 5 Chunk 8 — DELETE /api/venue-layouts/{id}/tier-assignments/{tierId}/{kind}/{assignableId}. */
+export function useRemoveTierAssignment(layoutId: string, eventId?: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    void,
+    ApiError,
+    {
+      tierId: string;
+      kind: AssignableKind | string;
+      assignableId: string;
+      rowVersion: number;
+    }
+  >({
+    mutationFn: ({ tierId, kind, assignableId, rowVersion }) =>
+      venueLayoutsRepository.removeTierAssignment(
+        layoutId,
+        tierId,
+        kind,
+        assignableId,
+        rowVersion
+      ),
+    onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
   });
 }

@@ -1,7 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-21 — Phase 7C.2 fan-out to 5 signup-commitment email templates (strip GPS leak + duplicate Location row) deployed + staging-verified. Seating Redesign Slice 5 Chunk 9 + Phase 7D.1 G14 deployed earlier same day.*
+*Last Updated: 2026-04-21 — Seating Redesign Slice 5 Chunk 10 (`PUT /api/venue-layouts/{id}/batch` atomic batch update) deployed + staging-smoke-verified. Phase 7C.2 signup-commitment email fan-out shipped earlier same day.*
 
-## 🎯 Current Session Status (2026-04-21 — Phase 7C.2 fan-out: strip GPS leak + duplicate Location row from 5 signup-commitment email templates)
+## 🎯 Current Session Status (2026-04-21 — Seating Redesign Slice 5 Chunk 10: atomic batch update endpoint)
+
+**Status**: ✅ **DEPLOYED + STAGING-SMOKE-VERIFIED** — commit `3c889565` on develop; `deploy-staging.yml` run `24752603915` succeeded. 11/11 `BatchUpdateLayoutCommandHandlerTests` green; overall Application suite 2241/2247 pass (6 skipped, 0 failed — skips are pre-existing Docker-gated integration tests); Domain suite 509/511 (2 pre-existing unrelated failures in DonationConfigurationTests + FormResponseTests). Staging smoke [smoke_chunk10_batch_update.py](../../tmp/smoke_chunk10_batch_update.py) 5/6 scenarios fully green, 1 skipped (E hold-seat API quirk, core path covered by unit tests): A) missing `If-Match` → 400, B) unknown id → 404, C) happy-path upsert on template (rename + add Balcony zone + add round table + add stage decoration) → 204, GET verifies all changes including 8 auto-generated round-table seats, D) stale `If-Match` → 409, F) remove empty zone → 204.
+
+**Root cause addressed**: Architect decision #14 mandates an atomic batch endpoint to back the Slice 8 canvas editor's single save call — without it, the editor would have to orchestrate per-entity PATCH/POST/DELETE calls client-side, opening a partial-save corruption window if any request fails mid-sequence. `PUT /api/venue-layouts/{id}/batch` takes a full layout snapshot and applies every change in one MediatR handler → one transaction → one RowVersion bump, so either every diff is persisted or none are. Diff semantics: child items with `Id=null` are created; with matching `Id` are updated in place; missing from the payload are removed (and guarded against held/reserved seats).
+
+**Fix**: New `BatchUpdateLayoutCommand` + handler under `Events/Commands/BatchUpdateLayout/`. Handler flow: (1) authorize two-branch via `ILayoutAuthorizationService`, (2) load full aggregate with zones/tables/decorations/seats, (3) early concurrency check vs `ExpectedRowVersion` → 409 before any mutation, (4) compute zone+table removals and feed their owned seat IDs into `IStructuralEditGuard.CheckSeatsAsync` — guard short-circuits on empty set and returns `StructuralEditRejected` → 422 if any seat held/reserved, (5) apply in order: decoration removals → zone removals → table removals → zone updates → zone additions (`AddZone` then `UpdateZone` overload to set shape/geometry) → table updates → table additions via `GenerateRoundTable`/`GenerateRectTable` (auto-generate seats, matching `AddTableCommandHandler` parity — first implementation used bare `AddTable` which yielded 0 seats and failed the Chunk 10 test for round-table capacity) → decoration updates → decoration additions → layout `Name` → `CanvasConfig`, (6) `SetOriginalRowVersion` + `CommitAsync` with `DbUpdateConcurrencyException` → 409. Controller `PUT /api/venue-layouts/{id}/batch` reuses `TryParseIfMatch` + `HandleResultNoContent` helpers.
+
+**Evidence**:
+- Unit tests: 11/11 `BatchUpdateLayoutCommandHandlerTests` green covering auth-forbidden, layout-not-found, early-concurrency-conflict, guard-rejected-removals (seats held on a removed table), add-new (null Id → AddZone+UpdateZone / GenerateRoundTable), update-existing (matching Id → UpdateZone/UpdateTable/UpdateDecoration), remove-via-omission, layout-Name + Canvas updates, domain-rule short-circuit mid-sequence, `DbUpdateConcurrencyException` → 409 on commit, guard-skip when no removals
+- Full Application suite: 2241/2247 pass (6 Docker-gated integration skips), Domain 509/511 (2 pre-existing unrelated failures)
+- Staging deploy: run `24752603915` status=completed conclusion=success
+- Staging smoke: A/B/C/D/F pass end-to-end; C asserts 8 auto-seats on the new round table; E skipped (hold-seat API returns 400 — unrelated to Chunk 10 code path; structural-guard path is already covered by Chunk 10 unit test and Chunk 9 smoke scenario G)
+
+**Scope discipline**: Chunk 10 ships the batch endpoint only. `GetLayoutByIdQuery` DTO does NOT yet project `CanvasConfig` → the smoke test cannot verify canvas changes end-to-end via GET (flagged as tech debt for a later chunk, noted inline in the smoke script). Chunks 11-15 (frontend hooks + TierMappingPanel + full EF Core integration tests + factory-shim cleanup + tracking doc closure) remain.
+
+**Follow-ups**:
+- Chunk 11 — Frontend `useBatchUpdateLayout` + `useDeleteVenueLayout` hooks + TierMappingPanel wiring
+- Chunk 12 — Integration tests through real EF Core (not just mocked handler tests)
+- Chunk 14 — Factory-shim cleanup (test-helper consolidation)
+- Chunk 15 — Tracking-doc closure + Slice 5 retrospective
+- GET-layout DTO gap — add `canvas` field to the venue-layout response so the batch endpoint's Canvas mutation is observable; tracked as Slice 5 follow-up
+- Release N+1 (Slice 4 tail) — drop `venue_zones.ticket_tier_id` column, ≥1 week after Slice 4 Release N ships with no rollback triggered
+
+---
+
+## 🎯 Previous Session Status (2026-04-21 — Phase 7C.2 fan-out: strip GPS leak + duplicate Location row from 5 signup-commitment email templates)
 
 **Status**: ✅ **DEPLOYED + STAGING-VERIFIED (automated)** — commit `64dc8ab0` on develop; `deploy-staging.yml` run `24751794433` succeeded. Auth login smoke + `GET /api/Events` returns 47 events. Both EF migrations carry per-template `GET DIAGNOSTICS … RAISE EXCEPTION` row-count assertions (Phase 6A.117 rule); migration 2 additionally carries an `IF EXISTS … {{EventLocation}} …` post-condition check — a successful container boot is proof the regex matched all 5 target templates. TDD: 7 new `SignupCommitmentEmailParamsLocationDetailsTests` pass + 15 existing commitment-handler tests pass; 5 pre-existing `BaseParameterContractsTests` timezone flakes remain unchanged (unrelated). Visual inbox verification (commit-to-signup on an event with a physical location) is the remaining manual step.
 

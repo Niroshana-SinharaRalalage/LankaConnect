@@ -27,6 +27,9 @@ vi.mock('@/infrastructure/api/repositories/venue-layouts.repository', () => ({
     deleteDecoration: vi.fn(),
     assignTier: vi.fn(),
     removeTierAssignment: vi.fn(),
+    // Slice 6 preset library
+    listPresets: vi.fn(),
+    createFromPreset: vi.fn(),
     // Other methods used by peers we don't touch — stubs to keep the import shape intact.
     createLayout: vi.fn(),
     getLayout: vi.fn(),
@@ -55,6 +58,8 @@ import {
   useDeleteDecoration,
   useAssignTier,
   useRemoveTierAssignment,
+  useLayoutPresets,
+  useCreateLayoutFromPreset,
 } from '../useVenueLayouts';
 import { eventKeys } from '../useEvents';
 import { AssignableKind } from '@/infrastructure/api/types/events.types';
@@ -485,5 +490,81 @@ describe('Error propagation', () => {
         request: { name: 'X' },
       })
     ).rejects.toThrow('409 Conflict');
+  });
+});
+
+describe('Slice 6 preset library — useLayoutPresets', () => {
+  it('fetches preset list once and caches with staleTime=Infinity', async () => {
+    (venueLayoutsRepository.listPresets as any).mockResolvedValueOnce([
+      { id: 'theater-classic', name: 'Theater Classic' },
+    ]);
+    const { wrapper } = makeWrapper();
+
+    const { result } = renderHook(() => useLayoutPresets(), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(venueLayoutsRepository.listPresets).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toEqual([
+      { id: 'theater-classic', name: 'Theater Classic' },
+    ]);
+  });
+
+  it('exposes a stable query key on venueLayoutKeys.presets', () => {
+    // Readers like the preset modal rely on this key to co-invalidate.
+    expect(venueLayoutKeys.presets).toEqual(['venue-layouts', 'presets']);
+  });
+});
+
+describe('Slice 6 preset library — useCreateLayoutFromPreset', () => {
+  it('calls repository.createFromPreset and invalidates the layouts tree', async () => {
+    (venueLayoutsRepository.createFromPreset as any).mockResolvedValueOnce({
+      id: LAYOUT_ID,
+      eventId: null,
+    });
+    const { wrapper, invalidateSpy } = makeWrapper();
+
+    const { result } = renderHook(() => useCreateLayoutFromPreset(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ presetId: 'theater-classic' });
+    });
+
+    expect(venueLayoutsRepository.createFromPreset).toHaveBeenCalledWith({
+      presetId: 'theater-classic',
+    });
+    expectKey(invalidateSpy, venueLayoutKeys.all);
+  });
+
+  it('also invalidates byEvent when the preset attaches to an event', async () => {
+    (venueLayoutsRepository.createFromPreset as any).mockResolvedValueOnce({
+      id: LAYOUT_ID,
+      eventId: EVENT_ID,
+    });
+    const { wrapper, invalidateSpy } = makeWrapper();
+
+    const { result } = renderHook(() => useCreateLayoutFromPreset(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        presetId: 'banquet-round-8',
+        eventId: EVENT_ID,
+      });
+    });
+
+    expectKey(invalidateSpy, venueLayoutKeys.byEvent(EVENT_ID));
+  });
+
+  it('propagates API errors through mutateAsync', async () => {
+    (venueLayoutsRepository.createFromPreset as any).mockRejectedValueOnce(
+      new Error('404 Not Found'),
+    );
+    const { wrapper } = makeWrapper();
+
+    const { result } = renderHook(() => useCreateLayoutFromPreset(), { wrapper });
+
+    await expect(
+      result.current.mutateAsync({ presetId: 'bogus' }),
+    ).rejects.toThrow('404 Not Found');
   });
 });

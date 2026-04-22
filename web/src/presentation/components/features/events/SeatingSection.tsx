@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Armchair, Info, Loader2 } from 'lucide-react';
 import { SeatingMode, TicketingMode } from '@/infrastructure/api/types/events.types';
+import { SeatingLayoutPicker } from './SeatingLayoutPicker';
+import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 /**
  * Seating Redesign Slice 1: Inline seating configuration section for event
@@ -33,6 +35,15 @@ export interface SeatingSectionProps {
   disabled?: boolean;
   /** Reason surfaced to the user when `disabled` is true. */
   disabledReason?: string;
+  /**
+   * Slice 6 S6.9: when supplied, AssignedSeating mode exposes the layout
+   * picker (preset modal + preview). For the event CREATION flow the event
+   * does not exist yet — omit this prop and the old "save first" placeholder
+   * is shown instead.
+   */
+  eventId?: string;
+  /** Optional hook for the parent to react to a preset being applied. */
+  onLayoutChanged?: (layout: VenueLayoutDto) => void;
 }
 
 export function SeatingSection({
@@ -43,6 +54,8 @@ export function SeatingSection({
   errorMessage = null,
   disabled = false,
   disabledReason,
+  eventId,
+  onLayoutChanged,
 }: SeatingSectionProps) {
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -134,8 +147,14 @@ export function SeatingSection({
         </p>
       )}
 
-      {/* Slice 1 placeholder: acknowledge the deferred layout editor. */}
-      {isAssigned && (
+      {/* Slice 6 S6.9: Event-aware layout picker (preset modal + live preview).
+          Rendered only once the event exists (edit flow); the create flow
+          shows the "save first" hint below until the event is persisted. */}
+      {isAssigned && eventId && (
+        <SeatingLayoutPicker eventId={eventId} onLayoutChanged={onLayoutChanged} />
+      )}
+
+      {isAssigned && !eventId && (
         <div
           data-testid="seating-layout-placeholder"
           className="rounded-md border border-dashed border-primary-200 bg-primary-50/30 px-4 py-3 flex items-start gap-3"
@@ -143,12 +162,11 @@ export function SeatingSection({
           <Info className="w-5 h-5 text-primary-600 mt-0.5 shrink-0" aria-hidden="true" />
           <div className="text-sm text-neutral-700">
             <p className="font-medium text-neutral-900">
-              Venue layout editor launches in the next release
+              Save the event first, then pick a seating layout
             </p>
             <p className="mt-1">
-              Assigned seating is enabled for this event. You&apos;ll be able to build
-              your venue layout (theater rows, banquet tables, zones) once the editor
-              ships. Attendees will see a &ldquo;seat assigned at event&rdquo; message until then.
+              Assigned seating is enabled. Once you save, you can open the preset
+              library and choose a starting layout (you&apos;ll be able to customize it).
             </p>
           </div>
         </div>

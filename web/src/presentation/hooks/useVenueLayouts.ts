@@ -34,6 +34,8 @@ import type {
   AssignTierRequest,
   AssignableKind,
   BatchLayoutPayload,
+  LayoutPresetDto,
+  CreateLayoutFromPresetRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -46,6 +48,7 @@ export const venueLayoutKeys = {
   detail: (id: string) => [...venueLayoutKeys.all, 'detail', id] as const,
   byEvent: (eventId: string) => [...venueLayoutKeys.all, 'by-event', eventId] as const,
   seatAvailability: (eventId: string) => [...venueLayoutKeys.all, 'seats', eventId] as const,
+  presets: [...['venue-layouts'] as const, 'presets'] as const,
 };
 
 /**
@@ -107,6 +110,40 @@ export function useCreateVenueLayout() {
 
   return useMutation<VenueLayoutDto, ApiError, CreateVenueLayoutRequest>({
     mutationFn: (request) => venueLayoutsRepository.createLayout(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      if (data.eventId) {
+        queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(data.eventId) });
+      }
+    },
+  });
+}
+
+/**
+ * Slice 6 S6.5: lists the 8 built-in layout presets. The metadata is static
+ * server-side code, so the cache stays fresh for the full session.
+ */
+export function useLayoutPresets(
+  options?: Omit<UseQueryOptions<LayoutPresetDto[], ApiError>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: venueLayoutKeys.presets,
+    queryFn: () => venueLayoutsRepository.listPresets(),
+    staleTime: Infinity,
+    ...options,
+  });
+}
+
+/**
+ * Slice 6 S6.5: creates a layout from a preset. When `eventId` is supplied,
+ * invalidates the event's layout cache; always invalidates the shared layouts
+ * tree so any listing hooks refetch.
+ */
+export function useCreateLayoutFromPreset() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, CreateLayoutFromPresetRequest>({
+    mutationFn: (request) => venueLayoutsRepository.createFromPreset(request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
       if (data.eventId) {

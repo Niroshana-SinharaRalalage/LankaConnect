@@ -78,7 +78,10 @@ describe('SeatingSection', () => {
   });
 
   describe('placeholder panel', () => {
-    it('shows the layout-editor placeholder when AssignedSeating is active', () => {
+    // Slice 6 S6.9: when no eventId is supplied (event-creation flow) we show
+    // a "save first" hint; when eventId is supplied (edit flow) the
+    // SeatingLayoutPicker replaces the placeholder entirely.
+    it('shows the save-first placeholder when AssignedSeating is active and eventId is absent', () => {
       render(
         <SeatingSection {...baseProps} value={SeatingMode.AssignedSeating} />
       );
@@ -86,14 +89,21 @@ describe('SeatingSection', () => {
         screen.getByTestId('seating-layout-placeholder')
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Venue layout editor launches in the next release/i)
+        screen.getByText(/Save the event first, then pick a seating layout/i)
       ).toBeInTheDocument();
+      // Picker is not rendered without eventId.
+      expect(
+        screen.queryByTestId('seating-layout-picker')
+      ).not.toBeInTheDocument();
     });
 
     it('hides the placeholder when GeneralAdmission is active', () => {
       render(<SeatingSection {...baseProps} />);
       expect(
         screen.queryByTestId('seating-layout-placeholder')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('seating-layout-picker')
       ).not.toBeInTheDocument();
     });
   });

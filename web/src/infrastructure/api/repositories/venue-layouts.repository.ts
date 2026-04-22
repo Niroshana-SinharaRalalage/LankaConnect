@@ -19,6 +19,8 @@ import type {
   AssignTierRequest,
   BatchLayoutPayload,
   AssignableKind,
+  LayoutPresetDto,
+  CreateLayoutFromPresetRequest,
 } from '../types/events.types';
 
 /**
@@ -65,6 +67,29 @@ export class VenueLayoutsRepository {
 
   async createLayout(request: CreateVenueLayoutRequest): Promise<VenueLayoutDto> {
     return await apiClient.post<VenueLayoutDto>(this.basePath, request);
+  }
+
+  /**
+   * Slice 6 S6.5: fetches the 8-preset metadata list powering the
+   * preset-library modal. Safe to call on every modal open — server-side
+   * is static code, no DB hit.
+   */
+  async listPresets(): Promise<LayoutPresetDto[]> {
+    return await apiClient.get<LayoutPresetDto[]>(`${this.basePath}/presets`);
+  }
+
+  /**
+   * Slice 6 S6.5: builds a new layout from the given preset ID. When
+   * `eventId` is supplied the layout is attached to that event (caller
+   * must own it); otherwise a per-user template is created.
+   */
+  async createFromPreset(
+    request: CreateLayoutFromPresetRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/from-preset`,
+      request,
+    );
   }
 
   async getLayout(layoutId: string): Promise<VenueLayoutDto> {

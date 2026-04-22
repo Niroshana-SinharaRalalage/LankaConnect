@@ -2891,3 +2891,43 @@ export interface BatchDecoration {
   geometry?: string | null;
   properties?: string | null;
 }
+
+// ============================================================================
+// Slice 6: Layout preset library
+// ============================================================================
+
+/**
+ * Slice 6 Chunk S6.2 — metadata for a single preset in the library modal.
+ * Matches backend `LankaConnect.Application.Events.Queries.GetLayoutPresets.LayoutPresetDto`.
+ *
+ * Thumbnails are served from the web app's `/public/layouts/presets/` folder —
+ * the modal renders PNG images, NOT react-konva, so the canvas library stays
+ * lazy-loaded until the SeatPicker or canvas editor needs it.
+ */
+export interface LayoutPresetDto {
+  /** Stable preset ID, e.g. `"theater-classic"`. Safe to use as a React key. */
+  id: string;
+  /** Human-readable preset name shown as the card title. */
+  name: string;
+  /** One-line description shown under the title in the card. */
+  description: string;
+  /**
+   * Layout type the preset produces. Uses the backend's string enum
+   * (`JsonStringEnumConverter`), not a number — matches MEMORY 6A.124.
+   */
+  layoutType: 'Theater' | 'Banquet' | 'Custom' | 'Mixed';
+  /** Total enabled seat count for the preset as built. */
+  totalCapacity: number;
+  /** Absolute path to the pre-generated PNG thumbnail. */
+  thumbnailUrl: string;
+}
+
+/**
+ * Slice 6 Chunk S6.4 — POST /api/venue-layouts/from-preset body.
+ * Matches backend `CreateLayoutFromPresetRequest`.
+ */
+export interface CreateLayoutFromPresetRequest {
+  presetId: string;
+  /** Omit to create a user-scoped template. Supply to attach to an event you own. */
+  eventId?: string | null;
+}

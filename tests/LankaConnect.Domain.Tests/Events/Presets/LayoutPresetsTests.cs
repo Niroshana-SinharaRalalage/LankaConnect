@@ -204,4 +204,34 @@ public class LayoutPresetsTests
             result.Value.Name.Should().Be(meta.Name);
         }
     }
+
+    [Fact]
+    public void Every_Preset_Thumbnail_Url_Must_Point_At_An_Existing_Svg_File()
+    {
+        // S6.6: thumbnail metadata is load-bearing — the preset-library modal
+        // renders these URLs directly, so a missing file would leave a broken
+        // image in every organizer's UI. Walk up from the test dll to the repo
+        // root and verify each referenced file exists under web/public.
+        var repoRoot = FindRepoRoot();
+        foreach (var meta in LayoutPresets.All)
+        {
+            var relative = meta.ThumbnailUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            var fullPath = Path.Combine(repoRoot, "web", "public", relative);
+            File.Exists(fullPath).Should().BeTrue(
+                $"preset '{meta.Id}' thumbnail must exist at {fullPath}");
+        }
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, "web", "public", "layouts")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+        throw new DirectoryNotFoundException(
+            "Could not find repo root (no web/public/layouts directory found in any parent).");
+    }
 }

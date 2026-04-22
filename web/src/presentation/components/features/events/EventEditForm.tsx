@@ -1539,8 +1539,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 </div>
               )}
 
-              {/* Seating Redesign Slice 1: Inline assigned-seating toggle,
-                  only visible when tiered ticketing is enabled. */}
+              {/* Seating Redesign Slice 1 + Slice 6 S6.9: inline assigned-seating
+                  toggle. Passing eventId activates the preset-library picker
+                  and the live layout preview below the toggle. */}
               {enableTieredTicketing && (
                 <SeatingSection
                   ticketingMode={TicketingMode.Tiered}
@@ -1550,6 +1551,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     if (seatingModeError) setSeatingModeError(null);
                   }}
                   errorMessage={seatingModeError}
+                  eventId={event.id}
                 />
               )}
             </div>

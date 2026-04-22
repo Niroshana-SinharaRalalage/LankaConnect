@@ -272,3 +272,50 @@ describe('VenueLayoutsRepository — If-Match header sanity', () => {
     expect(mockGet).toHaveBeenCalledWith(`/venue-layouts/${LAYOUT_ID}`);
   });
 });
+
+describe('VenueLayoutsRepository — Slice 6 preset library', () => {
+  it('listPresets GETs /venue-layouts/presets without headers', async () => {
+    mockGet.mockResolvedValueOnce([{ id: 'theater-classic' }]);
+
+    const presets = await venueLayoutsRepository.listPresets();
+
+    expect(mockGet).toHaveBeenCalledWith('/venue-layouts/presets');
+    expect(presets).toEqual([{ id: 'theater-classic' }]);
+  });
+
+  it('createFromPreset POSTs /venue-layouts/from-preset with the raw request body', async () => {
+    mockPost.mockResolvedValueOnce({ id: LAYOUT_ID });
+
+    await venueLayoutsRepository.createFromPreset({
+      presetId: 'banquet-round-8',
+      eventId: null,
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/venue-layouts/from-preset',
+      { presetId: 'banquet-round-8', eventId: null },
+    );
+  });
+
+  it('createFromPreset passes eventId through when attaching to an event', async () => {
+    mockPost.mockResolvedValueOnce({ id: LAYOUT_ID });
+
+    await venueLayoutsRepository.createFromPreset({
+      presetId: 'theater-classic',
+      eventId: 'event-123',
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/venue-layouts/from-preset',
+      { presetId: 'theater-classic', eventId: 'event-123' },
+    );
+  });
+
+  it('createFromPreset propagates API errors', async () => {
+    mockPost.mockRejectedValueOnce(new Error('404 Not Found'));
+
+    await expect(
+      venueLayoutsRepository.createFromPreset({ presetId: 'bogus' }),
+    ).rejects.toThrow('404 Not Found');
+  });
+});

@@ -55,35 +55,35 @@ public static class LayoutPresets
     {
         new(TheaterClassicId,     "Theater Classic",
             "10 rows × 20 seats facing a central stage.",
-            LayoutType.Theater, TotalCapacity: 200, ThumbnailRoot + "theater-classic.png"),
+            LayoutType.Theater, TotalCapacity: 200, ThumbnailRoot + "theater-classic.svg"),
 
         new(TheaterWithBalconyId, "Theater with Balcony",
             "Orchestra + Mezzanine + Balcony sections.",
-            LayoutType.Theater, TotalCapacity: 420, ThumbnailRoot + "theater-with-balcony.png"),
+            LayoutType.Theater, TotalCapacity: 420, ThumbnailRoot + "theater-with-balcony.svg"),
 
         new(TheaterWithAislesId,  "Theater with Aisles",
             "Wide center section flanked by two side sections with aisles.",
-            LayoutType.Theater, TotalCapacity: 240, ThumbnailRoot + "theater-with-aisles.png"),
+            LayoutType.Theater, TotalCapacity: 240, ThumbnailRoot + "theater-with-aisles.svg"),
 
         new(TheaterCurvedId,      "Theater Curved",
             "Curved front rows following the stage edge, straight rear section.",
-            LayoutType.Theater, TotalCapacity: 160, ThumbnailRoot + "theater-curved.png"),
+            LayoutType.Theater, TotalCapacity: 160, ThumbnailRoot + "theater-curved.svg"),
 
         new(BanquetRound8Id,      "Banquet · 15 Round Tables × 8",
             "15 round tables, 8 seats each. Ideal for a seated dinner.",
-            LayoutType.Banquet, TotalCapacity: 120, ThumbnailRoot + "banquet-round-8.png"),
+            LayoutType.Banquet, TotalCapacity: 120, ThumbnailRoot + "banquet-round-8.svg"),
 
         new(BanquetRound10Id,     "Banquet · 15 Round Tables × 10",
             "15 round tables, 10 seats each. Larger banquet capacity.",
-            LayoutType.Banquet, TotalCapacity: 150, ThumbnailRoot + "banquet-round-10.png"),
+            LayoutType.Banquet, TotalCapacity: 150, ThumbnailRoot + "banquet-round-10.svg"),
 
         new(BanquetMixedId,       "Banquet Mixed",
             "10 round tables plus 5 rectangular head tables, dance floor at center.",
-            LayoutType.Banquet, TotalCapacity: 120, ThumbnailRoot + "banquet-mixed.png"),
+            LayoutType.Banquet, TotalCapacity: 120, ThumbnailRoot + "banquet-mixed.svg"),
 
         new(ConferenceRoomId,     "Conference Room",
             "U-shape head tables with classroom-style rows behind.",
-            LayoutType.Mixed,   TotalCapacity:  68, ThumbnailRoot + "conference-room.png"),
+            LayoutType.Mixed,   TotalCapacity:  68, ThumbnailRoot + "conference-room.svg"),
     }.AsReadOnly();
 
     /// <summary>

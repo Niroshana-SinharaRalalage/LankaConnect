@@ -56,6 +56,8 @@
   <!-- Phase 6A.75: Include specific test files that are actively needed -->
   <ItemGroup>
     <Compile Include="Email\Services\AzureEmailServiceRenderTemplateTests.cs" />
+    <!-- Phase 7C.2 recovery: invariants on the embedded pre-damage template bodies -->
+    <Compile Include="Data\Migrations\Phase7C2RecoveryTemplatesTests.cs" />
   </ItemGroup>
 
 </Project>

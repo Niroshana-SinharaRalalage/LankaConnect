@@ -57,4 +57,11 @@
     </Content>
   </ItemGroup>
 
+  <!-- Phase 7C.2 recovery: ship authoritative pre-damage signup/volunteer commitment
+       email template bodies as embedded resources so the recovery migration can UPDATE
+       them without depending on disk layout (see MEMORY 6A.129b). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7C2_Recovery\*.html" />
+  </ItemGroup>
+
 </Project>

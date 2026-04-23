@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -344,6 +345,11 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     paymentIntentId: registration.StripePaymentIntentId ?? "",
                     paymentDate: registration.UpdatedAt ?? DateTime.UtcNow,
                     quantity: registration.GetAttendeeCount());
+
+                // Phase 7C.2b: emit decomposed location keys (Venue Name bold + Address
+                // + optional Secondary Location). Keeps the flat {{EventLocation}}
+                // fallback for un-migrated templates.
+                typedParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                 // Set timezone
                 typedParams.TimeZoneId = @event.TimeZoneId;

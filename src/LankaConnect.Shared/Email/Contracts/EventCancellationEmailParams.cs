@@ -71,9 +71,15 @@ public class EventCancellationEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location.
+    /// Event location — legacy flat-string fallback. Phase 7C.2b: prefer
+    /// <see cref="WithLocationDetails"/>.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// Reason for cancellation.
@@ -203,7 +209,7 @@ public class EventCancellationEmailParams : IEmailParameters
         var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
         var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
 
-        return new Dictionary<string, object>
+        var dict = new Dictionary<string, object>
         {
             { "UserName", UserName },
             { "EventTitle", EventTitle },
@@ -211,7 +217,6 @@ public class EventCancellationEmailParams : IEmailParameters
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
             { "EventDate", formattedDate },  // Template alias for EventStartDate
-            { "EventLocation", EventLocation },
             { "CancellationReason", CancellationReason },
             { "CancelledAt", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
             { "OrganizerName", OrganizerName },
@@ -243,6 +248,26 @@ public class EventCancellationEmailParams : IEmailParameters
 
             { "Year", DateTime.UtcNow.Year }
         };
+
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+
+        return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public EventCancellationEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

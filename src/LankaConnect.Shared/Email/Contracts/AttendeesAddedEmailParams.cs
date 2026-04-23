@@ -72,9 +72,15 @@ public class AttendeesAddedEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location.
+    /// Event location — legacy flat-string fallback. Phase 7C.2b: prefer
+    /// <see cref="WithLocationDetails"/>.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// Previous attendee count before adding.
@@ -221,7 +227,6 @@ public class AttendeesAddedEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Combined for template
-            { "EventLocation", EventLocation },
 
             // Original params (keep for compatibility)
             { "PreviousCount", PreviousCount },
@@ -268,7 +273,25 @@ public class AttendeesAddedEmailParams : IEmailParameters
             dict["TicketCode"] = TicketCode ?? string.Empty;
         }
 
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+
         return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public AttendeesAddedEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

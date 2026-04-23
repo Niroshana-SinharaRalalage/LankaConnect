@@ -3,6 +3,7 @@ using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -232,6 +233,13 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     paymentIntentId: domainEvent.PaymentIntentId,
                     paymentDate: domainEvent.PaymentCompletedAt,
                     quantity: registration.Attendees.Count);
+
+                // Phase 7C.2b: emit the 8 decomposed location keys (Venue Name bold +
+                // Address + optional Secondary Location block) into the template dict.
+                // Keeps the flat `{{EventLocation}}` fallback working for any un-migrated
+                // template; the decomposed block is consumed once Chunk 2b rewrites the
+                // paid-ticket template body.
+                typedParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                 // Phase 6A.97: Set event's timezone for consistent date/time display
                 typedParams.TimeZoneId = @event.TimeZoneId;

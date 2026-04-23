@@ -3,6 +3,7 @@ using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -159,6 +160,9 @@ public class RegistrationPendingPaymentEventHandler
                 currency: domainEvent.Currency.ToUpper(),
                 paymentLink: checkoutUrl ?? string.Empty,
                 expiresAt: domainEvent.CheckoutExpiresAt);
+
+            // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+            emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
             _logger.LogDebug(
                 "[Phase 6A.100] [Email-4] Email parameters prepared using typed params");

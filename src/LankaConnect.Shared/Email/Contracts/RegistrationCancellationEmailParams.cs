@@ -77,9 +77,17 @@ public class RegistrationCancellationEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location.
+    /// Event location legacy flat-string fallback (used by templates that still
+    /// consume <c>{{EventLocation}}</c>). Phase 7C.2b — prefer
+    /// <see cref="WithLocationDetails"/>.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection, emitted into
+    /// the template dictionary as 8 discrete keys by <see cref="LocationEmailDictionaryWriter"/>.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// Reason for cancellation.
@@ -198,7 +206,6 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },
             { "EventStartTime", formattedTime },  // Phase 6A.87+ Fix: Added for templates that need separate time
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
-            { "EventLocation", EventLocation },
             { "CancellationReason", CancellationReason },
             { "CancelledAt", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },
             { "CancellationDate", CancelledAt.ToString("MMMM dd, yyyy h:mm tt") },  // Issue #56.1: Alias for template compatibility
@@ -223,6 +230,11 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
         };
 
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+
         if (RefundAmount.HasValue)
         {
             // Phase 6A.87 Fix: Use explicit US culture to avoid currency symbol issues
@@ -231,6 +243,19 @@ public class RegistrationCancellationEmailParams : IEmailParameters
         }
 
         return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public RegistrationCancellationEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

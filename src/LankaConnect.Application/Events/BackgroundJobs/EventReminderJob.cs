@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Communications.Enums;
@@ -225,13 +226,16 @@ public class EventReminderJob
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
                             eventStartDate: @event.StartDate,
                             eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                            location: @event.Location?.Address.ToString() ?? "Location TBD",
+                            eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
                             hoursUntilEvent: hoursUntilEvent,
                             reminderTimeframe: reminderTimeframe,
                             reminderMessage: reminderMessage,
                             eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                         );
+
+                        // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                        emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                         // Phase 6A.97: Set event's timezone for consistent date/time display
                         emailParams.TimeZoneId = @event.TimeZoneId;
@@ -438,13 +442,16 @@ public class EventReminderJob
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
                         eventStartDate: @event.StartDate,
                         eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                        location: @event.Location?.Address.ToString() ?? "Location TBD",
+                        eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,
                         hoursUntilEvent: hoursUntilEvent,
                         reminderTimeframe: reminderTimeframe,
                         reminderMessage: reminderMessage,
                         eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                     );
+
+                    // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                    emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                     // Phase 6A.97: Set event's timezone for consistent date/time display
                     emailParams.TimeZoneId = @event.TimeZoneId;

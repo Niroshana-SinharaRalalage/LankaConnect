@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -102,6 +103,9 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     refundStatus: "No Refund Required"  // Default, will be updated by refund handler if applicable
                 );
                 emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+
+                // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                 // Phase 6A.97+ Fix: Populate organizer contact if available
                 if (@event.HasOrganizerContact())

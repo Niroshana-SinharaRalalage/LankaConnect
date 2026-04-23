@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -227,6 +228,9 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     ticketUrl: ticketId.HasValue ? _emailUrlHelper.BuildTicketViewUrl(ticketId.Value) : null,
                     ticketCode: ticketCode
                 );
+
+                // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                 // Phase 6A.100 Fix: Add organizer contact if available
                 if (@event.HasOrganizerContact())

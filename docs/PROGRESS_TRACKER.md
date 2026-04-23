@@ -1,9 +1,33 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-22 — Seating Redesign Slice 6 — Preset Library (8 industry-standard presets, `GET /presets` + `POST /from-preset`, 8 SVG thumbnails, PresetLibraryModal, LayoutPreview, SeatingLayoutPicker wired into SeatingSection's edit flow). Backend commit `0d06d4d1` + frontend commit `69115f06` on develop. `deploy-staging.yml` run `24800756620` + `deploy-ui-staging.yml` run `24803460831` both conclusion=success. Backend staging smoke green (2 preset layouts round-tripped through POST / DELETE, Log Analytics KQL confirms `Metric layout.preset_selected` + `Metric layout.created FromPreset=True` emission). Thumbnails serve 200 image/svg+xml from the UI origin. Browser-driven UX smoke remains user-gated.*
+*Last Updated: 2026-04-23 — Phase 7C.2b Chunk 1 (re-apply decomposed Venue Name + Address + Secondary Location block to 3 signup/volunteer commitment email templates — closes the primary user-reported regression where signup-commitment emails for event `d543629f` rendered flat single-line location despite multi-venue event). Commit `82d5f56f` on develop; `deploy-staging.yml` run `24811020806` triggered. Seating Slice 6 remains the other parallel in-flight stream (commit `0d06d4d1` / run `24800756620` — previous session entry below).*
 
 ---
 
-## 🎯 Current Session Status (2026-04-22 — Seating Redesign Slice 6: Preset Library)
+## 🎯 Current Session Status (2026-04-23 — Phase 7C.2b Chunk 1: re-apply decomposed location to signup/volunteer commitment templates)
+
+**Status**: 🚧 **COMMITTED + DEPLOY IN FLIGHT** — commit `82d5f56f` on develop; `deploy-staging.yml` run `24811020806` in_progress. 21 new unit tests green (`Phase7C2bReapplyDecomposedLocationTests`), zero regression across Infrastructure (311/311), Shared (284/289 — 5 pre-existing timezone flakes), Domain (535/537 — 2 pre-existing), Application (2252/2259 — 2 pre-existing WhatsApp flakes + 6 skips). Post-deploy DB probe + live inbox smoke on event `d543629f` pending.
+
+**Fix**: New migration `20260422234334_Phase7C2b_ReapplyDecomposedLocationInCommitmentTemplates` — chunk-scoped backup table `communications.email_templates_backup_phase7c2b`, then for each of the 3 active templates (signup-list-commitment-confirmation / -update / volunteer-commitment-confirmation) runs `UPDATE ... SET html_template = REPLACE(html_template, '{{EventLocation}}', EmailLocationBlockHtml.DecomposedBlock)` guarded by 5 post-UPDATE `RAISE EXCEPTION` invariants (`ROW_COUNT = 1`, legacy token gone, `{{LocationName}}` present, `{{UserName}}` present, body length ≥ 50000). The 2 cancellation templates (signup-list + volunteer) emit `RAISE NOTICE` only — they never contained `{{EventLocation}}` by design and are explicitly out-of-scope for the rewrite. No regex (MEMORY `feedback_regex_on_email_html.md`). No handler or params-class changes — they were already decomposition-ready after Phase 7C.2.
+
+**Why durable**: Migration references `EmailLocationBlockHtml.DecomposedBlock` from Chunk 0 — single source of truth for the decomposed block, compile-pinned by 6 unit tests. Per-template invariants fire at apply time inside the Postgres transaction, so a regression aborts the migration (nothing lands in `__EFMigrationsHistory`) rather than silently shipping a broken body. `Down()` restores from the chunk-scoped backup table by `"Id"` (quoted PascalCase — learned from the 2026-04-22 recovery `42703` error). Backup table is distinct from `_phase7c2` so restores don't collide with earlier recovery snapshots.
+
+**Evidence**:
+- Unit tests: 21 new `Phase7C2bReapplyDecomposedLocationTests` green (active-template legacy-token present × 3, cancellation-template legacy-token absent × 2, REPLACE removes-all-occurrences × 3, LocationName-added × 3, UserName-survives × 3, length ≥ 50000 × 3, length-delta-math-exact × 3, compile-pin guard × 1)
+- Infrastructure.Tests: 311/311 total green (my 21 new + 290 existing recovery/embedded-resource tests)
+- Full solution `dotnet build`: 0 errors
+- Commit `82d5f56f`, deploy run `24811020806` in progress
+
+**Scope discipline**: Chunk 1 ships the commitment templates only (5 templates, 3 active REPLACEs + 2 no-ops). Chunks 2 (7 registration/lifecycle templates needing BOTH code + body fix) and 3 (3 form-response templates, 1 shared params class) follow as independent PRs once Chunk 1 inbox-verifies green.
+
+**Follow-ups**:
+- Post-deploy staging DB probe — SELECT `(html_template LIKE '%{{LocationName}}%')` per template; expect 3 `true` + 2 `false` (cancellations unchanged).
+- Live inbox smoke — commit to signup on event `d543629f` (Christmas Dinner Dance 2025, Aurora Clubhouse + Geoga Lake Parking Lot). Expect bolded venue name + decomposed address + Parking Lot secondary block.
+- Chunk 2 — paid-ticket + registration-cancellation + event-cancellation-notifications + event-approval + event-reminder + attendees-added + preliminary-payment (7 params classes + migration `Phase7C3a_...`).
+- Chunk 3 — form-response × 3 (1 shared params class + migration `Phase7C3b_...`).
+
+---
+
+## 🎯 Previous Session Status (2026-04-22 — Seating Redesign Slice 6: Preset Library)
 
 **Status**: ✅ **BACKEND + FRONTEND DEPLOYED + WIRE-VERIFIED**. Backend commit `0d06d4d1` on develop, deploy-staging.yml run `24800756620` status=completed conclusion=success. Frontend commit `69115f06` on develop, deploy-ui-staging.yml run `24803460831` status=completed conclusion=success. Backend staging smoke ([smoke_slice6_presets.py](../../tmp/smoke_slice6_presets.py)) all 5 scenarios green: A) `GET /api/venue-layouts/presets` returns 8 presets in the expected order, every thumbnail points at `/layouts/presets/*.svg`; B) `POST /api/venue-layouts/from-preset {presetId:"theater-classic"}` → 201 template layout with `isTemplate=true`, `totalCapacity=200`, 1 zone × 200 seats, `Stage` decoration; C) `POST /from-preset {presetId:"banquet-round-8"}` → 201 with 15 round tables × 8 seats = 120 total; D) unknown preset id → 404; E) empty preset id → 400; cleanup DELETEs with fresh If-Match → 204. **Metric wire-verification**: Log Analytics KQL against workspace `dc92fcf2-7f80-4e1d-b391-fdadac65befe`, table `ContainerAppConsoleLogs_CL`, confirmed `Metric layout.preset_selected PresetId=theater-classic` and `Metric layout.created LayoutType=Theater FromPreset=True` emitted at 20:36:14 UTC (and same pair for `banquet-round-8` / `Banquet`), tagged with logger category `LankaConnect.Application.Events.Services.LayoutMetrics`. **Thumbnail serving**: `curl -I https://lankaconnect-ui-staging.../layouts/presets/theater-classic.svg` → 200 image/svg+xml.
 

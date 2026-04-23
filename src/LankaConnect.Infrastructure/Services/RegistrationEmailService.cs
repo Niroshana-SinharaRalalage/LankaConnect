@@ -338,6 +338,7 @@ public class RegistrationEmailService : IRegistrationEmailService
     /// <summary>
     /// Builds HTML for attendee details display in email template.
     /// Shows attendee names only (no ages) in paragraph format.
+    /// Slice 7 S7.7: Appends seat label when the attendee has one (assigned-seating events).
     /// </summary>
     private string BuildAttendeeDetailsHtml(Registration registration)
     {
@@ -347,7 +348,10 @@ public class RegistrationEmailService : IRegistrationEmailService
         var html = new StringBuilder();
         foreach (var attendee in registration.Attendees)
         {
-            html.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+            var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                : "";
+            html.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{seatSuffix}</p>");
         }
 
         return html.ToString().TrimEnd();

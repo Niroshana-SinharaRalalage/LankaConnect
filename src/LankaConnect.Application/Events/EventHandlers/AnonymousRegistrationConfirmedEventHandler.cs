@@ -111,12 +111,16 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 if (hasAttendeeDetails)
                 {
                     // Phase 8: Include tier name when present
+                    // Slice 7 S7.7: Append seat label for assigned-seating events
                     foreach (var attendee in registration.Attendees)
                     {
                         var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
                             ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
                             : "";
-                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}</p>");
+                        var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                            ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                            : "";
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}{seatSuffix}</p>");
                     }
                 }
 

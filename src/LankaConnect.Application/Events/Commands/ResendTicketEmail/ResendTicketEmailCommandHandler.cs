@@ -313,12 +313,16 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 }
 
                 // 8. Phase 6A.100: Format attendee details - names only (no age)
+                // Slice 7 S7.7: Append seat label for assigned-seating events
                 var attendeeDetailsHtml = new System.Text.StringBuilder();
                 if (registration.HasDetailedAttendees())
                 {
                     foreach (var attendee in registration.Attendees)
                     {
-                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                        var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                            ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                            : "";
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{seatSuffix}</p>");
                     }
                 }
                 else

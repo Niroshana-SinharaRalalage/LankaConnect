@@ -207,10 +207,14 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     foreach (var attendee in registration.Attendees)
                     {
                         // Phase 8: Include tier name if present (e.g., "John Smith (VIP)")
+                        // Slice 7 S7.7: Append seat label for assigned-seating events
                         var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
                             ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
                             : "";
-                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}</p>");
+                        var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                            ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                            : "";
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}{seatSuffix}</p>");
                     }
                 }
 

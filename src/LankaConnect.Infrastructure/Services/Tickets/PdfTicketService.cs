@@ -147,15 +147,20 @@ public class PdfTicketService : IPdfTicketService
                 // Attendee list
                 // Phase 6A.43: Use AgeCategory instead of Age
                 // Phase 8: Include tier name when present
+                // Slice 7 S7.7: Append seat label for assigned-seating events
                 foreach (var attendee in data.Attendees)
                 {
                     var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TierName)
                         ? $" — {attendee.TierName}"
                         : "";
+                    var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" · Seat {attendee.SeatLabel}"
+                        : "";
                     column.Item().Row(r =>
                     {
                         r.ConstantItem(80).Text("");
-                        r.RelativeItem().Text($"• {attendee.Name} ({attendee.AgeCategory}){tierSuffix}");
+                        r.RelativeItem().Text(
+                            $"• {attendee.Name} ({attendee.AgeCategory}){tierSuffix}{seatSuffix}");
                     });
                 }
 

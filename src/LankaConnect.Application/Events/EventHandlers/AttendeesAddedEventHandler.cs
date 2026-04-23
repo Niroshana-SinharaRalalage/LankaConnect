@@ -163,6 +163,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                 var newAttendees = allAttendees.TakeLast(domainEvent.AddedAttendeeCount).ToList();
 
                 // Phase 8: Include tier name when present
+                // Slice 7 S7.7: Append seat label for assigned-seating events
                 foreach (var attendee in newAttendees)
                 {
                     var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
@@ -171,12 +172,18 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     var tierText = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
                         ? $" [{attendee.TicketTierName}]"
                         : "";
+                    var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                        : "";
+                    var seatText = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" [Seat {attendee.SeatLabel}]"
+                        : "";
                     newAttendeesHtml.AppendLine($@"<div class=""attendee-item"">
                         <div class=""attendee-icon new"">&#10003;</div>
-                        <span class=""attendee-name"">{attendee.Name}{tierSuffix}</span>
+                        <span class=""attendee-name"">{attendee.Name}{tierSuffix}{seatSuffix}</span>
                         <span class=""attendee-badge"">NEW</span>
                     </div>");
-                    newAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){tierText}");
+                    newAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){tierText}{seatText}");
                 }
 
                 var allAttendeesHtml = new System.Text.StringBuilder();
@@ -195,12 +202,19 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     var allTierText = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
                         ? $" [{attendee.TicketTierName}]"
                         : "";
+                    // Slice 7 S7.7: Append seat label for assigned-seating events
+                    var allSeatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                        : "";
+                    var allSeatText = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" [Seat {attendee.SeatLabel}]"
+                        : "";
                     allAttendeesHtml.AppendLine($@"<div class=""attendee-item"">
                         <div class=""attendee-icon {iconClass}"">{(isNew ? "&#10003;" : initial)}</div>
-                        <span class=""attendee-name"">{attendee.Name}{allTierSuffix}</span>
+                        <span class=""attendee-name"">{attendee.Name}{allTierSuffix}{allSeatSuffix}</span>
                         {badge}
                     </div>");
-                    allAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){allTierText}");
+                    allAttendeesText.AppendLine($"- {attendee.Name} ({attendee.AgeCategory}){allTierText}{allSeatText}");
                     index++;
                 }
 

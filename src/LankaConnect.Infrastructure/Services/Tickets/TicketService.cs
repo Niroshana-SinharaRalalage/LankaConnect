@@ -126,7 +126,8 @@ public class TicketService : ITicketService
             // Phase 6A.43: Use AgeCategory instead of Age
             // Phase 8: Include tier name per attendee for tiered events
             var attendees = registration.Attendees
-                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString(), a.TicketTierName))
+                .Select(a => new TicketPdfData.AttendeeInfo(
+                    a.Name, a.AgeCategory.ToString(), a.TicketTierName, a.SeatLabel))
                 .ToList();
 
             var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()
@@ -318,8 +319,10 @@ public class TicketService : ITicketService
 
         // Prepare attendee info
         // Phase 6A.43: Use AgeCategory instead of Age
+        // Slice 7 S7.7: carry TierName + SeatLabel for assigned-seating events
         var attendees = registration.Attendees
-            .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
+            .Select(a => new TicketPdfData.AttendeeInfo(
+                a.Name, a.AgeCategory.ToString(), a.TicketTierName, a.SeatLabel))
             .ToList();
 
         var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()
@@ -420,8 +423,10 @@ public class TicketService : ITicketService
             var qrCodeBase64 = _qrCodeService.GenerateQrCodeBase64(existingTicket.QrCodeData);
 
             // 5. Prepare attendee info for PDF with CURRENT data
+            // Slice 7 S7.7: carry TierName + SeatLabel for assigned-seating events
             var attendees = registration.Attendees
-                .Select(a => new TicketPdfData.AttendeeInfo(a.Name, a.AgeCategory.ToString()))
+                .Select(a => new TicketPdfData.AttendeeInfo(
+                    a.Name, a.AgeCategory.ToString(), a.TicketTierName, a.SeatLabel))
                 .ToList();
 
             var attendeeName = registration.HasDetailedAttendees() && registration.Attendees.Any()

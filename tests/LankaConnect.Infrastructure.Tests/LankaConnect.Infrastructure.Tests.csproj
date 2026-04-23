@@ -60,6 +60,8 @@
     <Compile Include="Data\Migrations\Phase7C2RecoveryTemplatesTests.cs" />
     <!-- Phase 7C.2b Chunk 1: transformation-logic invariants for ReapplyDecomposedLocation -->
     <Compile Include="Data\Migrations\Phase7C2bReapplyDecomposedLocationTests.cs" />
+    <!-- Phase 7C.2b Chunk 2b: transformation-logic invariants for Phase7C3a registration/lifecycle migration -->
+    <Compile Include="Data\Migrations\Phase7C3aDecomposeLocationTests.cs" />
   </ItemGroup>
 
 </Project>

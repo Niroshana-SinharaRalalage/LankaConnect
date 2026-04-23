@@ -122,10 +122,10 @@ Cancellation templates 4 and 6 don't currently contain `{{EventLocation}}` and d
 3. Ensure the sending handler (or factory) threads `@event.ProjectEmailLocation()` into `WithLocationDetails(...)`.
 
 **Tasks**:
-- [ ] 2.1 RED: unit test per params class — `ToDictionary()` writes all 8 decomposed keys + legacy `EventLocation` key when `LocationDetails` is set (7 tests).
-- [ ] 2.2 GREEN: extend each params class + sending handler (7 code-side pairs).
-- [ ] 2.3 RED: Testcontainers integration test (parameterized over 7 template names) — migration REPLACEs `{{EventLocation}}` → decomposed block.
-- [ ] 2.4 GREEN: `dotnet ef migrations add Phase7C3a_DecomposeLocationInRegistrationAndLifecycleTemplates` + fill Up/Down + backup table `_phase7c3a` + per-template invariants.
+- [x] 2.1 RED: unit test per params class — `ToDictionary()` writes all 8 decomposed keys + legacy `EventLocation` key when `LocationDetails` is set (7 tests). *Delivered by Chunk 2a (commit 93f83122).*
+- [x] 2.2 GREEN: extend each params class + sending handler (7 code-side pairs). *Chunk 2a.*
+- [x] 2.3 RED: transformation-logic unit tests (`Phase7C3aDecomposeLocationTests`, 6 tests green) — assert `string.Replace` semantics for `{{EventLocation}}` and the `{{Location}}` variant + idempotence + token uniqueness.
+- [x] 2.4 GREEN: migration `20260423065018_Phase7C3a_DecomposeLocationInRegistrationAndLifecycleTemplates` with chunk-scoped backup `_phase7c3a`, per-template REPLACE, and 5 `RAISE EXCEPTION` invariants each.
 - [ ] 2.5 Run full build + tests.
 - [ ] 2.6 Commit, push, `deploy-staging.yml` green.
 - [ ] 2.7 Staging DB probe — 7 templates `has_old=false, has_new=true`.

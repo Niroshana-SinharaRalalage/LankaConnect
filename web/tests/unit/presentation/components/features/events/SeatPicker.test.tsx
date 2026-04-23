@@ -530,3 +530,59 @@ describe('SeatPicker (Slice 7 S7.3 seats + status + click + tier filter)', () =>
     expect(seat.getAttribute('data-listening')).toBe('false');
   });
 });
+
+describe('SeatPicker (Slice 7 S7.5 mobile gestures + zoom controls)', () => {
+  it('renders a zoom-controls overlay with +/− and reset buttons', async () => {
+    render(<SeatPicker layout={baseLayout()} width={600} />);
+    await screen.findByTestId('mock-stage');
+
+    expect(screen.getByTestId('seat-picker-zoom-controls')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-picker-zoom-in')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-picker-zoom-out')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-picker-zoom-reset')).toBeInTheDocument();
+  });
+
+  it('disables the zoom-out button initially (userScale = 1 is not at the min)', async () => {
+    render(<SeatPicker layout={baseLayout()} width={600} />);
+    await screen.findByTestId('mock-stage');
+
+    // Initial userScale=1 is in-range, so neither button should be disabled.
+    const zoomIn = screen.getByTestId('seat-picker-zoom-in');
+    const zoomOut = screen.getByTestId('seat-picker-zoom-out');
+    expect(zoomIn).not.toBeDisabled();
+    expect(zoomOut).not.toBeDisabled();
+  });
+
+  it('zoom-in increases stage scale', async () => {
+    render(<SeatPicker layout={baseLayout()} width={600} />);
+    await screen.findByTestId('mock-stage');
+    const stage = screen.getByTestId('mock-stage');
+    const initialScale = Number(stage.getAttribute('data-scale'));
+
+    fireEvent.click(screen.getByTestId('seat-picker-zoom-in'));
+
+    const afterScale = Number(
+      screen.getByTestId('mock-stage').getAttribute('data-scale'),
+    );
+    expect(afterScale).toBeGreaterThan(initialScale);
+  });
+
+  it('reset returns the stage to the base scale', async () => {
+    render(<SeatPicker layout={baseLayout()} width={600} />);
+    await screen.findByTestId('mock-stage');
+    const initialScale = Number(
+      screen.getByTestId('mock-stage').getAttribute('data-scale'),
+    );
+
+    fireEvent.click(screen.getByTestId('seat-picker-zoom-in'));
+    fireEvent.click(screen.getByTestId('seat-picker-zoom-in'));
+    expect(
+      Number(screen.getByTestId('mock-stage').getAttribute('data-scale')),
+    ).toBeGreaterThan(initialScale);
+
+    fireEvent.click(screen.getByTestId('seat-picker-zoom-reset'));
+    expect(
+      Number(screen.getByTestId('mock-stage').getAttribute('data-scale')),
+    ).toBeCloseTo(initialScale, 5);
+  });
+});

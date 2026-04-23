@@ -15,7 +15,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Stage,
   Layer,
@@ -25,6 +25,7 @@ import {
   Path,
   Group,
 } from 'react-konva';
+import type Konva from 'konva';
 import type {
   VenueLayoutDto,
   VenueZoneDto,
@@ -101,6 +102,11 @@ export interface SeatPickerKonvaProps {
 
 const DEFAULT_WIDTH = 960;
 
+// Zoom bounds — any change beyond these feels jumpy at typical layout sizes.
+const MIN_USER_SCALE = 0.5;
+const MAX_USER_SCALE = 4;
+const ZOOM_STEP = 1.1;
+
 // Seat color palette — consistent with SeatSelector's legend copy so an
 // attendee who has seen one style recognizes the other during the rollout.
 const SEAT_COLORS = {
@@ -129,7 +135,14 @@ export function SeatPickerKonva({
   const aspect = canvasWidth / canvasHeight;
   const stageWidth = width;
   const stageHeight = height ?? Math.round(stageWidth / aspect);
-  const scale = stageWidth / canvasWidth;
+  const baseScale = stageWidth / canvasWidth;
+
+  // User-driven zoom + pan. Base scale always fits the layout to the
+  // container; userScale multiplies on top for zoom. Position is in
+  // post-scale CSS pixels.
+  const [userScale, setUserScale] = useState(1);
+  const [userPos, setUserPos] = useState({ x: 0, y: 0 });
+  const lastTouchDistanceRef = useRef<number | null>(null);
 
   // Merge availability onto the layout's structural seats so the renderer
   // sees a single SeatRenderState shape. useMemo keeps this stable across
@@ -140,12 +153,114 @@ export function SeatPickerKonva({
     return map;
   }, [availability]);
 
+  const effectiveScale = baseScale * userScale;
+
+  // Zoom around the pointer so the point under the cursor stays put.
+  const zoomAround = useCallback(
+    (pointer: { x: number; y: number }, direction: 1 | -1) => {
+      setUserScale((prev) => {
+        const candidate = direction > 0 ? prev * ZOOM_STEP : prev / ZOOM_STEP;
+        const nextScale = Math.min(Math.max(candidate, MIN_USER_SCALE), MAX_USER_SCALE);
+        if (nextScale === prev) return prev;
+        // Translate position so the pointer stays fixed under its canvas point.
+        setUserPos((pos) => {
+          const mouseX = pointer.x;
+          const mouseY = pointer.y;
+          const worldX = (mouseX - pos.x) / (baseScale * prev);
+          const worldY = (mouseY - pos.y) / (baseScale * prev);
+          return {
+            x: mouseX - worldX * (baseScale * nextScale),
+            y: mouseY - worldY * (baseScale * nextScale),
+          };
+        });
+        return nextScale;
+      });
+    },
+    [baseScale],
+  );
+
+  const handleWheel = useCallback(
+    (e: Konva.KonvaEventObject<WheelEvent>) => {
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+      const direction: 1 | -1 = e.evt.deltaY < 0 ? 1 : -1;
+      zoomAround(pointer, direction);
+    },
+    [zoomAround],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: Konva.KonvaEventObject<TouchEvent>) => {
+      const touches = e.evt.touches;
+      if (touches.length !== 2) {
+        lastTouchDistanceRef.current = null;
+        return;
+      }
+      e.evt.preventDefault();
+      const [t1, t2] = [touches[0], touches[1]];
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const midpoint = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+      const stage = e.target.getStage();
+      if (stage) {
+        const rect = stage.container().getBoundingClientRect();
+        midpoint.x -= rect.left;
+        midpoint.y -= rect.top;
+      }
+
+      const prevDistance = lastTouchDistanceRef.current;
+      if (prevDistance !== null) {
+        const ratio = distance / prevDistance;
+        if (Math.abs(ratio - 1) > 0.02) {
+          zoomAround(midpoint, ratio > 1 ? 1 : -1);
+        }
+      }
+      lastTouchDistanceRef.current = distance;
+    },
+    [zoomAround],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDistanceRef.current = null;
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      setUserPos({ x: e.target.x(), y: e.target.y() });
+    },
+    [],
+  );
+
+  const resetView = useCallback(() => {
+    setUserScale(1);
+    setUserPos({ x: 0, y: 0 });
+  }, []);
+
+  const zoomIn = useCallback(() => {
+    zoomAround({ x: stageWidth / 2, y: stageHeight / 2 }, 1);
+  }, [zoomAround, stageWidth, stageHeight]);
+
+  const zoomOut = useCallback(() => {
+    zoomAround({ x: stageWidth / 2, y: stageHeight / 2 }, -1);
+  }, [zoomAround, stageWidth, stageHeight]);
+
   return (
+    <div style={{ position: 'relative', width: stageWidth, height: stageHeight }}>
     <Stage
       width={stageWidth}
       height={stageHeight}
-      scaleX={scale}
-      scaleY={scale}
+      scaleX={effectiveScale}
+      scaleY={effectiveScale}
+      x={userPos.x}
+      y={userPos.y}
+      draggable
+      onWheel={handleWheel}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onDragEnd={handleDragEnd}
       data-testid="seat-picker-stage"
     >
       {/* Background + decorations */}
@@ -192,6 +307,65 @@ export function SeatPickerKonva({
         ))}
       </Layer>
     </Stage>
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        background: 'rgba(255,255,255,0.85)',
+        borderRadius: 6,
+        padding: 4,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      }}
+      aria-label="Seat map zoom controls"
+      data-testid="seat-picker-zoom-controls"
+    >
+      <button
+        type="button"
+        onClick={zoomIn}
+        disabled={userScale >= MAX_USER_SCALE}
+        aria-label="Zoom in"
+        data-testid="seat-picker-zoom-in"
+        style={{
+          width: 28, height: 28, fontSize: 18, lineHeight: 1,
+          border: '1px solid #d1d5db', borderRadius: 4,
+          background: '#fff', cursor: userScale >= MAX_USER_SCALE ? 'not-allowed' : 'pointer',
+        }}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        onClick={zoomOut}
+        disabled={userScale <= MIN_USER_SCALE}
+        aria-label="Zoom out"
+        data-testid="seat-picker-zoom-out"
+        style={{
+          width: 28, height: 28, fontSize: 18, lineHeight: 1,
+          border: '1px solid #d1d5db', borderRadius: 4,
+          background: '#fff', cursor: userScale <= MIN_USER_SCALE ? 'not-allowed' : 'pointer',
+        }}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        onClick={resetView}
+        aria-label="Reset view"
+        data-testid="seat-picker-zoom-reset"
+        style={{
+          width: 28, height: 28, fontSize: 11, lineHeight: 1,
+          border: '1px solid #d1d5db', borderRadius: 4,
+          background: '#fff', cursor: 'pointer',
+        }}
+      >
+        ⤾
+      </button>
+    </div>
+    </div>
   );
 }
 

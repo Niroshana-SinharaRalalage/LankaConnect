@@ -9,7 +9,12 @@ import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
 import type { AnonymousRegistrationRequest, AttendeeDto, RsvpRequest, GroupPricingTierDto, DonationConfigurationDto, AddOnConfigurationDto, CollectionConfigurationDto, SponsorConfigurationDto, TicketTierDto } from '@/infrastructure/api/types/events.types';
 import { AgeCategory, Gender, TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
-import { SeatSelector } from './SeatSelector';
+// Slice 7 S7.6: swap from the DOM-based SeatSelector to the Konva-based
+// SeatPickerView. Same public contract (eventId, maxSeats, userId,
+// onSeatsConfirmed, onCancel) so only the import changes. SeatSelector.tsx
+// remains in the tree as dead code until Slice 7 closeout confirms no
+// rollback is needed, then it gets removed in the cleanup PR.
+import { SeatPickerView as SeatSelector } from './SeatPickerView';
 import { DonationOptionInForm } from './DonationOptionInForm';
 import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { CollectionOptionInForm } from './CollectionOptionInForm';

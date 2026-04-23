@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // 1. Mock next/dynamic so the dynamic-import wrapper becomes synchronous
 //    for test purposes. This keeps Vitest from having to resolve the konva
@@ -76,12 +76,18 @@ vi.mock('react-konva', () => ({
     }),
   Circle: (rest: Record<string, unknown>) =>
     React.createElement('div', {
-      'data-testid': 'mock-circle',
+      'data-testid': (rest['data-testid'] as string | undefined) ?? 'mock-circle',
       'data-cx': String(rest.x ?? ''),
       'data-cy': String(rest.y ?? ''),
       'data-radius': String(rest.radius ?? ''),
       'data-fill': String(rest.fill ?? ''),
       'data-stroke': String(rest.stroke ?? ''),
+      'data-opacity': String(rest.opacity ?? ''),
+      'data-listening': String(rest.listening ?? ''),
+      // onClick comes through when the seat is selectable. react-konva's
+      // onClick/onTap are renamed to the React DOM equivalents in the mock so
+      // fireEvent.click() works the same way it would in the real canvas.
+      onClick: rest.onClick as (() => void) | undefined,
     }),
   Text: (rest: Record<string, unknown>) =>
     React.createElement(
@@ -341,5 +347,186 @@ describe('SeatPicker (Slice 7 S7.2 structural shapes)', () => {
     // Placeholder text is rendered for the zone; no throw.
     const labels = screen.getAllByTestId('mock-text').map((t) => t.textContent);
     expect(labels).toContain('Bad Zone');
+  });
+});
+
+describe('SeatPicker (Slice 7 S7.3 seats + status + click + tier filter)', () => {
+  const ZONE_ID = 'z1';
+
+  const zoneLayout = (seatsOverride?: Partial<{ isEnabled: boolean; id: string; row: string; number: number; label: string; sortOrder: number; isAccessible: boolean }>[]): VenueLayoutDto =>
+    baseLayout({
+      zones: [
+        {
+          id: ZONE_ID,
+          name: 'Orchestra',
+          color: '#3b82f6',
+          sortOrder: 0,
+          enabledSeatCount: 6,
+          totalSeatCount: 6,
+          shape: ZoneShape.Rect,
+          geometry: '{"x":100,"y":140,"width":1000,"height":320}',
+          seats: (seatsOverride ?? []).length
+            ? (seatsOverride as unknown as VenueLayoutDto['zones'][0]['seats'])
+            : [
+                { id: 's-a1', row: 'A', number: 1, label: 'A1', sortOrder: 0, isEnabled: true, isAccessible: false },
+                { id: 's-a2', row: 'A', number: 2, label: 'A2', sortOrder: 1, isEnabled: true, isAccessible: false },
+                { id: 's-a3', row: 'A', number: 3, label: 'A3', sortOrder: 2, isEnabled: true, isAccessible: false },
+                { id: 's-b1', row: 'B', number: 1, label: 'B1', sortOrder: 3, isEnabled: true, isAccessible: false },
+                { id: 's-b2', row: 'B', number: 2, label: 'B2', sortOrder: 4, isEnabled: true, isAccessible: false },
+                { id: 's-b3', row: 'B', number: 3, label: 'B3', sortOrder: 5, isEnabled: true, isAccessible: false },
+              ],
+        },
+      ],
+    });
+
+  it('renders a circle per seat with the zone color when no availability is supplied', async () => {
+    render(<SeatPicker layout={zoneLayout()} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    expect(screen.getByTestId('seat-s-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-s-b3')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-s-a1').getAttribute('data-fill')).toBe('#3b82f6');
+  });
+
+  it('applies status-specific colors from the availability map', async () => {
+    const availability = [
+      { id: 's-a1', label: 'A1', row: 'A', number: 1, isEnabled: true, isAccessible: false, status: 'Held', zoneId: ZONE_ID, zoneName: 'Orchestra', zoneColor: '#3b82f6' },
+      { id: 's-a2', label: 'A2', row: 'A', number: 2, isEnabled: true, isAccessible: false, status: 'Reserved', zoneId: ZONE_ID, zoneName: 'Orchestra', zoneColor: '#3b82f6' },
+      { id: 's-a3', label: 'A3', row: 'A', number: 3, isEnabled: true, isAccessible: false, status: 'Available', zoneId: ZONE_ID, zoneName: 'Orchestra', zoneColor: '#3b82f6' },
+    ];
+    render(
+      <SeatPicker
+        layout={zoneLayout()}
+        availability={availability as never}
+        width={600}
+      />,
+    );
+    await screen.findByTestId('mock-stage');
+
+    expect(screen.getByTestId('seat-s-a1').getAttribute('data-fill')).toBe('#f59e0b'); // amber (held)
+    expect(screen.getByTestId('seat-s-a2').getAttribute('data-fill')).toBe('#ef4444'); // red (reserved)
+    expect(screen.getByTestId('seat-s-a3').getAttribute('data-fill')).toBe('#3b82f6'); // available → zone color
+  });
+
+  it('paints selected seats emerald regardless of other status', async () => {
+    const selected = new Set(['s-a1']);
+    render(
+      <SeatPicker
+        layout={zoneLayout()}
+        selectedSeatIds={selected}
+        width={600}
+      />,
+    );
+    await screen.findByTestId('mock-stage');
+
+    expect(screen.getByTestId('seat-s-a1').getAttribute('data-fill')).toBe('#10b981');
+  });
+
+  it('grays seats outside the tier-filter and makes them non-listening', async () => {
+    const eligible = new Set(['s-a1', 's-a2']);
+    render(
+      <SeatPicker
+        layout={zoneLayout()}
+        eligibleSeatIds={eligible}
+        width={600}
+      />,
+    );
+    await screen.findByTestId('mock-stage');
+
+    // eligible seats keep the zone color
+    expect(screen.getByTestId('seat-s-a1').getAttribute('data-fill')).toBe('#3b82f6');
+    // ineligible seats render with the filtered palette (pale gray)
+    expect(screen.getByTestId('seat-s-b1').getAttribute('data-fill')).toBe('#e5e7eb');
+    expect(screen.getByTestId('seat-s-b1').getAttribute('data-listening')).toBe('false');
+  });
+
+  it('fires onSeatClick only for selectable seats (Available + eligible)', async () => {
+    const onSeatClick = vi.fn();
+    const availability = [
+      { id: 's-a1', label: 'A1', row: 'A', number: 1, isEnabled: true, isAccessible: false, status: 'Reserved', zoneId: ZONE_ID, zoneName: 'Orchestra', zoneColor: '#3b82f6' },
+      { id: 's-a2', label: 'A2', row: 'A', number: 2, isEnabled: true, isAccessible: false, status: 'Available', zoneId: ZONE_ID, zoneName: 'Orchestra', zoneColor: '#3b82f6' },
+    ];
+    render(
+      <SeatPicker
+        layout={zoneLayout()}
+        availability={availability as never}
+        onSeatClick={onSeatClick}
+        width={600}
+      />,
+    );
+    await screen.findByTestId('mock-stage');
+
+    // Reserved seat click should be a no-op.
+    fireEvent.click(screen.getByTestId('seat-s-a1'));
+    expect(onSeatClick).not.toHaveBeenCalled();
+    // Available + implicitly eligible (no filter) → fires.
+    fireEvent.click(screen.getByTestId('seat-s-a2'));
+    expect(onSeatClick).toHaveBeenCalledTimes(1);
+    expect(onSeatClick).toHaveBeenCalledWith('s-a2');
+  });
+
+  it('allows clicking a selected seat again (so callers can implement deselect)', async () => {
+    const onSeatClick = vi.fn();
+    const selected = new Set(['s-a1']);
+    render(
+      <SeatPicker
+        layout={zoneLayout()}
+        selectedSeatIds={selected}
+        onSeatClick={onSeatClick}
+        width={600}
+      />,
+    );
+    await screen.findByTestId('mock-stage');
+
+    fireEvent.click(screen.getByTestId('seat-s-a1'));
+    expect(onSeatClick).toHaveBeenCalledWith('s-a1');
+  });
+
+  it('renders round-table seats as a ring of circles around the table', async () => {
+    const layout = baseLayout({
+      layoutType: 'Banquet',
+      tables: [
+        {
+          id: 't1',
+          venueLayoutId: 'layout-1',
+          label: 'T1',
+          shape: TableShape.Round,
+          geometry: '{"centerX":200,"centerY":200,"radius":60}',
+          capacity: 4,
+          sortOrder: 0,
+          enabledSeatCount: 4,
+          seats: [
+            { id: 't1-s1', row: 'T1', number: 1, label: 'T1-S1', sortOrder: 0, isEnabled: true, isAccessible: false },
+            { id: 't1-s2', row: 'T1', number: 2, label: 'T1-S2', sortOrder: 1, isEnabled: true, isAccessible: false },
+            { id: 't1-s3', row: 'T1', number: 3, label: 'T1-S3', sortOrder: 2, isEnabled: true, isAccessible: false },
+            { id: 't1-s4', row: 'T1', number: 4, label: 'T1-S4', sortOrder: 3, isEnabled: true, isAccessible: false },
+          ],
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+    await screen.findByTestId('mock-stage');
+
+    // All 4 seat circles are present.
+    expect(screen.getByTestId('seat-t1-s1')).toBeInTheDocument();
+    expect(screen.getByTestId('seat-t1-s4')).toBeInTheDocument();
+    // They sit at ~60 + seatRadius + 3 ≈ 65–73 away from the table center.
+    const seat1 = screen.getByTestId('seat-t1-s1');
+    const cx = Number(seat1.getAttribute('data-cx'));
+    const cy = Number(seat1.getAttribute('data-cy'));
+    const dist = Math.sqrt((cx - 200) ** 2 + (cy - 200) ** 2);
+    expect(dist).toBeGreaterThan(60);
+  });
+
+  it('renders structurally-disabled seats with the disabled palette and no listening', async () => {
+    const layout = zoneLayout([
+      { id: 's-a1', row: 'A', number: 1, label: 'A1', sortOrder: 0, isEnabled: false, isAccessible: false },
+    ]);
+    render(<SeatPicker layout={layout} width={600} />);
+    await screen.findByTestId('mock-stage');
+
+    const seat = screen.getByTestId('seat-s-a1');
+    expect(seat.getAttribute('data-fill')).toBe('#d1d5db');
+    expect(seat.getAttribute('data-listening')).toBe('false');
   });
 });

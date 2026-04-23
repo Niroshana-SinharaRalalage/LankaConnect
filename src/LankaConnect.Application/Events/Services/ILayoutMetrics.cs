@@ -14,9 +14,8 @@ namespace LankaConnect.Application.Events.Services;
 /// </list>
 ///
 /// Slice 6 adds <c>layout.preset_selected</c>. Slice 7 adds
-/// <c>seatpicker.selection_completed</c>. The remaining two canvas-editor
-/// metrics (<c>layout.canvas_editor_opened</c>, <c>layout.canvas_editor_saved</c>)
-/// ship with Slice 8.
+/// <c>seatpicker.selection_completed</c>. Slice 8 adds
+/// <c>layout.canvas_editor_opened</c> and <c>layout.canvas_editor_saved</c>.
 ///
 /// Emission channel: structured Serilog log events with a stable template. Azure Container Apps
 /// log analytics queries pick them up by <c>MetricName</c> property.
@@ -53,6 +52,20 @@ public interface ILayoutMetrics
     /// a small metrics endpoint. Drives the seating-UX-friction dashboard.
     /// </summary>
     void SeatPickerSelectionCompleted(Guid eventId, int attendeeCount, long timeToCompleteMs);
+
+    /// <summary>
+    /// Slice 8 S8.1: fires when an organizer opens the canvas editor modal.
+    /// Pairs with <c>LayoutCanvasEditorSaved</c> — dashboard ratio
+    /// <c>opened/saved</c> measures editor abandonment per architect spec.
+    /// </summary>
+    void LayoutCanvasEditorOpened(Guid layoutId);
+
+    /// <summary>
+    /// Slice 8 S8.8: fires when an organizer saves a canvas-editor session.
+    /// <paramref name="changesCount"/> is the number of mutations the client
+    /// included in the atomic <c>PUT /batch</c> payload.
+    /// </summary>
+    void LayoutCanvasEditorSaved(Guid layoutId, int changesCount);
 }
 
 /// <summary>

@@ -335,6 +335,33 @@ export class VenueLayoutsRepository {
       // Metrics are best-effort — intentionally swallow failures.
     }
   }
+
+  /**
+   * Slice 8 S8.1: fire-and-forget metric — organizer opened the canvas editor.
+   * Errors swallowed so a metrics-service outage cannot block the editor flow.
+   */
+  async recordCanvasEditorOpened(layoutId: string): Promise<void> {
+    try {
+      await apiClient.post('/seating-metrics/canvas-editor-opened', { layoutId });
+    } catch {
+      // Metrics are best-effort — intentionally swallow failures.
+    }
+  }
+
+  /**
+   * Slice 8 S8.8: fire-and-forget metric — organizer saved a canvas-editor session.
+   * `changesCount` is the number of mutations packed into the companion PUT /batch payload.
+   */
+  async recordCanvasEditorSaved(layoutId: string, changesCount: number): Promise<void> {
+    try {
+      await apiClient.post('/seating-metrics/canvas-editor-saved', {
+        layoutId,
+        changesCount,
+      });
+    } catch {
+      // Metrics are best-effort — intentionally swallow failures.
+    }
+  }
 }
 
 export const venueLayoutsRepository = new VenueLayoutsRepository();

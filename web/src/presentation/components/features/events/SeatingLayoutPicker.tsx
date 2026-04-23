@@ -31,6 +31,7 @@ import {
 import { Button } from '@/presentation/components/ui/Button';
 import { PresetLibraryModal } from './PresetLibraryModal';
 import { LayoutPreview } from './LayoutPreview';
+import { CanvasEditorModal } from './CanvasEditorModal';
 import type { LayoutPresetDto, VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 // Re-export the imported hook so unused-import linting does not fire.
@@ -51,6 +52,8 @@ export function SeatingLayoutPicker({
   const [modalOpen, setModalOpen] = useState(false);
   const [pickingPresetId, setPickingPresetId] = useState<string | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
+  // Slice 8 S8.1: canvas editor is a separate modal, opened only once a layout exists.
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const layoutQuery = useVenueLayoutByEvent(eventId);
   const createFromPreset = useCreateLayoutFromPreset();
@@ -134,14 +137,24 @@ export function SeatingLayoutPicker({
                 {layout.layoutType} · {layout.totalCapacity} seats
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setModalOpen(true)}
-              data-testid="layout-picker-change"
-            >
-              Change layout
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditorOpen(true)}
+                data-testid="layout-picker-customize"
+              >
+                Customize
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalOpen(true)}
+                data-testid="layout-picker-change"
+              >
+                Change layout
+              </Button>
+            </div>
           </div>
           <div className="rounded border border-neutral-100 bg-neutral-50/60 p-2">
             <LayoutPreview
@@ -174,6 +187,18 @@ export function SeatingLayoutPicker({
         isSelecting={createFromPreset.isPending || assignLayout.isPending}
         selectingPresetId={pickingPresetId}
       />
+
+      {layout && (
+        <CanvasEditorModal
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          layout={layout}
+          onLayoutSaved={(updated) => {
+            onLayoutChanged?.(updated);
+            setEditorOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

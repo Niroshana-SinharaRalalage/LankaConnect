@@ -55,6 +55,23 @@ public class LayoutMetrics : ILayoutMetrics
             timeToCompleteMs);
     }
 
+    public void LayoutCanvasEditorOpened(Guid layoutId)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} LayoutId={LayoutId}",
+            "layout.canvas_editor_opened",
+            layoutId);
+    }
+
+    public void LayoutCanvasEditorSaved(Guid layoutId, int changesCount)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} LayoutId={LayoutId} ChangesCount={ChangesCount}",
+            "layout.canvas_editor_saved",
+            layoutId,
+            changesCount);
+    }
+
     private static string ToTag(StructuralEditRejectionReason reason) => reason switch
     {
         StructuralEditRejectionReason.SeatsReserved => "seats_reserved",

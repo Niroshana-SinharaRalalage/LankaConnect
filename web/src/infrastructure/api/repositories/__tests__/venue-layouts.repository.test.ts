@@ -319,3 +319,42 @@ describe('VenueLayoutsRepository — Slice 6 preset library', () => {
     ).rejects.toThrow('404 Not Found');
   });
 });
+
+describe('VenueLayoutsRepository — Slice 8 canvas editor metrics', () => {
+  it('recordCanvasEditorOpened POSTs /seating-metrics/canvas-editor-opened with layoutId', async () => {
+    mockPost.mockResolvedValueOnce(undefined);
+
+    await venueLayoutsRepository.recordCanvasEditorOpened(LAYOUT_ID);
+
+    expect(mockPost).toHaveBeenCalledWith('/seating-metrics/canvas-editor-opened', {
+      layoutId: LAYOUT_ID,
+    });
+  });
+
+  it('recordCanvasEditorOpened swallows errors — must never block the editor flow', async () => {
+    mockPost.mockRejectedValueOnce(new Error('500 Internal Server Error'));
+
+    await expect(
+      venueLayoutsRepository.recordCanvasEditorOpened(LAYOUT_ID),
+    ).resolves.toBeUndefined();
+  });
+
+  it('recordCanvasEditorSaved POSTs /seating-metrics/canvas-editor-saved with layoutId + changesCount', async () => {
+    mockPost.mockResolvedValueOnce(undefined);
+
+    await venueLayoutsRepository.recordCanvasEditorSaved(LAYOUT_ID, 7);
+
+    expect(mockPost).toHaveBeenCalledWith('/seating-metrics/canvas-editor-saved', {
+      layoutId: LAYOUT_ID,
+      changesCount: 7,
+    });
+  });
+
+  it('recordCanvasEditorSaved swallows errors — metric must never block save completion', async () => {
+    mockPost.mockRejectedValueOnce(new Error('502 Bad Gateway'));
+
+    await expect(
+      venueLayoutsRepository.recordCanvasEditorSaved(LAYOUT_ID, 0),
+    ).resolves.toBeUndefined();
+  });
+});

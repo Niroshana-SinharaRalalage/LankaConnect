@@ -313,6 +313,28 @@ export class VenueLayoutsRepository {
   async releaseSeats(eventId: string, request: ReleaseSeatsRequest): Promise<void> {
     await apiClient.post(`${this.basePath}/events/${eventId}/seats/release`, request);
   }
+
+  /**
+   * Slice 7 S7.8: fire-and-forget client-reported seating metric. Posts to
+   * `POST /api/seating-metrics/selection-completed` which emits the
+   * `seatpicker.selection_completed` named log metric on the backend.
+   * Errors are swallowed — this must never block the registration flow.
+   */
+  async recordSeatPickerSelectionCompleted(
+    eventId: string,
+    attendeeCount: number,
+    timeToCompleteMs: number
+  ): Promise<void> {
+    try {
+      await apiClient.post('/seating-metrics/selection-completed', {
+        eventId,
+        attendeeCount,
+        timeToCompleteMs,
+      });
+    } catch {
+      // Metrics are best-effort — intentionally swallow failures.
+    }
+  }
 }
 
 export const venueLayoutsRepository = new VenueLayoutsRepository();

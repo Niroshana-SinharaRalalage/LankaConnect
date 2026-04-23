@@ -37,6 +37,7 @@ import {
 } from '@/presentation/hooks/useVenueLayouts';
 import { Button } from '@/presentation/components/ui/Button';
 import { SeatPicker } from './SeatPicker';
+import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
 import type {
   HoldSeatsResult,
   SeatAvailabilityDto,
@@ -81,6 +82,9 @@ export function SeatPickerView({
   // ── Session + selection state ──────────────────────────────────────
   const sessionIdRef = useRef<string>(crypto.randomUUID());
   const [selectedSeatIds, setSelectedSeatIds] = useState<Set<string>>(new Set());
+
+  // Slice 7 S7.8: wall-clock start for the seatpicker.selection_completed metric
+  const mountedAtRef = useRef<number>(Date.now());
 
   // ── Timer state ────────────────────────────────────────────────────
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -229,8 +233,14 @@ export function SeatPickerView({
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    // Slice 7 S7.8: fire-and-forget seatpicker.selection_completed metric
+    void venueLayoutsRepository.recordSeatPickerSelectionCompleted(
+      eventId,
+      seatIds.length,
+      Date.now() - mountedAtRef.current,
+    );
     onSeatsConfirmed(seatIds, sessionIdRef.current);
-  }, [selectedSeatIds, maxSeats, onSeatsConfirmed]);
+  }, [selectedSeatIds, maxSeats, onSeatsConfirmed, eventId]);
 
   const handleCancel = useCallback(() => {
     releaseHolds();

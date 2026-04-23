@@ -45,6 +45,16 @@ public class LayoutMetrics : ILayoutMetrics
             presetId);
     }
 
+    public void SeatPickerSelectionCompleted(Guid eventId, int attendeeCount, long timeToCompleteMs)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} EventId={EventId} AttendeeCount={AttendeeCount} TimeToCompleteMs={TimeToCompleteMs}",
+            "seatpicker.selection_completed",
+            eventId,
+            attendeeCount,
+            timeToCompleteMs);
+    }
+
     private static string ToTag(StructuralEditRejectionReason reason) => reason switch
     {
         StructuralEditRejectionReason.SeatsReserved => "seats_reserved",

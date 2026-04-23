@@ -13,9 +13,10 @@ namespace LankaConnect.Application.Events.Services;
 ///   <item><c>layout.structural_edit_rejected</c> (tags: <c>LayoutId</c>, <c>Reason</c>)</item>
 /// </list>
 ///
-/// Slice 6 adds <c>layout.preset_selected</c>. The remaining three metrics
-/// (<c>layout.canvas_editor_opened</c>, <c>layout.canvas_editor_saved</c>,
-/// <c>seatpicker.selection_completed</c>) ship with Slices 7-8.
+/// Slice 6 adds <c>layout.preset_selected</c>. Slice 7 adds
+/// <c>seatpicker.selection_completed</c>. The remaining two canvas-editor
+/// metrics (<c>layout.canvas_editor_opened</c>, <c>layout.canvas_editor_saved</c>)
+/// ship with Slice 8.
 ///
 /// Emission channel: structured Serilog log events with a stable template. Azure Container Apps
 /// log analytics queries pick them up by <c>MetricName</c> property.
@@ -44,6 +45,14 @@ public interface ILayoutMetrics
     /// safe to use as a dashboard grouping tag.
     /// </summary>
     void PresetSelected(string presetId);
+
+    /// <summary>
+    /// Slice 7 S7.8: fires when a registrant has finished picking seats in the
+    /// SeatPicker and confirms the selection. The client measures the elapsed
+    /// wall-clock time from SeatPicker mount to confirm, and reports it back via
+    /// a small metrics endpoint. Drives the seating-UX-friction dashboard.
+    /// </summary>
+    void SeatPickerSelectionCompleted(Guid eventId, int attendeeCount, long timeToCompleteMs);
 }
 
 /// <summary>

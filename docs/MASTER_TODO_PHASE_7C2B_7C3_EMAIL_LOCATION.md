@@ -126,9 +126,9 @@ Cancellation templates 4 and 6 don't currently contain `{{EventLocation}}` and d
 - [x] 2.2 GREEN: extend each params class + sending handler (7 code-side pairs). *Chunk 2a.*
 - [x] 2.3 RED: transformation-logic unit tests (`Phase7C3aDecomposeLocationTests`, 6 tests green) — assert `string.Replace` semantics for `{{EventLocation}}` and the `{{Location}}` variant + idempotence + token uniqueness.
 - [x] 2.4 GREEN: migration `20260423065018_Phase7C3a_DecomposeLocationInRegistrationAndLifecycleTemplates` with chunk-scoped backup `_phase7c3a`, per-template REPLACE, and 5 `RAISE EXCEPTION` invariants each.
-- [ ] 2.5 Run full build + tests.
-- [ ] 2.6 Commit, push, `deploy-staging.yml` green.
-- [ ] 2.7 Staging DB probe — 7 templates `has_old=false, has_new=true`.
+- [x] 2.5 Run full build + tests. *Infrastructure.Tests 317/317 green; Phase 7C slice 51/51 green.*
+- [x] 2.6 Commit, push, `deploy-staging.yml` green. *First deploy (run 24853603855, commit ab885c2f) failed at event-cancellation-notifications anchor invariant — body uses "Dear LankaConnect Community," not {{UserName}}. Staging probe confirmed the transaction rolled back cleanly (no backup table, no history row). Amended migration (commit 8c7c5bf4) switched anchor to {{EventTitle}} and demoted preliminary-registration-payment-pending (no location token) to NOTICE-only no-op. Re-deploy run 24855280067 green.*
+- [x] 2.7 Staging DB probe — 6 active templates `has_standard=False, has_decomposed=True`; preliminary length unchanged (57228). Byte-delta math matches (+713 for `{{EventLocation}}` instances, +718 for the `{{Location}}` variant in event-reminder).
 - [ ] 2.8 Live inbox smoke — at minimum: paid-ticket registration confirmation on a multi-venue event; registration cancellation; event approval; event reminder. (4 of 7 covered manually; the remaining 3 are code-path-identical.)
 - [ ] 2.9 Update tracking docs.
 

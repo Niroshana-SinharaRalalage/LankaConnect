@@ -37,10 +37,11 @@ vi.mock('next/dynamic', () => ({
   },
 }));
 
-// 2. Mock react-konva. Stage/Layer/Rect become plain divs so assertions can
-//    read DOM attributes without touching the real canvas API. We surface
-//    props as data-* attributes rather than spreading them, so a consumer's
-//    `data-testid` can't clobber the mock's own testid.
+// 2. Mock react-konva. Stage/Layer/Rect/Circle/Text/Path/Group become plain
+//    divs so assertions can read DOM attributes without touching the real
+//    canvas API. We surface props as data-* attributes rather than
+//    spreading them, so a consumer's `data-testid` can't clobber the mock's
+//    own testid.
 vi.mock('react-konva', () => ({
   __esModule: true,
   Stage: ({ children, width, height, scaleX }: { children?: React.ReactNode; width?: number; height?: number; scaleX?: number }) =>
@@ -56,6 +57,12 @@ vi.mock('react-konva', () => ({
     ),
   Layer: ({ children }: { children?: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'mock-layer' }, children),
+  Group: ({ children, rotation }: { children?: React.ReactNode; rotation?: number }) =>
+    React.createElement(
+      'div',
+      { 'data-testid': 'mock-group', 'data-rotation': String(rotation ?? 0) },
+      children,
+    ),
   Rect: (rest: Record<string, unknown>) =>
     React.createElement('div', {
       'data-testid': 'mock-rect',
@@ -64,11 +71,44 @@ vi.mock('react-konva', () => ({
       'data-width': String(rest.width ?? ''),
       'data-height': String(rest.height ?? ''),
       'data-fill': String(rest.fill ?? ''),
+      'data-stroke': String(rest.stroke ?? ''),
+      'data-dash': String((rest.dash as unknown) ?? ''),
+    }),
+  Circle: (rest: Record<string, unknown>) =>
+    React.createElement('div', {
+      'data-testid': 'mock-circle',
+      'data-cx': String(rest.x ?? ''),
+      'data-cy': String(rest.y ?? ''),
+      'data-radius': String(rest.radius ?? ''),
+      'data-fill': String(rest.fill ?? ''),
+      'data-stroke': String(rest.stroke ?? ''),
+    }),
+  Text: (rest: Record<string, unknown>) =>
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'mock-text',
+        'data-fill': String(rest.fill ?? ''),
+        'data-font-size': String(rest.fontSize ?? ''),
+      },
+      String(rest.text ?? ''),
+    ),
+  Path: (rest: Record<string, unknown>) =>
+    React.createElement('div', {
+      'data-testid': 'mock-path',
+      'data-d': String(rest.data ?? ''),
+      'data-fill': String(rest.fill ?? ''),
+      'data-stroke': String(rest.stroke ?? ''),
     }),
 }));
 
 import { SeatPicker } from '@/presentation/components/features/events/SeatPicker';
-import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
+import {
+  DecorationKind,
+  TableShape,
+  ZoneShape,
+  type VenueLayoutDto,
+} from '@/infrastructure/api/types/events.types';
 
 function baseLayout(overrides: Partial<VenueLayoutDto> = {}): VenueLayoutDto {
   return {
@@ -91,15 +131,17 @@ function baseLayout(overrides: Partial<VenueLayoutDto> = {}): VenueLayoutDto {
 }
 
 describe('SeatPicker (Slice 7 S7.1 shell)', () => {
-  it('resolves the dynamic Konva chunk and renders a Stage + Layer + background Rect', async () => {
+  it('resolves the dynamic Konva chunk and renders a Stage with layers + background Rect', async () => {
     render(<SeatPicker layout={baseLayout()} width={600} />);
 
     // Wait for React.lazy to resolve the Konva chunk.
     await waitFor(() =>
       expect(screen.getByTestId('mock-stage')).toBeInTheDocument(),
     );
-    expect(screen.getByTestId('mock-layer')).toBeInTheDocument();
-    expect(screen.getByTestId('mock-rect')).toBeInTheDocument();
+    // S7.2 introduces three layers (background+decorations, zones, tables).
+    expect(screen.getAllByTestId('mock-layer').length).toBeGreaterThanOrEqual(1);
+    // Empty layout → at least the canvas background rect.
+    expect(screen.getAllByTestId('mock-rect').length).toBeGreaterThanOrEqual(1);
   });
 
   it('sets stage dimensions and scale from the layout canvas and requested width', async () => {
@@ -118,10 +160,13 @@ describe('SeatPicker (Slice 7 S7.1 shell)', () => {
     });
     render(<SeatPicker layout={layout} width={800} />);
 
-    const rect = await screen.findByTestId('mock-rect');
-    expect(rect.getAttribute('data-fill')).toBe('#111827');
-    expect(rect.getAttribute('data-width')).toBe('1000');
-    expect(rect.getAttribute('data-height')).toBe('500');
+    await screen.findByTestId('mock-stage');
+    const rects = screen.getAllByTestId('mock-rect');
+    // The canvas background is always the first rect.
+    const bg = rects[0];
+    expect(bg.getAttribute('data-fill')).toBe('#111827');
+    expect(bg.getAttribute('data-width')).toBe('1000');
+    expect(bg.getAttribute('data-height')).toBe('500');
   });
 
   it('falls back to 1200x800 #ffffff when canvas is missing', async () => {
@@ -129,9 +174,172 @@ describe('SeatPicker (Slice 7 S7.1 shell)', () => {
     delete (layout as unknown as Record<string, unknown>).canvas;
     render(<SeatPicker layout={layout} width={960} />);
 
-    const rect = await screen.findByTestId('mock-rect');
-    expect(rect.getAttribute('data-fill')).toBe('#ffffff');
-    expect(rect.getAttribute('data-width')).toBe('1200');
-    expect(rect.getAttribute('data-height')).toBe('800');
+    await screen.findByTestId('mock-stage');
+    const bg = screen.getAllByTestId('mock-rect')[0];
+    expect(bg.getAttribute('data-fill')).toBe('#ffffff');
+    expect(bg.getAttribute('data-width')).toBe('1200');
+    expect(bg.getAttribute('data-height')).toBe('800');
+  });
+});
+
+describe('SeatPicker (Slice 7 S7.2 structural shapes)', () => {
+  it('renders a rect zone with the zone color + name label', async () => {
+    const layout = baseLayout({
+      zones: [
+        {
+          id: 'z1',
+          name: 'Orchestra',
+          color: '#3b82f6',
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          totalSeatCount: 0,
+          seats: [],
+          shape: ZoneShape.Rect,
+          geometry: '{"x":100,"y":140,"width":1000,"height":320}',
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    // There should now be at least two rects on the stage: the canvas
+    // background + the zone rect. And at least one Text labeled 'Orchestra'.
+    const rects = screen.getAllByTestId('mock-rect');
+    expect(rects.length).toBeGreaterThanOrEqual(2);
+    const zoneRect = rects.find((r) => r.getAttribute('data-fill') === '#3b82f6');
+    expect(zoneRect).toBeTruthy();
+
+    const labels = screen.getAllByTestId('mock-text').map((t) => t.textContent);
+    expect(labels).toContain('Orchestra');
+  });
+
+  it('renders a curve zone as a Path with arc geometry', async () => {
+    const layout = baseLayout({
+      zones: [
+        {
+          id: 'zc',
+          name: 'Curved Front',
+          color: '#3b82f6',
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          totalSeatCount: 0,
+          seats: [],
+          shape: ZoneShape.Curve,
+          geometry:
+            '{"centerX":600,"centerY":100,"radius":380,"startAngleDeg":20,"sweepAngleDeg":140,"rowCount":4}',
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    const path = screen.getByTestId('mock-path');
+    // Verify the arc path string references the correct radius + center.
+    const d = path.getAttribute('data-d') ?? '';
+    expect(d).toContain('A 380 380');
+    expect(d.startsWith('M 600 100')).toBe(true);
+  });
+
+  it('renders a round table as a Circle with the label text', async () => {
+    const layout = baseLayout({
+      layoutType: 'Banquet',
+      tables: [
+        {
+          id: 't1',
+          venueLayoutId: 'layout-1',
+          label: 'T1',
+          shape: TableShape.Round,
+          geometry: '{"centerX":140,"centerY":170,"radius":55}',
+          capacity: 8,
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          seats: [],
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    const circle = screen.getByTestId('mock-circle');
+    expect(circle.getAttribute('data-cx')).toBe('140');
+    expect(circle.getAttribute('data-cy')).toBe('170');
+    expect(circle.getAttribute('data-radius')).toBe('55');
+    const labels = screen.getAllByTestId('mock-text').map((t) => t.textContent);
+    expect(labels).toContain('T1');
+  });
+
+  it('renders a rect table centered on the declared geometry', async () => {
+    const layout = baseLayout({
+      layoutType: 'Mixed',
+      tables: [
+        {
+          id: 't2',
+          venueLayoutId: 'layout-1',
+          label: 'Head',
+          shape: TableShape.Rect,
+          geometry: '{"centerX":600,"centerY":120,"width":500,"height":60}',
+          capacity: 8,
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          seats: [],
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    const rects = screen.getAllByTestId('mock-rect');
+    const tableRect = rects.find((r) => r.getAttribute('data-fill') === '#fee2e2');
+    expect(tableRect).toBeTruthy();
+    expect(tableRect!.getAttribute('data-x')).toBe('350');
+    expect(tableRect!.getAttribute('data-width')).toBe('500');
+    expect(
+      screen.getAllByTestId('mock-text').some((t) => t.textContent === 'Head'),
+    ).toBe(true);
+  });
+
+  it('renders stage decorations with the "STAGE" default label', async () => {
+    const layout = baseLayout({
+      decorations: [
+        {
+          id: 'd1',
+          venueLayoutId: 'layout-1',
+          kind: DecorationKind.Stage,
+          label: null,
+          geometry: '{"x":300,"y":20,"width":600,"height":80}',
+          properties: '{}',
+          sortOrder: 0,
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    const labels = screen.getAllByTestId('mock-text').map((t) => t.textContent);
+    expect(labels).toContain('STAGE');
+  });
+
+  it('degrades gracefully on malformed zone geometry', async () => {
+    const layout = baseLayout({
+      zones: [
+        {
+          id: 'bad',
+          name: 'Bad Zone',
+          color: '#000',
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          totalSeatCount: 0,
+          seats: [],
+          shape: ZoneShape.Rect,
+          geometry: 'not json',
+        },
+      ],
+    });
+    render(<SeatPicker layout={layout} width={600} />);
+
+    await screen.findByTestId('mock-stage');
+    // Placeholder text is rendered for the zone; no throw.
+    const labels = screen.getAllByTestId('mock-text').map((t) => t.textContent);
+    expect(labels).toContain('Bad Zone');
   });
 });

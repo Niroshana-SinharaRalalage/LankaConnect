@@ -29,6 +29,13 @@ import type {
   VenueDecorationDto,
   SeatDto,
 } from '@/infrastructure/api/types/events.types';
+import {
+  parseRectGeom,
+  parseCurveGeom,
+  parseRoundTableGeom,
+  parseRectTableGeom,
+  decorationStyle,
+} from '@/presentation/utils/layoutGeometry';
 
 export interface LayoutPreviewProps {
   layout: VenueLayoutDto;
@@ -47,51 +54,8 @@ export interface LayoutPreviewProps {
   ariaLabel?: string;
 }
 
-interface RectGeom {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-}
-
-interface CurveGeom {
-  centerX: number;
-  centerY: number;
-  radius: number;
-  startAngleDeg: number;
-  sweepAngleDeg: number;
-  rowCount?: number;
-}
-
-interface RoundTableGeom {
-  centerX: number;
-  centerY: number;
-  radius: number;
-}
-
-interface RectTableGeom {
-  centerX: number;
-  centerY: number;
-  width: number;
-  height: number;
-  rotation?: number;
-}
-
-/**
- * Best-effort JSON parse that never throws. Returns `null` when input is
- * empty / malformed so the caller can fall back to a placeholder.
- */
-function tryParse<T>(raw: string | null | undefined): T | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    return parsed as T;
-  } catch {
-    return null;
-  }
-}
+// Geometry interfaces + parsers moved to '@/presentation/utils/layoutGeometry'
+// so SeatPickerKonva (Slice 7) and LayoutPreview stay behaviorally identical.
 
 const DEFAULT_CANVAS_WIDTH = 1200;
 const DEFAULT_CANVAS_HEIGHT = 800;
@@ -163,7 +127,7 @@ function ZoneShape({
 }) {
   switch (zone.shape) {
     case 'Curve': {
-      const geom = tryParse<CurveGeom>(zone.geometry);
+      const geom = parseCurveGeom(zone.geometry);
       if (!geom) return <ZonePlaceholder zone={zone} />;
       return (
         <g data-testid={`zone-${zone.id}`}>
@@ -188,7 +152,7 @@ function ZoneShape({
     }
     case 'Rect':
     default: {
-      const geom = tryParse<RectGeom>(zone.geometry);
+      const geom = parseRectGeom(zone.geometry);
       if (!geom) return <ZonePlaceholder zone={zone} />;
       return (
         <g data-testid={`zone-${zone.id}`}>
@@ -253,7 +217,7 @@ function TableShape({
   showSeats: boolean;
 }) {
   if (table.shape === 'Round') {
-    const geom = tryParse<RoundTableGeom>(table.geometry);
+    const geom = parseRoundTableGeom(table.geometry);
     if (!geom) return null;
     return (
       <g data-testid={`table-${table.id}`}>
@@ -280,7 +244,7 @@ function TableShape({
       </g>
     );
   }
-  const geom = tryParse<RectTableGeom>(table.geometry);
+  const geom = parseRectTableGeom(table.geometry);
   if (!geom) return null;
   const x = geom.centerX - geom.width / 2;
   const y = geom.centerY - geom.height / 2;
@@ -319,7 +283,7 @@ function RadialSeatDots({
   geom,
 }: {
   table: VenueTableDto;
-  geom: RoundTableGeom;
+  geom: import('@/presentation/utils/layoutGeometry').RoundTableGeom;
 }) {
   if (table.seats.length === 0) return null;
   const seatR = Math.max(4, geom.radius * 0.12);
@@ -349,7 +313,7 @@ function RadialSeatDots({
 // ───────────────────────────── Decorations ─────────────────────────────
 
 function DecorationShape({ decoration }: { decoration: VenueDecorationDto }) {
-  const geom = tryParse<RectGeom>(decoration.geometry);
+  const geom = parseRectGeom(decoration.geometry);
   if (!geom) return null;
   const { fill, stroke, label, labelColor } = decorationStyle(decoration.kind);
   return (
@@ -385,26 +349,7 @@ function DecorationShape({ decoration }: { decoration: VenueDecorationDto }) {
   );
 }
 
-function decorationStyle(kind: string) {
-  switch (kind) {
-    case 'Stage':
-      return { fill: '#1f2937', stroke: '#111827', label: 'STAGE', labelColor: '#f9fafb' };
-    case 'DanceFloor':
-      return { fill: '#fef3c7', stroke: '#f59e0b', label: 'Dance Floor', labelColor: '#b45309' };
-    case 'Aisle':
-      return { fill: '#e5e7eb', stroke: '#9ca3af', label: null, labelColor: '#4b5563' };
-    case 'Door':
-      return { fill: '#dbeafe', stroke: '#3b82f6', label: 'Door', labelColor: '#1e40af' };
-    case 'Wall':
-      return { fill: '#9ca3af', stroke: '#4b5563', label: null, labelColor: '#111827' };
-    case 'Text':
-      return { fill: 'transparent', stroke: '#9ca3af', label: null, labelColor: '#111827' };
-    case 'Image':
-      return { fill: '#f3f4f6', stroke: '#9ca3af', label: 'Image', labelColor: '#4b5563' };
-    default:
-      return { fill: '#f3f4f6', stroke: '#9ca3af', label: null, labelColor: '#4b5563' };
-  }
-}
+// decorationStyle moved to '@/presentation/utils/layoutGeometry'.
 
 // ───────────────────────────── Shared ─────────────────────────────
 

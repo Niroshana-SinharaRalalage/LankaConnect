@@ -7,49 +7,71 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <summary>
-    /// Phase 7C.2b Chunk 2b — rewrites the 7 registration/lifecycle email templates'
-    /// flat <c>{{EventLocation}}</c> token (and the non-canonical <c>{{Location}}</c>
-    /// variant in <c>template-event-reminder</c>) to the shared
+    /// Phase 7C.2b Chunk 2b — rewrites the 6 registration/lifecycle email templates
+    /// that currently embed a legacy flat location token (<c>{{EventLocation}}</c>
+    /// for 5 of them and the non-canonical <c>{{Location}}</c> variant in
+    /// <c>template-event-reminder</c>) to the shared
     /// <see cref="EmailLocationBlockHtml.DecomposedBlock"/>. Pairs with Chunk 2a
-    /// (commit 93f83122) which extended the 7 corresponding params classes with
+    /// (commit 93f83122) which extended the corresponding params classes with
     /// <c>WithLocationDetails(...)</c>.
     ///
-    /// <para>Targeted templates (6 standard + 1 event-reminder variant):</para>
+    /// <para>Active REPLACEs (6 templates) + 1 no-op:</para>
     /// <list type="bullet">
-    /// <item><c>template-paid-event-registration-confirmation-with-ticket</c> — REPLACE {{EventLocation}}, greeting {{UserName}}</item>
-    /// <item><c>template-event-registration-cancellation</c> — REPLACE {{EventLocation}}, greeting {{UserName}}</item>
-    /// <item><c>template-event-cancellation-notifications</c> — REPLACE {{EventLocation}}, greeting {{UserName}}</item>
-    /// <item><c>template-event-approval</c> — REPLACE {{EventLocation}}, greeting {{OrganizerName}}</item>
-    /// <item><c>template-event-reminder</c> — REPLACE {{Location}} (variant), greeting {{AttendeeName}}</item>
-    /// <item><c>template-attendees-added-confirmation</c> — REPLACE {{EventLocation}}, greeting {{UserName}}</item>
-    /// <item><c>template-preliminary-registration-payment-pending</c> — REPLACE {{EventLocation}}, greeting {{UserName}}</item>
+    /// <item><c>template-paid-event-registration-confirmation-with-ticket</c> — REPLACE {{EventLocation}}, anchor {{UserName}}</item>
+    /// <item><c>template-event-registration-cancellation</c> — REPLACE {{EventLocation}}, anchor {{UserName}}</item>
+    /// <item><c>template-event-cancellation-notifications</c> — REPLACE {{EventLocation}}, anchor {{EventTitle}}
+    ///     (bulk notification, greeting is hardcoded "Dear LankaConnect Community," with no personal token)</item>
+    /// <item><c>template-event-approval</c> — REPLACE {{EventLocation}}, anchor {{OrganizerName}}</item>
+    /// <item><c>template-event-reminder</c> — REPLACE {{Location}} (variant), anchor {{AttendeeName}}</item>
+    /// <item><c>template-attendees-added-confirmation</c> — REPLACE {{EventLocation}}, anchor {{UserName}}</item>
+    /// <item><c>template-preliminary-registration-payment-pending</c> — RAISE NOTICE no-op
+    ///     (template never renders event location; out of scope for body rewrite. Staging
+    ///     probe 2026-04-23 confirmed body contains no {{EventLocation}} / {{Location}}.
+    ///     The Chunk 2a <c>WithLocationDetails(...)</c> addition on its params class is
+    ///     harmless — the template simply ignores those keys.)</item>
     /// </list>
     ///
     /// <para>Safety mechanics (identical to Chunk 1's
     /// <c>20260422234334_Phase7C2b_ReapplyDecomposedLocationInCommitmentTemplates</c>):</para>
     /// <list type="number">
     /// <item>Chunk-scoped backup table <c>communications.email_templates_backup_phase7c3a</c>.
-    /// Never shadow <c>_phase7c2</c> or <c>_phase7c2b</c>.</item>
+    /// Never shadow <c>_phase7c2</c> or <c>_phase7c2b</c>. Snapshots all 7 bodies including
+    /// the no-op template for symmetry.</item>
     /// <item>Literal <c>REPLACE(html_template, '{{EventLocation}}' | '{{Location}}', :DecomposedBlock)</c>
     /// — no regex, MEMORY rule <c>feedback_regex_on_email_html.md</c>.</item>
     /// <item>5 post-UPDATE <c>RAISE EXCEPTION</c> invariants per active template:
     /// <c>ROW_COUNT = 1</c>, legacy token absent, <c>{{LocationName}}</c> present,
-    /// template-specific greeting survives, <c>length(body) ≥ 50000</c>.</item>
+    /// template-specific anchor survives, <c>length(body) ≥ 50000</c>.</item>
     /// </list>
     /// </summary>
     public partial class Phase7C3a_DecomposeLocationInRegistrationAndLifecycleTemplates : Migration
     {
-        private sealed record TemplateRewrite(string Name, string LegacyToken, string GreetingToken);
+        private sealed record TemplateRewrite(string Name, string LegacyToken, string AnchorToken);
 
-        private static readonly TemplateRewrite[] Rewrites = new[]
+        /// <summary>
+        /// Templates that carry a legacy flat location token and receive the REPLACE.
+        /// <c>AnchorToken</c> is whatever Handlebars placeholder is guaranteed to remain
+        /// present after the REPLACE — used purely as a body-integrity invariant; does not
+        /// have to be a personal-greeting token (see event-cancellation-notifications,
+        /// whose body uses hardcoded "Dear LankaConnect Community,").
+        /// </summary>
+        private static readonly TemplateRewrite[] ActiveRewrites = new[]
         {
             new TemplateRewrite("template-paid-event-registration-confirmation-with-ticket", "{{EventLocation}}", "{{UserName}}"),
             new TemplateRewrite("template-event-registration-cancellation",                  "{{EventLocation}}", "{{UserName}}"),
-            new TemplateRewrite("template-event-cancellation-notifications",                 "{{EventLocation}}", "{{UserName}}"),
+            new TemplateRewrite("template-event-cancellation-notifications",                 "{{EventLocation}}", "{{EventTitle}}"),
             new TemplateRewrite("template-event-approval",                                    "{{EventLocation}}", "{{OrganizerName}}"),
             new TemplateRewrite("template-event-reminder",                                    "{{Location}}",      "{{AttendeeName}}"),
             new TemplateRewrite("template-attendees-added-confirmation",                      "{{EventLocation}}", "{{UserName}}"),
-            new TemplateRewrite("template-preliminary-registration-payment-pending",          "{{EventLocation}}", "{{UserName}}"),
+        };
+
+        /// <summary>
+        /// Templates snapshotted into the backup table but NOT rewritten because
+        /// their body does not render event location. RAISE NOTICE only.
+        /// </summary>
+        private static readonly string[] NoOpTemplates = new[]
+        {
+            "template-preliminary-registration-payment-pending",
         };
 
         /// <inheritdoc />
@@ -81,7 +103,7 @@ WHERE name IN (
 
             // Step 2 — per-template REPLACE + 5 invariants.
             var escapedBlock = EmailLocationBlockHtml.DecomposedBlock.Replace("'", "''");
-            foreach (var r in Rewrites)
+            foreach (var r in ActiveRewrites)
             {
                 var escapedName = r.Name.Replace("'", "''");
                 // NOTE: we use string.Format-style {0}/{1}/{2}/{3} substitution. Arguments
@@ -117,7 +139,7 @@ BEGIN
     END IF;
 
     IF stored_body NOT LIKE '%{2}%' THEN
-        RAISE EXCEPTION 'Phase7C3a: % lost {2} greeting after REPLACE — body truncation detected', '{0}';
+        RAISE EXCEPTION 'Phase7C3a: % lost anchor {2} after REPLACE — body truncation detected', '{0}';
     END IF;
 
     IF length(stored_body) < 50000 THEN
@@ -128,10 +150,41 @@ END $migration$;
 ",
                     escapedName,
                     r.LegacyToken,
-                    r.GreetingToken,
+                    r.AnchorToken,
                     escapedBlock);
 
                 migrationBuilder.Sql(sql);
+            }
+
+            // Step 2b — no-op templates: explicit NOTICE so the migration log documents
+            // why nothing was rewritten. Same pattern as Chunk 1 used for cancellation
+            // templates that never contained {{EventLocation}}.
+            foreach (var name in NoOpTemplates)
+            {
+                var escapedName = name.Replace("'", "''");
+                migrationBuilder.Sql($@"
+DO $migration$
+DECLARE
+    has_standard boolean;
+    has_variant  boolean;
+    body_len     int;
+BEGIN
+    SELECT
+        (html_template LIKE '%{{{{EventLocation}}}}%'),
+        (html_template LIKE '%{{{{Location}}}}%' AND html_template NOT LIKE '%{{{{EventLocation}}}}%'),
+        length(html_template)
+      INTO has_standard, has_variant, body_len
+      FROM communications.email_templates
+     WHERE name = '{escapedName}';
+
+    IF has_standard OR has_variant THEN
+        RAISE EXCEPTION 'Phase7C3a: no-op template % unexpectedly contains a legacy location token — scope assumption violated', '{escapedName}';
+    END IF;
+
+    RAISE NOTICE 'Phase7C3a: template % left untouched by design (length=%, has_legacy_location_token=false)',
+        '{escapedName}', body_len;
+END $migration$;
+");
             }
 
             // Step 3 — EF-scaffolded seed-data timestamp drift (reference_data.reference_values).

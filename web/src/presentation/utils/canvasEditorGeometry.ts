@@ -7,10 +7,13 @@
  * serialized geometry strings without caring about Konva internals.
  */
 
-import type {
-  VenueZoneDto,
-  VenueTableDto,
-  VenueDecorationDto,
+import {
+  DecorationKind,
+  TableShape,
+  ZoneShape,
+  type VenueZoneDto,
+  type VenueTableDto,
+  type VenueDecorationDto,
 } from '@/infrastructure/api/types/events.types';
 import {
   parseRectGeom,
@@ -353,6 +356,138 @@ export function resolveGeometry<T extends { id: string; geometry?: string | null
 ): string | null | undefined {
   const override = draftGeometryByKey[refKey({ kind, id: item.id })];
   return override ?? item.geometry;
+}
+
+// ─────────────────────────── S8.5b: draft factories ───────────────────────────
+
+/**
+ * Generate a random v4-ish UUID. Uses crypto.randomUUID when available
+ * (Node 16+ / modern browsers) and falls back to a Math.random shim —
+ * sufficient because these IDs only live in the client draft until
+ * PUT /batch assigns server IDs on save (S8.8).
+ */
+export function generateClientId(): string {
+  const g = globalThis as unknown as { crypto?: { randomUUID?: () => string } };
+  if (g.crypto?.randomUUID) return g.crypto.randomUUID();
+  const h = () => Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0');
+  return `${h()}${h()}-${h()}-4${h().slice(1)}-${((Math.random() * 4) | 8).toString(16)}${h().slice(1)}-${h()}${h()}${h()}`;
+}
+
+/** Default dimensions for newly-added items — one grid cell beyond the
+ * MIN so there's slack for seat generators. */
+const DEFAULT_ZONE_WIDTH = 400;
+const DEFAULT_ZONE_HEIGHT = 200;
+const DEFAULT_RECT_TABLE_WIDTH = 200;
+const DEFAULT_RECT_TABLE_HEIGHT = 100;
+const DEFAULT_ROUND_TABLE_RADIUS = 50;
+const DEFAULT_DECORATION_WIDTH = 300;
+const DEFAULT_DECORATION_HEIGHT = 100;
+const DEFAULT_ROUND_CAPACITY = 8;
+const DEFAULT_RECT_CAPACITY = 10;
+
+const DEFAULT_ZONE_PALETTE = [
+  '#3B82F6', // blue
+  '#10B981', // emerald
+  '#F59E0B', // amber
+  '#8B5CF6', // violet
+  '#EC4899', // pink
+  '#06B6D4', // cyan
+];
+
+/** Pick a color from the palette based on how many zones already exist. */
+export function nextZoneColor(existingZoneCount: number): string {
+  return DEFAULT_ZONE_PALETTE[existingZoneCount % DEFAULT_ZONE_PALETTE.length];
+}
+
+export interface DraftFactoryContext {
+  layoutId: string;
+  center: { x: number; y: number };
+  nextSortOrder: number;
+  /** Number of existing items of the same kind — used for auto-labels + color rotation. */
+  indexForLabel: number;
+}
+
+export function createZoneDraft(ctx: DraftFactoryContext): VenueZoneDto {
+  const { center, nextSortOrder, indexForLabel } = ctx;
+  return {
+    id: generateClientId(),
+    name: `Zone ${indexForLabel + 1}`,
+    color: nextZoneColor(indexForLabel),
+    sortOrder: nextSortOrder,
+    enabledSeatCount: 0,
+    totalSeatCount: 0,
+    seats: [],
+    shape: ZoneShape.Rect,
+    geometry: JSON.stringify({
+      x: snapToGrid(center.x - DEFAULT_ZONE_WIDTH / 2),
+      y: snapToGrid(center.y - DEFAULT_ZONE_HEIGHT / 2),
+      width: DEFAULT_ZONE_WIDTH,
+      height: DEFAULT_ZONE_HEIGHT,
+    }),
+    ticketTierIds: [],
+  };
+}
+
+export function createRoundTableDraft(ctx: DraftFactoryContext): VenueTableDto {
+  const { layoutId, center, nextSortOrder, indexForLabel } = ctx;
+  return {
+    id: generateClientId(),
+    venueLayoutId: layoutId,
+    label: `Table ${indexForLabel + 1}`,
+    shape: TableShape.Round,
+    geometry: JSON.stringify({
+      centerX: snapToGrid(center.x),
+      centerY: snapToGrid(center.y),
+      radius: DEFAULT_ROUND_TABLE_RADIUS,
+    }),
+    capacity: DEFAULT_ROUND_CAPACITY,
+    sortOrder: nextSortOrder,
+    enabledSeatCount: DEFAULT_ROUND_CAPACITY,
+    seats: [],
+    ticketTierIds: [],
+  };
+}
+
+export function createRectTableDraft(ctx: DraftFactoryContext): VenueTableDto {
+  const { layoutId, center, nextSortOrder, indexForLabel } = ctx;
+  return {
+    id: generateClientId(),
+    venueLayoutId: layoutId,
+    label: `Table ${indexForLabel + 1}`,
+    shape: TableShape.Rect,
+    geometry: JSON.stringify({
+      centerX: snapToGrid(center.x),
+      centerY: snapToGrid(center.y),
+      width: DEFAULT_RECT_TABLE_WIDTH,
+      height: DEFAULT_RECT_TABLE_HEIGHT,
+    }),
+    capacity: DEFAULT_RECT_CAPACITY,
+    sortOrder: nextSortOrder,
+    enabledSeatCount: DEFAULT_RECT_CAPACITY,
+    seats: [],
+    ticketTierIds: [],
+  };
+}
+
+export function createDecorationDraft(
+  ctx: DraftFactoryContext,
+  kind: DecorationKind,
+): VenueDecorationDto {
+  const { layoutId, center, nextSortOrder } = ctx;
+  return {
+    id: generateClientId(),
+    venueLayoutId: layoutId,
+    kind,
+    label: null,
+    geometry: JSON.stringify({
+      x: snapToGrid(center.x - DEFAULT_DECORATION_WIDTH / 2),
+      y: snapToGrid(center.y - DEFAULT_DECORATION_HEIGHT / 2),
+      width: DEFAULT_DECORATION_WIDTH,
+      height: DEFAULT_DECORATION_HEIGHT,
+    }),
+    properties: '{}',
+    sortOrder: nextSortOrder,
+  };
 }
 
 /**

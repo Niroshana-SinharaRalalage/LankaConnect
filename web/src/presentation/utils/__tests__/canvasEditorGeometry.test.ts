@@ -23,6 +23,12 @@ import {
   readGeometryDimensions,
   resolveGeometry,
   collectItemCenters,
+  generateClientId,
+  nextZoneColor,
+  createZoneDraft,
+  createRoundTableDraft,
+  createRectTableDraft,
+  createDecorationDraft,
 } from '../canvasEditorGeometry';
 import {
   TableShape,
@@ -549,5 +555,141 @@ describe('readGeometryDimensions', () => {
   it('returns null for malformed geometry', () => {
     expect(readGeometryDimensions('zone', 'junk', ZoneShape.Rect)).toBeNull();
     expect(readGeometryDimensions('table', null, TableShape.Round)).toBeNull();
+  });
+});
+
+// ─────────────────────────── S8.5b draft factories ───────────────────────────
+
+describe('generateClientId', () => {
+  it('returns a non-empty unique string each call', () => {
+    const a = generateClientId();
+    const b = generateClientId();
+    expect(a.length).toBeGreaterThan(0);
+    expect(a).not.toBe(b);
+  });
+});
+
+describe('nextZoneColor', () => {
+  it('rotates through the palette based on existing zone count', () => {
+    const first = nextZoneColor(0);
+    const seventh = nextZoneColor(6); // palette size is 6, so this wraps
+    expect(first).toBe(seventh);
+  });
+
+  it('is a hex color', () => {
+    expect(nextZoneColor(0)).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+});
+
+describe('createZoneDraft', () => {
+  it('creates a rect zone centered on the requested point with sensible defaults', () => {
+    const z = createZoneDraft({
+      layoutId: 'L1',
+      center: { x: 500, y: 500 },
+      nextSortOrder: 3,
+      indexForLabel: 0,
+    });
+    expect(z.shape).toBe(ZoneShape.Rect);
+    expect(z.name).toBe('Zone 1');
+    expect(z.sortOrder).toBe(3);
+    expect(z.color).toMatch(/^#/);
+    const g = JSON.parse(z.geometry!);
+    expect(g.width).toBe(400);
+    expect(g.height).toBe(200);
+    // Center (500, 500) with size 400x200 → top-left (300, 400), both grid-aligned.
+    expect(g.x).toBe(300);
+    expect(g.y).toBe(400);
+    expect(z.id.length).toBeGreaterThan(0);
+    expect(z.seats).toEqual([]);
+    expect(z.enabledSeatCount).toBe(0);
+    expect(z.ticketTierIds).toEqual([]);
+  });
+
+  it('auto-labels incrementally across indexes', () => {
+    expect(createZoneDraft({
+      layoutId: 'L1', center: { x: 0, y: 0 }, nextSortOrder: 0, indexForLabel: 0,
+    }).name).toBe('Zone 1');
+    expect(createZoneDraft({
+      layoutId: 'L1', center: { x: 0, y: 0 }, nextSortOrder: 0, indexForLabel: 4,
+    }).name).toBe('Zone 5');
+  });
+});
+
+describe('createRoundTableDraft', () => {
+  it('creates a round table at the snapped center with default radius + capacity', () => {
+    const t = createRoundTableDraft({
+      layoutId: 'L1',
+      center: { x: 523, y: 477 },
+      nextSortOrder: 2,
+      indexForLabel: 1,
+    });
+    expect(t.shape).toBe(TableShape.Round);
+    expect(t.label).toBe('Table 2');
+    expect(t.capacity).toBe(8);
+    expect(t.enabledSeatCount).toBe(8);
+    expect(t.sortOrder).toBe(2);
+    const g = JSON.parse(t.geometry);
+    // 523 snaps to 500, 477 snaps to 500.
+    expect(g.centerX).toBe(500);
+    expect(g.centerY).toBe(500);
+    expect(g.radius).toBe(50);
+    expect(t.venueLayoutId).toBe('L1');
+    expect(t.seats).toEqual([]);
+  });
+});
+
+describe('createRectTableDraft', () => {
+  it('creates a rect table with default width/height/capacity', () => {
+    const t = createRectTableDraft({
+      layoutId: 'L2',
+      center: { x: 400, y: 300 },
+      nextSortOrder: 0,
+      indexForLabel: 0,
+    });
+    expect(t.shape).toBe(TableShape.Rect);
+    expect(t.label).toBe('Table 1');
+    expect(t.capacity).toBe(10);
+    const g = JSON.parse(t.geometry);
+    expect(g.centerX).toBe(400);
+    expect(g.centerY).toBe(300);
+    expect(g.width).toBe(200);
+    expect(g.height).toBe(100);
+    expect(t.venueLayoutId).toBe('L2');
+  });
+});
+
+describe('createDecorationDraft', () => {
+  it('creates a Stage decoration centered on the requested point', () => {
+    const d = createDecorationDraft(
+      {
+        layoutId: 'L1',
+        center: { x: 500, y: 100 },
+        nextSortOrder: 0,
+        indexForLabel: 0,
+      },
+      DecorationKind.Stage,
+    );
+    expect(d.kind).toBe(DecorationKind.Stage);
+    const g = JSON.parse(d.geometry);
+    expect(g.width).toBe(300);
+    expect(g.height).toBe(100);
+    expect(g.x).toBe(350); // 500 - 150
+    expect(g.y).toBe(50); // 100 - 50
+    expect(d.venueLayoutId).toBe('L1');
+    expect(d.properties).toBe('{}');
+    expect(d.label).toBeNull();
+  });
+
+  it('honors any DecorationKind', () => {
+    const aisle = createDecorationDraft(
+      {
+        layoutId: 'L1',
+        center: { x: 0, y: 0 },
+        nextSortOrder: 0,
+        indexForLabel: 0,
+      },
+      DecorationKind.Aisle,
+    );
+    expect(aisle.kind).toBe(DecorationKind.Aisle);
   });
 });

@@ -19,6 +19,19 @@ vi.mock('@/infrastructure/api/repositories/venue-layouts.repository', () => ({
   },
 }));
 
+// The CanvasEditor wrapper dynamically imports Konva which touches `window` at
+// import time; stub it in tests so we can assert the modal wiring without
+// booting the canvas stage. Child components cover their own concerns in
+// CanvasEditorStage-focused tests.
+vi.mock('@/presentation/components/features/events/CanvasEditor', () => ({
+  CanvasEditor: ({ layout }: { layout: { id: string } }) =>
+    React.createElement(
+      'div',
+      { 'data-testid': 'canvas-editor-stub', 'data-layout-id': layout.id },
+      'canvas-stub',
+    ),
+}));
+
 import { CanvasEditorModal } from '@/presentation/components/features/events/CanvasEditorModal';
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
@@ -60,7 +73,13 @@ describe('CanvasEditorModal', () => {
     expect(screen.getByTestId('canvas-editor-modal')).toBeInTheDocument();
     expect(screen.getByText(/Customize layout — Theater Classic/)).toBeInTheDocument();
     expect(screen.getByText(/Theater · 200 seats · 0 zones/)).toBeInTheDocument();
-    expect(screen.getByTestId('canvas-editor-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('canvas-editor-body')).toBeInTheDocument();
+    // Stage is stubbed in this test file; CanvasEditorStage has its own tests.
+    expect(screen.getByTestId('canvas-editor-stub')).toBeInTheDocument();
+    expect(screen.getByTestId('canvas-editor-stub')).toHaveAttribute(
+      'data-layout-id',
+      'layout-id-1',
+    );
   });
 
   it('fires layout.canvas_editor_opened metric once when opened', () => {

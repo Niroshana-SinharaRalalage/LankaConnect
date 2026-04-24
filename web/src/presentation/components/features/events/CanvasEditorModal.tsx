@@ -28,6 +28,7 @@ import {
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
+import { CanvasEditor } from './CanvasEditor';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 export interface CanvasEditorModalProps {
@@ -92,17 +93,10 @@ export function CanvasEditorModal({
         </DialogHeader>
 
         <div
-          className="flex-1 flex items-center justify-center bg-neutral-50 p-6"
-          data-testid="canvas-editor-placeholder"
+          className="flex-1 bg-neutral-50 overflow-hidden"
+          data-testid="canvas-editor-body"
         >
-          <div className="text-center max-w-md">
-            <p className="text-sm font-medium text-neutral-900">Canvas editor coming soon</p>
-            <p className="text-sm text-neutral-600 mt-2">
-              You&apos;ll be able to drag zones and tables, add decorations, and fine-tune your
-              layout here in the next release. For now, pick a different preset or edit the layout
-              properties from the event page.
-            </p>
-          </div>
+          <CanvasEditor layout={layout} className="w-full h-full" />
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-neutral-200">

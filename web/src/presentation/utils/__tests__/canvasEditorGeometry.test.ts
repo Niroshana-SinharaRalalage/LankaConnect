@@ -10,10 +10,16 @@ import { describe, it, expect } from 'vitest';
 
 import {
   EDITOR_GRID,
+  EDITOR_ROTATION_STEP,
+  MIN_SHAPE_DIMENSION,
   snapToGrid,
+  snapRotation,
   refKey,
   itemCenter,
   applyDragToGeometry,
+  applyResizeToGeometry,
+  applyRadiusToGeometry,
+  applyRotationToGeometry,
   resolveGeometry,
   collectItemCenters,
 } from '../canvasEditorGeometry';
@@ -279,5 +285,203 @@ describe('collectItemCenters', () => {
       },
     ];
     expect(collectItemCenters(zones, [], [], {})).toEqual([]);
+  });
+});
+
+// ─────────────────────────── S8.4 resize + rotate helpers ───────────────────────────
+
+describe('snapRotation', () => {
+  it('uses a 15° default step', () => {
+    expect(EDITOR_ROTATION_STEP).toBe(15);
+    expect(snapRotation(7)).toBe(0);
+    expect(snapRotation(8)).toBe(15);
+    expect(snapRotation(24)).toBe(30);
+  });
+
+  it('normalizes into [0, 360)', () => {
+    expect(snapRotation(360)).toBe(0);
+    expect(snapRotation(-15)).toBe(345);
+    expect(snapRotation(-1)).toBe(0); // -1 rounds to 0
+    expect(snapRotation(-8)).toBe(345); // -8 rounds to -15 → 345
+    expect(snapRotation(720)).toBe(0);
+  });
+
+  it('accepts a custom step', () => {
+    expect(snapRotation(47, 10)).toBe(50);
+    expect(snapRotation(47, 5)).toBe(45);
+  });
+});
+
+describe('MIN_SHAPE_DIMENSION', () => {
+  it('is declared at the grid size so resize never collapses below one cell', () => {
+    expect(MIN_SHAPE_DIMENSION).toBe(50);
+    expect(MIN_SHAPE_DIMENSION).toBe(EDITOR_GRID);
+  });
+});
+
+describe('applyResizeToGeometry', () => {
+  it('rect zone: width/height change, center + rotation preserved', () => {
+    const before = JSON.stringify({
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 200,
+      rotation: 30,
+    });
+    const after = applyResizeToGeometry(
+      'zone',
+      before,
+      { width: 200, height: 100 },
+      ZoneShape.Rect,
+    );
+    expect(after).not.toBeNull();
+    const parsed = JSON.parse(after!);
+    // Center was (300, 200). New size 200x100 → top-left (200, 150).
+    expect(parsed).toEqual({
+      x: 200,
+      y: 150,
+      width: 200,
+      height: 100,
+      rotation: 30,
+    });
+  });
+
+  it('rect table: width/height change, center + rotation preserved', () => {
+    const before = JSON.stringify({
+      centerX: 500,
+      centerY: 300,
+      width: 100,
+      height: 50,
+      rotation: 90,
+    });
+    const after = applyResizeToGeometry(
+      'table',
+      before,
+      { width: 250, height: 100 },
+      TableShape.Rect,
+    );
+    expect(JSON.parse(after!)).toEqual({
+      centerX: 500,
+      centerY: 300,
+      width: 250,
+      height: 100,
+      rotation: 90,
+    });
+  });
+
+  it('decoration: treated the same as rect zone', () => {
+    const before = JSON.stringify({ x: 0, y: 0, width: 100, height: 100, rotation: 0 });
+    const after = applyResizeToGeometry('decoration', before, { width: 200, height: 50 });
+    expect(JSON.parse(after!)).toEqual({
+      x: -50,
+      y: 25,
+      width: 200,
+      height: 50,
+      rotation: 0,
+    });
+  });
+
+  it('round table: resize via width/height is rejected — must use radius helper', () => {
+    const before = JSON.stringify({ centerX: 100, centerY: 100, radius: 40 });
+    expect(
+      applyResizeToGeometry('table', before, { width: 100, height: 100 }, TableShape.Round),
+    ).toBeNull();
+  });
+
+  it('curve zone: resize is rejected — geometry model is radius + sweep', () => {
+    const before = JSON.stringify({
+      centerX: 100,
+      centerY: 100,
+      radius: 50,
+      startAngleDeg: 180,
+      sweepAngleDeg: 180,
+    });
+    expect(
+      applyResizeToGeometry('zone', before, { width: 200, height: 200 }, ZoneShape.Curve),
+    ).toBeNull();
+  });
+
+  it('returns null for malformed geometry', () => {
+    expect(
+      applyResizeToGeometry('zone', 'junk', { width: 100, height: 100 }, ZoneShape.Rect),
+    ).toBeNull();
+  });
+});
+
+describe('applyRadiusToGeometry', () => {
+  it('updates radius, keeps centerX/Y', () => {
+    const before = JSON.stringify({ centerX: 400, centerY: 300, radius: 40 });
+    const after = applyRadiusToGeometry(before, 60);
+    expect(JSON.parse(after!)).toEqual({ centerX: 400, centerY: 300, radius: 60 });
+  });
+
+  it('returns null for non-round geometry', () => {
+    expect(applyRadiusToGeometry('not-json', 50)).toBeNull();
+  });
+});
+
+describe('applyRotationToGeometry', () => {
+  it('rect zone: rotation replaced, everything else preserved', () => {
+    const before = JSON.stringify({
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 200,
+      rotation: 0,
+    });
+    const after = applyRotationToGeometry('zone', before, 45, ZoneShape.Rect);
+    expect(JSON.parse(after!)).toEqual({
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 200,
+      rotation: 45,
+    });
+  });
+
+  it('rect table: rotation replaced', () => {
+    const before = JSON.stringify({
+      centerX: 500,
+      centerY: 300,
+      width: 200,
+      height: 80,
+      rotation: 0,
+    });
+    const after = applyRotationToGeometry('table', before, 90, TableShape.Rect);
+    expect(JSON.parse(after!)).toEqual({
+      centerX: 500,
+      centerY: 300,
+      width: 200,
+      height: 80,
+      rotation: 90,
+    });
+  });
+
+  it('decoration: rotation replaced', () => {
+    const before = JSON.stringify({ x: 0, y: 0, width: 100, height: 40, rotation: 0 });
+    const after = applyRotationToGeometry('decoration', before, 30);
+    expect(JSON.parse(after!)).toEqual({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 40,
+      rotation: 30,
+    });
+  });
+
+  it('curve zone: rejected — curve has no rotation field', () => {
+    const before = JSON.stringify({
+      centerX: 100,
+      centerY: 100,
+      radius: 50,
+      startAngleDeg: 180,
+      sweepAngleDeg: 180,
+    });
+    expect(applyRotationToGeometry('zone', before, 45, ZoneShape.Curve)).toBeNull();
+  });
+
+  it('round table: rejected — circular shape has no meaningful rotation', () => {
+    const before = JSON.stringify({ centerX: 100, centerY: 100, radius: 40 });
+    expect(applyRotationToGeometry('table', before, 45, TableShape.Round)).toBeNull();
   });
 });

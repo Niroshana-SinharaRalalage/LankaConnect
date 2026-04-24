@@ -22,9 +22,27 @@ import {
 /** Snap grid in canvas units — matches the dotted overlay in CanvasEditorStage. */
 export const EDITOR_GRID = 50;
 
+/** Rotation snap in degrees — 15° increments give organizer-friendly angles. */
+export const EDITOR_ROTATION_STEP = 15;
+
+/** Minimum shape dimension in canvas units after resize snap. Prevents
+ * degenerate collapsed shapes that confuse the renderer. */
+export const MIN_SHAPE_DIMENSION = 50;
+
 /** Snap a scalar value to the nearest multiple of the grid. */
 export function snapToGrid(value: number, grid: number = EDITOR_GRID): number {
   return Math.round(value / grid) * grid;
+}
+
+/** Snap a rotation in degrees to the nearest step, wrapping into [0, 360). */
+export function snapRotation(
+  degrees: number,
+  step: number = EDITOR_ROTATION_STEP,
+): number {
+  const snapped = Math.round(degrees / step) * step;
+  // Normalize to [0, 360) so equality checks don't trip over -0 / 360.
+  const mod = ((snapped % 360) + 360) % 360;
+  return mod;
 }
 
 /**
@@ -144,6 +162,134 @@ export function applyDragToGeometry(
     width: g.width,
     height: g.height,
     rotation: g.rotation,
+  });
+}
+
+/**
+ * S8.4: given an item's current geometry and new width/height (already
+ * snapped to the editor grid), produce a new geometry JSON with size
+ * updated while keeping the item's center and rotation. Round tables
+ * ignore width/height — their size comes from `applyRadiusToGeometry`.
+ * Returns null when the geometry is malformed.
+ */
+export function applyResizeToGeometry(
+  kind: CanvasItemKind,
+  geometry: string | null | undefined,
+  newSize: { width: number; height: number },
+  shapeHint?: string,
+): string | null {
+  if (kind === 'zone') {
+    if (shapeHint === 'Curve') {
+      // Curve zone resize is not supported in S8.4 — the geometry model
+      // uses radius + sweep, not width/height. Caller should surface a
+      // no-op rather than a corrupted record.
+      return null;
+    }
+    const g = parseRectGeom(geometry);
+    if (!g) return null;
+    const cx = g.x + g.width / 2;
+    const cy = g.y + g.height / 2;
+    return JSON.stringify({
+      x: cx - newSize.width / 2,
+      y: cy - newSize.height / 2,
+      width: newSize.width,
+      height: newSize.height,
+      rotation: g.rotation,
+    });
+  }
+  if (kind === 'table') {
+    if (shapeHint === 'Round') {
+      // Round table: intentionally ignore width/height. Caller should use
+      // applyRadiusToGeometry with keepRatio.
+      return null;
+    }
+    const g = parseRectTableGeom(geometry);
+    if (!g) return null;
+    return JSON.stringify({
+      centerX: g.centerX,
+      centerY: g.centerY,
+      width: newSize.width,
+      height: newSize.height,
+      rotation: g.rotation,
+    });
+  }
+  // decoration
+  const g = parseRectGeom(geometry);
+  if (!g) return null;
+  const cx = g.x + g.width / 2;
+  const cy = g.y + g.height / 2;
+  return JSON.stringify({
+    x: cx - newSize.width / 2,
+    y: cy - newSize.height / 2,
+    width: newSize.width,
+    height: newSize.height,
+    rotation: g.rotation,
+  });
+}
+
+/**
+ * S8.4: update a round table's radius while keeping its center.
+ * Round-only; callers check shape before invoking.
+ */
+export function applyRadiusToGeometry(
+  geometry: string | null | undefined,
+  newRadius: number,
+): string | null {
+  const g = parseRoundTableGeom(geometry);
+  if (!g) return null;
+  return JSON.stringify({
+    centerX: g.centerX,
+    centerY: g.centerY,
+    radius: newRadius,
+  });
+}
+
+/**
+ * S8.4: update rotation (degrees) preserving everything else. Curve zones
+ * don't carry a rotation (it's implicit in startAngleDeg/sweepAngleDeg),
+ * so they return null — callers should treat as a no-op. Round tables
+ * likewise have no meaningful rotation (circular). Returns null for
+ * malformed geometry.
+ */
+export function applyRotationToGeometry(
+  kind: CanvasItemKind,
+  geometry: string | null | undefined,
+  rotationDeg: number,
+  shapeHint?: string,
+): string | null {
+  if (kind === 'zone') {
+    if (shapeHint === 'Curve') return null;
+    const g = parseRectGeom(geometry);
+    if (!g) return null;
+    return JSON.stringify({
+      x: g.x,
+      y: g.y,
+      width: g.width,
+      height: g.height,
+      rotation: rotationDeg,
+    });
+  }
+  if (kind === 'table') {
+    if (shapeHint === 'Round') return null;
+    const g = parseRectTableGeom(geometry);
+    if (!g) return null;
+    return JSON.stringify({
+      centerX: g.centerX,
+      centerY: g.centerY,
+      width: g.width,
+      height: g.height,
+      rotation: rotationDeg,
+    });
+  }
+  // decoration
+  const g = parseRectGeom(geometry);
+  if (!g) return null;
+  return JSON.stringify({
+    x: g.x,
+    y: g.y,
+    width: g.width,
+    height: g.height,
+    rotation: rotationDeg,
   });
 }
 

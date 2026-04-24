@@ -13,11 +13,21 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // Map from rendered Group DOM node → its Konva drag handlers, so drag tests
 // can invoke onDragEnd/onDragMove directly with a fake konva event.
+interface FakeKonvaNode {
+  x: () => number;
+  y: () => number;
+  scaleX: () => number;
+  scaleY: () => number;
+  rotation: () => number;
+  position: (p: { x: number; y: number }) => void;
+}
+
 const elementHandlers = new WeakMap<
   HTMLDivElement,
   {
-    onDragEnd?: (e: { target: { x: () => number; y: () => number; position: (p: { x: number; y: number }) => void } }) => void;
-    onDragMove?: (e: { target: { x: () => number; y: () => number } }) => void;
+    onDragEnd?: (e: { target: FakeKonvaNode }) => void;
+    onDragMove?: (e: { target: FakeKonvaNode }) => void;
+    onTransformEnd?: (e: { target: FakeKonvaNode }) => void;
   }
 >();
 
@@ -87,44 +97,52 @@ vi.mock('react-konva', () => ({
     ),
   Layer: ({ children }: { children?: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'mock-layer' }, children),
-  Group: ({
-    children,
-    rotation,
-    x,
-    y,
-    draggable,
-    onClick,
-    onDragEnd,
-    onDragMove,
-  }: {
-    children?: React.ReactNode;
-    rotation?: number;
-    x?: number;
-    y?: number;
-    draggable?: boolean;
-    onClick?: () => void;
-    onDragEnd?: (e: { target: { x: () => number; y: () => number; position: (p: { x: number; y: number }) => void } }) => void;
-    onDragMove?: (e: { target: { x: () => number; y: () => number } }) => void;
-  }) =>
-    React.createElement(
-      'div',
-      {
-        'data-testid': 'mock-group',
-        'data-rotation': String(rotation ?? 0),
-        'data-x': String(x ?? ''),
-        'data-y': String(y ?? ''),
-        'data-draggable': String(draggable ?? false),
+  Group: React.forwardRef<HTMLDivElement, { children?: React.ReactNode; [key: string]: unknown }>(
+    function MockGroup(props, outerRef) {
+      const {
+        children,
+        rotation,
+        x,
+        y,
+        draggable,
         onClick,
-        'data-drag-end': onDragEnd ? 'yes' : 'no',
-        // Expose the handlers via ref-like props. Tests read these off the
-        // rendered DOM node using `elementHandlers.get(node)`.
-        ref: (node: HTMLDivElement | null) => {
-          if (!node) return;
-          elementHandlers.set(node, { onDragEnd, onDragMove });
+        onDragEnd,
+        onDragMove,
+        onTransformEnd,
+      } = props;
+      return React.createElement(
+        'div',
+        {
+          'data-testid': 'mock-group',
+          'data-rotation': String(rotation ?? 0),
+          'data-x': String(x ?? ''),
+          'data-y': String(y ?? ''),
+          'data-draggable': String(draggable ?? false),
+          'data-drag-end': onDragEnd ? 'yes' : 'no',
+          'data-transform-end': onTransformEnd ? 'yes' : 'no',
+          onClick: onClick as (() => void) | undefined,
+          ref: (node: HTMLDivElement | null) => {
+            if (!node) return;
+            elementHandlers.set(node, {
+              onDragEnd: onDragEnd as
+                | ((e: { target: FakeKonvaNode }) => void)
+                | undefined,
+              onDragMove: onDragMove as
+                | ((e: { target: FakeKonvaNode }) => void)
+                | undefined,
+              onTransformEnd: onTransformEnd as
+                | ((e: { target: FakeKonvaNode }) => void)
+                | undefined,
+            });
+            if (typeof outerRef === 'function') outerRef(node);
+            else if (outerRef && 'current' in outerRef)
+              (outerRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          },
         },
-      },
-      children,
-    ),
+        children as React.ReactNode,
+      );
+    },
+  ),
   Rect: (rest: Record<string, unknown>) =>
     React.createElement('div', {
       'data-testid': (rest['data-testid'] as string | undefined) ?? 'mock-rect',
@@ -166,6 +184,26 @@ vi.mock('react-konva', () => ({
       'data-testid': 'mock-line',
       'data-dash': String((rest.dash as unknown) ?? ''),
     }),
+  Transformer: React.forwardRef<
+    { nodes: (n?: unknown[]) => unknown[]; getLayer: () => { batchDraw: () => void } },
+    Record<string, unknown>
+  >(function MockTransformer(rest, ref) {
+    // Expose a Konva-shaped imperative handle so the stage's useEffect can
+    // call `tr.nodes([...])` + `tr.getLayer().batchDraw()` without booting
+    // the real Konva runtime.
+    React.useImperativeHandle(ref, () => ({
+      nodes: () => [],
+      getLayer: () => ({ batchDraw: () => {} }),
+    }));
+    return React.createElement('div', {
+      'data-testid': (rest['data-testid'] as string | undefined) ?? 'mock-transformer',
+      'data-rotate-enabled': String(rest.rotateEnabled ?? ''),
+      'data-keep-ratio': String(rest.keepRatio ?? ''),
+      'data-enabled-anchors': Array.isArray(rest.enabledAnchors)
+        ? (rest.enabledAnchors as string[]).join(',')
+        : '',
+    });
+  }),
 }));
 
 import { CanvasEditorStage } from '@/presentation/components/features/events/CanvasEditorStage';
@@ -454,6 +492,9 @@ function fakeKonvaEvent(x: number, y: number) {
     target: {
       x: () => x,
       y: () => y,
+      scaleX: () => 1,
+      scaleY: () => 1,
+      rotation: () => 0,
       position: vi.fn(),
     },
   };
@@ -615,5 +656,226 @@ describe('CanvasEditorStage S8.3 interactions', () => {
         r.getAttribute('data-dash') !== '',
     );
     expect(haloRect).toBeDefined();
+  });
+});
+
+// ─────────────────────────── S8.4 Transformer tests ───────────────────────────
+
+function makeTransformEvent(
+  values: Partial<{ scaleX: number; scaleY: number; rotation: number }>,
+) {
+  return {
+    target: {
+      x: () => 0,
+      y: () => 0,
+      scaleX: () => values.scaleX ?? 1,
+      scaleY: () => values.scaleY ?? 1,
+      rotation: () => values.rotation ?? 0,
+      position: vi.fn(),
+    },
+  };
+}
+
+describe('CanvasEditorStage S8.4 Transformer wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('Transformer is not rendered when nothing is selected', async () => {
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={null}
+        onSelect={vi.fn()}
+        onGeometryChange={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    expect(screen.queryByTestId('canvas-editor-transformer')).toBeNull();
+  });
+
+  it('Transformer is not rendered in read-only mode even if selected is set', async () => {
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'zone', id: 'z1' }}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    expect(screen.queryByTestId('canvas-editor-transformer')).toBeNull();
+  });
+
+  it('rect zone selected: Transformer has 8 anchors, rotateEnabled=true, keepRatio=false', async () => {
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'zone', id: 'z1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const tr = screen.getByTestId('canvas-editor-transformer');
+    expect(tr.getAttribute('data-rotate-enabled')).toBe('true');
+    expect(tr.getAttribute('data-keep-ratio')).toBe('false');
+    const anchors = (tr.getAttribute('data-enabled-anchors') ?? '').split(',');
+    expect(anchors).toHaveLength(8);
+    expect(anchors).toContain('top-left');
+    expect(anchors).toContain('middle-right');
+  });
+
+  it('round table selected: Transformer has 4 corner anchors, rotateEnabled=false, keepRatio=true', async () => {
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'table', id: 't1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const tr = screen.getByTestId('canvas-editor-transformer');
+    expect(tr.getAttribute('data-rotate-enabled')).toBe('false');
+    expect(tr.getAttribute('data-keep-ratio')).toBe('true');
+    const anchors = (tr.getAttribute('data-enabled-anchors') ?? '').split(',');
+    expect(anchors).toHaveLength(4);
+    expect(anchors).toEqual(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
+  });
+
+  it('curve zone selected: Transformer is not rendered (resize not supported on curves)', async () => {
+    const layout = baseLayout({
+      zones: [
+        {
+          id: 'curve-1',
+          name: 'Mezzanine',
+          color: '#A855F7',
+          sortOrder: 0,
+          enabledSeatCount: 0,
+          totalSeatCount: 0,
+          seats: [],
+          shape: ZoneShape.Curve,
+          geometry: JSON.stringify({
+            centerX: 500,
+            centerY: 500,
+            radius: 200,
+            startAngleDeg: 180,
+            sweepAngleDeg: 180,
+          }),
+        },
+      ],
+    });
+    render(
+      <CanvasEditorStage
+        layout={layout}
+        selected={{ kind: 'zone', id: 'curve-1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    expect(screen.queryByTestId('canvas-editor-transformer')).toBeNull();
+  });
+
+  it('rect zone transform end: scaleX=2 emits geometry with width doubled + snapped', async () => {
+    const onGeometryChange = vi.fn();
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'zone', id: 'z1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={onGeometryChange}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const zoneGroup = getDraggableGroup({ x: 300, y: 200 });
+    const handlers = elementHandlers.get(zoneGroup);
+    expect(handlers?.onTransformEnd).toBeDefined();
+
+    // Original zone: 400x200, center (300, 200). Drag right handle: scaleX=2.
+    handlers?.onTransformEnd?.(makeTransformEvent({ scaleX: 2, scaleY: 1 }));
+
+    expect(onGeometryChange).toHaveBeenCalledTimes(1);
+    const [ref, geometryJson] = onGeometryChange.mock.calls[0];
+    expect(ref).toEqual({ kind: 'zone', id: 'z1' });
+    // 400 * 2 = 800 (snap still 800). Center unchanged → top-left (300-400, 200-100) = (-100, 100).
+    // Height unchanged = 200.
+    expect(JSON.parse(geometryJson)).toEqual({
+      x: -100,
+      y: 100,
+      width: 800,
+      height: 200,
+    });
+  });
+
+  it('rect zone transform end: rotation=47 snaps to 45 and emits updated geometry', async () => {
+    const onGeometryChange = vi.fn();
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'zone', id: 'z1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={onGeometryChange}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const zoneGroup = getDraggableGroup({ x: 300, y: 200 });
+    const handlers = elementHandlers.get(zoneGroup);
+
+    handlers?.onTransformEnd?.(makeTransformEvent({ rotation: 47 }));
+
+    expect(onGeometryChange).toHaveBeenCalledTimes(1);
+    const [, geometryJson] = onGeometryChange.mock.calls[0];
+    expect(JSON.parse(geometryJson)).toEqual({
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 200,
+      rotation: 45,
+    });
+  });
+
+  it('round table transform end: scaleX=1.5 emits new radius, snapped to grid', async () => {
+    const onGeometryChange = vi.fn();
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'table', id: 't1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={onGeometryChange}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const tableGroup = getDraggableGroup({ x: 700, y: 600 });
+    const handlers = elementHandlers.get(tableGroup);
+
+    // Original radius 40; scaleX=1.5 → 60, snap-to-50 → 50. Min floor is 25.
+    handlers?.onTransformEnd?.(makeTransformEvent({ scaleX: 1.5, scaleY: 1.5 }));
+
+    expect(onGeometryChange).toHaveBeenCalledTimes(1);
+    const [ref, geometryJson] = onGeometryChange.mock.calls[0];
+    expect(ref).toEqual({ kind: 'table', id: 't1' });
+    expect(JSON.parse(geometryJson)).toEqual({
+      centerX: 700,
+      centerY: 600,
+      radius: 50,
+    });
+  });
+
+  it('rect zone transform end: no-op when scale=1 and rotation=0 (no spurious commit)', async () => {
+    const onGeometryChange = vi.fn();
+    render(
+      <CanvasEditorStage
+        layout={layoutWithOneZoneAndTable()}
+        selected={{ kind: 'zone', id: 'z1' }}
+        onSelect={vi.fn()}
+        onGeometryChange={onGeometryChange}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId('mock-stage')).toBeInTheDocument());
+    const zoneGroup = getDraggableGroup({ x: 300, y: 200 });
+    const handlers = elementHandlers.get(zoneGroup);
+
+    handlers?.onTransformEnd?.(makeTransformEvent({}));
+    expect(onGeometryChange).not.toHaveBeenCalled();
   });
 });

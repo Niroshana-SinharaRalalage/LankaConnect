@@ -24,9 +24,19 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type Konva from 'konva';
-import { Stage, Layer, Rect, Circle, Text, Path, Group, Line } from 'react-konva';
+import {
+  Stage,
+  Layer,
+  Rect,
+  Circle,
+  Text,
+  Path,
+  Group,
+  Line,
+  Transformer,
+} from 'react-konva';
 import type {
   VenueLayoutDto,
   VenueZoneDto,
@@ -42,10 +52,15 @@ import {
 } from '@/presentation/utils/layoutGeometry';
 import {
   EDITOR_GRID,
+  MIN_SHAPE_DIMENSION,
   snapToGrid,
+  snapRotation,
   refKey,
   itemCenter,
   applyDragToGeometry,
+  applyResizeToGeometry,
+  applyRadiusToGeometry,
+  applyRotationToGeometry,
   resolveGeometry,
   type CanvasItemRef,
 } from '@/presentation/utils/canvasEditorGeometry';
@@ -56,6 +71,21 @@ const DEFAULT_BACKGROUND = '#FAFAF9';
 const GRID_COLOR = '#E5E7EB';
 const SELECTION_COLOR = '#2563EB';
 const ALIGN_TOLERANCE = 3; // canvas units — considered "aligned" within this distance
+const SCALE_CHANGE_EPSILON = 0.001;
+const ROTATION_CHANGE_EPSILON = 0.1;
+
+function findLayoutItem(
+  layout: VenueLayoutDto,
+  ref: CanvasItemRef,
+): VenueZoneDto | VenueTableDto | VenueDecorationDto | null {
+  if (ref.kind === 'zone') {
+    return layout.zones?.find((z) => z.id === ref.id) ?? null;
+  }
+  if (ref.kind === 'table') {
+    return layout.tables?.find((t) => t.id === ref.id) ?? null;
+  }
+  return layout.decorations?.find((d) => d.id === ref.id) ?? null;
+}
 
 export interface CanvasEditorStageProps {
   layout: VenueLayoutDto;
@@ -88,6 +118,100 @@ export function CanvasEditorStage({
     xLines: [],
     yLines: [],
   });
+
+  // Slice 8 S8.4: ref map + Transformer attached to the selected shape's
+  // Group. Handled imperatively because Konva's Transformer is imperative.
+  const groupRefs = useRef(new Map<string, Konva.Group>());
+  const transformerRef = useRef<Konva.Transformer | null>(null);
+
+  const registerGroupRef = useCallback(
+    (key: string, node: Konva.Group | null) => {
+      if (node) groupRefs.current.set(key, node);
+      else groupRefs.current.delete(key);
+    },
+    [],
+  );
+
+  // Compute whether the currently selected item can be transformed, and
+  // what anchor set / keep-ratio behavior the Transformer should use.
+  const transformerConfig = useMemo(() => {
+    if (!selected) return null;
+    const layoutItem = findLayoutItem(layout, selected);
+    if (!layoutItem) return null;
+    if (selected.kind === 'zone') {
+      const zone = layoutItem as VenueZoneDto;
+      if (zone.shape === 'Curve') return null; // curve geometry has no width/height
+      return {
+        enabledAnchors: [
+          'top-left',
+          'top-center',
+          'top-right',
+          'middle-right',
+          'bottom-right',
+          'bottom-center',
+          'bottom-left',
+          'middle-left',
+        ],
+        rotateEnabled: true,
+        keepRatio: false,
+      };
+    }
+    if (selected.kind === 'table') {
+      const table = layoutItem as VenueTableDto;
+      if (table.shape === 'Round') {
+        return {
+          enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+          rotateEnabled: false, // circular shape — rotation is meaningless
+          keepRatio: true,
+        };
+      }
+      return {
+        enabledAnchors: [
+          'top-left',
+          'top-center',
+          'top-right',
+          'middle-right',
+          'bottom-right',
+          'bottom-center',
+          'bottom-left',
+          'middle-left',
+        ],
+        rotateEnabled: true,
+        keepRatio: false,
+      };
+    }
+    // decoration
+    return {
+      enabledAnchors: [
+        'top-left',
+        'top-center',
+        'top-right',
+        'middle-right',
+        'bottom-right',
+        'bottom-center',
+        'bottom-left',
+        'middle-left',
+      ],
+      rotateEnabled: true,
+      keepRatio: false,
+    };
+  }, [selected, layout]);
+
+  // Attach Transformer to the selected node whenever selection changes.
+  useEffect(() => {
+    const tr = transformerRef.current;
+    if (!tr) return;
+    if (selected && transformerConfig) {
+      const node = groupRefs.current.get(refKey(selected));
+      if (node) {
+        tr.nodes([node]);
+        tr.getLayer()?.batchDraw();
+        return;
+      }
+    }
+    tr.nodes([]);
+    tr.getLayer()?.batchDraw();
+  }, [selected, transformerConfig, layout, draftGeometryByKey]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -169,6 +293,10 @@ export function CanvasEditorStage({
     if (next) onGeometryChange?.(ref, next);
   };
 
+  const commitTransform = (ref: CanvasItemRef, newGeometry: string) => {
+    onGeometryChange?.(ref, newGeometry);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -202,101 +330,140 @@ export function CanvasEditorStage({
           </Layer>
 
           <Layer>
-            {(layout.decorations ?? []).map((d) => (
-              <DecorationShape
-                key={d.id}
-                decoration={d}
-                geometryOverride={draftGeometryByKey[refKey({ kind: 'decoration', id: d.id })]}
-                selected={
-                  selected?.kind === 'decoration' && selected.id === d.id
-                }
-                onSelect={onSelect ? () => onSelect({ kind: 'decoration', id: d.id }) : undefined}
-                onDragMove={
-                  isInteractive
-                    ? (c) =>
-                        updateGuidesDuringDrag(
-                          refKey({ kind: 'decoration', id: d.id }),
-                          c,
-                        )
-                    : undefined
-                }
-                onDragEnd={
-                  onGeometryChange
-                    ? (snapped, geometry) => {
-                        clearGuides();
-                        commitDrag(
-                          { kind: 'decoration', id: d.id },
-                          undefined,
-                          geometry,
-                          snapped,
-                        );
-                      }
-                    : undefined
-                }
-              />
-            ))}
+            {(layout.decorations ?? []).map((d) => {
+              const ref: CanvasItemRef = { kind: 'decoration', id: d.id };
+              const key = refKey(ref);
+              return (
+                <DecorationShape
+                  key={d.id}
+                  decoration={d}
+                  geometryOverride={draftGeometryByKey[key]}
+                  selected={selected?.kind === 'decoration' && selected.id === d.id}
+                  onSelect={onSelect ? () => onSelect(ref) : undefined}
+                  onDragMove={
+                    isInteractive
+                      ? (c) => updateGuidesDuringDrag(key, c)
+                      : undefined
+                  }
+                  onDragEnd={
+                    onGeometryChange
+                      ? (snapped, geometry) => {
+                          clearGuides();
+                          commitDrag(ref, undefined, geometry, snapped);
+                        }
+                      : undefined
+                  }
+                  registerRef={
+                    isInteractive ? (node) => registerGroupRef(key, node) : undefined
+                  }
+                  onTransformEnd={
+                    onGeometryChange ? (newGeom) => commitTransform(ref, newGeom) : undefined
+                  }
+                />
+              );
+            })}
           </Layer>
 
           <Layer>
-            {(layout.zones ?? []).map((z) => (
-              <ZoneShape
-                key={z.id}
-                zone={z}
-                geometryOverride={draftGeometryByKey[refKey({ kind: 'zone', id: z.id })]}
-                selected={selected?.kind === 'zone' && selected.id === z.id}
-                onSelect={onSelect ? () => onSelect({ kind: 'zone', id: z.id }) : undefined}
-                onDragMove={
-                  isInteractive
-                    ? (c) =>
-                        updateGuidesDuringDrag(refKey({ kind: 'zone', id: z.id }), c)
-                    : undefined
-                }
-                onDragEnd={
-                  onGeometryChange
-                    ? (snapped, geometry) => {
-                        clearGuides();
-                        commitDrag(
-                          { kind: 'zone', id: z.id },
-                          z.shape as string | undefined,
-                          geometry,
-                          snapped,
-                        );
-                      }
-                    : undefined
-                }
-              />
-            ))}
+            {(layout.zones ?? []).map((z) => {
+              const ref: CanvasItemRef = { kind: 'zone', id: z.id };
+              const key = refKey(ref);
+              return (
+                <ZoneShape
+                  key={z.id}
+                  zone={z}
+                  geometryOverride={draftGeometryByKey[key]}
+                  selected={selected?.kind === 'zone' && selected.id === z.id}
+                  onSelect={onSelect ? () => onSelect(ref) : undefined}
+                  onDragMove={
+                    isInteractive
+                      ? (c) => updateGuidesDuringDrag(key, c)
+                      : undefined
+                  }
+                  onDragEnd={
+                    onGeometryChange
+                      ? (snapped, geometry) => {
+                          clearGuides();
+                          commitDrag(
+                            ref,
+                            z.shape as string | undefined,
+                            geometry,
+                            snapped,
+                          );
+                        }
+                      : undefined
+                  }
+                  registerRef={
+                    isInteractive ? (node) => registerGroupRef(key, node) : undefined
+                  }
+                  onTransformEnd={
+                    onGeometryChange ? (newGeom) => commitTransform(ref, newGeom) : undefined
+                  }
+                />
+              );
+            })}
           </Layer>
 
           <Layer>
-            {(layout.tables ?? []).map((t) => (
-              <TableShape
-                key={t.id}
-                table={t}
-                geometryOverride={draftGeometryByKey[refKey({ kind: 'table', id: t.id })]}
-                selected={selected?.kind === 'table' && selected.id === t.id}
-                onSelect={onSelect ? () => onSelect({ kind: 'table', id: t.id }) : undefined}
-                onDragMove={
-                  isInteractive
-                    ? (c) =>
-                        updateGuidesDuringDrag(refKey({ kind: 'table', id: t.id }), c)
-                    : undefined
-                }
-                onDragEnd={
-                  onGeometryChange
-                    ? (snapped, geometry) => {
-                        clearGuides();
-                        commitDrag(
-                          { kind: 'table', id: t.id },
-                          t.shape as string,
-                          geometry,
-                          snapped,
-                        );
-                      }
-                    : undefined
-                }
+            {(layout.tables ?? []).map((t) => {
+              const ref: CanvasItemRef = { kind: 'table', id: t.id };
+              const key = refKey(ref);
+              return (
+                <TableShape
+                  key={t.id}
+                  table={t}
+                  geometryOverride={draftGeometryByKey[key]}
+                  selected={selected?.kind === 'table' && selected.id === t.id}
+                  onSelect={onSelect ? () => onSelect(ref) : undefined}
+                  onDragMove={
+                    isInteractive
+                      ? (c) => updateGuidesDuringDrag(key, c)
+                      : undefined
+                  }
+                  onDragEnd={
+                    onGeometryChange
+                      ? (snapped, geometry) => {
+                          clearGuides();
+                          commitDrag(ref, t.shape as string, geometry, snapped);
+                        }
+                      : undefined
+                  }
+                  registerRef={
+                    isInteractive ? (node) => registerGroupRef(key, node) : undefined
+                  }
+                  onTransformEnd={
+                    onGeometryChange ? (newGeom) => commitTransform(ref, newGeom) : undefined
+                  }
+                />
+              );
+            })}
+            {/* S8.4: single Transformer that imperatively attaches to the
+             * selected shape's Group (via groupRefs) in the useEffect above. */}
+            {isInteractive && transformerConfig && (
+              <Transformer
+                ref={transformerRef}
+                enabledAnchors={transformerConfig.enabledAnchors}
+                rotateEnabled={transformerConfig.rotateEnabled}
+                keepRatio={transformerConfig.keepRatio}
+                rotationSnaps={[0, 15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180,
+                  195, 210, 225, 240, 255, 270, 285, 300, 315, 330, 345]}
+                anchorSize={10}
+                anchorStroke={SELECTION_COLOR}
+                anchorFill="#FFFFFF"
+                borderStroke={SELECTION_COLOR}
+                borderDash={[4, 4]}
+                boundBoxFunc={(oldBox, newBox) => {
+                  if (
+                    newBox.width < MIN_SHAPE_DIMENSION ||
+                    newBox.height < MIN_SHAPE_DIMENSION
+                  ) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+                data-testid="canvas-editor-transformer"
               />
-            ))}
+            )}
           </Layer>
 
           {/* Alignment guides drawn on top so they're visible over items. */}
@@ -376,9 +543,16 @@ interface DraggableShapeProps {
   /** Called at drag end with the snapped center and the effective geometry JSON. */
   onDragEnd?: (snappedCenter: { x: number; y: number }, geometry: string | undefined) => void;
   geometryOverride?: string;
+  /** Slice 8 S8.4: register the Konva Group node so the Transformer can
+   * imperatively attach to it when this shape is selected. */
+  registerRef?: (node: Konva.Group | null) => void;
+  /** Slice 8 S8.4: fires when the Transformer finishes a resize or rotate.
+   * Emits the already-snapped new geometry JSON (or null to drop). */
+  onTransformEnd?: (newGeometry: string) => void;
 }
 
 type KonvaDragEvent = Konva.KonvaEventObject<DragEvent>;
+type KonvaTransformEvent = Konva.KonvaEventObject<Event>;
 
 // ─────────────────────────── Zones ───────────────────────────
 
@@ -389,6 +563,8 @@ function ZoneShape({
   onSelect,
   onDragMove,
   onDragEnd,
+  registerRef,
+  onTransformEnd,
 }: DraggableShapeProps & { zone: VenueZoneDto }) {
   const geometry = geometryOverride ?? zone.geometry;
 
@@ -413,6 +589,7 @@ function ZoneShape({
     const canDrag = Boolean(onDragEnd);
     return (
       <Group
+        ref={registerRef}
         x={centerX}
         y={centerY}
         draggable={canDrag}
@@ -468,8 +645,39 @@ function ZoneShape({
   const centerY = g.y + g.height / 2;
   const canDrag = Boolean(onDragEnd);
   const labelFontSize = Math.max(14, Math.min(26, g.width / 24));
+  const handleTransformEnd = (e: KonvaTransformEvent) => {
+    const node = e.target;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const rotation = node.rotation();
+    const sizeChanged =
+      Math.abs(scaleX - 1) > SCALE_CHANGE_EPSILON ||
+      Math.abs(scaleY - 1) > SCALE_CHANGE_EPSILON;
+    const rotationChanged =
+      Math.abs(rotation - (g.rotation ?? 0)) > ROTATION_CHANGE_EPSILON;
+    let updated: string | null = null;
+    if (sizeChanged) {
+      const newWidth = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.width * scaleX));
+      const newHeight = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.height * scaleY));
+      updated = applyResizeToGeometry(
+        'zone',
+        geometry,
+        { width: newWidth, height: newHeight },
+        'Rect',
+      );
+      node.scaleX(1);
+      node.scaleY(1);
+    }
+    if (rotationChanged) {
+      const snapped = snapRotation(rotation);
+      node.rotation(snapped);
+      updated = applyRotationToGeometry('zone', updated ?? geometry, snapped, 'Rect');
+    }
+    if (updated) onTransformEnd?.(updated);
+  };
   return (
     <Group
+      ref={registerRef}
       x={centerX}
       y={centerY}
       rotation={g.rotation ?? 0}
@@ -482,6 +690,7 @@ function ZoneShape({
         e.target.position(snapped);
         onDragEnd?.(snapped, geometry ?? undefined);
       }}
+      onTransformEnd={handleTransformEnd}
     >
       <Rect
         x={-g.width / 2}
@@ -530,6 +739,8 @@ function TableShape({
   onSelect,
   onDragMove,
   onDragEnd,
+  registerRef,
+  onTransformEnd,
 }: DraggableShapeProps & { table: VenueTableDto }) {
   const geometry = geometryOverride ?? table.geometry;
   const canDrag = Boolean(onDragEnd);
@@ -537,8 +748,21 @@ function TableShape({
   if (table.shape === 'Round') {
     const g = parseRoundTableGeom(geometry);
     if (!g) return null;
+    const handleRoundTransformEnd = (e: KonvaTransformEvent) => {
+      const node = e.target;
+      const scaleX = node.scaleX();
+      // keepRatio is true → scaleX === scaleY.
+      if (Math.abs(scaleX - 1) < SCALE_CHANGE_EPSILON) return;
+      const minRadius = MIN_SHAPE_DIMENSION / 2;
+      const newRadius = Math.max(minRadius, snapToGrid(g.radius * scaleX));
+      const updated = applyRadiusToGeometry(geometry, newRadius);
+      node.scaleX(1);
+      node.scaleY(1);
+      if (updated) onTransformEnd?.(updated);
+    };
     return (
       <Group
+        ref={registerRef}
         x={g.centerX}
         y={g.centerY}
         draggable={canDrag}
@@ -550,6 +774,7 @@ function TableShape({
           e.target.position(snapped);
           onDragEnd?.(snapped, geometry ?? undefined);
         }}
+        onTransformEnd={handleRoundTransformEnd}
       >
         <Circle
           x={0}
@@ -586,8 +811,39 @@ function TableShape({
 
   const g = parseRectTableGeom(geometry);
   if (!g) return null;
+  const handleRectTableTransformEnd = (e: KonvaTransformEvent) => {
+    const node = e.target;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const rotation = node.rotation();
+    const sizeChanged =
+      Math.abs(scaleX - 1) > SCALE_CHANGE_EPSILON ||
+      Math.abs(scaleY - 1) > SCALE_CHANGE_EPSILON;
+    const rotationChanged =
+      Math.abs(rotation - (g.rotation ?? 0)) > ROTATION_CHANGE_EPSILON;
+    let updated: string | null = null;
+    if (sizeChanged) {
+      const newWidth = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.width * scaleX));
+      const newHeight = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.height * scaleY));
+      updated = applyResizeToGeometry(
+        'table',
+        geometry,
+        { width: newWidth, height: newHeight },
+        'Rect',
+      );
+      node.scaleX(1);
+      node.scaleY(1);
+    }
+    if (rotationChanged) {
+      const snapped = snapRotation(rotation);
+      node.rotation(snapped);
+      updated = applyRotationToGeometry('table', updated ?? geometry, snapped, 'Rect');
+    }
+    if (updated) onTransformEnd?.(updated);
+  };
   return (
     <Group
+      ref={registerRef}
       x={g.centerX}
       y={g.centerY}
       rotation={g.rotation ?? 0}
@@ -600,6 +856,7 @@ function TableShape({
         e.target.position(snapped);
         onDragEnd?.(snapped, geometry ?? undefined);
       }}
+      onTransformEnd={handleRectTableTransformEnd}
     >
       <Rect
         x={-g.width / 2}
@@ -647,6 +904,8 @@ function DecorationShape({
   onSelect,
   onDragMove,
   onDragEnd,
+  registerRef,
+  onTransformEnd,
 }: DraggableShapeProps & { decoration: VenueDecorationDto }) {
   const geometry = geometryOverride ?? decoration.geometry;
   const g = parseRectGeom(geometry);
@@ -656,8 +915,37 @@ function DecorationShape({
   const centerX = g.x + g.width / 2;
   const centerY = g.y + g.height / 2;
   const canDrag = Boolean(onDragEnd);
+  const handleDecorationTransformEnd = (e: KonvaTransformEvent) => {
+    const node = e.target;
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    const rotation = node.rotation();
+    const sizeChanged =
+      Math.abs(scaleX - 1) > SCALE_CHANGE_EPSILON ||
+      Math.abs(scaleY - 1) > SCALE_CHANGE_EPSILON;
+    const rotationChanged =
+      Math.abs(rotation - (g.rotation ?? 0)) > ROTATION_CHANGE_EPSILON;
+    let updated: string | null = null;
+    if (sizeChanged) {
+      const newWidth = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.width * scaleX));
+      const newHeight = Math.max(MIN_SHAPE_DIMENSION, snapToGrid(g.height * scaleY));
+      updated = applyResizeToGeometry('decoration', geometry, {
+        width: newWidth,
+        height: newHeight,
+      });
+      node.scaleX(1);
+      node.scaleY(1);
+    }
+    if (rotationChanged) {
+      const snapped = snapRotation(rotation);
+      node.rotation(snapped);
+      updated = applyRotationToGeometry('decoration', updated ?? geometry, snapped);
+    }
+    if (updated) onTransformEnd?.(updated);
+  };
   return (
     <Group
+      ref={registerRef}
       x={centerX}
       y={centerY}
       rotation={g.rotation ?? 0}
@@ -670,6 +958,7 @@ function DecorationShape({
         e.target.position(snapped);
         onDragEnd?.(snapped, geometry ?? undefined);
       }}
+      onTransformEnd={handleDecorationTransformEnd}
     >
       <Rect
         x={-g.width / 2}

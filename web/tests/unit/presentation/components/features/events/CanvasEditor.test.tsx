@@ -206,3 +206,151 @@ describe('CanvasEditor — toolbar delete flow', () => {
     expect(stage.getAttribute('data-table-count')).toBe('1'); // back to persisted
   });
 });
+
+// ─────────────────────────── S8.6 undo / redo / keyboard ───────────────────────────
+
+describe('CanvasEditor — undo/redo via toolbar buttons', () => {
+  it('undo button is disabled until a change is committed', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    expect(screen.getByTestId('toolbar-undo')).toBeDisabled();
+    expect(screen.getByTestId('toolbar-redo')).toBeDisabled();
+  });
+
+  it('undo reverts an Add Zone commit; redo restores it', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    let stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+    expect(screen.getByTestId('toolbar-undo')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('toolbar-undo'));
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+    expect(screen.getByTestId('toolbar-redo')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('toolbar-redo'));
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+    expect(screen.getByTestId('toolbar-redo')).toBeDisabled();
+  });
+
+  it('a new commit after undo discards the redo stack', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    fireEvent.click(screen.getByTestId('toolbar-add-round-table'));
+    // After two adds, undo once → one available redo.
+    fireEvent.click(screen.getByTestId('toolbar-undo'));
+    expect(screen.getByTestId('toolbar-redo')).not.toBeDisabled();
+    // New commit — the redo stack should clear.
+    fireEvent.click(screen.getByTestId('toolbar-add-rect-table'));
+    expect(screen.getByTestId('toolbar-redo')).toBeDisabled();
+  });
+
+  it('undoing an add whose item is currently selected clears selection', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    let stage = await waitForStage();
+    expect(stage.getAttribute('data-selected')).toMatch(/^zone:/);
+    fireEvent.click(screen.getByTestId('toolbar-undo'));
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-selected')).toBe('null');
+  });
+});
+
+describe('CanvasEditor — keyboard shortcuts', () => {
+  it('Ctrl+Z undoes the last commit', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    let stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+  });
+
+  it('Ctrl+Shift+Z redoes an undone commit', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    let stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+
+    fireEvent.keyDown(window, { key: 'Z', ctrlKey: true, shiftKey: true });
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+  });
+
+  it('Ctrl+Y redoes (Windows convention)', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+
+    fireEvent.keyDown(window, { key: 'y', ctrlKey: true });
+    const stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+  });
+
+  it('Delete key deletes the selected item', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    let stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+
+    fireEvent.keyDown(window, { key: 'Delete' });
+    stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+  });
+
+  it('Backspace also deletes the selected item', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    fireEvent.keyDown(window, { key: 'Backspace' });
+    const stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+  });
+
+  it('shortcuts are suppressed while focus is inside an input', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    // Focus the decoration-kind select (inside a form-control, counts as input target).
+    const select = screen.getByTestId('toolbar-decoration-kind');
+    (select as HTMLElement).focus();
+    fireEvent.keyDown(select, { key: 'z', ctrlKey: true });
+    const stage = await waitForStage();
+    // Undo should NOT have fired → still 2 zones.
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+  });
+
+  it('arrow keys nudge the selected item', async () => {
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    const stage = await waitForStage();
+    // Selection has an auto-added zone; undo stack has 1 entry (the add).
+    expect(screen.getByTestId('toolbar-undo')).not.toBeDisabled();
+    // Nudge right — should add another entry to the undo stack. Checking
+    // via the toolbar-redo disabled state: nudge commits, so nothing in
+    // redo stack yet; the undo stack grew.
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    // After the nudge, undoing once → previous add result (2 zones); undoing
+    // again → initial (1 zone). So canUndo is still true and redo is empty.
+    expect(screen.getByTestId('toolbar-undo')).not.toBeDisabled();
+    expect(screen.getByTestId('toolbar-redo')).toBeDisabled();
+
+    // Undo twice gets us back to 1 zone (pre-add).
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    expect(stage.getAttribute('data-zone-count')).toBe('1');
+  });
+});

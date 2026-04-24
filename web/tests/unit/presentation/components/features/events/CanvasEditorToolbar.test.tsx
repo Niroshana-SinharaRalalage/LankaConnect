@@ -104,4 +104,40 @@ describe('CanvasEditorToolbar', () => {
     mount();
     expect(screen.getByRole('toolbar', { name: /canvas editor toolbar/i })).toBeInTheDocument();
   });
+
+  // ─────────────────────────── S8.6 undo/redo buttons ───────────────────────────
+
+  it('does not render undo/redo buttons when no handlers are provided', () => {
+    mount();
+    expect(screen.queryByTestId('toolbar-undo')).toBeNull();
+    expect(screen.queryByTestId('toolbar-redo')).toBeNull();
+  });
+
+  it('renders undo/redo buttons when handlers are provided', () => {
+    mount({ onUndo: vi.fn(), onRedo: vi.fn() });
+    expect(screen.getByTestId('toolbar-undo')).toBeInTheDocument();
+    expect(screen.getByTestId('toolbar-redo')).toBeInTheDocument();
+  });
+
+  it('undo button is disabled when canUndo=false', () => {
+    mount({ onUndo: vi.fn(), onRedo: vi.fn(), canUndo: false, canRedo: false });
+    expect(screen.getByTestId('toolbar-undo')).toBeDisabled();
+    expect(screen.getByTestId('toolbar-redo')).toBeDisabled();
+  });
+
+  it('undo button fires onUndo when enabled', () => {
+    const onUndo = vi.fn();
+    mount({ onUndo, onRedo: vi.fn(), canUndo: true });
+    const btn = screen.getByTestId('toolbar-undo');
+    expect(btn).not.toBeDisabled();
+    fireEvent.click(btn);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('redo button fires onRedo when enabled', () => {
+    const onRedo = vi.fn();
+    mount({ onUndo: vi.fn(), onRedo, canRedo: true });
+    fireEvent.click(screen.getByTestId('toolbar-redo'));
+    expect(onRedo).toHaveBeenCalledTimes(1);
+  });
 });

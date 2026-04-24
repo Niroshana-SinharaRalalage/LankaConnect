@@ -20,7 +20,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Redo2, Trash2, Undo2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { DecorationKind } from '@/infrastructure/api/types/events.types';
 
@@ -41,6 +41,12 @@ export interface CanvasEditorToolbarProps {
   onAddDecoration: (kind: DecorationKind) => void;
   onDeleteSelected: () => void;
   canDelete: boolean;
+  /** Slice 8 S8.6: undo/redo integration. Defaulted so the toolbar stays
+   * backward-compatible with any future caller that doesn't wire history. */
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   className?: string;
 }
 
@@ -51,6 +57,10 @@ export function CanvasEditorToolbar({
   onAddDecoration,
   onDeleteSelected,
   canDelete,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
   className,
 }: CanvasEditorToolbarProps) {
   const [decorationKind, setDecorationKind] = useState<DecorationKind>(
@@ -128,6 +138,35 @@ export function CanvasEditorToolbar({
       </div>
 
       <div className="flex-1" />
+
+      {(onUndo || onRedo) && (
+        <div className="flex items-center gap-1 mr-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo"
+            title="Undo (Ctrl+Z)"
+            data-testid="toolbar-undo"
+          >
+            <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onRedo}
+            disabled={!canRedo}
+            aria-label="Redo"
+            title="Redo (Ctrl+Y)"
+            data-testid="toolbar-redo"
+          >
+            <Redo2 className="w-3.5 h-3.5" aria-hidden="true" />
+          </Button>
+        </div>
+      )}
 
       <Button
         type="button"

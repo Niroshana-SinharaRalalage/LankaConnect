@@ -25,7 +25,7 @@ from typing import Optional
 import psycopg2
 
 # ──────────────────── CHANGE THIS TO POINT AT A DIFFERENT EVENT ────────────────────
-TEST_EVENT_ID = "d543629f-a5ba-4475-b124-3d0fc5200f2f"   # Christmas Dinner Dance 2025 (paid)
+TEST_EVENT_ID = "0458806b-8672-4ad5-a7cb-f5346f1b282a"   # Monthly Dana January 2026 (free)
 # ─────────────────────────────────────────────────────────────────────────────────
 
 API = "https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io"
@@ -138,15 +138,24 @@ def discover_event_data():
     paid_reg = cur.fetchone()
     print(f"  paid reg:    {paid_reg[0] if paid_reg else '(none)'}")
 
-    # Free reg (for resend-confirmation-free)
+    # Free reg — prefer one whose contact email is OUR login email (deliverable)
+    # over test-harness emails that Azure ACS will suppress.
     cur.execute(
-        'SELECT "Id", "Status" FROM events.registrations WHERE "EventId" = %s '
-        'AND "Status" = \'Confirmed\' AND (total_price_amount = 0 OR total_price_amount IS NULL) '
-        'ORDER BY "CreatedAt" DESC LIMIT 1;',
-        (TEST_EVENT_ID,),
+        """
+        SELECT "Id", "Status", contact->>'Email' FROM events.registrations
+         WHERE "EventId" = %s AND "Status" = 'Confirmed'
+           AND (total_price_amount = 0 OR total_price_amount IS NULL)
+         ORDER BY
+           CASE WHEN contact->>'Email' = %s THEN 0 ELSE 1 END,
+           "CreatedAt" DESC
+         LIMIT 1;
+        """,
+        (TEST_EVENT_ID, EMAIL),
     )
     free_reg = cur.fetchone()
-    print(f"  free reg:    {free_reg[0] if free_reg else '(none — event is paid or no free regs)'}")
+    print(f"  free reg:    {free_reg[0] if free_reg else '(none)'}"
+          f"  contact={free_reg[2] if free_reg else ''}")
+    free_reg_is_mine = bool(free_reg and free_reg[2] == EMAIL)
 
     # Quantity-based signup item with remaining capacity, on non-volunteer list
     cur.execute(
@@ -189,6 +198,7 @@ def discover_event_data():
         "is_free": is_free,
         "paid_reg_id": paid_reg[0] if paid_reg else None,
         "free_reg_id": free_reg[0] if free_reg else None,
+        "free_reg_is_mine": free_reg_is_mine,
         "qty_item_id": qty_item[0] if qty_item else None,
         "qty_list_id": qty_item[1] if qty_item else None,
         "vol_item_id": vol_item[0] if vol_item else None,
@@ -296,17 +306,98 @@ def t_volunteer_cycle(token, data):
     return out
 
 
+def check_my_registration(cur):
+    """Returns True if authenticated test user owns a Confirmed reg on TEST_EVENT_ID
+    (UserId match — anonymous regs with empty-guid don't count)."""
+    cur.execute(
+        'SELECT 1 FROM events.registrations '
+        'WHERE "EventId" = %s AND "UserId" = %s AND "Status" = \'Confirmed\' LIMIT 1;',
+        (TEST_EVENT_ID, USER_ID),
+    )
+    return cur.fetchone() is not None
+
+
+def t_registration_cancel(token, data):
+    """Fire template-event-registration-cancellation for a FREE event. Strategy:
+    only run on free events (paid would require refund flow). If the test user
+    doesn't own a reg via UserId-match on this event, RSVP first to bootstrap
+    one, then cancel, then re-RSVP to restore state.
+
+    Paid-event registration-cancellation requires a refund flow and is NOT
+    run here to keep staging data clean."""
+    if not data["is_free"]:
+        return [("template-event-registration-cancellation",
+                 "event is paid — cancel would require refund flow (skipped to keep state clean)",
+                 0, None, False)]
+
+    conn = psycopg2.connect(**DB_PARAMS)
+    cur = conn.cursor()
+    owns_reg = check_my_registration(cur)
+    cur.close()
+    conn.close()
+
+    rsvp_body = {
+        "userId": USER_ID,
+        "quantity": 1,
+        "email": EMAIL,
+    }
+
+    if not owns_reg:
+        print(f"   [bootstrap] no UserId-match reg for this user on event — POST /rsvp first")
+        rsvp_status, rsvp_body_resp = api("POST", f"/api/events/{TEST_EVENT_ID}/rsvp",
+                                          token=token, body=rsvp_body)
+        print(f"   [bootstrap] rsvp returned HTTP {rsvp_status}")
+        if not (200 <= (rsvp_status or 0) < 300):
+            return [("template-event-registration-cancellation",
+                     f"bootstrap RSVP failed (HTTP {rsvp_status}) — cannot verify",
+                     rsvp_status, rsvp_body_resp, False)]
+        time.sleep(3)
+
+    # Now cancel — fires RegistrationCancelledEvent
+    status, body = api("DELETE", f"/api/events/{TEST_EVENT_ID}/rsvp", token=token)
+    out = [("template-event-registration-cancellation",
+            f"DELETE /api/events/{TEST_EVENT_ID[:8]}/rsvp (cancel my free reg)",
+            status, body, True)]
+
+    # Re-RSVP to restore state.
+    if 200 <= (status or 0) < 300:
+        time.sleep(3)
+        reRsvp = api("POST", f"/api/events/{TEST_EVENT_ID}/rsvp", token=token, body=rsvp_body)
+        print(f"   [restore] re-RSVP returned HTTP {reRsvp[0]}")
+    return out
+
+
+def t_attendees_added(token, data):
+    """Add an attendee to my paid reg to fire template-attendees-added-confirmation.
+    Only runs on a paid event where I already have a Confirmed paid reg."""
+    if data["is_free"] or not data["paid_reg_id"]:
+        return [("template-attendees-added-confirmation",
+                 "event is free OR no paid reg — attendees-added only fires on paid regs", 0, None, False)]
+
+    body = {
+        "attendees": [{
+            "name": "7C Verify AddOn",
+            "ageCategory": "Adult",
+            "gender": "PreferNotToSay",
+            "gender_": "PreferNotToSay",
+        }],
+    }
+    status, resp = api("POST",
+                       f"/api/events/registrations/{data['paid_reg_id']}/add-attendees",
+                       token=token, body=body)
+    return [("template-attendees-added-confirmation",
+             f"POST /registrations/{data['paid_reg_id'][:8]}/add-attendees (1 attendee)",
+             status, resp, True)]
+
+
 DESTRUCTIVE = [
-    ("template-event-registration-cancellation",
-     "DELETE /api/events/{id}/rsvp  - would permanently cancel a paid registration on staging"),
     ("template-event-cancellation-notifications",
-     "POST /api/events/{id}/cancel  - would cancel the entire event"),
+     "POST /api/events/{id}/cancel  - would cancel the entire event (destructive to shared staging state)"),
     ("template-event-approval",
-     "POST /api/events/admin/{id}/approve  - admin-only, flips Draft -> Published"),
-    ("template-attendees-added-confirmation",
-     "POST /api/events/registrations/{rid}/add-attendees  - mutates attendee count"),
+     "POST /api/events/admin/{id}/approve  - requires Admin/AdminManager role; niroshhh is EventOrganizer"),
     ("template-preliminary-registration-payment-pending",
-     "requires fresh Stripe checkout session (POST rsvp with payment, no completion)"),
+     "requires fresh Stripe checkout session (POST paid rsvp) — creates a preliminary reg that auto-abandons;"
+     " doable but not included in this run to keep the script side-effect-free."),
 ]
 
 
@@ -325,7 +416,8 @@ def main():
     before = snapshot()
     print(f"\n[snapshot-before] {len(before)} template metric rows today")
 
-    groups = [t_paid_ticket, t_free_reg, t_event_reminder, t_signup_qty_cycle, t_volunteer_cycle]
+    groups = [t_paid_ticket, t_free_reg, t_event_reminder, t_signup_qty_cycle,
+              t_volunteer_cycle, t_registration_cancel, t_attendees_added]
     results = []
     for fn in groups:
         try:

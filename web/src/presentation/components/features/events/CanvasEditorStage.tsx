@@ -1,27 +1,31 @@
 /**
- * Slice 8 S8.2: CanvasEditorStage — Konva implementation for the editor surface.
+ * Slice 8 S8.2+S8.3: CanvasEditorStage — Konva implementation for the editor.
  *
- * Wrapped by {@link CanvasEditor} via Next.js `dynamic()` with `ssr: false`. Never
- * import this file directly from a page — Konva touches `window` at import time.
+ * Wrapped by {@link CanvasEditor} via Next.js `dynamic()` with `ssr: false`.
+ * Never import this file directly from a page — Konva touches `window` at
+ * import time.
  *
- * Today (S8.2) this is a read-only renderer: zones (rect + curve), tables
- * (round + rect), decorations (stage / dance-floor / aisle / door / wall /
- * text / image), a light dotted grid overlay, and a background matching
- * the layout's canvas config. No interaction yet — drag/resize/rotate land
- * in S8.3–S8.4, toolbar/property-panel in S8.5, undo/redo in S8.6.
+ * S8.2 — read-only rendering: zones (rect + curve), tables (round + rect),
+ * decorations (stage / aisle / door / wall / text / image / dance-floor),
+ * light dotted grid, canvas background.
  *
- * Seats are intentionally NOT rendered in the editor — they are auto-generated
- * per zone/table by the domain and organizers don't position individual seats.
- * The editor manipulates structural shapes; the registration-side SeatPicker
- * is the surface that shows seats.
+ * S8.3 — interaction: click to select, drag to move, snap-to-50px grid,
+ * empty-canvas click deselects. Dragging an item emits `onGeometryChange`
+ * with a new geometry JSON so the parent (CanvasEditor) can maintain a
+ * draft state that diverges from the persisted layout until Save.
  *
- * Reuses the parser / geometry helpers from `layoutGeometry.ts` so the editor
- * and the SeatPicker interpret geometry identically.
+ * S8.3+ — alignment guides: during drag, dashed blue lines appear when the
+ * dragged item's center aligns (within `ALIGN_TOLERANCE`) with another
+ * item's center on either axis. Guides disappear on drag end.
+ *
+ * Seats are NOT rendered in the editor — they are auto-generated per
+ * zone/table by the domain and organizers don't position them individually.
  */
 
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type Konva from 'konva';
 import { Stage, Layer, Rect, Circle, Text, Path, Group, Line } from 'react-konva';
 import type {
   VenueLayoutDto,
@@ -36,33 +40,60 @@ import {
   parseRectTableGeom,
   decorationStyle,
 } from '@/presentation/utils/layoutGeometry';
+import {
+  EDITOR_GRID,
+  snapToGrid,
+  refKey,
+  itemCenter,
+  applyDragToGeometry,
+  resolveGeometry,
+  type CanvasItemRef,
+} from '@/presentation/utils/canvasEditorGeometry';
 
 const DEFAULT_CANVAS_WIDTH = 1000;
 const DEFAULT_CANVAS_HEIGHT = 800;
 const DEFAULT_BACKGROUND = '#FAFAF9';
-const GRID_SPACING = 50;
 const GRID_COLOR = '#E5E7EB';
+const SELECTION_COLOR = '#2563EB';
+const ALIGN_TOLERANCE = 3; // canvas units — considered "aligned" within this distance
 
 export interface CanvasEditorStageProps {
   layout: VenueLayoutDto;
-  /** Optional className on the wrapping div. */
   className?: string;
+  /** Currently selected item, or null. When undefined the stage renders read-only. */
+  selected?: CanvasItemRef | null;
+  /** Called when the user clicks a shape (ref) or the empty canvas (null). */
+  onSelect?: (ref: CanvasItemRef | null) => void;
+  /**
+   * Per-item geometry overrides — keyed by refKey(ref). The stage renders
+   * each item's geometry from this map first, then falls back to the
+   * persisted layout. Matches the drag-while-unsaved flow.
+   */
+  draftGeometryByKey?: Record<string, string>;
+  /** Called on drag end with the snapped geometry JSON for the moved item. */
+  onGeometryChange?: (ref: CanvasItemRef, geometryJson: string) => void;
 }
 
-export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps) {
+export function CanvasEditorStage({
+  layout,
+  className,
+  selected = null,
+  onSelect,
+  draftGeometryByKey = {},
+  onGeometryChange,
+}: CanvasEditorStageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [activeGuides, setActiveGuides] = useState<{ xLines: number[]; yLines: number[] }>({
+    xLines: [],
+    yLines: [],
+  });
 
-  // Watch the container size so the Konva stage scales responsively as the
-  // modal resizes (user drags viewport, device rotation, etc).
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const update = () => {
-      setContainerSize({
-        width: el.clientWidth,
-        height: el.clientHeight,
-      });
+      setContainerSize({ width: el.clientWidth, height: el.clientHeight });
     };
     update();
     const ro = new ResizeObserver(update);
@@ -74,8 +105,6 @@ export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps)
   const canvasHeight = layout.canvas?.height ?? DEFAULT_CANVAS_HEIGHT;
   const background = layout.canvas?.backgroundColor ?? DEFAULT_BACKGROUND;
 
-  // Fit-scale so the whole canvas is visible within the container, no matter
-  // the aspect ratio. 0.98 pads the canvas inside the container edges.
   const scale =
     containerSize.width === 0 || containerSize.height === 0
       ? 1
@@ -86,6 +115,59 @@ export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps)
 
   const offsetX = (containerSize.width - canvasWidth * scale) / 2;
   const offsetY = (containerSize.height - canvasHeight * scale) / 2;
+
+  const isInteractive = Boolean(onSelect && onGeometryChange);
+
+  // Precompute all item centers so alignment-guide detection during drag is O(n).
+  const itemCentersByKey = useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>();
+    for (const z of layout.zones ?? []) {
+      const g = resolveGeometry('zone', z, draftGeometryByKey);
+      const c = itemCenter('zone', g, z.shape as string | undefined);
+      if (c) map.set(refKey({ kind: 'zone', id: z.id }), c);
+    }
+    for (const t of layout.tables ?? []) {
+      const g = resolveGeometry('table', t, draftGeometryByKey);
+      const c = itemCenter('table', g, t.shape as string);
+      if (c) map.set(refKey({ kind: 'table', id: t.id }), c);
+    }
+    for (const d of layout.decorations ?? []) {
+      const g = resolveGeometry('decoration', d, draftGeometryByKey);
+      const c = itemCenter('decoration', g);
+      if (c) map.set(refKey({ kind: 'decoration', id: d.id }), c);
+    }
+    return map;
+  }, [layout.zones, layout.tables, layout.decorations, draftGeometryByKey]);
+
+  // During drag, compute alignment guides against every other item.
+  const updateGuidesDuringDrag = (ownKey: string, current: { x: number; y: number }) => {
+    if (!isInteractive) return;
+    const xLines = new Set<number>();
+    const yLines = new Set<number>();
+    for (const [key, center] of itemCentersByKey.entries()) {
+      if (key === ownKey) continue;
+      if (Math.abs(center.x - current.x) <= ALIGN_TOLERANCE) xLines.add(center.x);
+      if (Math.abs(center.y - current.y) <= ALIGN_TOLERANCE) yLines.add(center.y);
+    }
+    setActiveGuides({ xLines: [...xLines], yLines: [...yLines] });
+  };
+
+  const clearGuides = () => setActiveGuides({ xLines: [], yLines: [] });
+
+  const handleBackgroundClick = () => {
+    if (!isInteractive) return;
+    onSelect?.(null);
+  };
+
+  const commitDrag = (
+    ref: CanvasItemRef,
+    shapeHint: string | undefined,
+    geometry: string | null | undefined,
+    snappedCenter: { x: number; y: number },
+  ) => {
+    const next = applyDragToGeometry(ref.kind, geometry, snappedCenter, shapeHint);
+    if (next) onGeometryChange?.(ref, next);
+  };
 
   return (
     <div
@@ -104,7 +186,6 @@ export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps)
           y={offsetY}
         >
           <Layer>
-            {/* Canvas background */}
             <Rect
               x={0}
               y={0}
@@ -113,30 +194,134 @@ export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps)
               fill={background}
               stroke="#D1D5DB"
               strokeWidth={1 / scale}
-              listening={false}
+              onClick={handleBackgroundClick}
+              onTap={handleBackgroundClick}
+              data-testid="canvas-background"
             />
-            {/* Light grid overlay — hints at where snap-to-grid will land in S8.3 */}
             <Grid width={canvasWidth} height={canvasHeight} scale={scale} />
           </Layer>
 
           <Layer>
-            {/* Decorations drawn below zones so stage/aisle labels do not cover zone interiors */}
             {(layout.decorations ?? []).map((d) => (
-              <DecorationShape key={d.id} decoration={d} />
+              <DecorationShape
+                key={d.id}
+                decoration={d}
+                geometryOverride={draftGeometryByKey[refKey({ kind: 'decoration', id: d.id })]}
+                selected={
+                  selected?.kind === 'decoration' && selected.id === d.id
+                }
+                onSelect={onSelect ? () => onSelect({ kind: 'decoration', id: d.id }) : undefined}
+                onDragMove={
+                  isInteractive
+                    ? (c) =>
+                        updateGuidesDuringDrag(
+                          refKey({ kind: 'decoration', id: d.id }),
+                          c,
+                        )
+                    : undefined
+                }
+                onDragEnd={
+                  onGeometryChange
+                    ? (snapped, geometry) => {
+                        clearGuides();
+                        commitDrag(
+                          { kind: 'decoration', id: d.id },
+                          undefined,
+                          geometry,
+                          snapped,
+                        );
+                      }
+                    : undefined
+                }
+              />
             ))}
           </Layer>
 
           <Layer>
             {(layout.zones ?? []).map((z) => (
-              <ZoneShape key={z.id} zone={z} />
+              <ZoneShape
+                key={z.id}
+                zone={z}
+                geometryOverride={draftGeometryByKey[refKey({ kind: 'zone', id: z.id })]}
+                selected={selected?.kind === 'zone' && selected.id === z.id}
+                onSelect={onSelect ? () => onSelect({ kind: 'zone', id: z.id }) : undefined}
+                onDragMove={
+                  isInteractive
+                    ? (c) =>
+                        updateGuidesDuringDrag(refKey({ kind: 'zone', id: z.id }), c)
+                    : undefined
+                }
+                onDragEnd={
+                  onGeometryChange
+                    ? (snapped, geometry) => {
+                        clearGuides();
+                        commitDrag(
+                          { kind: 'zone', id: z.id },
+                          z.shape as string | undefined,
+                          geometry,
+                          snapped,
+                        );
+                      }
+                    : undefined
+                }
+              />
             ))}
           </Layer>
 
           <Layer>
             {(layout.tables ?? []).map((t) => (
-              <TableShape key={t.id} table={t} />
+              <TableShape
+                key={t.id}
+                table={t}
+                geometryOverride={draftGeometryByKey[refKey({ kind: 'table', id: t.id })]}
+                selected={selected?.kind === 'table' && selected.id === t.id}
+                onSelect={onSelect ? () => onSelect({ kind: 'table', id: t.id }) : undefined}
+                onDragMove={
+                  isInteractive
+                    ? (c) =>
+                        updateGuidesDuringDrag(refKey({ kind: 'table', id: t.id }), c)
+                    : undefined
+                }
+                onDragEnd={
+                  onGeometryChange
+                    ? (snapped, geometry) => {
+                        clearGuides();
+                        commitDrag(
+                          { kind: 'table', id: t.id },
+                          t.shape as string,
+                          geometry,
+                          snapped,
+                        );
+                      }
+                    : undefined
+                }
+              />
             ))}
           </Layer>
+
+          {/* Alignment guides drawn on top so they're visible over items. */}
+          {isInteractive && (
+            <Layer listening={false}>
+              {activeGuides.xLines.map((x) => (
+                <Line
+                  key={`xg-${x}`}
+                  points={[x, 0, x, canvasHeight]}
+                  stroke={SELECTION_COLOR}
+                  strokeWidth={1 / scale}
+                  dash={[6, 4]}
+                />
+              ))}
+              {activeGuides.yLines.map((y) => (
+                <Line
+                  key={`yg-${y}`}
+                  points={[0, y, canvasWidth, y]}
+                  stroke={SELECTION_COLOR}
+                  strokeWidth={1 / scale}
+                  dash={[6, 4]}
+                />
+              ))}
+            </Layer>
+          )}
         </Stage>
       )}
 
@@ -153,9 +338,9 @@ export function CanvasEditorStage({ layout, className }: CanvasEditorStageProps)
 
 function Grid({ width, height, scale }: { width: number; height: number; scale: number }) {
   const cols: number[] = [];
-  for (let x = GRID_SPACING; x < width; x += GRID_SPACING) cols.push(x);
+  for (let x = EDITOR_GRID; x < width; x += EDITOR_GRID) cols.push(x);
   const rows: number[] = [];
-  for (let y = GRID_SPACING; y < height; y += GRID_SPACING) rows.push(y);
+  for (let y = EDITOR_GRID; y < height; y += EDITOR_GRID) rows.push(y);
   const strokeWidth = 0.5 / scale;
   return (
     <Group listening={false} opacity={0.6}>
@@ -181,32 +366,69 @@ function Grid({ width, height, scale }: { width: number; height: number; scale: 
   );
 }
 
+// ─────────────────────────── Shape common props ───────────────────────────
+
+interface DraggableShapeProps {
+  selected?: boolean;
+  onSelect?: () => void;
+  /** Called during drag with the current center in canvas space. */
+  onDragMove?: (center: { x: number; y: number }) => void;
+  /** Called at drag end with the snapped center and the effective geometry JSON. */
+  onDragEnd?: (snappedCenter: { x: number; y: number }, geometry: string | undefined) => void;
+  geometryOverride?: string;
+}
+
+type KonvaDragEvent = Konva.KonvaEventObject<DragEvent>;
+
 // ─────────────────────────── Zones ───────────────────────────
 
-function ZoneShape({ zone }: { zone: VenueZoneDto }) {
+function ZoneShape({
+  zone,
+  geometryOverride,
+  selected,
+  onSelect,
+  onDragMove,
+  onDragEnd,
+}: DraggableShapeProps & { zone: VenueZoneDto }) {
+  const geometry = geometryOverride ?? zone.geometry;
+
   if (zone.shape === 'Curve') {
-    const geom = parseCurveGeom(zone.geometry);
-    if (!geom) return null;
-    const { centerX, centerY, radius, startAngleDeg, sweepAngleDeg } = geom;
+    const g = parseCurveGeom(geometry);
+    if (!g) return null;
+    const { centerX, centerY, radius, startAngleDeg, sweepAngleDeg } = g;
     const toRad = (d: number) => (d * Math.PI) / 180;
     const endAngleDeg = startAngleDeg + sweepAngleDeg;
-    const start = {
-      x: centerX + radius * Math.cos(toRad(startAngleDeg)),
-      y: centerY + radius * Math.sin(toRad(startAngleDeg)),
+    const startPt = {
+      x: radius * Math.cos(toRad(startAngleDeg)),
+      y: radius * Math.sin(toRad(startAngleDeg)),
     };
-    const end = {
-      x: centerX + radius * Math.cos(toRad(endAngleDeg)),
-      y: centerY + radius * Math.sin(toRad(endAngleDeg)),
+    const endPt = {
+      x: radius * Math.cos(toRad(endAngleDeg)),
+      y: radius * Math.sin(toRad(endAngleDeg)),
     };
     const largeArc = Math.abs(sweepAngleDeg) > 180 ? 1 : 0;
     const sweepFlag = sweepAngleDeg >= 0 ? 1 : 0;
-    const d = `M ${centerX} ${centerY} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} ${sweepFlag} ${end.x} ${end.y} Z`;
+    // Path drawn relative to Group (0,0) so the Group can own position.
+    const d = `M 0 0 L ${startPt.x} ${startPt.y} A ${radius} ${radius} 0 ${largeArc} ${sweepFlag} ${endPt.x} ${endPt.y} Z`;
+    const canDrag = Boolean(onDragEnd);
     return (
-      <Group>
+      <Group
+        x={centerX}
+        y={centerY}
+        draggable={canDrag}
+        onClick={onSelect}
+        onTap={onSelect}
+        onDragMove={(e: KonvaDragEvent) => onDragMove?.({ x: e.target.x(), y: e.target.y() })}
+        onDragEnd={(e: KonvaDragEvent) => {
+          const snapped = { x: snapToGrid(e.target.x()), y: snapToGrid(e.target.y()) };
+          e.target.position(snapped);
+          onDragEnd?.(snapped, geometry ?? undefined);
+        }}
+      >
         <Path data={d} fill={zone.color} opacity={0.25} stroke={zone.color} strokeWidth={2} />
         <Text
-          x={centerX - radius}
-          y={centerY + radius / 3}
+          x={-radius}
+          y={radius / 3}
           width={radius * 2}
           align="center"
           text={zone.name}
@@ -215,15 +437,22 @@ function ZoneShape({ zone }: { zone: VenueZoneDto }) {
           fontFamily="Inter, system-ui, sans-serif"
           fill={zone.color}
         />
+        {selected && (
+          <Circle
+            x={0}
+            y={0}
+            radius={radius + 6}
+            stroke={SELECTION_COLOR}
+            strokeWidth={2}
+            dash={[4, 4]}
+          />
+        )}
       </Group>
     );
   }
 
-  // Rect / Polygon fall back to rect rendering; polygon geometry is
-  // undefined in today's presets — rendering a placeholder-free rect keeps
-  // the canvas useful even if someone hand-crafts polygon geometry.
-  const geom = parseRectGeom(zone.geometry);
-  if (!geom) {
+  const g = parseRectGeom(geometry);
+  if (!g) {
     return (
       <Text
         x={40}
@@ -235,16 +464,30 @@ function ZoneShape({ zone }: { zone: VenueZoneDto }) {
       />
     );
   }
-  const labelFontSize = Math.max(14, Math.min(26, geom.width / 24));
-  const rotationOrigin =
-    geom.rotation ? { x: geom.x + geom.width / 2, y: geom.y + geom.height / 2 } : null;
+  const centerX = g.x + g.width / 2;
+  const centerY = g.y + g.height / 2;
+  const canDrag = Boolean(onDragEnd);
+  const labelFontSize = Math.max(14, Math.min(26, g.width / 24));
   return (
-    <Group rotation={geom.rotation ?? 0} x={rotationOrigin?.x ?? 0} y={rotationOrigin?.y ?? 0}>
+    <Group
+      x={centerX}
+      y={centerY}
+      rotation={g.rotation ?? 0}
+      draggable={canDrag}
+      onClick={onSelect}
+      onTap={onSelect}
+      onDragMove={(e: KonvaDragEvent) => onDragMove?.({ x: e.target.x(), y: e.target.y() })}
+      onDragEnd={(e: KonvaDragEvent) => {
+        const snapped = { x: snapToGrid(e.target.x()), y: snapToGrid(e.target.y()) };
+        e.target.position(snapped);
+        onDragEnd?.(snapped, geometry ?? undefined);
+      }}
+    >
       <Rect
-        x={geom.x - (rotationOrigin?.x ?? 0)}
-        y={geom.y - (rotationOrigin?.y ?? 0)}
-        width={geom.width}
-        height={geom.height}
+        x={-g.width / 2}
+        y={-g.height / 2}
+        width={g.width}
+        height={g.height}
         cornerRadius={6}
         fill={zone.color}
         opacity={0.18}
@@ -252,9 +495,9 @@ function ZoneShape({ zone }: { zone: VenueZoneDto }) {
         strokeWidth={2}
       />
       <Text
-        x={geom.x - (rotationOrigin?.x ?? 0)}
-        y={geom.y - (rotationOrigin?.y ?? 0) + Math.min(12, geom.height / 2)}
-        width={geom.width}
+        x={-g.width / 2}
+        y={-g.height / 2 + Math.min(12, g.height / 2)}
+        width={g.width}
         align="center"
         text={zone.name}
         fontSize={labelFontSize}
@@ -262,30 +505,64 @@ function ZoneShape({ zone }: { zone: VenueZoneDto }) {
         fontFamily="Inter, system-ui, sans-serif"
         fill={zone.color}
       />
+      {selected && (
+        <Rect
+          x={-g.width / 2 - 4}
+          y={-g.height / 2 - 4}
+          width={g.width + 8}
+          height={g.height + 8}
+          stroke={SELECTION_COLOR}
+          strokeWidth={2}
+          dash={[4, 4]}
+          cornerRadius={8}
+        />
+      )}
     </Group>
   );
 }
 
 // ─────────────────────────── Tables ───────────────────────────
 
-function TableShape({ table }: { table: VenueTableDto }) {
+function TableShape({
+  table,
+  geometryOverride,
+  selected,
+  onSelect,
+  onDragMove,
+  onDragEnd,
+}: DraggableShapeProps & { table: VenueTableDto }) {
+  const geometry = geometryOverride ?? table.geometry;
+  const canDrag = Boolean(onDragEnd);
+
   if (table.shape === 'Round') {
-    const geom = parseRoundTableGeom(table.geometry);
-    if (!geom) return null;
+    const g = parseRoundTableGeom(geometry);
+    if (!g) return null;
     return (
-      <Group>
+      <Group
+        x={g.centerX}
+        y={g.centerY}
+        draggable={canDrag}
+        onClick={onSelect}
+        onTap={onSelect}
+        onDragMove={(e: KonvaDragEvent) => onDragMove?.({ x: e.target.x(), y: e.target.y() })}
+        onDragEnd={(e: KonvaDragEvent) => {
+          const snapped = { x: snapToGrid(e.target.x()), y: snapToGrid(e.target.y()) };
+          e.target.position(snapped);
+          onDragEnd?.(snapped, geometry ?? undefined);
+        }}
+      >
         <Circle
-          x={geom.centerX}
-          y={geom.centerY}
-          radius={geom.radius}
+          x={0}
+          y={0}
+          radius={g.radius}
           fill="#FDE68A"
           stroke="#B45309"
           strokeWidth={2}
         />
         <Text
-          x={geom.centerX - geom.radius}
-          y={geom.centerY - 7}
-          width={geom.radius * 2}
+          x={-g.radius}
+          y={-7}
+          width={g.radius * 2}
           align="center"
           text={table.label}
           fontSize={14}
@@ -293,34 +570,51 @@ function TableShape({ table }: { table: VenueTableDto }) {
           fontFamily="Inter, system-ui, sans-serif"
           fill="#92400E"
         />
+        {selected && (
+          <Circle
+            x={0}
+            y={0}
+            radius={g.radius + 6}
+            stroke={SELECTION_COLOR}
+            strokeWidth={2}
+            dash={[4, 4]}
+          />
+        )}
       </Group>
     );
   }
 
-  const geom = parseRectTableGeom(table.geometry);
-  if (!geom) return null;
-  const x = geom.centerX - geom.width / 2;
-  const y = geom.centerY - geom.height / 2;
+  const g = parseRectTableGeom(geometry);
+  if (!g) return null;
   return (
     <Group
-      rotation={geom.rotation ?? 0}
-      x={geom.rotation ? geom.centerX : 0}
-      y={geom.rotation ? geom.centerY : 0}
+      x={g.centerX}
+      y={g.centerY}
+      rotation={g.rotation ?? 0}
+      draggable={canDrag}
+      onClick={onSelect}
+      onTap={onSelect}
+      onDragMove={(e: KonvaDragEvent) => onDragMove?.({ x: e.target.x(), y: e.target.y() })}
+      onDragEnd={(e: KonvaDragEvent) => {
+        const snapped = { x: snapToGrid(e.target.x()), y: snapToGrid(e.target.y()) };
+        e.target.position(snapped);
+        onDragEnd?.(snapped, geometry ?? undefined);
+      }}
     >
       <Rect
-        x={geom.rotation ? -geom.width / 2 : x}
-        y={geom.rotation ? -geom.height / 2 : y}
-        width={geom.width}
-        height={geom.height}
+        x={-g.width / 2}
+        y={-g.height / 2}
+        width={g.width}
+        height={g.height}
         cornerRadius={4}
         fill="#FEE2E2"
         stroke="#B91C1C"
         strokeWidth={2}
       />
       <Text
-        x={geom.rotation ? -geom.width / 2 : x}
-        y={(geom.rotation ? -geom.height / 2 : y) + geom.height / 2 - 7}
-        width={geom.width}
+        x={-g.width / 2}
+        y={-7}
+        width={g.width}
         align="center"
         text={table.label}
         fontSize={14}
@@ -328,26 +622,60 @@ function TableShape({ table }: { table: VenueTableDto }) {
         fontFamily="Inter, system-ui, sans-serif"
         fill="#7F1D1D"
       />
+      {selected && (
+        <Rect
+          x={-g.width / 2 - 4}
+          y={-g.height / 2 - 4}
+          width={g.width + 8}
+          height={g.height + 8}
+          stroke={SELECTION_COLOR}
+          strokeWidth={2}
+          dash={[4, 4]}
+          cornerRadius={6}
+        />
+      )}
     </Group>
   );
 }
 
 // ─────────────────────────── Decorations ───────────────────────────
 
-function DecorationShape({ decoration }: { decoration: VenueDecorationDto }) {
-  const geom = parseRectGeom(decoration.geometry);
-  if (!geom) return null;
+function DecorationShape({
+  decoration,
+  geometryOverride,
+  selected,
+  onSelect,
+  onDragMove,
+  onDragEnd,
+}: DraggableShapeProps & { decoration: VenueDecorationDto }) {
+  const geometry = geometryOverride ?? decoration.geometry;
+  const g = parseRectGeom(geometry);
+  if (!g) return null;
   const style = decorationStyle(decoration.kind);
-  const rotationOrigin =
-    geom.rotation ? { x: geom.x + geom.width / 2, y: geom.y + geom.height / 2 } : null;
   const labelText = decoration.label ?? style.label;
+  const centerX = g.x + g.width / 2;
+  const centerY = g.y + g.height / 2;
+  const canDrag = Boolean(onDragEnd);
   return (
-    <Group rotation={geom.rotation ?? 0} x={rotationOrigin?.x ?? 0} y={rotationOrigin?.y ?? 0}>
+    <Group
+      x={centerX}
+      y={centerY}
+      rotation={g.rotation ?? 0}
+      draggable={canDrag}
+      onClick={onSelect}
+      onTap={onSelect}
+      onDragMove={(e: KonvaDragEvent) => onDragMove?.({ x: e.target.x(), y: e.target.y() })}
+      onDragEnd={(e: KonvaDragEvent) => {
+        const snapped = { x: snapToGrid(e.target.x()), y: snapToGrid(e.target.y()) };
+        e.target.position(snapped);
+        onDragEnd?.(snapped, geometry ?? undefined);
+      }}
+    >
       <Rect
-        x={geom.x - (rotationOrigin?.x ?? 0)}
-        y={geom.y - (rotationOrigin?.y ?? 0)}
-        width={geom.width}
-        height={geom.height}
+        x={-g.width / 2}
+        y={-g.height / 2}
+        width={g.width}
+        height={g.height}
         cornerRadius={decoration.kind === 'Stage' ? 10 : 4}
         fill={style.fill}
         stroke={style.stroke}
@@ -356,15 +684,27 @@ function DecorationShape({ decoration }: { decoration: VenueDecorationDto }) {
       />
       {labelText && (
         <Text
-          x={geom.x - (rotationOrigin?.x ?? 0)}
-          y={geom.y - (rotationOrigin?.y ?? 0) + geom.height / 2 - 10}
-          width={geom.width}
+          x={-g.width / 2}
+          y={-10}
+          width={g.width}
           align="center"
           text={labelText}
-          fontSize={Math.max(14, Math.min(28, geom.width / 22))}
+          fontSize={Math.max(14, Math.min(28, g.width / 22))}
           fontStyle="bold"
           fontFamily="Inter, system-ui, sans-serif"
           fill={style.labelColor}
+        />
+      )}
+      {selected && (
+        <Rect
+          x={-g.width / 2 - 4}
+          y={-g.height / 2 - 4}
+          width={g.width + 8}
+          height={g.height + 8}
+          stroke={SELECTION_COLOR}
+          strokeWidth={2}
+          dash={[4, 4]}
+          cornerRadius={decoration.kind === 'Stage' ? 12 : 6}
         />
       )}
     </Group>

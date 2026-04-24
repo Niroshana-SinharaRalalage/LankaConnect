@@ -432,7 +432,7 @@ public class TicketConfirmationEmailParams : IEmailParameters
         // LegacyFlatString is the scalar EventLocation already on this params object.
         LocationEmailDictionaryWriter.WriteTo(
             dict,
-            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
 
         return dict;
     }

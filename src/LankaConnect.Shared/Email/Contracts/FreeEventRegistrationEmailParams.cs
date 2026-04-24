@@ -275,7 +275,7 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
         // templates containing {{#if HasSecondaryLocation}} don't see an "undefined".
         LocationEmailDictionaryWriter.WriteTo(
             dict,
-            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
 
         return dict;
     }

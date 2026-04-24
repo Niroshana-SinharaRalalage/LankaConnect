@@ -273,7 +273,7 @@ public class EventReminderEmailParams : IEmailParameters
         // decomposed block (which includes {{EventLocation}} as a legacy fallback).
         LocationEmailDictionaryWriter.WriteTo(
             dict,
-            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
 
         return dict;
     }

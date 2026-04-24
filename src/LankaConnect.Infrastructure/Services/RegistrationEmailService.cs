@@ -1,5 +1,6 @@
 using System.Text;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -89,6 +90,14 @@ public class RegistrationEmailService : IRegistrationEmailService
                 eventDetailsUrl: eventDetailsUrl,
                 registrationDate: registration.CreatedAt
             );
+
+            // Phase 7C.2b Chunk 2c: emit decomposed location keys so the
+            // Venue Name + Address + optional Secondary Location block renders
+            // correctly in the free-event confirmation template. Without this,
+            // the fallback in ToDictionary() would project the scalar into
+            // LocationAddress (keeping the email non-empty) — but the primary
+            // goal is multi-venue support for events with a named venue.
+            emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
             // Set timezone for consistent date/time display
             emailParams.TimeZoneId = @event.TimeZoneId;
@@ -217,6 +226,15 @@ public class RegistrationEmailService : IRegistrationEmailService
                 paymentDate: registration.UpdatedAt ?? DateTime.UtcNow,
                 quantity: registration.Attendees?.Count ?? 1
             );
+
+            // Phase 7C.2b Chunk 2c: emit decomposed location keys — root cause
+            // of the 2026-04-23 "empty LOCATION header on paid-ticket resend"
+            // regression was that this handler path (used by
+            // ResendAttendeeConfirmationCommandHandler) never called
+            // WithLocationDetails, so the ToDictionary() fallback projected an
+            // empty LocationAddress into the decomposed template. Mirrors the
+            // call in PaymentCompletedEventHandler.cs:246.
+            emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
             // Set timezone for consistent date/time display
             emailParams.TimeZoneId = @event.TimeZoneId;

@@ -87,15 +87,22 @@ public class FreeEventRegistrationLocationDetailsTests
     }
 
     [Fact]
-    public void ToDictionary_WithoutWithLocationDetails_StillEmitsKeysWithEmptyValues()
+    public void ToDictionary_WithoutWithLocationDetails_ProjectsScalarIntoLocationAddress()
     {
-        // Defensive: un-refactored callers must not explode the template on {{#if HasSecondaryLocation}}.
+        // Phase 7C.2b Chunk 2c (2026-04-23): un-refactored callers must no
+        // longer ship an empty LocationAddress to the decomposed template.
+        // Previously this test asserted LocationAddress=="" — which was the
+        // silent data-loss bug that caused the paid-ticket confirmation email
+        // to render LOCATION-header-with-no-value. The new contract projects
+        // the scalar EventLocation into LocationAddress (matching the
+        // Location?.Address == null branch of ProjectEmailLocation).
         var p = BuildBase();
 
         var dict = p.ToDictionary();
 
         dict[EmailTemplateContract.Event.LocationName].Should().Be(string.Empty);
-        dict[EmailTemplateContract.Event.LocationAddress].Should().Be(string.Empty);
+        dict[EmailTemplateContract.Event.LocationAddress].Should().Be("legacy fallback string",
+            "un-refactored callers must render the scalar as a single line instead of nothing");
         dict[EmailTemplateContract.Event.HasLocationName].Should().Be(false);
         dict[EmailTemplateContract.Event.HasSecondaryLocation].Should().Be(false);
         dict[EmailTemplateContract.Event.SecondaryLocationLabel].Should().Be(string.Empty);

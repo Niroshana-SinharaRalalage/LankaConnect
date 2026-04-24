@@ -53,4 +53,30 @@ public sealed record LocationEmailProjection(
         HasSecondaryLocationName: false,
         SecondaryLocationAddress: string.Empty,
         LegacyFlatString: "Online Event");
+
+    /// <summary>
+    /// Phase 7C.2b Chunk 2c: defence-in-depth fallback for every
+    /// <c>*EmailParams.ToDictionary()</c>. When a handler constructs a params
+    /// object but forgets to call <c>WithLocationDetails(projection)</c>, this
+    /// factory keeps the decomposed template rendering the scalar
+    /// <c>EventLocation</c> value in the <c>{{LocationAddress}}</c> slot instead
+    /// of an empty span — avoiding the 2026-04-23 "LOCATION header with empty
+    /// value" regression on the paid-ticket confirmation. Matches the
+    /// <c>Location?.Address == null</c> branch of
+    /// <c>EventExtensions.ProjectEmailLocation</c>, which already projects the
+    /// flat string into <see cref="LocationAddress"/> and
+    /// <see cref="LegacyFlatString"/>.
+    /// </summary>
+    /// <param name="eventLocation">The flat scalar — street+city, "Online
+    /// Event", or whatever the handler's legacy helper returned. Null is
+    /// normalized to empty string.</param>
+    public static LocationEmailProjection FromLegacyScalar(string eventLocation)
+    {
+        var s = eventLocation ?? string.Empty;
+        return Online with
+        {
+            LocationAddress = s,
+            LegacyFlatString = s,
+        };
+    }
 }

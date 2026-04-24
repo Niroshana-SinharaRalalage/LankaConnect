@@ -166,7 +166,7 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
         // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
         LocationEmailDictionaryWriter.WriteTo(
             dict,
-            LocationDetails ?? LocationEmailProjection.Online with { LegacyFlatString = EventLocation });
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
 
         return dict;
     }

@@ -368,36 +368,29 @@ def t_registration_cancel(token, data):
 
 
 def t_attendees_added(token, data):
-    """Add an attendee to my paid reg to fire template-attendees-added-confirmation.
-    Only runs on a paid event where I already have a Confirmed paid reg."""
-    if data["is_free"] or not data["paid_reg_id"]:
-        return [("template-attendees-added-confirmation",
-                 "event is free OR no paid reg — attendees-added only fires on paid regs", 0, None, False)]
-
-    body = {
-        "attendees": [{
-            "name": "7C Verify AddOn",
-            "ageCategory": "Adult",
-            "gender": "PreferNotToSay",
-            "gender_": "PreferNotToSay",
-        }],
-    }
-    status, resp = api("POST",
-                       f"/api/events/registrations/{data['paid_reg_id']}/add-attendees",
-                       token=token, body=body)
+    """NOTE: add-attendees creates a Stripe checkout session but the email only
+    fires via the Stripe webhook AFTER payment completes. Calling the API
+    headlessly creates a RegistrationAddition + returns a checkout URL, but
+    no template-attendees-added-confirmation email is sent until checkout
+    completes. Left as a no-op trigger — documented in DESTRUCTIVE below."""
     return [("template-attendees-added-confirmation",
-             f"POST /registrations/{data['paid_reg_id'][:8]}/add-attendees (1 attendee)",
-             status, resp, True)]
+             "email only fires post-Stripe-webhook; API call alone does not produce a send",
+             0, None, False)]
 
 
 DESTRUCTIVE = [
     ("template-event-cancellation-notifications",
-     "POST /api/events/{id}/cancel  - would cancel the entire event (destructive to shared staging state)"),
+     "POST /api/events/{id}/cancel  - destructive: cancels the entire event and emails all attendees"),
     ("template-event-approval",
-     "POST /api/events/admin/{id}/approve  - requires Admin/AdminManager role; niroshhh is EventOrganizer"),
+     "POST /api/events/admin/{id}/approve  - admin-only; niroshhh is EventOrganizer not Admin"),
+    ("template-attendees-added-confirmation",
+     "POST /add-attendees creates a Stripe checkout session; the email only fires from the "
+     "Stripe webhook AFTER payment completes. Not triggerable headlessly without Stripe test mode completion."),
     ("template-preliminary-registration-payment-pending",
-     "requires fresh Stripe checkout session (POST paid rsvp) — creates a preliminary reg that auto-abandons;"
-     " doable but not included in this run to keep the script side-effect-free."),
+     "ORPHANED: RegistrationPendingPaymentEvent is declared in the domain but never raised "
+     "(verified 2026-04-24 via grep across domain+application). Handler + template + params "
+     "class all exist for future wiring, but the event never fires in production today. "
+     "Chunk 2b correctly identified this by DB probe (template has no location token)."),
 ]
 
 

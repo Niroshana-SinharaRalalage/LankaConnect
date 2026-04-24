@@ -20,6 +20,7 @@ import {
   applyResizeToGeometry,
   applyRadiusToGeometry,
   applyRotationToGeometry,
+  readGeometryDimensions,
   resolveGeometry,
   collectItemCenters,
 } from '../canvasEditorGeometry';
@@ -483,5 +484,70 @@ describe('applyRotationToGeometry', () => {
   it('round table: rejected — circular shape has no meaningful rotation', () => {
     const before = JSON.stringify({ centerX: 100, centerY: 100, radius: 40 });
     expect(applyRotationToGeometry('table', before, 45, TableShape.Round)).toBeNull();
+  });
+});
+
+describe('readGeometryDimensions', () => {
+  it('rect zone returns width/height/rotation', () => {
+    const g = JSON.stringify({ x: 100, y: 200, width: 400, height: 300, rotation: 45 });
+    expect(readGeometryDimensions('zone', g, ZoneShape.Rect)).toEqual({
+      width: 400,
+      height: 300,
+      rotation: 45,
+    });
+  });
+
+  it('rect zone without rotation defaults to 0 for display', () => {
+    const g = JSON.stringify({ x: 100, y: 200, width: 400, height: 300 });
+    expect(readGeometryDimensions('zone', g, ZoneShape.Rect)).toEqual({
+      width: 400,
+      height: 300,
+      rotation: 0,
+    });
+  });
+
+  it('curve zone returns only radius (width/height do not apply)', () => {
+    const g = JSON.stringify({
+      centerX: 500,
+      centerY: 500,
+      radius: 200,
+      startAngleDeg: 180,
+      sweepAngleDeg: 180,
+    });
+    expect(readGeometryDimensions('zone', g, ZoneShape.Curve)).toEqual({ radius: 200 });
+  });
+
+  it('round table returns only radius', () => {
+    const g = JSON.stringify({ centerX: 400, centerY: 400, radius: 40 });
+    expect(readGeometryDimensions('table', g, TableShape.Round)).toEqual({ radius: 40 });
+  });
+
+  it('rect table returns width/height/rotation', () => {
+    const g = JSON.stringify({
+      centerX: 300,
+      centerY: 300,
+      width: 200,
+      height: 80,
+      rotation: 90,
+    });
+    expect(readGeometryDimensions('table', g, TableShape.Rect)).toEqual({
+      width: 200,
+      height: 80,
+      rotation: 90,
+    });
+  });
+
+  it('decoration returns width/height/rotation', () => {
+    const g = JSON.stringify({ x: 0, y: 0, width: 300, height: 60, rotation: 30 });
+    expect(readGeometryDimensions('decoration', g)).toEqual({
+      width: 300,
+      height: 60,
+      rotation: 30,
+    });
+  });
+
+  it('returns null for malformed geometry', () => {
+    expect(readGeometryDimensions('zone', 'junk', ZoneShape.Rect)).toBeNull();
+    expect(readGeometryDimensions('table', null, TableShape.Round)).toBeNull();
   });
 });

@@ -294,6 +294,55 @@ export function applyRotationToGeometry(
 }
 
 /**
+ * S8.5a: extract the dimensions the property panel needs to display and
+ * let the organizer edit. Returns null for malformed geometry so the
+ * panel can show a read-only fallback rather than empty inputs.
+ *
+ * The shape-hint parameter controls which dimension fields come back:
+ *   - Rect zone / rect table / decoration → { width, height, rotation }
+ *   - Round table → { radius }
+ *   - Curve zone → { radius } (the only dimension the organizer can see
+ *     without rebuilding the curve geometry — editing is out of scope
+ *     for Slice 8)
+ */
+export interface ReadableDimensions {
+  width?: number;
+  height?: number;
+  radius?: number;
+  rotation?: number;
+}
+
+export function readGeometryDimensions(
+  kind: CanvasItemKind,
+  geometry: string | null | undefined,
+  shapeHint?: string,
+): ReadableDimensions | null {
+  if (kind === 'zone') {
+    if (shapeHint === 'Curve') {
+      const g = parseCurveGeom(geometry);
+      if (!g) return null;
+      return { radius: g.radius };
+    }
+    const g = parseRectGeom(geometry);
+    if (!g) return null;
+    return { width: g.width, height: g.height, rotation: g.rotation ?? 0 };
+  }
+  if (kind === 'table') {
+    if (shapeHint === 'Round') {
+      const g = parseRoundTableGeom(geometry);
+      if (!g) return null;
+      return { radius: g.radius };
+    }
+    const g = parseRectTableGeom(geometry);
+    if (!g) return null;
+    return { width: g.width, height: g.height, rotation: g.rotation ?? 0 };
+  }
+  const g = parseRectGeom(geometry);
+  if (!g) return null;
+  return { width: g.width, height: g.height, rotation: g.rotation ?? 0 };
+}
+
+/**
  * Resolve the effective geometry for an item, preferring a local draft
  * override (from in-progress editor moves) over the persisted geometry.
  */

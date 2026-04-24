@@ -1,17 +1,23 @@
 /**
- * Slice 8 S8.2+S8.3: CanvasEditor — SSR-safe wrapper + editor state.
+ * Slice 8 S8.2+S8.3+S8.5a: CanvasEditor — SSR-safe wrapper + editor state.
  *
- * Konva touches `window` at import time, so the actual stage lives in
+ * Konva touches `window` at import time, so the interactive stage lives in
  * {@link CanvasEditorStage} and we lazy-load it via `next/dynamic` with
  * `ssr: false`. This file is the only module pages / modals should import.
  *
- * S8.3 lifts editor state to this wrapper so S8.6 undo/redo can sit at the
- * same level without another refactor:
+ * S8.3 lifted selection + draft state to this wrapper so S8.6 undo/redo
+ * can sit at the same level without another refactor:
  *   - `selected: CanvasItemRef | null` — currently selected shape, or null.
  *   - `draftGeometryByKey: Record<string, string>` — in-progress geometry
  *     overrides per item, keyed by refKey(ref). Seeds empty; each drag
- *     end adds an entry. Save (S8.8) will materialize these into a
+ *     end / handle transform / property-panel commit adds an entry.
+ *     Save (S8.8) will materialize these into a
  *     `PUT /api/venue-layouts/{id}/batch` payload and clear the draft.
+ *
+ * S8.5a composes the canvas stage with a right-hand property panel so
+ * the organizer can edit the selected item's dimensions directly. The
+ * panel and the stage share the same `onGeometryChange` channel — one
+ * draft stream, one source of truth.
  */
 
 'use client';
@@ -20,6 +26,7 @@ import React, { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 import type { CanvasEditorStageProps } from './CanvasEditorStage';
+import { CanvasEditorPropertyPanel } from './CanvasEditorPropertyPanel';
 import { refKey, type CanvasItemRef } from '@/presentation/utils/canvasEditorGeometry';
 
 const CanvasEditorStage = dynamic<CanvasEditorStageProps>(
@@ -57,14 +64,27 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
   );
 
   return (
-    <CanvasEditorStage
-      layout={layout}
-      className={className}
-      selected={selected}
-      onSelect={setSelected}
-      draftGeometryByKey={draftGeometryByKey}
-      onGeometryChange={handleGeometryChange}
-    />
+    <div
+      className={className ?? 'flex h-full w-full'}
+      data-testid="canvas-editor-layout"
+    >
+      <div className="flex-1 min-w-0" data-testid="canvas-editor-canvas-slot">
+        <CanvasEditorStage
+          layout={layout}
+          className="w-full h-full"
+          selected={selected}
+          onSelect={setSelected}
+          draftGeometryByKey={draftGeometryByKey}
+          onGeometryChange={handleGeometryChange}
+        />
+      </div>
+      <CanvasEditorPropertyPanel
+        layout={layout}
+        selected={selected}
+        draftGeometryByKey={draftGeometryByKey}
+        onGeometryChange={handleGeometryChange}
+      />
+    </div>
   );
 }
 

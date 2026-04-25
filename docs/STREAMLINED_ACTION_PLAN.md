@@ -29,7 +29,33 @@
 
 ---
 
-## 🔄 CURRENT STATUS — SEATING REDESIGN SLICE 7: REGISTRATION UX REWRITE (2026-04-23)
+## 🎨 CURRENT STATUS — LANDING PAGE WORLDMAPANIMATION: 40s LOOP → 17s LOOP (2026-04-25)
+**Date**: 2026-04-25
+**Session**: User reported the landing page (`/`) animation felt slow. Measured one full loop at 40s (sum of `PHASE_MS` in [WorldMapAnimation.tsx](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx)). User proposed a 17s target with explicit per-phase numbers; applied verbatim.
+**Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Commit `ac3a8739` on `develop`; `deploy-ui-staging.yml` run `24938533772` conclusion=success — every step including type-check, unit tests, and smoke tests on `/`, `/api/health`, and proxy connectivity returned green. Live bundle `_next/static/chunks/459c8dbfd403492c.js` inspected via `curl ... | grep us-hubs` and confirmed to contain the new minified `PHASE_MS` object: `"world":1e3,"zoom-sl":1e3,"sl-cities":2e3,"sl-lines":2e3,beam:1500,"zoom-us":1e3,"us-hubs":3e3,"us-lines":3e3,"zoom-out":1500,pause:1e3` — sum = 17 000 ms exactly.
+**Scope**: One file, one constant object. `PHASE_MS` at [WorldMapAnimation.tsx:290-294](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L290-L294) — every phase duration roughly halved. Phase sequence, view targets, arc/node draw delays, the 2s CSS zoom transition, and visibility flags are unchanged.
+
+| phase | before → after | phase | before → after |
+| --- | ---: | --- | ---: |
+| world | 3.0s → 1.0s | sl-cities | 5.0s → 2.0s |
+| zoom-sl | 2.0s → 1.0s | sl-lines | 6.0s → 2.0s |
+| beam | 3.5s → 1.5s | zoom-us | 2.0s → 1.0s |
+| us-hubs | 6.0s → 3.0s | us-lines | 8.0s → 3.0s |
+| zoom-out | 2.5s → 1.5s | pause | 2.0s → 1.0s |
+
+**Why it's safe**: (1) Adjacent phases share their target view, so the 2s CSS zoom transition continues smoothly across phase boundaries even when a phase is shorter than the transition (e.g. `zoom-sl` is now 1s but the in-flight 2s transform completes during the following `sl-cities`, which targets the same lat/lon/zoom). (2) SL arc draw budget: 44 arcs × `i*0.055s + 0.75s` finishes at ~3.17s; `sl-lines` (2s) + carry-over into `beam` via `showSLLines = ['sl-lines','beam']` (1.5s) = 3.5s available — fits with margin. (3) US arc draw budget: ~62 arcs × `i*0.04s + 0.65s` finishes at ~3.13s; `us-lines` (3s) is ~150ms under budget — flagged in **Next** below. (4) No backend, DB, schema, EF migration, or env change. Pure presentation.
+**Evidence**:
+- Type-check (`npx tsc --noEmit` from `web/`): exit 0, silent (clean).
+- CI: `deploy-ui-staging.yml` run `24938533772` — `Run type checking`, `Run unit tests`, `Build Next.js application`, `Smoke Test - Health Check`, `Smoke Test - Home Page`, `Smoke Test - API Proxy Connectivity` all `conclusion=success`.
+- Live bundle grep proves the deployed minified output reflects the source change byte-for-byte (no stale CDN cache, no build mis-replication).
+**Scope discipline**: Single file, single object. Deliberately did NOT also retune the 2s `cubic-bezier` CSS zoom transition; cross-phase zoom continuity actually depends on it being longer than the shortest zoom phase. Unstaged files in the working tree (other in-flight work — test scripts, image assets) were left untouched. No `MASTER_TODO_*.md` opened — single-line tweak, not a multi-phase feature.
+**Next**:
+- 🟡 If the last 1-2 US arcs visibly clip on slower devices, drop the per-arc delay from `i * 0.04` → `i * 0.025` at [WorldMapAnimation.tsx:714](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L714) and [line 724](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L724) — recovers the ~150ms shortfall.
+- 🟡 User-gated visual smoke on the live staging URL `https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/` — load `/`, watch one full loop, confirm subjectively faster.
+
+---
+
+## 🔄 EARLIER STATUS — SEATING REDESIGN SLICE 7: REGISTRATION UX REWRITE (2026-04-23)
 **Date**: 2026-04-23
 **Session**: Seating System Redesign — Slice 7 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 7 — end-to-end registration-UX rewrite replacing the Phase-2 `SeatSelector` grid with a react-konva `SeatPicker` + stateful `SeatPickerView`, a full structural-shape renderer, tier-filtered availability, mobile gestures, PDF + email seat-label propagation, and the architect-spec `seatpicker.selection_completed` metric on confirm. 8 chunks S7.1–S7.8.
 **Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Final commit `4bd076f9` on develop. `deploy-staging.yml` run `24859364401` + `deploy-ui-staging.yml` run `24859364416` both conclusion=success. API smoke on `POST /api/seating-metrics/selection-completed`: happy path → HTTP 204, empty GUID / zero count / negative ms each → 400 with specific validation title. Azure container log (`az containerapp logs show --name lankaconnect-api-staging`) confirmed `21:33:25.926 +00:00 [INF] LankaConnect.Application.Events.Services.LayoutMetrics: Metric seatpicker.selection_completed EventId=11111111-2222-3333-4444-555555555555 AttendeeCount=3 TimeToCompleteMs=45200` — the 4th of the architect's 6 named metrics; `layout.canvas_editor_opened` + `canvas_editor_saved` remain for Slice 8. Tests: Application 2253 passed + Infrastructure 317 passed; SeatPicker 22 + venue-layouts repo 20 passed; `npx tsc --noEmit` clean.

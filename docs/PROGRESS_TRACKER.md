@@ -1,5 +1,32 @@
 # LankaConnect Development Progress Tracker
-*Last Updated: 2026-04-25 — **Production Perf RCA + Fix shipped**. Cartesian explosion in `EventRepository.GetByIdAsync` causing 10-35s + 503s on `/api/events/{id}` for popular events (85+ registrations). Phase 2 emergency mitigation (Container App scaled to 1.0 CPU / 2 GiB / 2-5 replicas / http-scaler concurrency=10) + Phase 1 durable fix (`AsSplitQuery()` global default + explicit at call site + `trackChanges:false` on read handlers) shipped via PR #104 → main commit `42abd834`. Prod p95 dropped from 10-35s to **0.18-0.86s** (40-200x improvement). Active revision `lankaconnect-api-prod--0000036`. Master TODO: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md). Earlier same-day: 158-commit prod release (`85aa3a71`) shipped Slice 7+8 seating, Twilio WhatsApp BSP, Phase 7C location decomposition, Phase 7D volunteer signups + WhatsApp Fix 4.*
+*Last Updated: 2026-04-25 — Landing page (`/`) `WorldMapAnimation` loop tightened from 40s to 17s after the user reported it felt slow. Per-phase durations cut roughly in half (`world` 3s→1s, `zoom-sl` 2s→1s, `sl-cities` 5s→2s, `sl-lines` 6s→2s, `beam` 3.5s→1.5s, `zoom-us` 2s→1s, `us-hubs` 6s→3s, `us-lines` 8s→3s, `zoom-out` 2.5s→1.5s, `pause` 2s→1s). Single-file change in [WorldMapAnimation.tsx](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx). Commit `ac3a8739` on `develop`; `deploy-ui-staging.yml` run `24938533772` conclusion=success; deployed bundle `_next/static/chunks/459c8dbfd403492c.js` confirmed to contain the new `PHASE_MS` values (`"world":1e3,...,"us-hubs":3e3,"us-lines":3e3,...`). Earlier same-day: production perf RCA + `AsSplitQuery()` durable fix (PR #104 → main `42abd834`, prod p95 10-35s → 0.18-0.86s, 40-200x improvement). Master TODO for the perf work: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md).*
+
+---
+
+## 🎨 Current Session Status (2026-04-25 — Landing page WorldMapAnimation: 40s loop → 17s loop)
+
+**Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Commit `ac3a8739` on `develop`; `deploy-ui-staging.yml` run `24938533772` conclusion=success (every step including type-check, unit tests, smoke tests on `/`, `/api/health`, and proxy connectivity green). Live bundle inspected: `curl https://lankaconnect-ui-staging.../_next/static/chunks/459c8dbfd403492c.js | grep us-hubs` returns the new minified `PHASE_MS` object — `"world":1e3,"zoom-sl":1e3,"sl-cities":2e3,"sl-lines":2e3,beam:1500,"zoom-us":1e3,"us-hubs":3e3,"us-lines":3e3,"zoom-out":1500,pause:1e3` — sum = 17 000 ms exactly.
+
+**Scope**: One file, one constant. [WorldMapAnimation.tsx](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx) `PHASE_MS` (lines 290-294) — every phase duration roughly halved. Sequence and structure unchanged: `world → zoom-sl → sl-cities → sl-lines → beam → zoom-us → us-hubs → us-lines → zoom-out → pause`. No change to phase ordering, view targets, arc/node draw delays, CSS zoom transition (still 2s `cubic-bezier(0.4, 0, 0.2, 1)`), or visibility flags.
+
+**Trigger**: User feedback — "Landing page animation is very slow." Measured the existing loop at 40s (sum of `PHASE_MS`); user proposed a 17s target with explicit per-phase numbers, which were applied verbatim.
+
+**Why it's safe**:
+1. Adjacent phases share their target view, so the 2s CSS zoom transition continues smoothly across phase boundaries even when a phase is shorter than the transition (e.g. `zoom-sl` is now 1s but the 2s transform completes during the following `sl-cities`, which targets the same lat/lon/zoom).
+2. SL arc draw budget: 44 arcs × `i * 0.055s + 0.75s` duration → last arc finishes at ~3.17s; `sl-lines` (2s) + carry-over into `beam` via `showSLLines = ['sl-lines','beam']` (1.5s) = 3.5s available — fits.
+3. US arc draw budget: ~62 arcs × `i * 0.04s + 0.65s` → last arc finishes at ~3.13s; `us-lines` (3s) is just under, but the lines stay rendered through `zoom-out` and `pause` while `R = ['us-lines'].includes(i)` is false… **flagged**: the last 1-2 US arcs will be clipped by ~150ms. If the user notices, dropping the per-arc delay from `i * 0.04` to `i * 0.025` recovers the budget. Not blocking.
+4. No backend, DB, or schema change. Pure presentation.
+
+**Evidence**:
+- Type-check (`npx tsc --noEmit` from `web/`): exit 0, silent (clean).
+- CI: deploy run `24938533772` — `Run type checking`, `Run unit tests`, `Build Next.js application`, `Smoke Test - Health Check`, `Smoke Test - Home Page`, `Smoke Test - API Proxy Connectivity` all `conclusion=success`.
+- Live bundle grep proves the deployed minified output reflects the source change byte-for-byte (no stale CDN cache, no build mis-replication).
+
+**Scope discipline**: Single file, single object, deliberately no transition-timing follow-on edits. The 2s CSS zoom transition was left as-is because the cross-phase zoom continuity actually depends on it (changing it now would require re-tuning all four zoom phases). The unstaged files in the working tree (other devs' work-in-progress test scripts, image assets, etc.) were left untouched.
+
+**Follow-ups**:
+- 🟡 If the last US arcs visibly clip on slower devices, change `i * 0.04` → `i * 0.025` in [WorldMapAnimation.tsx:714](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L714) and `i * 0.04` → `i * 0.025` at [line 724](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L724). Currently has ~150ms over-budget head-room only.
+- 🟡 User-gated visual smoke on the live staging URL: load `/`, watch one full loop, confirm subjectively faster.
 
 ---
 

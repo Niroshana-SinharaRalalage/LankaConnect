@@ -3,6 +3,28 @@
 
 **Philosophy:** Build locally, iterate fast, ship to Azure when ready
 **Approach:** Complete each item fully before moving to next
+
+---
+
+## 🔥 2026-04-25 — Production Performance RCA (CLOSED)
+
+**Issue**: Prod `/api/events/{id}` taking 10-35s + returning 503s on popular events (85+ registrations). Root cause: cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in a single non-split query → ~100K-row LEFT JOIN).
+
+**Action taken**:
+- ✅ **Phase 2 emergency mitigation** — Container App scaled to 1.0 CPU / 2 GiB / 2-5 replicas + http-scaler concurrency=10. Restored prod within 60s.
+- ✅ **Phase 1 durable fix** (PR #104 → main commit `42abd834`) — `AsSplitQuery()` global default + explicit at call site + `trackChanges:false` on read handlers. Prod p95 dropped 10-35s → **0.18-0.86s** (40-200x improvement).
+- ✅ Post-fix scale-rule relaxed 10 → 30 concurrent (matching staging's headroom ratio).
+
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md)
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **Phase 0**: Azure Monitor alerts (p95 endpoint > 2s, replica saturation, 5xx rate)
+2. **Phase 3**: Decompose `GetByIdAsync` into 4 specialized methods (eliminates query duplication where event-detail page fires the expensive query twice)
+3. **Phase 4**: `MetroAreas` cache, `PhotoAlbums` Include cleanup, `EmailQueueProcessor` DbContext lifetime audit, fire-and-forget `RecordEventViewCommand` scope fix, Npgsql `MaxPoolSize` vs Postgres `max_connections` verification
+4. **Phase 4 chore**: Sync staging↔prod Container App config via IaC (Bicep/Terraform) + CI gate rejecting null `scaleRules`
+5. Perf integration test as regression guard (90 regs / 5 lists / 12 items / 3 commitments seed)
+
+---
 **Priority:** Phase 1 MVP to production ASAP
 
 ---

@@ -1,4 +1,58 @@
 # LankaConnect Development Progress Tracker
+*Last Updated: 2026-04-25 — **Production Perf RCA + Fix shipped**. Cartesian explosion in `EventRepository.GetByIdAsync` causing 10-35s + 503s on `/api/events/{id}` for popular events (85+ registrations). Phase 2 emergency mitigation (Container App scaled to 1.0 CPU / 2 GiB / 2-5 replicas / http-scaler concurrency=10) + Phase 1 durable fix (`AsSplitQuery()` global default + explicit at call site + `trackChanges:false` on read handlers) shipped via PR #104 → main commit `42abd834`. Prod p95 dropped from 10-35s to **0.18-0.86s** (40-200x improvement). Active revision `lankaconnect-api-prod--0000036`. Master TODO: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md). Earlier same-day: 158-commit prod release (`85aa3a71`) shipped Slice 7+8 seating, Twilio WhatsApp BSP, Phase 7C location decomposition, Phase 7D volunteer signups + WhatsApp Fix 4.*
+
+---
+
+## 🔥 2026-04-25 — Production Performance RCA + Fix (DURABLE)
+
+**Symptom**: User reported prod loading times 20-30s for event detail and event management pages. Browser console showed 30s axios timeouts + 503s on `/api/proxy/events/{id}` and `/signups`.
+
+**RCA classification (consulted architect via Plan agent)**:
+- ❌ NOT a UI issue (UI rendered fine; symptom only)
+- ❌ NOT an Auth issue (auth pipeline healthy ~400ms)
+- ✅ **Backend API — primary cause**: cartesian explosion in `EventRepository.GetByIdAsync`
+- ❌ NOT a Database issue (Postgres did exactly what it was told; no missing indexes)
+- 🔴 Infrastructure amplifier: 0.25 CPU + 0.5 GiB + no autoscaling rule
+- ❌ NOT a missing feature
+
+**Why staging looked fine + prod broken (same code, same container)**:
+- Staging busiest event: 8 registrations → ~50-row JOIN → 0.29-0.35s
+- Prod busiest event: 85 registrations → ~100K-row JOIN → 10-35s + 503s
+- Latent bug for months; only became symptomatic at high data cardinality
+- Bonus config drift: prod had `scaleRules: null` while staging had `http-scaler concurrent=10`
+
+**Phase 2 Emergency Mitigation** (single `az containerapp update`, 18:00 UTC):
+- `cpu=1.0`, `memory=2.0Gi`, `min-replicas=2`, `max-replicas=5`, `http-scaler concurrency=10`, `--revision-suffix emergency-2026-04-25`
+- Restored prod within 60s. 503s eliminated. Latency 5-10x faster.
+
+**Phase 1 Durable Fix** (PR #104 → commit `42abd834`):
+1. `DependencyInjection.cs` — `UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)` global default
+2. `EventRepository.cs:128` — explicit `.AsSplitQuery()` at call site
+3. `GetEventByIdQueryHandler` + `GetEventSignUpListsQueryHandler` — pass `trackChanges:false`
+
+**Test results**: dotnet build 0 errors. Application.Tests 2253 passed / 0 failed / 6 skipped.
+
+**Prod measured improvement**:
+
+| Endpoint | Pre-fix | After Phase 1 |
+|---|---|---|
+| `/api/events/{busiest-id}` | **10-35s + 503s** | **0.18-0.86s** (40-200x faster) |
+| `/api/events/{id}/signups` | 10s+ | 0.20-0.26s |
+| `/events/{id}` ×3 parallel | all timed out at 35s | 0.17-0.20s each |
+
+**Post-fix**: relaxed http-scaler concurrency 10 → 30 (architect-approved, matching staging's headroom ratio). Active revision `lankaconnect-api-prod--post-fix-2026-04-25` (image `42abd834`).
+
+**Follow-up phases** (deferred, tracked in master TODO):
+- Phase 0: Azure Monitor alerts (p95 `GET /api/events/{id}` > 2s, replicas at max for >5min, 5xx rate >1%)
+- Phase 3: Decompose `GetByIdAsync` into 4 specialized methods (`GetForDetailViewAsync`, `GetForRegistrationManagementAsync`, `GetForSignUpListsViewAsync`, `GetFullAggregateAsync`)
+- Phase 4: Cache `MetroAreas`, fix `PhotoAlbums` Include duplication, audit `EmailQueueProcessor` DbContext lifetime, fix `RecordEventViewCommand` fire-and-forget scope, verify Npgsql `MaxPoolSize` vs Postgres `max_connections`
+- Phase 4 chore: Sync staging↔prod Container App config via IaC (Bicep/Terraform `scaleRules` block) + CI gate rejecting null rules
+- Perf integration test as regression guard (90 regs / 5 lists / 12 items / 3 commitments seed)
+
+---
+
+*Prior session header preserved below for history.*
+
 *Last Updated: 2026-04-23 — Seating Redesign Slice 7 — Registration UX Rewrite — closure (react-konva `SeatPicker` + `SeatPickerView`, registration-form swap, PDF/email seat labels, `seatpicker.selection_completed` metric). Slice delivered across 8 chunks S7.1–S7.8, final commit `4bd076f9` on develop; `deploy-staging.yml` run `24859364401` + `deploy-ui-staging.yml` run `24859364416` both conclusion=success. Staging smoke: POST `/api/seating-metrics/selection-completed` happy-path → 204, three validation failures → 400, container log shows `Metric seatpicker.selection_completed EventId=... AttendeeCount=3 TimeToCompleteMs=45200` emitted by `LayoutMetrics` at 21:33:25 UTC. Phase 7C.2b Chunk 1 remains the other parallel in-flight stream (entry below).*
 
 ---

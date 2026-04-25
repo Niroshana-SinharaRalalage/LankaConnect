@@ -3,7 +3,22 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS — SEATING REDESIGN SLICE 7 — REGISTRATION UX REWRITE (DEPLOYED + WIRE-VERIFIED)
+## 🔄 CURRENT SESSION STATUS — PRODUCTION PERF RCA + FIX (DURABLE)
+**Date**: 2026-04-25
+**Session**: Production performance RCA after user reported 20-30s page loads + 503s on `/api/proxy/events/{id}` and `/signups`. Architect-consulted RCA traced symptom to cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in single non-split query → ~100K-row LEFT JOIN on prod's 85-registration event).
+**Progress**: ✅ **EMERGENCY MITIGATION + DURABLE FIX SHIPPED**.
+- Phase 2 emergency: `az containerapp update` to 1.0 CPU / 2 GiB / 2-5 replicas / http-scaler concurrency=10. Restored prod within 60s.
+- Phase 1 durable fix: `AsSplitQuery()` global default in `DependencyInjection.cs` + explicit at `EventRepository.cs:128` + `trackChanges:false` on `GetEventByIdQueryHandler` + `GetEventSignUpListsQueryHandler` read paths. PR #104 merged → main commit `42abd834`. Active revision `lankaconnect-api-prod--0000036`.
+- Post-fix: scale rule relaxed 10 → 30 concurrent (matching staging's headroom ratio after requests are now fast).
+- **Prod p95 dropped from 10-35s + 503s to 0.18-0.86s** (40-200x improvement).
+- dotnet build 0 errors. Application.Tests 2253 passed / 0 failed / 6 skipped.
+**Scope**: Cartesian-explosion class of bug, latent for months, became symptomatic at high data cardinality (staging busiest event = 8 regs → fast; prod busiest event = 85 regs → broken). Same code, same container, totally different behavior. **NOT** caused by today's release; pre-existing bug exposed by data growth.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md)
+**Open follow-up phases (deferred)**: Phase 0 alerting / Phase 3 repository decomposition / Phase 4 misc + IaC sync chore / perf integration test as regression guard.
+
+---
+
+## 🔄 PRIOR SESSION — SEATING REDESIGN SLICE 7 — REGISTRATION UX REWRITE (DEPLOYED + WIRE-VERIFIED)
 **Date**: 2026-04-23
 **Session**: Seating System Redesign — Slice 7 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 7 — end-to-end registration-UX rewrite across 8 chunks S7.1–S7.8: react-konva `SeatPicker` shell (S7.1) → structural shape + geometry renderers (S7.2) → seats + status colors + tier filter (S7.3) → `SeatPickerView` stateful container with session/hold/timer/confirm (S7.4) → mobile wheel/pan/pinch + zoom controls (S7.5) → swap `SeatSelector` → `SeatPickerView` in `EventRegistrationForm` (S7.6) → seat labels in PDF ticket + 7 email attendee-HTML builders (S7.7) → `seatpicker.selection_completed` architect metric (S7.8).
 **Progress**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Final commit `4bd076f9` on develop. `deploy-staging.yml` run `24859364401` + `deploy-ui-staging.yml` run `24859364416` both conclusion=success. API smoke on the new `POST /api/seating-metrics/selection-completed`: happy path `{eventId, attendeeCount:3, timeToCompleteMs:45200}` → HTTP 204; three validation guards fire → 400 with specific titles (`EventId is required`, `AttendeeCount must be positive`, `TimeToCompleteMs must be non-negative`). Wire-level confirmation via `az containerapp logs show --name lankaconnect-api-staging`: `21:33:25.926 +00:00 [INF] LankaConnect.Application.Events.Services.LayoutMetrics: Metric seatpicker.selection_completed EventId=11111111-2222-3333-4444-555555555555 AttendeeCount=3 TimeToCompleteMs=45200` — the 4th of the architect's 6 named metrics on the wire; `layout.canvas_editor_opened` + `canvas_editor_saved` remain for Slice 8. Tests: .NET Application 2253 + Infrastructure 317 passed; frontend SeatPicker 22 + venue-layouts repo 20 passed; `npx tsc --noEmit` clean.

@@ -45,6 +45,7 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
 import { useBatchUpdateVenueLayout } from '@/presentation/hooks/useVenueLayouts';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -86,6 +87,7 @@ export function CanvasEditorModal({
   }, [open, layout.id]);
 
   const [hasChanges, setHasChanges] = useState(false);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const draftSummaryRef = useRef<CanvasEditorDraftSummary | null>(null);
 
   const handleDraftChange = useCallback((summary: CanvasEditorDraftSummary) => {
@@ -94,6 +96,26 @@ export function CanvasEditorModal({
   }, []);
 
   const mutation = useBatchUpdateVenueLayout(layout.id, layout.eventId ?? null);
+  const isSaving = mutation.isPending;
+
+  // Slice 8 S8.9a: dirty-close guard. Any close path (X / footer Close /
+  // Esc / backdrop click) routes through this. When the draft has unsaved
+  // changes AND no save is in flight, we show a ConfirmDialog instead of
+  // closing — losing organizer work to a misclick was the v1 footgun.
+  // During an in-flight save we let the close go through; the mutation
+  // completes in the background and the cache invalidates.
+  const attemptClose = useCallback(() => {
+    if (hasChanges && !isSaving) {
+      setDiscardConfirmOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  }, [hasChanges, isSaving, onOpenChange]);
+
+  const confirmDiscard = useCallback(() => {
+    setDiscardConfirmOpen(false);
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   const handleSave = useCallback(async () => {
     const summary = draftSummaryRef.current;
@@ -103,6 +125,12 @@ export function CanvasEditorModal({
     try {
       await mutation.mutateAsync({ rowVersion: layout.rowVersion, payload });
       onLayoutSaved?.();
+      // Bypass the dirty-close guard — the save just succeeded and the
+      // batch mutation has already invalidated the cache. The hasChanges
+      // state may still be `true` synchronously here because the
+      // CanvasEditor's `onDraftChange` push happens in a useEffect on the
+      // next layout/draft tick; calling onOpenChange directly avoids a
+      // false-positive discard prompt.
       onOpenChange(false);
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 409) {
@@ -117,66 +145,92 @@ export function CanvasEditorModal({
     }
   }, [mutation, layout.rowVersion, onLayoutSaved, onOpenChange]);
 
-  const isSaving = mutation.isPending;
   const saveDisabled = !hasChanges || isSaving;
 
+  // Radix Dialog backdrop click + Esc both fire onOpenChange(false) — we
+  // intercept the close direction (next === false) so the dirty guard runs;
+  // re-opens are passed through unchanged (next === true).
+  const handleDialogOpenChange = useCallback(
+    (next: boolean) => {
+      if (next === false) {
+        attemptClose();
+        return;
+      }
+      onOpenChange(next);
+    },
+    [attemptClose, onOpenChange],
+  );
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0"
-        data-testid="canvas-editor-modal"
-      >
-        <DialogHeader className="flex-row items-start justify-between gap-4 p-4 border-b border-neutral-200 mb-0 space-y-0">
-          <div className="flex-1 min-w-0">
-            <DialogTitle className="truncate">Customize layout — {layout.name}</DialogTitle>
-            <DialogDescription>
-              {layout.layoutType} · {layout.totalCapacity} seats · {layout.zones?.length ?? 0}{' '}
-              zone{(layout.zones?.length ?? 0) === 1 ? '' : 's'}
-            </DialogDescription>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="Close canvas editor"
-            onClick={() => onOpenChange(false)}
-            data-testid="canvas-editor-close"
-          >
-            <X className="w-4 h-4" aria-hidden="true" />
-          </Button>
-        </DialogHeader>
-
-        <div
-          className="flex-1 bg-neutral-50 overflow-hidden"
-          data-testid="canvas-editor-body"
+    <>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+        <DialogContent
+          className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0"
+          data-testid="canvas-editor-modal"
         >
-          <CanvasEditor
-            layout={layout}
-            className="w-full h-full"
-            onDraftChange={handleDraftChange}
-          />
-        </div>
+          <DialogHeader className="flex-row items-start justify-between gap-4 p-4 border-b border-neutral-200 mb-0 space-y-0">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="truncate">Customize layout — {layout.name}</DialogTitle>
+              <DialogDescription>
+                {layout.layoutType} · {layout.totalCapacity} seats · {layout.zones?.length ?? 0}{' '}
+                zone{(layout.zones?.length ?? 0) === 1 ? '' : 's'}
+              </DialogDescription>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Close canvas editor"
+              onClick={attemptClose}
+              data-testid="canvas-editor-close"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </Button>
+          </DialogHeader>
 
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-neutral-200">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            data-testid="canvas-editor-cancel"
+          <div
+            className="flex-1 bg-neutral-50 overflow-hidden"
+            data-testid="canvas-editor-body"
           >
-            Close
-          </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={saveDisabled}
-            data-testid="canvas-editor-save"
-          >
-            {isSaving ? 'Saving…' : 'Save'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <CanvasEditor
+              layout={layout}
+              className="w-full h-full"
+              onDraftChange={handleDraftChange}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 p-4 border-t border-neutral-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={attemptClose}
+              data-testid="canvas-editor-cancel"
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={saveDisabled}
+              data-testid="canvas-editor-save"
+            >
+              {isSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        onOpenChange={setDiscardConfirmOpen}
+        title="Discard unsaved changes?"
+        description="You have edits in the canvas editor that haven't been saved. Closing now will lose them."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        onConfirm={confirmDiscard}
+        variant="warning"
+      />
+    </>
   );
 }
 

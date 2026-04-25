@@ -339,3 +339,103 @@ describe('CanvasEditorModal — Save flow (S8.8b)', () => {
     expect(screen.getByTestId('canvas-editor-save')).toHaveTextContent(/saving/i);
   });
 });
+
+// ──────────────────────── S8.9a: warn-before-close ────────────────────────
+
+describe('CanvasEditorModal — warn before close (S8.9a)', () => {
+  it('closes immediately when X clicked and no draft changes', () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-close'));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // No discard prompt when clean.
+    expect(screen.queryByTestId('canvas-editor-discard-confirm')).toBeNull();
+  });
+
+  it('closes immediately when footer Close clicked and no draft changes', () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-cancel'));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByTestId('canvas-editor-discard-confirm')).toBeNull();
+  });
+
+  it('shows discard confirm when X clicked with unsaved changes', () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    fireEvent.click(screen.getByTestId('canvas-editor-close'));
+    // Modal does NOT close yet — confirm dialog appears instead.
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByText(/discard unsaved changes/i)).toBeInTheDocument();
+  });
+
+  it('shows discard confirm when footer Close clicked with unsaved changes', () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    fireEvent.click(screen.getByTestId('canvas-editor-cancel'));
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByText(/discard unsaved changes/i)).toBeInTheDocument();
+  });
+
+  it('shows discard confirm when Radix Dialog backdrop / Esc fires onOpenChange(false) with unsaved changes', () => {
+    // Radix's Dialog calls our onOpenChange handler with `false` for backdrop
+    // click and Esc — the modal must intercept that path too. Test the
+    // intercept by triggering the Dialog's primitive close path, which we
+    // route through `canvas-editor-close` (the same handler).
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    // Press Escape on the dialog — Radix's onOpenChange(false) should be guarded.
+    fireEvent.keyDown(screen.getByTestId('canvas-editor-modal'), {
+      key: 'Escape',
+      code: 'Escape',
+    });
+    // Modal still open (parent never told to close); discard prompt visible.
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByText(/discard unsaved changes/i)).toBeInTheDocument();
+  });
+
+  it('confirming discard closes the modal', async () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    fireEvent.click(screen.getByTestId('canvas-editor-close'));
+    // Discard button labeled (per ConfirmDialog confirmLabel below). The
+    // ConfirmDialog wraps onConfirm in an internal async/finally that
+    // toggles isPending, so we wait for those state updates to flush.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /discard/i }));
+    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('canceling discard keeps the modal open and dismisses the prompt', async () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    fireEvent.click(screen.getByTestId('canvas-editor-close'));
+    // Keep editing button — uses the ConfirmDialog cancel slot.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /keep editing/i }));
+    });
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    // Prompt is gone.
+    expect(screen.queryByText(/discard unsaved changes/i)).toBeNull();
+  });
+
+  it('does not show discard prompt on the post-Save close path', async () => {
+    // After a successful save, the modal closes itself — no dirty state at
+    // that point (mutateAsync resolved → onLayoutSaved + onOpenChange(false)
+    // run together). The discard guard must not trip on this path.
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('canvas-editor-save'));
+    });
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(screen.queryByText(/discard unsaved changes/i)).toBeNull();
+  });
+});

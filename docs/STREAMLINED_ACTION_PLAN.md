@@ -29,7 +29,39 @@
 
 ---
 
-## 🎨 CURRENT STATUS — LANDING PAGE WORLDMAPANIMATION: 40s LOOP → 17s LOOP (2026-04-25)
+## 🎯 CURRENT STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.7 SHIPPED, S8.8 NEXT (2026-04-25)
+**Date**: 2026-04-25
+**Session**: Seating System Redesign — Slice 8 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8 — full drag-drop canvas editor (react-konva) for organizers. S8.1 through S8.7 landed sequentially on `develop`. Save button + `PUT /api/venue-layouts/{id}/batch` integration + `layout.canvas_editor_saved` metric remain for S8.8.
+**Status**: 🟡 **SLICE 8 IN PROGRESS — 7 chunks shipped**. Latest commit `00ff9ad4` (S8.7) on `develop`; `deploy-ui-staging.yml` run `24931720287` conclusion=success (4m54s); `npx tsc --noEmit` clean; web events+utils+hooks suite 278/278 green. Architect's `layout.canvas_editor_opened` metric wired in S8.1 (recorded on modal mount via `venueLayoutsRepository.recordCanvasEditorOpened`); `layout.canvas_editor_saved` (the 6th and final architect metric) lands in S8.8.
+**Scope**: Pure consumer of the Slice 5 backend surface — no new tables, no new endpoints, no migrations. Save (S8.8) targets the existing `PUT /api/venue-layouts/{id}/batch` atomic endpoint shipped in Slice 5 Chunk 10 (handler at [BatchUpdateLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/BatchUpdateLayout/BatchUpdateLayoutCommandHandler.cs); RowVersion 409 + 422 structural-edit-rejected guards already wired).
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| S8.1 | `2e399ca2` | `CanvasEditorModal` shell + "Customize" button + `canvas_editor_opened` metric |
+| S8.2 | `43f9f94e` | Read-only Konva stage rendering all geometry types via Slice 7 `compute*Geometry` helpers |
+| S8.3 | `aa83f5d6` | Drag-to-move + snap-to-grid + alignment guides; `geometryByKey` draft slice |
+| S8.4 | `29dfdf8c` | Resize handles + rotation knob on selected item |
+| S8.5a | `f7689be3` | `CanvasEditorPropertyPanel` for selected-item property edits (name, color, capacity, label, font, rotation) |
+| S8.5b | `ae9928ba` | Toolbar (add zone/table/decoration, delete) + `additions` + `deletions` draft slices |
+| S8.6 | `61fcdac4` | 50-step undo/redo via `useEditorHistory`; keyboard shortcuts (Del, Ctrl+Z, Ctrl+Y, Esc) |
+| S8.7 | `00ff9ad4` | Per-shape tier assignment — `CanvasEditorTierPanel`, `tierAssignmentsByKey` draft slice with tombstone discipline, history-routed toggles, 26 new tests |
+
+**Why durable**: (1) Every chunk's edits stay in *draft* state — the `layout` prop is treated as immutable baseline, so undo/redo + 409-conflict reload remain trivial because no in-place mutation has happened. (2) `useEditorHistory` is a single reducer producing/consuming a `DraftState` snapshot; S8.7's `tierAssignmentsByKey` was a one-field extension. (3) Slice 7 `SeatPickerView` (read) and Slice 8 editor (write) share the `compute*Geometry` helpers — fixes on either side benefit both. (4) react-konva dynamically imported `ssr:false` so the 180KB bundle is fetched only when the modal opens. (5) Tier-assignment writes route through the same history reducer — undo of "assign VIP" is bit-for-bit identical to undo of a drag.
+**Evidence**:
+- All 7 deploy-ui-staging.yml runs (one per chunk) `conclusion=success`. Latest: run `24931720287` for S8.7.
+- `npx tsc --noEmit` exit 0 against the staged S8.7 tree.
+- `npx vitest run web/src/presentation/utils/__tests__ web/tests/unit/presentation/components/features/events web/tests/unit/presentation/hooks` — 278 passed (252 prior + 26 new in S8.7).
+- Backend `BatchUpdateLayoutCommandHandler` already implements 409 (stale RowVersion → "Layout was modified by someone else") + 422 (held/reserved seats blocking structural edits); only the success-path metric emit is missing for S8.8a.
+
+**Scope discipline**: S8.1–S8.7 deliberately leave Save + `PUT /batch` for S8.8 — the architect's master plan calls Save out as one atomic step (full layout state, all-or-nothing, 409 on RowVersion mismatch). Tier-assignment persistence lands in S8.8 alongside the geometry diff (composed from `geometryByKey` + `additions` + `deletions` against the immutable `layout` baseline). No save-as-personal-template (later step), no warn-before-close (later step), no canvas property panel (no current UI surface for canvas dimensions). Other in-flight working-tree files (test scripts, image assets, demo plan docs) untouched.
+**Next**:
+1. **S8.8a (backend)** — TDD: add a `BatchUpdateLayoutCommandHandlerTests` case asserting `_metrics.LayoutCanvasEditorSaved(layoutId, changesCount)` is invoked on success with a correct change count; wire the call after the commit in [BatchUpdateLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/BatchUpdateLayout/BatchUpdateLayoutCommandHandler.cs); commit, push, verify `deploy-staging.yml`, smoke via API + Azure container log inspection.
+2. **S8.8b (frontend)** — TDD: payload-composer helper that converts (`layout` baseline + `geometryByKey` + `additions` + `deletions`) into a `BatchLayoutPayload`; add Save button to `CanvasEditorModal` footer; wire `useBatchUpdateVenueLayout` mutation + `recordCanvasEditorSaved` on success; 409 reload UX (toast + refetch + replace draft); verify staging.
+3. **S8.9** — save-as-personal-template (`OwnerUserId = currentUser`, `EventId = null`) + warn-before-close on dirty draft.
+
+---
+
+## 🎨 EARLIER STATUS — LANDING PAGE WORLDMAPANIMATION: 40s LOOP → 17s LOOP (2026-04-25)
 **Date**: 2026-04-25
 **Session**: User reported the landing page (`/`) animation felt slow. Measured one full loop at 40s (sum of `PHASE_MS` in [WorldMapAnimation.tsx](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx)). User proposed a 17s target with explicit per-phase numbers; applied verbatim.
 **Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Commit `ac3a8739` on `develop`; `deploy-ui-staging.yml` run `24938533772` conclusion=success — every step including type-check, unit tests, and smoke tests on `/`, `/api/health`, and proxy connectivity returned green. Live bundle `_next/static/chunks/459c8dbfd403492c.js` inspected via `curl ... | grep us-hubs` and confirmed to contain the new minified `PHASE_MS` object: `"world":1e3,"zoom-sl":1e3,"sl-cities":2e3,"sl-lines":2e3,beam:1500,"zoom-us":1e3,"us-hubs":3e3,"us-lines":3e3,"zoom-out":1500,pause:1e3` — sum = 17 000 ms exactly.

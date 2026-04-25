@@ -11,9 +11,14 @@ import {
   DecorationKind,
   TableShape,
   ZoneShape,
-  type VenueZoneDto,
-  type VenueTableDto,
+  type BatchDecoration,
+  type BatchLayoutPayload,
+  type BatchTable,
+  type BatchZone,
   type VenueDecorationDto,
+  type VenueLayoutDto,
+  type VenueTableDto,
+  type VenueZoneDto,
 } from '@/infrastructure/api/types/events.types';
 import {
   parseRectGeom,
@@ -521,6 +526,160 @@ export function createDecorationDraft(
     properties: '{}',
     sortOrder: nextSortOrder,
   };
+}
+
+// ─────────────── S8.8b: draft → BatchLayoutPayload composer ───────────────
+
+/**
+ * Slice 8 S8.8b: shape of the canvas editor's draft state. Lifted out of
+ * CanvasEditor.tsx so the payload composer + change-counter can reason
+ * about it without React. The interface mirrors the `DraftState` used by
+ * the editor's `useEditorHistory` reducer.
+ */
+export interface CanvasEditorDraftAdditions {
+  zones: VenueZoneDto[];
+  tables: VenueTableDto[];
+  decorations: VenueDecorationDto[];
+}
+
+export interface CanvasEditorDraftState {
+  geometryByKey: Record<string, string>;
+  additions: CanvasEditorDraftAdditions;
+  deletions: ReadonlySet<string>;
+  /** S8.7 per-item tier overrides. NOT persisted by S8.8b — tier persistence
+   * lives behind the slice 4 single-tier endpoints and lands in S8.8c. */
+  tierAssignmentsByKey: Record<string, string[]>;
+}
+
+export interface ComposeBatchPayloadInput {
+  baseline: VenueLayoutDto;
+  draft: CanvasEditorDraftState;
+}
+
+/**
+ * Slice 8 S8.8b: convert the editor's draft state into a `BatchLayoutPayload`
+ * for `PUT /api/venue-layouts/{id}/batch`. The payload follows the backend's
+ * "full state replacement" contract:
+ *   - existing items NOT in `draft.deletions` → included with their `id`
+ *     (server treats as update; geometry override applied if present)
+ *   - existing items IN `draft.deletions` → omitted (server removes them)
+ *   - items in `draft.additions.*` → included with `id: null` (server creates)
+ *
+ * `name` and `canvas` are passed as `null` because the canvas editor has no
+ * UI for them in S8.8b — sending them would inflate the backend's
+ * `changesCount` metric without a real edit. Tier assignments are NOT
+ * included; the BatchLayoutPayload schema doesn't carry them and tier
+ * persistence is deferred to S8.8c via the slice-4 single-tier endpoints.
+ */
+export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayoutPayload {
+  const { baseline, draft } = input;
+
+  const isDeleted = (kind: CanvasItemKind, id: string): boolean =>
+    draft.deletions.has(refKey({ kind, id }));
+
+  const keptZones: BatchZone[] = (baseline.zones ?? [])
+    .filter((z) => !isDeleted('zone', z.id))
+    .map((z) => ({
+      id: z.id,
+      name: z.name,
+      color: z.color,
+      sortOrder: z.sortOrder,
+      shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+      geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
+    }));
+
+  const addedZones: BatchZone[] = draft.additions.zones.map((z) => ({
+    id: null,
+    name: z.name,
+    color: z.color,
+    sortOrder: z.sortOrder,
+    shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+    geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? z.geometry ?? null,
+  }));
+
+  const keptTables: BatchTable[] = (baseline.tables ?? [])
+    .filter((t) => !isDeleted('table', t.id))
+    .map((t) => ({
+      id: t.id,
+      label: t.label,
+      shape: t.shape,
+      capacity: t.capacity,
+      sortOrder: t.sortOrder,
+      zoneId: t.venueZoneId ?? null,
+      geometry: resolveGeometry('table', t, draft.geometryByKey) ?? null,
+    }));
+
+  const addedTables: BatchTable[] = draft.additions.tables.map((t) => ({
+    id: null,
+    label: t.label,
+    shape: t.shape,
+    capacity: t.capacity,
+    sortOrder: t.sortOrder,
+    zoneId: t.venueZoneId ?? null,
+    geometry: resolveGeometry('table', t, draft.geometryByKey) ?? t.geometry ?? null,
+  }));
+
+  const keptDecorations: BatchDecoration[] = (baseline.decorations ?? [])
+    .filter((d) => !isDeleted('decoration', d.id))
+    .map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      label: d.label ?? null,
+      sortOrder: d.sortOrder,
+      geometry: resolveGeometry('decoration', d, draft.geometryByKey) ?? null,
+      properties: d.properties ?? null,
+    }));
+
+  const addedDecorations: BatchDecoration[] = draft.additions.decorations.map((d) => ({
+    id: null,
+    kind: d.kind,
+    label: d.label ?? null,
+    sortOrder: d.sortOrder,
+    geometry: resolveGeometry('decoration', d, draft.geometryByKey) ?? d.geometry ?? null,
+    properties: d.properties ?? null,
+  }));
+
+  return {
+    name: null,
+    canvas: null,
+    zones: [...keptZones, ...addedZones],
+    tables: [...keptTables, ...addedTables],
+    decorations: [...keptDecorations, ...addedDecorations],
+  };
+}
+
+/**
+ * Slice 8 S8.8b: count *user-perceived* draft changes — used to gate the
+ * Save button. Returns the sum of:
+ *   - distinct deletions of baseline items (added-then-deleted is a no-op)
+ *   - geometry overrides on baseline items that survive (deleted items'
+ *     overrides are wiped by the delete handler)
+ *   - new additions
+ *
+ * Tier assignment overrides are intentionally excluded — they're not
+ * persisted by S8.8b (see `composeBatchPayload`). Counting them would mean
+ * Save fires with no actually-saved work.
+ */
+export function countDraftChanges(input: ComposeBatchPayloadInput): number {
+  const { baseline, draft } = input;
+
+  const additions =
+    draft.additions.zones.length +
+    draft.additions.tables.length +
+    draft.additions.decorations.length;
+
+  const deletions = draft.deletions.size;
+
+  const baselineKeys = new Set<string>([
+    ...(baseline.zones ?? []).map((z) => refKey({ kind: 'zone', id: z.id })),
+    ...(baseline.tables ?? []).map((t) => refKey({ kind: 'table', id: t.id })),
+    ...(baseline.decorations ?? []).map((d) => refKey({ kind: 'decoration', id: d.id })),
+  ]);
+  const geometryOverrides = Object.keys(draft.geometryByKey).filter(
+    (k) => baselineKeys.has(k) && !draft.deletions.has(k),
+  ).length;
+
+  return additions + deletions + geometryOverrides;
 }
 
 /**

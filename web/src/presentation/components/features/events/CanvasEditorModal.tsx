@@ -1,24 +1,42 @@
 /**
- * Slice 8 S8.1: CanvasEditorModal shell.
+ * Slice 8 S8.1 + S8.8b: CanvasEditorModal — host for the canvas editor with
+ * the Save button and atomic batch-save wiring.
  *
- * Mounted behind the "Customize" button in {@link SeatingLayoutPicker}. Today
- * the modal is a shell — it only emits the architect-spec
- * `layout.canvas_editor_opened` metric via
- * `venueLayoutsRepository.recordCanvasEditorOpened(layoutId)` and shows a
- * placeholder for the editor surface that Slices S8.2–S8.9 will fill in.
+ * Mounted behind the "Customize" button in {@link SeatingLayoutPicker}.
  *
- * The layout passed in is the current venue layout for the event; the modal
- * does not load its own copy. Future chunks will introduce local edit state
- * (command-pattern undo/redo) that diverges from `layout` until Save.
+ * Metrics:
+ *   - `layout.canvas_editor_opened` fires from this component on open
+ *     (one event per open, even when the same layout is re-opened) via
+ *     {@link venueLayoutsRepository.recordCanvasEditorOpened}.
+ *   - `layout.canvas_editor_saved` fires from the BACKEND on a successful
+ *     `PUT /api/venue-layouts/{id}/batch` commit (Slice 8 S8.8a). The
+ *     frontend deliberately does NOT call
+ *     `venueLayoutsRepository.recordCanvasEditorSaved` so the dashboard
+ *     doesn't double-count.
  *
- * Designed to be fully replaceable by an interactive react-konva stage in
- * later chunks without changing the props contract.
+ * Save flow (S8.8b):
+ *   1. CanvasEditor pushes a {@link CanvasEditorDraftSummary} via its
+ *      `onDraftChange` callback after every history mutation.
+ *   2. We store the latest summary in `draftSummaryRef` so click handlers
+ *      always read the freshest payload-composer closure.
+ *   3. Save click → `useBatchUpdateVenueLayout` mutateAsync — on success
+ *      we invoke `onLayoutSaved` and close the modal; on `ApiError`
+ *      statusCode 409 we keep the modal open and toast a 409-specific
+ *      message ("Layout was modified externally — close and reopen to load
+ *      the latest"); on any other error we keep the modal open and show
+ *      the underlying error message.
+ *   4. While `mutation.isPending`, Save is disabled and reads "Saving…".
+ *
+ * Tier-assignment persistence is intentionally NOT wired in S8.8b — the
+ * `BatchLayoutPayload` schema doesn't carry tier assignments, and the
+ * slice-4 single-tier endpoints belong to a separate save loop (S8.8c).
  */
 
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +46,9 @@ import {
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
-import { CanvasEditor } from './CanvasEditor';
+import { useBatchUpdateVenueLayout } from '@/presentation/hooks/useVenueLayouts';
+import { ApiError } from '@/infrastructure/api/client/api-errors';
+import { CanvasEditor, type CanvasEditorDraftSummary } from './CanvasEditor';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 export interface CanvasEditorModalProps {
@@ -36,10 +56,12 @@ export interface CanvasEditorModalProps {
   onOpenChange: (open: boolean) => void;
   layout: VenueLayoutDto;
   /**
-   * Optional — invoked after the editor commits changes via PUT /batch
-   * (wired in S8.8). Shell today never invokes this.
+   * Optional — invoked exactly once after the canvas editor commits its
+   * changes via `PUT /batch` and before the modal closes. The host
+   * should refetch the layout from its own queries (the mutation has
+   * already invalidated the relevant React Query scopes). Slice 8 S8.8b.
    */
-  onLayoutSaved?: (layout: VenueLayoutDto) => void;
+  onLayoutSaved?: () => void;
 }
 
 export function CanvasEditorModal({
@@ -48,9 +70,6 @@ export function CanvasEditorModal({
   layout,
   onLayoutSaved,
 }: CanvasEditorModalProps) {
-  // Suppress unused-var linting until S8.8 wires onLayoutSaved.
-  void onLayoutSaved;
-
   // Fire the architect-spec `layout.canvas_editor_opened` metric the first
   // time this modal transitions to open for a given layout. Re-open of the
   // same layout (e.g., user closes and re-opens) emits a fresh event, which
@@ -65,6 +84,41 @@ export function CanvasEditorModal({
     lastEmittedForLayoutRef.current = layout.id;
     void venueLayoutsRepository.recordCanvasEditorOpened(layout.id);
   }, [open, layout.id]);
+
+  const [hasChanges, setHasChanges] = useState(false);
+  const draftSummaryRef = useRef<CanvasEditorDraftSummary | null>(null);
+
+  const handleDraftChange = useCallback((summary: CanvasEditorDraftSummary) => {
+    draftSummaryRef.current = summary;
+    setHasChanges(summary.hasChanges);
+  }, []);
+
+  const mutation = useBatchUpdateVenueLayout(layout.id, layout.eventId ?? null);
+
+  const handleSave = useCallback(async () => {
+    const summary = draftSummaryRef.current;
+    if (!summary || !summary.hasChanges) return;
+
+    const payload = summary.composeSavePayload();
+    try {
+      await mutation.mutateAsync({ rowVersion: layout.rowVersion, payload });
+      onLayoutSaved?.();
+      onOpenChange(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 409) {
+        toast.error(
+          'Layout was modified externally. Close the editor and reopen to load the latest version, then redo your changes.',
+        );
+        return;
+      }
+      const message =
+        err instanceof Error ? err.message : 'Could not save the canvas. Please try again.';
+      toast.error(`Save failed: ${message}`);
+    }
+  }, [mutation, layout.rowVersion, onLayoutSaved, onOpenChange]);
+
+  const isSaving = mutation.isPending;
+  const saveDisabled = !hasChanges || isSaving;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,7 +150,11 @@ export function CanvasEditorModal({
           className="flex-1 bg-neutral-50 overflow-hidden"
           data-testid="canvas-editor-body"
         >
-          <CanvasEditor layout={layout} className="w-full h-full" />
+          <CanvasEditor
+            layout={layout}
+            className="w-full h-full"
+            onDraftChange={handleDraftChange}
+          />
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-neutral-200">
@@ -107,6 +165,14 @@ export function CanvasEditorModal({
             data-testid="canvas-editor-cancel"
           >
             Close
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saveDisabled}
+            data-testid="canvas-editor-save"
+          >
+            {isSaving ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </DialogContent>

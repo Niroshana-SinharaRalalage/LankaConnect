@@ -42,6 +42,8 @@ import { CanvasEditorPropertyPanel } from './CanvasEditorPropertyPanel';
 import { CanvasEditorToolbar } from './CanvasEditorToolbar';
 import {
   applyDragToGeometry,
+  composeBatchPayload,
+  countDraftChanges,
   createDecorationDraft,
   createRectTableDraft,
   createRoundTableDraft,
@@ -51,8 +53,10 @@ import {
   resolveGeometry,
   resolveTierAssignments,
   toggleTierAssignment,
+  type CanvasEditorDraftState,
   type CanvasItemRef,
 } from '@/presentation/utils/canvasEditorGeometry';
+import type { BatchLayoutPayload } from '@/infrastructure/api/types/events.types';
 import { useEditorHistory } from '@/presentation/hooks/useEditorHistory';
 import { useTicketTiers } from '@/presentation/hooks/useTicketTiers';
 
@@ -71,26 +75,40 @@ const CanvasEditorStage = dynamic<CanvasEditorStageProps>(
   },
 );
 
+/**
+ * Slice 8 S8.8b: summary the editor pushes to its parent (Modal) after
+ * every draft mutation so the parent can gate the Save button + invoke
+ * the batch save without owning the history reducer.
+ *
+ *   `hasChanges`        — false when the draft is identical to the baseline
+ *                         layout (Save button stays disabled).
+ *   `changesCount`      — user-perceived change count for the Save label /
+ *                         confirmation copy. See `countDraftChanges`.
+ *   `composeSavePayload`— closure capturing the *current* draft. Calling it
+ *                         later returns a fresh `BatchLayoutPayload`. The
+ *                         parent should call this on Save click, not store
+ *                         the payload upfront, so undo/redo right before
+ *                         Save reflects in the request body.
+ */
+export interface CanvasEditorDraftSummary {
+  hasChanges: boolean;
+  changesCount: number;
+  composeSavePayload: () => BatchLayoutPayload;
+}
+
 export interface CanvasEditorProps {
   layout: VenueLayoutDto;
   className?: string;
+  /**
+   * Slice 8 S8.8b: invoked whenever the editor's draft changes (including
+   * undo/redo, add/delete, drag, resize, rotate, property-panel edit, and
+   * tier-assignment toggle). Idempotent on identical drafts. The parent
+   * uses this to gate the Save button in the modal footer.
+   */
+  onDraftChange?: (summary: CanvasEditorDraftSummary) => void;
 }
 
-interface DraftAdditions {
-  zones: VenueZoneDto[];
-  tables: VenueTableDto[];
-  decorations: VenueDecorationDto[];
-}
-
-interface DraftState {
-  geometryByKey: Record<string, string>;
-  additions: DraftAdditions;
-  deletions: Set<string>;
-  /** Slice 8 S8.7: per-item tier-assignment overrides. Key = refKey,
-   * value = the complete effective tier-id list. S8.8 diffs this against
-   * each item's persisted ticketTierIds at save time. */
-  tierAssignmentsByKey: Record<string, string[]>;
-}
+type DraftState = CanvasEditorDraftState;
 
 const INITIAL_DRAFT: DraftState = {
   geometryByKey: {},
@@ -134,10 +152,23 @@ function isTypingTarget(el: Element | null): boolean {
   return false;
 }
 
-export function CanvasEditor({ layout, className }: CanvasEditorProps) {
+export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorProps) {
   const [selected, setSelected] = useState<CanvasItemRef | null>(null);
   const history = useEditorHistory<DraftState>(INITIAL_DRAFT);
   const draft = history.present;
+
+  // S8.8b: surface the draft summary up to the modal so it can gate Save.
+  // Recomputed on every draft / layout change. The composer closure captures
+  // the current draft so the parent gets a fresh payload at click time.
+  useEffect(() => {
+    if (!onDraftChange) return;
+    const changesCount = countDraftChanges({ baseline: layout, draft });
+    onDraftChange({
+      hasChanges: changesCount > 0,
+      changesCount,
+      composeSavePayload: () => composeBatchPayload({ baseline: layout, draft }),
+    });
+  }, [layout, draft, onDraftChange]);
 
   const effectiveLayout = useMemo<VenueLayoutDto>(() => {
     const isDeleted = (kind: CanvasItemRef['kind'], id: string) =>

@@ -31,11 +31,15 @@ import {
   createRoundTableDraft,
   createRectTableDraft,
   createDecorationDraft,
+  composeBatchPayload,
+  countDraftChanges,
+  type CanvasEditorDraftState,
 } from '../canvasEditorGeometry';
 import {
   TableShape,
   ZoneShape,
   DecorationKind,
+  type VenueLayoutDto,
   type VenueZoneDto,
   type VenueTableDto,
   type VenueDecorationDto,
@@ -746,5 +750,339 @@ describe('toggleTierAssignment', () => {
   it('round-trips when the same tier is toggled twice', () => {
     const once = toggleTierAssignment(['a'], 'b');
     expect(toggleTierAssignment(once, 'b')).toEqual(['a']);
+  });
+});
+
+// ────────────────────── S8.8b: payload composer + counter ──────────────────────
+
+const RECT_GEOM_50_50 = JSON.stringify({ x: 0, y: 0, width: 50, height: 50 });
+const RECT_GEOM_100_100 = JSON.stringify({ x: 100, y: 100, width: 50, height: 50 });
+const ROUND_TABLE_GEOM = JSON.stringify({ centerX: 200, centerY: 200, radius: 30 });
+
+function emptyDraft(): CanvasEditorDraftState {
+  return {
+    geometryByKey: {},
+    additions: { zones: [], tables: [], decorations: [] },
+    deletions: new Set<string>(),
+    tierAssignmentsByKey: {},
+  };
+}
+
+function fakeZone(id: string, name: string): VenueZoneDto {
+  return {
+    id,
+    name,
+    color: '#abc',
+    sortOrder: 0,
+    enabledSeatCount: 0,
+    totalSeatCount: 0,
+    seats: [],
+    shape: ZoneShape.Rect,
+    geometry: RECT_GEOM_50_50,
+    ticketTierIds: [],
+  };
+}
+
+function fakeTable(id: string, label: string): VenueTableDto {
+  return {
+    id,
+    venueLayoutId: 'L1',
+    venueZoneId: null,
+    label,
+    shape: TableShape.Round,
+    geometry: ROUND_TABLE_GEOM,
+    capacity: 6,
+    sortOrder: 0,
+    enabledSeatCount: 6,
+    seats: [],
+    ticketTierIds: [],
+  };
+}
+
+function fakeDecoration(id: string, kind: DecorationKind = DecorationKind.Stage): VenueDecorationDto {
+  return {
+    id,
+    venueLayoutId: 'L1',
+    kind,
+    label: 'Main Stage',
+    geometry: RECT_GEOM_50_50,
+    properties: '{}',
+    sortOrder: 0,
+  };
+}
+
+function fakeBaseline(overrides: Partial<VenueLayoutDto> = {}): VenueLayoutDto {
+  return {
+    id: 'L1',
+    name: 'Theater',
+    layoutType: 'Theater',
+    isTemplate: false,
+    createdByUserId: 'U1',
+    totalCapacity: 100,
+    createdAt: '2026-04-25T00:00:00Z',
+    rowVersion: 5,
+    zones: [],
+    tables: [],
+    decorations: [],
+    ...overrides,
+  } as VenueLayoutDto;
+}
+
+describe('composeBatchPayload', () => {
+  it('returns null name + null canvas (editor has no UI for them in S8.8b)', () => {
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline(),
+      draft: emptyDraft(),
+    });
+    expect(payload.name).toBeNull();
+    expect(payload.canvas).toBeNull();
+  });
+
+  it('keeps every existing item with its id when nothing was edited', () => {
+    const z = fakeZone('z1', 'Orchestra');
+    const t = fakeTable('t1', 'Table A');
+    const d = fakeDecoration('d1');
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], tables: [t], decorations: [d] }),
+      draft: emptyDraft(),
+    });
+    expect(payload.zones).toHaveLength(1);
+    expect(payload.zones![0]).toMatchObject({ id: 'z1', name: 'Orchestra', shape: ZoneShape.Rect });
+    expect(payload.tables).toHaveLength(1);
+    expect(payload.tables![0]).toMatchObject({ id: 't1', label: 'Table A', shape: TableShape.Round, capacity: 6 });
+    expect(payload.decorations).toHaveLength(1);
+    expect(payload.decorations![0]).toMatchObject({ id: 'd1', kind: DecorationKind.Stage });
+  });
+
+  it('omits an existing zone that was deleted (server treats as removal)', () => {
+    const kept = fakeZone('keep', 'Kept');
+    const removed = fakeZone('drop', 'Removed');
+    const draft = emptyDraft();
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'drop' }));
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [kept, removed] }),
+      draft: { ...draft, deletions: mutableDeletions },
+    });
+    expect(payload.zones).toHaveLength(1);
+    expect(payload.zones![0].id).toBe('keep');
+  });
+
+  it('emits a draft addition with id=null so the server creates it', () => {
+    const newZone: VenueZoneDto = {
+      id: 'client-uuid-1',
+      name: 'Brand New',
+      color: '#fff',
+      sortOrder: 1,
+      enabledSeatCount: 0,
+      totalSeatCount: 0,
+      seats: [],
+      shape: ZoneShape.Rect,
+      geometry: RECT_GEOM_100_100,
+      ticketTierIds: [],
+    };
+    const draft = emptyDraft();
+    draft.additions.zones.push(newZone);
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline(),
+      draft,
+    });
+    expect(payload.zones).toHaveLength(1);
+    expect(payload.zones![0]).toMatchObject({
+      id: null,
+      name: 'Brand New',
+      color: '#fff',
+      sortOrder: 1,
+      shape: ZoneShape.Rect,
+      geometry: RECT_GEOM_100_100,
+    });
+  });
+
+  it('applies a draft geometry override on an existing item', () => {
+    const z = fakeZone('z1', 'Orchestra');
+    const draft = emptyDraft();
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'z1' })] = RECT_GEOM_100_100;
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z] }),
+      draft,
+    });
+    expect(payload.zones![0].geometry).toBe(RECT_GEOM_100_100);
+    expect(payload.zones![0].id).toBe('z1');
+  });
+
+  it('preserves table fields including zoneId and capacity', () => {
+    const t: VenueTableDto = {
+      ...fakeTable('t1', 'VIP Table'),
+      venueZoneId: 'zone-of-table',
+      capacity: 12,
+    };
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ tables: [t] }),
+      draft: emptyDraft(),
+    });
+    expect(payload.tables![0]).toMatchObject({
+      id: 't1',
+      label: 'VIP Table',
+      shape: TableShape.Round,
+      capacity: 12,
+      zoneId: 'zone-of-table',
+    });
+  });
+
+  it('preserves decoration kind, label, and properties', () => {
+    const d: VenueDecorationDto = {
+      ...fakeDecoration('d1', DecorationKind.Door),
+      label: 'Side Door',
+      properties: '{"size":"wide"}',
+    };
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ decorations: [d] }),
+      draft: emptyDraft(),
+    });
+    expect(payload.decorations![0]).toMatchObject({
+      id: 'd1',
+      kind: DecorationKind.Door,
+      label: 'Side Door',
+      properties: '{"size":"wide"}',
+    });
+  });
+
+  it('falls back to ZoneShape.Rect for legacy zones with no shape field', () => {
+    const legacy = { ...fakeZone('z1', 'Legacy'), shape: undefined } as VenueZoneDto;
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [legacy] }),
+      draft: emptyDraft(),
+    });
+    expect(payload.zones![0].shape).toBe(ZoneShape.Rect);
+  });
+
+  it('handles a mixed draft (delete + override + addition) atomically', () => {
+    const kept = fakeZone('keep', 'Kept');
+    const removed = fakeZone('drop', 'Removed');
+    const moved = fakeZone('move', 'Moved');
+    const newZone: VenueZoneDto = {
+      ...fakeZone('client-uuid', 'Brand New'),
+      sortOrder: 5,
+    };
+
+    const draft = emptyDraft();
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'drop' }));
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'move' })] = RECT_GEOM_100_100;
+    draft.additions.zones.push(newZone);
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [kept, removed, moved] }),
+      draft: { ...draft, deletions: mutableDeletions },
+    });
+
+    expect(payload.zones).toHaveLength(3); // kept + moved + new
+    const ids = payload.zones!.map((z) => z.id);
+    expect(ids).toContain('keep');
+    expect(ids).toContain('move');
+    expect(ids).toContain(null); // new addition
+    expect(ids).not.toContain('drop');
+
+    const movedOut = payload.zones!.find((z) => z.id === 'move');
+    expect(movedOut?.geometry).toBe(RECT_GEOM_100_100);
+  });
+});
+
+describe('countDraftChanges', () => {
+  it('returns 0 for an unchanged draft', () => {
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [fakeZone('z1', 'X')] }),
+        draft: emptyDraft(),
+      }),
+    ).toBe(0);
+  });
+
+  it('counts each baseline deletion as 1 change', () => {
+    const draft = emptyDraft();
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'z1' }));
+    mutableDeletions.add(refKey({ kind: 'table', id: 't1' }));
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({
+          zones: [fakeZone('z1', 'X')],
+          tables: [fakeTable('t1', 'T')],
+        }),
+        draft: { ...draft, deletions: mutableDeletions },
+      }),
+    ).toBe(2);
+  });
+
+  it('counts each addition as 1 change', () => {
+    const draft = emptyDraft();
+    draft.additions.zones.push(fakeZone('cli-1', 'New'));
+    draft.additions.tables.push(fakeTable('cli-2', 'NewT'));
+    draft.additions.decorations.push(fakeDecoration('cli-3'));
+    expect(
+      countDraftChanges({ baseline: fakeBaseline(), draft }),
+    ).toBe(3);
+  });
+
+  it('counts geometry overrides on baseline items only', () => {
+    const draft = emptyDraft();
+    // override on a baseline item (counts) + override on a new addition (does not count separately
+    // — the addition itself is the change)
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'baseline-zone' })] = RECT_GEOM_100_100;
+    const newZone = fakeZone('client-uuid', 'New');
+    draft.additions.zones.push(newZone);
+    draft.geometryByKey[refKey({ kind: 'zone', id: newZone.id })] = RECT_GEOM_100_100;
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [fakeZone('baseline-zone', 'X')] }),
+        draft,
+      }),
+    ).toBe(2); // 1 override on baseline + 1 addition
+  });
+
+  it('does not double-count a baseline override that was then deleted', () => {
+    const draft = emptyDraft();
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'z1' })] = RECT_GEOM_100_100;
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'z1' }));
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [fakeZone('z1', 'X')] }),
+        draft: { ...draft, deletions: mutableDeletions },
+      }),
+    ).toBe(1); // only the deletion
+  });
+
+  it('ignores tier-assignment overrides (not persisted in S8.8b)', () => {
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-1'];
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [fakeZone('z1', 'X')] }),
+        draft,
+      }),
+    ).toBe(0);
+  });
+
+  it('sums all change kinds together', () => {
+    const draft = emptyDraft();
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'drop' }));
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'move' })] = RECT_GEOM_100_100;
+    draft.additions.zones.push(fakeZone('cli-1', 'New'));
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({
+          zones: [fakeZone('drop', 'X'), fakeZone('move', 'Y')],
+        }),
+        draft: { ...draft, deletions: mutableDeletions },
+      }),
+    ).toBe(3); // 1 delete + 1 override + 1 add
   });
 });

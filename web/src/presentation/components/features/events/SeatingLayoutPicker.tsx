@@ -193,9 +193,13 @@ export function SeatingLayoutPicker({
           open={editorOpen}
           onOpenChange={setEditorOpen}
           layout={layout}
-          onLayoutSaved={(updated) => {
-            onLayoutChanged?.(updated);
-            setEditorOpen(false);
+          onLayoutSaved={() => {
+            // Slice 8 S8.8b: the modal closes itself on success and the
+            // batch-save mutation invalidates the layout cache. Pass the
+            // pre-save layout reference upward so listeners that key off
+            // the prop fire — the actual fresh data flows in via React
+            // Query refetch, not through this callback.
+            onLayoutChanged?.(layout);
           }}
         />
       )}

@@ -98,6 +98,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
         _mockMetrics.Verify(m => m.StructuralEditRejected(
             It.IsAny<Guid>(), StructuralEditRejectionReason.AuthFailed), Times.Once);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(
+            It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -115,6 +117,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         result.IsFailure.Should().BeTrue();
         result.ErrorKind.Should().Be(ErrorKind.NotFound);
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(
+            It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -140,6 +144,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
         _mockMetrics.Verify(m => m.StructuralEditRejected(
             layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(
+            It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -172,6 +178,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         layout.Zones.Should().HaveCount(1);   // unchanged
         _mockMetrics.Verify(m => m.StructuralEditRejected(
             layout.Id, StructuralEditRejectionReason.SeatsReserved), Times.Once);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(
+            It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -382,6 +390,8 @@ public class BatchUpdateLayoutCommandHandlerTests
         result.ErrorKind.Should().Be(ErrorKind.Conflict);
         _mockMetrics.Verify(m => m.StructuralEditRejected(
             layout.Id, StructuralEditRejectionReason.ConcurrencyConflict), Times.Once);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(
+            It.IsAny<Guid>(), It.IsAny<int>()), Times.Never);
     }
 
     [Fact]
@@ -415,5 +425,93 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockGuard.Verify(g => g.CheckSeatsAsync(
             It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
         layout.Name.Should().Be("Updated");
+    }
+
+    /// <summary>
+    /// Slice 8 S8.8a — `layout.canvas_editor_saved` is the 6th and final architect metric.
+    /// On a successful save the handler must emit it exactly once with a `changesCount`
+    /// equal to the total number of structural mutations applied to the aggregate
+    /// (zone/table/decoration removals + updates + additions, plus +1 each for layout-level
+    /// Name and Canvas updates when present). The dashboard divides this by
+    /// <c>layout.canvas_editor_opened</c> to track editor abandonment + edit volume per session.
+    /// </summary>
+    [Fact]
+    public async Task Handle_Should_Emit_LayoutCanvasEditorSaved_With_Aggregated_Change_Count_On_Success()
+    {
+        var layout = CreateLayout();
+        var keptZone = AddZone(layout, "Keep");        // will be updated
+        var removedZone = AddZone(layout, "Remove");   // will be removed (no seats → guard passes)
+        var updatedDecoration = AddDecoration(layout, DecorationKind.Stage, "Stage");
+
+        _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Result<VenueLayout>.Success(layout));
+        _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(layout);
+        _mockGuard.Setup(g => g.CheckSeatsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(Result.Success());
+        _mockUow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        // Mutations:
+        //   - 1 zone removed (removedZone omitted)
+        //   - 1 zone updated (keptZone present with new name)
+        //   - 1 zone added (id null)
+        //   - 1 table added (id null, no existing tables)
+        //   - 1 decoration updated (kind change)
+        //   - 1 layout Name update
+        //   - 1 layout Canvas update
+        // Total: 7
+        var payload = new BatchLayoutPayload(
+            Name: "Renamed Layout",
+            Canvas: new BatchCanvasConfig(Width: 1600, Height: 1000, Scale: 1.0, BackgroundColor: "#101010"),
+            Zones: new List<BatchZone>
+            {
+                new(Id: keptZone.Id, Name: "Keep Renamed", Color: "#fff", SortOrder: 0,
+                    Shape: ZoneShape.Rect, Geometry: null),
+                new(Id: null, Name: "Brand New Zone", Color: "#abc", SortOrder: 1,
+                    Shape: ZoneShape.Rect, Geometry: null),
+            },
+            Tables: new List<BatchTable>
+            {
+                new(Id: null, Label: "T1", Shape: TableShape.Round, Capacity: 4,
+                    SortOrder: 0, ZoneId: null, Geometry: null),
+            },
+            Decorations: new List<BatchDecoration>
+            {
+                new(Id: updatedDecoration.Id, Kind: DecorationKind.DanceFloor, Label: "Floor",
+                    SortOrder: 0, Geometry: null, Properties: null),
+            });
+
+        var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
+
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _mockUow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(layout.Id, 7), Times.Once);
+        _mockMetrics.Verify(m => m.StructuralEditRejected(
+            It.IsAny<Guid>(), It.IsAny<StructuralEditRejectionReason>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_Should_Emit_LayoutCanvasEditorSaved_With_Zero_Changes_On_Empty_Save()
+    {
+        // Edge case: organizer opens editor + clicks Save without making any changes.
+        // The Save button should normally be disabled in this case (S8.8b), but if the
+        // request reaches the backend we still emit the metric with count=0 so the
+        // dashboard reflects an honest "open + close = 0 edits" abandonment data point.
+        var layout = CreateLayout();
+
+        _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Result<VenueLayout>.Success(layout));
+        _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(layout);
+        _mockUow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, EmptyPayload());
+
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _mockMetrics.Verify(m => m.LayoutCanvasEditorSaved(layout.Id, 0), Times.Once);
     }
 }

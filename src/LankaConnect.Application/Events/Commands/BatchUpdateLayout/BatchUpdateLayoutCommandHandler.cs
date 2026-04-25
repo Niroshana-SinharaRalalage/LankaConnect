@@ -134,6 +134,13 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         }
 
         // ----- Apply changes (removals → updates → additions) -----
+        //
+        // Slice 8 S8.8a: track each mutation so the post-commit `layout.canvas_editor_saved`
+        // metric can carry an honest `changesCount` tag. Counts every domain mutation the
+        // handler issues — server-side perspective on "what was applied" rather than the
+        // client-side "what was sent", which keeps the dashboard immune to clients that
+        // include unchanged items in the payload.
+        var changesCount = 0;
 
         // Decorations — cheapest, no seat impact.
         var payloadDecorationIds = decorations.Where(d => d.Id.HasValue).Select(d => d.Id!.Value).ToHashSet();
@@ -141,6 +148,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         {
             var removeResult = layout.RemoveDecoration(existing.Id);
             if (removeResult.IsFailure) return removeResult;
+            changesCount++;
         }
 
         // Zones — remove missing, update existing, add new.
@@ -148,6 +156,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         {
             var removeResult = layout.RemoveZone(zoneToRemove.Id);
             if (removeResult.IsFailure) return removeResult;
+            changesCount++;
         }
 
         // Tables — remove missing, update existing, add new.
@@ -155,6 +164,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         {
             var removeResult = layout.RemoveTable(tableToRemove.Id);
             if (removeResult.IsFailure) return removeResult;
+            changesCount++;
         }
 
         // Zone upserts (update must run before table updates in case a table's ZoneId
@@ -165,6 +175,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 zoneDto.Id!.Value, zoneDto.Name, zoneDto.Color, zoneDto.SortOrder,
                 zoneDto.Shape, zoneDto.Geometry);
             if (updateResult.IsFailure) return updateResult;
+            changesCount++;
         }
 
         // Track newly-created zones so we can resolve table.ZoneId references below.
@@ -185,6 +196,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             if (shapeUpdate.IsFailure) return shapeUpdate;
 
             newZoneIdsByIndex[i] = addResult.Value.Id;
+            changesCount++;
         }
 
         // Table updates.
@@ -194,6 +206,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 tableDto.Id!.Value, tableDto.Label, tableDto.Shape, tableDto.Capacity,
                 tableDto.SortOrder, tableDto.ZoneId, tableDto.Geometry);
             if (updateResult.IsFailure) return updateResult;
+            changesCount++;
         }
 
         // Table additions — auto-generate seats for parity with AddTableCommandHandler.
@@ -208,6 +221,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                     tableDto.ZoneId, tableDto.Geometry);
 
             if (addResult.IsFailure) return Result.Failure(addResult.Error);
+            changesCount++;
         }
 
         // Decoration updates.
@@ -217,6 +231,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 decorationDto.Id!.Value, decorationDto.Kind, decorationDto.Label,
                 decorationDto.SortOrder, decorationDto.Geometry, decorationDto.Properties);
             if (updateResult.IsFailure) return updateResult;
+            changesCount++;
         }
 
         // Decoration additions.
@@ -226,6 +241,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 decorationDto.Kind, decorationDto.Label, decorationDto.SortOrder,
                 decorationDto.Geometry, decorationDto.Properties);
             if (addResult.IsFailure) return Result.Failure(addResult.Error);
+            changesCount++;
         }
 
         // Layout-level updates last (so Canvas validation errors surface last, after
@@ -234,6 +250,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         {
             var nameResult = layout.UpdateName(payload.Name);
             if (nameResult.IsFailure) return nameResult;
+            changesCount++;
         }
 
         if (payload.Canvas is not null)
@@ -251,6 +268,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
 
             var updateResult = layout.UpdateCanvas(canvasResult.Value);
             if (updateResult.IsFailure) return updateResult;
+            changesCount++;
         }
 
         _layoutRepository.SetOriginalRowVersion(layout, request.ExpectedRowVersion);
@@ -277,8 +295,22 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         }
 
         _logger.LogInformation(
-            "BatchUpdateLayout: succeeded. LayoutId={LayoutId}, ZonesRemoved={ZonesRemoved}, TablesRemoved={TablesRemoved}",
-            request.LayoutId, zonesToRemove.Count, tablesToRemove.Count);
+            "BatchUpdateLayout: succeeded. LayoutId={LayoutId}, ZonesRemoved={ZonesRemoved}, TablesRemoved={TablesRemoved}, ChangesCount={ChangesCount}",
+            request.LayoutId, zonesToRemove.Count, tablesToRemove.Count, changesCount);
+
+        try
+        {
+            _metrics.LayoutCanvasEditorSaved(request.LayoutId, changesCount);
+        }
+        catch (Exception ex)
+        {
+            // Metric emission must never fail the save — the commit has already
+            // happened and the client will see 204. Log + swallow to keep the
+            // observability path strictly side-effecting.
+            _logger.LogWarning(ex,
+                "BatchUpdateLayout: metric emission failed (commit already succeeded). LayoutId={LayoutId}, ChangesCount={ChangesCount}",
+                request.LayoutId, changesCount);
+        }
 
         return Result.Success();
     }

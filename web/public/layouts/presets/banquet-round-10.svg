@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="Banquet 15 round tables × 10 seats each">
+  <rect width="1200" height="800" fill="#f9fafb"/>
+  <rect x="400" y="20" width="400" height="60" rx="10" fill="#1f2937"/>
+  <text x="600" y="60" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600" fill="#f9fafb" text-anchor="middle">STAGE</text>
+  <!-- 15 round tables, slightly bigger (r=62) to imply more seats -->
+  <g fill="#fef3c7" stroke="#b45309" stroke-width="3">
+    <circle cx="140" cy="170" r="62"/>
+    <circle cx="360" cy="170" r="62"/>
+    <circle cx="580" cy="170" r="62"/>
+    <circle cx="800" cy="170" r="62"/>
+    <circle cx="1020" cy="170" r="62"/>
+    <circle cx="140" cy="380" r="62"/>
+    <circle cx="360" cy="380" r="62"/>
+    <circle cx="580" cy="380" r="62"/>
+    <circle cx="800" cy="380" r="62"/>
+    <circle cx="1020" cy="380" r="62"/>
+    <circle cx="140" cy="590" r="62"/>
+    <circle cx="360" cy="590" r="62"/>
+    <circle cx="580" cy="590" r="62"/>
+    <circle cx="800" cy="590" r="62"/>
+    <circle cx="1020" cy="590" r="62"/>
+  </g>
+  <!-- Dots around the top-left table to hint seats -->
+  <g fill="#92400e">
+    <circle cx="202" cy="170" r="8"/><circle cx="190" cy="208" r="8"/><circle cx="159" cy="226" r="8"/><circle cx="121" cy="226" r="8"/><circle cx="90" cy="208" r="8"/><circle cx="78" cy="170" r="8"/><circle cx="90" cy="132" r="8"/><circle cx="121" cy="114" r="8"/><circle cx="159" cy="114" r="8"/><circle cx="190" cy="132" r="8"/>
+  </g>
+  <text x="600" y="750" font-family="Inter, system-ui, sans-serif" font-size="28" font-weight="600" fill="#374151" text-anchor="middle">15 Tables × 10 seats each</text>
+</svg>

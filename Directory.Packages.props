@@ -25,6 +25,7 @@
     <PackageVersion Include="AspNetCore.HealthChecks.Npgsql" Version="8.0.1" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.8" />
+    <PackageVersion Include="Twilio" Version="7.14.7" />
   </ItemGroup>
   <!-- Entity Framework Core -->
   <ItemGroup>

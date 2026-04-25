@@ -55,6 +55,13 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
             .HasColumnName("created_by_user_id")
             .IsRequired(false);
 
+        // Phase 6A.132: DisplayOrder controls item ordering within a sign-up list.
+        // Default 0 is safe for backfill; new rows always receive an explicit order from the aggregate.
+        builder.Property(si => si.DisplayOrder)
+            .HasColumnName("display_order")
+            .HasDefaultValue(0)
+            .IsRequired();
+
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")
             .HasColumnName("created_at")
@@ -88,5 +95,9 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
 
         builder.HasIndex(si => si.ItemCategory)
             .HasDatabaseName("ix_sign_up_items_category");
+
+        // Phase 6A.132: Composite index matches the read path — ORDER BY sign_up_list_id, display_order.
+        builder.HasIndex(si => new { si.SignUpListId, si.DisplayOrder })
+            .HasDatabaseName("ix_sign_up_items_list_id_display_order");
     }
 }

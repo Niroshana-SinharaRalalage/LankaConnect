@@ -49,7 +49,9 @@ public record RsvpToEventCommand(
 public record AttendeeDto(
     string Name,
     AgeCategory AgeCategory,
-    Gender? Gender = null
+    Gender? Gender = null,
+    // Phase 8: Optional ticket tier assignment for tiered events
+    Guid? TicketTierId = null
 );
 
 /// <summary>

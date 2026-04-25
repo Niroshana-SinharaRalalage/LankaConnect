@@ -265,4 +265,187 @@ public class EventLocationTests
     }
 
     #endregion
+
+    #region Name (Venue) Tests — Phase 7C.1
+
+    [Fact]
+    public void Create_WithName_ShouldPersistName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "Grand Ballroom");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("Grand Ballroom");
+    }
+
+    [Fact]
+    public void Create_WithoutName_ShouldHaveNullName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().BeNull("name is optional");
+    }
+
+    [Fact]
+    public void Create_WithNameOver150Chars_ShouldFail()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var longName = new string('A', 151);
+
+        // Act
+        var result = EventLocation.Create(address, name: longName);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Contains("150"));
+    }
+
+    [Fact]
+    public void Create_WithWhitespaceOnlyName_ShouldNormalizeToNull()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "   ");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().BeNull("whitespace-only names should be treated as absent");
+    }
+
+    [Fact]
+    public void Create_WithName_ShouldTrimWhitespace()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+
+        // Act
+        var result = EventLocation.Create(address, name: "  Grand Ballroom  ");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Name.Should().Be("Grand Ballroom");
+    }
+
+    [Fact]
+    public void Equality_DifferentNames_ShouldNotBeEqual()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var loc1 = EventLocation.Create(address, name: "Ballroom A").Value;
+        var loc2 = EventLocation.Create(address, name: "Ballroom B").Value;
+
+        // Act & Assert
+        loc1.Should().NotBe(loc2);
+    }
+
+    [Fact]
+    public void Equality_SameNames_ShouldBeEqual()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var loc1 = EventLocation.Create(address, name: "Ballroom").Value;
+        var loc2 = EventLocation.Create(address, name: "Ballroom").Value;
+
+        // Act & Assert
+        loc1.Should().Be(loc2);
+        loc1.GetHashCode().Should().Be(loc2.GetHashCode());
+    }
+
+    [Fact]
+    public void WithCoordinates_ShouldPreserveName()
+    {
+        // Arrange
+        var address = Address.Create("123 Main St", "Los Angeles", "CA", "90001", "USA").Value;
+        var location = EventLocation.Create(address, name: "Grand Ballroom").Value;
+        var coordinates = GeoCoordinate.Create(34.0522m, -118.2437m).Value;
+
+        // Act
+        var updated = location.WithCoordinates(coordinates).Value;
+
+        // Assert
+        updated.Name.Should().Be("Grand Ballroom", "WithCoordinates should preserve Name");
+    }
+
+    #endregion
+
+    #region GetAddressDisplayString Tests — Phase 7C.2
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldReturnFullAddressCommaSeparated()
+    {
+        // Arrange: Phase 7C.2 requires uniform comma separation (including between State and Zip)
+        // so the email rendering matches the user-agreed format:
+        // "Street, City, State, Zip, Country"
+        var address = Address.Create("4314 Clark Ave", "Cleveland", "Ohio", "44120", "USA").Value;
+        var location = EventLocation.Create(address).Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().Be("4314 Clark Ave, Cleveland, Ohio, 44120, USA");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldNotIncludeCoordinatesNotSetSuffix()
+    {
+        // Arrange: unlike ToString(), the email-display variant must never leak "(coordinates not set)"
+        var address = Address.Create("1 Main St", "Boston", "MA", "02108", "USA").Value;
+        var location = EventLocation.Create(address).Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().NotContain("coordinates");
+        result.Should().NotContain("(");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldNotIncludeVenueName()
+    {
+        // Arrange: the venue Name is rendered on its own line in emails; GetAddressDisplayString
+        // returns ONLY the street-through-country block so the caller can compose them freely.
+        var address = Address.Create("1 Main St", "Boston", "MA", "02108", "USA").Value;
+        var location = EventLocation.Create(address, name: "Aurora Clubhouse").Value;
+
+        // Act
+        var result = location.GetAddressDisplayString();
+
+        // Assert
+        result.Should().NotContain("Aurora Clubhouse");
+        result.Should().Be("1 Main St, Boston, MA, 02108, USA");
+    }
+
+    [Fact]
+    public void GetAddressDisplayString_ShouldBeStableAcrossCoordinateStates()
+    {
+        // Arrange: presence/absence of coordinates must not affect the displayed address string
+        var address = Address.Create("500 Oak Ave", "Austin", "TX", "78701", "USA").Value;
+        var locationWithoutCoords = EventLocation.Create(address).Value;
+        var coordinates = GeoCoordinate.Create(30.2672m, -97.7431m).Value;
+        var locationWithCoords = EventLocation.Create(address, coordinates).Value;
+
+        // Act
+        var withoutCoords = locationWithoutCoords.GetAddressDisplayString();
+        var withCoords = locationWithCoords.GetAddressDisplayString();
+
+        // Assert
+        withoutCoords.Should().Be(withCoords);
+    }
+
+    #endregion
 }

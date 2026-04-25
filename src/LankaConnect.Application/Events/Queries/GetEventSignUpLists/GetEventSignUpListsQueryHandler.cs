@@ -65,15 +65,20 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                 }
 
                 _logger.LogInformation(
-                    "GetEventSignUpLists: Event loaded - EventId={EventId}, Title={Title}, SignUpListCount={SignUpListCount}",
-                    @event.Id, @event.Title.Value, @event.SignUpLists.Count);
+                    "GetEventSignUpLists: Event loaded - EventId={EventId}, Title={Title}, SignUpListCount={SignUpListCount}, KindFilter={KindFilter}",
+                    @event.Id, @event.Title.Value, @event.SignUpLists.Count, request.Kind?.ToString() ?? "All");
 
-                var signUpListDtos = @event.SignUpLists.Select(signUpList => new SignUpListDto
+                var filteredLists = request.Kind.HasValue
+                    ? @event.SignUpLists.Where(l => l.Kind == request.Kind.Value)
+                    : @event.SignUpLists.AsEnumerable();
+
+                var signUpListDtos = filteredLists.Select(signUpList => new SignUpListDto
                 {
                     Id = signUpList.Id,
                     Category = signUpList.Category,
                     Description = signUpList.Description,
                     SignUpType = signUpList.SignUpType,
+                    Kind = signUpList.Kind,
 
                     // Legacy fields (for Open/Predefined sign-ups)
                     PredefinedItems = signUpList.PredefinedItems.ToList(),
@@ -101,7 +106,12 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     HasOpenItems = signUpList.HasOpenItems, // Phase 6A.27
                     // Phase 6A.123: Return typed DTOs (QuantityBasedItemDto or SlotBasedItemDto)
                     // so the frontend itemType discriminator works correctly.
-                    Items = signUpList.Items.Select(item =>
+                    // Phase 6A.132: OrderBy(DisplayOrder) then ItemDescription for a stable tiebreak
+                    // when pre-backfill rows still share DisplayOrder=0.
+                    Items = signUpList.Items
+                        .OrderBy(i => i.DisplayOrder)
+                        .ThenBy(i => i.ItemDescription)
+                        .Select(item =>
                     {
                         var commitments = item.Commitments.Select(c => new SignUpCommitmentDto
                         {
@@ -128,6 +138,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                                 ItemCategory = item.ItemCategory,
                                 Notes = item.Notes,
                                 CreatedByUserId = item.CreatedByUserId,
+                                DisplayOrder = item.DisplayOrder,
                                 TotalSlots = item.AvailableSlots ?? 0,
                                 FilledSlots = filledSlots,
                                 RemainingSlots = item.GetRemainingSlots(),
@@ -145,6 +156,7 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                                 ItemCategory = item.ItemCategory,
                                 Notes = item.Notes,
                                 CreatedByUserId = item.CreatedByUserId,
+                                DisplayOrder = item.DisplayOrder,
                                 TargetQuantity = item.TargetQuantity ?? 0,
                                 CommittedQuantity = committed,
                                 RemainingQuantity = item.GetRemainingQuantity(),

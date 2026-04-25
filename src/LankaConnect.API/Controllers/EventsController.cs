@@ -70,6 +70,7 @@ using LankaConnect.Application.Events.Commands.UpdateSignUpList;
 using LankaConnect.Application.Events.Commands.AddSignUpItem;
 using LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 using LankaConnect.Application.Events.Commands.RemoveSignUpItem;
+using LankaConnect.Application.Events.Commands.ReorderSignUpItems;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItem;
 using LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
 using LankaConnect.Application.Events.Commands.AddOpenSignUpItem;
@@ -101,6 +102,12 @@ using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
 using LankaConnect.Application.Events.Commands.CancelPendingAddition;
+using LankaConnect.Application.Events.Commands.AddTicketTier;
+using LankaConnect.Application.Events.Commands.UpdateTicketTier;
+using LankaConnect.Application.Events.Commands.RemoveTicketTier;
+using LankaConnect.Application.Events.Commands.SetTicketingMode;
+using LankaConnect.Application.Events.Commands.SetSeatingMode;
+using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
@@ -1636,21 +1643,171 @@ public class EventsController : BaseController<EventsController>
 
     #endregion
 
+    #region Ticket Tier Management (Phase 8)
+
+    /// <summary>
+    /// Get all ticket tiers for an event with availability info
+    /// </summary>
+    [HttpGet("{id:guid}/ticket-tiers")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IReadOnlyList<TicketTierDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetTicketTiers(Guid id)
+    {
+        Logger.LogInformation("Getting ticket tiers for event {EventId}", id);
+
+        var query = new GetTicketTiersQuery(id);
+        var result = await Mediator.Send(query);
+
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
+        {
+            return NotFound();
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Set the ticketing mode for an event (SingleTier or Tiered)
+    /// Must be set to Tiered before adding ticket tiers.
+    /// </summary>
+    [HttpPut("{id:guid}/ticketing-mode")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetTicketingMode(Guid id, [FromBody] SetTicketingModeRequest request)
+    {
+        Logger.LogInformation("Setting ticketing mode for event {EventId} to {Mode}", id, request.TicketingMode);
+
+        var command = new SetTicketingModeCommand(id, request.TicketingMode);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Seating Redesign Slice 1: Set the seating mode for an event
+    /// (GeneralAdmission or AssignedSeating). AssignedSeating requires the
+    /// event to already be in TicketingMode.Tiered. Venue layout creation
+    /// comes in Slice 2+3 — this endpoint only flips the enum.
+    /// </summary>
+    [HttpPut("{id:guid}/seating-mode")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetSeatingMode(Guid id, [FromBody] SetSeatingModeRequest request)
+    {
+        Logger.LogInformation("Setting seating mode for event {EventId} to {Mode}", id, request.SeatingMode);
+
+        var command = new SetSeatingModeCommand(id, request.SeatingMode);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Add a new ticket tier to an event (Event Organizer/Admin only)
+    /// Event must be in Tiered ticketing mode.
+    /// </summary>
+    [HttpPost("{id:guid}/ticket-tiers")]
+    [Authorize]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AddTicketTier(Guid id, [FromBody] AddTicketTierRequest request)
+    {
+        Logger.LogInformation("Adding ticket tier '{TierName}' to event {EventId}", request.Name, id);
+
+        var command = new AddTicketTierCommand(
+            id,
+            request.Name,
+            request.Description,
+            request.AdultPriceAmount,
+            request.AdultPriceCurrency,
+            request.ChildPriceAmount,
+            request.ChildPriceCurrency,
+            request.ChildAgeLimit,
+            request.Capacity,
+            request.MaxPerUser,
+            request.SortOrder);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Update an existing ticket tier (Event Organizer/Admin only)
+    /// </summary>
+    [HttpPut("{eventId:guid}/ticket-tiers/{tierId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateTicketTier(Guid eventId, Guid tierId, [FromBody] UpdateTicketTierRequest request)
+    {
+        Logger.LogInformation("Updating ticket tier {TierId} for event {EventId}", tierId, eventId);
+
+        var command = new UpdateTicketTierCommand(
+            eventId,
+            tierId,
+            request.Name,
+            request.Description,
+            request.AdultPriceAmount,
+            request.AdultPriceCurrency,
+            request.ChildPriceAmount,
+            request.ChildPriceCurrency,
+            request.ChildAgeLimit,
+            request.Capacity,
+            request.MaxPerUser,
+            request.SortOrder);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Remove a ticket tier from an event (Event Organizer/Admin only)
+    /// Cannot remove a tier that has reservations.
+    /// </summary>
+    [HttpDelete("{eventId:guid}/ticket-tiers/{tierId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveTicketTier(Guid eventId, Guid tierId)
+    {
+        Logger.LogInformation("Removing ticket tier {TierId} from event {EventId}", tierId, eventId);
+
+        var command = new RemoveTicketTierCommand(eventId, tierId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    #endregion
+
     #region Sign-Up Lists Management
 
     /// <summary>
-    /// Get all sign-up lists for an event
-    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists
+    /// Get all sign-up lists for an event.
+    /// Phase 6A.76: Added [AllowAnonymous] to allow non-members to view sign-up lists.
+    /// Phase 7D.1: Optional ?kind= filter — pass <c>Items</c> or <c>Volunteers</c>
+    /// to restrict results; omit for everything.
     /// </summary>
     [HttpGet("{id:guid}/signups")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<SignUpListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> GetEventSignUpLists(Guid id)
+    public async Task<IActionResult> GetEventSignUpLists(Guid id, [FromQuery] SignUpKind? kind = null)
     {
-        Logger.LogInformation("Getting sign-up lists for event {EventId}", id);
+        Logger.LogInformation("Getting sign-up lists for event {EventId} (KindFilter={KindFilter})",
+            id, kind?.ToString() ?? "All");
 
-        var query = new GetEventSignUpListsQuery(id);
+        var query = new GetEventSignUpListsQuery(id, kind);
         var result = await Mediator.Send(query);
 
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
@@ -1694,7 +1851,8 @@ public class EventsController : BaseController<EventsController>
             request.HasPreferredItems,
             request.HasSuggestedItems,
             items,
-            request.HasOpenItems); // Phase 6A.28: Open Items support
+            request.HasOpenItems, // Phase 6A.28: Open Items support
+            request.Kind);        // Phase 7D.1: Items (default) or Volunteers
 
         var result = await Mediator.Send(command);
 
@@ -1802,7 +1960,9 @@ public class EventsController : BaseController<EventsController>
             signupId,
             itemId,
             request.ItemDescription,
-            request.Quantity,
+            request.TargetQuantity,
+            request.AvailableSlots,
+            request.SuggestedPerSlot,
             request.Notes);
 
         var result = await Mediator.Send(command);
@@ -1825,6 +1985,35 @@ public class EventsController : BaseController<EventsController>
             itemId, signupId, eventId);
 
         var command = new RemoveSignUpItemCommand(eventId, signupId, itemId);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Reorder all items in a sign-up list. The client sends the full ordered ID
+    /// list; the aggregate enforces exact-set equality (missing/extra/duplicate/unknown IDs all 400).
+    /// Works for both Items and Volunteers Kind — the API is Kind-agnostic.
+    /// </summary>
+    [HttpPut("{eventId:guid}/signups/{signupId:guid}/items/reorder")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReorderSignUpItems(
+        Guid eventId,
+        Guid signupId,
+        [FromBody] ReorderSignUpItemsRequest request)
+    {
+        Logger.LogInformation(
+            "Reordering {Count} items in sign-up list {SignUpId} for event {EventId}",
+            request?.OrderedItemIds?.Count ?? 0, signupId, eventId);
+
+        var command = new ReorderSignUpItemsCommand(
+            eventId,
+            signupId,
+            request?.OrderedItemIds ?? Array.Empty<Guid>());
         var result = await Mediator.Send(command);
 
         return HandleResult(result);
@@ -2700,11 +2889,14 @@ public class EventsController : BaseController<EventsController>
 
         // Phase 6A.69: Parse format (added signuplistszip support)
         // Phase 6A.73: Added signuplistsexcel support
+        // Phase 7D.1 Step 17: Added volunteerszip / volunteersexcel for Kind=Volunteers exports
         var exportFormat = format.ToLower() switch
         {
             "csv" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Csv,
             "signuplistszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsZip,
             "signuplistsexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.SignUpListsExcel,
+            "volunteerszip" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.VolunteersZip,
+            "volunteersexcel" => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.VolunteersExcel,
             _ => LankaConnect.Application.Events.Queries.ExportEventAttendees.ExportFormat.Excel
         };
 
@@ -3271,7 +3463,8 @@ public record CreateSignUpListRequest(
     bool HasPreferredItems,
     bool HasSuggestedItems,
     List<SignUpItemRequestDto> Items,
-    bool HasOpenItems = false); // Phase 6A.28: Open Items support
+    bool HasOpenItems = false,                // Phase 6A.28: Open Items support
+    SignUpKind Kind = SignUpKind.Items);      // Phase 7D.1: Items (default) or Volunteers
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 
@@ -3310,12 +3503,25 @@ public record AddSignUpItemRequest(
     string? Notes = null);
 
 /// <summary>
-/// Request to update a sign-up item
+/// Phase 6A.132: Request body for reordering sign-up items. Must contain the complete ordered list
+/// of item IDs — the aggregate rejects missing, extra, duplicate, or unknown IDs with HTTP 400.
+/// </summary>
+public record ReorderSignUpItemsRequest(IReadOnlyList<Guid> OrderedItemIds);
+
+/// <summary>
+/// Request to update a sign-up item.
 /// Phase 6A.14: Edit Sign-Up Item feature
+/// Phase 6A.131: Supports both quantity-based and slot-based items.
+/// Send <see cref="TargetQuantity"/> for quantity-based items and <see cref="AvailableSlots"/>
+/// (optionally with <see cref="SuggestedPerSlot"/>) for slot-based items. The server loads the
+/// item and uses its type as the authority; sending the wrong field returns HTTP 400 with an
+/// explicit message so the client can correct its payload.
 /// </summary>
 public record UpdateSignUpItemRequest(
     string ItemDescription,
-    int Quantity,
+    int? TargetQuantity = null,
+    int? AvailableSlots = null,
+    int? SuggestedPerSlot = null,
     string? Notes = null);
 
 /// <summary>
@@ -3525,3 +3731,34 @@ public record UpdateFormAnswerRequest(
     string? TextValue,
     List<Guid>? SelectedOptionIds,
     bool? BooleanValue);
+
+// Phase 8: Ticket Tier Management request DTOs
+
+public record SetTicketingModeRequest(TicketingMode TicketingMode);
+
+// Seating Redesign Slice 1: Set seating mode request DTO
+public record SetSeatingModeRequest(SeatingMode SeatingMode);
+
+public record AddTicketTierRequest(
+    string Name,
+    string? Description,
+    decimal AdultPriceAmount,
+    Currency AdultPriceCurrency,
+    decimal? ChildPriceAmount,
+    Currency? ChildPriceCurrency,
+    int? ChildAgeLimit,
+    int Capacity,
+    int MaxPerUser = 10,
+    int SortOrder = 0);
+
+public record UpdateTicketTierRequest(
+    string Name,
+    string? Description,
+    decimal AdultPriceAmount,
+    Currency AdultPriceCurrency,
+    decimal? ChildPriceAmount,
+    Currency? ChildPriceCurrency,
+    int? ChildAgeLimit,
+    int Capacity,
+    int MaxPerUser = 10,
+    int SortOrder = 0);

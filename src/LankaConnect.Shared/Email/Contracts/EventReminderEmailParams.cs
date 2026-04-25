@@ -77,9 +77,18 @@ public class EventReminderEmailParams : IEmailParameters
     public string EventStartTime { get; set; } = string.Empty;
 
     /// <summary>
-    /// Event location address.
+    /// Event location — legacy flat-string fallback. Phase 7C.2b renamed from
+    /// <c>Location</c> → <c>EventLocation</c> to align with the rest of the
+    /// event-email params family on the canonical <c>EmailTemplateContract.Event.EventLocation</c>
+    /// contract. Prefer <see cref="WithLocationDetails"/> to populate the 8
+    /// decomposed keys via <see cref="LocationEmailDictionaryWriter"/>.
     /// </summary>
-    public string Location { get; set; } = string.Empty;
+    public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// Number of tickets/seats for this registration.
@@ -224,7 +233,6 @@ public class EventReminderEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87+ Fix: Combined for standardized templates
-            { "Location", Location },
             { "Quantity", Quantity },
             { "HoursUntilEvent", HoursUntilEvent },
             { "ReminderTimeframe", ReminderTimeframe },
@@ -260,7 +268,27 @@ public class EventReminderEmailParams : IEmailParameters
             { "Year", DateTime.UtcNow.Year }
         };
 
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        // Replaces the old { "Location", Location } line — templates now bind to the
+        // decomposed block (which includes {{EventLocation}} as a legacy fallback).
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
+
         return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public EventReminderEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>
@@ -314,7 +342,7 @@ public class EventReminderEmailParams : IEmailParameters
         string eventTitle,
         DateTime eventStartDate,
         string eventStartTime,
-        string location,
+        string eventLocation,
         int quantity,
         double hoursUntilEvent,
         string reminderTimeframe,
@@ -330,7 +358,7 @@ public class EventReminderEmailParams : IEmailParameters
             EventTitle = eventTitle,
             EventStartDate = eventStartDate,
             EventStartTime = eventStartTime,
-            Location = location,
+            EventLocation = eventLocation,
             Quantity = quantity,
             HoursUntilEvent = hoursUntilEvent,
             ReminderTimeframe = reminderTimeframe,

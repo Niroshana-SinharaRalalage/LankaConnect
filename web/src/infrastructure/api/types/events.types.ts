@@ -148,6 +148,15 @@ export enum Currency {
 }
 
 /**
+ * Phase 7C.1: Secondary location type.
+ * String-valued to match backend JsonStringEnumConverter output.
+ */
+export enum SecondaryLocationType {
+  ParkingLot = 'ParkingLot',
+  SecondaryVenue = 'SecondaryVenue',
+}
+
+/**
  * Pricing type enum matching backend LankaConnect.Domain.Events.Enums.PricingType
  * Phase 6D: Tiered Group Pricing
  */
@@ -155,6 +164,48 @@ export enum PricingType {
   Single = 0,      // Flat rate per attendee
   AgeDual = 1,     // Age-based (Adult/Child)
   GroupTiered = 2, // Quantity-based with tiers
+}
+
+/**
+ * Phase 8: Ticketing mode — determines whether event uses single pricing or multi-tier pricing.
+ * Matches backend LankaConnect.Domain.Events.Enums.TicketingMode
+ */
+export enum TicketingMode {
+  SingleTier = 'SingleTier',   // Legacy single pricing (default)
+  Tiered = 'Tiered',           // Multi-tier pricing (VIP/Plus/Basic/custom)
+}
+
+/**
+ * Phase 8: Ticket category for multi-tier ticket generation.
+ * Matches backend LankaConnect.Domain.Events.Enums.TicketCategory
+ */
+export enum TicketCategory {
+  Standard = 'Standard',     // Legacy single ticket per registration
+  Master = 'Master',         // Group check-in ticket (one per tier group)
+  Individual = 'Individual', // Per-attendee ticket
+}
+
+/**
+ * Phase 8: Ticket tier DTO — represents a pricing tier (VIP, Plus, Basic, custom).
+ * Matches backend LankaConnect.Application.Events.Common.TicketTierDto
+ */
+export interface TicketTierDto {
+  id: string;
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  hasChildPricing: boolean;
+  capacity: number;
+  reservedCount: number;
+  availableQuantity: number;
+  maxPerUser: number;
+  sortOrder: number;
+  isActive: boolean;
+  isFree: boolean;
 }
 
 /**
@@ -333,6 +384,21 @@ export interface EventDto {
   latitude?: number | null;
   longitude?: number | null;
 
+  // Phase 7C.1: Primary venue name (distinct from street address)
+  locationName?: string | null;
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType?: SecondaryLocationType | null;
+  secondaryLocationName?: string | null;
+  secondaryAddress?: string | null;
+  secondaryCity?: string | null;
+  secondaryState?: string | null;
+  secondaryZipCode?: string | null;
+  secondaryCountry?: string | null;
+  secondaryLatitude?: number | null;
+  secondaryLongitude?: number | null;
+  hasSecondaryLocation: boolean;
+
   /**
    * Phase 6A.97: IANA timezone identifier for consistent date/time display
    * Example: "America/New_York", "America/Los_Angeles"
@@ -364,6 +430,15 @@ export interface EventDto {
   pricingType?: PricingType | null; // Pricing model type (Single, AgeDual, GroupTiered)
   groupPricingTiers: readonly GroupPricingTierDto[]; // Quantity-based pricing tiers
   hasGroupPricing: boolean; // True if event uses group tiered pricing
+
+  // Phase 2: Seating
+  seatingMode?: SeatingMode;
+  venueLayoutId?: string | null;
+
+  // Phase 8: Multi-tier ticketing
+  ticketingMode: TicketingMode;
+  ticketTiers: readonly TicketTierDto[];
+  hasTicketTiers: boolean;
 
   // Media galleries (Epic 2 Phase 2)
   images: readonly EventImageDto[];
@@ -532,6 +607,19 @@ export enum SignUpItemType {
 }
 
 /**
+ * Phase 7D.1: Discriminator for the kind of sign-up list.
+ * - `Items` — traditional bring-an-item lists (e.g. potluck dishes).
+ * - `Volunteers` — volunteer-role lists (e.g. food committee, setup crew).
+ *
+ * String values match the backend's JsonStringEnumConverter output so JSON
+ * round-trips work without a numeric-to-string shim (MEMORY 6A.124).
+ */
+export enum SignUpKind {
+  Items = 'Items',
+  Volunteers = 'Volunteers',
+}
+
+/**
  * Phase 6A.121: Base interface for discriminated union of sign-up item DTOs
  */
 interface SignUpItemDtoBase {
@@ -544,6 +632,8 @@ interface SignUpItemDtoBase {
   isOpenItem: boolean;
   /** Phase 6A.27: User ID who created this item (only for Open items) */
   createdByUserId?: string | null;
+  /** Phase 6A.132: Render order within the list (0-based, ascending). */
+  displayOrder: number;
 }
 
 /**
@@ -601,6 +691,12 @@ export interface SignUpListDto {
   category: string;
   description: string;
   signUpType: SignUpType;
+  /**
+   * Phase 7D.1: Discriminator between bring-an-item lists and volunteer-role lists.
+   * Optional for backward compatibility with any cached payloads that predate the
+   * Phase A backend; consumers should default missing values to `SignUpKind.Items`.
+   */
+  kind?: SignUpKind;
 
   // Legacy fields (for Open/Predefined sign-ups)
   predefinedItems: string[];
@@ -702,6 +798,20 @@ export interface CreateEventRequest {
   locationLatitude?: number;
   locationLongitude?: number;
 
+  // Phase 7C.1: Primary venue name (optional)
+  locationName?: string;
+
+  // Phase 7C.1: Secondary location (optional - all fields required when type is set)
+  secondaryLocationType?: SecondaryLocationType;
+  secondaryLocationName?: string;
+  secondaryLocationAddress?: string;
+  secondaryLocationCity?: string;
+  secondaryLocationState?: string;
+  secondaryLocationZipCode?: string;
+  secondaryLocationCountry?: string;
+  secondaryLocationLatitude?: number;
+  secondaryLocationLongitude?: number;
+
   // Ticket Price (optional - legacy single pricing for backward compatibility)
   ticketPriceAmount?: number;
   ticketPriceCurrency?: Currency;
@@ -769,6 +879,20 @@ export interface UpdateEventRequest {
   locationCountry?: string | null;
   locationLatitude?: number | null;
   locationLongitude?: number | null;
+
+  // Phase 7C.1: Primary venue name (optional; null clears)
+  locationName?: string | null;
+
+  // Phase 7C.1: Secondary location (null type clears entire secondary location)
+  secondaryLocationType?: SecondaryLocationType | null;
+  secondaryLocationName?: string | null;
+  secondaryLocationAddress?: string | null;
+  secondaryLocationCity?: string | null;
+  secondaryLocationState?: string | null;
+  secondaryLocationZipCode?: string | null;
+  secondaryLocationCountry?: string | null;
+  secondaryLocationLatitude?: number | null;
+  secondaryLocationLongitude?: number | null;
 
   // Pricing (nullable to match C# decimal? and Currency?)
   ticketPriceAmount?: number | null;
@@ -848,6 +972,10 @@ export interface RsvpRequest {
   sponsorAmount?: number | null;
   sponsorOrganization?: string | null;
   sponsorNotes?: string | null;
+
+  // Phase 2: Assigned seating — seat hold session
+  seatSessionId?: string;
+  seatIds?: string[];
 }
 
 /**
@@ -916,6 +1044,8 @@ export interface AttendeeDto {
   name: string;
   ageCategory: AgeCategory;
   gender?: Gender | null;
+  // Phase 8: Optional ticket tier assignment for tiered events
+  ticketTierId?: string | null;
 }
 
 /**
@@ -1047,6 +1177,12 @@ export interface CreateSignUpListRequest {
   hasSuggestedItems: boolean;
   /** Phase 6A.27: Allow users to add their own Open items */
   hasOpenItems?: boolean;
+  /**
+   * Phase 7D.1: Discriminator for volunteer-role lists vs item lists.
+   * Optional; backend defaults to `SignUpKind.Items` when absent so existing
+   * create-signup-list flows remain unchanged.
+   */
+  kind?: SignUpKind;
   items: SignUpItemRequestDto[];
 }
 
@@ -1096,13 +1232,19 @@ export interface AddSignUpItemRequest {
 }
 
 /**
- * Update sign-up item request
- * Phase 6A.14: Edit Sign-Up Item feature
- * Matches backend UpdateSignUpItemRequest
+ * Update sign-up item request.
+ * Phase 6A.14: Edit Sign-Up Item feature.
+ * Phase 6A.131: Supports both quantity-based and slot-based items.
+ *
+ * Send `targetQuantity` for quantity-based items; send `availableSlots` (and optionally
+ * `suggestedPerSlot`) for slot-based items. The server uses the loaded item's type as the
+ * authority — sending the wrong field returns HTTP 400 with an explicit message.
  */
 export interface UpdateSignUpItemRequest {
   itemDescription: string;
-  quantity: number;
+  targetQuantity?: number | null;
+  availableSlots?: number | null;
+  suggestedPerSlot?: number | null;
   notes?: string | null;
 }
 
@@ -2275,4 +2417,537 @@ export interface CreatePhotoAlbumRequest {
 export interface UpdateAlbumDetailsRequest {
   name: string;
   description?: string;
+}
+
+// ==================== Phase 8: Ticket Tier Request Types ====================
+
+/**
+ * Phase 8: Request to set the ticketing mode for an event.
+ */
+export interface SetTicketingModeRequest {
+  ticketingMode: TicketingMode;
+}
+
+/**
+ * Seating Redesign Slice 1: Request to set the seating mode for an event.
+ * AssignedSeating requires the event to already be in TicketingMode.Tiered.
+ */
+export interface SetSeatingModeRequest {
+  seatingMode: SeatingMode;
+}
+
+/**
+ * Phase 8: Request to create a ticket tier.
+ */
+export interface CreateTicketTierRequest {
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  capacity: number;
+  maxPerUser?: number;
+  sortOrder?: number;
+}
+
+/**
+ * Phase 8: Request to update a ticket tier.
+ */
+export interface UpdateTicketTierRequest {
+  name: string;
+  description?: string | null;
+  adultPriceAmount: number;
+  adultPriceCurrency: Currency;
+  childPriceAmount?: number | null;
+  childPriceCurrency?: Currency | null;
+  childAgeLimit?: number | null;
+  capacity: number;
+  maxPerUser?: number;
+  sortOrder?: number;
+}
+
+// ==================== Phase 2: Seating & Venue Layout ====================
+
+/**
+ * Seating mode for an event.
+ * Matches backend LankaConnect.Domain.Events.Enums.SeatingMode
+ */
+export enum SeatingMode {
+  GeneralAdmission = 'GeneralAdmission',
+  AssignedSeating = 'AssignedSeating',
+}
+
+/**
+ * Layout type for venue layout.
+ * Matches backend LankaConnect.Domain.Events.Enums.LayoutType
+ */
+export enum LayoutType {
+  Theater = 'Theater',
+  Banquet = 'Banquet',
+  Custom = 'Custom',
+  // Slice 2+3A: hybrid layouts combining theater rows and banquet tables.
+  Mixed = 'Mixed',
+}
+
+/**
+ * Slice 2+3A: Canvas shape a zone is rendered with.
+ * Matches backend LankaConnect.Domain.Events.Enums.ZoneShape
+ */
+export enum ZoneShape {
+  Rect = 'Rect',
+  Curve = 'Curve',
+  Polygon = 'Polygon',
+}
+
+/**
+ * Slice 2+3A: Table shape for a banquet / dining table.
+ * Matches backend LankaConnect.Domain.Events.Enums.TableShape
+ */
+export enum TableShape {
+  Round = 'Round',
+  Square = 'Square',
+  Rect = 'Rect',
+}
+
+/**
+ * Slice 2+3A: Non-seating decorative/structural element on the canvas.
+ * Matches backend LankaConnect.Domain.Events.Enums.DecorationKind
+ */
+export enum DecorationKind {
+  Stage = 'Stage',
+  DanceFloor = 'DanceFloor',
+  Aisle = 'Aisle',
+  Door = 'Door',
+  Wall = 'Wall',
+  Text = 'Text',
+  Image = 'Image',
+}
+
+/**
+ * Seat availability status (derived from runtime state).
+ */
+export type SeatStatus = 'Available' | 'Held' | 'Reserved' | 'Disabled';
+
+/**
+ * Slice 2+3A: Canvas rendering configuration for a layout. Flat-columns model
+ * on the backend (OwnsOne, not JSON) — keep a stable shape on the FE.
+ */
+export interface CanvasConfigDto {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+/**
+ * Venue layout DTO — aggregate with zones, tables, decorations, and seats.
+ * Tables / decorations / canvas are optional for backwards compatibility with
+ * legacy layouts that predate Slice 2+3A.
+ * Matches backend VenueLayoutDto
+ */
+export interface VenueLayoutDto {
+  id: string;
+  name: string;
+  eventId?: string | null;
+  layoutType: string;
+  isTemplate: boolean;
+  createdByUserId: string;
+  totalCapacity: number;
+  createdAt: string;
+  updatedAt?: string | null;
+  zones: VenueZoneDto[];
+  // Slice 2+3A additions — optional to preserve backward compatibility.
+  canvas?: CanvasConfigDto;
+  tables?: VenueTableDto[];
+  decorations?: VenueDecorationDto[];
+  /**
+   * Slice 5: PostgreSQL xmin serialized as uint. Sent back as the
+   * `If-Match` header on PUT/PATCH/DELETE for optimistic concurrency
+   * (409 on mismatch).
+   */
+  rowVersion: number;
+}
+
+/**
+ * Venue zone DTO — a named section of a layout.
+ */
+export interface VenueZoneDto {
+  id: string;
+  name: string;
+  color: string;
+  /**
+   * @deprecated Slice 4 Release N: server returns `null`. Tier mapping is now polymorphic
+   * via tier_assignments. Slice 5 will expose GET /api/venue-layouts/{id}/tier-assignments
+   * and a TierAssignmentDto[] on the layout. Field removed entirely in Release N+1.
+   */
+  ticketTierId?: string | null;
+  sortOrder: number;
+  enabledSeatCount: number;
+  totalSeatCount: number;
+  seats: SeatDto[];
+  // Slice 2+3A: canvas shape + geometry. Geometry is a JSON string matching
+  // the shape-specific schema documented on VenueZone.Geometry.
+  shape?: ZoneShape;
+  geometry?: string;
+
+  /**
+   * Slice 5 Chunk 8: tier IDs currently assigned to this zone via the polymorphic
+   * tier_assignments junction. Replaces the legacy scalar `ticketTierId`.
+   * Empty for template layouts or zones with no tier mapping yet.
+   */
+  ticketTierIds?: string[];
+}
+
+/**
+ * Slice 2+3A: Banquet / dining table DTO. Tables live on a layout and own
+ * their seats directly; optional VenueZoneId groups tables under a section.
+ */
+export interface VenueTableDto {
+  id: string;
+  venueLayoutId: string;
+  venueZoneId?: string | null;
+  label: string;
+  shape: TableShape;
+  geometry: string;
+  capacity: number;
+  sortOrder: number;
+  enabledSeatCount: number;
+  seats: SeatDto[];
+
+  /**
+   * Slice 5 Chunk 8: tier IDs currently assigned to this table via the
+   * polymorphic tier_assignments junction. Empty for template layouts or
+   * tables with no tier mapping yet.
+   */
+  ticketTierIds?: string[];
+}
+
+/**
+ * Slice 2+3A: Decoration DTO for non-seating elements (stage, aisle, text, …).
+ */
+export interface VenueDecorationDto {
+  id: string;
+  venueLayoutId: string;
+  kind: DecorationKind;
+  label?: string | null;
+  geometry: string;
+  properties: string;
+  sortOrder: number;
+}
+
+/**
+ * Seat DTO — structural data for a single seat.
+ * Slice 2+3A: a seat belongs to EITHER a zone OR a table (XOR); angleDeg is set
+ * for radial (round-table) seats.
+ */
+export interface SeatDto {
+  id: string;
+  row: string;
+  number: number;
+  label: string;
+  sortOrder: number;
+  isEnabled: boolean;
+  isAccessible: boolean;
+  /**
+   * Canvas x coordinate. Nullable — the domain leaves x/y null for seats
+   * generated by theater zones (Row + Number positioning) and only
+   * populates them when the canvas editor places seats explicitly.
+   * Matches backend `double?`.
+   */
+  x?: number | null;
+  y?: number | null;
+  // Slice 2+3A — optional for backward compatibility with existing zone seats.
+  venueZoneId?: string | null;
+  venueTableId?: string | null;
+  angleDeg?: number | null;
+}
+
+/**
+ * Seat availability DTO — combines structural data with runtime status.
+ * Matches backend SeatAvailabilityDto
+ */
+export interface SeatAvailabilityDto {
+  id: string;
+  label: string;
+  row: string;
+  number: number;
+  isEnabled: boolean;
+  isAccessible: boolean;
+  x: number;
+  y: number;
+  status: SeatStatus;
+  zoneId: string;
+  zoneName: string;
+  zoneColor: string;
+  /** @deprecated Slice 4 Release N: server returns `null`. See VenueZoneDto.ticketTierId. */
+  ticketTierId?: string | null;
+}
+
+/**
+ * Result from holding seats.
+ */
+export interface HoldSeatsResult {
+  heldSeatIds: string[];
+  expiresAt: string;
+  sessionId: string;
+}
+
+// ==================== Seating Request DTOs ====================
+
+export interface CreateVenueLayoutRequest {
+  name: string;
+  layoutType: string;
+  eventId?: string | null;
+  isTemplate: boolean;
+  zones: CreateVenueZoneRequest[];
+}
+
+export interface CreateVenueZoneRequest {
+  name: string;
+  color: string;
+  /**
+   * @deprecated Slice 4 Release N: server accepts but ignores this field. Use the
+   * tier-assignment endpoints (Slice 5) to map tiers to zones after layout creation.
+   * Field removed entirely in Release N+1.
+   */
+  ticketTierId?: string | null;
+  sortOrder: number;
+}
+
+export interface GenerateSeatsRequest {
+  generationType: string;
+  rowsOrTables: number;
+  seatsPerUnit: number;
+  startLabel?: string | null;
+}
+
+export interface AssignLayoutRequest {
+  eventId: string;
+  layoutId: string;
+}
+
+export interface HoldSeatsRequest {
+  sessionId: string;
+  seatIds: string[];
+}
+
+export interface ReleaseSeatsRequest {
+  sessionId: string;
+}
+
+// ==================== Slice 5 Chunk 11 — layout CRUD request types ====================
+
+/**
+ * Slice 5 Chunk 4: PUT /api/venue-layouts/{id} — update layout name and/or canvas.
+ * Both fields optional; at least one must be supplied. `If-Match` header carries
+ * the expected RowVersion separately.
+ */
+export interface UpdateVenueLayoutRequest {
+  name?: string | null;
+  canvas?: UpdateLayoutCanvasRequest | null;
+}
+
+export interface UpdateLayoutCanvasRequest {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+/**
+ * Slice 5 Chunk 5: PATCH /api/venue-layouts/{id}/zones/{zoneId}. All fields
+ * optional — send only what changed. Structural changes (shape/geometry) are
+ * rejected with 422 when seats on the zone are held/reserved.
+ */
+export interface UpdateZoneRequest {
+  name?: string | null;
+  color?: string | null;
+  sortOrder?: number | null;
+  /** Stringified `ZoneShape` enum value for JSON-friendliness. */
+  shape?: string | null;
+  geometry?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 6: POST /api/venue-layouts/{id}/tables. Seats are auto-generated
+ * based on shape + capacity. `startAngleDeg` applies to round tables only
+ * (default 0° when omitted).
+ */
+export interface AddTableRequest {
+  label: string;
+  /** Stringified `TableShape` enum value. */
+  shape: string;
+  capacity: number;
+  sortOrder: number;
+  zoneId?: string | null;
+  geometry?: string | null;
+  startAngleDeg?: number | null;
+}
+
+export interface AddTableResponse {
+  tableId: string;
+}
+
+/**
+ * Slice 5 Chunk 6: PATCH /api/venue-layouts/{id}/tables/{tableId}. Pass
+ * `clearZoneId: true` to explicitly detach the table from its zone (supplying
+ * `zoneId: null` alone is treated as "keep current zone" so callers can omit
+ * unchanged fields safely).
+ */
+export interface UpdateTableRequest {
+  label?: string | null;
+  /** Stringified `TableShape` enum value. */
+  shape?: string | null;
+  capacity?: number | null;
+  sortOrder?: number | null;
+  zoneId?: string | null;
+  clearZoneId?: boolean | null;
+  geometry?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 7: POST /api/venue-layouts/{id}/decorations. `label` is
+ * required only for the `Text` kind; others accept it as optional metadata.
+ */
+export interface AddDecorationRequest {
+  /** Stringified `DecorationKind` enum value. */
+  kind: string;
+  label?: string | null;
+  sortOrder: number;
+  geometry?: string | null;
+  properties?: string | null;
+}
+
+export interface AddDecorationResponse {
+  decorationId: string;
+}
+
+/**
+ * Slice 5 Chunk 7: PATCH /api/venue-layouts/{id}/decorations/{decorationId}.
+ * Pass `clearLabel: true` to detach the label (rejected when kind is `Text`).
+ */
+export interface UpdateDecorationRequest {
+  /** Stringified `DecorationKind` enum value. */
+  kind?: string | null;
+  label?: string | null;
+  clearLabel?: boolean | null;
+  sortOrder?: number | null;
+  geometry?: string | null;
+  properties?: string | null;
+}
+
+/**
+ * Slice 5 Chunk 8: `AssignableKind` for the polymorphic tier-assignment junction.
+ * Matches backend `LankaConnect.Domain.Events.Enums.AssignableKind`.
+ */
+export enum AssignableKind {
+  Zone = 'Zone',
+  Table = 'Table',
+}
+
+/**
+ * Slice 5 Chunk 8: POST /api/venue-layouts/{id}/tier-assignments.
+ * Idempotent — re-assigning an existing tuple is a no-op. Does NOT bump the
+ * layout RowVersion (assignments live on the `TicketTier` aggregate), but
+ * `If-Match` is still required for authorization-context freshness.
+ */
+export interface AssignTierRequest {
+  tierId: string;
+  /** Stringified `AssignableKind` enum value. */
+  kind: string;
+  assignableId: string;
+}
+
+/**
+ * Slice 5 Chunk 10: PUT /api/venue-layouts/{id}/batch body — atomic full-layout
+ * replacement consumed by the Slice 8 canvas editor save path. Within each
+ * child list: items with `id = null` are created, items with matching `id` are
+ * updated in place, and existing children omitted from the payload are removed
+ * (guarded against held/reserved seats).
+ */
+export interface BatchLayoutPayload {
+  name?: string | null;
+  canvas?: BatchCanvasConfig | null;
+  zones?: BatchZone[] | null;
+  tables?: BatchTable[] | null;
+  decorations?: BatchDecoration[] | null;
+}
+
+export interface BatchCanvasConfig {
+  width: number;
+  height: number;
+  scale: number;
+  backgroundColor: string;
+}
+
+export interface BatchZone {
+  /** `null` → create; matching id → update; omitted existing → remove. */
+  id?: string | null;
+  name: string;
+  color: string;
+  sortOrder: number;
+  /** `ZoneShape` enum value serialized as a string (matches backend converter). */
+  shape: ZoneShape;
+  geometry?: string | null;
+}
+
+export interface BatchTable {
+  id?: string | null;
+  label: string;
+  shape: TableShape;
+  capacity: number;
+  sortOrder: number;
+  zoneId?: string | null;
+  geometry?: string | null;
+}
+
+export interface BatchDecoration {
+  id?: string | null;
+  kind: DecorationKind;
+  label?: string | null;
+  sortOrder: number;
+  geometry?: string | null;
+  properties?: string | null;
+}
+
+// ============================================================================
+// Slice 6: Layout preset library
+// ============================================================================
+
+/**
+ * Slice 6 Chunk S6.2 — metadata for a single preset in the library modal.
+ * Matches backend `LankaConnect.Application.Events.Queries.GetLayoutPresets.LayoutPresetDto`.
+ *
+ * Thumbnails are served from the web app's `/public/layouts/presets/` folder —
+ * the modal renders PNG images, NOT react-konva, so the canvas library stays
+ * lazy-loaded until the SeatPicker or canvas editor needs it.
+ */
+export interface LayoutPresetDto {
+  /** Stable preset ID, e.g. `"theater-classic"`. Safe to use as a React key. */
+  id: string;
+  /** Human-readable preset name shown as the card title. */
+  name: string;
+  /** One-line description shown under the title in the card. */
+  description: string;
+  /**
+   * Layout type the preset produces. Uses the backend's string enum
+   * (`JsonStringEnumConverter`), not a number — matches MEMORY 6A.124.
+   */
+  layoutType: 'Theater' | 'Banquet' | 'Custom' | 'Mixed';
+  /** Total enabled seat count for the preset as built. */
+  totalCapacity: number;
+  /** Absolute path to the pre-generated PNG thumbnail. */
+  thumbnailUrl: string;
+}
+
+/**
+ * Slice 6 Chunk S6.4 — POST /api/venue-layouts/from-preset body.
+ * Matches backend `CreateLayoutFromPresetRequest`.
+ */
+export interface CreateLayoutFromPresetRequest {
+  presetId: string;
+  /** Omit to create a user-scoped template. Supply to attach to an event you own. */
+  eventId?: string | null;
 }

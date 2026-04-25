@@ -13,9 +13,39 @@
  */
 
 import { NextResponse } from 'next/server';
+import { getEnvValidation } from '@/lib/env-validation';
 
 export async function GET() {
   try {
+    // Check env validation first — if critical vars are missing in a deployed
+    // environment, return 500 so Azure probes fail and no traffic is routed.
+    // This prevents the container from serving requests with wrong config.
+    const envValidation = getEnvValidation();
+
+    if (!envValidation.isValid) {
+      console.error(
+        '[Health] UNHEALTHY: Environment validation failed:',
+        envValidation.errors
+      );
+      return NextResponse.json(
+        {
+          status: 'unhealthy',
+          service: 'lankaconnect-ui',
+          timestamp: new Date().toISOString(),
+          reason: 'Environment validation failed',
+          errors: envValidation.errors,
+          warnings: envValidation.warnings,
+        },
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        }
+      );
+    }
+
     const startTime = process.uptime();
     const memoryUsage = process.memoryUsage();
 
@@ -43,6 +73,10 @@ export async function GET() {
       memory: memoryMB,
       environment: process.env.NEXT_PUBLIC_ENV || 'unknown',
       nodeVersion: process.version,
+      envValidation: {
+        isValid: true,
+        warnings: envValidation.warnings,
+      },
     };
 
     console.log('[Health] Health check passed:', healthData);

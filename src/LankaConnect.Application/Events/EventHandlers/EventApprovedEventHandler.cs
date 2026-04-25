@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -102,6 +103,9 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     approvedAt: domainEvent.ApprovedAt,
                     eventUrl: eventUrl,
                     eventManageUrl: eventManageUrl);
+
+                // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                 // Phase 6A.103: Add event image if available
                 emailParams.WithEventImage(eventImageUrl);

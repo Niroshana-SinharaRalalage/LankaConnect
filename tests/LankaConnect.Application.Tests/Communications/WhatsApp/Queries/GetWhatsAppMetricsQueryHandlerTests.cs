@@ -7,16 +7,23 @@ namespace LankaConnect.Application.Tests.Communications.WhatsApp.Queries;
 public class GetWhatsAppMetricsQueryHandlerTests
 {
     private readonly Mock<IWhatsAppMessageRepository> _mockMessageRepo;
+    private readonly Mock<IUserWhatsAppPreferencesRepository> _mockPreferencesRepo;
     private readonly Mock<ILogger<GetWhatsAppMetricsQueryHandler>> _mockLogger;
     private readonly GetWhatsAppMetricsQueryHandler _handler;
 
     public GetWhatsAppMetricsQueryHandlerTests()
     {
         _mockMessageRepo = new Mock<IWhatsAppMessageRepository>();
+        _mockPreferencesRepo = new Mock<IUserWhatsAppPreferencesRepository>();
         _mockLogger = new Mock<ILogger<GetWhatsAppMetricsQueryHandler>>();
+
+        _mockPreferencesRepo
+            .Setup(x => x.GetUsersEnabledButUnverifiedCountAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
 
         _handler = new GetWhatsAppMetricsQueryHandler(
             _mockMessageRepo.Object,
+            _mockPreferencesRepo.Object,
             _mockLogger.Object);
     }
 
@@ -125,6 +132,40 @@ public class GetWhatsAppMetricsQueryHandlerTests
         result.Value.TotalSent.Should().Be(0);
         result.Value.DeliveryRate.Should().Be(0);
         result.Value.ReadRate.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_Includes_UsersEnabledButUnverified_From_Preferences_Repository()
+    {
+        // Arrange
+        var from = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 4, 30, 23, 59, 59, DateTimeKind.Utc);
+        var query = new GetWhatsAppMetricsQuery(from, to);
+
+        _mockMessageRepo
+            .Setup(x => x.GetMetricsAsync(from, to, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new WhatsAppMessageMetrics
+            {
+                TotalSent = 10,
+                TotalDelivered = 10,
+                TotalRead = 5,
+                TotalFailed = 0,
+                ByTemplate = new Dictionary<string, int>()
+            });
+
+        _mockPreferencesRepo
+            .Setup(x => x.GetUsersEnabledButUnverifiedCountAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.UsersEnabledButUnverified.Should().Be(7);
+        _mockPreferencesRepo.Verify(
+            x => x.GetUsersEnabledButUnverifiedCountAsync(It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

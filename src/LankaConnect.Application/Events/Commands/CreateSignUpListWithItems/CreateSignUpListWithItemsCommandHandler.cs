@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -59,30 +60,61 @@ public class CreateSignUpListWithItemsCommandHandler : ICommandHandler<CreateSig
                     @event.Id, @event.Title.Value, @event.SignUpLists.Count);
 
                 _logger.LogInformation(
-                    "CreateSignUpListWithItems: Creating sign-up list - Category={Category}, HasMandatory={HasMandatory}, HasPreferred={HasPreferred}, HasSuggested={HasSuggested}, HasOpen={HasOpen}",
-                    request.Category, request.HasMandatoryItems, request.HasPreferredItems, request.HasSuggestedItems, request.HasOpenItems);
+                    "CreateSignUpListWithItems: Creating sign-up list - Category={Category}, Kind={Kind}, HasMandatory={HasMandatory}, HasPreferred={HasPreferred}, HasSuggested={HasSuggested}, HasOpen={HasOpen}",
+                    request.Category, request.Kind, request.HasMandatoryItems, request.HasPreferredItems, request.HasSuggestedItems, request.HasOpenItems);
 
-                // Phase 6A.131: Convert items to extended tuple format supporting both quantity-based and slot-based items
-                var items = request.Items.Select(item => (
-                    description: item.ItemDescription,
-                    itemType: item.ItemType,
-                    category: item.ItemCategory,
-                    targetQuantity: item.TargetQuantity,
-                    availableSlots: item.AvailableSlots,
-                    suggestedPerSlot: item.SuggestedPerSlot,
-                    notes: item.Notes
-                ));
+                // Phase 7D.1: Volunteer lists are slot-only (1 volunteer = 1 slot) and have
+                // no open-items; route to the dedicated factory so the invariant surfaces
+                // as one clear error, not a downstream AddItem failure.
+                Result<SignUpList> signUpListResult;
+                if (request.Kind == SignUpKind.Volunteers)
+                {
+                    var invalidItem = request.Items.FirstOrDefault(i => i.ItemType != SignUpItemType.Slot);
+                    if (invalidItem != null)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "CreateSignUpListWithItems FAILED: Volunteer list requires slot-based items - EventId={EventId}, OffendingItem={ItemDescription}, Duration={ElapsedMs}ms",
+                            request.EventId, invalidItem.ItemDescription, stopwatch.ElapsedMilliseconds);
+                        return Result<Guid>.Failure("Volunteer lists only accept slot-based roles (ItemType=Slot with AvailableSlots)");
+                    }
 
-                // Create sign-up list with items in single operation
-                // Phase 6A.131: Pass dual-field item data for quantity/slot support
-                var signUpListResult = SignUpList.CreateWithCategoriesAndItems(
-                    request.Category,
-                    request.Description,
-                    request.HasMandatoryItems,
-                    request.HasPreferredItems,
-                    request.HasSuggestedItems,
-                    items,
-                    request.HasOpenItems);
+                    var roles = request.Items.Select(i => (
+                        roleName: i.ItemDescription,
+                        volunteersNeeded: i.AvailableSlots ?? 1,
+                        suggestedPerSlot: i.SuggestedPerSlot,
+                        notes: i.Notes
+                    ));
+
+                    signUpListResult = SignUpList.CreateVolunteerList(
+                        request.Category,
+                        request.Description,
+                        roles);
+                }
+                else
+                {
+                    // Phase 6A.131: Convert items to extended tuple format supporting both quantity-based and slot-based items
+                    var items = request.Items.Select(item => (
+                        description: item.ItemDescription,
+                        itemType: item.ItemType,
+                        category: item.ItemCategory,
+                        targetQuantity: item.TargetQuantity,
+                        availableSlots: item.AvailableSlots,
+                        suggestedPerSlot: item.SuggestedPerSlot,
+                        notes: item.Notes
+                    ));
+
+                    // Create sign-up list with items in single operation
+                    // Phase 6A.131: Pass dual-field item data for quantity/slot support
+                    signUpListResult = SignUpList.CreateWithCategoriesAndItems(
+                        request.Category,
+                        request.Description,
+                        request.HasMandatoryItems,
+                        request.HasPreferredItems,
+                        request.HasSuggestedItems,
+                        items,
+                        request.HasOpenItems);
+                }
 
                 if (signUpListResult.IsFailure)
                 {

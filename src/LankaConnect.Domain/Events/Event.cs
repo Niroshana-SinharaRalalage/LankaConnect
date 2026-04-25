@@ -7,7 +7,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
-public class Event : BaseEntity
+public partial class Event : BaseEntity
 {
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
@@ -35,6 +35,7 @@ public class Event : BaseEntity
     public string? CancellationReason { get; private set; }
     public DateTime? PublishedAt { get; private set; } // Phase 6A.46: Track when event was published for "New" label calculation
     public EventLocation? Location { get; private set; } // Epic 2 Phase 1: Event location support
+    public EventSecondaryLocation? SecondaryLocation { get; private set; } // Phase 7C.1: Optional secondary location (parking lot / secondary venue)
 
     /// <summary>
     /// Phase 6A.97: IANA timezone identifier for event's local time display.
@@ -408,16 +409,44 @@ public class Event : BaseEntity
                 return Result.Failure("This email is already registered for this event. Each email can only register once.");
         }
 
-        // Check capacity for all attendees
-        if (!HasCapacityFor(attendeeList.Count))
-            return Result.Failure("Event does not have enough capacity for all attendees");
+        // Phase 8: Tier-aware capacity and pricing
+        Money? totalPrice;
+        if (TicketingMode == Enums.TicketingMode.Tiered)
+        {
+            // Tiered mode: per-tier capacity check
+            var tierCapacityResult = HasTieredCapacityFor(attendeeList);
+            if (tierCapacityResult.IsFailure)
+                return Result.Failure(tierCapacityResult.Errors);
 
-        // Calculate total price based on attendee ages
-        var priceResult = CalculatePriceForAttendees(attendeeList);
-        if (priceResult.IsFailure)
-            return Result.Failure(priceResult.Errors);
+            // Tiered mode: per-attendee tier pricing
+            var tieredPriceResult = CalculateTieredPriceForAttendees(attendeeList);
+            if (tieredPriceResult.IsFailure)
+                return Result.Failure(tieredPriceResult.Errors);
 
-        var totalPrice = priceResult.Value;
+            totalPrice = tieredPriceResult.Value;
+
+            // Reserve tier capacity
+            foreach (var tierGroup in attendeeList.Where(a => a.TicketTierId != null).GroupBy(a => a.TicketTierId!.Value))
+            {
+                var tier = _ticketTiers.First(t => t.Id == tierGroup.Key);
+                var reserveResult = tier.Reserve(tierGroup.Count());
+                if (reserveResult.IsFailure)
+                    return Result.Failure(reserveResult.Errors);
+            }
+        }
+        else
+        {
+            // SingleTier mode: existing capacity check
+            if (!HasCapacityFor(attendeeList.Count))
+                return Result.Failure("Event does not have enough capacity for all attendees");
+
+            // SingleTier mode: existing pricing
+            var priceResult = CalculatePriceForAttendees(attendeeList);
+            if (priceResult.IsFailure)
+                return Result.Failure(priceResult.Errors);
+
+            totalPrice = priceResult.Value;
+        }
 
         // Session 23: Determine if this is a paid event (has pricing and not free)
         bool isPaidEvent = !IsFree();
@@ -891,6 +920,38 @@ public class Event : BaseEntity
     /// Checks if event has a physical location set
     /// </summary>
     public bool HasLocation() => Location != null;
+
+    /// <summary>
+    /// Phase 7C.1: Sets the optional secondary location (parking lot or secondary venue).
+    /// Replaces any existing secondary location.
+    /// </summary>
+    public Result SetSecondaryLocation(EventSecondaryLocation secondaryLocation)
+    {
+        if (secondaryLocation == null)
+            return Result.Failure("Secondary location cannot be null");
+
+        SecondaryLocation = secondaryLocation;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7C.1: Clears the secondary location. Idempotent — succeeds even if already null.
+    /// </summary>
+    public Result ClearSecondaryLocation()
+    {
+        if (SecondaryLocation == null)
+            return Result.Success();
+
+        SecondaryLocation = null;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7C.1: Checks whether a secondary location is set on this event.
+    /// </summary>
+    public bool HasSecondaryLocation() => SecondaryLocation != null;
 
     #endregion
 
@@ -1646,8 +1707,10 @@ public class Event : BaseEntity
         if (signUpList == null)
             return Result.Failure("Sign-up list cannot be null");
 
-        // Check for duplicate categories
-        if (_signUpLists.Any(s => s.Category.Equals(signUpList.Category, StringComparison.OrdinalIgnoreCase)))
+        // Phase 7D.1: Uniqueness keys on (Kind, Category) so organizers can run an
+        // Items list and a Volunteers list that happen to share a category label.
+        if (_signUpLists.Any(s => s.Kind == signUpList.Kind
+                                  && s.Category.Equals(signUpList.Category, StringComparison.OrdinalIgnoreCase)))
             return Result.Failure($"A sign-up list with category '{signUpList.Category}' already exists");
 
         _signUpLists.Add(signUpList);

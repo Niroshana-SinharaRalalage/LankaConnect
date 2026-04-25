@@ -123,7 +123,7 @@ public class WhatsAppMessageRecordConfiguration : IEntityTypeConfiguration<Whats
             .IsRequired()
             .HasDefaultValue(3);
 
-        // ACS/Meta tracking
+        // Provider/Meta tracking
         builder.Property(e => e.AcsMessageId)
             .HasColumnName("acs_message_id")
             .HasMaxLength(200);
@@ -131,6 +131,13 @@ public class WhatsAppMessageRecordConfiguration : IEntityTypeConfiguration<Whats
         builder.Property(e => e.MetaMessageId)
             .HasColumnName("meta_message_id")
             .HasMaxLength(200);
+
+        // Phase 7B: BSP provider tracking
+        builder.Property(e => e.Provider)
+            .HasColumnName("provider")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired(false);
 
         // Foreign keys (nullable)
         builder.Property(e => e.UserId)

@@ -23,6 +23,18 @@ public record CreateEventCommand(
     string? LocationCountry = null,
     decimal? LocationLatitude = null,
     decimal? LocationLongitude = null,
+    // Phase 7C.1: Optional venue/location name (distinct from street address)
+    string? LocationName = null,
+    // Phase 7C.1: Secondary Location (optional — null type means "no secondary")
+    SecondaryLocationType? SecondaryLocationType = null,
+    string? SecondaryLocationName = null,
+    string? SecondaryLocationAddress = null,
+    string? SecondaryLocationCity = null,
+    string? SecondaryLocationState = null,
+    string? SecondaryLocationZipCode = null,
+    string? SecondaryLocationCountry = null,
+    decimal? SecondaryLocationLatitude = null,
+    decimal? SecondaryLocationLongitude = null,
     // Legacy Ticket Price (optional - backward compatibility)
     decimal? TicketPriceAmount = null,
     Currency? TicketPriceCurrency = null,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -130,6 +130,55 @@ export const createEventSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Phase 7C.1: Primary venue name
+  locationName: z
+    .string()
+    .max(150, 'Venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType: z
+    .nativeEnum(SecondaryLocationType)
+    .optional()
+    .nullable(),
+
+  secondaryLocationName: z
+    .string()
+    .max(150, 'Secondary venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationAddress: z
+    .string()
+    .max(200, 'Address must be less than 200 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCity: z
+    .string()
+    .max(100, 'City must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationState: z
+    .string()
+    .max(100, 'State must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationZipCode: z
+    .string()
+    .regex(/^\d{5}(-\d{4})?$/, 'ZIP code must be in format 12345 or 12345-6789')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCountry: z
+    .string()
+    .max(100, 'Country must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
   // Pricing (Required)
   isFree: z.boolean(),
 
@@ -202,6 +251,27 @@ export const createEventSchema = z.object({
     .optional()
     .nullable(),
 
+  // Phase 8: Multi-tier ticketing
+  enableTieredTicketing: z.boolean().default(false),
+
+  ticketTiers: z
+    .array(z.object({
+      id: z.string().optional(),
+      name: z.string().min(1, 'Tier name is required').max(100),
+      description: z.string().max(500).default(''),
+      adultPriceAmount: z.number().min(0, 'Price must be 0 or greater'),
+      adultPriceCurrency: z.nativeEnum(Currency),
+      childPriceAmount: z.number().min(0).optional().nullable(),
+      childPriceCurrency: z.nativeEnum(Currency).optional().nullable(),
+      childAgeLimit: z.number().int().min(1).max(17).optional().nullable(),
+      capacity: z.number().int().min(1, 'Capacity must be at least 1'),
+      maxPerUser: z.number().int().min(1).max(50).default(10),
+      sortOrder: z.number().int().min(0).default(0),
+      isFree: z.boolean().optional(),
+    }))
+    .optional()
+    .nullable(),
+
   // Phase 6A.32: Email Groups Integration
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))
@@ -245,8 +315,8 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Session 33: If not free and not using dual or group pricing, single price and currency are required
-    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing) {
+    // Session 33: If not free and not using dual, group, or tiered pricing, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&
@@ -392,16 +462,30 @@ export const createEventSchema = z.object({
   }
 ).refine(
   (data) => {
-    // Phase 6D: Only one pricing mode can be enabled at a time
-    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing].filter(Boolean).length;
+    // Phase 6D + Phase 8: Only one pricing mode can be enabled at a time
+    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing, data.enableTieredTicketing].filter(Boolean).length;
     if (!data.isFree && modesEnabled > 1) {
       return false;
     }
     return true;
   },
   {
-    message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
+    message: 'Only one pricing mode can be enabled at a time (single, dual, group, or tiered)',
     path: ['enableGroupPricing'],
+  }
+).refine(
+  (data) => {
+    // Phase 8: If using tiered ticketing, at least one tier is required
+    if (!data.isFree && data.enableTieredTicketing) {
+      return data.ticketTiers !== null &&
+             data.ticketTiers !== undefined &&
+             data.ticketTiers.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one ticket tier is required for tiered ticketing',
+    path: ['ticketTiers'],
   }
 ).refine(
   (data) => {
@@ -423,7 +507,27 @@ export const createEventSchema = z.object({
     message: 'At least one organizer contact with name and contact method (email or phone) is required',
     path: ['organizerContacts'],
   }
-);
+).superRefine((data, ctx) => {
+  // Phase 7C.1: If secondary location type is selected, address and city are required
+  if (data.secondaryLocationType) {
+    const address = (data.secondaryLocationAddress ?? '').trim();
+    const city = (data.secondaryLocationCity ?? '').trim();
+    if (!address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location address is required when a secondary location type is selected',
+        path: ['secondaryLocationAddress'],
+      });
+    }
+    if (!city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location city is required when a secondary location type is selected',
+        path: ['secondaryLocationCity'],
+      });
+    }
+  }
+});
 
 export type CreateEventFormData = z.infer<typeof createEventSchema>;
 
@@ -505,6 +609,55 @@ const baseEditEventSchema = z.object({
     .optional()
     .or(z.literal('')),
 
+  // Phase 7C.1: Primary venue name
+  locationName: z
+    .string()
+    .max(150, 'Venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  // Phase 7C.1: Secondary location (parking lot or secondary venue)
+  secondaryLocationType: z
+    .nativeEnum(SecondaryLocationType)
+    .optional()
+    .nullable(),
+
+  secondaryLocationName: z
+    .string()
+    .max(150, 'Secondary venue name must be less than 150 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationAddress: z
+    .string()
+    .max(200, 'Address must be less than 200 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCity: z
+    .string()
+    .max(100, 'City must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationState: z
+    .string()
+    .max(100, 'State must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationZipCode: z
+    .string()
+    .regex(/^\d{5}(-\d{4})?$/, 'ZIP code must be in format 12345 or 12345-6789')
+    .optional()
+    .or(z.literal('')),
+
+  secondaryLocationCountry: z
+    .string()
+    .max(100, 'Country must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
+
   // Pricing
   isFree: z.boolean(),
 
@@ -576,6 +729,27 @@ const baseEditEventSchema = z.object({
     .optional()
     .nullable(),
 
+  // Phase 8: Multi-tier ticketing (same schema as create)
+  enableTieredTicketing: z.boolean().default(false),
+
+  ticketTiers: z
+    .array(z.object({
+      id: z.string().optional(),
+      name: z.string().min(1).max(100),
+      description: z.string().max(500).default(''),
+      adultPriceAmount: z.number().min(0),
+      adultPriceCurrency: z.nativeEnum(Currency),
+      childPriceAmount: z.number().min(0).optional().nullable(),
+      childPriceCurrency: z.nativeEnum(Currency).optional().nullable(),
+      childAgeLimit: z.number().int().min(1).max(17).optional().nullable(),
+      capacity: z.number().int().min(1),
+      maxPerUser: z.number().int().min(1).max(50).default(10),
+      sortOrder: z.number().int().min(0).default(0),
+      isFree: z.boolean().optional(),
+    }))
+    .optional()
+    .nullable(),
+
   // Phase 6A.32: Email Groups Integration
   emailGroupIds: z
     .array(z.string().uuid('Invalid email group ID'))
@@ -626,8 +800,8 @@ export const editEventSchema = baseEditEventSchema.refine(
   }
 ).refine(
   (data) => {
-    // If not free and not using dual pricing, single price and currency are required
-    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing) {
+    // If not free and not using any advanced pricing mode, single price and currency are required
+    if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
              data.ticketPriceAmount > 0 &&
@@ -717,15 +891,29 @@ export const editEventSchema = baseEditEventSchema.refine(
 ).refine(
   (data) => {
     // Only one pricing mode can be enabled at a time
-    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing].filter(Boolean).length;
+    const modesEnabled = [data.enableDualPricing, data.enableGroupPricing, data.enableTieredTicketing].filter(Boolean).length;
     if (!data.isFree && modesEnabled > 1) {
       return false;
     }
     return true;
   },
   {
-    message: 'Only one pricing mode can be enabled at a time (single, dual, or group)',
+    message: 'Only one pricing mode can be enabled at a time (single, dual, group, or tiered)',
     path: ['enableGroupPricing'],
+  }
+).refine(
+  (data) => {
+    // Phase 8: If using tiered ticketing, at least one tier is required
+    if (!data.isFree && data.enableTieredTicketing) {
+      return data.ticketTiers !== null &&
+             data.ticketTiers !== undefined &&
+             data.ticketTiers.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'At least one ticket tier is required for multi-tier ticketing',
+    path: ['ticketTiers'],
   }
 ).refine(
   (data) => {
@@ -746,6 +934,82 @@ export const editEventSchema = baseEditEventSchema.refine(
     message: 'At least one organizer contact with name and contact method (email or phone) is required',
     path: ['organizerContacts'],
   }
-);
+).superRefine((data, ctx) => {
+  // Phase 7C.1: If secondary location type is selected, address and city are required
+  if (data.secondaryLocationType) {
+    const address = (data.secondaryLocationAddress ?? '').trim();
+    const city = (data.secondaryLocationCity ?? '').trim();
+    if (!address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location address is required when a secondary location type is selected',
+        path: ['secondaryLocationAddress'],
+      });
+    }
+    if (!city) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Secondary location city is required when a secondary location type is selected',
+        path: ['secondaryLocationCity'],
+      });
+    }
+  }
+});
 
 export type EditEventFormData = z.infer<typeof editEventSchema>;
+
+/**
+ * Phase 7D.1: Volunteer-list validation schema.
+ *
+ * Volunteer lists are a constrained flavour of sign-up list where every item
+ * is slot-based (1 volunteer = 1 slot). Quantity-based items are rejected at
+ * the validation boundary so the volunteer UI never sends a payload the
+ * backend would refuse. Schema rejects instead of silently coercing so the
+ * user sees an obvious form error rather than a cryptic API failure.
+ */
+export const volunteerRoleItemSchema = z.object({
+  itemDescription: z
+    .string()
+    .min(1, 'Volunteer role is required')
+    .max(200, 'Volunteer role must be less than 200 characters'),
+  itemType: z.literal(SignUpItemType.Slot, {
+    message: 'Volunteer lists only support slot-based roles',
+  }),
+  itemCategory: z.nativeEnum(SignUpItemCategory),
+  availableSlots: z
+    .number({ message: 'Volunteers needed must be a whole number' })
+    .int('Volunteers needed must be a whole number')
+    .min(1, 'At least 1 volunteer slot is required')
+    .max(500, 'Volunteer slots cannot exceed 500'),
+  suggestedPerSlot: z.number().optional().nullable(),
+  notes: z
+    .string()
+    .max(1000, 'Notes must be less than 1000 characters')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
+  // Accept but forbid quantity-based fields. Sending targetQuantity flips the
+  // item into quantity-based mode server-side; the schema refuses before the
+  // request leaves the browser.
+  targetQuantity: z.undefined().optional(),
+});
+
+export const volunteerListSchema = z.object({
+  category: z
+    .string()
+    .min(1, 'Volunteer list name is required')
+    .max(100, 'Volunteer list name must be less than 100 characters'),
+  description: z
+    .string()
+    .max(1000, 'Description must be less than 1000 characters')
+    .optional()
+    .default(''),
+  hasOpenItems: z
+    .literal(false, { message: 'Volunteer lists cannot allow user-added roles' })
+    .default(false),
+  items: z
+    .array(volunteerRoleItemSchema)
+    .min(1, 'At least one volunteer role is required'),
+});
+
+export type VolunteerListFormData = z.infer<typeof volunteerListSchema>;

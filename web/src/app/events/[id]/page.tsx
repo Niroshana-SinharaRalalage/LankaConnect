@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -10,7 +10,8 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
-import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
+import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
+import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
@@ -21,7 +22,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -282,6 +283,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   // Phase 7.3: Fetch custom forms for this event
   const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
+
+  // Phase 7D.1 Phase G: page-scope volunteer-list probe used to gate the nav
+  // button + section. Separate query key per kind (see useEventSignUps) so it
+  // cannot collide with the kind-Items query mounted inside SignUpManagementSection.
+  const { data: volunteerLists, isFetched: volunteersFetched } = useEventSignUps(
+    id,
+    SignUpKind.Volunteers,
+  );
+  const hasVolunteerLists = volunteersFetched && (volunteerLists?.length ?? 0) > 0;
 
   // Filter to show only Active forms to attendees
   // Note: Backend sends enum as string ('Active'), frontend enum is numeric (1)
@@ -748,6 +758,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
                   { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
                   { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
+                  { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
                   { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
                   { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
                 ].filter(btn => btn.show).map(btn => (
@@ -801,10 +812,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div>
                     <p className="text-sm font-medium text-neutral-500">Location</p>
                     <p className="text-base font-semibold text-neutral-900">
-                      {event.city}, {event.state}
+                      {event.locationName || `${event.city}, ${event.state}`}
                     </p>
                     {event.address && (
-                      <p className="text-sm text-neutral-600">{event.address}</p>
+                      <p className="text-sm text-neutral-600">
+                        {event.address}
+                        {event.locationName ? `, ${event.city}, ${event.state}` : ''}
+                      </p>
+                    )}
+                    {/* Phase 7C.1: Secondary location (parking lot or secondary venue) */}
+                    {event.hasSecondaryLocation && event.secondaryLocationType && (
+                      <div className="mt-2 pt-2 border-t border-neutral-200">
+                        <p className="text-sm font-medium text-neutral-500">
+                          {event.secondaryLocationType === 'ParkingLot' ? 'Parking Lot Address:' : 'Secondary Venue:'}
+                        </p>
+                        {event.secondaryLocationName && (
+                          <p className="text-sm font-semibold text-neutral-900">{event.secondaryLocationName}</p>
+                        )}
+                        <p className="text-sm text-neutral-600">
+                          {event.secondaryAddress && `${event.secondaryAddress}, `}
+                          {event.secondaryCity}{event.secondaryState ? `, ${event.secondaryState}` : ''}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -841,6 +870,32 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-base font-semibold" style={{ color: '#8B1538' }}>
                       Free Event
                     </p>
+                  ) : event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0 ? (
+                    // Phase 8: Multi-tier ticketing display
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-neutral-600 mb-1">Ticket Tiers</p>
+                      {event.ticketTiers.filter(t => t.isActive).map((tier) => (
+                        <div key={tier.id} className="flex justify-between items-center">
+                          <span className="text-base font-semibold" style={{ color: '#8B1538' }}>
+                            {tier.name}: {tier.isFree ? 'Free' : `$${tier.adultPriceAmount.toFixed(2)}`}
+                            {tier.childPriceAmount != null && !tier.isFree && (
+                              <span className="text-sm text-neutral-500 ml-1">
+                                (Child: ${tier.childPriceAmount.toFixed(2)})
+                              </span>
+                            )}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            tier.availableQuantity === 0
+                              ? 'bg-red-100 text-red-700'
+                              : tier.availableQuantity <= 10
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {tier.availableQuantity === 0 ? 'Sold Out' : `${tier.availableQuantity} left`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                     // Session 33: Group tiered pricing display - show individual tiers
                     <div className="space-y-1">
@@ -1000,6 +1055,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         childAgeLimit={event.childAgeLimit ?? undefined}
                         hasGroupPricing={event.hasGroupPricing}
                         groupPricingTiers={event.groupPricingTiers}
+                        seatingMode={event.seatingMode}
+                        ticketingMode={event.ticketingMode}
+                        ticketTiers={event.ticketTiers}
                         maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                         donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
@@ -1452,6 +1510,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           childAgeLimit={event.childAgeLimit ?? undefined}
                           hasGroupPricing={event.hasGroupPricing}
                           groupPricingTiers={event.groupPricingTiers}
+                          ticketingMode={event.ticketingMode}
+                          ticketTiers={event.ticketTiers}
                           maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                           donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
@@ -1714,6 +1774,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       childAgeLimit={event.childAgeLimit ?? undefined}
                       hasGroupPricing={event.hasGroupPricing}
                       groupPricingTiers={event.groupPricingTiers}
+                      ticketingMode={event.ticketingMode}
+                      ticketTiers={event.ticketTiers}
                       maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                       donationConfig={event.donationConfig}
                       addOnConfig={event.addOnConfig}
@@ -1744,6 +1806,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       childAgeLimit={event.childAgeLimit ?? undefined}
                       hasGroupPricing={event.hasGroupPricing}
                       groupPricingTiers={event.groupPricingTiers}
+                      ticketingMode={event.ticketingMode}
+                      ticketTiers={event.ticketTiers}
                       maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                       donationConfig={event.donationConfig}
                       addOnConfig={event.addOnConfig}
@@ -1776,6 +1840,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     childAgeLimit={event.childAgeLimit ?? undefined}
                     hasGroupPricing={event.hasGroupPricing}
                     groupPricingTiers={event.groupPricingTiers}
+                    ticketingMode={event.ticketingMode}
+                    ticketTiers={event.ticketTiers}
                     maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
                     donationConfig={event.donationConfig}
                         addOnConfig={event.addOnConfig}
@@ -2138,9 +2204,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               eventId={id}
               userId={user?.userId}
               isOrganizer={false}
+              kind={SignUpKind.Items}
             />
           </CollapsibleSection>
         </div>
+
+        {/* Phase 7D.1 Phase G: Volunteer Roles — dedicated section, separate from Signup Lists */}
+        {hasVolunteerLists && (
+          <div id="volunteers" className="mt-8">
+            <CollapsibleSection
+              title="Volunteer Roles"
+              icon={<HandHeart className="h-5 w-5 text-rose-600" />}
+              defaultOpen={false}
+            >
+              <SignUpManagementSection
+                eventId={id}
+                userId={user?.userId}
+                isOrganizer={false}
+                kind={SignUpKind.Volunteers}
+                labels={volunteerSectionLabels}
+              />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Signup Forms Section — CollapsibleSection */}
         <div id="signup-forms" className="mt-8">

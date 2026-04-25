@@ -81,8 +81,21 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     /// <summary>
     /// Event location address.
+    /// <para>Phase 7C.2b: Prefer <see cref="WithLocationDetails"/> to populate the 8
+    /// decomposed location keys via <see cref="LocationEmailDictionaryWriter"/>. This
+    /// scalar is kept for back-compat with the legacy <c>{{EventLocation}}</c>
+    /// placeholder and is overwritten by <see cref="WithLocationDetails"/> with
+    /// <see cref="LocationEmailProjection.LegacyFlatString"/>.</para>
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection. Populated via
+    /// <see cref="WithLocationDetails"/>; fed to <see cref="LocationEmailDictionaryWriter"/>
+    /// inside <see cref="ToDictionary"/> so the template receives
+    /// <c>{{LocationName}}</c> / <c>{{LocationAddress}}</c> / secondary block keys.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// URL to view event details.
@@ -352,7 +365,6 @@ public class TicketConfirmationEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87 Fix: Combined for standardized templates
-            { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "HasSignUpLists", HasSignUpLists },
             { "SignUpListsUrl", SignUpListsUrl },
@@ -414,7 +426,31 @@ public class TicketConfirmationEmailParams : IEmailParameters
             { "SponsorBreakdownAmount", SponsorBreakdownAmount }
         };
 
+        // Phase 7C.2b: emit the 8 decomposed location keys plus the legacy EventLocation
+        // fallback. LocationDetails is populated by the handler via WithLocationDetails;
+        // if it is null (un-refactored caller) fall back to a projection whose
+        // LegacyFlatString is the scalar EventLocation already on this params object.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
+
         return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: Fluent setter that stores the decomposed location projection on
+    /// <see cref="LocationDetails"/> and mirrors its legacy flat string into the
+    /// scalar <see cref="EventLocation"/> for back-compat. Returns <c>this</c> so
+    /// callers can chain after <c>Create(...)</c>.
+    /// </summary>
+    public TicketConfirmationEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

@@ -36,6 +36,7 @@
     <!-- Phase 6A.24: QR Code and PDF generation for tickets -->
     <PackageReference Include="QRCoder" />
     <PackageReference Include="QuestPDF" />
+    <PackageReference Include="Twilio" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -44,12 +45,23 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="LankaConnect.Infrastructure.Tests" />
+  </ItemGroup>
+
   <!-- Phase 6A.24: Include email templates in publish output -->
   <ItemGroup>
     <Content Include="Templates\Email\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+  </ItemGroup>
+
+  <!-- Phase 7C.2 recovery: ship authoritative pre-damage signup/volunteer commitment
+       email template bodies as embedded resources so the recovery migration can UPDATE
+       them without depending on disk layout (see MEMORY 6A.129b). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7C2_Recovery\*.html" />
   </ItemGroup>
 
 </Project>

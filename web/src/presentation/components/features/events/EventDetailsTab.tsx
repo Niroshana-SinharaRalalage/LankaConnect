@@ -178,15 +178,39 @@ export function EventDetailsTab({
 
             {/* Location */}
             {event.city && (
-              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-[#FF7900]" />
                   Location:
                 </span>
-                <span className="text-sm text-neutral-900">
-                  {event.address && `${event.address}, `}
-                  {event.city}, {event.state} {event.zipCode}
+                <div className="text-sm text-neutral-900 space-y-1">
+                  {event.locationName && (
+                    <div className="font-semibold">{event.locationName}</div>
+                  )}
+                  <div>
+                    {event.address && `${event.address}, `}
+                    {event.city}, {event.state} {event.zipCode}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phase 7C.1: Secondary Location (parking lot or secondary venue) */}
+            {event.hasSecondaryLocation && event.secondaryLocationType && (
+              <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start border-b pb-3">
+                <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-[#FF7900]" />
+                  {event.secondaryLocationType === 'ParkingLot' ? 'Parking Lot:' : 'Secondary Venue:'}
                 </span>
+                <div className="text-sm text-neutral-900 space-y-1">
+                  {event.secondaryLocationName && (
+                    <div className="font-semibold">{event.secondaryLocationName}</div>
+                  )}
+                  <div>
+                    {event.secondaryAddress && `${event.secondaryAddress}, `}
+                    {event.secondaryCity}{event.secondaryState ? `, ${event.secondaryState}` : ''} {event.secondaryZipCode}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -217,6 +241,27 @@ export function EventDetailsTab({
             <div>
               {event.isFree ? (
                 <Badge className="bg-green-100 text-green-700">Free Event</Badge>
+              ) : event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0 ? (
+                <div className="space-y-2">
+                  <Badge className="bg-indigo-100 text-indigo-700">Multi-Tier Pricing</Badge>
+                  <div className="flex flex-col gap-1 mt-1">
+                    {event.ticketTiers.filter(t => t.isActive).map((tier) => (
+                      <div key={tier.id} className="flex items-center gap-2">
+                        <Badge className="bg-[#FFE8CC] text-[#8B1538]">
+                          {tier.name}: {tier.isFree ? 'Free' : `$${tier.adultPriceAmount}`}
+                          {tier.childPriceAmount != null && !tier.isFree && ` / Child: $${tier.childPriceAmount}`}
+                        </Badge>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          tier.availableQuantity === 0 ? 'bg-red-100 text-red-700'
+                            : tier.availableQuantity <= 10 ? 'bg-orange-100 text-orange-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {tier.availableQuantity === 0 ? 'Sold Out' : `${tier.availableQuantity} left`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                 <div className="space-y-2">
                   <Badge className="bg-purple-100 text-purple-700">Group Tiered Pricing</Badge>

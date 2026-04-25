@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -92,6 +93,14 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     return; // Fail-silent
                 }
 
+                // Phase 7C.2: Project event's primary + optional secondary location into the
+                // 8 decomposed email keys. LegacyFlatString is the "Street, City" / "Online Event"
+                // string that old templates rendered via {{EventLocation}}. Using the projection
+                // here also fixes the GPS-coordinate leak — @event.Location?.ToString() returns
+                // "{Street}, {City}, {State}, {ZipCode}, {Country} ({Coordinates})" which the
+                // admin UI + diaspora sync still depend on, so we stop calling it at the handler.
+                var locationProjection = @event.ProjectEmailLocation();
+
                 // Phase 6A.87: Use typed email parameters for compile-time safety
                 // Phase 6A.121: Use whichever quantity field is populated (PhysicalQuantity or SlotsClaimed)
                 var emailParams = SignupCommitmentEmailParams.CreateConfirmation(
@@ -104,9 +113,20 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
                     eventStartDate: @event.StartDate,
                     timeZoneId: @event.TimeZoneId,
-                    eventLocation: @event.Location?.ToString() ?? "Location TBD",
+                    eventLocation: locationProjection.LegacyFlatString,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                 );
+
+                // Phase 7C.2: Populate decomposed LocationName / LocationAddress / secondary block fields.
+                emailParams.WithLocationDetails(locationProjection);
+
+                // Phase 7D.1: Route to volunteer-specific template when the signup list is
+                // a volunteer list. The Handlebars parameter shape is identical so no other
+                // population logic changes.
+                if (domainEvent.Kind == SignUpKind.Volunteers)
+                {
+                    emailParams.AsVolunteerConfirmation();
+                }
 
                 // Phase 6A.103: Add event image if available
                 var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);

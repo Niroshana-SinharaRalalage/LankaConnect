@@ -22,11 +22,15 @@ import { useContentImageUpload } from '@/presentation/hooks/useContentImageUploa
 import { buildCodeToIntMap, toDropdownOptions } from '@/infrastructure/api/utils/enum-mappers';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { RevenueBreakdownPreview } from './RevenueBreakdownPreview';
+import { TicketTierBuilder, type TicketTierFormData } from './TicketTierBuilder';
+import { SeatingSection } from './SeatingSection';
+import { TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
 import { DonationConfigForm } from './DonationConfigForm';
 import { CollectionConfigForm } from './CollectionConfigForm';
 import { SponsorConfigForm } from './SponsorConfigForm';
 import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
+import { SecondaryLocationFieldset } from './SecondaryLocationFieldset';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
 
 interface EventEditFormProps {
@@ -161,6 +165,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Pricing mode toggles
       enableDualPricing: event.hasDualPricing ?? false,
       enableGroupPricing: event.hasGroupPricing ?? false,
+      enableTieredTicketing: event.ticketingMode === TicketingMode.Tiered,
+      ticketTiers: [],
       // Single pricing - undefined by default, populated by reset() if applicable
       ticketPriceAmount: undefined,
       ticketPriceCurrency: undefined,
@@ -178,6 +184,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 7C.1: Primary venue name + secondary location
+      locationName: event.locationName || undefined,
+      secondaryLocationType: event.secondaryLocationType ?? null,
+      secondaryLocationName: event.secondaryLocationName || undefined,
+      secondaryLocationAddress: event.secondaryAddress || undefined,
+      secondaryLocationCity: event.secondaryCity || undefined,
+      secondaryLocationState: event.secondaryState || undefined,
+      secondaryLocationZipCode: event.secondaryZipCode || undefined,
+      secondaryLocationCountry: event.secondaryCountry || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
       // Phase 6A.X: Event Organizer Contact Details (multiple contacts)
@@ -227,9 +242,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
 
     // Session 33: Properly load existing pricing data including dual pricing
     // Determine pricing mode to set correct defaults
-    const hasDualPricing = event.hasDualPricing ?? false;
-    const hasGroupPricing = event.hasGroupPricing ?? false;
-    const hasSinglePricing = !event.isFree && !hasDualPricing && !hasGroupPricing;
+    // Phase 8 Fix: Tiered mode takes precedence — when ticketingMode is Tiered,
+    // disable dual/group pricing even if their flags are still true in the DB
+    // (the old pricing data remains until the event is saved in the new mode)
+    const isTieredMode = event.ticketingMode === TicketingMode.Tiered;
+    const hasDualPricing = !isTieredMode && (event.hasDualPricing ?? false);
+    const hasGroupPricing = !isTieredMode && (event.hasGroupPricing ?? false);
+    const hasSinglePricing = !event.isFree && !hasDualPricing && !hasGroupPricing && !isTieredMode;
 
     reset({
       title: event.title,
@@ -252,6 +271,24 @@ export function EventEditForm({ event }: EventEditFormProps) {
       childPriceAmount: hasDualPricing ? (event.childPriceAmount ?? undefined) : undefined,
       childPriceCurrency: hasDualPricing ? childCurrency : undefined,
       childAgeLimit: hasDualPricing ? (event.childAgeLimit ?? undefined) : undefined,
+      // Phase 8: Tiered ticketing
+      enableTieredTicketing: event.ticketingMode === TicketingMode.Tiered,
+      ticketTiers: event.ticketingMode === TicketingMode.Tiered && event.ticketTiers
+        ? event.ticketTiers.map(tier => ({
+            id: tier.id,
+            name: tier.name,
+            description: tier.description || '',
+            adultPriceAmount: tier.adultPriceAmount,
+            adultPriceCurrency: convertCurrencyToNumber(tier.adultPriceCurrency),
+            childPriceAmount: tier.childPriceAmount ?? null,
+            childPriceCurrency: tier.childPriceCurrency ? convertCurrencyToNumber(tier.childPriceCurrency) : null,
+            childAgeLimit: tier.childAgeLimit ?? null,
+            capacity: tier.capacity,
+            maxPerUser: tier.maxPerUser,
+            sortOrder: tier.sortOrder,
+            isFree: tier.isFree,
+          }))
+        : [],
       // Group pricing - Session 44: Convert currency values from string to number
       enableGroupPricing: hasGroupPricing,
       groupPricingTiers: hasGroupPricing && event.groupPricingTiers
@@ -266,6 +303,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       locationState: event.state || undefined,
       locationZipCode: event.zipCode || undefined,
       locationCountry: event.country || undefined,
+      // Phase 7C.1: Primary venue name + secondary location
+      locationName: event.locationName || undefined,
+      secondaryLocationType: event.secondaryLocationType ?? null,
+      secondaryLocationName: event.secondaryLocationName || undefined,
+      secondaryLocationAddress: event.secondaryAddress || undefined,
+      secondaryLocationCity: event.secondaryCity || undefined,
+      secondaryLocationState: event.secondaryState || undefined,
+      secondaryLocationZipCode: event.secondaryZipCode || undefined,
+      secondaryLocationCountry: event.secondaryCountry || undefined,
       // Phase 6A.32: Email Groups Integration
       emailGroupIds: event.emailGroupIds || [],
       // Phase 6A.X: Event Organizer Contact Details (multiple contacts)
@@ -284,7 +330,16 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const isFree = watch('isFree');
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
+  const enableTieredTicketing = watch('enableTieredTicketing');
+  const ticketTiers = (watch('ticketTiers') || []) as TicketTierFormData[];
   const publishOrganizerContact = watch('publishOrganizerContact');
+
+  // Seating Redesign Slice 1: local controlled state for assigned seating toggle.
+  // Persisted server-side on submit via eventsRepository.setSeatingMode(...).
+  const [seatingMode, setSeatingModeState] = useState<SeatingMode>(
+    event.seatingMode ?? SeatingMode.GeneralAdmission
+  );
+  const [seatingModeError, setSeatingModeError] = useState<string | null>(null);
 
   // Auto-populate first organizer contact from user profile when checkbox is checked
   useEffect(() => {
@@ -408,7 +463,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Session 33: Determine pricing mode and build appropriate pricing fields
       const isDualPricing = !data.isFree && data.enableDualPricing;
       const isGroupPricing = !data.isFree && data.enableGroupPricing;
-      const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing;
+      const isTieredTicketing = !data.isFree && data.enableTieredTicketing;
+      const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing;
 
       const eventData = {
         eventId: event.id,
@@ -456,6 +512,18 @@ export function EventEditForm({ event }: EventEditFormProps) {
           locationLatitude: locationLatitude ?? null,
           locationLongitude: locationLongitude ?? null,
         }),
+        // Phase 7C.1: Primary venue name (null clears)
+        locationName: data.locationName?.trim() ? data.locationName.trim() : null,
+        // Phase 7C.1: Secondary location (null type clears entire secondary location)
+        secondaryLocationType: data.secondaryLocationType ?? null,
+        ...(data.secondaryLocationType && {
+          secondaryLocationName: data.secondaryLocationName?.trim() || null,
+          secondaryLocationAddress: data.secondaryLocationAddress || null,
+          secondaryLocationCity: data.secondaryLocationCity || null,
+          secondaryLocationState: data.secondaryLocationState || null,
+          secondaryLocationZipCode: data.secondaryLocationZipCode || null,
+          secondaryLocationCountry: data.secondaryLocationCountry || null,
+        }),
         // Session 33: Pricing fields - send appropriate fields based on pricing mode
         // Single pricing mode
         ticketPriceAmount: isSinglePricing ? data.ticketPriceAmount : null,
@@ -473,6 +541,23 @@ export function EventEditForm({ event }: EventEditFormProps) {
             maxAttendees: tier.maxAttendees ?? null,
             pricePerPerson: tier.pricePerPerson,
             currency: tier.currency,
+          })),
+        }),
+        // Phase 8: Tiered ticketing mode
+        ...(isTieredTicketing && {
+          ticketingMode: 'Tiered' as const,
+          ticketTiers: (data.ticketTiers as TicketTierFormData[] | undefined)?.map((tier) => ({
+            id: tier.id || undefined,
+            name: tier.name,
+            description: tier.description || null,
+            adultPriceAmount: tier.adultPriceAmount,
+            adultPriceCurrency: tier.adultPriceCurrency,
+            childPriceAmount: tier.childPriceAmount ?? null,
+            childPriceCurrency: tier.childPriceCurrency ?? null,
+            childAgeLimit: tier.childAgeLimit ?? null,
+            capacity: tier.capacity,
+            maxPerUser: tier.maxPerUser,
+            sortOrder: tier.sortOrder,
           })),
         }),
       };
@@ -536,6 +621,124 @@ export function EventEditForm({ event }: EventEditFormProps) {
       } catch (configErr) {
         console.error('⚠️ Some financial configs failed to save:', configErr);
         // Continue to cache invalidation and redirect — main event data was saved
+      }
+
+      // Phase 8 Fix: Sync ticket tiers via dedicated CRUD endpoints
+      // The main updateEvent() call does NOT handle tier data — tiers are managed
+      // via separate API endpoints (setTicketingMode, addTicketTier, updateTicketTier, removeTicketTier).
+      try {
+        const wasAlreadyTiered = event.ticketingMode === TicketingMode.Tiered;
+        const formTiers = (data.ticketTiers as TicketTierFormData[] | undefined) || [];
+
+        if (isTieredTicketing) {
+          // Step 1: Set ticketing mode to Tiered (if not already)
+          if (!wasAlreadyTiered) {
+            await eventsRepository.setTicketingMode(event.id, TicketingMode.Tiered);
+            console.log('✅ Ticketing mode set to Tiered');
+          }
+
+          // Step 2: Determine which tiers to add, update, or remove
+          const existingTierIds = new Set(
+            (event.ticketTiers || []).map(t => t.id)
+          );
+          const formTierIds = new Set(
+            formTiers.filter(t => t.id).map(t => t.id!)
+          );
+
+          // Tiers to remove: exist on server but not in form
+          const tiersToRemove = (event.ticketTiers || []).filter(t => !formTierIds.has(t.id));
+          // Tiers to update: exist on server AND in form (have id)
+          const tiersToUpdate = formTiers.filter(t => t.id && existingTierIds.has(t.id));
+          // Tiers to add: no id, or id not found on server
+          const tiersToAdd = formTiers.filter(t => !t.id || !existingTierIds.has(t.id));
+
+          // Execute removals first, then updates and adds in parallel
+          for (const tier of tiersToRemove) {
+            try {
+              await eventsRepository.removeTicketTier(event.id, tier.id);
+              console.log(`✅ Removed tier: ${tier.name}`);
+            } catch (removeErr) {
+              console.error(`⚠️ Failed to remove tier ${tier.name}:`, removeErr);
+            }
+          }
+
+          const tierPromises: Promise<void | string>[] = [];
+
+          for (const tier of tiersToUpdate) {
+            tierPromises.push(
+              eventsRepository.updateTicketTier(event.id, tier.id!, {
+                name: tier.name,
+                description: tier.description || null,
+                adultPriceAmount: tier.adultPriceAmount,
+                adultPriceCurrency: tier.adultPriceCurrency as unknown as Currency,
+                childPriceAmount: tier.childPriceAmount ?? null,
+                childPriceCurrency: tier.childPriceCurrency ? (tier.childPriceCurrency as unknown as Currency) : undefined,
+                childAgeLimit: tier.childAgeLimit ?? undefined,
+                capacity: tier.capacity,
+                maxPerUser: tier.maxPerUser,
+                sortOrder: tier.sortOrder,
+              })
+            );
+          }
+
+          for (const tier of tiersToAdd) {
+            tierPromises.push(
+              eventsRepository.addTicketTier(event.id, {
+                name: tier.name,
+                description: tier.description || null,
+                adultPriceAmount: tier.adultPriceAmount,
+                adultPriceCurrency: tier.adultPriceCurrency as unknown as Currency,
+                childPriceAmount: tier.childPriceAmount ?? null,
+                childPriceCurrency: tier.childPriceCurrency ? (tier.childPriceCurrency as unknown as Currency) : undefined,
+                childAgeLimit: tier.childAgeLimit ?? undefined,
+                capacity: tier.capacity,
+                maxPerUser: tier.maxPerUser,
+                sortOrder: tier.sortOrder,
+              })
+            );
+          }
+
+          if (tierPromises.length > 0) {
+            await Promise.all(tierPromises);
+            console.log(`✅ Tier sync complete: ${tiersToUpdate.length} updated, ${tiersToAdd.length} added, ${tiersToRemove.length} removed`);
+          }
+        } else if (wasAlreadyTiered) {
+          // User disabled tiered ticketing — revert to SingleTier
+          await eventsRepository.setTicketingMode(event.id, TicketingMode.SingleTier);
+          console.log('✅ Ticketing mode reverted to SingleTier');
+        }
+      } catch (tierErr) {
+        console.error('⚠️ Tier sync failed:', tierErr);
+        // Non-blocking — main event data was saved, tiers can be managed from manage page
+      }
+
+      // Seating Redesign Slice 1: Persist assigned-seating toggle.
+      // Runs AFTER setTicketingMode so the domain sees TicketingMode.Tiered
+      // before accepting AssignedSeating. Reverts to GA when the user
+      // disables tiered ticketing.
+      try {
+        const previousSeatingMode = event.seatingMode ?? SeatingMode.GeneralAdmission;
+        const effectiveDesiredMode = isTieredTicketing
+          ? seatingMode
+          : SeatingMode.GeneralAdmission;
+
+        if (effectiveDesiredMode !== previousSeatingMode) {
+          console.log(
+            `🪑 Seating mode change: ${previousSeatingMode} → ${effectiveDesiredMode}`
+          );
+          await eventsRepository.setSeatingMode(event.id, effectiveDesiredMode);
+          console.log(`✅ Seating mode updated to ${effectiveDesiredMode}`);
+          if (effectiveDesiredMode !== seatingMode) {
+            setSeatingModeState(effectiveDesiredMode);
+          }
+        }
+      } catch (seatErr) {
+        const message = seatErr instanceof Error
+          ? seatErr.message
+          : 'Failed to update seating mode.';
+        console.error('⚠️ Seating mode update failed:', seatErr);
+        setSeatingModeError(message);
+        // Non-blocking — user can retry from the form; main event data saved.
       }
 
       // Invalidate React Query cache to refresh event data
@@ -705,6 +908,23 @@ export function EventEditForm({ event }: EventEditFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Venue Name (Phase 7C.1) */}
+          <div>
+            <label htmlFor="locationName" className="block text-sm font-medium text-neutral-700 mb-2">
+              Venue Name
+            </label>
+            <Input
+              id="locationName"
+              type="text"
+              placeholder="e.g., Park Community Hall"
+              error={!!errors.locationName}
+              {...register('locationName')}
+            />
+            {errors.locationName && (
+              <p className="mt-1 text-sm text-destructive">{errors.locationName.message}</p>
+            )}
+          </div>
+
           {/* Address */}
           <div>
             <label htmlFor="locationAddress" className="block text-sm font-medium text-neutral-700 mb-2">
@@ -793,6 +1013,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
               )}
             </div>
           </div>
+
+          {/* Phase 7C.1: Secondary location (parking lot or secondary venue) */}
+          <SecondaryLocationFieldset
+            register={register}
+            watch={watch}
+            setValue={setValue}
+            errors={errors}
+          />
         </CardContent>
       </Card>
 
@@ -882,6 +1110,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       onChange: (e) => {
                         if (e.target.checked) {
                           setValue('enableGroupPricing', false);
+                          setValue('enableTieredTicketing', false);
+                          setValue('ticketTiers', []);
                         }
                       }
                     })}
@@ -901,6 +1131,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
                       onChange: (e) => {
                         if (e.target.checked) {
                           setValue('enableDualPricing', false);
+                          setValue('enableTieredTicketing', false);
+                          setValue('ticketTiers', []);
                         }
                       }
                     })}
@@ -909,10 +1141,32 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     Enable Group Tiered Pricing (quantity-based discounts for groups)
                   </label>
                 </div>
+
+                {/* Phase 8: Tiered Ticketing Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-orange-200">
+                  <input
+                    id="enableTieredTicketing"
+                    type="checkbox"
+                    className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                    {...register('enableTieredTicketing', {
+                      onChange: (e) => {
+                        if (e.target.checked) {
+                          setValue('enableDualPricing', false);
+                          setValue('enableGroupPricing', false);
+                        } else {
+                          setValue('ticketTiers', []);
+                        }
+                      }
+                    })}
+                  />
+                  <label htmlFor="enableTieredTicketing" className="text-sm font-medium text-neutral-700">
+                    Enable Multi-Tier Ticketing (VIP, Plus, Basic tiers with separate pricing and capacity)
+                  </label>
+                </div>
               </div>
 
               {/* Single Pricing Fields (default) */}
-              {!enableDualPricing && !enableGroupPricing && (
+              {!enableDualPricing && !enableGroupPricing && !enableTieredTicketing && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Ticket Price */}
                   <div>
@@ -1270,6 +1524,35 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     <p className="mt-2 text-sm text-destructive">{errors.groupPricingTiers.message as string}</p>
                   )}
                 </div>
+              )}
+
+              {/* Phase 8: Ticket Tier Builder */}
+              {enableTieredTicketing && (
+                <div className="space-y-4">
+                  <TicketTierBuilder
+                    tiers={ticketTiers}
+                    onChange={(tiers) => setValue('ticketTiers', tiers)}
+                    defaultCurrency={watch('ticketPriceCurrency') || Currency.USD}
+                    eventCapacity={watch('capacity')}
+                    errors={errors.ticketTiers?.message}
+                  />
+                </div>
+              )}
+
+              {/* Seating Redesign Slice 1 + Slice 6 S6.9: inline assigned-seating
+                  toggle. Passing eventId activates the preset-library picker
+                  and the live layout preview below the toggle. */}
+              {enableTieredTicketing && (
+                <SeatingSection
+                  ticketingMode={TicketingMode.Tiered}
+                  value={seatingMode}
+                  onChange={(mode) => {
+                    setSeatingModeState(mode);
+                    if (seatingModeError) setSeatingModeError(null);
+                  }}
+                  errorMessage={seatingModeError}
+                  eventId={event.id}
+                />
               )}
             </div>
           )}

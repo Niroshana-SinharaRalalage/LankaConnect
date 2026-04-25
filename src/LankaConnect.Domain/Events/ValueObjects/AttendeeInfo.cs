@@ -51,9 +51,7 @@ public class AttendeeInfo : ValueObject
         if (age < 1 || age > 150)
             return Result<AttendeeInfo>.Failure("Age must be between 1 and 150");
 
-        // Validate address
-        if (string.IsNullOrWhiteSpace(address))
-            return Result<AttendeeInfo>.Failure("Address is required");
+        // Address is optional (Phase 7C.1 / E1): skip validation when missing.
 
         // Validate and create email
         var emailResult = Email.Create(email);
@@ -68,7 +66,7 @@ public class AttendeeInfo : ValueObject
         return Result<AttendeeInfo>.Success(new AttendeeInfo(
             name.Trim(),
             age,
-            address.Trim(),
+            string.IsNullOrWhiteSpace(address) ? string.Empty : address.Trim(),
             emailResult.Value,
             phoneResult.Value
         ));

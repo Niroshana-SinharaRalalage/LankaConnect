@@ -148,11 +148,54 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 coordinates = coordinatesResult.Value;
             }
 
-            var locationResult = EventLocation.Create(addressResult.Value, coordinates);
+            var locationResult = EventLocation.Create(addressResult.Value, coordinates, request.LocationName);
             if (locationResult.IsFailure)
                 return Result<Guid>.Failure(locationResult.Error);
 
             location = locationResult.Value;
+        }
+
+        // Phase 7C.1: Build optional secondary location (parking lot or secondary venue)
+        EventSecondaryLocation? secondaryLocation = null;
+        if (request.SecondaryLocationType.HasValue)
+        {
+            if (string.IsNullOrWhiteSpace(request.SecondaryLocationAddress) ||
+                string.IsNullOrWhiteSpace(request.SecondaryLocationCity))
+            {
+                return Result<Guid>.Failure("Secondary location address and city are required when a secondary location type is selected");
+            }
+
+            var secAddressResult = Address.Create(
+                request.SecondaryLocationAddress,
+                request.SecondaryLocationCity,
+                request.SecondaryLocationState ?? string.Empty,
+                request.SecondaryLocationZipCode ?? string.Empty,
+                request.SecondaryLocationCountry ?? "Sri Lanka"
+            );
+            if (secAddressResult.IsFailure)
+                return Result<Guid>.Failure(secAddressResult.Error);
+
+            GeoCoordinate? secCoordinates = null;
+            if (request.SecondaryLocationLatitude.HasValue && request.SecondaryLocationLongitude.HasValue)
+            {
+                var secCoordsResult = GeoCoordinate.Create(
+                    request.SecondaryLocationLatitude.Value,
+                    request.SecondaryLocationLongitude.Value
+                );
+                if (secCoordsResult.IsFailure)
+                    return Result<Guid>.Failure(secCoordsResult.Error);
+                secCoordinates = secCoordsResult.Value;
+            }
+
+            var secInnerLocationResult = EventLocation.Create(secAddressResult.Value, secCoordinates, request.SecondaryLocationName);
+            if (secInnerLocationResult.IsFailure)
+                return Result<Guid>.Failure(secInnerLocationResult.Error);
+
+            var secondaryResult = EventSecondaryLocation.Create(request.SecondaryLocationType.Value, secInnerLocationResult.Value);
+            if (secondaryResult.IsFailure)
+                return Result<Guid>.Failure(secondaryResult.Error);
+
+            secondaryLocation = secondaryResult.Value;
         }
 
         // Phase 6D: Handle pricing - group pricing takes precedence over dual and legacy single pricing
@@ -277,6 +320,18 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
         if (eventResult.IsFailure)
             return Result<Guid>.Failure(eventResult.Error);
+
+        // Phase 7C.1: Persist secondary location if built
+        if (secondaryLocation != null)
+        {
+            var setSecondaryResult = eventResult.Value.SetSecondaryLocation(secondaryLocation);
+            if (setSecondaryResult.IsFailure)
+                return Result<Guid>.Failure(setSecondaryResult.Error);
+
+            _logger.LogInformation(
+                "CreateEvent: Secondary location configured - EventId={EventId}, Type={Type}",
+                eventResult.Value.Id, secondaryLocation.Type);
+        }
 
         // Phase 6D + Session 21: Set pricing if provided
         if (pricing != null)

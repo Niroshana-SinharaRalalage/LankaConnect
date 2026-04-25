@@ -31,6 +31,16 @@ public class SignUpListConfiguration : IEntityTypeConfiguration<SignUpList>
             .HasMaxLength(20)
             .IsRequired();
 
+        // Phase 7D.1: Kind discriminator (Items | Volunteers). Stored as int (not string)
+        // for compact indexing in the composite (event_id, kind, category) uniqueness check.
+        // HasDefaultValue(0) pairs with the DB DEFAULT set in the migration — defence-in-depth
+        // against any INSERT path that somehow skips the property (MEMORY 6A.123).
+        builder.Property(s => s.Kind)
+            .HasColumnName("kind")
+            .HasConversion<int>()
+            .HasDefaultValue(SignUpKind.Items)
+            .IsRequired();
+
         // New category flags
         builder.Property(s => s.HasMandatoryItems)
             .HasColumnName("has_mandatory_items")

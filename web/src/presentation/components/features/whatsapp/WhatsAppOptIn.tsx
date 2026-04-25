@@ -56,9 +56,26 @@ export function WhatsAppOptIn() {
 
   const handleEnable = async (data: EnableWhatsAppFormData) => {
     const e164Phone = toE164(data.phoneNumber);
-    await enableMutation.mutateAsync({ phoneNumber: e164Phone });
-    enableForm.reset();
-    setCodeSent(false); // Reset code sent state for new enable
+    try {
+      await enableMutation.mutateAsync({ phoneNumber: e164Phone });
+      enableForm.reset();
+      // Fix 3a: auto-request verification code immediately after enable so the user
+      // never sits in the "enabled but no code sent" silent-drop-off state
+      // (UserWhatsAppPreferences.EvaluateSkipReason → PhoneUnverified forever).
+      try {
+        await requestVerificationMutation.mutateAsync();
+        setCodeSent(true);
+      } catch {
+        // Auto-request failed (rate-limited, network, etc.) — fall back to the
+        // manual "Send Verification Code" button so the user can retry.
+        // The request-verification hook itself surfaces the toast.
+        setCodeSent(false);
+      }
+    } catch {
+      // Enable itself failed — the useEnableWhatsApp hook already toasts the error.
+      // Leave the form populated so the user can retry without re-typing.
+      setCodeSent(false);
+    }
   };
 
   const handleVerify = async (data: VerifyPhoneFormData) => {

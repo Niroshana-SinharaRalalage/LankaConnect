@@ -3,8 +3,11 @@ using FluentValidation;
 namespace LankaConnect.Application.Events.Commands.UpdateSignUpItem;
 
 /// <summary>
-/// Validator for UpdateSignUpItemCommand
+/// Validator for UpdateSignUpItemCommand.
 /// Phase 6A.14: Edit Sign-Up Item feature
+/// Phase 6A.131: Surface-level validation only. Type-matched validation (e.g. TargetQuantity for
+/// quantity items, AvailableSlots for slot items) happens in the handler after the item is loaded,
+/// because the authoritative type lives on the entity — the validator has no DB access.
 /// </summary>
 public class UpdateSignUpItemCommandValidator : AbstractValidator<UpdateSignUpItemCommand>
 {
@@ -28,11 +31,24 @@ public class UpdateSignUpItemCommandValidator : AbstractValidator<UpdateSignUpIt
             .MaximumLength(500)
             .WithMessage("Item description must not exceed 500 characters");
 
-        RuleFor(x => x.Quantity)
+        RuleFor(x => x)
+            .Must(cmd => cmd.TargetQuantity.HasValue || cmd.AvailableSlots.HasValue)
+            .WithMessage("Either TargetQuantity (for quantity-based items) or AvailableSlots (for slot-based items) must be provided");
+
+        RuleFor(x => x.TargetQuantity)
             .GreaterThan(0)
-            .WithMessage("Quantity must be greater than 0")
-            .LessThanOrEqualTo(1000)
-            .WithMessage("Quantity cannot exceed 1000");
+            .When(x => x.TargetQuantity.HasValue)
+            .WithMessage("TargetQuantity must be greater than 0");
+
+        RuleFor(x => x.AvailableSlots)
+            .GreaterThan(0)
+            .When(x => x.AvailableSlots.HasValue)
+            .WithMessage("AvailableSlots must be greater than 0");
+
+        RuleFor(x => x.SuggestedPerSlot)
+            .GreaterThan(0)
+            .When(x => x.SuggestedPerSlot.HasValue)
+            .WithMessage("SuggestedPerSlot must be greater than 0");
 
         RuleFor(x => x.Notes)
             .MaximumLength(500)

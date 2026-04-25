@@ -3,6 +3,7 @@ using System.Globalization;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -205,7 +206,15 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                 {
                     foreach (var attendee in registration.Attendees)
                     {
-                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                        // Phase 8: Include tier name if present (e.g., "John Smith (VIP)")
+                        // Slice 7 S7.7: Append seat label for assigned-seating events
+                        var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                            ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                            : "";
+                        var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                            ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                            : "";
+                        attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}{seatSuffix}</p>");
                     }
                 }
 
@@ -229,11 +238,38 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     paymentDate: domainEvent.PaymentCompletedAt,
                     quantity: registration.Attendees.Count);
 
+                // Phase 7C.2b: emit the 8 decomposed location keys (Venue Name bold +
+                // Address + optional Secondary Location block) into the template dict.
+                // Keeps the flat `{{EventLocation}}` fallback working for any un-migrated
+                // template; the decomposed block is consumed once Chunk 2b rewrites the
+                // paid-ticket template body.
+                typedParams.WithLocationDetails(@event.ProjectEmailLocation());
+
                 // Phase 6A.97: Set event's timezone for consistent date/time display
                 typedParams.TimeZoneId = @event.TimeZoneId;
 
-                // Set ticket type
-                typedParams.TicketType = @event.IsFree() ? "Free Entry" : "General Admission";
+                // Phase 8: Set ticket type dynamically based on ticketing mode
+                if (@event.IsFree())
+                {
+                    typedParams.TicketType = "Free Entry";
+                }
+                else if (@event.TicketingMode == TicketingMode.Tiered && registration.Attendees.Any(a => a.TicketTierName != null))
+                {
+                    // Build tier summary from attendee tier assignments (e.g., "2x VIP, 3x Basic")
+                    var tierGroups = registration.Attendees
+                        .Where(a => a.TicketTierName != null)
+                        .GroupBy(a => a.TicketTierName!)
+                        .Select(g => g.Count() > 1 ? $"{g.Count()}x {g.Key}" : g.Key)
+                        .ToList();
+                    typedParams.TicketType = string.Join(", ", tierGroups);
+                    _logger.LogInformation(
+                        "[Phase 8] [PaymentEmail-TierType] Set dynamic ticket type from tiers - CorrelationId: {CorrelationId}, TicketType: {TicketType}",
+                        correlationId, typedParams.TicketType);
+                }
+                else
+                {
+                    typedParams.TicketType = "General Admission";
+                }
                 typedParams.RegistrationDate = domainEvent.PaymentCompletedAt;
 
                 // Phase 6A.128: Fix - use WithSignUpLists() which sets BOTH URL and HasSignUpLists flag

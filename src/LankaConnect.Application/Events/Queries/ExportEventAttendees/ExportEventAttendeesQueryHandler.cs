@@ -155,7 +155,11 @@ public class ExportEventAttendeesQueryHandler
 
         // Phase 6A.69: Handle SignUpListsZip format (ZIP archive with multiple CSVs)
         // Phase 6A.73: Handle SignUpListsExcel format (Excel file with category sheets)
-        if (request.Format == ExportFormat.SignUpListsZip || request.Format == ExportFormat.SignUpListsExcel)
+        // Phase 7D.1 Step 16: Handle VolunteersZip / VolunteersExcel (same pipeline; Kind=Volunteers filter + volunteer labels)
+        var isVolunteerExport = request.Format == ExportFormat.VolunteersZip || request.Format == ExportFormat.VolunteersExcel;
+        var isSignUpExport = request.Format == ExportFormat.SignUpListsZip || request.Format == ExportFormat.SignUpListsExcel;
+
+        if (isSignUpExport || isVolunteerExport)
         {
             // Get event with sign-up lists
             var eventWithSignUps = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
@@ -165,14 +169,24 @@ public class ExportEventAttendeesQueryHandler
                 return Result<ExportResult>.Failure("Event not found");
             }
 
-            if (!eventWithSignUps.SignUpLists.Any())
+            // Phase 7D.1 Step 16: Volunteer exports filter to Kind=Volunteers; Items exports exclude volunteer lists
+            // so the two export endpoints produce disjoint outputs and a volunteer export on an event without
+            // volunteer lists returns a clear error rather than an empty zip.
+            var filteredSignUpLists = isVolunteerExport
+                ? eventWithSignUps.SignUpLists.Where(s => s.Kind == Domain.Events.Enums.SignUpKind.Volunteers).ToList()
+                : eventWithSignUps.SignUpLists.Where(s => s.Kind == Domain.Events.Enums.SignUpKind.Items).ToList();
+
+            if (!filteredSignUpLists.Any())
             {
-                return Result<ExportResult>.Failure("No signup lists found for this event");
+                var errorMessage = isVolunteerExport
+                    ? "No volunteer lists found for this event"
+                    : "No signup lists found for this event";
+                return Result<ExportResult>.Failure(errorMessage);
             }
 
             // Map domain entities to DTOs (reuse existing mapping pattern from lines 56-85)
             #pragma warning disable CS0618 // Suppress obsolete warning for SignUpItemDto
-            var signUpListsForExport = eventWithSignUps.SignUpLists.Select(s => new SignUpListDto
+            var signUpListsForExport = filteredSignUpLists.Select(s => new SignUpListDto
             {
                 Id = s.Id,
                 Category = s.Category,
@@ -210,19 +224,24 @@ public class ExportEventAttendeesQueryHandler
             // Phase 6A.73 (Revised): Both formats now return ZIP archives
             // CSV: ZIP with multiple CSV files (one per signup list + category)
             // Excel: ZIP with multiple Excel files (one per signup list, with category sheets)
-            if (request.Format == ExportFormat.SignUpListsExcel)
+            // Phase 7D.1 Step 16: Volunteer variants use the same pipeline with SignUpExportLabels.ForVolunteers().
+            var exportLabels = isVolunteerExport
+                ? SignUpExportLabels.ForVolunteers()
+                : SignUpExportLabels.ForItems();
+            var fileNameSlug = isVolunteerExport ? "volunteers" : "signup-lists";
+            var wantsExcel = request.Format == ExportFormat.SignUpListsExcel || request.Format == ExportFormat.VolunteersExcel;
+
+            if (wantsExcel)
             {
-                // Phase 6A.73: Generate ZIP with Excel files (one Excel per signup list)
-                // Removed "excel" from filename to prevent ASP.NET Core MIME type auto-detection
-                fileContent = _excelService.ExportSignUpListsToExcelZip(signUpListsForExport, request.EventId);
-                fileName = $"event-{request.EventId}-signup-lists-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                // Generate ZIP with Excel files (one Excel per list)
+                fileContent = _excelService.ExportSignUpListsToExcelZip(signUpListsForExport, request.EventId, exportLabels);
+                fileName = $"event-{request.EventId}-{fileNameSlug}-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
                 contentType = "application/zip";
             }
-            else // SignUpListsZip (CSV)
+            else // VolunteersZip or SignUpListsZip (CSV)
             {
-                // Generate ZIP with CSV files
-                fileContent = _csvService.ExportSignUpListsToZip(signUpListsForExport, request.EventId);
-                fileName = $"event-{request.EventId}-signup-lists-csv-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                fileContent = _csvService.ExportSignUpListsToZip(signUpListsForExport, request.EventId, exportLabels);
+                fileName = $"event-{request.EventId}-{fileNameSlug}-csv-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
                 contentType = "application/zip";
             }
 

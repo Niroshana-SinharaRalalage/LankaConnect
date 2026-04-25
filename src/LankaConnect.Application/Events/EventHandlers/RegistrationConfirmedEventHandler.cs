@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -120,15 +121,27 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
 
             if (hasAttendeeDetailsLocal)
             {
+                // Phase 8: Include tier name when present
+                // Slice 7 S7.7: Append seat label for assigned-seating events
                 foreach (var attendee in registration.Attendees)
                 {
-                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+                    var tierSuffix = !string.IsNullOrWhiteSpace(attendee.TicketTierName)
+                        ? $" <span style=\"color: #8B1538; font-weight: 600;\">({attendee.TicketTierName})</span>"
+                        : "";
+                    var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                        ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                        : "";
+                    attendeeDetailsHtml.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{tierSuffix}{seatSuffix}</p>");
                 }
             }
 
             // Phase 6A.38: Get event's primary image URL (direct URL, no CID)
             var primaryImage = @event.Images.FirstOrDefault(i => i.IsPrimary);
             var eventImageUrl = primaryImage?.ImageUrl ?? "";
+
+            // Phase 7C.2: Project event's primary + optional secondary location into the
+            // 8 decomposed email fields. LegacyFlatString keeps un-migrated templates stable.
+            var locationProjection = @event.ProjectEmailLocation();
 
             // Phase 6A.87: Use typed FreeEventRegistrationEmailParams
             var typedParams = FreeEventRegistrationEmailParams.Create(
@@ -139,9 +152,12 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 eventTitle: @event.Title.Value,
                 eventStartDate: @event.StartDate,
                 eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                eventLocation: GetEventLocationString(@event),
+                eventLocation: locationProjection.LegacyFlatString,
                 eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
                 registrationDate: domainEvent.RegistrationDate);
+
+            // Phase 7C.2: Populate decomposed LocationName / LocationAddress / secondary block fields.
+            typedParams.WithLocationDetails(locationProjection);
 
             // Phase 6A.97: Set event's timezone for consistent date/time display
             typedParams.TimeZoneId = @event.TimeZoneId;
@@ -232,29 +248,6 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                     domainEvent.EventId, domainEvent.AttendeeId, stopwatch.ElapsedMilliseconds);
             }
         }
-    }
-
-    /// <summary>
-    /// Safely extracts event location string with defensive null handling.
-    /// </summary>
-    private static string GetEventLocationString(Event @event)
-    {
-        if (@event.Location?.Address == null)
-            return "Online Event";
-
-        var street = @event.Location.Address.Street;
-        var city = @event.Location.Address.City;
-
-        if (string.IsNullOrWhiteSpace(street) && string.IsNullOrWhiteSpace(city))
-            return "Online Event";
-
-        if (string.IsNullOrWhiteSpace(street))
-            return city!;
-
-        if (string.IsNullOrWhiteSpace(city))
-            return street;
-
-        return $"{street}, {city}";
     }
 
     /// <summary>

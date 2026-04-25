@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Repositories;
 using LankaConnect.Application.Interfaces;
+using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
@@ -9,6 +12,7 @@ using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using OrganizerContactInfo = LankaConnect.Shared.Email.Helpers.OrganizerContactInfo;
 using LankaConnect.Shared.Email.Services;
+using LankaConnect.Shared.WhatsApp.Contracts;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -26,6 +30,7 @@ public class EventReminderJob
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly IEventReminderRepository _eventReminderRepository;
     private readonly ITicketRepository _ticketRepository;
+    private readonly IWhatsAppService? _whatsAppService;
     private readonly ILogger<EventReminderJob> _logger;
 
     public EventReminderJob(
@@ -35,7 +40,8 @@ public class EventReminderJob
         IEmailUrlHelper emailUrlHelper,
         IEventReminderRepository eventReminderRepository,
         ITicketRepository ticketRepository,
-        ILogger<EventReminderJob> logger)
+        ILogger<EventReminderJob> logger,
+        IWhatsAppService? whatsAppService = null)
     {
         _eventRepository = eventRepository;
         _userRepository = userRepository;
@@ -43,6 +49,7 @@ public class EventReminderJob
         _emailUrlHelper = emailUrlHelper;
         _eventReminderRepository = eventReminderRepository;
         _ticketRepository = ticketRepository;
+        _whatsAppService = whatsAppService;
         _logger = logger;
     }
 
@@ -219,13 +226,16 @@ public class EventReminderJob
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
                             eventStartDate: @event.StartDate,
                             eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                            location: @event.Location?.Address.ToString() ?? "Location TBD",
+                            eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
                             hoursUntilEvent: hoursUntilEvent,
                             reminderTimeframe: reminderTimeframe,
                             reminderMessage: reminderMessage,
                             eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                         );
+
+                        // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                        emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                         // Phase 6A.97: Set event's timezone for consistent date/time display
                         emailParams.TimeZoneId = @event.TimeZoneId;
@@ -295,6 +305,9 @@ public class EventReminderJob
                 _logger.LogInformation(
                     "[Phase 6A.71] [{CorrelationId}] {Timeframe} reminders for event {EventId}: Success={Success}, Failed={Failed}, Skipped={Skipped}",
                     correlationId, reminderTimeframe, @event.Id, successCount, failCount, skippedCount);
+
+                // Phase 7B.3: Send WhatsApp reminder broadcast to all opted-in attendees
+                await SendWhatsAppReminderAsync(@event.Id, @event.Title?.Value ?? "Untitled Event", reminderTimeframe, correlationId);
             }
             catch (Exception ex)
             {
@@ -429,13 +442,16 @@ public class EventReminderJob
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
                         eventStartDate: @event.StartDate,
                         eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
-                        location: @event.Location?.Address.ToString() ?? "Location TBD",
+                        eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,
                         hoursUntilEvent: hoursUntilEvent,
                         reminderTimeframe: reminderTimeframe,
                         reminderMessage: reminderMessage,
                         eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)
                     );
+
+                    // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                    emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                     // Phase 6A.97: Set event's timezone for consistent date/time display
                     emailParams.TimeZoneId = @event.TimeZoneId;
@@ -505,6 +521,16 @@ public class EventReminderJob
             _logger.LogInformation(
                 "[Phase 6A.75] [{CorrelationId}] Manual {ReminderType} reminders for event {EventId}: Success={Success}, Failed={Failed}, Skipped={Skipped}",
                 correlationId, reminderType, eventId, successCount, failCount, skippedCount);
+
+            // Phase 7B.3: Send WhatsApp reminder broadcast to all opted-in attendees
+            var (reminderTimeframeForWhatsApp, _) = reminderType switch
+            {
+                "7day" => ("in 1 week", ""),
+                "2day" => ("in 2 days", ""),
+                "1day" => ("tomorrow", ""),
+                _ => ("soon", "")
+            };
+            await SendWhatsAppReminderAsync(eventId, @event.Title?.Value ?? "Untitled Event", reminderTimeframeForWhatsApp, correlationId);
         }
         catch (Exception ex)
         {
@@ -512,6 +538,52 @@ public class EventReminderJob
                 "[Phase 6A.75] [{CorrelationId}] Fatal error sending manual reminders for event {EventId}",
                 correlationId, eventId);
             throw;  // Re-throw for Hangfire retry
+        }
+    }
+
+    /// <summary>
+    /// Phase 7B.3: Sends WhatsApp event reminder to all opted-in attendees via broadcast.
+    /// Best-effort: failures are logged but don't block email reminders.
+    /// </summary>
+    private async Task SendWhatsAppReminderAsync(Guid eventId, string eventTitle, string reminderTimeframe, string correlationId)
+    {
+        if (_whatsAppService == null)
+            return;
+
+        try
+        {
+            var parameters = new Dictionary<string, string>
+            {
+                { WhatsAppTemplateContract.Common.EventTitle, eventTitle },
+                { WhatsAppTemplateContract.Reminder.ReminderTimeframe, reminderTimeframe },
+                { WhatsAppTemplateContract.Common.EventUrl, $"https://lankaconnect.com/events/{eventId}" }
+            };
+
+            var result = await _whatsAppService.BroadcastToEventAttendeesAsync(
+                eventId,
+                WhatsAppTemplateContract.TemplateNames.EventReminder,
+                parameters,
+                WhatsAppNotificationType.EventReminder,
+                CancellationToken.None);
+
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation(
+                    "[Phase 7B.3] [{CorrelationId}] WhatsApp EventReminder BROADCAST: EventId={EventId}, SentCount={SentCount}",
+                    correlationId, eventId, result.Value);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "[Phase 7B.3] [{CorrelationId}] WhatsApp EventReminder FAILED: EventId={EventId}, {Errors}",
+                    correlationId, eventId, string.Join(", ", result.Errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[Phase 7B.3] [{CorrelationId}] WhatsApp EventReminder EXCEPTION: EventId={EventId}",
+                correlationId, eventId);
         }
     }
 }

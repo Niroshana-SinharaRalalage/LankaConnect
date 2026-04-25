@@ -67,9 +67,15 @@ public class EventApprovalEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location string.
+    /// Event location — legacy flat-string fallback. Phase 7C.2b: prefer
+    /// <see cref="WithLocationDetails"/>.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// Date/time when event was approved.
@@ -119,13 +125,12 @@ public class EventApprovalEmailParams : IEmailParameters
         var formattedDate = EmailDateTimeHelper.FormatEventDate(EventStartDate, TimeZoneId);
         var formattedTime = EmailDateTimeHelper.FormatEventTime(EventStartDate, TimeZoneId);
 
-        return new Dictionary<string, object>
+        var dict = new Dictionary<string, object>
         {
             { "OrganizerName", OrganizerName },  // Template uses OrganizerName, not UserName
             { EmailTemplateContract.Event.EventTitle, EventTitle },
             { EmailTemplateContract.Event.EventStartDate, formattedDate },
             { EmailTemplateContract.Event.EventStartTime, formattedTime },
-            { EmailTemplateContract.Event.EventLocation, EventLocation },
             { "ApprovedAt", ApprovedAt.ToString("MMMM dd, yyyy h:mm tt") },  // Template-specific param
             { EmailTemplateContract.Event.EventUrl, EventUrl },
             { "EventManageUrl", EventManageUrl },  // Template-specific param for manage link
@@ -141,6 +146,26 @@ public class EventApprovalEmailParams : IEmailParameters
 
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
+
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
+
+        return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public EventApprovalEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

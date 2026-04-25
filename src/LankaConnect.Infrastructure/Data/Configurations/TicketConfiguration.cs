@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -44,6 +45,25 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.Property(t => t.ExpiresAt)
             .IsRequired();
+
+        // Multi-tier ticketing fields
+        builder.Property(t => t.TicketTierName)
+            .HasColumnName("ticket_tier_name")
+            .HasMaxLength(100);
+
+        builder.Property(t => t.TicketCategory)
+            .HasColumnName("ticket_category")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(TicketCategory.Standard);
+
+        builder.Property(t => t.AttendeeIndex)
+            .HasColumnName("attendee_index");
+
+        builder.Property(t => t.AttendeeNames)
+            .HasColumnName("attendee_names")
+            .HasMaxLength(2000);
 
         builder.Property(t => t.CreatedAt)
             .IsRequired();

@@ -61,9 +61,15 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
     public string? TimeZoneId { get; set; }
 
     /// <summary>
-    /// Event location string.
+    /// Event location — legacy flat-string fallback. Phase 7C.2b: prefer
+    /// <see cref="WithLocationDetails"/>.
     /// </summary>
     public string EventLocation { get; set; } = "TBD";
+
+    /// <summary>
+    /// Phase 7C.2b: Decomposed primary + secondary location projection.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     #endregion
 
@@ -132,13 +138,12 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
         var expiresIn = ExpiresAt - now;
         var hoursRemaining = Math.Max(0, (int)expiresIn.TotalHours);
 
-        return new Dictionary<string, object>
+        var dict = new Dictionary<string, object>
         {
             { EmailTemplateContract.Common.UserName, UserName },
             { EmailTemplateContract.Event.EventTitle, EventTitle },
             { EmailTemplateContract.Event.EventStartDate, formattedDate },
             { EmailTemplateContract.Event.EventStartTime, formattedTime },
-            { EmailTemplateContract.Event.EventLocation, EventLocation },
             { "AttendeeCount", AttendeeCount },
             { EmailTemplateContract.Payment.TotalAmount, $"${TotalAmount:F2}" },
             { EmailTemplateContract.Refund.Currency, Currency.ToUpper() },
@@ -157,6 +162,26 @@ public class PreliminaryRegistrationPaymentEmailParams : IEmailParameters
             { "PaymentUrl", PaymentLink },
             { EmailTemplateContract.Common.Year, DateTime.UtcNow.Year }
         };
+
+        // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
+
+        return dict;
+    }
+
+    /// <summary>
+    /// Phase 7C.2b: fluent setter for the decomposed location projection.
+    /// </summary>
+    public PreliminaryRegistrationPaymentEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
+        return this;
     }
 
     /// <summary>

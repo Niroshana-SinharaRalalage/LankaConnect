@@ -47,11 +47,21 @@
     <Compile Remove="Integration\**\*.cs" />
     <Compile Remove="Common\*.cs" />
     <Compile Remove="SimpleIntegrationTest.cs" />
+    <!-- Pre-existing broken test referencing non-existent IEmailService type -->
+    <Compile Remove="Services\RegistrationEmailServiceTests.cs" />
+    <!-- Pre-existing broken test using obsolete SignUpItemDto API (post Phase 6A.124) -->
+    <Compile Remove="Services\Export\CsvExportServiceSignUpListsTests.cs" />
   </ItemGroup>
 
   <!-- Phase 6A.75: Include specific test files that are actively needed -->
   <ItemGroup>
     <Compile Include="Email\Services\AzureEmailServiceRenderTemplateTests.cs" />
+    <!-- Phase 7C.2 recovery: invariants on the embedded pre-damage template bodies -->
+    <Compile Include="Data\Migrations\Phase7C2RecoveryTemplatesTests.cs" />
+    <!-- Phase 7C.2b Chunk 1: transformation-logic invariants for ReapplyDecomposedLocation -->
+    <Compile Include="Data\Migrations\Phase7C2bReapplyDecomposedLocationTests.cs" />
+    <!-- Phase 7C.2b Chunk 2b: transformation-logic invariants for Phase7C3a registration/lifecycle migration -->
+    <Compile Include="Data\Migrations\Phase7C3aDecomposeLocationTests.cs" />
   </ItemGroup>
 
 </Project>

@@ -38,9 +38,10 @@ public class WhatsAppMessageRecord : BaseEntity
     public int RetryCount { get; private set; }
     public int MaxRetries { get; private set; } = 3;
 
-    // ACS/Meta tracking
-    public string? AcsMessageId { get; private set; }
+    // Provider/Meta tracking
+    public string? AcsMessageId { get; private set; }  // Stores provider message ID (ACS or Twilio SID). Column name kept for backward compat.
     public string? MetaMessageId { get; private set; }
+    public WhatsAppProvider? Provider { get; private set; }
 
     // Foreign keys (nullable — audit-only references for registration_id/newsletter_id per C5)
     public Guid? UserId { get; private set; }
@@ -93,13 +94,22 @@ public class WhatsAppMessageRecord : BaseEntity
     }
 
     /// <summary>
-    /// Mark message as successfully sent via ACS.
+    /// Mark message as successfully sent via provider (ACS or Twilio).
     /// </summary>
-    public void MarkAsSent(string acsMessageId)
+    public void MarkAsSent(string providerMessageId)
     {
         Status = WhatsAppMessageStatus.Sent;
         SentAt = DateTime.UtcNow;
-        AcsMessageId = acsMessageId;
+        AcsMessageId = providerMessageId;  // DB column name kept for backward compat
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Set which BSP provider sent this message.
+    /// </summary>
+    public void SetProvider(WhatsAppProvider provider)
+    {
+        Provider = provider;
         MarkAsUpdated();
     }
 

@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2026-03-30
+**Last Updated**: 2026-04-19
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -237,6 +237,28 @@
 | BusinessOwner UI (disabled) | ✅ Approved | Show features available in Phase 2 |
 | Deferred 6A.10/6A.11 | ✅ Approved | Features planned, numbered for future |
 | Master index creation | ✅ Approved | Prevent phase number conflicts |
+
+---
+
+## Phase 7C: Event Details Enhancements
+
+| Phase | Feature | Status | Description |
+|-------|---------|--------|-------------|
+| 7C.1  | Event Location Name + Optional Secondary Location | ✅ Complete | Optional per-event venue name distinct from the street address + independently optional secondary location (ParkingLot \| SecondaryVenue) with its own venue name and full address. Backend commit `2afc0f5f` (migration `20260419200529_AddEventLocationNameAndSecondary`), frontend commit `861b8e58`. See PROGRESS_TRACKER.md 2026-04-19. |
+| 7C.2  | Email Event Details — Venue Name + Secondary Location Rendering | 🔧 In Progress | Surfaces the Phase 7C.1 venue name and secondary location (ParkingLot \| SecondaryVenue) in every email that renders Event Details. Decomposed email params (`LocationName`, `LocationAddress`, `HasSecondaryLocation`, `SecondaryLocationLabel`, `SecondaryLocationName`, `SecondaryLocationAddress`) + shared `EventLocationEmailProjection` helper eliminating duplicate `GetEventLocationString()` methods across 7 handlers. DB template rewrite via EF Core migration (REGEXP_REPLACE + backup table). 14 templates touched. Started 2026-04-20. Fan-out to 5 signup/volunteer commitment templates shipped 2026-04-21 via commit `64dc8ab0` (migrations `20260421213355_Phase7C2_RemoveDuplicateLocationFromSignupCommitmentTemplates` + `20260421232025_Phase7C2_RewriteEventLocationInSignupCommitmentTemplates`) — strips duplicate Location row from COMMITMENT DETAILS card + rewrites `<p>{{EventLocation}}</p>` in EVENT DETAILS card to the two-sibling-if block. Staging-verified via deploy `24751794433`. |
+
+---
+
+## Phase 8: Multi-Tier Ticketing & Seating
+
+| Phase | Feature | Status | Description |
+|-------|---------|--------|-------------|
+| 8.1   | Multi-Tier Ticketing Backend | ✅ Committed | Domain, Infrastructure, Application, API layers. TicketTier entity, CRUD, 5 API endpoints. 50 tests. Commit `58efb0fd` |
+| 8.2   | Multi-Tier Ticketing Frontend | ⏳ Planned | TypeScript types, hooks, TierBuilder component, registration tier selector |
+| 8.3   | RSVP Tier-Aware Handler | ⏳ Planned | RsvpToEventCommandHandler modifications for per-attendee tier pricing + capacity |
+| 8.4   | Stripe Multi-Line Items | ⏳ Planned | Per-tier Stripe checkout line items |
+| 8.5   | Email + PDF Tier Integration | ⏳ Planned | Tier name in emails, master + individual ticket PDF generation |
+| 8.6   | Seating Infrastructure | ⏳ Planned | Venue layouts, zones, seats, seat reservations (Phase 2+) |
 
 ---
 

@@ -80,7 +80,7 @@ public class EventReminderEmailParamsTests
             EventTitle = "Community Meetup",
             EventStartDate = startDate,
             EventStartTime = "10:00 AM",
-            Location = "123 Main St, Boston, MA",
+            EventLocation = "123 Main St, Boston, MA",
             Quantity = 2,
             HoursUntilEvent = 24.5,
             ReminderTimeframe = "tomorrow",
@@ -96,7 +96,7 @@ public class EventReminderEmailParamsTests
         emailParams.EventTitle.Should().Be("Community Meetup");
         emailParams.EventStartDate.Should().Be(startDate);
         emailParams.EventStartTime.Should().Be("10:00 AM");
-        emailParams.Location.Should().Be("123 Main St, Boston, MA");
+        emailParams.EventLocation.Should().Be("123 Main St, Boston, MA");
         emailParams.Quantity.Should().Be(2);
         emailParams.HoursUntilEvent.Should().Be(24.5);
         emailParams.ReminderTimeframe.Should().Be("tomorrow");
@@ -174,7 +174,7 @@ public class EventReminderEmailParamsTests
         dict.Should().ContainKey("EventTitle");
         dict.Should().ContainKey("EventStartDate");
         dict.Should().ContainKey("EventStartTime");
-        dict.Should().ContainKey("Location");
+        dict.Should().ContainKey("EventLocation");
         dict.Should().ContainKey("Quantity");
         dict.Should().ContainKey("HoursUntilEvent");
         dict.Should().ContainKey("ReminderTimeframe");
@@ -481,7 +481,7 @@ public class EventReminderEmailParamsTests
             eventTitle: "Community Meetup",
             eventStartDate: new DateTime(2026, 2, 15),
             eventStartTime: "10:00 AM",
-            location: "123 Main St, Boston, MA",
+            eventLocation: "123 Main St, Boston, MA",
             quantity: 2,
             hoursUntilEvent: 24.5,
             reminderTimeframe: "tomorrow",
@@ -550,7 +550,7 @@ public class EventReminderEmailParamsTests
             EventTitle = "Community Meetup",
             EventStartDate = new DateTime(2026, 2, 15),
             EventStartTime = "10:00 AM",
-            Location = "123 Main St, Boston, MA",
+            EventLocation = "123 Main St, Boston, MA",
             Quantity = 2,
             HoursUntilEvent = 24.5,
             ReminderTimeframe = "tomorrow",

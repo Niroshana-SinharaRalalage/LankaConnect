@@ -1416,11 +1416,24 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("verification_locked_until");
 
+                    b.Property<string>("WhatsAppAutoDisableReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("whatsapp_auto_disable_reason");
+
+                    b.Property<DateTime?>("WhatsAppAutoDisabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("whatsapp_auto_disabled_at");
+
                     b.Property<bool>("WhatsAppEnabled")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("whatsapp_enabled");
+
+                    b.Property<DateTime?>("WhatsAppEnabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("whatsapp_enabled_at");
 
                     b.Property<string>("WhatsAppPhoneNumber")
                         .HasMaxLength(20)
@@ -1435,6 +1448,10 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique()
                         .HasDatabaseName("IX_UserWhatsAppPreferences_UserId_Unique");
+
+                    b.HasIndex("WhatsAppEnabledAt")
+                        .HasDatabaseName("IX_UserWhatsAppPreferences_EnabledAt_EnabledUnverified")
+                        .HasFilter("whatsapp_enabled = true AND phone_verified = false");
 
                     b.HasIndex("WhatsAppPhoneNumber")
                         .HasDatabaseName("IX_UserWhatsAppPreferences_Phone_EnabledVerified")
@@ -1529,6 +1546,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Property<Guid?>("NewsletterId")
                         .HasColumnType("uuid")
                         .HasColumnName("newsletter_id");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone")
@@ -1710,6 +1732,11 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("template_name");
+
+                    b.Property<string>("TwilioContentSid")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("twilio_content_sid");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2839,6 +2866,209 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("form_responses", "events");
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.Seat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("AngleDeg")
+                        .HasColumnType("double precision")
+                        .HasColumnName("angle_deg");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<bool>("IsAccessible")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_accessible");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_enabled");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(58)
+                        .HasColumnType("character varying(58)")
+                        .HasColumnName("label");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<string>("Row")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("row");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("VenueTableId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_table_id");
+
+                    b.Property<Guid?>("VenueZoneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_zone_id");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("double precision")
+                        .HasColumnName("x");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("double precision")
+                        .HasColumnName("y");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VenueTableId")
+                        .HasDatabaseName("ix_seats_venue_table_id")
+                        .HasFilter("venue_table_id IS NOT NULL");
+
+                    b.HasIndex("VenueZoneId")
+                        .HasDatabaseName("ix_seats_venue_zone_id")
+                        .HasFilter("venue_zone_id IS NOT NULL");
+
+                    b.HasIndex("VenueTableId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seats_table_id_label")
+                        .HasFilter("venue_table_id IS NOT NULL");
+
+                    b.HasIndex("VenueZoneId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seats_zone_id_label")
+                        .HasFilter("venue_zone_id IS NOT NULL");
+
+                    b.ToTable("seats", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SeatHold", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime>("HeldAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("held_at");
+
+                    b.Property<Guid>("SeatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seat_id");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("session_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeatId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seat_holds_seat_id_active")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_seat_holds_session_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_seat_holds_user_id");
+
+                    b.HasIndex("Status", "ExpiresAt")
+                        .HasDatabaseName("ix_seat_holds_status_expires_at")
+                        .HasFilter("status = 'Active'");
+
+                    b.ToTable("seat_holds", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SeatReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttendeeIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendee_index");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("RegistrationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registration_id");
+
+                    b.Property<Guid>("SeatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("seat_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_seat_reservations_event_id");
+
+                    b.HasIndex("RegistrationId")
+                        .HasDatabaseName("ix_seat_reservations_registration_id");
+
+                    b.HasIndex("SeatId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seat_reservations_seat_id");
+
+                    b.ToTable("seat_reservations", "events");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2930,6 +3160,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
                     b.Property<int>("ItemCategory")
                         .HasColumnType("integer")
                         .HasColumnName("item_category");
@@ -2968,6 +3204,9 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 
                     b.HasIndex("SignUpListId")
                         .HasDatabaseName("ix_sign_up_items_list_id");
+
+                    b.HasIndex("SignUpListId", "DisplayOrder")
+                        .HasDatabaseName("ix_sign_up_items_list_id_display_order");
 
                     b.ToTable("sign_up_items", "events");
                 });
@@ -3022,6 +3261,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("has_suggested_items");
 
+                    b.Property<int>("Kind")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("kind");
+
                     b.Property<string>("SignUpType")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -3053,6 +3298,15 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AttendeeIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("attendee_index");
+
+                    b.Property<string>("AttendeeNames")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("attendee_names");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3078,10 +3332,23 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Property<Guid>("RegistrationId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("TicketCategory")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Standard")
+                        .HasColumnName("ticket_category");
+
                     b.Property<string>("TicketCode")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TicketTierName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ticket_tier_name");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -3104,6 +3371,383 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("tickets", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketTier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdultPrice")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("adult_price");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<int?>("ChildAgeLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("child_age_limit");
+
+                    b.Property<string>("ChildPrice")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("child_price");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int>("MaxPerUser")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(10)
+                        .HasColumnName("max_per_user");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("ReservedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("reserved_count");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_ticket_tiers_event_id");
+
+                    b.HasIndex("EventId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ticket_tiers_event_id_name")
+                        .HasFilter("is_active = true");
+
+                    b.ToTable("ticket_tiers", (string)null);
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TierAssignment", b =>
+                {
+                    b.Property<Guid>("TierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tier_id");
+
+                    b.Property<string>("AssignableKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("assignable_kind");
+
+                    b.Property<Guid>("AssignableId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignable_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.HasKey("TierId", "AssignableKind", "AssignableId");
+
+                    b.HasIndex("AssignableKind", "AssignableId")
+                        .HasDatabaseName("ix_tier_assignments_assignable");
+
+                    b.ToTable("tier_assignments", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueDecoration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Geometry")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("geometry");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Properties")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("properties");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("VenueLayoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_layout_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VenueLayoutId")
+                        .HasDatabaseName("ix_venue_decorations_venue_layout_id");
+
+                    b.ToTable("venue_decorations", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueLayout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<bool>("IsTemplate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_template");
+
+                    b.Property<string>("LayoutType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("layout_type");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId")
+                        .HasDatabaseName("ix_venue_layouts_created_by_user_id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_venue_layouts_event_id")
+                        .HasFilter("event_id IS NOT NULL");
+
+                    b.HasIndex("EventId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_venue_layouts_event_id_name")
+                        .HasFilter("event_id IS NOT NULL");
+
+                    b.ToTable("venue_layouts", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueTable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer")
+                        .HasColumnName("capacity");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Geometry")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("geometry");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Shape")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("shape");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("VenueLayoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_layout_id");
+
+                    b.Property<Guid?>("VenueZoneId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_zone_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VenueLayoutId")
+                        .HasDatabaseName("ix_venue_tables_venue_layout_id");
+
+                    b.HasIndex("VenueZoneId")
+                        .HasDatabaseName("ix_venue_tables_venue_zone_id")
+                        .HasFilter("venue_zone_id IS NOT NULL");
+
+                    b.HasIndex("VenueLayoutId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ix_venue_tables_layout_id_label");
+
+                    b.ToTable("venue_tables", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("color");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Geometry")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}")
+                        .HasColumnName("geometry");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Shape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Rect")
+                        .HasColumnName("shape");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid?>("TicketTierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_tier_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("VenueLayoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_layout_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketTierId")
+                        .HasDatabaseName("ix_venue_zones_ticket_tier_id")
+                        .HasFilter("ticket_tier_id IS NOT NULL");
+
+                    b.HasIndex("VenueLayoutId")
+                        .HasDatabaseName("ix_venue_zones_venue_layout_id");
+
+                    b.HasIndex("VenueLayoutId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_venue_zones_layout_id_name");
+
+                    b.ToTable("venue_zones", "events");
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
@@ -3154,6 +3798,14 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("SeatingMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("GeneralAdmission")
+                        .HasColumnName("seating_mode");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -3164,11 +3816,23 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("Draft");
 
+                    b.Property<string>("TicketingMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("SingleTier")
+                        .HasColumnName("ticketing_mode");
+
                     b.Property<string>("TimeZoneId")
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VenueLayoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("venue_layout_id");
 
                     b.HasKey("Id");
 
@@ -4016,7 +4680,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                             Code = "Religious",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1367),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1756),
                             DisplayOrder = 1,
                             EnumType = "EventCategory",
                             IntValue = 0,
@@ -4028,7 +4692,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                             Code = "Cultural",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1411),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1816),
                             DisplayOrder = 2,
                             EnumType = "EventCategory",
                             IntValue = 1,
@@ -4040,7 +4704,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                             Code = "Community",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1427),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1849),
                             DisplayOrder = 3,
                             EnumType = "EventCategory",
                             IntValue = 2,
@@ -4052,7 +4716,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                             Code = "Educational",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1442),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1879),
                             DisplayOrder = 4,
                             EnumType = "EventCategory",
                             IntValue = 3,
@@ -4064,7 +4728,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                             Code = "Social",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1456),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1909),
                             DisplayOrder = 5,
                             EnumType = "EventCategory",
                             IntValue = 4,
@@ -4076,7 +4740,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                             Code = "Business",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1470),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1935),
                             DisplayOrder = 6,
                             EnumType = "EventCategory",
                             IntValue = 5,
@@ -4088,7 +4752,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                             Code = "Charity",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1483),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(1978),
                             DisplayOrder = 7,
                             EnumType = "EventCategory",
                             IntValue = 6,
@@ -4100,7 +4764,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                             Code = "Entertainment",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1498),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(2022),
                             DisplayOrder = 8,
                             EnumType = "EventCategory",
                             IntValue = 7,
@@ -4112,7 +4776,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                             Code = "Workshop",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1511),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(2052),
                             DisplayOrder = 9,
                             EnumType = "EventCategory",
                             IntValue = 8,
@@ -4124,7 +4788,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                             Code = "Festival",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1524),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(2083),
                             DisplayOrder = 10,
                             EnumType = "EventCategory",
                             IntValue = 9,
@@ -4136,7 +4800,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                             Code = "Ceremony",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1537),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(2132),
                             DisplayOrder = 11,
                             EnumType = "EventCategory",
                             IntValue = 10,
@@ -4148,7 +4812,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                             Code = "Celebration",
-                            CreatedAt = new DateTime(2026, 4, 12, 16, 42, 51, 591, DateTimeKind.Utc).AddTicks(1550),
+                            CreatedAt = new DateTime(2026, 4, 23, 6, 50, 11, 1, DateTimeKind.Utc).AddTicks(2162),
                             DisplayOrder = 12,
                             EnumType = "EventCategory",
                             IntValue = 11,
@@ -5900,6 +6564,19 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.Seat", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Entities.VenueTable", null)
+                        .WithMany("Seats")
+                        .HasForeignKey("VenueTableId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("LankaConnect.Domain.Events.Entities.VenueZone", null)
+                        .WithMany("Seats")
+                        .HasForeignKey("VenueZoneId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.SignUpCommitment", b =>
                 {
                     b.HasOne("LankaConnect.Domain.Events.Entities.SignUpItem", null)
@@ -5951,8 +6628,193 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketTier", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                        .WithMany("TicketTiers")
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TierAssignment", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Entities.TicketTier", null)
+                        .WithMany("Assignments")
+                        .HasForeignKey("TierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueDecoration", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Entities.VenueLayout", null)
+                        .WithMany("Decorations")
+                        .HasForeignKey("VenueLayoutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueLayout", b =>
+                {
+                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.CanvasConfig", "Canvas", b1 =>
+                        {
+                            b1.Property<Guid>("VenueLayoutId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("BackgroundColor")
+                                .IsRequired()
+                                .ValueGeneratedOnAdd()
+                                .HasMaxLength(9)
+                                .HasColumnType("character varying(9)")
+                                .HasDefaultValue("#ffffff")
+                                .HasColumnName("canvas_bg_color");
+
+                            b1.Property<int>("Height")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer")
+                                .HasDefaultValue(800)
+                                .HasColumnName("canvas_height");
+
+                            b1.Property<double>("Scale")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("double precision")
+                                .HasDefaultValue(1.0)
+                                .HasColumnName("canvas_scale");
+
+                            b1.Property<int>("Width")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer")
+                                .HasDefaultValue(1200)
+                                .HasColumnName("canvas_width");
+
+                            b1.HasKey("VenueLayoutId");
+
+                            b1.ToTable("venue_layouts", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("VenueLayoutId");
+                        });
+
+                    b.Navigation("Canvas")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueTable", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Entities.VenueLayout", null)
+                        .WithMany("Tables")
+                        .HasForeignKey("VenueLayoutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueZone", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Entities.VenueLayout", null)
+                        .WithMany("Zones")
+                        .HasForeignKey("VenueLayoutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
                 {
+                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b1 =>
+                        {
+                            b1.Property<Guid>("EventId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Name")
+                                .HasMaxLength(150)
+                                .HasColumnType("character varying(150)")
+                                .HasColumnName("location_name");
+
+                            b1.Property<bool>("_hasValue")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("boolean")
+                                .HasDefaultValue(true)
+                                .HasColumnName("has_location");
+
+                            b1.HasKey("EventId");
+
+                            b1.ToTable("events", "events");
+
+                            b1.WithOwner()
+                                .HasForeignKey("EventId");
+
+                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
+                                {
+                                    b2.Property<Guid>("EventLocationEventId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("City")
+                                        .IsRequired()
+                                        .HasMaxLength(100)
+                                        .HasColumnType("character varying(100)")
+                                        .HasColumnName("address_city");
+
+                                    b2.Property<string>("Country")
+                                        .IsRequired()
+                                        .HasMaxLength(100)
+                                        .HasColumnType("character varying(100)")
+                                        .HasColumnName("address_country");
+
+                                    b2.Property<string>("State")
+                                        .IsRequired()
+                                        .HasMaxLength(100)
+                                        .HasColumnType("character varying(100)")
+                                        .HasColumnName("address_state");
+
+                                    b2.Property<string>("Street")
+                                        .IsRequired()
+                                        .HasMaxLength(200)
+                                        .HasColumnType("character varying(200)")
+                                        .HasColumnName("address_street");
+
+                                    b2.Property<string>("ZipCode")
+                                        .IsRequired()
+                                        .HasMaxLength(20)
+                                        .HasColumnType("character varying(20)")
+                                        .HasColumnName("address_zip_code");
+
+                                    b2.HasKey("EventLocationEventId");
+
+                                    b2.ToTable("events", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventLocationEventId");
+                                });
+
+                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
+                                {
+                                    b2.Property<Guid>("EventLocationEventId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Latitude")
+                                        .HasPrecision(10, 7)
+                                        .HasColumnType("numeric(10,7)")
+                                        .HasColumnName("coordinates_latitude");
+
+                                    b2.Property<decimal>("Longitude")
+                                        .HasPrecision(10, 7)
+                                        .HasColumnType("numeric(10,7)")
+                                        .HasColumnName("coordinates_longitude");
+
+                                    b2.HasKey("EventLocationEventId");
+
+                                    b2.ToTable("events", "events");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("EventLocationEventId");
+                                });
+
+                            b1.Navigation("Address")
+                                .IsRequired();
+
+                            b1.Navigation("Coordinates");
+                        });
+
                     b.OwnsOne("LankaConnect.Domain.Shared.ValueObjects.Money", "TicketPrice", b1 =>
                         {
                             b1.Property<Guid>("EventId")
@@ -6100,16 +6962,22 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .HasForeignKey("EventId");
                         });
 
-                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b1 =>
+                    b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventSecondaryLocation", "SecondaryLocation", b1 =>
                         {
                             b1.Property<Guid>("EventId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<string>("Type")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("secondary_location_type");
+
                             b1.Property<bool>("_hasValue")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("boolean")
-                                .HasDefaultValue(true)
-                                .HasColumnName("has_location");
+                                .HasDefaultValue(false)
+                                .HasColumnName("has_secondary_location");
 
                             b1.HasKey("EventId");
 
@@ -6118,76 +6986,92 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("EventId");
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Address", "Address", b2 =>
+                            b1.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventLocation", "Location", b2 =>
                                 {
-                                    b2.Property<Guid>("EventLocationEventId")
+                                    b2.Property<Guid>("EventSecondaryLocationEventId")
                                         .HasColumnType("uuid");
 
-                                    b2.Property<string>("City")
-                                        .IsRequired()
-                                        .HasMaxLength(100)
-                                        .HasColumnType("character varying(100)")
-                                        .HasColumnName("address_city");
+                                    b2.Property<string>("Name")
+                                        .HasMaxLength(150)
+                                        .HasColumnType("character varying(150)")
+                                        .HasColumnName("secondary_location_name");
 
-                                    b2.Property<string>("Country")
-                                        .IsRequired()
-                                        .HasMaxLength(100)
-                                        .HasColumnType("character varying(100)")
-                                        .HasColumnName("address_country");
-
-                                    b2.Property<string>("State")
-                                        .IsRequired()
-                                        .HasMaxLength(100)
-                                        .HasColumnType("character varying(100)")
-                                        .HasColumnName("address_state");
-
-                                    b2.Property<string>("Street")
-                                        .IsRequired()
-                                        .HasMaxLength(200)
-                                        .HasColumnType("character varying(200)")
-                                        .HasColumnName("address_street");
-
-                                    b2.Property<string>("ZipCode")
-                                        .IsRequired()
-                                        .HasMaxLength(20)
-                                        .HasColumnType("character varying(20)")
-                                        .HasColumnName("address_zip_code");
-
-                                    b2.HasKey("EventLocationEventId");
+                                    b2.HasKey("EventSecondaryLocationEventId");
 
                                     b2.ToTable("events", "events");
 
                                     b2.WithOwner()
-                                        .HasForeignKey("EventLocationEventId");
+                                        .HasForeignKey("EventSecondaryLocationEventId");
+
+                                    b2.OwnsOne("LankaConnect.Domain.Business.ValueObjects.Address", "Address", b3 =>
+                                        {
+                                            b3.Property<Guid>("EventLocationEventSecondaryLocationEventId")
+                                                .HasColumnType("uuid");
+
+                                            b3.Property<string>("City")
+                                                .HasMaxLength(100)
+                                                .HasColumnType("character varying(100)")
+                                                .HasColumnName("secondary_address_city");
+
+                                            b3.Property<string>("Country")
+                                                .HasMaxLength(100)
+                                                .HasColumnType("character varying(100)")
+                                                .HasColumnName("secondary_address_country");
+
+                                            b3.Property<string>("State")
+                                                .HasMaxLength(100)
+                                                .HasColumnType("character varying(100)")
+                                                .HasColumnName("secondary_address_state");
+
+                                            b3.Property<string>("Street")
+                                                .HasMaxLength(200)
+                                                .HasColumnType("character varying(200)")
+                                                .HasColumnName("secondary_address_street");
+
+                                            b3.Property<string>("ZipCode")
+                                                .HasMaxLength(20)
+                                                .HasColumnType("character varying(20)")
+                                                .HasColumnName("secondary_address_zip_code");
+
+                                            b3.HasKey("EventLocationEventSecondaryLocationEventId");
+
+                                            b3.ToTable("events", "events");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("EventLocationEventSecondaryLocationEventId");
+                                        });
+
+                                    b2.OwnsOne("LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b3 =>
+                                        {
+                                            b3.Property<Guid>("EventLocationEventSecondaryLocationEventId")
+                                                .HasColumnType("uuid");
+
+                                            b3.Property<decimal>("Latitude")
+                                                .HasPrecision(10, 7)
+                                                .HasColumnType("numeric(10,7)")
+                                                .HasColumnName("secondary_coordinates_latitude");
+
+                                            b3.Property<decimal>("Longitude")
+                                                .HasPrecision(10, 7)
+                                                .HasColumnType("numeric(10,7)")
+                                                .HasColumnName("secondary_coordinates_longitude");
+
+                                            b3.HasKey("EventLocationEventSecondaryLocationEventId");
+
+                                            b3.ToTable("events", "events");
+
+                                            b3.WithOwner()
+                                                .HasForeignKey("EventLocationEventSecondaryLocationEventId");
+                                        });
+
+                                    b2.Navigation("Address")
+                                        .IsRequired();
+
+                                    b2.Navigation("Coordinates");
                                 });
 
-                            b1.OwnsOne("LankaConnect.Domain.Business.ValueObjects.GeoCoordinate", "Coordinates", b2 =>
-                                {
-                                    b2.Property<Guid>("EventLocationEventId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<decimal>("Latitude")
-                                        .HasPrecision(10, 7)
-                                        .HasColumnType("numeric(10,7)")
-                                        .HasColumnName("coordinates_latitude");
-
-                                    b2.Property<decimal>("Longitude")
-                                        .HasPrecision(10, 7)
-                                        .HasColumnType("numeric(10,7)")
-                                        .HasColumnName("coordinates_longitude");
-
-                                    b2.HasKey("EventLocationEventId");
-
-                                    b2.ToTable("events", "events");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("EventLocationEventId");
-                                });
-
-                            b1.Navigation("Address")
+                            b1.Navigation("Location")
                                 .IsRequired();
-
-                            b1.Navigation("Coordinates");
                         });
 
                     b.OwnsOne("LankaConnect.Domain.Events.ValueObjects.EventTitle", "Title", b1 =>
@@ -6569,6 +7453,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
 
                     b.Navigation("RevenueBreakdown");
 
+                    b.Navigation("SecondaryLocation");
+
                     b.Navigation("SponsorConfig");
 
                     b.Navigation("TicketPrice");
@@ -6627,6 +7513,15 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                                 .IsRequired()
                                 .HasColumnType("text")
                                 .HasColumnName("name");
+
+                            b1.Property<Guid?>("TicketTierId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("ticket_tier_id");
+
+                            b1.Property<string>("TicketTierName")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("ticket_tier_name");
 
                             b1.HasKey("RegistrationId", "Id");
 
@@ -7633,6 +8528,30 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("Items");
                 });
 
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketTier", b =>
+                {
+                    b.Navigation("Assignments");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueLayout", b =>
+                {
+                    b.Navigation("Decorations");
+
+                    b.Navigation("Tables");
+
+                    b.Navigation("Zones");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueTable", b =>
+                {
+                    b.Navigation("Seats");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.VenueZone", b =>
+                {
+                    b.Navigation("Seats");
+                });
+
             modelBuilder.Entity("LankaConnect.Domain.Events.Event", b =>
                 {
                     b.Navigation("Badges");
@@ -7644,6 +8563,8 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("Registrations");
 
                     b.Navigation("SignUpLists");
+
+                    b.Navigation("TicketTiers");
 
                     b.Navigation("Videos");
                 });

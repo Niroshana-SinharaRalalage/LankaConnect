@@ -16,7 +16,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/pre
 import { Button } from '@/presentation/components/ui/Button';
 import { SignUpManagementSection } from '@/presentation/components/features/events/SignUpManagementSection';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import type { SignUpListDto } from '@/infrastructure/api/types/events.types';
+import { SignUpKind, type SignUpListDto } from '@/infrastructure/api/types/events.types';
 
 interface SignUpListsTabProps {
   eventId: string;
@@ -149,7 +149,7 @@ export function SignUpListsTab({ eventId, signUpLists }: SignUpListsTabProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <SignUpManagementSection eventId={eventId} isOrganizer={true} />
+        <SignUpManagementSection eventId={eventId} isOrganizer={true} kind={SignUpKind.Items} />
       </CardContent>
     </Card>
   );

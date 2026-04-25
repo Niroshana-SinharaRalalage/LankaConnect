@@ -5,6 +5,7 @@ using LankaConnect.Application;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Badges.BackgroundJobs;
+using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -492,6 +493,18 @@ try
             "cleanup-abandoned-addon-purchases-job",
             job => job.ExecuteAsync(),
             Cron.Hourly, // Run every hour (Stripe checkout expires at 24h)
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.Utc
+            });
+
+        // Phase 7D Fix 4: Expire Unverified WhatsApp Preferences Job - Daily sweep that auto-disables
+        // WhatsApp for users who enabled it but never verified within WhatsAppSettings:UnverifiedGracePeriodDays
+        // (default 30). Fires WhatsAppAutoDisabledDomainEvent → notification email per user.
+        recurringJobManager.AddOrUpdate<ExpireUnverifiedWhatsAppPreferencesJob>(
+            "expire-unverified-whatsapp-preferences-job",
+            job => job.ExecuteAsync(),
+            Cron.Daily(3), // 03:00 UTC — off-peak, after nightly backups
             new RecurringJobOptions
             {
                 TimeZone = TimeZoneInfo.Utc

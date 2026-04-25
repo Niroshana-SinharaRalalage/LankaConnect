@@ -10,6 +10,13 @@ public class SignUpListDto
     public string Description { get; set; } = string.Empty;
     public SignUpType SignUpType { get; set; }
 
+    /// <summary>
+    /// Phase 7D.1: Discriminator exposing whether this list is an Items collection
+    /// (Kind=Items) or a Volunteer roster (Kind=Volunteers). Volunteer lists are
+    /// always slot-based and never accept open items.
+    /// </summary>
+    public SignUpKind Kind { get; set; } = SignUpKind.Items;
+
     // Legacy fields (for Open/Predefined sign-ups)
     public List<string> PredefinedItems { get; set; } = new();
     public List<SignUpCommitmentDto> Commitments { get; set; } = new();
@@ -65,6 +72,13 @@ public interface ISignUpItemDto
     /// serializes properties declared on the static/interface type).
     /// </summary>
     SignUpItemType ItemType { get; }
+
+    /// <summary>
+    /// Phase 6A.132: Render order within the sign-up list (ascending). Declared on the
+    /// interface so System.Text.Json serializes it for the polymorphic List&lt;ISignUpItemDto&gt;
+    /// — same constraint as ItemType (Phase 6A.124).
+    /// </summary>
+    int DisplayOrder { get; }
 }
 
 /// <summary>
@@ -82,6 +96,9 @@ public class QuantityBasedItemDto : ISignUpItemDto
 
     // Phase 6A.123: Discriminator field so frontend isQuantityBased() type guard works
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
+
+    // Phase 6A.132: Render order within the list (0-based, dense).
+    public int DisplayOrder { get; set; }
 
     // Quantity-based specific fields
     public int TargetQuantity { get; set; }
@@ -108,6 +125,9 @@ public class SlotBasedItemDto : ISignUpItemDto
 
     // Phase 6A.123: Discriminator field so frontend isSlotBased() type guard works
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Slot;
+
+    // Phase 6A.132: Render order within the list (0-based, dense).
+    public int DisplayOrder { get; set; }
 
     // Slot-based specific fields
     public int TotalSlots { get; set; }
@@ -141,6 +161,8 @@ public class SignUpItemDto : ISignUpItemDto
     public bool IsOpenItem => ItemCategory == SignUpItemCategory.Open && CreatedByUserId.HasValue;
     // ISignUpItemDto.ItemType - legacy items are always quantity-based
     public SignUpItemType ItemType { get; set; } = SignUpItemType.Quantity;
+    // Phase 6A.132: DisplayOrder on the interface; legacy rows default to 0 (safe backfill).
+    public int DisplayOrder { get; set; }
 }
 
 public class SignUpCommitmentDto

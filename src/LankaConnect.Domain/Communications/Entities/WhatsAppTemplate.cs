@@ -27,6 +27,10 @@ public class WhatsAppTemplate : BaseEntity
     public string? MetaTemplateId { get; private set; }
     public string? SampleValues { get; private set; }
 
+    // Provider-specific IDs
+    /// <summary>Twilio Content API SID for this template (e.g., "HXxxxxx"). Phase 7B.</summary>
+    public string? TwilioContentSid { get; private set; }
+
     // Approval tracking
     public DateTime? ApprovedAt { get; private set; }
     public DateTime? RejectedAt { get; private set; }
@@ -34,7 +38,15 @@ public class WhatsAppTemplate : BaseEntity
 
     // Computed
     public bool IsApproved => Status == WhatsAppTemplateStatus.Approved;
-    public bool IsUsable => IsApproved && !string.IsNullOrEmpty(MetaTemplateId);
+
+    /// <summary>
+    /// True when the template has been approved AND has a provider-level ID that allows sending.
+    /// Phase 7B.4: relaxed from "MetaTemplateId only" to accept either MetaTemplateId (ACS/Meta path)
+    /// or TwilioContentSid (Twilio Content API path). Keeps MetaTemplateId semantics clean while
+    /// allowing Twilio-only deployments to send without cross-wiring a Twilio SID into MetaTemplateId.
+    /// </summary>
+    public bool IsUsable => IsApproved
+        && (!string.IsNullOrEmpty(MetaTemplateId) || !string.IsNullOrEmpty(TwilioContentSid));
 
     // EF Core constructor
     private WhatsAppTemplate() { }
@@ -110,6 +122,32 @@ public class WhatsAppTemplate : BaseEntity
         RejectionReason = null;
         ApprovedAt = null;
         MetaTemplateId = null;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Set the Twilio Content API SID for this template. Phase 7B.
+    /// </summary>
+    public void SetTwilioContentSid(string? contentSid)
+    {
+        TwilioContentSid = contentSid;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Mark template as approved when Twilio is the BSP. Phase 7B.4.
+    /// Unlike <see cref="MarkApproved(string)"/>, this does NOT require a Meta template ID:
+    /// Twilio templates are identified by their ContentSid (set separately via
+    /// <see cref="SetTwilioContentSid(string?)"/>). Used by the TwilioTemplateSeeder.
+    /// Callers must ensure the TwilioContentSid is set, otherwise <see cref="IsUsable"/>
+    /// will remain false.
+    /// </summary>
+    public void MarkApprovedForTwilio()
+    {
+        Status = WhatsAppTemplateStatus.Approved;
+        ApprovedAt = DateTime.UtcNow;
+        RejectedAt = null;
+        RejectionReason = null;
         MarkAsUpdated();
     }
 

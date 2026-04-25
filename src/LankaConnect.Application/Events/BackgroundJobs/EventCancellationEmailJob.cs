@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Helpers;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -275,6 +276,9 @@ public class EventCancellationEmailJob
                         organizerName: organizerName,
                         refundsWillBeProcessed: !isFreeEvent && refundResults.SuccessCount > 0,
                         refundMessage: refundMessage);
+
+                    // Phase 7C.2b: emit decomposed location keys for the template rewrite.
+                    emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);

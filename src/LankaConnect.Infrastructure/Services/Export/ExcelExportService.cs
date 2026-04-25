@@ -44,10 +44,12 @@ public class ExcelExportService : IExcelExportService
     /// Creates one Excel file per signup list, each with sheets for different categories.
     /// Uses grouped format where each item shows once with commitments listed below (matching CSV export).
     /// </summary>
-    public byte[] ExportSignUpListsToExcelZip(List<SignUpListDto> signUpLists, Guid eventId)
+    public byte[] ExportSignUpListsToExcelZip(List<SignUpListDto> signUpLists, Guid eventId, SignUpExportLabels? labels = null)
     {
         if (signUpLists == null || !signUpLists.Any())
             throw new ArgumentException("No signup lists to export", nameof(signUpLists));
+
+        var columnLabels = labels ?? SignUpExportLabels.ForItems();
 
         _logger.LogInformation(
             "Phase 6A.73: Starting Excel ZIP export for event {EventId} - {ListCount} signup lists",
@@ -91,7 +93,7 @@ public class ExcelExportService : IExcelExportService
                     {
                         if (items.Any())
                         {
-                            CreateGroupedSignUpSheet(workbook, $"{categoryName} Items", items);
+                            CreateGroupedSignUpSheet(workbook, $"{categoryName} Items", items, columnLabels);
                         }
                     }
 
@@ -159,20 +161,21 @@ public class ExcelExportService : IExcelExportService
     private void CreateGroupedSignUpSheet(
         IXLWorkbook workbook,
         string sheetName,
-        List<ISignUpItemDto> items)
+        List<ISignUpItemDto> items,
+        SignUpExportLabels columnLabels)
     {
         var sheet = workbook.Worksheets.Add(sheetName);
 
-        // Headers matching CSV format (no "Signup List" column since each file is for one signup list)
+        // Phase 7D.1 Step 15: Headers sourced from label set (default: Items; volunteer exports override).
         var headers = new[]
         {
-            "Item Description",
-            "Requested Quantity",
-            "Remaining Quantity",
-            "Contact Name",
-            "Contact Email",
-            "Contact Phone",
-            "Quantity Committed"
+            columnLabels.ItemDescription,
+            columnLabels.RequestedQuantity,
+            columnLabels.RemainingQuantity,
+            columnLabels.ContactName,
+            columnLabels.ContactEmail,
+            columnLabels.ContactPhone,
+            columnLabels.QuantityCommitted
         };
 
         // Write headers

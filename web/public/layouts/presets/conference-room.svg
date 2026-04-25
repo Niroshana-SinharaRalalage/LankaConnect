@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-label="Conference Room: U-shape head tables with classroom rows">
+  <rect width="1200" height="800" fill="#f9fafb"/>
+  <!-- U-shape: top + left side + right side -->
+  <g fill="#fee2e2" stroke="#ef4444" stroke-width="3">
+    <rect x="350" y="90" width="500" height="60" rx="4"/>
+    <rect x="310" y="150" width="60" height="260" rx="4"/>
+    <rect x="830" y="150" width="60" height="260" rx="4"/>
+  </g>
+  <text x="600" y="290" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="600" fill="#b91c1c" text-anchor="middle">U-Shape Head Tables</text>
+  <!-- Classroom rows zone -->
+  <rect x="150" y="500" width="900" height="280" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="3"/>
+  <g fill="#3b82f6">
+    <circle cx="200" cy="540" r="9"/><circle cx="280" cy="540" r="9"/><circle cx="360" cy="540" r="9"/><circle cx="440" cy="540" r="9"/><circle cx="520" cy="540" r="9"/><circle cx="600" cy="540" r="9"/><circle cx="680" cy="540" r="9"/><circle cx="760" cy="540" r="9"/><circle cx="840" cy="540" r="9"/><circle cx="920" cy="540" r="9"/><circle cx="1000" cy="540" r="9"/>
+    <circle cx="200" cy="600" r="9"/><circle cx="280" cy="600" r="9"/><circle cx="360" cy="600" r="9"/><circle cx="440" cy="600" r="9"/><circle cx="520" cy="600" r="9"/><circle cx="600" cy="600" r="9"/><circle cx="680" cy="600" r="9"/><circle cx="760" cy="600" r="9"/><circle cx="840" cy="600" r="9"/><circle cx="920" cy="600" r="9"/><circle cx="1000" cy="600" r="9"/>
+    <circle cx="200" cy="660" r="9"/><circle cx="280" cy="660" r="9"/><circle cx="360" cy="660" r="9"/><circle cx="440" cy="660" r="9"/><circle cx="520" cy="660" r="9"/><circle cx="600" cy="660" r="9"/><circle cx="680" cy="660" r="9"/><circle cx="760" cy="660" r="9"/><circle cx="840" cy="660" r="9"/><circle cx="920" cy="660" r="9"/><circle cx="1000" cy="660" r="9"/>
+    <circle cx="200" cy="720" r="9"/><circle cx="280" cy="720" r="9"/><circle cx="360" cy="720" r="9"/><circle cx="440" cy="720" r="9"/><circle cx="520" cy="720" r="9"/><circle cx="600" cy="720" r="9"/><circle cx="680" cy="720" r="9"/><circle cx="760" cy="720" r="9"/><circle cx="840" cy="720" r="9"/><circle cx="920" cy="720" r="9"/><circle cx="1000" cy="720" r="9"/>
+  </g>
+  <text x="600" y="770" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="600" fill="#1e40af" text-anchor="middle">Classroom Rows · 4 × 11</text>
+</svg>

@@ -79,9 +79,19 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     public string EventStartTime { get; set; } = string.Empty;
 
     /// <summary>
-    /// Event location address.
+    /// Phase 7C.2 (legacy): Single-line venue address. Preserved for backward compatibility
+    /// with un-migrated templates that still reference <c>{{EventLocation}}</c>. New
+    /// templates MUST use the Phase 7C.2 decomposed fields below.
     /// </summary>
     public string EventLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7C.2: Decomposed primary + secondary location projection.
+    /// When set, <see cref="ToDictionary"/> emits the 8 decomposed keys; when null,
+    /// a neutral Online-event projection is written.
+    /// Populated via <see cref="WithLocationDetails"/>.
+    /// </summary>
+    public LocationEmailProjection? LocationDetails { get; set; }
 
     /// <summary>
     /// URL to view event details.
@@ -224,6 +234,9 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { "EventStartDate", formattedDate },  // Phase 6A.97: Uses event's timezone
             { "EventStartTime", formattedTime },
             { "EventDateTime", $"{formattedDate} at {formattedTime}" },  // Phase 6A.87 Fix: Combined for standardized templates
+            // Phase 7C.2: LocationDetails (when set) overwrites EventLocation with its
+            // legacy flat string AND adds the 8 decomposed keys. EventLocation below
+            // is the fallback used when no projection has been supplied.
             { "EventLocation", EventLocation },
             { "EventDetailsUrl", EventDetailsUrl },
             { "HasSignUpLists", HasSignUpLists },
@@ -256,6 +269,13 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { "HasEventImage", HasEventImage },
             { "EventImageUrl", EventImageUrl }
         };
+
+        // Phase 7C.2: Emit 8 decomposed location keys (+ legacy EventLocation override).
+        // When no projection was supplied we still emit the keys as empty/false so
+        // templates containing {{#if HasSecondaryLocation}} don't see an "undefined".
+        LocationEmailDictionaryWriter.WriteTo(
+            dict,
+            LocationDetails ?? LocationEmailProjection.FromLegacyScalar(EventLocation));
 
         return dict;
     }
@@ -410,6 +430,21 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     {
         HasSignupForms = !string.IsNullOrWhiteSpace(url);
         SignupFormsUrl = url ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 7C.2: Sets the decomposed primary + optional secondary location fields
+    /// and syncs the legacy <see cref="EventLocation"/> with the projection's flat
+    /// fallback so every template — new or un-migrated — renders consistent data.
+    /// </summary>
+    public FreeEventRegistrationEmailParams WithLocationDetails(LocationEmailProjection projection)
+    {
+        if (projection == null)
+            throw new ArgumentNullException(nameof(projection));
+
+        LocationDetails = projection;
+        EventLocation = projection.LegacyFlatString;
         return this;
     }
 

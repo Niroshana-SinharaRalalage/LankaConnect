@@ -38,6 +38,15 @@ export const verifyPhoneSchema = z.object({
 
 export type VerifyPhoneFormData = z.infer<typeof verifyPhoneSchema>;
 
+// Empty-string submissions from <input type="time"> / <select> without a value
+// fail .NET TimeOnly?/string? binding with HTTP 400 before the action runs.
+// Normalize "" -> null at the validation boundary so the API receives valid JSON.
+const nullableTrimmedString = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((value) => (value ? value : null));
+
 /**
  * Schema for updating WhatsApp notification preferences
  */
@@ -51,12 +60,15 @@ export const updatePreferencesSchema = z.object({
   newsletter: z.boolean(),
   newEvent: z.boolean(),
   payment: z.boolean(),
-  preferredLanguage: z.string().optional().nullable(),
-  quietHoursStart: z.string().optional().nullable(),
-  quietHoursEnd: z.string().optional().nullable(),
+  preferredLanguage: nullableTrimmedString,
+  quietHoursStart: nullableTrimmedString,
+  quietHoursEnd: nullableTrimmedString,
   respectCulturalTiming: z.boolean(),
 });
 
+// z.input is the shape react-hook-form sees (empty strings allowed from <input type="time">).
+// z.infer is the post-transform shape — what handleSubmit delivers and what we send to the API.
+export type UpdatePreferencesFormInput = z.input<typeof updatePreferencesSchema>;
 export type UpdatePreferencesFormData = z.infer<typeof updatePreferencesSchema>;
 
 /**

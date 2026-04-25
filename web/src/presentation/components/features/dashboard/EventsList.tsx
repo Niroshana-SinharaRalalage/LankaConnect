@@ -279,7 +279,19 @@ export function EventsList({
               {/* Price - Session 23: Dual pricing, Session 33: Group pricing support */}
               {!event.isFree && (
                 <span className="px-2 py-1 bg-[#FFE8CC] text-[#8B1538] rounded text-xs font-medium">
-                  {event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
+                  {event.hasTicketTiers && event.ticketTiers && event.ticketTiers.length > 0 ? (
+                    // Phase 8: Display price range for multi-tier pricing
+                    (() => {
+                      const activeTiers = event.ticketTiers.filter(t => t.isActive && !t.isFree);
+                      if (activeTiers.length === 0) return 'Free Tiers';
+                      const prices = activeTiers.map(t => t.adultPriceAmount);
+                      const minPrice = Math.min(...prices);
+                      const maxPrice = Math.max(...prices);
+                      return minPrice === maxPrice
+                        ? `$${minPrice}`
+                        : `$${minPrice}-$${maxPrice}`;
+                    })()
+                  ) : event.hasGroupPricing && event.groupPricingTiers && event.groupPricingTiers.length > 0 ? (
                     // Session 33: Display price range for group pricing (no "/person")
                     (() => {
                       const prices = event.groupPricingTiers.map(t => t.pricePerPerson);

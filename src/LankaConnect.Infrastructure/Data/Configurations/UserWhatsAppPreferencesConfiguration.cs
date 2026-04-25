@@ -59,6 +59,21 @@ public class UserWhatsAppPreferencesConfiguration : IEntityTypeConfiguration<Use
             .HasColumnName("verification_locked_until")
             .IsRequired(false);
 
+        // Phase 7D Fix 4: grace-clock + auto-disable audit
+        builder.Property(e => e.WhatsAppEnabledAt)
+            .HasColumnName("whatsapp_enabled_at")
+            .IsRequired(false);
+
+        builder.Property(e => e.WhatsAppAutoDisabledAt)
+            .HasColumnName("whatsapp_auto_disabled_at")
+            .IsRequired(false);
+
+        builder.Property(e => e.WhatsAppAutoDisableReason)
+            .HasColumnName("whatsapp_auto_disable_reason")
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .IsRequired(false);
+
         // Per-notification preferences
         builder.Property(e => e.NotifyEventRegistration)
             .HasColumnName("notify_event_registration")
@@ -158,6 +173,13 @@ public class UserWhatsAppPreferencesConfiguration : IEntityTypeConfiguration<Use
         builder.HasIndex(e => e.WhatsAppPhoneNumber)
             .HasDatabaseName("IX_UserWhatsAppPreferences_Phone_EnabledVerified")
             .HasFilter("whatsapp_enabled = true AND phone_verified = true");
+
+        // Phase 7D Fix 4: partial index on the grace-clock column, restricted to the exact
+        // cohort the daily auto-disable job scans. Keeps the job's sweep cheap even as the
+        // user base grows, and never competes with the verified-dispatch index above.
+        builder.HasIndex(e => e.WhatsAppEnabledAt)
+            .HasDatabaseName("IX_UserWhatsAppPreferences_EnabledAt_EnabledUnverified")
+            .HasFilter("whatsapp_enabled = true AND phone_verified = false");
 
         // Performance indexes
         builder.HasIndex(e => e.CreatedAt)

@@ -41,6 +41,18 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.Country, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Country : null))
             .ForMember(dest => dest.Latitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Latitude : (decimal?)null))
             .ForMember(dest => dest.Longitude, opt => opt.MapFrom(src => src.Location != null && src.Location.Coordinates != null ? src.Location.Coordinates.Longitude : (decimal?)null))
+            // Phase 7C.1: Location Name + Secondary Location
+            .ForMember(dest => dest.LocationName, opt => opt.MapFrom(src => src.Location != null ? src.Location.Name : null))
+            .ForMember(dest => dest.SecondaryLocationType, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Type.ToString() : null))
+            .ForMember(dest => dest.SecondaryLocationName, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Name : null))
+            .ForMember(dest => dest.SecondaryAddress, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.Street : null))
+            .ForMember(dest => dest.SecondaryCity, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.City : null))
+            .ForMember(dest => dest.SecondaryState, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.State : null))
+            .ForMember(dest => dest.SecondaryZipCode, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.ZipCode : null))
+            .ForMember(dest => dest.SecondaryCountry, opt => opt.MapFrom(src => src.SecondaryLocation != null ? src.SecondaryLocation.Location.Address.Country : null))
+            .ForMember(dest => dest.SecondaryLatitude, opt => opt.MapFrom(src => src.SecondaryLocation != null && src.SecondaryLocation.Location.Coordinates != null ? src.SecondaryLocation.Location.Coordinates.Latitude : (decimal?)null))
+            .ForMember(dest => dest.SecondaryLongitude, opt => opt.MapFrom(src => src.SecondaryLocation != null && src.SecondaryLocation.Location.Coordinates != null ? src.SecondaryLocation.Location.Coordinates.Longitude : (decimal?)null))
+            .ForMember(dest => dest.HasSecondaryLocation, opt => opt.MapFrom(src => src.SecondaryLocation != null))
             // Phase 6A.97: Timezone mapping for consistent date/time display
             .ForMember(dest => dest.TimeZoneId, opt => opt.MapFrom(src => src.TimeZoneId))
             .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>
@@ -79,6 +91,34 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.CollectionConfig, opt => opt.MapFrom(src => src.CollectionConfig))
             .ForMember(dest => dest.SponsorConfig, opt => opt.MapFrom(src => src.SponsorConfig))
             .ForMember(dest => dest.AddOnConfig, opt => opt.MapFrom(src => src.AddOnConfig))
+            // Phase 2: Seating
+            .ForMember(dest => dest.SeatingMode, opt => opt.MapFrom(src => src.SeatingMode))
+            .ForMember(dest => dest.VenueLayoutId, opt => opt.MapFrom(src => src.VenueLayoutId))
+            // Phase 8: Multi-Tier Ticketing
+            .ForMember(dest => dest.TicketingMode, opt => opt.MapFrom(src => src.TicketingMode))
+            .ForMember(dest => dest.HasTicketTiers, opt => opt.MapFrom(src => src.HasTicketTiers))
+            .ForMember(dest => dest.TicketTiers, opt => opt.MapFrom(src =>
+                src.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered
+                    ? src.GetActiveTiers().Select(t => new TicketTierDto
+                    {
+                        Id = t.Id,
+                        Name = t.Name,
+                        Description = t.Description,
+                        AdultPriceAmount = t.AdultPrice.Amount,
+                        AdultPriceCurrency = t.AdultPrice.Currency,
+                        ChildPriceAmount = t.ChildPrice != null ? t.ChildPrice.Amount : (decimal?)null,
+                        ChildPriceCurrency = t.ChildPrice != null ? t.ChildPrice.Currency : (Domain.Shared.Enums.Currency?)null,
+                        ChildAgeLimit = t.ChildAgeLimit,
+                        HasChildPricing = t.HasChildPricing,
+                        Capacity = t.Capacity,
+                        ReservedCount = t.ReservedCount,
+                        AvailableQuantity = t.AvailableQuantity,
+                        MaxPerUser = t.MaxPerUser,
+                        SortOrder = t.SortOrder,
+                        IsActive = t.IsActive,
+                        IsFree = t.IsFree
+                    }).ToList()
+                    : new List<TicketTierDto>()))
             // Phase 6A.133: IsCurrentUserOrganizer is computed post-mapping by query handlers
             .ForMember(dest => dest.IsCurrentUserOrganizer, opt => opt.Ignore());
 

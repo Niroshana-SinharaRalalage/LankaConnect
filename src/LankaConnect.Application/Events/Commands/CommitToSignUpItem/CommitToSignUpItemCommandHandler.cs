@@ -155,7 +155,8 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                             request.Notes,
                             request.ContactName,
                             request.ContactEmail,
-                            request.ContactPhone);
+                            request.ContactPhone,
+                            kind: signUpList.Kind);
                     }
                     else
                     {
@@ -165,7 +166,8 @@ public class CommitToSignUpItemCommandHandler : ICommandHandler<CommitToSignUpIt
                             request.Notes,
                             request.ContactName,
                             request.ContactEmail,
-                            request.ContactPhone);
+                            request.ContactPhone,
+                            kind: signUpList.Kind);
                     }
                 }
 

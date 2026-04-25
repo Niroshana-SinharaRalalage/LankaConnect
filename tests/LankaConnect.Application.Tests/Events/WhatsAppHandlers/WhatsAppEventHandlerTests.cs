@@ -5,6 +5,8 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,6 +29,9 @@ public class WhatsAppEventHandlerTests
     private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly Mock<IEventRepository> _mockEventRepo;
     private readonly Mock<IRegistrationRepository> _mockRegistrationRepo;
+    private readonly Mock<IAddOnDefinitionRepository> _mockAddOnRepo;
+    private readonly Mock<IFormResponseRepository> _mockFormResponseRepo;
+    private readonly Mock<IEventFormRepository> _mockEventFormRepo;
 
     public WhatsAppEventHandlerTests()
     {
@@ -37,6 +42,9 @@ public class WhatsAppEventHandlerTests
         _mockUserRepo = new Mock<IUserRepository>();
         _mockEventRepo = new Mock<IEventRepository>();
         _mockRegistrationRepo = new Mock<IRegistrationRepository>();
+        _mockAddOnRepo = new Mock<IAddOnDefinitionRepository>();
+        _mockFormResponseRepo = new Mock<IFormResponseRepository>();
+        _mockEventFormRepo = new Mock<IEventFormRepository>();
 
         // Wire scope factory → scope → service provider
         _mockScope.Setup(s => s.ServiceProvider).Returns(_mockServiceProvider.Object);
@@ -55,6 +63,15 @@ public class WhatsAppEventHandlerTests
         _mockServiceProvider
             .Setup(sp => sp.GetService(typeof(IRegistrationRepository)))
             .Returns(_mockRegistrationRepo.Object);
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IAddOnDefinitionRepository)))
+            .Returns(_mockAddOnRepo.Object);
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IFormResponseRepository)))
+            .Returns(_mockFormResponseRepo.Object);
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IEventFormRepository)))
+            .Returns(_mockEventFormRepo.Object);
 
         // Default WhatsApp success responses
         _mockWhatsAppService
@@ -1250,5 +1267,593 @@ public class WhatsAppEventHandlerTests
         };
 
         await act.Should().NotThrowAsync();
+    }
+
+    // ─── Helper: Create FormResponse via reflection ──────────────────────────
+
+    private static FormResponse CreateRealFormResponse(
+        Guid responseId, Guid eventFormId, Guid eventId,
+        Guid? respondentUserId, string? respondentName = "Test Respondent")
+    {
+        var type = typeof(FormResponse);
+        var ctor = type.GetConstructor(
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null, Type.EmptyTypes, null);
+        var response = (FormResponse)ctor!.Invoke(null);
+        SetEntityId(response, responseId);
+        SetPrivateProperty(response, "EventFormId", eventFormId);
+        SetPrivateProperty(response, "EventId", eventId);
+        SetPrivateProperty(response, "RespondentUserId", respondentUserId);
+        SetPrivateProperty(response, "RespondentName", respondentName);
+        SetPrivateProperty(response, "RespondentEmail", respondentUserId.HasValue ? "respondent@test.com" : null);
+        return response;
+    }
+
+    /// <summary>Creates a real EventForm via reflection.</summary>
+    private static EventForm CreateRealEventForm(Guid formId, Guid eventId, string title = "Test Survey")
+    {
+        var type = typeof(EventForm);
+        var ctor = type.GetConstructor(
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null, Type.EmptyTypes, null);
+        var form = (EventForm)ctor!.Invoke(null);
+        SetEntityId(form, formId);
+        SetPrivateProperty(form, "EventId", eventId);
+        SetPrivateProperty(form, "Title", title);
+        return form;
+    }
+
+    /// <summary>Creates a real AddOnDefinition via reflection.</summary>
+    private static AddOnDefinition CreateRealAddOnDefinition(Guid definitionId, Guid eventId, string name = "T-Shirt")
+    {
+        var type = typeof(AddOnDefinition);
+        var ctor = type.GetConstructor(
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+            null, Type.EmptyTypes, null);
+        var definition = (AddOnDefinition)ctor!.Invoke(null);
+        SetEntityId(definition, definitionId);
+        SetPrivateProperty(definition, "EventId", eventId);
+        SetPrivateProperty(definition, "Name", name);
+        return definition;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 12. EventApprovedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task EventApproved_Handle_ReturnsImmediately()
+    {
+        var handler = new EventApprovedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventApprovedWhatsAppHandler>().Object);
+
+        var domainEvent = new EventApprovedEvent(Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow);
+        var task = handler.Handle(new DomainEventNotification<EventApprovedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue("fire-and-forget handler must return Task.CompletedTask synchronously");
+        await task;
+    }
+
+    [Fact]
+    public async Task EventApproved_Handle_EventNotFound_DoesNotSend()
+    {
+        var handler = new EventApprovedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventApprovedWhatsAppHandler>().Object);
+
+        var eventId = Guid.NewGuid();
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+
+        var domainEvent = new EventApprovedEvent(eventId, Guid.NewGuid(), DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<EventApprovedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<WhatsAppNotificationType>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task EventApproved_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new EventApprovedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventApprovedWhatsAppHandler>().Object);
+
+        var eventId = Guid.NewGuid();
+        var organizerId = Guid.NewGuid();
+        var evt = CreateRealEvent(eventId);
+        // Set OrganizerId via reflection (Event.Create uses the constructor param)
+        SetPrivateProperty(evt, "OrganizerId", organizerId);
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(evt);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealUser(organizerId));
+
+        var domainEvent = new EventApprovedEvent(eventId, Guid.NewGuid(), DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<EventApprovedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(organizerId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.EventApproval, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 13. EventRejectedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task EventRejected_Handle_ReturnsImmediately()
+    {
+        var handler = new EventRejectedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventRejectedWhatsAppHandler>().Object);
+
+        var domainEvent = new EventRejectedEvent(Guid.NewGuid(), Guid.NewGuid(), "Policy violation", DateTime.UtcNow);
+        var task = handler.Handle(new DomainEventNotification<EventRejectedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue("fire-and-forget handler must return Task.CompletedTask synchronously");
+        await task;
+    }
+
+    [Fact]
+    public async Task EventRejected_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new EventRejectedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventRejectedWhatsAppHandler>().Object);
+
+        var eventId = Guid.NewGuid();
+        var organizerId = Guid.NewGuid();
+        var evt = CreateRealEvent(eventId);
+        SetPrivateProperty(evt, "OrganizerId", organizerId);
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(evt);
+        _mockUserRepo.Setup(r => r.GetByIdAsync(organizerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealUser(organizerId));
+
+        var domainEvent = new EventRejectedEvent(eventId, Guid.NewGuid(), "Policy violation", DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<EventRejectedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(organizerId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.EventApproval, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 14. DonationCompletedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task DonationCompleted_Handle_NoDonorUserId_ReturnsImmediately()
+    {
+        var handler = new DonationCompletedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<DonationCompletedWhatsAppHandler>().Object);
+
+        var domainEvent = new DonationCompletedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "Anonymous Donor", "anon@test.com",
+            "pi_test", 100m, "USD", DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<DonationCompletedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no DonorUserId");
+    }
+
+    [Fact]
+    public async Task DonationCompleted_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new DonationCompletedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<DonationCompletedWhatsAppHandler>().Object);
+
+        var donorUserId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new DonationCompletedEvent(
+            eventId, Guid.NewGuid(), donorUserId, "John Doe", "john@test.com",
+            "pi_test", 50m, "USD", DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<DonationCompletedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(donorUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.Donation, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 15. CollectionCompletedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task CollectionCompleted_Handle_NoContributorUserId_ReturnsImmediately()
+    {
+        var handler = new CollectionCompletedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<CollectionCompletedWhatsAppHandler>().Object);
+
+        var domainEvent = new CollectionCompletedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "Anonymous Contributor", "anon@test.com",
+            "pi_test", 75m, "USD", DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<CollectionCompletedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no ContributorUserId");
+    }
+
+    [Fact]
+    public async Task CollectionCompleted_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new CollectionCompletedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<CollectionCompletedWhatsAppHandler>().Object);
+
+        var contributorUserId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new CollectionCompletedEvent(
+            eventId, Guid.NewGuid(), contributorUserId, "Jane Doe", "jane@test.com",
+            "pi_test", 75m, "USD", DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<CollectionCompletedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(contributorUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.Collection, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 16. PaymentPendingWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task PaymentPending_Handle_NoUserId_ReturnsImmediately()
+    {
+        var handler = new PaymentPendingWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<PaymentPendingWhatsAppHandler>().Object);
+
+        var domainEvent = new RegistrationPendingPaymentEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "anon@test.com", "Guest",
+            "cs_test_session", DateTime.UtcNow.AddHours(24), 100m, "USD", 2, DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<RegistrationPendingPaymentEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no UserId");
+    }
+
+    [Fact]
+    public async Task PaymentPending_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new PaymentPendingWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<PaymentPendingWhatsAppHandler>().Object);
+
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var registrationId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new RegistrationPendingPaymentEvent(
+            eventId, registrationId, userId, "user@test.com", "Test User",
+            "cs_test_session", DateTime.UtcNow.AddHours(24), 100m, "USD", 2, DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<RegistrationPendingPaymentEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.PaymentPending, eventId, registrationId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 17. AddOnPurchaseWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task AddOnPurchase_Handle_NoBuyerUserId_ReturnsImmediately()
+    {
+        var handler = new AddOnPurchaseWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<AddOnPurchaseWhatsAppHandler>().Object);
+
+        var domainEvent = new AddOnPurchaseCompletedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), null, "Anonymous Buyer",
+            "anon@test.com", "pi_test", 2, 10m, 20m, "USD", DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<AddOnPurchaseCompletedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no BuyerUserId");
+    }
+
+    [Fact]
+    public async Task AddOnPurchase_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new AddOnPurchaseWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<AddOnPurchaseWhatsAppHandler>().Object);
+
+        var buyerUserId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var addOnDefinitionId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+        _mockAddOnRepo.Setup(r => r.GetByIdAsync(addOnDefinitionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealAddOnDefinition(addOnDefinitionId, eventId, "T-Shirt"));
+
+        var domainEvent = new AddOnPurchaseCompletedEvent(
+            eventId, Guid.NewGuid(), addOnDefinitionId, buyerUserId, "Buyer Name",
+            "buyer@test.com", "pi_test", 2, 15m, 30m, "USD", DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<AddOnPurchaseCompletedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(buyerUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.AddOnPurchase, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 18. AttendeesAddedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task AttendeesAdded_Handle_NoUserId_ReturnsImmediately()
+    {
+        var handler = new AttendeesAddedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<AttendeesAddedWhatsAppHandler>().Object);
+
+        var domainEvent = new AttendeesAddedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "anon@test.com",
+            2, 3, 5, 45m, "USD", 95m, Guid.NewGuid(), DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<AttendeesAddedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no UserId");
+    }
+
+    [Fact]
+    public async Task AttendeesAdded_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new AttendeesAddedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<AttendeesAddedWhatsAppHandler>().Object);
+
+        var userId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new AttendeesAddedEvent(
+            eventId, Guid.NewGuid(), userId, "user@test.com",
+            2, 3, 5, 45m, "USD", 95m, Guid.NewGuid(), DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<AttendeesAddedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(userId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.AttendeesAdded, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 19. SponsorPaymentWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task SponsorPayment_Handle_NoSponsorUserId_ReturnsImmediately()
+    {
+        var handler = new SponsorPaymentWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<SponsorPaymentWhatsAppHandler>().Object);
+
+        var domainEvent = new SponsorPaymentCompletedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "Anonymous Sponsor", "anon@test.com",
+            "Corp Inc", "pi_test", 500m, "USD", DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<SponsorPaymentCompletedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no SponsorUserId");
+    }
+
+    [Fact]
+    public async Task SponsorPayment_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new SponsorPaymentWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<SponsorPaymentWhatsAppHandler>().Object);
+
+        var sponsorUserId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new SponsorPaymentCompletedEvent(
+            eventId, Guid.NewGuid(), sponsorUserId, "Sponsor Name", "sponsor@test.com",
+            "Corp Inc", "pi_test", 500m, "USD", DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<SponsorPaymentCompletedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(sponsorUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.Sponsorship, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 20. ItemSponsorWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task ItemSponsor_Handle_NoSponsorUserId_ReturnsImmediately()
+    {
+        var handler = new ItemSponsorWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<ItemSponsorWhatsAppHandler>().Object);
+
+        var domainEvent = new ItemSponsorRecordedEvent(
+            Guid.NewGuid(), Guid.NewGuid(), null, "Anonymous Sponsor", "anon@test.com",
+            null, "Sound System", "Professional PA system", 2000m, DateTime.UtcNow);
+
+        var task = handler.Handle(new DomainEventNotification<ItemSponsorRecordedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue();
+        await task;
+        await Task.Delay(50);
+
+        _mockScopeFactory.Verify(f => f.CreateScope(), Times.Never,
+            "scope must not be created when there is no SponsorUserId");
+    }
+
+    [Fact]
+    public async Task ItemSponsor_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new ItemSponsorWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<ItemSponsorWhatsAppHandler>().Object);
+
+        var sponsorUserId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new ItemSponsorRecordedEvent(
+            eventId, Guid.NewGuid(), sponsorUserId, "Sponsor Name", "sponsor@test.com",
+            "Corp Inc", "Sound System", "Professional PA system", 2000m, DateTime.UtcNow);
+
+        await handler.Handle(new DomainEventNotification<ItemSponsorRecordedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(sponsorUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.Sponsorship, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 21. FormResponseWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task FormResponse_Handle_AnonymousRespondent_DoesNotSend()
+    {
+        var handler = new FormResponseWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<FormResponseWhatsAppHandler>().Object);
+
+        var formId = Guid.NewGuid();
+        var responseId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+
+        // FormResponse with null RespondentUserId (anonymous)
+        var formResponse = CreateRealFormResponse(responseId, formId, eventId, respondentUserId: null, respondentName: null);
+        _mockFormResponseRepo.Setup(r => r.GetByIdAsync(responseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(formResponse);
+
+        var domainEvent = new FormResponseSubmittedEvent(formId, responseId, null, null, DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<FormResponseSubmittedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<WhatsAppNotificationType>(), It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task FormResponse_Handle_ValidData_SendsWhatsApp()
+    {
+        var handler = new FormResponseWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<FormResponseWhatsAppHandler>().Object);
+
+        var formId = Guid.NewGuid();
+        var responseId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var respondentUserId = Guid.NewGuid();
+
+        var formResponse = CreateRealFormResponse(responseId, formId, eventId, respondentUserId, "Respondent Name");
+        _mockFormResponseRepo.Setup(r => r.GetByIdAsync(responseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(formResponse);
+
+        var eventForm = CreateRealEventForm(formId, eventId, "Feedback Survey");
+        _mockEventFormRepo.Setup(r => r.GetByIdAsync(formId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(eventForm);
+
+        var domainEvent = new FormResponseSubmittedEvent(formId, responseId, "respondent@test.com", "token123", DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<FormResponseSubmittedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.SendTemplateMessageAsync(respondentUserId, It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(),
+                WhatsAppNotificationType.FormResponse, eventId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 22. EventPostponedWhatsAppHandler (Phase 7B.3)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task EventPostponed_Handle_ReturnsImmediately()
+    {
+        var handler = new EventPostponedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventPostponedWhatsAppHandler>().Object);
+
+        var domainEvent = new EventPostponedEvent(Guid.NewGuid(), "Weather conditions", DateTime.UtcNow);
+        var task = handler.Handle(new DomainEventNotification<EventPostponedEvent>(domainEvent), CancellationToken.None);
+        task.IsCompleted.Should().BeTrue("fire-and-forget handler must return Task.CompletedTask synchronously");
+        await task;
+    }
+
+    [Fact]
+    public async Task EventPostponed_Handle_ValidData_BroadcastsWhatsApp()
+    {
+        var handler = new EventPostponedWhatsAppHandler(
+            _mockScopeFactory.Object, CreateLogger<EventPostponedWhatsAppHandler>().Object);
+
+        var eventId = Guid.NewGuid();
+        _mockEventRepo.Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateRealEvent(eventId));
+
+        var domainEvent = new EventPostponedEvent(eventId, "Weather conditions", DateTime.UtcNow);
+        await handler.Handle(new DomainEventNotification<EventPostponedEvent>(domainEvent), CancellationToken.None);
+        await Task.Delay(500);
+
+        _mockWhatsAppService.Verify(
+            s => s.BroadcastToEventAttendeesAsync(eventId, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(), WhatsAppNotificationType.EventPostponed,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

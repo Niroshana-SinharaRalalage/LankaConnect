@@ -54,13 +54,20 @@ public class AcsWhatsAppStrategy : IWhatsAppSendStrategy
             ? $"{phone[..4]}***{phone[^4..]}"
             : "***masked***";
 
+    /// <param name="providerTemplateId">
+    /// Phase 7B.4: accepted for interface symmetry with <see cref="TwilioWhatsAppStrategy"/>.
+    /// ACS identifies templates by name (via <paramref name="templateName"/>) and does not use
+    /// this parameter — it is ignored.
+    /// </param>
     public async Task<Result<string>> SendTemplateMessageAsync(
         string toPhoneNumber,
         string templateName,
         IReadOnlyList<string> parameterValues,
         string language = "en",
+        string? providerTemplateId = null,
         CancellationToken ct = default)
     {
+        _ = providerTemplateId; // Intentionally unused — ACS doesn't need provider template ID.
         var maskedPhone = MaskPhone(toPhoneNumber);
         var sw = Stopwatch.StartNew();
 

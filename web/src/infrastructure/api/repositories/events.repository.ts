@@ -20,6 +20,7 @@ import type {
   EventImageDto,
   EventVideoDto,
   SignUpListDto,
+  SignUpKind,
   AddSignUpListRequest,
   CommitToSignUpRequest,
   CancelCommitmentRequest,
@@ -66,6 +67,15 @@ import type {
   UserSearchResultDto,
   // Cancellation result
   CancelRsvpResult,
+  // Phase 8: Ticket Tier Management
+  TicketTierDto,
+  SetTicketingModeRequest,
+  CreateTicketTierRequest,
+  UpdateTicketTierRequest,
+  TicketingMode,
+  // Seating Redesign Slice 1
+  SetSeatingModeRequest,
+  SeatingMode,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -608,10 +618,15 @@ export class EventsRepository {
   /**
    * Get all sign-up lists for an event
    * Returns sign-up lists with commitments
-   * Maps to backend GET /api/events/{id}/signups
+   * Maps to backend GET /api/events/{id}/signups[?kind=Items|Volunteers]
+   *
+   * Phase 7D.1: Optional `kind` filter narrows the response to item lists or
+   * volunteer-role lists. Omitting the argument preserves the pre-Phase-7D.1
+   * behaviour of returning every list for the event.
    */
-  async getEventSignUpLists(eventId: string): Promise<SignUpListDto[]> {
-    return await apiClient.get<SignUpListDto[]>(`${this.basePath}/${eventId}/signups`);
+  async getEventSignUpLists(eventId: string, kind?: SignUpKind): Promise<SignUpListDto[]> {
+    const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
+    return await apiClient.get<SignUpListDto[]>(`${this.basePath}/${eventId}/signups${query}`);
   }
 
   /**
@@ -726,6 +741,24 @@ export class EventsRepository {
     itemId: string
   ): Promise<void> {
     await apiClient.delete<void>(`${this.basePath}/${eventId}/signups/${signupId}/items/${itemId}`);
+  }
+
+  /**
+   * Phase 6A.132: Reorder all items in a sign-up list.
+   * The aggregate enforces exact-set equality: every current item ID must appear in
+   * orderedItemIds exactly once. 400 on missing/extra/duplicate/unknown IDs — the
+   * caller should refetch to resync on failure.
+   * Organizer-only. Maps to backend PUT /api/events/{eventId}/signups/{signupId}/items/reorder
+   */
+  async reorderSignUpItems(
+    eventId: string,
+    signupId: string,
+    orderedItemIds: string[]
+  ): Promise<void> {
+    await apiClient.put<void>(
+      `${this.basePath}/${eventId}/signups/${signupId}/items/reorder`,
+      { orderedItemIds }
+    );
   }
 
   /**
@@ -1040,12 +1073,19 @@ export class EventsRepository {
    * Maps to backend GET /api/events/{eventId}/export?format={format}
    *
    * @param eventId - Event ID (GUID)
-   * @param format - Export format ('excel', 'csv', 'signuplistszip', or 'signuplistsexcel')
+   * @param format - Export format. Phase 7D.1 adds 'volunteerszip' / 'volunteersexcel'
+   *                 (volunteer-role lists only) alongside the existing sign-up-list variants.
    * @returns Blob for file download (Excel .xlsx, CSV .csv, or ZIP with multiple CSVs)
    */
   async exportEventAttendees(
     eventId: string,
-    format: 'excel' | 'csv' | 'signuplistszip' | 'signuplistsexcel' = 'excel'
+    format:
+      | 'excel'
+      | 'csv'
+      | 'signuplistszip'
+      | 'signuplistsexcel'
+      | 'volunteerszip'
+      | 'volunteersexcel' = 'excel'
   ): Promise<Blob> {
     return await apiClient.get<Blob>(
       `${this.basePath}/${eventId}/export?format=${format}`,
@@ -1794,6 +1834,61 @@ export class EventsRepository {
     return await apiClient.get<UserSearchResultDto[]>(
       `/users/search?query=${encodeURIComponent(query)}`
     );
+  }
+
+  // ==================== Phase 8: Ticket Tier Management ====================
+
+  /**
+   * Phase 8: Get ticket tiers for an event with availability info.
+   * Public endpoint — no auth required.
+   */
+  async getTicketTiers(eventId: string): Promise<TicketTierDto[]> {
+    return await apiClient.get<TicketTierDto[]>(`/events/${eventId}/ticket-tiers`);
+  }
+
+  /**
+   * Phase 8: Set the ticketing mode for an event (SingleTier or Tiered).
+   * Requires auth.
+   */
+  async setTicketingMode(eventId: string, mode: TicketingMode): Promise<void> {
+    await apiClient.put<void>(`/events/${eventId}/ticketing-mode`, { ticketingMode: mode } as SetTicketingModeRequest);
+  }
+
+  /**
+   * Seating Redesign Slice 1: Set the seating mode for an event
+   * (GeneralAdmission or AssignedSeating). AssignedSeating requires the
+   * event to already be in TicketingMode.Tiered. Requires auth.
+   */
+  async setSeatingMode(eventId: string, mode: SeatingMode): Promise<void> {
+    await apiClient.put<void>(
+      `/events/${eventId}/seating-mode`,
+      { seatingMode: mode } as SetSeatingModeRequest
+    );
+  }
+
+  /**
+   * Phase 8: Add a ticket tier to an event. Returns the new tier ID.
+   * Requires auth.
+   */
+  async addTicketTier(eventId: string, request: CreateTicketTierRequest): Promise<string> {
+    return await apiClient.post<string>(`/events/${eventId}/ticket-tiers`, request);
+  }
+
+  /**
+   * Phase 8: Update an existing ticket tier.
+   * Requires auth.
+   */
+  async updateTicketTier(eventId: string, tierId: string, request: UpdateTicketTierRequest): Promise<void> {
+    await apiClient.put<void>(`/events/${eventId}/ticket-tiers/${tierId}`, request);
+  }
+
+  /**
+   * Phase 8: Remove a ticket tier from an event.
+   * Cannot remove tiers with reservations.
+   * Requires auth.
+   */
+  async removeTicketTier(eventId: string, tierId: string): Promise<void> {
+    await apiClient.delete<void>(`/events/${eventId}/ticket-tiers/${tierId}`);
   }
 
 }

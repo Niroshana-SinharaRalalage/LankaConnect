@@ -2,12 +2,14 @@ using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
 using LankaConnect.Shared.Email.Services;
+using LankaConnect.Shared.WhatsApp.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -248,6 +250,49 @@ public class SendAlbumNotificationCommandHandler : ICommandHandler<SendAlbumNoti
                 {
                     capturedLogger.LogError(ex,
                         "Album notification email batch exception: AlbumId={AlbumId}, EventId={EventId}",
+                        capturedAlbumId, capturedEventId);
+                }
+            }, CancellationToken.None);
+
+            // Phase 7B.3: Send WhatsApp broadcast to all opted-in attendees (best-effort)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = capturedScopeFactory.CreateScope();
+                    var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
+
+                    var whatsAppParams = new Dictionary<string, string>
+                    {
+                        { WhatsAppTemplateContract.Common.EventTitle, capturedEventTitle },
+                        { WhatsAppTemplateContract.Album.AlbumName, capturedAlbumName },
+                        { WhatsAppTemplateContract.Album.AlbumUrl, capturedAlbumUrl }
+                    };
+
+                    var result = await whatsAppService.BroadcastToEventAttendeesAsync(
+                        capturedEventId,
+                        WhatsAppTemplateContract.TemplateNames.PhotoAlbumPublished,
+                        whatsAppParams,
+                        WhatsAppNotificationType.PhotoAlbum,
+                        CancellationToken.None);
+
+                    if (result.IsSuccess)
+                    {
+                        capturedLogger.LogInformation(
+                            "[Phase 7B.3] WhatsApp PhotoAlbum BROADCAST: AlbumId={AlbumId}, EventId={EventId}, SentCount={SentCount}",
+                            capturedAlbumId, capturedEventId, result.Value);
+                    }
+                    else
+                    {
+                        capturedLogger.LogWarning(
+                            "[Phase 7B.3] WhatsApp PhotoAlbum FAILED: AlbumId={AlbumId}, {Errors}",
+                            capturedAlbumId, string.Join(", ", result.Errors));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    capturedLogger.LogError(ex,
+                        "[Phase 7B.3] WhatsApp PhotoAlbum EXCEPTION: AlbumId={AlbumId}, EventId={EventId}",
                         capturedAlbumId, capturedEventId);
                 }
             }, CancellationToken.None);

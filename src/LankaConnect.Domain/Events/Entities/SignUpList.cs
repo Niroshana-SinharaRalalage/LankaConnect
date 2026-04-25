@@ -20,6 +20,11 @@ public class SignUpList : BaseEntity
     public string Description { get; private set; }
     public SignUpType SignUpType { get; private set; } // Legacy: will be deprecated
 
+    // Phase 7D.1: Discriminates Items (classic signups) vs Volunteers (recruitment lists).
+    // Volunteer lists are constrained to slot-based items via CreateVolunteerList factory;
+    // quantity-based and open-item additions are rejected when Kind == Volunteers.
+    public SignUpKind Kind { get; private set; }
+
     // New category flags
     public bool HasMandatoryItems { get; private set; }
     public bool HasPreferredItems { get; private set; }
@@ -47,7 +52,8 @@ public class SignUpList : BaseEntity
         bool hasMandatoryItems = false,
         bool hasPreferredItems = false,
         bool hasSuggestedItems = false,
-        bool hasOpenItems = false)
+        bool hasOpenItems = false,
+        SignUpKind kind = SignUpKind.Items)
     {
         Category = category;
         Description = description;
@@ -56,6 +62,7 @@ public class SignUpList : BaseEntity
         HasPreferredItems = hasPreferredItems;
         HasSuggestedItems = hasSuggestedItems;
         HasOpenItems = hasOpenItems;
+        Kind = kind;
     }
 
     /// <summary>
@@ -176,6 +183,52 @@ public class SignUpList : BaseEntity
     }
 
     /// <summary>
+    /// Phase 7D.1: Creates a volunteer recruitment list — a SignUpList with Kind=Volunteers,
+    /// slot-based items only (1 slot = 1 volunteer), and open-items disabled.
+    /// Each role tuple is (roleName, volunteersNeeded, suggestedPerSlot, notes).
+    /// </summary>
+    public static Result<SignUpList> CreateVolunteerList(
+        string category,
+        string description,
+        IEnumerable<(string roleName, int volunteersNeeded, int? suggestedPerSlot, string? notes)> roles)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+            return Result<SignUpList>.Failure("Category cannot be empty");
+
+        if (string.IsNullOrWhiteSpace(description))
+            return Result<SignUpList>.Failure("Description cannot be empty");
+
+        var rolesList = roles?.ToList() ?? new List<(string, int, int?, string?)>();
+        if (!rolesList.Any())
+            return Result<SignUpList>.Failure("Volunteer list must have at least one role");
+
+        var signUpList = new SignUpList(
+            category.Trim(),
+            description.Trim(),
+            SignUpType.Predefined,
+            hasMandatoryItems: true,
+            hasPreferredItems: false,
+            hasSuggestedItems: false,
+            hasOpenItems: false,
+            kind: SignUpKind.Volunteers);
+
+        foreach (var role in rolesList)
+        {
+            var itemResult = signUpList.AddSlotBasedItem(
+                role.roleName,
+                role.volunteersNeeded,
+                role.suggestedPerSlot,
+                SignUpItemCategory.Mandatory,
+                role.notes);
+
+            if (itemResult.IsFailure)
+                return Result<SignUpList>.Failure(itemResult.Error);
+        }
+
+        return Result<SignUpList>.Success(signUpList);
+    }
+
+    /// <summary>
     /// Creates a predefined sign-up list with specific items users can choose from (Legacy)
     /// </summary>
     public static Result<SignUpList> CreateWithPredefinedItems(
@@ -210,6 +263,10 @@ public class SignUpList : BaseEntity
         SignUpItemCategory itemCategory,
         string? notes = null)
     {
+        // Phase 7D.1: Volunteer lists are slot-based only — reject quantity-based additions
+        if (Kind == SignUpKind.Volunteers)
+            return Result<SignUpItem>.Failure("Cannot add quantity-based item to a volunteer list — use slot-based roles (1 slot = 1 volunteer)");
+
         // Validate category is enabled
 #pragma warning disable CS0618 // Preferred is deprecated but still supported for backward compatibility
         var categoryEnabled = itemCategory switch
@@ -230,6 +287,8 @@ public class SignUpList : BaseEntity
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
         MarkAsUpdated();
 
@@ -264,6 +323,8 @@ public class SignUpList : BaseEntity
         if (itemResult.IsFailure)
             return Result<SignUpItem>.Failure(itemResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
         MarkAsUpdated();
 
@@ -347,7 +408,8 @@ public class SignUpList : BaseEntity
             itemDescription,
             PhysicalQuantity: quantity,  // For legacy Open commitments (quantity-based)
             SlotsClaimed: null,          // Not slot-based
-            DateTime.UtcNow));
+            DateTime.UtcNow,
+            Kind: Kind));
 
         return Result.Success();
     }
@@ -502,6 +564,10 @@ public class SignUpList : BaseEntity
         string? contactEmail = null,
         string? contactPhone = null)
     {
+        // Phase 7D.1: Volunteer lists do not allow user-submitted roles — organizer-defined only
+        if (Kind == SignUpKind.Volunteers)
+            return Result<SignUpItem>.Failure("User-submitted roles are not allowed on a volunteer list");
+
         if (!HasOpenItems)
             return Result<SignUpItem>.Failure("Open items are not enabled for this sign-up list");
 
@@ -527,9 +593,64 @@ public class SignUpList : BaseEntity
         if (commitResult.IsFailure)
             return Result<SignUpItem>.Failure(commitResult.Error);
 
+        // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
+        item.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(item);
         MarkAsUpdated();
 
         return Result<SignUpItem>.Success(item);
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Reorders items by assigning new <see cref="SignUpItem.DisplayOrder"/>
+    /// values according to the supplied <paramref name="orderedItemIds"/> sequence (index 0 =
+    /// first item). Enforces exact set equality: the supplied IDs must match the current item
+    /// set one-to-one. Missing, extra, duplicate, or unknown IDs all return failure so the
+    /// frontend can render a clear error and re-fetch. Raises
+    /// <see cref="SignUpItemsReorderedEvent"/> on success.
+    /// </summary>
+    public Result ReorderItems(IReadOnlyList<Guid> orderedItemIds)
+    {
+        if (orderedItemIds == null)
+            return Result.Failure("Ordered item IDs are required");
+
+        if (orderedItemIds.Count == 0)
+            return Result.Failure("Ordered item IDs cannot be empty");
+
+        if (orderedItemIds.Distinct().Count() != orderedItemIds.Count)
+            return Result.Failure("Ordered item IDs must not contain duplicates");
+
+        if (orderedItemIds.Count != _items.Count)
+            return Result.Failure($"Expected {_items.Count} item IDs but received {orderedItemIds.Count}");
+
+        var currentIds = _items.Select(i => i.Id).ToHashSet();
+        var submittedIds = orderedItemIds.ToHashSet();
+        if (!currentIds.SetEquals(submittedIds))
+            return Result.Failure("Ordered item IDs do not match the items in this sign-up list");
+
+        for (int position = 0; position < orderedItemIds.Count; position++)
+        {
+            var item = _items.First(i => i.Id == orderedItemIds[position]);
+            item.SetDisplayOrder(position);
+        }
+
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new SignUpItemsReorderedEvent(
+            Id,
+            orderedItemIds.ToList().AsReadOnly(),
+            DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.132: Next DisplayOrder to assign when appending a new item.
+    /// Leaves gaps from deleted items intact — we never reuse positions, which keeps
+    /// ordering stable across concurrent adds and removes.
+    /// </summary>
+    private int GetNextDisplayOrder()
+    {
+        return _items.Count == 0 ? 0 : _items.Max(i => i.DisplayOrder) + 1;
     }
 }

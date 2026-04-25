@@ -13,6 +13,7 @@ import {
 import {
   updatePreferencesSchema,
   type UpdatePreferencesFormData,
+  type UpdatePreferencesFormInput,
 } from '@/presentation/lib/validators/whatsapp.schemas';
 
 interface NotificationToggle {
@@ -48,7 +49,9 @@ export function WhatsAppPreferences() {
   const { data: preferences, isLoading } = useWhatsAppPreferences();
   const updateMutation = useUpdateWhatsAppPreferences();
 
-  const form = useForm<UpdatePreferencesFormData>({
+  // 3-generic useForm: input type = what react-hook-form holds (may include ""),
+  // context = unused, transformed type = what handleSave receives (empty strings -> null).
+  const form = useForm<UpdatePreferencesFormInput, unknown, UpdatePreferencesFormData>({
     resolver: zodResolver(updatePreferencesSchema),
     defaultValues: {
       eventRegistration: true,

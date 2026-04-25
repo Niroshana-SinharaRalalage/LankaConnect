@@ -10,6 +10,7 @@ import { CulturalInterestsSection } from '@/presentation/components/features/pro
 import { PreferredMetroAreasSection } from '@/presentation/components/features/profile/PreferredMetroAreasSection';
 import { WhatsAppOptIn } from '@/presentation/components/features/whatsapp/WhatsAppOptIn';
 import { WhatsAppPreferences } from '@/presentation/components/features/whatsapp/WhatsAppPreferences';
+import { WhatsAppUnverifiedBanner } from '@/presentation/components/features/whatsapp/WhatsAppUnverifiedBanner';
 import { Button } from '@/presentation/components/ui/Button';
 import { OfficialLogo } from '@/presentation/components/atoms/OfficialLogo';
 import { useRouter } from 'next/navigation';
@@ -112,6 +113,11 @@ export default function ProfilePage() {
         {/* Main Content */}
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="space-y-6">
+            {/* Fix 3b: WhatsApp unverified silent-drop-off banner. Self-hides when
+                preferences are null, WhatsApp is disabled, or phone is already
+                verified — scoped to /profile to avoid nagging mid-flow. */}
+            <WhatsAppUnverifiedBanner />
+
             {/* Profile Photo Section */}
             <ProfilePhotoSection />
 

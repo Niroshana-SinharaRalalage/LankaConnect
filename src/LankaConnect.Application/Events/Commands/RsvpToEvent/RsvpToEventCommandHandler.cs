@@ -156,15 +156,45 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
         // Create AttendeeDetails value objects from DTOs
         // Phase 6A.43: Updated to use AgeCategory instead of Age
+        // Phase 8: Pass TicketTierId for tiered events; resolve tier name for denormalization
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
-            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
+            // Phase 8: Resolve tier name if TicketTierId is provided
+            string? tierName = null;
+            if (attendeeDto.TicketTierId.HasValue && @event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered)
+            {
+                var tier = @event.GetTicketTier(attendeeDto.TicketTierId.Value);
+                if (tier == null)
+                {
+                    _logger.LogWarning(
+                        "RsvpToEvent: Ticket tier not found - EventId={EventId}, TierId={TierId}, Attendee={AttendeeName}",
+                        request.EventId, attendeeDto.TicketTierId.Value, attendeeDto.Name);
+                    return Result<string?>.Failure($"Ticket tier not found for attendee '{attendeeDto.Name}'");
+                }
+                if (!tier.IsActive)
+                {
+                    return Result<string?>.Failure($"Ticket tier '{tier.Name}' is not active");
+                }
+                tierName = tier.Name;
+            }
+            else if (@event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered && !attendeeDto.TicketTierId.HasValue)
+            {
+                return Result<string?>.Failure($"Ticket tier is required for attendee '{attendeeDto.Name}' (event uses tiered ticketing)");
+            }
+
+            var attendeeResult = AttendeeDetails.Create(
+                attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender,
+                attendeeDto.TicketTierId, tierName);
             if (attendeeResult.IsFailure)
                 return Result<string?>.Failure(attendeeResult.Error);
 
             attendeeDetailsList.Add(attendeeResult.Value);
         }
+
+        _logger.LogInformation(
+            "RsvpToEvent: Attendees created - EventId={EventId}, TicketingMode={Mode}, Count={Count}",
+            request.EventId, @event.TicketingMode, attendeeDetailsList.Count);
 
         // Create RegistrationContact value object
         // Phase 7A.6D: Pass WhatsApp phone + opt-in flag
@@ -488,22 +518,60 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 }
             };
 
-            // Build multi-line-item checkout when donation, add-ons, collection, or sponsor are bundled
-            var hasLineItems = bundledDonation != null || bundledAddOns.Count > 0
+            // Phase 8: Always use line items for tiered events (per-tier breakdown)
+            // Also use line items when donation, add-ons, collection, or sponsor are bundled
+            var isTiered = @event.TicketingMode == Domain.Events.Enums.TicketingMode.Tiered;
+            var hasLineItems = isTiered || bundledDonation != null || bundledAddOns.Count > 0
                 || bundledCollection != null || bundledSponsor != null;
             if (hasLineItems)
             {
                 var currency = registration.TotalPrice.Currency.ToString();
-                var lineItems = new List<CheckoutLineItem>
+                var lineItems = new List<CheckoutLineItem>();
+
+                if (isTiered && registration.Attendees != null)
                 {
-                    new CheckoutLineItem
+                    // Phase 8: Per-tier line items for tiered events
+                    var tierGroups = registration.Attendees
+                        .Where(a => a.TicketTierId != null)
+                        .GroupBy(a => new { a.TicketTierId, a.TicketTierName });
+
+                    foreach (var group in tierGroups)
+                    {
+                        var tier = @event.GetTicketTier(group.Key.TicketTierId!.Value);
+                        if (tier == null) continue;
+
+                        var adultCount = group.Count(a => a.AgeCategory == Domain.Events.Enums.AgeCategory.Adult);
+                        var childCount = group.Count(a => a.AgeCategory == Domain.Events.Enums.AgeCategory.Child);
+                        var tierTotal = group.Sum(a => tier.CalculatePriceForAttendee(a.AgeCategory).Amount);
+
+                        var descParts = new List<string>();
+                        if (adultCount > 0) descParts.Add($"{adultCount} Adult @ {tier.AdultPrice.Amount:F2}");
+                        if (childCount > 0 && tier.ChildPrice != null) descParts.Add($"{childCount} Child @ {tier.ChildPrice.Amount:F2}");
+
+                        lineItems.Add(new CheckoutLineItem
+                        {
+                            Name = $"{group.Key.TicketTierName ?? "Tier"}: {@event.Title.Value}",
+                            Description = string.Join(", ", descParts),
+                            Amount = tierTotal,
+                            Currency = currency
+                        });
+
+                        _logger.LogInformation(
+                            "RsvpToEvent: Tiered line item - Tier={TierName}, Adults={Adults}, Children={Children}, Total={Total}",
+                            group.Key.TicketTierName, adultCount, childCount, tierTotal);
+                    }
+                }
+                else
+                {
+                    // SingleTier: single registration line item
+                    lineItems.Add(new CheckoutLineItem
                     {
                         Name = $"Event Registration: {@event.Title.Value}",
                         Description = $"Registration for {registration.Attendees?.Count ?? 1} attendee(s)",
                         Amount = registration.TotalPrice.Amount,
                         Currency = currency
-                    }
-                };
+                    });
+                }
 
                 var totalAmount = registration.TotalPrice.Amount;
 

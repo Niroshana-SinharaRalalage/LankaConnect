@@ -77,6 +77,15 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .HasColumnName("gender")
                 .HasConversion<string?>()
                 .IsRequired(false);
+
+            // Multi-tier ticketing: tier assignment per attendee
+            attendeesBuilder.Property(a => a.TicketTierId)
+                .HasColumnName("ticket_tier_id")
+                .IsRequired(false);
+            attendeesBuilder.Property(a => a.TicketTierName)
+                .HasColumnName("ticket_tier_name")
+                .HasMaxLength(100)
+                .IsRequired(false);
         });
 
         // Session 21: Configure Contact as JSONB for shared contact information

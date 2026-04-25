@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Domain.Events.Entities;
 
@@ -53,6 +54,26 @@ public class Ticket : BaseEntity
     /// </summary>
     public DateTime ExpiresAt { get; private set; }
 
+    /// <summary>
+    /// Tier name for multi-tier events (e.g., "VIP", "Basic"). Null for SingleTier events.
+    /// </summary>
+    public string? TicketTierName { get; private set; }
+
+    /// <summary>
+    /// Category of this ticket: Standard (legacy), Master (group), or Individual (per-attendee)
+    /// </summary>
+    public TicketCategory TicketCategory { get; private set; } = TicketCategory.Standard;
+
+    /// <summary>
+    /// Index of the attendee this individual ticket belongs to (0-based). Null for Master/Standard tickets.
+    /// </summary>
+    public int? AttendeeIndex { get; private set; }
+
+    /// <summary>
+    /// Comma-separated attendee names for Master tickets. Null for Individual/Standard tickets.
+    /// </summary>
+    public string? AttendeeNames { get; private set; }
+
     // EF Core constructor
     private Ticket() { }
 
@@ -62,7 +83,11 @@ public class Ticket : BaseEntity
         Guid? userId,
         string ticketCode,
         string qrCodeData,
-        DateTime expiresAt)
+        DateTime expiresAt,
+        string? ticketTierName = null,
+        TicketCategory ticketCategory = TicketCategory.Standard,
+        int? attendeeIndex = null,
+        string? attendeeNames = null)
     {
         RegistrationId = registrationId;
         EventId = eventId;
@@ -71,10 +96,14 @@ public class Ticket : BaseEntity
         QrCodeData = qrCodeData;
         ExpiresAt = expiresAt;
         IsValid = true;
+        TicketTierName = ticketTierName;
+        TicketCategory = ticketCategory;
+        AttendeeIndex = attendeeIndex;
+        AttendeeNames = attendeeNames;
     }
 
     /// <summary>
-    /// Creates a new ticket for a paid event registration
+    /// Creates a new standard ticket for a paid event registration (legacy SingleTier mode)
     /// </summary>
     public static Result<Ticket> Create(
         Guid registrationId,
@@ -104,6 +133,56 @@ public class Ticket : BaseEntity
             ticketCode,
             qrCodeData,
             expiresAt);
+
+        return Result<Ticket>.Success(ticket);
+    }
+
+    /// <summary>
+    /// Creates a tiered ticket (Master or Individual) for multi-tier events
+    /// </summary>
+    public static Result<Ticket> CreateTiered(
+        Guid registrationId,
+        Guid eventId,
+        Guid? userId,
+        DateTime eventEndDate,
+        string ticketTierName,
+        TicketCategory ticketCategory,
+        int? attendeeIndex = null,
+        string? attendeeNames = null)
+    {
+        if (registrationId == Guid.Empty)
+            return Result<Ticket>.Failure("Registration ID is required");
+
+        if (eventId == Guid.Empty)
+            return Result<Ticket>.Failure("Event ID is required");
+
+        if (string.IsNullOrWhiteSpace(ticketTierName))
+            return Result<Ticket>.Failure("Ticket tier name is required for tiered tickets");
+
+        if (ticketCategory == TicketCategory.Standard)
+            return Result<Ticket>.Failure("Use Create() for standard tickets");
+
+        if (ticketCategory == TicketCategory.Individual && attendeeIndex == null)
+            return Result<Ticket>.Failure("Attendee index is required for individual tickets");
+
+        if (ticketCategory == TicketCategory.Master && string.IsNullOrWhiteSpace(attendeeNames))
+            return Result<Ticket>.Failure("Attendee names are required for master tickets");
+
+        var ticketCode = GenerateTicketCode();
+        var qrCodeData = GenerateQrCodeData(ticketCode, eventId, registrationId);
+        var expiresAt = eventEndDate.AddHours(24);
+
+        var ticket = new Ticket(
+            registrationId,
+            eventId,
+            userId,
+            ticketCode,
+            qrCodeData,
+            expiresAt,
+            ticketTierName.Trim(),
+            ticketCategory,
+            attendeeIndex,
+            attendeeNames?.Trim());
 
         return Result<Ticket>.Success(ticket);
     }

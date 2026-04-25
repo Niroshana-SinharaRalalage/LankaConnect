@@ -35,8 +35,10 @@ import {
   useAddOpenSignUpItemAnonymous,
   useUpdateOpenSignUpItem,
   useCancelOpenSignUpItem,
+  // Phase 6A.132: Drag-drop reorder
+  useReorderSignUpItems,
 } from '@/presentation/hooks/useEventSignUps';
-import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, isQuantityBased } from '@/infrastructure/api/types/events.types';
+import { SignUpType, SignUpItemCategory, SignUpItemDto, SignUpCommitmentDto, SignUpKind, isQuantityBased } from '@/infrastructure/api/types/events.types';
 import {
   Card,
   CardContent,
@@ -46,13 +48,103 @@ import {
   CardTitle,
 } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
-import { SignUpCommitmentModal, CommitmentFormData, AnonymousCommitmentFormData } from './SignUpCommitmentModal';
+import {
+  SignUpCommitmentModal,
+  CommitmentFormData,
+  AnonymousCommitmentFormData,
+  SignUpCommitmentLabels,
+  volunteerCommitmentLabels,
+} from './SignUpCommitmentModal';
 import { OpenItemSignUpModal, OpenItemFormData } from './OpenItemSignUpModal';
-import { Plus, Edit, Trash2, ChevronDown, AlertCircle, Lightbulb } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, AlertCircle, Lightbulb } from 'lucide-react';
 import { TabPanel, Tab } from '@/presentation/components/ui/TabPanel';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import toast from 'react-hot-toast';
+
+/**
+ * Phase 7D.1 Step 21: section-level copy overrides let the volunteer UI (Phase F/G)
+ * inject volunteer-specific labels without forking the component. Omit to keep
+ * existing sign-up UX 100% identical.
+ */
+export interface SignUpListsSectionLabels {
+  sectionHeading: (count: number) => string;
+  emptyStateOrganizer: { title: string; helperText: string };
+  emptyStateAttendeeTitle: string;
+  emptyStateAttendeeDescription: string;
+  signUpButton: string;
+  updateSignUpButton: string;
+  cancelSignUpButton: string;
+  cancelCommitmentDialog: { title: string; description: string };
+  cancelSignUpDialog: { title: string; description: string };
+  cancelOpenItemDialog: { title: string; description: string };
+  commitmentModal?: SignUpCommitmentLabels;
+}
+
+export const defaultSignUpListsSectionLabels: SignUpListsSectionLabels = {
+  sectionHeading: (count) =>
+    `Sign-Up Lists (This event has ${count} sign-up ${count === 1 ? 'list' : 'lists'})`,
+  emptyStateOrganizer: {
+    title: 'No sign-up lists for this event yet.',
+    helperText: 'Create one to let attendees volunteer to bring items!',
+  },
+  emptyStateAttendeeTitle: 'Sign-Up Lists',
+  emptyStateAttendeeDescription: 'No sign-up lists for this event yet.',
+  signUpButton: 'Sign Up',
+  updateSignUpButton: 'Update Sign Up',
+  cancelSignUpButton: 'Cancel Sign Up',
+  cancelCommitmentDialog: {
+    title: 'Cancel Commitment',
+    description:
+      'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
+  },
+  cancelSignUpDialog: {
+    title: 'Cancel Sign-Up',
+    description:
+      'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
+  },
+  cancelOpenItemDialog: {
+    title: 'Cancel Sign-Up',
+    description:
+      'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
+  },
+};
+
+/**
+ * Phase 7D.1 step 22: volunteer-facing copy. Mirrors the default shape but
+ * relabels list-, button-, and dialog-level text for volunteer lists. Uses
+ * `volunteerCommitmentLabels` for the nested modal so the experience is
+ * end-to-end volunteer-branded.
+ */
+export const volunteerSectionLabels: SignUpListsSectionLabels = {
+  sectionHeading: (count) =>
+    `Volunteer Roles (This event has ${count} volunteer ${count === 1 ? 'list' : 'lists'})`,
+  emptyStateOrganizer: {
+    title: 'No volunteer lists for this event yet.',
+    helperText: 'Create one to let attendees volunteer for specific roles!',
+  },
+  emptyStateAttendeeTitle: 'Volunteer Roles',
+  emptyStateAttendeeDescription: 'No volunteer roles for this event yet.',
+  signUpButton: 'Volunteer',
+  updateSignUpButton: 'Update Volunteer Sign Up',
+  cancelSignUpButton: 'Cancel Volunteer Sign Up',
+  cancelCommitmentDialog: {
+    title: 'Cancel Volunteer Commitment',
+    description:
+      'Are you sure you want to cancel your volunteer commitment? This action cannot be undone.',
+  },
+  cancelSignUpDialog: {
+    title: 'Cancel Volunteer Sign-Up',
+    description:
+      'Are you sure you want to cancel your volunteer sign-up for this role? This action cannot be undone.',
+  },
+  cancelOpenItemDialog: {
+    title: 'Cancel Volunteer Sign-Up',
+    description:
+      'Are you sure you want to cancel this volunteer sign-up? This action cannot be undone.',
+  },
+  commitmentModal: volunteerCommitmentLabels,
+};
 
 /**
  * Props for SignUpManagementSection
@@ -61,6 +153,15 @@ interface SignUpManagementSectionProps {
   eventId: string;
   userId?: string; // Current user ID (undefined if not logged in)
   isOrganizer?: boolean; // Is current user the event organizer
+  /**
+   * Optional copy overrides. Omit to keep existing UX unchanged.
+   */
+  labels?: SignUpListsSectionLabels;
+  /**
+   * Phase 7D.1 step 22: filter fetched lists by kind. Omit to fetch unfiltered
+   * (existing behaviour — backward compatible with all pre-7D.1 callers).
+   */
+  kind?: SignUpKind;
 }
 
 /**
@@ -70,8 +171,11 @@ export function SignUpManagementSection({
   eventId,
   userId,
   isOrganizer = false,
+  labels,
+  kind,
 }: SignUpManagementSectionProps) {
   const router = useRouter();
+  const effectiveLabels = labels ?? defaultSignUpListsSectionLabels;
   const [commitDialogOpen, setCommitDialogOpen] = useState(false);
   const [selectedSignUpId, setSelectedSignUpId] = useState<string | null>(null);
   const [itemDescription, setItemDescription] = useState('');
@@ -127,8 +231,8 @@ export function SignUpManagementSection({
   const [openItemSignUpListCategory, setOpenItemSignUpListCategory] = useState<string>('');
   const [editingOpenItem, setEditingOpenItem] = useState<SignUpItemDto | null>(null);
 
-  // Fetch sign-up lists
-  const { data: signUpLists, isLoading, error } = useEventSignUps(eventId);
+  // Fetch sign-up lists (Phase 7D.1: optional kind filter)
+  const { data: signUpLists, isLoading, error } = useEventSignUps(eventId, kind);
 
   // Mutations
   const commitToSignUp = useCommitToSignUp();
@@ -142,6 +246,9 @@ export function SignUpManagementSection({
   const addOpenSignUpItemAnonymous = useAddOpenSignUpItemAnonymous();
   const updateOpenSignUpItem = useUpdateOpenSignUpItem();
   const cancelOpenSignUpItem = useCancelOpenSignUpItem();
+
+  // Phase 6A.132: Organizer-only reorder via up/down chevron buttons
+  const reorderSignUpItems = useReorderSignUpItems();
 
   // Auth store for user info
   const { user } = useAuthStore();
@@ -157,20 +264,11 @@ export function SignUpManagementSection({
   const getCancelDialogContent = (type: CancelDialogType | null) => {
     switch (type) {
       case 'commitment':
-        return {
-          title: 'Cancel Commitment',
-          description: 'Are you sure you want to cancel your commitment to this sign-up list? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelCommitmentDialog;
       case 'signUpItem':
-        return {
-          title: 'Cancel Sign-Up',
-          description: 'Are you sure you want to cancel your sign-up for this item? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelSignUpDialog;
       case 'openItem':
-        return {
-          title: 'Cancel Sign-Up',
-          description: 'Are you sure you want to remove this item you offered to bring? This action cannot be undone.',
-        };
+        return effectiveLabels.cancelOpenItemDialog;
       default:
         return { title: '', description: '' };
     }
@@ -512,8 +610,8 @@ export function SignUpManagementSection({
     if (isOrganizer) {
       return (
         <div className="py-8 text-center text-muted-foreground">
-          <p>No sign-up lists for this event yet.</p>
-          <p className="text-sm mt-2">Create one to let attendees volunteer to bring items!</p>
+          <p>{effectiveLabels.emptyStateOrganizer.title}</p>
+          <p className="text-sm mt-2">{effectiveLabels.emptyStateOrganizer.helperText}</p>
         </div>
       );
     }
@@ -523,9 +621,9 @@ export function SignUpManagementSection({
       <div className="py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Sign-Up Lists</CardTitle>
+            <CardTitle>{effectiveLabels.emptyStateAttendeeTitle}</CardTitle>
             <CardDescription>
-              No sign-up lists for this event yet.
+              {effectiveLabels.emptyStateAttendeeDescription}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -541,7 +639,7 @@ export function SignUpManagementSection({
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">
-        Sign-Up Lists (This event has {signUpLists.length} sign-up {signUpLists.length === 1 ? 'list' : 'lists'})
+        {effectiveLabels.sectionHeading(signUpLists.length)}
       </h2>
 
       {/* Tab navigation - Only show if multiple lists */}
@@ -611,7 +709,13 @@ export function SignUpManagementSection({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/events/${eventId}/signup-lists/${signUpList.id}`)}
+                          onClick={() =>
+                            router.push(
+                              signUpList.kind === SignUpKind.Volunteers
+                                ? `/events/${eventId}/volunteer-lists/${signUpList.id}`
+                                : `/events/${eventId}/signup-lists/${signUpList.id}`
+                            )
+                          }
                           className="text-orange-600 hover:text-orange-700"
                         >
                           <Edit className="h-4 w-4 mr-2" />
@@ -648,26 +752,99 @@ export function SignUpManagementSection({
                     );
                     const openItems = signUpList.items.filter(item => item.isOpenItem);
 
+                    // Phase 6A.132: Move an item up/down within its category. Backend enforces
+                    // exact-set equality across the whole list, so the swapped sub-sequence is
+                    // merged back into the full signUpList.items order before the PUT.
+                    const moveItemInCategory = (
+                      categoryItems: SignUpItemDto[],
+                      fromIndex: number,
+                      direction: 'up' | 'down'
+                    ) => {
+                      const toIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+                      if (toIndex < 0 || toIndex >= categoryItems.length) return;
+                      const reorderedCategory = [...categoryItems];
+                      [reorderedCategory[fromIndex], reorderedCategory[toIndex]] =
+                        [reorderedCategory[toIndex], reorderedCategory[fromIndex]];
+                      const categoryIdSet = new Set(categoryItems.map(i => i.id));
+                      const reorderedIter = reorderedCategory[Symbol.iterator]();
+                      const orderedItemIds = signUpList.items.map(fullItem =>
+                        categoryIdSet.has(fullItem.id)
+                          ? (reorderedIter.next().value as SignUpItemDto).id
+                          : fullItem.id
+                      );
+                      reorderSignUpItems.mutate(
+                        { eventId, signupId: signUpList.id, orderedItemIds },
+                        {
+                          onError: (err: Error) => {
+                            toast.error(err.message || 'Reorder failed. Please try again.');
+                          },
+                        }
+                      );
+                    };
+
                     // Helper function to render items for a category
                     const renderCategoryItems = (items: SignUpItemDto[], category: SignUpItemCategory) => (
                       <div className="space-y-3">
-                        {items.map((item) => {
-                            const userItemCommitment = item.commitments.find(c => c.userId === userId);
-                            const totalQty = isQuantityBased(item) ? item.targetQuantity : item.totalSlots;
-                            const committedQty = isQuantityBased(item) ? item.committedQuantity : item.filledSlots;
-                            const remainingQty = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
-                            const percentCommitted = Math.round((committedQty / totalQty) * 100);
-                            const isExpanded = expandedItems.has(item.id);
+                        {items.map((item, itemIndex) => {
+                              const userItemCommitment = item.commitments.find(c => c.userId === userId);
+                              const totalQty = isQuantityBased(item) ? item.targetQuantity : item.totalSlots;
+                              const committedQty = isQuantityBased(item) ? item.committedQuantity : item.filledSlots;
+                              const remainingQty = isQuantityBased(item) ? item.remainingQuantity : item.remainingSlots;
+                              const percentCommitted = Math.round((committedQty / totalQty) * 100);
+                              const isExpanded = expandedItems.has(item.id);
 
-                            return (
-                              <div key={item.id} className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}>
+                              const isFirstInCategory = itemIndex === 0;
+                              const isLastInCategory = itemIndex === items.length - 1;
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={`rounded-lg p-4 space-y-2 ${getItemCardStyle(category)}`}
+                                >
+                                  {/* Phase 6A.132: Up/Down reorder buttons — organizer-only.
+                                      Up disabled on the first item, Down disabled on the last.
+                                      Phase 6A.132 UX follow-up 4: intentionally NOT gated on
+                                      `reorderSignUpItems.isPending`. The mutation's optimistic
+                                      update (`onMutate` in useReorderSignUpItems) already
+                                      updates the cache synchronously, so the visual move is
+                                      instant. Gating on `isPending` locked both buttons for
+                                      the full mutation + onSettled-refetch window (~500-1500ms),
+                                      which the user perceived as "I have to click twice" (the
+                                      first click landed on a disabled button → no-op). React
+                                      Query handles concurrent in-flight mutations; each click
+                                      fires `onMutate` → `cancelQueries` → new optimistic state,
+                                      and the server processes PUTs in arrival order. Exact-set
+                                      equality is enforced per-request, so rapid clicks are safe. */}
+                                  {isOrganizer && items.length > 1 && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => moveItemInCategory(items, itemIndex, 'up')}
+                                        disabled={isFirstInCategory}
+                                        aria-label={`Move ${item.itemDescription} up`}
+                                        className="inline-flex items-center justify-center rounded border border-neutral-300 bg-white p-1 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        <ChevronUp className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => moveItemInCategory(items, itemIndex, 'down')}
+                                        disabled={isLastInCategory}
+                                        aria-label={`Move ${item.itemDescription} down`}
+                                        className="inline-flex items-center justify-center rounded border border-neutral-300 bg-white p-1 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                      >
+                                        <ChevronDown className="h-4 w-4" />
+                                      </button>
+                                      <span className="text-xs text-neutral-500 ml-1">Reorder</span>
+                                    </div>
+                                  )}
                                 {/* Phase 6A.118: Item Header - Always Visible */}
                                 <div className="flex items-start gap-2">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-medium">{item.itemDescription}</p>
                                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
-                                        Suggested Quantity: {totalQty}
+                                        {isQuantityBased(item) ? 'Suggested Quantity' : 'Suggested Slots'}: {totalQty}
                                       </span>
                                     </div>
                                     {item.notes && (
@@ -708,7 +885,7 @@ export function SignUpManagementSection({
                                       size="sm"
                                       variant={userItemCommitment ? "default" : "outline"}
                                     >
-                                      {userItemCommitment ? 'Update Sign Up' : 'Sign Up'}
+                                      {userItemCommitment ? effectiveLabels.updateSignUpButton : effectiveLabels.signUpButton}
                                     </Button>
                                     {userItemCommitment && (
                                       <Button
@@ -716,7 +893,7 @@ export function SignUpManagementSection({
                                         size="sm"
                                         variant="destructive"
                                       >
-                                        Cancel Sign Up
+                                        {effectiveLabels.cancelSignUpButton}
                                       </Button>
                                     )}
                                   </div>
@@ -789,9 +966,9 @@ export function SignUpManagementSection({
                                     )}
                                   </>
                                 )}
-                              </div>
-                            );
-                          })}
+                                </div>
+                              );
+                            })}
                       </div>
                     );
 
@@ -1082,6 +1259,8 @@ export function SignUpManagementSection({
         onCommit={handleCommitToItem}
         onCommitAnonymous={handleCommitToItemAnonymous}
         isSubmitting={commitToSignUpItem.isPending}
+        labels={effectiveLabels.commitmentModal}
+        hideQuantitySelector={kind === SignUpKind.Volunteers}
       />
 
       {/* Phase 6A.27: Open Item Sign-Up Modal */}

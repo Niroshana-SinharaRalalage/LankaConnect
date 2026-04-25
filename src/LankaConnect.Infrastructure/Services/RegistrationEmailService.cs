@@ -1,5 +1,6 @@
 using System.Text;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
@@ -89,6 +90,14 @@ public class RegistrationEmailService : IRegistrationEmailService
                 eventDetailsUrl: eventDetailsUrl,
                 registrationDate: registration.CreatedAt
             );
+
+            // Phase 7C.2b Chunk 2c: emit decomposed location keys so the
+            // Venue Name + Address + optional Secondary Location block renders
+            // correctly in the free-event confirmation template. Without this,
+            // the fallback in ToDictionary() would project the scalar into
+            // LocationAddress (keeping the email non-empty) — but the primary
+            // goal is multi-venue support for events with a named venue.
+            emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
             // Set timezone for consistent date/time display
             emailParams.TimeZoneId = @event.TimeZoneId;
@@ -218,6 +227,15 @@ public class RegistrationEmailService : IRegistrationEmailService
                 quantity: registration.Attendees?.Count ?? 1
             );
 
+            // Phase 7C.2b Chunk 2c: emit decomposed location keys — root cause
+            // of the 2026-04-23 "empty LOCATION header on paid-ticket resend"
+            // regression was that this handler path (used by
+            // ResendAttendeeConfirmationCommandHandler) never called
+            // WithLocationDetails, so the ToDictionary() fallback projected an
+            // empty LocationAddress into the decomposed template. Mirrors the
+            // call in PaymentCompletedEventHandler.cs:246.
+            emailParams.WithLocationDetails(@event.ProjectEmailLocation());
+
             // Set timezone for consistent date/time display
             emailParams.TimeZoneId = @event.TimeZoneId;
             emailParams.RegistrationDate = registration.CreatedAt;
@@ -338,6 +356,7 @@ public class RegistrationEmailService : IRegistrationEmailService
     /// <summary>
     /// Builds HTML for attendee details display in email template.
     /// Shows attendee names only (no ages) in paragraph format.
+    /// Slice 7 S7.7: Appends seat label when the attendee has one (assigned-seating events).
     /// </summary>
     private string BuildAttendeeDetailsHtml(Registration registration)
     {
@@ -347,7 +366,10 @@ public class RegistrationEmailService : IRegistrationEmailService
         var html = new StringBuilder();
         foreach (var attendee in registration.Attendees)
         {
-            html.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}</p>");
+            var seatSuffix = !string.IsNullOrWhiteSpace(attendee.SeatLabel)
+                ? $" <span style=\"color: #2563EB; font-weight: 600;\">(Seat {attendee.SeatLabel})</span>"
+                : "";
+            html.AppendLine($"<p style=\"margin: 8px 0; font-size: 16px;\">{attendee.Name}{seatSuffix}</p>");
         }
 
         return html.ToString().TrimEnd();

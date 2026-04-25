@@ -65,6 +65,20 @@ public class EmailTemplateContractTests
         emailParams.TemplateName.Should().Be(EmailTemplateContract.TemplateNames.PasswordChangeConfirmation);
     }
 
+    [Fact]
+    public void TemplateNames_VolunteerCommitmentConfirmation_ShouldHaveExpectedValue()
+    {
+        EmailTemplateContract.TemplateNames.VolunteerCommitmentConfirmation
+            .Should().Be("template-volunteer-commitment-confirmation");
+    }
+
+    [Fact]
+    public void TemplateNames_VolunteerCommitmentCancellation_ShouldHaveExpectedValue()
+    {
+        EmailTemplateContract.TemplateNames.VolunteerCommitmentCancellation
+            .Should().Be("template-volunteer-commitment-cancellation");
+    }
+
     #endregion
 
     #region Common Parameters Tests

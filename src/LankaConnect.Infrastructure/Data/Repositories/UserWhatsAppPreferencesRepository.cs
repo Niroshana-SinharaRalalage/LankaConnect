@@ -139,6 +139,79 @@ public class UserWhatsAppPreferencesRepository : Repository<UserWhatsAppPreferen
         }
     }
 
+    public async Task<int> GetUsersEnabledButUnverifiedCountAsync(CancellationToken ct = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetUsersEnabledButUnverifiedCount"))
+        using (LogContext.PushProperty("EntityType", "UserWhatsAppPreferences"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _repoLogger.LogDebug("GetUsersEnabledButUnverifiedCountAsync START");
+
+            try
+            {
+                var count = await _dbSet
+                    .AsNoTracking()
+                    .CountAsync(p => p.WhatsAppEnabled && !p.PhoneVerified, ct);
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "GetUsersEnabledButUnverifiedCountAsync COMPLETE: Count={Count}, Duration={ElapsedMs}ms",
+                    count, stopwatch.ElapsedMilliseconds);
+
+                return count;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "GetUsersEnabledButUnverifiedCountAsync FAILED: Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+                throw;
+            }
+        }
+    }
+
+    public async Task<IReadOnlyList<UserWhatsAppPreferences>> GetStaleUnverifiedAsync(
+        DateTime cutoff, CancellationToken ct = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetStaleUnverified"))
+        using (LogContext.PushProperty("EntityType", "UserWhatsAppPreferences"))
+        using (LogContext.PushProperty("Cutoff", cutoff))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _repoLogger.LogDebug("GetStaleUnverifiedAsync START: Cutoff={Cutoff:o}", cutoff);
+
+            try
+            {
+                // Tracked (not AsNoTracking) — the auto-disable job mutates each row
+                // and SaveChangesAsync will flush the update + fire the domain event.
+                var result = await _dbSet
+                    .Where(p => p.WhatsAppEnabled
+                             && !p.PhoneVerified
+                             && p.WhatsAppEnabledAt != null
+                             && p.WhatsAppEnabledAt < cutoff)
+                    .ToListAsync(ct);
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "GetStaleUnverifiedAsync COMPLETE: Cutoff={Cutoff:o}, Count={Count}, Duration={ElapsedMs}ms",
+                    cutoff, result.Count, stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "GetStaleUnverifiedAsync FAILED: Cutoff={Cutoff:o}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    cutoff, stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+                throw;
+            }
+        }
+    }
+
     public async Task<IReadOnlyList<UserWhatsAppPreferences>> GetUsersOptedInForNotificationTypeAsync(
         WhatsAppNotificationType notificationType, CancellationToken ct = default)
     {

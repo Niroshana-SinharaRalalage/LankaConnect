@@ -19,6 +19,12 @@ public record TicketDto
     public DateTime ExpiresAt { get; init; }
     public DateTime CreatedAt { get; init; }
 
+    // Phase 8: Multi-tier ticketing fields
+    public string? TicketTierName { get; init; }
+    public TicketCategory TicketCategory { get; init; }
+    public int? AttendeeIndex { get; init; }
+    public string? AttendeeNames { get; init; }
+
     // Event details for display
     public string? EventTitle { get; init; }
     public DateTime? EventStartDate { get; init; }
@@ -38,4 +44,7 @@ public record TicketAttendeeDto
     public string Name { get; init; } = string.Empty;
     public AgeCategory? AgeCategory { get; init; } // Nullable to handle data integrity issues
     public Gender? Gender { get; init; }
+    // Phase 8: Tier assignment per attendee
+    public Guid? TicketTierId { get; init; }
+    public string? TicketTierName { get; init; }
 }

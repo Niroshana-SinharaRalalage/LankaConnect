@@ -183,7 +183,36 @@ jobs:
               Stripe__SecretKey=secretref:stripe-secret-key \
               Stripe__PublishableKey=secretref:stripe-publishable-key \
               Stripe__WebhookSecret=secretref:stripe-webhook-secret \
-              WhatsAppSettings__Enabled=true
+              WhatsAppSettings__Enabled=true \
+              WhatsAppSettings__Provider=Twilio \
+              WhatsAppSettings__TwilioAccountSid=secretref:twilio-account-sid \
+              WhatsAppSettings__TwilioAuthToken=secretref:twilio-auth-token \
+              WhatsAppSettings__TwilioWhatsAppNumber=secretref:twilio-whatsapp-number \
+              WhatsAppSettings__TwilioContentSids__phone_verification=HX67ba357847341b891d999b583fc6fa27 \
+              WhatsAppSettings__TwilioContentSids__signup_commitment_cancelled=HX583663d48d5e71afd843cd10af71f3d9 \
+              WhatsAppSettings__TwilioContentSids__form_response_confirmed=HX73c2be44d9156b9f09329cbc2edf9967 \
+              WhatsAppSettings__TwilioContentSids__new_event_announcement=HX346704719517ae90010e5af0570346f9 \
+              WhatsAppSettings__TwilioContentSids__sponsor_confirmation=HX20aadc3c70aad42d007d456393b18269 \
+              WhatsAppSettings__TwilioContentSids__signup_commitment_confirmed=HXf555fb5ec6d9ec22cc20afdc5b37efcf \
+              WhatsAppSettings__TwilioContentSids__event_postponed=HX6fbb78f220b1fad588eb554884df8ace \
+              WhatsAppSettings__TwilioContentSids__collection_receipt=HXfa788d215e3739978bc0e837a5dd864e \
+              WhatsAppSettings__TwilioContentSids__donation_receipt=HX047ecfcf57f8409867414d52d4d069e7 \
+              WhatsAppSettings__TwilioContentSids__event_details_update=HX554ee6ca19282dbb670e82ba8ecd68c7 \
+              WhatsAppSettings__TwilioContentSids__event_registration_confirmed=HXa898bf71c087e6f91e130e5b170d1033 \
+              WhatsAppSettings__TwilioContentSids__event_rejected=HXf5e67da914651a258a9a3e1e3f7e0d2e \
+              WhatsAppSettings__TwilioContentSids__refund_completed=HXdd7156e4f441b22ec3b1b7568dc88a32 \
+              WhatsAppSettings__TwilioContentSids__registration_cancelled=HXf076845bb071e8faa76027d645f08ff0 \
+              WhatsAppSettings__TwilioContentSids__signup_commitment_updated=HXe2d512a4ad9a9a7aae54b8ed78028a3f \
+              WhatsAppSettings__TwilioContentSids__event_cancelled=HX449794c395b6fc477d07e649bfc8987a \
+              WhatsAppSettings__TwilioContentSids__payment_pending_reminder=HX52466feb7e5397299bc12bcb681798f0 \
+              WhatsAppSettings__TwilioContentSids__attendees_added=HX8c6ebc13c382e9b01d1b1d05c9e4bc60 \
+              WhatsAppSettings__TwilioContentSids__addon_purchase_receipt=HXfc46ec741cc014693f301fe5ea0aec37 \
+              WhatsAppSettings__TwilioContentSids__event_reminder=HX241cf0441f30b72197fef80328750baa \
+              WhatsAppSettings__TwilioContentSids__refund_initiated=HXb07ab748e3bf50fe659bc89dd0327375 \
+              WhatsAppSettings__TwilioContentSids__event_approved=HX81ec1d4f558447d762ab15e451b6325b \
+              WhatsAppSettings__TwilioContentSids__newsletter_broadcast=HX17b7b6276a4cd5e9967bff89bf145c22 \
+              WhatsAppSettings__TwilioContentSids__event_ticket_confirmation=HXb161bc8eb956f4637ab4f961d4d08ca4 \
+              WhatsAppSettings__TwilioContentSids__photo_album_published=HXcbb9d987a5953d9e7465f994f0d72dd5
 
           # Ensure ingress is configured for port 5000
           az containerapp ingress update \

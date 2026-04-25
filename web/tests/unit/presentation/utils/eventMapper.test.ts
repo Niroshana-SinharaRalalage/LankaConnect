@@ -67,6 +67,10 @@ function createMockEvent(overrides: Partial<EventDto> = {}): EventDto {
     groupPricingTiers: [],
     hasGroupPricing: false,
     publishOrganizerContact: false,
+    ticketingMode: 'SingleTier' as any,
+    ticketTiers: [],
+    hasTicketTiers: false,
+    hasSecondaryLocation: false,
     ...overrides,
   };
 }

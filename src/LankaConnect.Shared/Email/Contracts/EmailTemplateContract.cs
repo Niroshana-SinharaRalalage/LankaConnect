@@ -63,6 +63,13 @@ public static class EmailTemplateContract
         public const string SignupCommitmentUpdate = "template-signup-list-commitment-update";
         public const string SignupCommitmentCancellation = "template-signup-list-commitment-cancellation";
 
+        // Phase 7D.1: Volunteer Recruitment Templates
+        public const string VolunteerCommitmentConfirmation = "template-volunteer-commitment-confirmation";
+        public const string VolunteerCommitmentCancellation = "template-volunteer-commitment-cancellation";
+
+        // Phase 7D Fix 4: Auto-disabled WhatsApp notification (30-day unverified grace expired)
+        public const string WhatsAppAutoDisabled = "template-whatsapp-auto-disabled";
+
         // Support Templates
         public const string SupportTicketConfirmation = "template-support-ticket-confirmation"; // Phase 6A.113: Renamed from SupportTicketReceived, corrected value
         public const string SupportTicketReply = "template-support-ticket-reply";
@@ -174,8 +181,62 @@ public static class EmailTemplateContract
 
         /// <summary>
         /// Event location/address.
+        /// Phase 7C.2: Legacy single-line format preserved for backward compatibility with
+        /// un-migrated templates. Prefer the decomposed <see cref="LocationName"/> +
+        /// <see cref="LocationAddress"/> pair introduced in Phase 7C.2.
         /// </summary>
         public const string EventLocation = "EventLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the primary location block — the venue name
+        /// (e.g., "Aurora Clubhouse"). Empty string when the event has no venue name
+        /// or no physical location.
+        /// </summary>
+        public const string LocationName = "LocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the primary location block — the full comma-separated
+        /// address: "Street, City, State, ZipCode, Country". Empty string for online events.
+        /// </summary>
+        public const string LocationAddress = "LocationAddress";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasLocationName}} — true when a venue name
+        /// is present on the primary location.
+        /// </summary>
+        public const string HasLocationName = "HasLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocation}} — true when the event
+        /// has a secondary (parking lot / secondary venue) address configured.
+        /// </summary>
+        public const string HasSecondaryLocation = "HasSecondaryLocation";
+
+        /// <summary>
+        /// Phase 7C.2: Visible label for the secondary location block — "Parking Lot" or
+        /// "Secondary Venue" based on <c>SecondaryLocationType</c>. No trailing colon
+        /// (the template supplies the colon).
+        /// </summary>
+        public const string SecondaryLocationLabel = "SecondaryLocationLabel";
+
+        /// <summary>
+        /// Phase 7C.2: Bold first line of the secondary location block — the venue name
+        /// (e.g., "Geoga Lake Parking"). Empty string when the secondary location is
+        /// unnamed.
+        /// </summary>
+        public const string SecondaryLocationName = "SecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Boolean flag for {{#if HasSecondaryLocationName}} — true when the
+        /// secondary location has a venue name.
+        /// </summary>
+        public const string HasSecondaryLocationName = "HasSecondaryLocationName";
+
+        /// <summary>
+        /// Phase 7C.2: Second line of the secondary location block — the full
+        /// comma-separated address. Empty string when no secondary location.
+        /// </summary>
+        public const string SecondaryLocationAddress = "SecondaryLocationAddress";
 
         /// <summary>
         /// URL to the event details page.
@@ -1058,6 +1119,29 @@ public static class EmailTemplateContract
         public const string RefundedAt = "RefundedAt";
         public const string PaymentIntentId = "PaymentIntentId";
         public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region WhatsApp Auto-Disabled Parameters
+
+    /// <summary>
+    /// Phase 7D Fix 4: parameters for the "we turned WhatsApp off because you never verified"
+    /// email. Sent by the daily <c>ExpireUnverifiedWhatsAppPreferencesJob</c> — never user-triggered.
+    /// </summary>
+    public static class WhatsAppAutoDisabled
+    {
+        /// <summary>Last 4 digits of the phone number, e.g. "•••• 3717" — never the full number.</summary>
+        public const string MaskedPhone = "MaskedPhone";
+
+        /// <summary>Formatted enable date, e.g. "March 22, 2026".</summary>
+        public const string EnabledAt = "EnabledAt";
+
+        /// <summary>Grace window size in days (e.g. 30) so the copy reads "after 30 days".</summary>
+        public const string GracePeriodDays = "GracePeriodDays";
+
+        /// <summary>URL to the WhatsApp preferences page where the user can re-enable.</summary>
+        public const string ReEnableUrl = "ReEnableUrl";
     }
 
     #endregion

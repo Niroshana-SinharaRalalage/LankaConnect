@@ -132,6 +132,8 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .Include("_emailGroupEntities")  // Phase 6A.33: Include email groups shadow navigation from junction table
                     .Include(e => e.Location)  // Phase 6A.X FIX: Include Location for revenue breakdown calculation
                     .Include(e => e.OrganizerContacts)  // Multiple organizer contacts
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers for tiered ticketing
+                        .ThenInclude(t => t.Assignments)  // Slice 4 Chunk 8: polymorphic tier→zone/table assignments (required by VenueLayout.ValidateForEvent)
                     .Include(e => e.SignUpLists)
                         .ThenInclude(s => s.Items)
                             .ThenInclude(i => i.Commitments);
@@ -271,6 +273,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)  // For CurrentRegistrations count
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                     .ToListAsync(cancellationToken);
 
                 stopwatch.Stop();
@@ -318,6 +321,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                     .AsNoTracking()
                     .Include(e => e.Images)
                     .Include(e => e.Registrations)
+                    .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                     .Where(e => e.OrganizerId == organizerId
                         || e.OrganizerContacts.Any(c => c.LinkedUserId == organizerId))
                     .OrderByDescending(e => e.StartDate)
@@ -736,6 +740,7 @@ public class EventRepository : Repository<Event>, IEventRepository
                 .Include(e => e.Images)
                 .Include(e => e.Videos)
                 .Include(e => e.Registrations)
+                .Include(e => e.TicketTiers)  // Phase 8: Include ticket tiers
                 .ToListAsync(cancellationToken);
 
             _repoLogger.LogInformation("[SEARCH-7] Events query succeeded - Found {EventCount} events", events.Count);
@@ -848,5 +853,20 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(e => e.OrganizerContacts)  // Phase 6A.132: Load organizer contacts for commitment update emails
             .Where(e => e.SignUpLists.Any(sl => sl.Items.Any(item => item.Id == signUpItemId)))
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Slice 5 Chunk 8: loads a <see cref="Domain.Events.Entities.TicketTier"/> with its
+    /// polymorphic <c>Assignments</c> collection eager-loaded. Tracked so
+    /// <c>AssignToZone</c> / <c>RemoveAssignment</c> domain mutations persist through
+    /// <c>SaveChanges</c>.
+    /// </summary>
+    public async Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
+        Guid tierId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Set<Domain.Events.Entities.TicketTier>()
+            .Include(t => t.Assignments)
+            .FirstOrDefaultAsync(t => t.Id == tierId, cancellationToken);
     }
 }

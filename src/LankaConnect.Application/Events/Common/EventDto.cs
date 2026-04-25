@@ -44,6 +44,31 @@ public record EventDto
     public decimal? Longitude { get; init; }
 
     /// <summary>
+    /// Phase 7C.1: Optional venue/location name (e.g., "Park Community Hall").
+    /// Displayed separately from the street address on event details.
+    /// </summary>
+    public string? LocationName { get; init; }
+
+    // Phase 7C.1: Secondary Location (optional — parking lot or secondary venue)
+    /// <summary>
+    /// Phase 7C.1: Secondary location type — "ParkingLot" or "SecondaryVenue". Null if not configured.
+    /// </summary>
+    public string? SecondaryLocationType { get; init; }
+    public string? SecondaryLocationName { get; init; }
+    public string? SecondaryAddress { get; init; }
+    public string? SecondaryCity { get; init; }
+    public string? SecondaryState { get; init; }
+    public string? SecondaryZipCode { get; init; }
+    public string? SecondaryCountry { get; init; }
+    public decimal? SecondaryLatitude { get; init; }
+    public decimal? SecondaryLongitude { get; init; }
+
+    /// <summary>
+    /// Phase 7C.1: True when the event has a configured secondary location.
+    /// </summary>
+    public bool HasSecondaryLocation { get; init; }
+
+    /// <summary>
     /// Phase 6A.97: IANA timezone ID for consistent date/time display (e.g., "America/New_York").
     /// Derived from event location (US state). Used by frontend to display times in event's local timezone.
     /// </summary>
@@ -151,6 +176,33 @@ public record EventDto
     /// Null if add-ons have never been configured.
     /// </summary>
     public AddOnConfigurationDto? AddOnConfig { get; init; }
+
+    // Phase 2: Seating
+    /// <summary>
+    /// Phase 2: Seating mode — GeneralAdmission (default) or AssignedSeating.
+    /// </summary>
+    public SeatingMode SeatingMode { get; init; }
+
+    /// <summary>
+    /// Phase 2: Venue layout ID if assigned seating is enabled.
+    /// </summary>
+    public Guid? VenueLayoutId { get; init; }
+
+    // Phase 8: Multi-Tier Ticketing
+    /// <summary>
+    /// Phase 8: Ticketing mode — SingleTier (legacy) or Tiered (multi-tier pricing).
+    /// </summary>
+    public TicketingMode TicketingMode { get; init; }
+
+    /// <summary>
+    /// Phase 8: Ticket tiers for this event (only populated when TicketingMode == Tiered).
+    /// </summary>
+    public IReadOnlyList<TicketTierDto> TicketTiers { get; init; } = Array.Empty<TicketTierDto>();
+
+    /// <summary>
+    /// Phase 8: Whether event has active ticket tiers configured.
+    /// </summary>
+    public bool HasTicketTiers { get; init; }
 
     /// <summary>
     /// Issue #2: User's registration status for this event (if user is registered)

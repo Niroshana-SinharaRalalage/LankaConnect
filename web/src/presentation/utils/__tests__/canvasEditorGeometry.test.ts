@@ -22,6 +22,8 @@ import {
   applyRotationToGeometry,
   readGeometryDimensions,
   resolveGeometry,
+  resolveTierAssignments,
+  toggleTierAssignment,
   collectItemCenters,
   generateClientId,
   nextZoneColor,
@@ -691,5 +693,58 @@ describe('createDecorationDraft', () => {
       DecorationKind.Aisle,
     );
     expect(aisle.kind).toBe(DecorationKind.Aisle);
+  });
+});
+
+// ─────────────────────────── S8.7 tier assignment helpers ───────────────────────────
+
+describe('resolveTierAssignments', () => {
+  it('returns the persisted ticketTierIds when no draft override exists', () => {
+    const zone = {
+      id: 'z1',
+      ticketTierIds: ['tier-a', 'tier-b'],
+    };
+    expect(resolveTierAssignments('zone', zone, {})).toEqual(['tier-a', 'tier-b']);
+  });
+
+  it('returns an empty array when ticketTierIds is null/undefined and no override', () => {
+    const zone = { id: 'z1' } as { id: string; ticketTierIds?: string[] | null };
+    expect(resolveTierAssignments('zone', zone, {})).toEqual([]);
+  });
+
+  it('prefers the draft override over the persisted array', () => {
+    const zone = { id: 'z1', ticketTierIds: ['tier-a'] };
+    expect(
+      resolveTierAssignments('zone', zone, { 'zone:z1': ['tier-b', 'tier-c'] }),
+    ).toEqual(['tier-b', 'tier-c']);
+  });
+
+  it('keys by kind+id so a zone and table with the same id do not collide', () => {
+    const zone = { id: 'same', ticketTierIds: ['tier-zone'] };
+    const table = { id: 'same', ticketTierIds: ['tier-table'] };
+    const drafts = { 'zone:same': ['override-z'] };
+    expect(resolveTierAssignments('zone', zone, drafts)).toEqual(['override-z']);
+    expect(resolveTierAssignments('table', table, drafts)).toEqual(['tier-table']);
+  });
+});
+
+describe('toggleTierAssignment', () => {
+  it('adds the tier when absent', () => {
+    expect(toggleTierAssignment(['a', 'b'], 'c')).toEqual(['a', 'b', 'c']);
+  });
+
+  it('removes the tier when present', () => {
+    expect(toggleTierAssignment(['a', 'b', 'c'], 'b')).toEqual(['a', 'c']);
+  });
+
+  it('does not mutate the input list', () => {
+    const input = ['a', 'b'];
+    toggleTierAssignment(input, 'c');
+    expect(input).toEqual(['a', 'b']);
+  });
+
+  it('round-trips when the same tier is toggled twice', () => {
+    const once = toggleTierAssignment(['a'], 'b');
+    expect(toggleTierAssignment(once, 'b')).toEqual(['a']);
   });
 });

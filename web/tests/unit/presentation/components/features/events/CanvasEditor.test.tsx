@@ -44,6 +44,21 @@ vi.mock(
   },
 );
 
+// Slice 8 S8.7 — stub the ticket-tier hook so the editor can mount without
+// a QueryClientProvider. The test shape matters more than the fetch.
+vi.mock('@/presentation/hooks/useTicketTiers', () => ({
+  useTicketTiers: () => ({
+    data: [
+      { id: 't-vip', name: 'VIP' },
+      { id: 't-plus', name: 'Plus' },
+    ],
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+}));
+
 // Stub next/dynamic to resolve synchronously in tests.
 vi.mock('next/dynamic', () => ({
   __esModule: true,
@@ -352,5 +367,53 @@ describe('CanvasEditor — keyboard shortcuts', () => {
     fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
     fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
     expect(stage.getAttribute('data-zone-count')).toBe('1');
+  });
+});
+
+// ─────────────────────────── S8.7 tier mapping integration ───────────────────────────
+
+describe('CanvasEditor — tier mapping integration', () => {
+  it('a newly-added zone shows tier checkboxes fed by useTicketTiers', async () => {
+    // Re-seed with an event-attached layout so the tier panel isn't in
+    // template mode (template shows a hint instead of the checklist).
+    const eventLayout = { ...seededLayout(), eventId: 'evt-123' };
+    render(<CanvasEditor layout={eventLayout} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    // The mocked useTicketTiers returns VIP + Plus.
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).toBeInTheDocument();
+    expect(screen.getByTestId('tier-panel-checkbox-t-plus')).toBeInTheDocument();
+    // New zone has no tier assignments yet.
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).not.toBeChecked();
+  });
+
+  it('toggling a tier checkbox commits to history and can be undone', async () => {
+    const eventLayout = { ...seededLayout(), eventId: 'evt-123' };
+    render(<CanvasEditor layout={eventLayout} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    const vip = screen.getByTestId('tier-panel-checkbox-t-vip');
+    expect(vip).not.toBeChecked();
+
+    fireEvent.click(vip);
+    // After toggle, the undo stack grew by another entry (beyond the add).
+    // Toggle is visible via the checkbox state.
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).toBeChecked();
+
+    // Ctrl+Z → undo the toggle only, leaving the zone in place.
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).not.toBeChecked();
+    // Still 2 zones — we didn't undo the add yet.
+    const stage = await waitForStage();
+    expect(stage.getAttribute('data-zone-count')).toBe('2');
+  });
+
+  it('template layout (no eventId) shows the template hint instead of the checklist', async () => {
+    // seededLayout sets eventId: null → template-mode from the editor's view.
+    render(<CanvasEditor layout={seededLayout()} />);
+    await waitForStage();
+    fireEvent.click(screen.getByTestId('toolbar-add-zone'));
+    expect(screen.getByTestId('tier-panel-template-hint')).toBeInTheDocument();
+    expect(screen.queryByTestId('tier-panel-list')).toBeNull();
   });
 });

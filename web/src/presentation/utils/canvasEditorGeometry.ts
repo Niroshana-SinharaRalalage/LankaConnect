@@ -358,6 +358,39 @@ export function resolveGeometry<T extends { id: string; geometry?: string | null
   return override ?? item.geometry;
 }
 
+/**
+ * Slice 8 S8.7: resolve the effective tier-assignment set for a zone or
+ * table, preferring a local draft override over the persisted
+ * ticketTierIds array. Returns an empty list when neither is set.
+ * Zone/table only — tier assignments don't apply to decorations.
+ */
+export function resolveTierAssignments<
+  T extends { id: string; ticketTierIds?: string[] | null },
+>(
+  kind: Exclude<CanvasItemKind, 'decoration'>,
+  item: T,
+  draftTierAssignmentsByKey: Record<string, string[]>,
+): string[] {
+  const override = draftTierAssignmentsByKey[refKey({ kind, id: item.id })];
+  if (override) return override;
+  return item.ticketTierIds ?? [];
+}
+
+/**
+ * Slice 8 S8.7: compute the next tier-assignment set for an item given
+ * the current set and a single tier toggle. Pure so the reducer logic
+ * in CanvasEditor and the unit tests agree bit-for-bit.
+ */
+export function toggleTierAssignment(
+  currentTierIds: readonly string[],
+  tierId: string,
+): string[] {
+  if (currentTierIds.includes(tierId)) {
+    return currentTierIds.filter((id) => id !== tierId);
+  }
+  return [...currentTierIds, tierId];
+}
+
 // ─────────────────────────── S8.5b: draft factories ───────────────────────────
 
 /**

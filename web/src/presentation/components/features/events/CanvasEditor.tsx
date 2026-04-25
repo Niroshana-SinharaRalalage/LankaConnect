@@ -49,9 +49,12 @@ import {
   itemCenter,
   refKey,
   resolveGeometry,
+  resolveTierAssignments,
+  toggleTierAssignment,
   type CanvasItemRef,
 } from '@/presentation/utils/canvasEditorGeometry';
 import { useEditorHistory } from '@/presentation/hooks/useEditorHistory';
+import { useTicketTiers } from '@/presentation/hooks/useTicketTiers';
 
 const CanvasEditorStage = dynamic<CanvasEditorStageProps>(
   () => import('./CanvasEditorStage').then((m) => m.CanvasEditorStage),
@@ -83,12 +86,17 @@ interface DraftState {
   geometryByKey: Record<string, string>;
   additions: DraftAdditions;
   deletions: Set<string>;
+  /** Slice 8 S8.7: per-item tier-assignment overrides. Key = refKey,
+   * value = the complete effective tier-id list. S8.8 diffs this against
+   * each item's persisted ticketTierIds at save time. */
+  tierAssignmentsByKey: Record<string, string[]>;
 }
 
 const INITIAL_DRAFT: DraftState = {
   geometryByKey: {},
   additions: { zones: [], tables: [], decorations: [] },
   deletions: new Set<string>(),
+  tierAssignmentsByKey: {},
 };
 
 const DEFAULT_CANVAS_WIDTH = 1000;
@@ -169,6 +177,36 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
       }));
     },
     [history],
+  );
+
+  // Slice 8 S8.7: fetch the event's ticket tiers when the layout is
+  // attached to an event. Template layouts skip the fetch (useTicketTiers
+  // is query-gated by !!eventId).
+  const tiersQuery = useTicketTiers(layout.eventId ?? undefined);
+
+  const handleToggleTierAssignment = useCallback(
+    (ref: CanvasItemRef, tierId: string) => {
+      if (ref.kind === 'decoration') return; // decorations have no tier concept
+      history.commit((prev) => {
+        const key = refKey(ref);
+        // Resolve the current tier set via draft override → persisted fallback.
+        const item = findItem(effectiveLayout, ref);
+        const persisted =
+          item && (ref.kind === 'zone' || ref.kind === 'table')
+            ? resolveTierAssignments(
+                ref.kind,
+                item as { id: string; ticketTierIds?: string[] | null },
+                prev.tierAssignmentsByKey,
+              )
+            : [];
+        const next = toggleTierAssignment(persisted, tierId);
+        return {
+          ...prev,
+          tierAssignmentsByKey: { ...prev.tierAssignmentsByKey, [key]: next },
+        };
+      });
+    },
+    [history, effectiveLayout],
   );
 
   const factoryCenter = useMemo(
@@ -272,10 +310,15 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
       if (!isAddition) nextDeletions.add(key);
       const nextGeometry = { ...prev.geometryByKey };
       delete nextGeometry[key];
+      // Drop any pending tier-assignment override for the deleted item so
+      // S8.8's save diff doesn't resurrect assignments for a tombstoned id.
+      const nextTierAssignments = { ...prev.tierAssignmentsByKey };
+      delete nextTierAssignments[key];
       return {
         geometryByKey: nextGeometry,
         additions: nextAdditions,
         deletions: nextDeletions,
+        tierAssignmentsByKey: nextTierAssignments,
       };
     });
     setSelected(null);
@@ -402,6 +445,10 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
           selected={selected}
           draftGeometryByKey={draft.geometryByKey}
           onGeometryChange={handleGeometryChange}
+          tiers={tiersQuery.data}
+          tiersLoading={tiersQuery.isLoading}
+          draftTierAssignmentsByKey={draft.tierAssignmentsByKey}
+          onToggleTierAssignment={handleToggleTierAssignment}
         />
       </div>
     </div>

@@ -38,11 +38,14 @@ import {
   type CanvasItemRef,
 } from '@/presentation/utils/canvasEditorGeometry';
 import type {
+  TicketTierDto,
   VenueLayoutDto,
   VenueZoneDto,
   VenueTableDto,
   VenueDecorationDto,
 } from '@/infrastructure/api/types/events.types';
+import { CanvasEditorTierPanel } from './CanvasEditorTierPanel';
+import { resolveTierAssignments } from '@/presentation/utils/canvasEditorGeometry';
 
 const MIN_RADIUS = MIN_SHAPE_DIMENSION / 2;
 
@@ -51,6 +54,12 @@ export interface CanvasEditorPropertyPanelProps {
   selected: CanvasItemRef | null;
   draftGeometryByKey: Record<string, string>;
   onGeometryChange: (ref: CanvasItemRef, geometryJson: string) => void;
+  /** Slice 8 S8.7: tier-assignment props. All optional so the panel
+   * degrades gracefully when the editor is rendered without tier data. */
+  tiers?: TicketTierDto[];
+  tiersLoading?: boolean;
+  draftTierAssignmentsByKey?: Record<string, string[]>;
+  onToggleTierAssignment?: (ref: CanvasItemRef, tierId: string) => void;
   className?: string;
 }
 
@@ -87,6 +96,10 @@ export function CanvasEditorPropertyPanel({
   selected,
   draftGeometryByKey,
   onGeometryChange,
+  tiers,
+  tiersLoading,
+  draftTierAssignmentsByKey,
+  onToggleTierAssignment,
   className,
 }: CanvasEditorPropertyPanelProps) {
   return (
@@ -121,6 +134,10 @@ export function CanvasEditorPropertyPanel({
             selected={selected}
             draftGeometryByKey={draftGeometryByKey}
             onGeometryChange={onGeometryChange}
+            tiers={tiers}
+            tiersLoading={tiersLoading}
+            draftTierAssignmentsByKey={draftTierAssignmentsByKey}
+            onToggleTierAssignment={onToggleTierAssignment}
           />
         )}
       </div>
@@ -133,11 +150,19 @@ function SelectedItemEditor({
   selected,
   draftGeometryByKey,
   onGeometryChange,
+  tiers,
+  tiersLoading,
+  draftTierAssignmentsByKey,
+  onToggleTierAssignment,
 }: {
   layout: VenueLayoutDto;
   selected: CanvasItemRef;
   draftGeometryByKey: Record<string, string>;
   onGeometryChange: (ref: CanvasItemRef, geometryJson: string) => void;
+  tiers?: TicketTierDto[];
+  tiersLoading?: boolean;
+  draftTierAssignmentsByKey?: Record<string, string[]>;
+  onToggleTierAssignment?: (ref: CanvasItemRef, tierId: string) => void;
 }) {
   const item = findItem(layout, selected);
   if (!item) {
@@ -287,6 +312,24 @@ function SelectedItemEditor({
           onCommit={handleRotationCommit}
         />
       )}
+
+      {/* Slice 8 S8.7: tier mapping for zones + tables only (decorations
+          have no tier concept). Hidden when the caller didn't wire the
+          tier handlers so the panel stays backward-compatible. */}
+      {(selected.kind === 'zone' || selected.kind === 'table') &&
+        onToggleTierAssignment && (
+          <CanvasEditorTierPanel
+            tiers={tiers ?? []}
+            tiersLoading={tiersLoading}
+            isTemplateLayout={!layout.eventId}
+            assignedTierIds={resolveTierAssignments(
+              selected.kind,
+              item as { id: string; ticketTierIds?: string[] | null },
+              draftTierAssignmentsByKey ?? {},
+            )}
+            onToggleTier={(tierId) => onToggleTierAssignment(selected, tierId)}
+          />
+        )}
     </div>
   );
 }

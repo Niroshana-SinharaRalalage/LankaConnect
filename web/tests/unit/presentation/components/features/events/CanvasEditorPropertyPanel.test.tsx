@@ -297,3 +297,108 @@ describe('CanvasEditorPropertyPanel — reads draft override over persisted geom
     });
   });
 });
+
+// ─────────────────────────── S8.7 tier panel integration ───────────────────────────
+
+describe('CanvasEditorPropertyPanel — tier panel integration', () => {
+  const fakeTiers: Array<{ id: string; name: string } & Record<string, unknown>> = [
+    { id: 't-vip', name: 'VIP' },
+    { id: 't-plus', name: 'Plus' },
+  ];
+
+  it('does not render the tier panel for decorations', () => {
+    const onToggle = vi.fn();
+    render(
+      <CanvasEditorPropertyPanel
+        layout={layoutFixture()}
+        selected={{ kind: 'decoration', id: 'd1' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+        tiers={fakeTiers as unknown as Parameters<typeof CanvasEditorPropertyPanel>[0]['tiers']}
+        onToggleTierAssignment={onToggle}
+      />,
+    );
+    expect(screen.queryByTestId('canvas-editor-tier-panel')).toBeNull();
+  });
+
+  it('does not render the tier panel when onToggleTierAssignment is omitted', () => {
+    render(
+      <CanvasEditorPropertyPanel
+        layout={layoutFixture()}
+        selected={{ kind: 'zone', id: 'z-rect' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('canvas-editor-tier-panel')).toBeNull();
+  });
+
+  it('renders tier panel with template hint when layout has no eventId', () => {
+    const onToggle = vi.fn();
+    // layoutFixture() sets eventId: null → template layout.
+    render(
+      <CanvasEditorPropertyPanel
+        layout={layoutFixture()}
+        selected={{ kind: 'zone', id: 'z-rect' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+        tiers={fakeTiers as unknown as Parameters<typeof CanvasEditorPropertyPanel>[0]['tiers']}
+        onToggleTierAssignment={onToggle}
+      />,
+    );
+    expect(screen.getByTestId('canvas-editor-tier-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('tier-panel-template-hint')).toBeInTheDocument();
+  });
+
+  it('renders tier checkboxes when the layout is attached to an event', () => {
+    const onToggle = vi.fn();
+    const eventLayout = { ...layoutFixture(), eventId: 'evt-123' };
+    render(
+      <CanvasEditorPropertyPanel
+        layout={eventLayout}
+        selected={{ kind: 'zone', id: 'z-rect' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+        tiers={fakeTiers as unknown as Parameters<typeof CanvasEditorPropertyPanel>[0]['tiers']}
+        onToggleTierAssignment={onToggle}
+      />,
+    );
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).not.toBeChecked();
+    expect(screen.getByTestId('tier-panel-checkbox-t-plus')).not.toBeChecked();
+  });
+
+  it('clicking a tier checkbox fires onToggleTierAssignment with the ref + tierId', () => {
+    const onToggle = vi.fn();
+    const eventLayout = { ...layoutFixture(), eventId: 'evt-123' };
+    render(
+      <CanvasEditorPropertyPanel
+        layout={eventLayout}
+        selected={{ kind: 'zone', id: 'z-rect' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+        tiers={fakeTiers as unknown as Parameters<typeof CanvasEditorPropertyPanel>[0]['tiers']}
+        onToggleTierAssignment={onToggle}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('tier-panel-checkbox-t-vip'));
+    expect(onToggle).toHaveBeenCalledWith({ kind: 'zone', id: 'z-rect' }, 't-vip');
+  });
+
+  it('honors the draftTierAssignmentsByKey override when rendering checkbox state', () => {
+    const onToggle = vi.fn();
+    const eventLayout = { ...layoutFixture(), eventId: 'evt-123' };
+    render(
+      <CanvasEditorPropertyPanel
+        layout={eventLayout}
+        selected={{ kind: 'zone', id: 'z-rect' }}
+        draftGeometryByKey={{}}
+        onGeometryChange={vi.fn()}
+        tiers={fakeTiers as unknown as Parameters<typeof CanvasEditorPropertyPanel>[0]['tiers']}
+        draftTierAssignmentsByKey={{ 'zone:z-rect': ['t-vip'] }}
+        onToggleTierAssignment={onToggle}
+      />,
+    );
+    expect(screen.getByTestId('tier-panel-checkbox-t-vip')).toBeChecked();
+    expect(screen.getByTestId('tier-panel-checkbox-t-plus')).not.toBeChecked();
+  });
+});

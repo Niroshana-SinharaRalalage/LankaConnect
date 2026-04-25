@@ -67,7 +67,11 @@ public class GetEventByIdQueryHandler : IQueryHandler<GetEventByIdQuery, EventDt
                     return Result<EventDto?>.Failure("Event ID is required");
                 }
 
-                var @event = await _eventRepository.GetByIdAsync(request.Id, cancellationToken);
+                // Perf RCA 2026-04-25: read-only handler — pass trackChanges:false explicitly so
+                // the EF change tracker doesn't materialize the full aggregate (Images, Videos,
+                // Registrations, SignUpLists.Items.Commitments, etc.). The parameterless overload
+                // forwards to trackChanges:true, which adds wasted CPU + memory on every read.
+                var @event = await _eventRepository.GetByIdAsync(request.Id, trackChanges: false, cancellationToken);
 
                 if (@event == null)
                 {

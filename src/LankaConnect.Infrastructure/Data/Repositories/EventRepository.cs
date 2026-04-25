@@ -124,8 +124,16 @@ public class EventRepository : Repository<Event>, IEventRepository
 
             try
             {
-                // Build query with eager loading
+                // Perf RCA 2026-04-25: .AsSplitQuery() prevents cartesian explosion across parallel
+                // Include collections. With 6 sibling collections (Images, Videos, Registrations,
+                // _emailGroupEntities, OrganizerContacts, TicketTiers) plus two 3-deep nested chains
+                // (SignUpLists.Items.Commitments, TicketTiers.Assignments), single-query mode
+                // produced row count = product of cardinalities, easily 100K+ rows on prod events
+                // with 85+ registrations. Split mode runs each Include as a separate indexed lookup.
+                // The DbContext-level default in DependencyInjection.cs also enables this; the
+                // explicit call here documents intent at the call site that's most affected.
                 IQueryable<Event> query = _dbSet
+                    .AsSplitQuery()
                     .Include(e => e.Images)
                     .Include(e => e.Videos)  // Phase 6A.12: Include videos for event media gallery
                     .Include(e => e.Registrations)  // Session 21: Include registrations for cancel/update operations

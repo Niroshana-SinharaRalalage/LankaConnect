@@ -52,7 +52,10 @@ public class GetEventSignUpListsQueryHandler : IQueryHandler<GetEventSignUpLists
                     return Result<List<SignUpListDto>>.Failure("Event ID is required");
                 }
 
-                var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
+                // Perf RCA 2026-04-25: read-only handler — pass trackChanges:false explicitly so
+                // the EF change tracker doesn't materialize the full aggregate. Same fix as
+                // GetEventByIdQueryHandler; both handlers fire on every event-detail page load.
+                var @event = await _eventRepository.GetByIdAsync(request.EventId, trackChanges: false, cancellationToken);
                 if (@event == null)
                 {
                     stopwatch.Stop();

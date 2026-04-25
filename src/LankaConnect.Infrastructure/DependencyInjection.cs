@@ -82,6 +82,14 @@ public static class DependencyInjection
 
                 // Command timeout configuration (30 seconds)
                 npgsqlOptions.CommandTimeout(30);
+
+                // Perf RCA 2026-04-25: Default to split queries to avoid cartesian explosions
+                // when multiple parallel .Include collections are loaded. Single-query mode produces
+                // row count = product of collection cardinalities (e.g. 100K+ rows for an event with
+                // 85 registrations + signup lists with items + commitments). Split-query mode runs
+                // each Include as a separate indexed lookup. EventRepository.GetByIdAsync also has
+                // a local .AsSplitQuery() for explicit intent at the call site.
+                npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
 
             // Enhanced logging configuration based on environment

@@ -54,7 +54,7 @@ public class GetEventSignUpListsQueryHandlerKindFilterTests
     public async Task Handle_NoKindFilter_ReturnsBothKinds()
     {
         var @event = EventWithMixedLists();
-        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>())).ReturnsAsync(@event);
+        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(@event);
 
         var result = await BuildHandler().Handle(new GetEventSignUpListsQuery(@event.Id), CancellationToken.None);
 
@@ -68,7 +68,7 @@ public class GetEventSignUpListsQueryHandlerKindFilterTests
     public async Task Handle_KindVolunteers_ReturnsOnlyVolunteerLists()
     {
         var @event = EventWithMixedLists();
-        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>())).ReturnsAsync(@event);
+        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(@event);
 
         var result = await BuildHandler().Handle(
             new GetEventSignUpListsQuery(@event.Id, Kind: SignUpKind.Volunteers),
@@ -84,7 +84,7 @@ public class GetEventSignUpListsQueryHandlerKindFilterTests
     public async Task Handle_KindItems_ReturnsOnlyItemsLists()
     {
         var @event = EventWithMixedLists();
-        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>())).ReturnsAsync(@event);
+        _eventRepository.Setup(r => r.GetByIdAsync(@event.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(@event);
 
         var result = await BuildHandler().Handle(
             new GetEventSignUpListsQuery(@event.Id, Kind: SignUpKind.Items),

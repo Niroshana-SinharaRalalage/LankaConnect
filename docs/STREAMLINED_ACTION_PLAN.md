@@ -29,10 +29,45 @@
 
 ---
 
-## 🎯 CURRENT STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.7 SHIPPED, S8.8 NEXT (2026-04-25)
+## 🎯 CURRENT STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.8 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-25)
 **Date**: 2026-04-25
-**Session**: Seating System Redesign — Slice 8 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8 — full drag-drop canvas editor (react-konva) for organizers. S8.1 through S8.7 landed sequentially on `develop`. Save button + `PUT /api/venue-layouts/{id}/batch` integration + `layout.canvas_editor_saved` metric remain for S8.8.
-**Status**: 🟡 **SLICE 8 IN PROGRESS — 7 chunks shipped**. Latest commit `00ff9ad4` (S8.7) on `develop`; `deploy-ui-staging.yml` run `24931720287` conclusion=success (4m54s); `npx tsc --noEmit` clean; web events+utils+hooks suite 278/278 green. Architect's `layout.canvas_editor_opened` metric wired in S8.1 (recorded on modal mount via `venueLayoutsRepository.recordCanvasEditorOpened`); `layout.canvas_editor_saved` (the 6th and final architect metric) lands in S8.8.
+**Session**: Seating System Redesign — Slice 8 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8 — full drag-drop canvas editor (react-konva) for organizers. S8.1 through S8.8 (Save button → atomic `PUT /batch` + `layout.canvas_editor_saved` metric) shipped sequentially on `develop`. S8.8 split into S8.8a (backend metric emit) + S8.8b (frontend Save flow + 409 reload UX).
+**Status**: ✅ **SLICE 8 SAVE FLOW DEPLOYED + WIRE-VERIFIED ON STAGING**. Backend `deploy-staging.yml` run `24939105857` conclusion=success (10m41s); frontend `deploy-ui-staging.yml` run `24941752739` conclusion=success (4m57s). Staging API smoke on `PUT /api/venue-layouts/{layoutId}/batch` confirmed both paths: happy-path with valid `If-Match` rowVersion → HTTP 204 No Content + Azure container log `Metric layout.canvas_editor_saved LayoutId=ae39a218-d984-4528-8271-a1e38fb11550 ChangesCount=3` emitted by `LankaConnect.Application.Events.Services.LayoutMetrics` at 22:25:38.176 UTC; stale `If-Match: 999999` → HTTP 409 Conflict + emits `Metric layout.structural_edit_rejected Reason=concurrency_conflict` (NOT `canvas_editor_saved`, confirming the success metric only fires after commit). All 6 architect-spec metrics for the seating-layout surface now wired (`layout.created`, `layout.preset_selected`, `layout.canvas_editor_opened`, `layout.canvas_editor_saved`, `layout.structural_edit_rejected`, `seatpicker.selection_completed`). Tests: backend Application 2255 passed / 6 skipped / 0 failed (13 BatchUpdateLayout — 11 prior + 2 new for the metric emit + `Times.Never` assertions on all 5 failure paths); frontend events+utils+hooks 317/317 sequential green; `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| S8.1 | `2e399ca2` | `CanvasEditorModal` shell + "Customize" button + `canvas_editor_opened` metric |
+| S8.2 | `43f9f94e` | Read-only Konva stage rendering all geometry types via Slice 7 `compute*Geometry` helpers |
+| S8.3 | `aa83f5d6` | Drag-to-move + snap-to-grid + alignment guides; `geometryByKey` draft slice |
+| S8.4 | `29dfdf8c` | Resize handles + rotation knob on selected item |
+| S8.5a | `f7689be3` | `CanvasEditorPropertyPanel` for selected-item property edits |
+| S8.5b | `ae9928ba` | Toolbar (add zone/table/decoration, delete) + `additions` + `deletions` draft slices |
+| S8.6 | `61fcdac4` | 50-step undo/redo; keyboard shortcuts (Del, Ctrl+Z, Ctrl+Y, Esc) |
+| S8.7 | `00ff9ad4` | Per-shape tier assignment (`CanvasEditorTierPanel`, `tierAssignmentsByKey`, tombstone discipline) |
+| **S8.8a** | `2d5857a2` | Backend: emit `layout.canvas_editor_saved` after successful batch commit; honest `changesCount` = sum of server-applied mutations |
+| **S8.8b** | `3ff59fa4` | Frontend: `composeBatchPayload` + `countDraftChanges` helpers; Save button in modal footer wired to `useBatchUpdateVenueLayout`; 409 + generic toasts via `react-hot-toast`; backend is canonical metric emitter (no double-count) |
+
+**Why durable**: (1) Backend's `changesCount` is computed from actually-applied mutations, not the payload — clients sending unchanged items don't inflate the dashboard. (2) Frontend composer is a pure function of `(baseline, draft)` — every history step (undo / redo / drag / add / delete) produces a deterministic payload. (3) Save handler captures a closure over the *current* draft so a Ctrl+Z right before Save lands the corrected payload. (4) Backend metric emission is wrapped in try/catch + warn-log so a metric pipeline outage cannot fail a save that's already been committed. (5) The architect's "single atomic call" requirement holds for geometry + structure: the entire layout state goes through one transactional `PUT /batch` — no partial-save corruption possible.
+**Evidence**:
+- Backend Application tests `2255 passed / 6 skipped / 0 failed` after S8.8a (no regressions to the 2253 baseline; +2 net for the new tests).
+- Frontend events+utils+hooks `317 passed / 0 failed` sequential.
+- `npx tsc --noEmit` exit 0.
+- Backend deploy run `24939105857` + frontend deploy run `24941752739` `conclusion=success`.
+- Staging API smoke evidence:
+  - `curl -X PUT .../venue-layouts/ae39a218-d984-4528-8271-a1e38fb11550/batch -H "If-Match: 5273751" -d '{"name":"S8.8a smoke renamed",...}'` → `HTTP/1.1 204 No Content` (correlation `fca7dcf6-eae9-44da-923a-dd14280393a5`).
+  - `curl -X PUT ... -H "If-Match: 999999" -d '{"name":"will-not-apply",...}'` → `HTTP/1.1 409 Conflict` (correlation `9b354954-1c02-4828-a081-565721bbd8d2`).
+  - Azure container log via `az containerapp logs show --name lankaconnect-api-staging --tail 300` confirms: happy path → `[INF] LayoutMetrics: Metric layout.canvas_editor_saved LayoutId=ae39a218-d984-4528-8271-a1e38fb11550 ChangesCount=3` and `[INF] BatchUpdateLayoutCommandHandler: BatchUpdateLayout: succeeded ... ZonesRemoved=1, TablesRemoved=0, ChangesCount=3`; 409 path → `[INF] LayoutMetrics: Metric layout.structural_edit_rejected ... Reason=concurrency_conflict` (no `canvas_editor_saved` line for this correlation).
+
+**Scope discipline (S8.8)**: Tier-assignment persistence is **deliberately deferred to S8.8c** — the `BatchLayoutPayload` schema doesn't carry tier_assignments, and the slice-4 single-tier endpoints (`POST /tier-assignments`, `DELETE /tier-assignments/{tierId}/{kind}/{assignableId}`) live on the `TicketTier` aggregate, not the layout aggregate. Mixing the two write surfaces atomically requires either extending the batch payload (backend work) or running a saga (non-atomic). S8.8b ships geometry + structure save only; tier toggles in `CanvasEditorTierPanel` (S8.7) still mutate draft state but do not persist on Save. `countDraftChanges` excludes tier-assignment overrides so the Save button doesn't appear ready when only tier toggles are dirty. No save-as-personal-template (S8.9), no warn-before-close (S8.9), no canvas property panel (no current UI surface for canvas dimensions).
+**Next**:
+1. **S8.8c** — wire tier-assignment persistence. Either extend `BatchLayoutPayload` server-side with a `tierAssignments: { kind, assignableId, tierIds[] }[]` block (preferred — keeps Save atomic) or run a follow-up saga of single-tier POSTs/DELETEs after a successful batch commit (non-atomic; partial-failure UX). Architect call needed.
+2. **S8.9** — save-as-personal-template (`OwnerUserId = currentUser`, `EventId = null`) + warn-before-close on dirty draft.
+
+---
+
+## 🎯 EARLIER STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.7 SHIPPED (2026-04-25)
+**Date**: 2026-04-25
+**Status (S8.1–S8.7)**: ✅ all chunks shipped, deploy-ui-staging green, 278/278 tests; entries below. Latest commit `00ff9ad4` (S8.7) on `develop`; `deploy-ui-staging.yml` run `24931720287` conclusion=success (4m54s); `npx tsc --noEmit` clean; web events+utils+hooks suite 278/278 green. Architect's `layout.canvas_editor_opened` metric wired in S8.1 (recorded on modal mount via `venueLayoutsRepository.recordCanvasEditorOpened`); `layout.canvas_editor_saved` (the 6th and final architect metric) lands in S8.8.
 **Scope**: Pure consumer of the Slice 5 backend surface — no new tables, no new endpoints, no migrations. Save (S8.8) targets the existing `PUT /api/venue-layouts/{id}/batch` atomic endpoint shipped in Slice 5 Chunk 10 (handler at [BatchUpdateLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/BatchUpdateLayout/BatchUpdateLayoutCommandHandler.cs); RowVersion 409 + 422 structural-edit-rejected guards already wired).
 
 | Chunk | Commit | Deliverable |

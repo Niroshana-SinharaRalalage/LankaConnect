@@ -21,6 +21,22 @@ public class Registration : BaseEntity
     public RegistrationContact? Contact { get; private set; }  // Shared contact info for all attendees
     public Money? TotalPrice { get; private set; }  // Calculated total based on attendee ages
 
+    // Phase 7E: Snapshot of the event's RegistrationMode at construction time.
+    // Email re-renders for cancellation/reminder use this snapshot, NOT the live Event value,
+    // so an organiser flipping the mode after the fact does not corrupt historical messaging.
+    // Default = DetailedAttendees so all legacy rows (column DEFAULT 0) materialise correctly.
+    public RegistrationMode RegistrationMode { get; private set; } = RegistrationMode.DetailedAttendees;
+
+    // Phase 7E: Lead attendee name. Populated only for head-count modes (B1-B4).
+    // Null for DetailedAttendees (use Attendees[0].Name) and NoRegistration (no Registration row at all).
+    public string? LeadAttendeeName { get; private set; }
+
+    // Phase 7E: Composite head-count breakdown (Total + Demographics? + TierCounts?).
+    // Populated only for head-count modes (B1-B4). Mutually exclusive with the Attendees collection.
+    // Persisted as a flat JSONB column via custom ValueConverter + deep-copy ValueComparer
+    // (NOT OwnsOne.ToJson — Phase 6A.130 IReadOnlyList rehydration trap).
+    public HeadCountBreakdown? HeadCount { get; private set; }
+
     public RegistrationStatus Status { get; private set; }
 
     // Session 23: Payment integration for paid events
@@ -194,6 +210,95 @@ public class Registration : BaseEntity
         return Result<Registration>.Success(registration);
     }
 
+    /// <summary>
+    /// Phase 7E: Factory for head-count-mode registrations (B1-B4).
+    ///
+    /// Used when the event's <see cref="Event.RegistrationMode"/> is one of HeadCountOnly,
+    /// HeadCountByAge, HeadCountByGender, or HeadCountByAgeAndGender. Captures a single
+    /// <paramref name="leadAttendeeName"/> + a composite <paramref name="headCount"/>
+    /// breakdown instead of per-attendee rows.
+    ///
+    /// The mode is snapshotted onto the registration so historical email re-renders survive
+    /// later organiser mode changes (architect requirement).
+    ///
+    /// Mutual exclusion with <see cref="CreateWithAttendees"/> is structural: this factory
+    /// does NOT populate the Attendees collection. The reverse factory does NOT populate
+    /// HeadCount. Domain invariant: at most one of (Attendees, HeadCount) is populated.
+    /// </summary>
+    /// <param name="eventId">Event being registered for.</param>
+    /// <param name="userId">Authenticated user ID, or null for anonymous registration.</param>
+    /// <param name="mode">The event's registration mode (must be one of B1-B4).</param>
+    /// <param name="leadAttendeeName">Name of the lead attendee — printed on emails.</param>
+    /// <param name="headCount">Composite head-count breakdown built via one of the static factories on <see cref="HeadCountBreakdown"/>.</param>
+    /// <param name="contact">Shared contact info (email, phone, etc.) — required for emails.</param>
+    /// <param name="totalPrice">Total price for the registration. Use Money.Zero for free events.</param>
+    /// <param name="isPaidEvent">True if Stripe checkout is required (sets Preliminary + Pending lifecycle).</param>
+    /// <returns>Result wrapping the new Registration or a failure with error messages.</returns>
+    public static Result<Registration> CreateWithHeadCount(
+        Guid eventId,
+        Guid? userId,
+        RegistrationMode mode,
+        string? leadAttendeeName,
+        HeadCountBreakdown headCount,
+        RegistrationContact contact,
+        Money totalPrice,
+        bool isPaidEvent = false)
+    {
+        if (eventId == Guid.Empty)
+            return Result<Registration>.Failure("Event ID is required");
+
+        // Mode must be a head-count variant. DetailedAttendees should use CreateWithAttendees;
+        // NoRegistration should never produce a Registration row at all.
+        if (mode != RegistrationMode.HeadCountOnly &&
+            mode != RegistrationMode.HeadCountByAge &&
+            mode != RegistrationMode.HeadCountByGender &&
+            mode != RegistrationMode.HeadCountByAgeAndGender)
+        {
+            return Result<Registration>.Failure(
+                $"CreateWithHeadCount is only valid for head-count modes (HeadCountOnly / HeadCountByAge / " +
+                $"HeadCountByGender / HeadCountByAgeAndGender). Received: {mode}. " +
+                $"Use CreateWithAttendees for DetailedAttendees mode; NoRegistration mode does not create Registration rows.");
+        }
+
+        if (string.IsNullOrWhiteSpace(leadAttendeeName))
+            return Result<Registration>.Failure("Lead attendee name is required for head-count modes");
+
+        if (headCount == null)
+            return Result<Registration>.Failure("HeadCountBreakdown is required for head-count modes");
+
+        if (contact == null)
+            return Result<Registration>.Failure("Contact information is required");
+
+        if (totalPrice == null)
+            return Result<Registration>.Failure("Total price is required (use Money.Zero for free events)");
+
+        // Phase 6A.81: Determine status based on payment requirement (mirrors CreateWithAttendees).
+        var status = isPaidEvent ? RegistrationStatus.Preliminary : RegistrationStatus.Confirmed;
+        var paymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired;
+        var expiresAt = isPaidEvent ? DateTime.UtcNow.AddHours(24) : (DateTime?)null;
+
+        var registration = new Registration
+        {
+            EventId = eventId,
+            UserId = userId,
+            AttendeeInfo = null,
+            Quantity = headCount.Total,  // Maintain backward compatibility for legacy capacity readers
+            Contact = contact,
+            TotalPrice = totalPrice,
+            RegistrationMode = mode,           // Phase 7E: snapshot the mode
+            LeadAttendeeName = leadAttendeeName.Trim(),
+            HeadCount = headCount,
+            Status = status,
+            PaymentStatus = paymentStatus,
+            CheckoutSessionExpiresAt = expiresAt
+        };
+
+        // Note: _attendees is intentionally NOT populated for head-count registrations.
+        // Domain invariant: HeadCount != null XOR _attendees.Any().
+
+        return Result<Registration>.Success(registration);
+    }
+
     // Validation method to ensure XOR constraint (either UserId OR AttendeeInfo, not both)
     // Session 21: Updated to support new multi-attendee format
     public bool IsValid()
@@ -216,14 +321,25 @@ public class Registration : BaseEntity
     public bool HasDetailedAttendees() => _attendees.Any();
 
     /// <summary>
-    /// Session 21: Gets the number of attendees (works with both legacy and new format)
+    /// Session 21: Gets the number of attendees (works with both legacy and new format).
+    /// Phase 7E: Now also handles head-count modes (B1-B4) — when HeadCount is populated, its
+    /// Total is the canonical attendee count. This is the single mutation point that makes
+    /// every consumer (Event.CurrentRegistrations, Event.ReservedCapacity, Event.SpotsLeft,
+    /// every Sum(r.GetAttendeeCount()) aggregation) automatically Mode-B aware without
+    /// touching every call-site.
     /// </summary>
     public int GetAttendeeCount()
     {
+        // Phase 7E: Head-count modes (B1-B4) carry a HeadCountBreakdown.
+        if (HeadCount != null)
+            return HeadCount.Total;
+
+        // Mode A (DetailedAttendees) — Session 21 multi-attendee format.
         if (_attendees.Any())
             return _attendees.Count;
 
-        return Quantity;  // Fallback to legacy quantity field
+        // Legacy single-attendee fallback (pre-Session-21).
+        return Quantity;
     }
 
     public void Cancel()

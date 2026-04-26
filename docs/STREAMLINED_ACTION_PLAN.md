@@ -29,6 +29,43 @@
 
 ---
 
+## 🎨 2026-04-26 (later) — SEATING SLICE 8: S8.9b (Save layout as personal template) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-26
+**Session**: Architect Option B for the seat-clone strategy: faithful clone via a new `VenueLayout.CloneAsTemplate(source, newName, newOwnerUserId)` static factory on the aggregate root + internal `RebuildSeatsFrom` on `VenueZone`/`VenueTable`. Per-seat `IsEnabled` and `IsAccessible` flags round-trip; tier mappings (which live on the `TicketTier` aggregate, owned by the source's event) are deliberately dropped — templates are tier-free by design.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Domain (`fe4f5db4`) + backend handler+API (`e12e9bac`) + frontend (`b5cdec73`) + CanvasConfig FK fix (`d7e6a881`, caught by staging). All `deploy-*-staging.yml` runs `conclusion=success`. Tests: backend Domain 16 new CloneAsTemplate cases + Application 7 new handler cases (full Application suite 2340 / 6 skipped / 0 failed); frontend events+utils+hooks 352/352 sequential green (12 new modal Save-as-Template cases + 1 new "discard prompt does NOT trip on save-as-template" guard). `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.9b domain** | `fe4f5db4` | `VenueLayout.CloneAsTemplate` static factory + internal `VenueZone.RebuildSeatsFrom` + `VenueTable.RebuildSeatsFrom`; preserves `IsEnabled`/`IsAccessible`, drops tier mappings, fresh server-side IDs |
+| **S8.9b backend** | `e12e9bac` | `SaveLayoutAsTemplateCommand` + handler (auth via `ILayoutAuthorizationService`); `POST /api/venue-layouts/{id}/save-as-template` controller route returning 201 + DTO + Location header; emits `layout.created (fromPreset=false)` |
+| **S8.9b frontend** | `b5cdec73` | `venueLayoutsRepository.saveLayoutAsTemplate` + `useSaveLayoutAsTemplate` mutation; "Save as Template" footer button + inline name-prompt Dialog (default `"${layout.name} (Template)"`); 403 + generic-error toasts |
+| **S8.9b fix** | `d7e6a881` | Build fresh `CanvasConfig` instead of reusing source's owned instance (caught by staging EF FK error) |
+
+**Why durable**: (1) Architect-approved seat-fidelity bar — `IsEnabled`/`IsAccessible` round-trip; tests catch any regression. (2) `RebuildSeatsFrom` accepts a flat `IEnumerable<Seat>` (not a `(rows × seatsPerRow)` generator pattern), so future custom-seat-layout features (Slice 9+) clone cleanly. (3) Handler routes through the domain factory — no aggregate-boundary crossings in the application layer. (4) Tier mappings live on a different aggregate (TicketTier) and are not cloned; new template starts tier-free. (5) Authorization re-uses the existing layout-mutation gate — same security surface, no new attack vectors.
+**Evidence**:
+- Architect call captured in conversation transcript: "Recommendation: Option B (faithful clone) via a `VenueLayout.CloneAsTemplate(source, newName, newOwnerUserId)` static factory... Preserve seat-level `IsEnabled` / `IsAccessible` flags. Do not invent a `VenueZone.AddSeat(...)` public surface; expose the clone path only."
+- Backend Domain 16/16 new CloneAsTemplate cases pass; Application suite 2340/6 skip/0 fail.
+- Frontend `352/352 sequential` (added 13 new modal cases for Save-as-Template + the discard-guard test).
+- `npx tsc --noEmit` exit 0.
+- Backend deploys `24966191995` (initial S8.9b backend) + `24967069177` (canvas FK fix); frontend deploy `24966601988`. All `conclusion=success`.
+- **Staging API smoke** on source layout `c9707fcc-…` (event "Phase 8 Tier Test Event"):
+  - Pre-fix: correlation `1b19ae5a-…` → HTTP 500 with EF error "The property 'CanvasConfig.VenueLayoutId' is part of a key and so cannot be modified" — staging caught the bug; fix issued.
+  - Post-fix: `POST /save-as-template` body `{templateName: "S8.9b smoke clone v2"}` → HTTP 201 with new layout `a636c96e-94cf-4713-bcc1-f30522bfe3cd`. GET on the new template confirms: `isTemplate: true`, `eventId: null`, `createdByUserId: 5e782b4d-…` (caller), `totalCapacity: 200`, canvas `{1200×800, scale 1, #ffffff}` (preserved), zone "Main Floor" (fresh ID `f7c40d0b-…`) with 200 fresh-ID seats, sample seats `A8`/`J10`/`J1` show row+number+label+sortOrder preserved, `tierIds: []` (source had `[Basic]` — dropped as designed because templates are tier-free).
+
+**Scope discipline**: v1 ships the structural clone + seat-fidelity contract per architect Option B. Tier mappings dropped (templates are tier-free; user re-maps when applying to a new event). Holds and reservations not cloned (different aggregates, different lifetime, belong to source event). Authorization reuses the existing layout-mutation gate (creator-for-templates, organizer-for-event-attached) — view-only-can-clone deferred until view-only roles exist. No "My Templates" picker UI yet (the cache invalidation on `venueLayoutKeys.all` is in place; UI surface tracked as future work).
+**Open follow-ups (architect-flagged, non-blocking)**:
+1. **Idempotency**: double-click could create two templates. Server-side dedupe window (`(CreatedByUserId, Name)` matches in last 5s) deferred — disabled-while-pending button on the prompt mitigates client-side.
+2. **"My Templates" picker UI**: needs a "Mine" tab in the existing `PresetLibraryModal` (Slice 9 work).
+3. **Same-name UX**: prompt doesn't warn if a same-name template exists — let users version freely (matches "personal" framing).
+4. **Performance regression guard**: 500-seat clone runs ~500 INSERTs in one `SaveChangesAsync` — architect flagged a future integration test; not blocking for v1.
+5. **Authorization scope**: layout-mutation gate is the v1 gate; view-only-can-clone is deferred.
+**Next**:
+1. **S8.9c** retirement of `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week from prod ship).
+2. **My Templates picker** UI — surface user-saved templates in the existing `PresetLibraryModal` as a "Mine" tab.
+3. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` ≥1 week after Slice 4 Release N ships.
+
+---
+
 ## 🎨 2026-04-26 — SEATING SLICE 8: S8.9a (warn-before-close) + S8.8c (atomic tier reconciliation) SHIPPED + WIRE-VERIFIED (parallel stream to Phase 7E.1)
 **Date**: 2026-04-26
 **Session**: Continuation of Slice 8 of `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8. Two follow-ups landed on top of S8.8: **S8.9a** added a `ConfirmDialog`-driven "Discard unsaved changes?" guard intercepting every close path (X / footer Close / Esc / backdrop) when the editor reports `hasChanges=true`. **S8.8c** closes the architect-flagged tier-persistence gap by extending `BatchLayoutPayload` with a `tierAssignments` block + reconciling tier mutations inside the existing `IUnitOfWork.CommitAsync` (architect Option A, called via the architect agent before implementation). The canvas-editor save is now truly all-or-nothing across geometry + tier assignments.

@@ -1,6 +1,6 @@
 # Master TODO — Phase 7E: Flexible Event Registration Modes
 
-**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 🔧 (code+tests local-green; pushing to staging) · 7E.2 next
+**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ (deployed + verified on staging) · 7E.2 next
 **Architect-approved**: ✅ yes (review iteration 2, 2026-04-25)
 **Plan reference**: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
 **Master index entry**: [PHASE_6A_MASTER_INDEX.md § Phase 7E](./PHASE_6A_MASTER_INDEX.md)

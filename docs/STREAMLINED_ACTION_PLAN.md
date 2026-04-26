@@ -29,7 +29,27 @@
 
 ---
 
-## 🚀 CURRENT STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 CALL-SITE SWEEP COMPLETE (2026-04-25 later)
+## 🚀 CURRENT STATUS — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26)
+
+**Date**: 2026-04-26
+**Session**: Phase 7E.1 — domain model + persistence + EF migration for the flexible registration modes feature.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` + `038c92bc` on develop. `deploy-staging.yml` runs `24945013711` + `24946516265` both `conclusion=success`. Migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests).
+
+**Scope**: Default `RegistrationMode.DetailedAttendees` at DB level preserves all pre-7E behaviour. Composite multi-axis `HeadCountBreakdown` VO (Total + Demographics + TierCounts) with strict factories. `Registration` snapshots the mode at construction. Single `GetAttendeeCount()` mutation point makes every `Sum(r.GetAttendeeCount())` aggregator automatically Mode-B aware. JSON serialisation via custom `ValueConverter` + deep-clone `ValueComparer` defending against Phase 6A.129/6A.130 traps simultaneously.
+
+**API smoke**: `GET /api/Events` returns 51 legacy events all with `"registrationMode": "DetailedAttendees"` (string-valued enum via `JsonStringEnumConverter`). Capacity / `currentRegistrations` / `isFree` fields unchanged — zero regression.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.2** — Event create/update API + `[Theory]`-driven FluentValidation over the 14-row compatibility table + `GetAllowedRegistrationModesQuery` + `EmailTemplateContract` constants (gates 7E.4)
+2. **7E.3** — RSVP API for B modes (sub-slices 3a/3b/3c: free B → paid B + Stripe → paid B + tier counts)
+3. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals
+4. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+5. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from §5 of checklist
+6. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 CALL-SITE SWEEP COMPLETE (2026-04-25 later)
 
 **Date**: 2026-04-25 (later)
 **Session**: Phase 7E planning + Slice 7E.0 audit. Architect-approved plan (review iteration 2). No code yet.

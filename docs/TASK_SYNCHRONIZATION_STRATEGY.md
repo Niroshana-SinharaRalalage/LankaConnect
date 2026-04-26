@@ -3,7 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 SWEEP COMPLETE
+## 🚀 CURRENT SESSION STATUS — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-26
+**Session**: Phase 7E.1 — domain model + persistence + EF migration for flexible registration modes. TDD red→green→refactor. Architect-approved plan (review iteration 2).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` (domain+persistence+tests) + `038c92bc` (EventDto field). `deploy-staging.yml` runs `24945013711` + `24946516265` both `conclusion=success`. EF migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests over 2253 pre-7E baseline).
+**Scope**: New `RegistrationMode` enum (smallint-backed, DB-level DEFAULT 0); composite multi-axis `HeadCountBreakdown` VO (Total + `DemographicBreakdown?` + `IReadOnlyList<TierCount>?`) with strict factories; `Event.SetRegistrationMode` guard scope intentionally only `Registrations.Any()` (architect §6 finding: standalone `*Configuration` shapes are nullable VOs not collections); `Registration.RegistrationMode` snapshot at construction; `Registration.GetAttendeeCount()` honors `HeadCount.Total` as the single canonical mutation point; custom `JsonValueConverter` + deep-clone `ValueComparer` defending against Phase 6A.129/6A.130 traps simultaneously; `EventDto.RegistrationMode` with init default for stale-React-Query-cache tolerance.
+**API smoke evidence**: `curl GET /api/Events` on staging returned 51 events; all sampled legacy events serialised `"registrationMode": "DetailedAttendees"` as a string (via `JsonStringEnumConverter`). Capacity / `currentRegistrations` / `isFree` fields unchanged — zero regression on existing flows.
+**Why durable**: (1) DB-level DEFAULT 0 means legacy rows materialise correctly with no backfill; (2) single `GetAttendeeCount()` mutation point eliminates the risk of missing one of the 9 capacity-aggregation call-sites the 7E.0 sweep enumerated; (3) JSON round-trip + deep-clone snapshot covers both prior JSONB traps; the architect-required mutation test is green; (4) snapshotted mode on Registration protects historical email re-renders against organiser mode flips; (5) `EventDto` init default tolerates stale React Query payloads from before deploy.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.2 — `CreateEventCommand`/`UpdateEventCommand` accept `RegistrationMode` field; `[Theory]`-driven FluentValidation over the 14-row compatibility table; `GetAllowedRegistrationModesQuery`; `EmailTemplateContract` constants (gates 7E.4 HTML release).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 SWEEP COMPLETE
 **Date**: 2026-04-25 (later)
 **Session**: Phase 7E planning + Slice 7E.0 read-only audit. Architect-approved plan (review iteration 2). No code yet — planning + audit phase only.
 **Progress**: ✅ **PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**.

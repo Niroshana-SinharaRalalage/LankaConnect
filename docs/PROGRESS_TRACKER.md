@@ -3,7 +3,34 @@
 
 ---
 
-## 🚀 Current Session Status (2026-04-25 later — Phase 7E "Flexible Event Registration Modes" STARTED + 7E.0 SWEEP COMPLETE)
+## 🚀 Current Session Status (2026-04-26 — Phase 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING)
+
+**Status**: ✅ **PHASE 7E.1 DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` (domain+persistence+tests) + `038c92bc` (DTO field). Both deploy-staging.yml runs (`24945013711` + `24946516265`) `conclusion=success`. EF migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Full Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests over the 2253 pre-7E baseline).
+
+**Scope shipped this session**:
+- New: `RegistrationMode` enum (smallint-backed, 6 values, DB-level DEFAULT 0)
+- New: composite multi-axis `HeadCountBreakdown` VO (Total + `DemographicBreakdown?` + `IReadOnlyList<TierCount>?`) with strict factories — `ForTotalOnly` accepts Total directly; `ForByAge`/`ByGender`/`ByAgeAndGender` derive Total from leaves; tier-count sum invariant enforced
+- New: `Event.RegistrationMode` + `SetRegistrationMode()` — guard scope is intentionally only `Registrations.Any()` (architect §6 finding: standalone `*Configuration` shapes are nullable value-objects, not collections)
+- New: `Registration.RegistrationMode` snapshot at construction (mandatory per architect — historical email re-renders survive organiser mode flips); `LeadAttendeeName` + `HeadCount` fields; `CreateWithHeadCount` factory enforcing Attendees-XOR-HeadCount mutual exclusion structurally
+- Updated: `Registration.GetAttendeeCount()` honors `HeadCount.Total` — single canonical mutation point that makes `Event.CurrentRegistrations` / `ReservedCapacity` / `SpotsLeft` + every `Sum(r.GetAttendeeCount())` aggregator automatically Mode-B aware (per the 7E.0 §2 audit's 9 entries — no scattered ternaries)
+- Updated: EF `RegistrationConfiguration` with custom `JsonValueConverter<HeadCountBreakdown>` + deep-clone-via-JSON `ValueComparer` — defends against the Phase 6A.130 `OwnsOne.ToJson()` IReadOnlyList rehydration trap AND the Phase 6A.129 mutate-in-place-defeats-snapshot trap
+- Updated: `EventDto.RegistrationMode` (init-default `DetailedAttendees`) — defensive default for stale-React-Query-cache tolerance per architect §6
+- Migration: `20260426010920_Phase7E1_AddRegistrationMode` adds `events.events.registration_mode smallint NOT NULL DEFAULT 0`, `events.registrations.registration_mode smallint NOT NULL DEFAULT 0` (snapshot column), `events.registrations.lead_attendee_name varchar(200) NULL`, `events.registrations.head_count jsonb NULL`. Generated via `dotnet ef migrations add` with companion `.Designer.cs` (Phase 6A.133 lesson — never hand-author).
+
+**Why durable**:
+1. Default `RegistrationMode.DetailedAttendees` at the DB level (DEFAULT 0) means every legacy row materialises with the existing behaviour — no backfill required, no reads break.
+2. The single `GetAttendeeCount()` mutation point eliminates the risk of forgetting one of the 9 capacity-aggregation call-sites the 7E.0 sweep enumerated.
+3. JSON round-trip + deep-clone snapshot in the `ValueComparer` cover both prior JSONB traps simultaneously; the architect-required mutation test is green in `Phase7E1RegistrationModeTests.HeadCountBreakdown_JsonRoundTrip_PreservesAllAxes`.
+4. `Registration.RegistrationMode` snapshotted at construction means historical email re-renders (cancellation, reminder) read the registration's own mode, not the live `Event.RegistrationMode` — protects against organiser mode-flip data corruption.
+5. `EventDto.RegistrationMode` init default = `DetailedAttendees` so stale React Query payloads from before deploy still deserialise correctly.
+
+**API smoke evidence**: `curl GET /api/Events` on staging returned 51 events; all three sampled legacy events serialised `"registrationMode": "DetailedAttendees"` (string value, via `JsonStringEnumConverter`). Capacity / `currentRegistrations` / `isFree` fields unchanged — zero regression on existing flows.
+
+**Next**: Slice 7E.2 — event create/update API + `[Theory]`-driven validator over the 14-row compatibility table + `EmailTemplateContract` constants (gates 7E.4) + `GetAllowedRegistrationModesQuery`.
+
+---
+
+## 🚀 Previous Session Status (2026-04-25 later — Phase 7E "Flexible Event Registration Modes" STARTED + 7E.0 SWEEP COMPLETE)
 
 **Status**: ✅ **Phase 7E PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**. No code yet — this is the planning + audit phase. Architect-approved plan at `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md` (review iteration 2: 12 architect edits incorporated, 5 user-driven refinements ratified, multi-axis `HeadCountBreakdown` VO design, 14-row compatibility table, 9 affected email templates).
 

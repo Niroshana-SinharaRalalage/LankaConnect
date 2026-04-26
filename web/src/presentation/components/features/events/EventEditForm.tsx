@@ -12,7 +12,8 @@ import { Input } from '@/presentation/components/ui/Input';
 import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { editEventSchema, type EditEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, Currency, type EventDto } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, RegistrationMode, type EventDto } from '@/infrastructure/api/types/events.types';
+import { RegistrationModePicker } from './RegistrationModePicker';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
@@ -162,6 +163,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
       isFree: event.isFree ?? true,
+      // Phase 7E.5: Per-event registration capture mode (defensive default per architect §6 —
+      // tolerate stale React Query payloads that pre-date the registrationMode field).
+      registrationMode: event.registrationMode ?? RegistrationMode.DetailedAttendees,
       // Pricing mode toggles
       enableDualPricing: event.hasDualPricing ?? false,
       enableGroupPricing: event.hasGroupPricing ?? false,
@@ -480,6 +484,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
         emailGroupIds: data.emailGroupIds || [],
         // IsFreeEvent fix: Send explicit free event flag to backend
         isFree: data.isFree ?? false,
+        // Phase 7E.5: Send registration mode if changed. Backend rejects mode change once
+        // registrations exist (Event.SetRegistrationMode guard) — surfaces as 400.
+        ...(data.registrationMode &&
+          data.registrationMode !== event.registrationMode && {
+            registrationMode: data.registrationMode,
+          }),
         // Organizer Contact Details (multiple contacts)
         publishOrganizerContact: data.publishOrganizerContact || false,
         organizerContacts: data.publishOrganizerContact
@@ -1089,6 +1099,33 @@ export function EventEditForm({ event }: EventEditFormProps) {
               This is a free event (no ticket purchase required)
             </label>
           </div>
+
+          {/* Phase 7E.5: Registration Mode Picker (edit flow). Mirrors the create form;
+              auto-clears the selection when the shape change makes the current mode invalid. */}
+          <Controller
+            control={control}
+            name="registrationMode"
+            render={({ field }) => (
+              <RegistrationModePicker
+                value={field.value ?? RegistrationMode.DetailedAttendees}
+                onChange={field.onChange}
+                shape={{
+                  isFreeAttendance: isFree ?? true,
+                  hasDualPricing: !isFree && enableDualPricing,
+                  hasGroupTiers: !isFree && (watch('enableGroupPricing') ?? false),
+                  hasTicketTiers: !isFree && (watch('enableTieredTicketing') ?? false),
+                }}
+                helpText={
+                  // The domain method Event.SetRegistrationMode rejects mode change once
+                  // registrations exist on the event. Show a hint so organisers know why
+                  // changes after publishing may fail server-side.
+                  event.currentRegistrations > 0
+                    ? `Note: ${event.currentRegistrations} registration${event.currentRegistrations === 1 ? '' : 's'} already exist. Server may reject mode changes (Phase 7F adds backfill).`
+                    : undefined
+                }
+              />
+            )}
+          />
 
           {/* Pricing Fields (shown only if not free) - Session 33: Added pricing mode toggles */}
           {!isFree && (

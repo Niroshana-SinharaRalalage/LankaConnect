@@ -15,7 +15,8 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
-import { EventCategory, Currency, TicketingMode, SeatingMode } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, TicketingMode, SeatingMode, RegistrationMode } from '@/infrastructure/api/types/events.types';
+import { RegistrationModePicker } from './RegistrationModePicker';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
 import { GroupPricingTierBuilder } from './GroupPricingTierBuilder';
@@ -112,6 +113,8 @@ export function EventCreationForm() {
     resolver: zodResolver(createEventSchema),
     defaultValues: {
       isFree: true,
+      // Phase 7E.5: Default to DetailedAttendees so existing event-creation flows are unchanged.
+      registrationMode: RegistrationMode.DetailedAttendees,
       enableDualPricing: false,
       enableGroupPricing: false,
       enableTieredTicketing: false,
@@ -137,6 +140,8 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const enableTieredTicketing = watch('enableTieredTicketing');
+  // Phase 7E.5: Mode picker state
+  const registrationMode = watch('registrationMode') ?? RegistrationMode.DetailedAttendees;
   const groupPricingTiers = watch('groupPricingTiers') || [];
   const ticketTiers = (watch('ticketTiers') || []) as TicketTierFormData[];
   const publishOrganizerContact = watch('publishOrganizerContact');
@@ -295,6 +300,8 @@ export function EventCreationForm() {
         emailGroupIds: data.emailGroupIds || [],
         // IsFreeEvent fix: Send explicit free event flag to backend
         isFree: data.isFree ?? false,
+        // Phase 7E.5: Per-event registration capture mode (default DetailedAttendees back-compat).
+        registrationMode: data.registrationMode ?? RegistrationMode.DetailedAttendees,
         // Organizer Contact Details (multiple contacts)
         publishOrganizerContact: data.publishOrganizerContact || false,
         organizerContacts: data.publishOrganizerContact
@@ -904,6 +911,31 @@ export function EventCreationForm() {
               This is a free event (no ticket purchase required)
             </label>
           </div>
+
+          {/* Phase 7E.5: Registration Mode Picker.
+              Compatibility with the current event shape is queried server-side via
+              `useAllowedRegistrationModes`; the picker disables incompatible options and
+              auto-clears the selection if a shape change makes the current mode invalid
+              (architect hot-spot #5). */}
+          <Controller
+            control={control}
+            name="registrationMode"
+            render={({ field }) => (
+              <RegistrationModePicker
+                value={field.value ?? RegistrationMode.DetailedAttendees}
+                onChange={field.onChange}
+                shape={{
+                  isFreeAttendance: isFree ?? true,
+                  hasDualPricing: !isFree && enableDualPricing,
+                  hasGroupTiers: !isFree && enableGroupPricing,
+                  hasTicketTiers: !isFree && enableTieredTicketing,
+                  // Other axes (named seating, identity-bound add-on, matrix pricing) aren't
+                  // captured at create-time today — defaulted false. As those fields land,
+                  // wire them in here.
+                }}
+              />
+            )}
+          />
 
           {/* Pricing Fields (shown only if not free) */}
           {!isFree && (

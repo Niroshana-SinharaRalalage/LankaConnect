@@ -80,4 +80,15 @@ public interface IEventRepository : IRepository<Event>
     Task<Domain.Events.Entities.TicketTier?> GetTicketTierWithAssignmentsAsync(
         Guid tierId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Slice 8 S8.8c: loads every <c>TicketTier</c> belonging to the given event,
+    /// each with its polymorphic <c>Assignments</c> collection eager-loaded. Used
+    /// by the canvas-editor batch save to reconcile tier assignments across all
+    /// of the event's tiers in a single commit. Returns an empty list when the
+    /// event has no tiers.
+    /// </summary>
+    Task<IReadOnlyList<Domain.Events.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default);
 }

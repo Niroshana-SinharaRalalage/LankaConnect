@@ -1,6 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
@@ -11,8 +12,9 @@ using Microsoft.Extensions.Logging;
 namespace LankaConnect.Application.Events.Commands.BatchUpdateLayout;
 
 /// <summary>
-/// Slice 5 Chunk 10: atomic batch replacement of a venue layout's zones, tables,
-/// and decorations. See <see cref="BatchUpdateLayoutCommand"/> for semantics.
+/// Slice 5 Chunk 10 + Slice 8 S8.8c: atomic batch replacement of a venue layout's
+/// zones, tables, decorations, and (S8.8c) polymorphic tier assignments. See
+/// <see cref="BatchUpdateLayoutCommand"/> for semantics.
 ///
 /// Flow:
 ///   1. Authorize (two-branch via <see cref="ILayoutAuthorizationService"/>).
@@ -24,14 +26,25 @@ namespace LankaConnect.Application.Events.Commands.BatchUpdateLayout;
 ///   5. Apply in order: removals → updates → additions for zones, then tables, then
 ///      decorations, then layout-level Name + Canvas. Each mutation goes through a
 ///      domain method so invariants stay in the domain layer.
-///   6. <see cref="IVenueLayoutRepository.SetOriginalRowVersion"/> + commit.
-///      <see cref="DbUpdateConcurrencyException"/> → 409.
+///   6. (S8.8c) Reconcile <c>TierAssignments</c> against the loaded
+///      <see cref="Domain.Events.Entities.TicketTier"/>s for the event. Resolves
+///      newly-added zone/table client-Guids → server-Guids via the
+///      <c>ClientId</c> fields on <see cref="BatchZone"/> / <see cref="BatchTable"/>.
+///      Diffs current vs desired and calls <c>AssignToZone</c> / <c>AssignToTable</c> /
+///      <c>RemoveAssignment</c> on the affected tiers. Skipped when
+///      <c>payload.TierAssignments == null</c> (backward-compat for callers that
+///      don't manage tiers).
+///   7. <see cref="IVenueLayoutRepository.SetOriginalRowVersion"/> + commit.
+///      <see cref="DbUpdateConcurrencyException"/> → 409. Domain mutations on the
+///      <see cref="Domain.Events.Entities.TicketTier"/> aggregates flush in the
+///      same <c>SaveChanges</c>.
 /// </summary>
 public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayoutCommand>
 {
     private readonly ILayoutAuthorizationService _authorizationService;
     private readonly IStructuralEditGuard _structuralGuard;
     private readonly IVenueLayoutRepository _layoutRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILayoutMetrics _metrics;
     private readonly ILogger<BatchUpdateLayoutCommandHandler> _logger;
@@ -40,6 +53,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         ILayoutAuthorizationService authorizationService,
         IStructuralEditGuard structuralGuard,
         IVenueLayoutRepository layoutRepository,
+        IEventRepository eventRepository,
         IUnitOfWork unitOfWork,
         ILayoutMetrics metrics,
         ILogger<BatchUpdateLayoutCommandHandler> logger)
@@ -47,6 +61,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         _authorizationService = authorizationService;
         _structuralGuard = structuralGuard;
         _layoutRepository = layoutRepository;
+        _eventRepository = eventRepository;
         _unitOfWork = unitOfWork;
         _metrics = metrics;
         _logger = logger;
@@ -178,9 +193,11 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             changesCount++;
         }
 
-        // Track newly-created zones so we can resolve table.ZoneId references below.
-        // Key: position in the payload zones list (stable for this request only).
+        // Track newly-created zones so we can resolve table.ZoneId references below
+        // and (S8.8c) translate <c>BatchTierAssignment.AssignableId</c> client-Guids
+        // for new zones into the freshly-assigned server-Guids.
         var newZoneIdsByIndex = new Dictionary<int, Guid>();
+        var clientIdToZoneServerGuid = new Dictionary<Guid, Guid>();
         for (var i = 0; i < zones.Count; i++)
         {
             var zoneDto = zones[i];
@@ -196,6 +213,10 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             if (shapeUpdate.IsFailure) return shapeUpdate;
 
             newZoneIdsByIndex[i] = addResult.Value.Id;
+            if (zoneDto.ClientId is { } clientGuid)
+            {
+                clientIdToZoneServerGuid[clientGuid] = addResult.Value.Id;
+            }
             changesCount++;
         }
 
@@ -210,6 +231,9 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         }
 
         // Table additions — auto-generate seats for parity with AddTableCommandHandler.
+        // S8.8c: track client → server Guid mapping for tier-assignment reconciliation
+        // below.
+        var clientIdToTableServerGuid = new Dictionary<Guid, Guid>();
         foreach (var tableDto in tables.Where(t => !t.Id.HasValue))
         {
             Result<VenueTable> addResult = tableDto.Shape == TableShape.Round
@@ -221,6 +245,11 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                     tableDto.ZoneId, tableDto.Geometry);
 
             if (addResult.IsFailure) return Result.Failure(addResult.Error);
+
+            if (tableDto.ClientId is { } clientGuid)
+            {
+                clientIdToTableServerGuid[clientGuid] = addResult.Value.Id;
+            }
             changesCount++;
         }
 
@@ -271,6 +300,27 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
             changesCount++;
         }
 
+        // ───────── Slice 8 S8.8c: tier-assignment reconciliation ─────────
+        // Runs after all geometry mutations so newly-added zones/tables exist
+        // on the layout (with server Guids) when we validate AssignableIds.
+        // null payload.TierAssignments → skip (backward-compat for callers that
+        // don't manage tiers); empty list → reconcile to "no assignments".
+        if (payload.TierAssignments is not null)
+        {
+            var reconcileResult = await ReconcileTierAssignmentsAsync(
+                layout,
+                payload.TierAssignments,
+                clientIdToZoneServerGuid,
+                clientIdToTableServerGuid,
+                cancellationToken);
+
+            if (reconcileResult.IsFailure)
+            {
+                return Result.Failure(reconcileResult.Error, reconcileResult.ErrorKind);
+            }
+            changesCount += reconcileResult.Value;
+        }
+
         _layoutRepository.SetOriginalRowVersion(layout, request.ExpectedRowVersion);
 
         try
@@ -313,5 +363,165 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Slice 8 S8.8c: declarative tier-assignment reconciliation. Loads every
+    /// <see cref="TicketTier"/> for the layout's event with its <c>Assignments</c>
+    /// collection, resolves any client-Guids in <paramref name="desired"/> to the
+    /// freshly-assigned server-Guids of zones/tables created earlier in this
+    /// batch, validates every <c>(Kind, AssignableId)</c> exists on the
+    /// post-mutation layout, and applies the minimum set of
+    /// <see cref="TicketTier.AssignToZone"/> / <see cref="TicketTier.AssignToTable"/> /
+    /// <see cref="TicketTier.RemoveAssignment"/> calls to bring current state in
+    /// line with desired state. Returns the number of mutations applied for the
+    /// canvas-editor-saved metric tag.
+    /// </summary>
+    private async Task<Result<int>> ReconcileTierAssignmentsAsync(
+        VenueLayout layout,
+        List<BatchTierAssignment> desired,
+        IReadOnlyDictionary<Guid, Guid> clientIdToZoneServerGuid,
+        IReadOnlyDictionary<Guid, Guid> clientIdToTableServerGuid,
+        CancellationToken cancellationToken)
+    {
+        if (!layout.EventId.HasValue)
+        {
+            _logger.LogWarning(
+                "BatchUpdateLayout: tier assignments rejected on template layout. LayoutId={LayoutId}",
+                layout.Id);
+            return Result<int>.Failure(
+                "Tier assignments require an event-attached layout, not a template",
+                ErrorKind.Validation);
+        }
+
+        // Resolve every desired assignableId from client-Guid → server-Guid.
+        // Untranslated Ids are assumed to already reference server entities;
+        // the validation step below catches any miss.
+        var resolved = new List<(AssignableKind Kind, Guid AssignableId, IReadOnlyList<Guid> TierIds)>(desired.Count);
+        foreach (var item in desired)
+        {
+            var resolvedId = item.Kind switch
+            {
+                AssignableKind.Zone =>
+                    clientIdToZoneServerGuid.TryGetValue(item.AssignableId, out var z) ? z : item.AssignableId,
+                AssignableKind.Table =>
+                    clientIdToTableServerGuid.TryGetValue(item.AssignableId, out var t) ? t : item.AssignableId,
+                _ => item.AssignableId,
+            };
+            resolved.Add((item.Kind, resolvedId, item.TierIds ?? new List<Guid>()));
+        }
+
+        // Validate every (kind, id) tuple exists on the *current* (post-mutation)
+        // layout. Items being deleted in this batch are already gone from the
+        // aggregate at this point, so an attempt to assign tiers to a deleted
+        // zone fails fast with NotFound.
+        var validZoneIds = layout.Zones.Select(z => z.Id).ToHashSet();
+        var validTableIds = layout.Tables.Select(t => t.Id).ToHashSet();
+        foreach (var (kind, id, _) in resolved)
+        {
+            var exists = kind == AssignableKind.Zone
+                ? validZoneIds.Contains(id)
+                : validTableIds.Contains(id);
+            if (!exists)
+            {
+                _logger.LogWarning(
+                    "BatchUpdateLayout: tier assignment references unknown {Kind} {Id}. LayoutId={LayoutId}",
+                    kind, id, layout.Id);
+                return Result<int>.NotFound(
+                    kind == AssignableKind.Zone
+                        ? $"Zone {id} not found on this layout"
+                        : $"Table {id} not found on this layout");
+            }
+        }
+
+        // Load all tiers for the event (with assignments) so the diff can read
+        // current state and the domain mutations track on the same aggregates.
+        var tiers = await _eventRepository.GetTicketTiersWithAssignmentsForEventAsync(
+            layout.EventId.Value, cancellationToken);
+
+        // Sanity: every tier referenced in the desired state must belong to this
+        // event (defense-in-depth — frontend should never send cross-event tiers).
+        var validTierIds = tiers.Select(t => t.Id).ToHashSet();
+        foreach (var (_, _, tierIds) in resolved)
+        {
+            foreach (var tierId in tierIds)
+            {
+                if (!validTierIds.Contains(tierId))
+                {
+                    _logger.LogWarning(
+                        "BatchUpdateLayout: tier {TierId} not in event {EventId}. LayoutId={LayoutId}",
+                        tierId, layout.EventId.Value, layout.Id);
+                    return Result<int>.Failure(
+                        $"Ticket tier {tierId} does not belong to this event",
+                        ErrorKind.Validation);
+                }
+            }
+        }
+
+        // Build current-state map: per-tier set of (kind, id) tuples currently assigned.
+        var current = new Dictionary<Guid, HashSet<(AssignableKind, Guid)>>();
+        foreach (var tier in tiers)
+        {
+            current[tier.Id] = tier.Assignments
+                .Select(a => (a.AssignableKind, a.AssignableId))
+                .ToHashSet();
+        }
+
+        // Build desired-state map: same shape, derived from the resolved list.
+        var desiredByTier = new Dictionary<Guid, HashSet<(AssignableKind, Guid)>>();
+        foreach (var (kind, id, tierIds) in resolved)
+        {
+            foreach (var tierId in tierIds)
+            {
+                if (!desiredByTier.TryGetValue(tierId, out var set))
+                {
+                    set = new HashSet<(AssignableKind, Guid)>();
+                    desiredByTier[tierId] = set;
+                }
+                set.Add((kind, id));
+            }
+        }
+
+        // Diff and apply per tier. Goes through domain methods so invariants
+        // (idempotence on assign, "Assignment not found" on bad remove) stay in
+        // the domain layer. Both add + remove path bump the tier's RowVersion
+        // via MarkAsUpdated() — exactly the behavior the architect called out.
+        var tierMutations = 0;
+        foreach (var tier in tiers)
+        {
+            var currentSet = current[tier.Id];
+            desiredByTier.TryGetValue(tier.Id, out var desiredSet);
+            desiredSet ??= new HashSet<(AssignableKind, Guid)>();
+
+            // Removals: in current but not in desired.
+            foreach (var (kind, id) in currentSet.Except(desiredSet).ToList())
+            {
+                var removeResult = tier.RemoveAssignment(kind, id);
+                if (removeResult.IsFailure)
+                {
+                    return Result<int>.Failure(removeResult.Error);
+                }
+                tierMutations++;
+            }
+
+            // Additions: in desired but not in current.
+            foreach (var (kind, id) in desiredSet.Except(currentSet).ToList())
+            {
+                var addResult = kind == AssignableKind.Zone
+                    ? tier.AssignToZone(id)
+                    : tier.AssignToTable(id);
+                if (addResult.IsFailure)
+                {
+                    return Result<int>.Failure(addResult.Error);
+                }
+                tierMutations++;
+            }
+        }
+
+        _logger.LogInformation(
+            "BatchUpdateLayout: tier reconciliation applied. LayoutId={LayoutId}, EventId={EventId}, TierMutations={TierMutations}",
+            layout.Id, layout.EventId.Value, tierMutations);
+
+        return Result<int>.Success(tierMutations);
     }
 }

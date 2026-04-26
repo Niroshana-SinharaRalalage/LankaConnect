@@ -31,7 +31,20 @@ public record BatchLayoutPayload(
     BatchCanvasConfig? Canvas,
     List<BatchZone>? Zones,
     List<BatchTable>? Tables,
-    List<BatchDecoration>? Decorations
+    List<BatchDecoration>? Decorations,
+    /// <summary>
+    /// Slice 8 S8.8c: declarative reconciliation of the polymorphic
+    /// <c>tier_assignments</c> junction. The list is the *complete desired
+    /// state* per <c>(Kind, AssignableId)</c> tuple — handler diffs against
+    /// the layout's current assignments, removes obsolete tuples, and adds
+    /// new ones inside the same <c>UnitOfWork</c> commit. <c>null</c> means
+    /// "do not reconcile" (preserves backward compatibility for callers that
+    /// don't manage tiers); an empty list means "remove every assignment".
+    /// For newly-added zones/tables the <c>AssignableId</c> may be a client-side
+    /// draft Guid — the handler resolves it to the server-assigned Guid via
+    /// each <see cref="BatchZone.ClientId"/> / <see cref="BatchTable.ClientId"/>.
+    /// </summary>
+    List<BatchTierAssignment>? TierAssignments = null
 );
 
 public record BatchCanvasConfig(
@@ -47,7 +60,14 @@ public record BatchZone(
     string Color,
     int SortOrder,
     ZoneShape Shape,
-    string? Geometry
+    string? Geometry,
+    /// <summary>
+    /// Slice 8 S8.8c: optional client-side draft Guid for newly-added zones
+    /// (<see cref="Id"/> == null). Lets <c>BatchTierAssignment.AssignableId</c>
+    /// reference the new zone before the server has assigned its real Guid.
+    /// Ignored when <see cref="Id"/> is set.
+    /// </summary>
+    Guid? ClientId = null
 );
 
 public record BatchTable(
@@ -57,7 +77,12 @@ public record BatchTable(
     int Capacity,
     int SortOrder,
     Guid? ZoneId,
-    string? Geometry
+    string? Geometry,
+    /// <summary>
+    /// Slice 8 S8.8c: optional client-side draft Guid for newly-added tables.
+    /// See <see cref="BatchZone.ClientId"/> for the same semantics.
+    /// </summary>
+    Guid? ClientId = null
 );
 
 public record BatchDecoration(
@@ -67,4 +92,18 @@ public record BatchDecoration(
     int SortOrder,
     string? Geometry,
     string? Properties
+);
+
+/// <summary>
+/// Slice 8 S8.8c: desired tier-assignment state for a single zone or table
+/// in the canvas-editor batch save. <c>TierIds</c> is the complete set of
+/// tiers the organizer wants assigned to <c>(Kind, AssignableId)</c> after
+/// the save lands — the handler diffs against the current assignments and
+/// applies the minimum set of <c>AssignToZone</c> / <c>AssignToTable</c> /
+/// <c>RemoveAssignment</c> domain calls in the same UoW commit.
+/// </summary>
+public record BatchTierAssignment(
+    AssignableKind Kind,
+    Guid AssignableId,
+    List<Guid> TierIds
 );

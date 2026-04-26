@@ -26,6 +26,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
     private readonly IEventRepository _eventRepository;
+    private readonly IRegistrationRepository _registrationRepository; // Phase 7E.4: Load reg for HeadCount
     private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
     private readonly ILogger<RegistrationCancelledEventHandler> _logger;
@@ -34,6 +35,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
+        IRegistrationRepository registrationRepository,
         IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
         ILogger<RegistrationCancelledEventHandler> logger)
@@ -41,6 +43,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
         _typedEmailService = typedEmailService;
         _userRepository = userRepository;
         _eventRepository = eventRepository;
+        _registrationRepository = registrationRepository;
         _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
         _logger = logger;
@@ -131,6 +134,26 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                 if (hasActiveForms)
                 {
                     emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
+                }
+
+                // Phase 7E.4: Populate flexible registration params from the cancelled registration.
+                // The row stays in the DB after Cancel() (Status changes to Cancelled), so loading
+                // it here surfaces the snapshotted RegistrationMode + HeadCount. If the registration
+                // can't be loaded for any reason, the FlexibleRegistration fields stay at their
+                // safe defaults (HasHeadCount=false) and the email template renders neutrally.
+                var cancelledRegistration = await _registrationRepository.GetByEventAndUserAsync(
+                    domainEvent.EventId, domainEvent.AttendeeId, cancellationToken);
+                if (cancelledRegistration != null)
+                {
+                    var flex = HeadCountEmailFormatter.Compute(cancelledRegistration);
+                    emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                    emailParams.HasHeadCount = flex.hasHeadCount;
+                    emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                    emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                    emailParams.HeadCountTotal = flex.headCountTotal;
+                    emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                    emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                    emailParams.LeadAttendeeName = flex.leadAttendeeName;
                 }
 
                 // Phase 6A.100: Send via typed email service

@@ -161,6 +161,34 @@ public class RegistrationCancellationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Phase 7E.4 — Flexible Registration Mode Properties
+
+    /// <summary>Phase 7E.4: True for Mode A (DetailedAttendees). Toggles the per-attendee block.</summary>
+    public bool HasDetailedAttendees { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True for any Mode B variant (B1-B4).</summary>
+    public bool HasHeadCount { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True for B2/B3/B4 (demographic axis present); false for B1.</summary>
+    public bool HasHeadCountBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True when the registration carries TierCounts.</summary>
+    public bool HasTierBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7E.4: Pre-rendered total head count (string).</summary>
+    public string HeadCountTotal { get; set; } = string.Empty;
+
+    /// <summary>Phase 7E.4: Pre-rendered demographic line, e.g. "2 adults · 1 child".</summary>
+    public string HeadCountBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>Phase 7E.4: Pre-rendered tier line, e.g. "VIP × 2, General × 3".</summary>
+    public string TierBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>Phase 7E.4: Lead attendee name for Mode B registrations.</summary>
+    public string LeadAttendeeName { get; set; } = string.Empty;
+
+    #endregion
+
     #region Signup Lists Properties
 
     /// <summary>
@@ -228,6 +256,16 @@ public class RegistrationCancellationEmailParams : IEmailParameters
             { "SignupListUrl", SignUpListsUrl },  // Template alias (singular form)
             { "HasSignupForms", HasSignupForms },  // Phase 6A.112
             { "SignupFormsUrl", SignupFormsUrl },  // Phase 6A.112
+
+            // Phase 7E.4: Flexible registration mode params (always emit booleans true AND false).
+            { EmailTemplateContract.FlexibleRegistration.HasDetailedAttendees, HasDetailedAttendees },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCount, HasHeadCount },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCountBreakdown, HasHeadCountBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HasTierBreakdown, HasTierBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
+            { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            { "LeadAttendeeName", LeadAttendeeName },
         };
 
         // Phase 7C.2b: emit decomposed location keys + legacy EventLocation fallback.

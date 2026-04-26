@@ -125,13 +125,25 @@ public class VenueLayout : BaseEntity
         if (newOwnerUserId == Guid.Empty)
             return Result<VenueLayout>.Failure("Owner user ID is required");
 
+        // CanvasConfig is an EF-owned entity keyed by VenueLayoutId, so reusing
+        // the source's instance would carry the source layout's FK and EF would
+        // refuse the save with "The property 'CanvasConfig.VenueLayoutId' is
+        // part of a key and so cannot be modified". Build a fresh value instead.
+        var canvasResult = CanvasConfig.Create(
+            source.Canvas.Width,
+            source.Canvas.Height,
+            source.Canvas.Scale,
+            source.Canvas.BackgroundColor);
+        if (canvasResult.IsFailure)
+            return Result<VenueLayout>.Failure(canvasResult.Error);
+
         var layoutResult = Create(
             newName,
             source.LayoutType,
             newOwnerUserId,
             eventId: null,
             isTemplate: true,
-            canvas: source.Canvas);
+            canvas: canvasResult.Value);
         if (layoutResult.IsFailure)
             return layoutResult;
         var clone = layoutResult.Value;

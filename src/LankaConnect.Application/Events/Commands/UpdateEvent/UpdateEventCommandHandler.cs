@@ -489,6 +489,49 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             // via the domain methods that manage the flag
         }
 
+        // Phase 7E.2: Handle optional registration mode change. Null = caller didn't request a
+        // change → leave the existing mode untouched.
+        if (request.RegistrationMode.HasValue && request.RegistrationMode.Value != @event.RegistrationMode)
+        {
+            // Validate the requested mode against the post-update event shape (using the just-applied
+            // pricing/free state). Same compatibility helper that CreateEvent uses — single source of truth.
+            var modeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
+            {
+                IsFreeAttendance = @event.IsFreeEvent,
+                HasDualPricing = @event.Pricing != null && @event.Pricing.HasChildPricing,
+                HasGroupTiers = @event.Pricing != null && @event.Pricing.HasGroupTiers,
+                HasTicketTiers = @event.HasTicketTiers,
+                HasSeating = @event.HasAssignedSeating,
+                // Other axes (named seating, identity-bound add-on, per-ticket name, matrix pricing)
+                // are not yet modelled on Event — they default to false. Phase 7F revisits.
+            };
+            var modeCompatibility = LankaConnect.Domain.Events.Services
+                .RegistrationModeCompatibility.Check(request.RegistrationMode.Value, modeContext);
+            if (modeCompatibility.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent VALIDATION FAILED: incompatible registration mode - EventId={EventId}, " +
+                    "RequestedMode={Mode}, Reason={Reason}",
+                    request.EventId, request.RegistrationMode.Value, modeCompatibility.Error);
+                return Result.Failure(modeCompatibility.Error);
+            }
+
+            // Domain rule: SetRegistrationMode throws if Registrations.Any().
+            // Surface that as a clear 400 with the registration count in the message.
+            var setModeResult = @event.SetRegistrationMode(request.RegistrationMode.Value);
+            if (setModeResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetRegistrationMode rejected - EventId={EventId}, RequestedMode={Mode}, Reason={Reason}",
+                    request.EventId, request.RegistrationMode.Value, setModeResult.Error);
+                return setModeResult;
+            }
+
+            _logger.LogInformation(
+                "UpdateEvent: RegistrationMode changed - EventId={EventId}, NewMode={Mode}",
+                request.EventId, request.RegistrationMode.Value);
+        }
+
         // Phase 6A.32/33: Validate and update email groups (Fix #3: Batch query to prevent N+1)
         if (request.EmailGroupIds != null && request.EmailGroupIds.Any())
         {

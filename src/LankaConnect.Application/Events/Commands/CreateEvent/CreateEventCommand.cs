@@ -60,7 +60,11 @@ public record CreateEventCommand(
     decimal? DonationMinAmount = null,
     decimal? DonationMaxAmount = null,
     string? DonationMessage = null,
-    bool? ShowDonationSummary = null
+    bool? ShowDonationSummary = null,
+    // Phase 7E.2: Per-event registration capture mode chosen by the organiser.
+    // Defaults to DetailedAttendees (the pre-7E behaviour) so existing API clients that
+    // do not yet send this field continue to work unchanged.
+    RegistrationMode? RegistrationMode = null
 ) : ICommand<Guid>;
 
 /// <summary>

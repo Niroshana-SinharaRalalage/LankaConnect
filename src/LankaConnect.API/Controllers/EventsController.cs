@@ -26,6 +26,7 @@ using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Commands.SendEventNotification;
 using LankaConnect.Application.Events.Commands.SendEventReminder;
+using LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
@@ -312,6 +313,33 @@ public class EventsController : BaseController<EventsController>
         var query = new GetFeaturedEventsQuery(userId, latitude, longitude);
         var result = await Mediator.Send(query);
 
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 7E.2: Returns the set of <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/>
+    /// values compatible with a given draft event shape. Drives the frontend mode picker so
+    /// disabled options match server-side validation. All shape parameters default to <c>false</c>.
+    /// Public endpoint — no auth needed (the response is shape-only metadata).
+    /// </summary>
+    [HttpGet("allowed-registration-modes")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllowedRegistrationModes(
+        [FromQuery] bool isFreeAttendance = false,
+        [FromQuery] bool hasSeating = false,
+        [FromQuery] bool hasNamedSeating = false,
+        [FromQuery] bool requiresAttendeeNameOnTicket = false,
+        [FromQuery] bool hasDualPricing = false,
+        [FromQuery] bool hasGroupTiers = false,
+        [FromQuery] bool hasTicketTiers = false,
+        [FromQuery] bool hasIdentityBoundAddOn = false,
+        [FromQuery] bool hasMatrixPricing = false)
+    {
+        var query = new GetAllowedRegistrationModesQuery(
+            isFreeAttendance, hasSeating, hasNamedSeating, requiresAttendeeNameOnTicket,
+            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing);
+
+        var result = await Mediator.Send(query);
         return HandleResult(result);
     }
 

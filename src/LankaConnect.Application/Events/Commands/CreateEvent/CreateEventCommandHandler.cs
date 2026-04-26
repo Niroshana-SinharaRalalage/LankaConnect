@@ -305,6 +305,38 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // Determine category (use provided or default to Community)
         var category = request.Category ?? EventCategory.Community;
 
+        // Phase 7E.2: Validate the requested registration mode against the event shape BEFORE
+        // we create the aggregate — fail fast on incompatible combinations (the 14-row
+        // compatibility table from the Phase 7E plan §2). The compatibility helper is the
+        // single source of truth, also used by UpdateEventCommandHandler and
+        // GetAllowedRegistrationModesQueryHandler.
+        var requestedRegistrationMode = request.RegistrationMode ?? RegistrationMode.DetailedAttendees;
+        var registrationModeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
+        {
+            // Free attendance iff: caller said IsFree=true, OR no pricing/ticket price was provided.
+            IsFreeAttendance = request.IsFree == true || (pricing == null && ticketPrice == null),
+            HasDualPricing = pricing != null && pricing.HasChildPricing,
+            HasGroupTiers = isGroupPricing,
+            // The remaining axes (seating, named-seating, per-ticket name, identity-bound add-on,
+            // ticket tiers, matrix pricing) aren't part of CreateEvent's request DTO today —
+            // they're set via separate commands (SetSeatingLayout / CreateTicketTier / etc.).
+            // Compatibility for those flows is enforced when those commands run; for the create
+            // flow, we treat them as absent by default. Phase 7F will revisit if create-time
+            // shape becomes richer.
+        };
+        var modeCompatibilityResult = LankaConnect.Domain.Events.Services
+            .RegistrationModeCompatibility.Check(requestedRegistrationMode, registrationModeContext);
+        if (modeCompatibilityResult.IsFailure)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                "CreateEvent VALIDATION FAILED: incompatible registration mode - OrganizerId={OrganizerId}, " +
+                "RequestedMode={Mode}, Reason={Reason}, Duration={ElapsedMs}ms",
+                request.OrganizerId, requestedRegistrationMode, modeCompatibilityResult.Error,
+                stopwatch.ElapsedMilliseconds);
+            return Result<Guid>.Failure(modeCompatibilityResult.Error);
+        }
+
         // Create Event aggregate
         var eventResult = Event.Create(
             titleResult.Value,
@@ -395,6 +427,26 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             _logger.LogInformation(
                 "CreateEvent: Event marked as free - EventId={EventId}",
                 eventResult.Value.Id);
+        }
+
+        // Phase 7E.2: Apply the validated registration mode (skip for DetailedAttendees — that's
+        // the default and the property's no-op idempotent path; saves a domain-event roundtrip).
+        if (requestedRegistrationMode != RegistrationMode.DetailedAttendees)
+        {
+            var setModeResult = eventResult.Value.SetRegistrationMode(requestedRegistrationMode);
+            if (setModeResult.IsFailure)
+            {
+                // SetRegistrationMode only fails if registrations exist — impossible during Create.
+                // Surfacing as 500-equivalent: indicates a domain invariant violation.
+                _logger.LogError(
+                    "CreateEvent: SetRegistrationMode unexpectedly failed during create - EventId={EventId}, Mode={Mode}, Error={Error}",
+                    eventResult.Value.Id, requestedRegistrationMode, setModeResult.Error);
+                return Result<Guid>.Failure(setModeResult.Error);
+            }
+
+            _logger.LogInformation(
+                "CreateEvent: RegistrationMode set - EventId={EventId}, Mode={Mode}",
+                eventResult.Value.Id, requestedRegistrationMode);
         }
 
         // Phase 6A.32/33: Validate and assign email groups

@@ -61,5 +61,9 @@ public record UpdateEventCommand(
     decimal? DonationMinAmount = null,
     decimal? DonationMaxAmount = null,
     string? DonationMessage = null,
-    bool? ShowDonationSummary = null
+    bool? ShowDonationSummary = null,
+    // Phase 7E.2: Optional registration mode change.
+    // Null means "don't modify". Domain rule (Event.SetRegistrationMode) forbids change once
+    // registrations exist; the handler surfaces that as a 400 with a clear message.
+    RegistrationMode? RegistrationMode = null
 ) : ICommand;

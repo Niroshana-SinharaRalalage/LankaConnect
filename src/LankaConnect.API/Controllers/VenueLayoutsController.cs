@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Commands.CreateVenueLayout;
 using LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
+using LankaConnect.Application.Events.Commands.SaveLayoutAsTemplate;
 using LankaConnect.Application.Events.Commands.GenerateSeats;
 using LankaConnect.Application.Events.Commands.HoldSeats;
 using LankaConnect.Application.Events.Commands.ReleaseSeats;
@@ -154,6 +155,50 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     /// Request body for <see cref="CreateLayoutFromPreset"/>.
     /// </summary>
     public record CreateLayoutFromPresetRequest(string PresetId, Guid? EventId);
+
+    /// <summary>
+    /// Slice 8 S8.9b: clones an existing venue layout as a per-user template.
+    /// The new layout has <c>EventId == null</c>, <c>IsTemplate == true</c>,
+    /// <c>CreatedByUserId == </c>caller, and a fresh server-side ID. Zones,
+    /// tables, decorations, canvas, and per-seat <c>IsEnabled</c> /
+    /// <c>IsAccessible</c> flags round-trip the clone (architect Option B).
+    /// Tier mappings are deliberately dropped — templates are tier-free.
+    /// Caller must already be authorized to mutate the source layout.
+    /// </summary>
+    [HttpPost("{id:guid}/save-as-template")]
+    [Authorize]
+    [ProducesResponseType(typeof(VenueLayoutDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SaveLayoutAsTemplate(
+        Guid id,
+        [FromBody] SaveLayoutAsTemplateRequest request)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "SaveLayoutAsTemplate: user={UserId}, sourceLayoutId={SourceLayoutId}, templateName={TemplateName}",
+            userId, id, request.TemplateName);
+
+        var command = new SaveLayoutAsTemplateCommand(
+            id,
+            userId,
+            request.TemplateName);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultWithCreated(
+            result,
+            nameof(GetLayout),
+            new { id = result.IsSuccess ? result.Value!.Id : Guid.Empty });
+    }
+
+    /// <summary>
+    /// Request body for <see cref="SaveLayoutAsTemplate"/>.
+    /// </summary>
+    public record SaveLayoutAsTemplateRequest(string TemplateName);
 
     /// <summary>
     /// Update a venue layout's name and/or canvas configuration.

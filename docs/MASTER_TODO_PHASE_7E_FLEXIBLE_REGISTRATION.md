@@ -1,6 +1,6 @@
 # Master TODO — Phase 7E: Flexible Event Registration Modes
 
-**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ (deployed + verified, email render gap is 7E.4 work) · 7E.4 next
+**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ · 7E.4 ✅ core (chunks 1+2 shipped: registration confirmation HTML + cancellation contract; chunks 3-5 deferred — their existing templates don't render attendee details in any mode) · 7E.5 next
 **Architect-approved**: ✅ yes (review iteration 2, 2026-04-25)
 **Plan reference**: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
 **Master index entry**: [PHASE_6A_MASTER_INDEX.md § Phase 7E](./PHASE_6A_MASTER_INDEX.md)

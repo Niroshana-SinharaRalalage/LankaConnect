@@ -97,6 +97,98 @@ public class VenueLayout : BaseEntity
     }
 
     /// <summary>
+    /// Slice 8 S8.9b: produces a per-user template (<c>EventId == null</c>,
+    /// <c>IsTemplate == true</c>, <c>CreatedByUserId == newOwnerUserId</c>) that
+    /// mirrors <paramref name="source"/>'s structure with fresh server-side IDs.
+    /// Per architect Option B (faithful clone): zones/tables/decorations + canvas
+    /// are cloned; per-seat <c>IsEnabled</c> / <c>IsAccessible</c> flags round-trip;
+    /// tier mappings are deliberately dropped (they live on the <c>TicketTier</c>
+    /// aggregate, owned by the source's event — templates are tier-free by design).
+    ///
+    /// Holds and reservations are not cloned (they're on different aggregates and
+    /// belong to the source event, not the new template).
+    /// </summary>
+    public static Result<VenueLayout> CloneAsTemplate(
+        VenueLayout source,
+        string newName,
+        Guid newOwnerUserId)
+    {
+        if (source is null)
+            return Result<VenueLayout>.Failure("Source layout is required");
+
+        if (string.IsNullOrWhiteSpace(newName))
+            return Result<VenueLayout>.Failure("Template name is required");
+
+        if (newName.Trim().Length > 200)
+            return Result<VenueLayout>.Failure("Template name cannot exceed 200 characters");
+
+        if (newOwnerUserId == Guid.Empty)
+            return Result<VenueLayout>.Failure("Owner user ID is required");
+
+        var layoutResult = Create(
+            newName,
+            source.LayoutType,
+            newOwnerUserId,
+            eventId: null,
+            isTemplate: true,
+            canvas: source.Canvas);
+        if (layoutResult.IsFailure)
+            return layoutResult;
+        var clone = layoutResult.Value;
+
+        // Decorations first — straight clone via existing public AddDecoration.
+        // Order matches source.Decorations so SortOrder is preserved.
+        foreach (var srcDec in source.Decorations.OrderBy(d => d.SortOrder))
+        {
+            var decResult = clone.AddDecoration(
+                srcDec.Kind, srcDec.Label, srcDec.SortOrder, srcDec.Geometry, srcDec.Properties);
+            if (decResult.IsFailure)
+                return Result<VenueLayout>.Failure(decResult.Error);
+        }
+
+        // Zones — clone via AddZone overload that accepts shape/geometry, then
+        // RebuildSeatsFrom(...) (S8.9b internal seat-rebuild path) to faithfully
+        // copy each seat's row/number/label/sort/x/y/angle + IsEnabled +
+        // IsAccessible flags. Track srcZoneId → cloneZoneId so tables can be
+        // re-linked to the cloned zones below.
+        var zoneIdMap = new Dictionary<Guid, Guid>();
+        foreach (var srcZone in source.Zones.OrderBy(z => z.SortOrder))
+        {
+            var zoneResult = clone.AddZone(
+                srcZone.Name, srcZone.Color, srcZone.SortOrder,
+                srcZone.Shape, srcZone.Geometry);
+            if (zoneResult.IsFailure)
+                return Result<VenueLayout>.Failure(zoneResult.Error);
+            var newZone = zoneResult.Value;
+            newZone.RebuildSeatsFrom(srcZone.Seats);
+            zoneIdMap[srcZone.Id] = newZone.Id;
+        }
+
+        // Tables — AddTable creates the table without auto-generating seats; then
+        // RebuildSeatsFrom(...) clones the full seat set (round-table radial
+        // angles + x/y included) with flag fidelity.
+        foreach (var srcTable in source.Tables.OrderBy(t => t.SortOrder))
+        {
+            Guid? cloneZoneId = null;
+            if (srcTable.VenueZoneId.HasValue
+                && zoneIdMap.TryGetValue(srcTable.VenueZoneId.Value, out var mappedZoneId))
+            {
+                cloneZoneId = mappedZoneId;
+            }
+
+            var tableResult = clone.AddTable(
+                srcTable.Label, srcTable.Shape, srcTable.Capacity,
+                srcTable.SortOrder, cloneZoneId, srcTable.Geometry);
+            if (tableResult.IsFailure)
+                return Result<VenueLayout>.Failure(tableResult.Error);
+            var newTable = tableResult.Value;
+            newTable.RebuildSeatsFrom(srcTable.Seats);
+        }
+
+        return Result<VenueLayout>.Success(clone);
+    }
+
+    /// <summary>
     /// Replaces the canvas configuration (dimensions, scale, background color).
     /// </summary>
     public Result UpdateCanvas(CanvasConfig canvas)

@@ -277,6 +277,47 @@ public class VenueTable : BaseEntity
         _seats.Clear();
     }
 
+    /// <summary>
+    /// Slice 8 S8.9b: rebuilds this table's seat collection from a source list,
+    /// preserving every seat's <see cref="Seat.Number"/>, <see cref="Seat.Label"/>,
+    /// <see cref="Seat.SortOrder"/>, <see cref="Seat.AngleDeg"/>,
+    /// <see cref="Seat.X"/>, <see cref="Seat.Y"/>, <see cref="Seat.IsAccessible"/>,
+    /// and <see cref="Seat.IsEnabled"/> flags but with fresh server-side IDs and
+    /// a <see cref="Seat.VenueTableId"/> pointing at this (clone) table.
+    ///
+    /// Used by <see cref="VenueLayout.CloneAsTemplate"/> only — see
+    /// <see cref="VenueZone.RebuildSeatsFrom"/> for the rationale.
+    /// </summary>
+    internal void RebuildSeatsFrom(IEnumerable<Seat> sourceSeats)
+    {
+        if (sourceSeats is null) return;
+        _seats.Clear();
+        foreach (var src in sourceSeats)
+        {
+            var seatResult = Seat.CreateAtTable(
+                venueTableId: Id,
+                tableLabel: Label,
+                seatNumber: src.Number,
+                label: src.Label,
+                sortOrder: src.SortOrder,
+                angleDeg: src.AngleDeg ?? 0.0,
+                x: src.X,
+                y: src.Y,
+                isAccessible: src.IsAccessible);
+            if (!seatResult.IsSuccess)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to clone table seat (Number={src.Number}, Table={Label}): {seatResult.Error}");
+            }
+            var newSeat = seatResult.Value;
+            if (!src.IsEnabled)
+            {
+                newSeat.Disable();
+            }
+            _seats.Add(newSeat);
+        }
+    }
+
     private static string NormalizeGeometry(string? geometry)
     {
         if (string.IsNullOrWhiteSpace(geometry)) return "{}";

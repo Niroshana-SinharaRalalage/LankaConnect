@@ -165,6 +165,51 @@ public class VenueZone : BaseEntity
         _seats.Clear();
     }
 
+    /// <summary>
+    /// Slice 8 S8.9b: rebuilds this zone's seat collection from a source list,
+    /// preserving every seat's <see cref="Seat.Row"/>, <see cref="Seat.Number"/>,
+    /// <see cref="Seat.Label"/>, <see cref="Seat.SortOrder"/>, <see cref="Seat.X"/>,
+    /// <see cref="Seat.Y"/>, <see cref="Seat.IsAccessible"/>, and
+    /// <see cref="Seat.IsEnabled"/> flags but with fresh server-side IDs and a
+    /// <see cref="Seat.VenueZoneId"/> pointing at this (clone) zone.
+    ///
+    /// Used by <see cref="VenueLayout.CloneAsTemplate"/> only — keeps the seat
+    /// fidelity contract on the aggregate root rather than exposing an
+    /// arbitrary "create seat at exact (row,number,label,...)" public surface
+    /// that would invite domain-rule bypasses.
+    /// </summary>
+    internal void RebuildSeatsFrom(IEnumerable<Seat> sourceSeats)
+    {
+        if (sourceSeats is null) return;
+        _seats.Clear();
+        foreach (var src in sourceSeats)
+        {
+            var seatResult = Seat.CreateInZone(
+                venueZoneId: Id,
+                row: src.Row,
+                number: src.Number,
+                label: src.Label,
+                sortOrder: src.SortOrder,
+                isAccessible: src.IsAccessible,
+                x: src.X,
+                y: src.Y);
+            if (!seatResult.IsSuccess)
+            {
+                // Source seat passed validation when originally created; if we
+                // can't recreate it the source aggregate is malformed. Surface
+                // loudly rather than silently dropping seats from the clone.
+                throw new InvalidOperationException(
+                    $"Failed to clone zone seat (Row={src.Row}, Number={src.Number}): {seatResult.Error}");
+            }
+            var newSeat = seatResult.Value;
+            if (!src.IsEnabled)
+            {
+                newSeat.Disable();
+            }
+            _seats.Add(newSeat);
+        }
+    }
+
     private static string NormalizeGeometry(string? geometry)
     {
         if (string.IsNullOrWhiteSpace(geometry)) return "{}";

@@ -29,6 +29,42 @@
 
 ---
 
+## 🎨 2026-04-26 — SEATING SLICE 8: S8.9a (warn-before-close) + S8.8c (atomic tier reconciliation) SHIPPED + WIRE-VERIFIED (parallel stream to Phase 7E.1)
+**Date**: 2026-04-26
+**Session**: Continuation of Slice 8 of `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8. Two follow-ups landed on top of S8.8: **S8.9a** added a `ConfirmDialog`-driven "Discard unsaved changes?" guard intercepting every close path (X / footer Close / Esc / backdrop) when the editor reports `hasChanges=true`. **S8.8c** closes the architect-flagged tier-persistence gap by extending `BatchLayoutPayload` with a `tierAssignments` block + reconciling tier mutations inside the existing `IUnitOfWork.CommitAsync` (architect Option A, called via the architect agent before implementation). The canvas-editor save is now truly all-or-nothing across geometry + tier assignments.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Backend `deploy-staging.yml` runs `24943474171` (S8.9a) + `24944146444` (S8.8c) both conclusion=success; frontend `deploy-ui-staging.yml` runs `24943474172` (S8.9a) + `24945640182` (S8.8c) both conclusion=success. Tests: backend Application 2265 passed / 6 skipped / 0 failed (10 new BatchUpdateLayout reconciler cases); frontend events+utils+hooks 340/340 sequential green (15 new helper + 8 new modal tests); `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.9a** | `fd78a269` | Warn-before-close guard reusing in-house `ConfirmDialog` (warning variant) — intercepts X, footer Close, Esc, backdrop; bypasses on Save success + during in-flight mutation |
+| **S8.8c backend** | `b8e49d60` | `BatchLayoutPayload.tierAssignments` + `BatchZone/BatchTable.clientId`; `BatchUpdateLayoutCommandHandler.ReconcileTierAssignmentsAsync` performs declarative reconciliation in same UoW; new `IEventRepository.GetTicketTiersWithAssignmentsForEventAsync` |
+| **S8.8c frontend** | `b99e994e` | `composeBatchPayload` emits `tierAssignments` for event-attached layouts; stamps `clientId` on new zones/tables; `countDraftChanges` order-insensitive tier diff |
+
+**Why durable**: (1) Single transaction across geometry + tiers; no partial-failure UX needed. (2) Backend reconciler diffs *server-applied* mutations from desired state — clients sending unchanged tier lists don't inflate the metric. (3) `ClientId` resolves post zone/table additions, so a user can add a zone *and* assign tiers to it in one Save. (4) Layout's `RowVersion` remains the single `If-Match` gate; `DbUpdateConcurrencyException` on commit covers tier-aggregate xmin races. (5) Architect-flagged data-integrity case handled: deleting a zone with prior assignments naturally cleans up the orphans because the deleted zone is absent from the desired-state list and the diff removes its tier rows.
+**Evidence**:
+- Architect call captured in conversation transcript: "Recommendation: Option A, with a deliberate scope expansion: extend `BatchLayoutPayload` with a `tierAssignments` block and have `BatchUpdateLayoutCommandHandler` reconcile the polymorphic junction inside the same `IUnitOfWork.CommitAsync`."
+- Backend Application tests `2265 passed / 6 skipped / 0 failed`. Frontend `340/340 sequential`. `npx tsc --noEmit` exit 0.
+- Backend deploys `24943474171` (S8.9a) + `24944146444` (S8.8c); frontend deploys `24943474172` + `24945640182`. All `conclusion=success`.
+- **Staging API smoke (S8.8c)** on layout `c9707fcc-76ca-4b90-96b9-a7a47ea325ba` (event "Phase 8 Tier Test Event", tiers: VIP `1ebceabd…`, Basic `67dc10ef…`):
+  - Happy path → 204 (correlation `1a7028f9-…`); GET shows `ticketTierIds: ['1ebceabd…']`.
+  - Foreign-tier rejection → 400 (correlation `736c0b25-…`).
+  - VIP→Basic swap in one batch → 204 (correlation `387cb72a-…`); GET shows `ticketTierIds: ['67dc10ef…']`. Azure container log: `[INF] LayoutMetrics: Metric layout.canvas_editor_saved LayoutId=c9707fcc-… ChangesCount=3` (1 zone update + 1 tier remove + 1 tier add).
+
+**Scope discipline**: S8.9b (Save as personal template) is **deferred to a separate session** — needs domain-level zone-seat clone design (current `LayoutPresets.Create` regenerates seats from row×col constants; faithful template clone requires either a new `VenueLayout.CloneAsTemplate` factory or exposed seat-add APIs; architect call may be needed). S8.9c (retire `SeatSelector.tsx`) and the Slice 4 Release N+1 column drop remain on the existing follow-up list.
+
+**Open issues (architect follow-ups, not blockers)**:
+1. **Authorization scope** — confirm `ILayoutAuthorizationService.AuthorizeAsync` covers tier-assignment writes when we add an `ITicketTierAuthorizationService` layer.
+2. **Domain method placement** — reconciler is inline in the handler today; architect leaned toward extracting `ILayoutTierAssignmentReconciler` once a second consumer needs it.
+3. **Slice 5 single-tier endpoints** — `POST /tier-assignments` + `DELETE /tier-assignments/{tierId}/{kind}/{assignableId}` are now redundant for canvas-editor flows but kept for backward compat; revisit at Slice 4 Release N+1.
+4. **`changesCount` granularity** — dashboard can't distinguish geometry vs tier edits today. If friction, split into `geometryChangesCount` + `tierChangesCount` tags.
+
+**Next**:
+1. **S8.9b** (deferred) — Save as personal template. Architect call needed for the zone-seat clone strategy.
+2. **S8.9c** — retire `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week).
+3. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` (deferred ≥1 week post-Release-N).
+
+---
+
 ## 🚀 CURRENT STATUS — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26)
 
 **Date**: 2026-04-26

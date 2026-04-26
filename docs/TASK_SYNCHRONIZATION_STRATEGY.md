@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS — PRODUCTION PERF RCA + FIX (DURABLE)
+## 🚀 CURRENT SESSION STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 SWEEP COMPLETE
+**Date**: 2026-04-25 (later)
+**Session**: Phase 7E planning + Slice 7E.0 read-only audit. Architect-approved plan (review iteration 2). No code yet — planning + audit phase only.
+**Progress**: ✅ **PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**.
+- Architect-approved plan at `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md` (12 architect edits + 5 user-driven refinements; 14-row compatibility table; multi-axis `HeadCountBreakdown` VO with `Total + Demographics? + TierCounts?`; 10 vertical slices)
+- Phase reserved in [PHASE_6A_MASTER_INDEX.md § Phase 7E](PHASE_6A_MASTER_INDEX.md) — full 10-slice breakdown table + Phase 7F deferred items
+- Master TODO at [MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) — TDD checklists, curl payloads + expected responses per slice, deploy + DB verification + API smoke per slice, risk register tracing every architect-flagged risk to ≥1 mitigation
+- 7E.0 call-site checklist at [PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md) — **163 entries** across 12 categories: 149 `needs-mode-aware-update`, 4 `left-join-fix` (AddOnPurchase + Donation joins onto Registration must use LEFT JOIN under Mode C), 2 `defensive-read`, 0 `guard-scope-fix`, 8 `unchanged`
+**Scope**: Organiser-selectable per-event registration mode — A (DetailedAttendees, default for back-compat), B1 (HeadCountOnly), B2 (HeadCountByAge), B3 (HeadCountByGender), B4 (HeadCountByAgeAndGender), C (NoRegistration). Mode B captures `LeadAttendeeName + HeadCountBreakdown` instead of per-attendee rows. Mode C produces no `Registration` (drop-in event); standalone donations/sponsors/add-ons/collections still work in C (already decoupled from `Registration` — verified at the aggregate level: `Donation.RegistrationId` nullable, `AddOnPurchase.RegistrationId` nullable, `Sponsor`/`Collection` no FK at all). Mode C requires free attendance + no seating. Tier × age matrix pricing deferred to Phase 7F.
+**Architect §6 finding (resolved)**: read of [`Event.cs`](../src/LankaConnect.Domain/Events/Event.cs) confirms the aggregate's standalone-contribution shapes (`Donations`, `Sponsors`, `Collections`, `AddOns`) are nullable `*Configuration` value-objects, NOT collections. So `Event.SetRegistrationMode` only needs to inspect `Registrations.Any()` — no `guard-scope-fix` rows required (architect's concern automatically satisfied by current aggregate shape).
+**Risk-traceability**: 10 architect-flagged risks each map to ≥1 checklist row (matrix in §Risk-traceability of [PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md)). 7E.9 verifies every entry was addressed.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.1 — domain model (`RegistrationMode` enum + `HeadCountBreakdown` composite VO with multi-axis Demographics + TierCounts) + `Phase7E1_AddRegistrationMode` EF migration (DB-level `DEFAULT 0`, generated via `dotnet ef migrations add`) + JSONB `ValueConverter` + deep-copy `ValueComparer` covering both `Demographics` record AND `TierCounts` list with element-level structural equality. Architect-required: round-trip mutation test on `TierCounts[0].Count` (catches Phase 6A.129 reference-snapshot trap).
+
+---
+
+## 🔄 PRIOR SESSION — PRODUCTION PERF RCA + FIX (DURABLE)
 **Date**: 2026-04-25
 **Session**: Production performance RCA after user reported 20-30s page loads + 503s on `/api/proxy/events/{id}` and `/signups`. Architect-consulted RCA traced symptom to cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in single non-split query → ~100K-row LEFT JOIN on prod's 85-registration event).
 **Progress**: ✅ **EMERGENCY MITIGATION + DURABLE FIX SHIPPED**.

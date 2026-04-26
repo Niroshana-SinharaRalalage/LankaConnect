@@ -29,7 +29,36 @@
 
 ---
 
-## 🎯 CURRENT STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.8 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-25)
+## 🚀 CURRENT STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 CALL-SITE SWEEP COMPLETE (2026-04-25 later)
+
+**Date**: 2026-04-25 (later)
+**Session**: Phase 7E planning + Slice 7E.0 audit. Architect-approved plan (review iteration 2). No code yet.
+**Status**: ✅ **PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**.
+
+**Scope**: Organiser-selectable per-event registration mode — A (DetailedAttendees, default for back-compat), B1–B4 (head-count variants with optional age/gender/age×gender breakdown + optional tier-count axis), C (NoRegistration). Mode C requires free attendance + no seating; standalone donations/sponsors/add-ons/collections still work in C (already decoupled from `Registration`, verified). 10 vertical slices. Plan §2 has 14-row compatibility table; tier × age matrix pricing deferred to Phase 7F.
+
+**Deliverables this session**:
+- Architect-approved plan: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
+- Phase reservation: [PHASE_6A_MASTER_INDEX.md § Phase 7E](PHASE_6A_MASTER_INDEX.md)
+- Master TODO: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) — 10 slices, TDD checklists, curl payloads, per-slice deploy + DB-verification + API-smoke
+- 7E.0 audit: [docs/PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md) — **163 entries** (149 `needs-mode-aware-update`, 4 `left-join-fix`, 2 `defensive-read`, 0 `guard-scope-fix`, 8 `unchanged`)
+
+**Why durable**: (1) Risk register traces all 10 architect-flagged risks to ≥1 checklist row; 7E.9 verifies every entry. (2) Composite multi-axis `HeadCountBreakdown` VO (`Total + Demographics? + TierCounts?`) handles the orthogonal demographic vs tier dimensions cleanly — extensible to future axes without changing the mode enum. (3) Email contract constants land in 7E.2 + startup `EmailTemplateValidationService` gates 7E.4 HTML release — drift caught at startup, not in production. (4) `RegistrationMode` snapshotted onto `Registration` at construction — historical email re-renders correct even after organiser flips mode (architect-required). (5) Mode C contributions verified pre-decoupled at the aggregate level (`Donation.RegistrationId` nullable, `AddOnPurchase.RegistrationId` nullable, `Sponsor`/`Collection` no FK at all) — no Phase 7F refactor required.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.1** — domain model + migration + EF config (TDD: VO factories, mode-set rules, snapshot, JSONB round-trip mutation test)
+2. **7E.2** — Event create/update API + `[Theory]`-driven validator over the 14-row compatibility table + `EmailTemplateContract` constants
+3. **7E.3** — RSVP API for B modes (sub-slices 3a/3b/3c: free B → paid B + Stripe → paid B + tier counts)
+4. **7E.4** — email templates v2 (mode-aware Handlebars conditionals)
+5. **7E.5–7E.7** — frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+6. **7E.8** — organiser dashboard + CSV export (incl. `INNER JOIN → LEFT JOIN` fixes from §5 of checklist)
+7. **7E.9** — end-to-end staging validation against the 7E.0 checklist
+
+**Phase 7F deferred** (out of 7E scope): tier × age matrix pricing axis; `HeadCountByTier`-only mode; A↔B mode change with attendee backfill; Mode B organiser-side attendance tracking.
+
+---
+
+## 🎯 PRIOR SESSION — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.8 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-25)
 **Date**: 2026-04-25
 **Session**: Seating System Redesign — Slice 8 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8 — full drag-drop canvas editor (react-konva) for organizers. S8.1 through S8.8 (Save button → atomic `PUT /batch` + `layout.canvas_editor_saved` metric) shipped sequentially on `develop`. S8.8 split into S8.8a (backend metric emit) + S8.8b (frontend Save flow + 409 reload UX).
 **Status**: ✅ **SLICE 8 SAVE FLOW DEPLOYED + WIRE-VERIFIED ON STAGING**. Backend `deploy-staging.yml` run `24939105857` conclusion=success (10m41s); frontend `deploy-ui-staging.yml` run `24941752739` conclusion=success (4m57s). Staging API smoke on `PUT /api/venue-layouts/{layoutId}/batch` confirmed both paths: happy-path with valid `If-Match` rowVersion → HTTP 204 No Content + Azure container log `Metric layout.canvas_editor_saved LayoutId=ae39a218-d984-4528-8271-a1e38fb11550 ChangesCount=3` emitted by `LankaConnect.Application.Events.Services.LayoutMetrics` at 22:25:38.176 UTC; stale `If-Match: 999999` → HTTP 409 Conflict + emits `Metric layout.structural_edit_rejected Reason=concurrency_conflict` (NOT `canvas_editor_saved`, confirming the success metric only fires after commit). All 6 architect-spec metrics for the seating-layout surface now wired (`layout.created`, `layout.preset_selected`, `layout.canvas_editor_opened`, `layout.canvas_editor_saved`, `layout.structural_edit_rejected`, `seatpicker.selection_completed`). Tests: backend Application 2255 passed / 6 skipped / 0 failed (13 BatchUpdateLayout — 11 prior + 2 new for the metric emit + `Times.Never` assertions on all 5 failure paths); frontend events+utils+hooks 317/317 sequential green; `npx tsc --noEmit` clean.

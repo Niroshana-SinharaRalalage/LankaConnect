@@ -1,6 +1,6 @@
 # Phase 6A Master Index - Single Source of Truth
 
-**Last Updated**: 2026-04-19
+**Last Updated**: 2026-04-25 (Phase 7E reserved)
 **Purpose**: Central registry for all Phase 6A feature numbers and documentation
 **Audience**: All development team members
 
@@ -246,6 +246,29 @@
 |-------|---------|--------|-------------|
 | 7C.1  | Event Location Name + Optional Secondary Location | ✅ Complete | Optional per-event venue name distinct from the street address + independently optional secondary location (ParkingLot \| SecondaryVenue) with its own venue name and full address. Backend commit `2afc0f5f` (migration `20260419200529_AddEventLocationNameAndSecondary`), frontend commit `861b8e58`. See PROGRESS_TRACKER.md 2026-04-19. |
 | 7C.2  | Email Event Details — Venue Name + Secondary Location Rendering | 🔧 In Progress | Surfaces the Phase 7C.1 venue name and secondary location (ParkingLot \| SecondaryVenue) in every email that renders Event Details. Decomposed email params (`LocationName`, `LocationAddress`, `HasSecondaryLocation`, `SecondaryLocationLabel`, `SecondaryLocationName`, `SecondaryLocationAddress`) + shared `EventLocationEmailProjection` helper eliminating duplicate `GetEventLocationString()` methods across 7 handlers. DB template rewrite via EF Core migration (REGEXP_REPLACE + backup table). 14 templates touched. Started 2026-04-20. Fan-out to 5 signup/volunteer commitment templates shipped 2026-04-21 via commit `64dc8ab0` (migrations `20260421213355_Phase7C2_RemoveDuplicateLocationFromSignupCommitmentTemplates` + `20260421232025_Phase7C2_RewriteEventLocationInSignupCommitmentTemplates`) — strips duplicate Location row from COMMITMENT DETAILS card + rewrites `<p>{{EventLocation}}</p>` in EVENT DETAILS card to the two-sibling-if block. Staging-verified via deploy `24751794433`. |
+
+---
+
+## Phase 7E: Flexible Event Registration Modes
+
+**Plan**: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md` (architect-approved 2026-04-25, iteration 2)
+**Master TODO**: [MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](./MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Goal**: Organiser-selectable per-event registration mode (A: detailed attendees / B1–B4: head-count variants / C: no registration), with mode-aware UI, emails, capacity, and pricing. Default mode `DetailedAttendees` preserves all existing-event behaviour.
+
+| Phase | Feature | Status | Description |
+|-------|---------|--------|-------------|
+| 7E.0  | Call-site sweep & checklist | ✅ Complete | Read-only audit complete 2026-04-25: 163 entries across 12 categories in [PHASE_7E0_CALLSITE_CHECKLIST.md](./PHASE_7E0_CALLSITE_CHECKLIST.md). 149 `needs-mode-aware-update`, 4 `left-join-fix` (AddOnPurchase + Donation joins onto Registration), 2 `defensive-read`, 0 `guard-scope-fix` (Event aggregate has no standalone-contribution navigation collections — architect concern auto-resolved). |
+| 7E.1  | Domain model + migration + EF config | ⏳ Planned | `RegistrationMode` enum, `HeadCountBreakdown` composite VO (Total + Demographics? + TierCounts?), `Registration` snapshot column. EF migration `Phase7E1_AddRegistrationMode`. JSONB `ValueConverter` + deep-copy `ValueComparer`. |
+| 7E.2  | Event create/update API + validator + EmailTemplateContract | ⏳ Planned | `CreateEventCommand`/`UpdateEventCommand` accept mode. `[Theory]`-driven validator covering 14-row compatibility table. `GetAllowedRegistrationModesQuery`. New email contract constants land here, gating 7E.4. |
+| 7E.3  | RSVP API for B modes; Mode C rejection | ⏳ Planned | Sub-slices 7E.3a (free B), 7E.3b (paid B w/ Stripe amount-calc tests), 7E.3c (paid B + tier counts axis). |
+| 7E.4  | Email templates (Handlebars conditional blocks) | ⏳ Planned | New template versions for ~9 affected templates seeded via standard seeder; tone-A vs tone-B copy in same conditional; Mode C non-firing assertions. |
+| 7E.5  | Frontend mode picker | ⏳ Planned | Reactive options driven by `GetAllowedRegistrationModesQuery`. |
+| 7E.6  | Frontend RSVP form A/B1–B4/C conditional rendering | ⏳ Planned | Tier-count selector when event has tiers; live sum mirror invariant. |
+| 7E.7  | Frontend AttendeeManagementTab row-template branching | ⏳ Planned | Structurally unchanged tab; mode-aware rows. Mode A "Mark Attendees" untouched; B/C hide it. |
+| 7E.8  | Organiser dashboard / analytics / CSV export | ⏳ Planned | Tier breakdown columns; spots-left widget mode-aware. |
+| 7E.9  | End-to-end staging validation + regression sweep | ⏳ Planned | 7E.0 checklist verified; legacy events unchanged; standalone-contribution refund on Mode C event. |
+
+**Phase 7F deferred (out of scope)**: tier × age matrix axis; `HeadCountByTier`-only mode; A↔B mode change with attendee backfill; Mode B organiser-side attendance tracking.
 
 ---
 

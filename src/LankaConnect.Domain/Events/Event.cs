@@ -344,6 +344,22 @@ public partial class Event : BaseEntity
         if (StartDate <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
+        // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
+        // it on a B-mode event would create a Registration row that contradicts the event's
+        // RegistrationMode (Attendees populated AND Mode says HeadCount*). Reject early with
+        // a clear redirect to the head-count flow.
+        if (RegistrationMode != RegistrationMode.DetailedAttendees)
+        {
+            if (RegistrationMode == RegistrationMode.NoRegistration)
+                return Result.Failure(
+                    "Registration is not required for this event. Standalone donations / sponsors / " +
+                    "add-on purchases / collections are still accepted via their own endpoints.");
+
+            return Result.Failure(
+                $"This event uses {RegistrationMode} registration. " +
+                "Use the head-count RSVP path (LeadAttendeeName + HeadCount payload) instead of Attendees.");
+        }
+
         if (attendees == null || !attendees.Any())
             return Result.Failure("At least one attendee is required");
 

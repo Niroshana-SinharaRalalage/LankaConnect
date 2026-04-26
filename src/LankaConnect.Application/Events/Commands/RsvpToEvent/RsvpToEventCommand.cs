@@ -40,7 +40,14 @@ public record RsvpToEventCommand(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count RSVP fields for B-mode events. Mutually exclusive with Attendees.
+    // The handler chooses between Attendees (Mode A) and HeadCount (Mode B) based on the
+    // event's RegistrationMode — sending the wrong shape returns 400 with a clear message.
+    // LeadAttendeeName is the named "lead" attendee (printed in emails); HeadCount carries
+    // the multi-axis breakdown (Total + Demographics? + TierCounts?).
+    string? LeadAttendeeName = null,
+    HeadCountDto? HeadCount = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>
@@ -61,4 +68,39 @@ public record AttendeeDto(
 public record AddOnSelectionDto(
     Guid DefinitionId,
     int Quantity
+);
+
+/// <summary>
+/// Phase 7E.3a: Head-count payload for B-mode RSVPs. Mode-specific factories on
+/// <see cref="LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown"/> validate which fields
+/// are required; this DTO accepts everything optional so a single DTO can be sent regardless of mode.
+///
+/// Field requirements by event mode:
+/// - HeadCountOnly (B1): <see cref="Total"/> required.
+/// - HeadCountByAge (B2): <see cref="Adults"/> + <see cref="Children"/> required (Total auto-derived).
+/// - HeadCountByGender (B3): <see cref="Males"/> + <see cref="Females"/> required (Total auto-derived).
+/// - HeadCountByAgeAndGender (B4): four leaf counts required (Total auto-derived).
+/// - <see cref="TierCounts"/> required iff the event has ticket tiers configured (7E.3c).
+/// </summary>
+public record HeadCountDto(
+    int? Total = null,
+    int? Adults = null,
+    int? Children = null,
+    int? Males = null,
+    int? Females = null,
+    int? AdultMales = null,
+    int? AdultFemales = null,
+    int? ChildMales = null,
+    int? ChildFemales = null,
+    List<TierCountDto>? TierCounts = null
+);
+
+/// <summary>
+/// Phase 7E.3c: Per-tier count for a registration. <c>TierName</c> is resolved server-side
+/// from <c>EventId + TierId</c> at command-handle time and snapshotted onto the registration —
+/// the client supplies <c>TierId</c> + <c>Count</c> only.
+/// </summary>
+public record TierCountDto(
+    Guid TierId,
+    int Count
 );

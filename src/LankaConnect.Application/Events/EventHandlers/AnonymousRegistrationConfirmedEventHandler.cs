@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Helpers;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -99,10 +100,14 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     return;
                 }
 
-                // Phase 6A.80: Get contact name from first attendee or fallback to "Guest"
+                // Phase 6A.80 + 7E.4: Get contact name. Mode A: first attendee's name. Mode B:
+                // the snapshotted LeadAttendeeName. Fallback "Guest" preserves the existing
+                // behaviour for legacy single-attendee anonymous registrations.
                 var contactName = registration.HasDetailedAttendees() && registration.Attendees.Any()
                     ? registration.Attendees.First().Name
-                    : "Guest";
+                    : !string.IsNullOrWhiteSpace(registration.LeadAttendeeName)
+                        ? registration.LeadAttendeeName
+                        : "Guest";
 
                 // Phase 6A.80: Prepare attendee details HTML (same format as member handler)
                 var attendeeDetailsHtml = new System.Text.StringBuilder();
@@ -164,6 +169,19 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 {
                     emailParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
                 }
+
+                // Phase 7E.4: Populate the mode-aware FlexibleRegistration params from the
+                // registration's snapshotted RegistrationMode + HeadCount. Same shared formatter
+                // as the authenticated handler — identical wording across surfaces.
+                var flex = HeadCountEmailFormatter.Compute(registration);
+                emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                emailParams.HasHeadCount = flex.hasHeadCount;
+                emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                emailParams.HeadCountTotal = flex.headCountTotal;
+                emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                emailParams.LeadAttendeeName = flex.leadAttendeeName;
 
                 // Set event image
                 emailParams.WithEventImage(eventImageUrl);

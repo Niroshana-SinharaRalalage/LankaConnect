@@ -8,12 +8,14 @@
  */
 
 import {
+  AssignableKind,
   DecorationKind,
   TableShape,
   ZoneShape,
   type BatchDecoration,
   type BatchLayoutPayload,
   type BatchTable,
+  type BatchTierAssignment,
   type BatchZone,
   type VenueDecorationDto,
   type VenueLayoutDto,
@@ -588,6 +590,9 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
       geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
     }));
 
+  // S8.8c: stamp the client-side draft Guid as `clientId` on newly-added zones
+  // so the backend can resolve any `BatchTierAssignment.assignableId` that
+  // references this zone before it has a server-side Guid.
   const addedZones: BatchZone[] = draft.additions.zones.map((z) => ({
     id: null,
     name: z.name,
@@ -595,6 +600,7 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
     sortOrder: z.sortOrder,
     shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
     geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? z.geometry ?? null,
+    clientId: z.id,
   }));
 
   const keptTables: BatchTable[] = (baseline.tables ?? [])
@@ -617,6 +623,7 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
     sortOrder: t.sortOrder,
     zoneId: t.venueZoneId ?? null,
     geometry: resolveGeometry('table', t, draft.geometryByKey) ?? t.geometry ?? null,
+    clientId: t.id,
   }));
 
   const keptDecorations: BatchDecoration[] = (baseline.decorations ?? [])
@@ -639,26 +646,80 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
     properties: d.properties ?? null,
   }));
 
+  // S8.8c: tier-assignment desired-state composition.
+  //   - Template layouts (no eventId) cannot carry tier assignments because
+  //     TicketTier lives on the Event aggregate. Send `null` to signal
+  //     "skip reconciliation".
+  //   - Event-attached layouts always send the full desired state (one entry
+  //     per surviving zone/table — kept-existing or just-added). This keeps
+  //     the reconciler honest about orphan cleanup when the user deletes a
+  //     zone with prior assignments.
+  let tierAssignments: BatchTierAssignment[] | null = null;
+  if (baseline.eventId) {
+    tierAssignments = [];
+
+    for (const z of keptZones) {
+      const refKeyStr = refKey({ kind: 'zone', id: z.id! });
+      const baselineZone = (baseline.zones ?? []).find((bz) => bz.id === z.id);
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? baselineZone?.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Zone,
+        assignableId: z.id!,
+        tierIds: [...tierIds],
+      });
+    }
+    for (const z of draft.additions.zones) {
+      const refKeyStr = refKey({ kind: 'zone', id: z.id });
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? z.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Zone,
+        assignableId: z.id, // client-side draft Guid; backend resolves via clientId
+        tierIds: [...tierIds],
+      });
+    }
+    for (const t of keptTables) {
+      const refKeyStr = refKey({ kind: 'table', id: t.id! });
+      const baselineTable = (baseline.tables ?? []).find((bt) => bt.id === t.id);
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? baselineTable?.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Table,
+        assignableId: t.id!,
+        tierIds: [...tierIds],
+      });
+    }
+    for (const t of draft.additions.tables) {
+      const refKeyStr = refKey({ kind: 'table', id: t.id });
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? t.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Table,
+        assignableId: t.id,
+        tierIds: [...tierIds],
+      });
+    }
+  }
+
   return {
     name: null,
     canvas: null,
     zones: [...keptZones, ...addedZones],
     tables: [...keptTables, ...addedTables],
     decorations: [...keptDecorations, ...addedDecorations],
+    tierAssignments,
   };
 }
 
 /**
- * Slice 8 S8.8b: count *user-perceived* draft changes — used to gate the
+ * Slice 8 S8.8b + S8.8c: count *user-perceived* draft changes — used to gate the
  * Save button. Returns the sum of:
  *   - distinct deletions of baseline items (added-then-deleted is a no-op)
  *   - geometry overrides on baseline items that survive (deleted items'
  *     overrides are wiped by the delete handler)
  *   - new additions
- *
- * Tier assignment overrides are intentionally excluded — they're not
- * persisted by S8.8b (see `composeBatchPayload`). Counting them would mean
- * Save fires with no actually-saved work.
+ *   - (S8.8c) tier-assignment overrides that *differ* from the baseline's
+ *     persisted `ticketTierIds`. Toggling a tier on then off doesn't count;
+ *     order is normalized so reorderings don't trip the gate either. Skipped
+ *     entirely for template layouts because tier assignments live on the
+ *     Event aggregate and aren't persistable for templates.
  */
 export function countDraftChanges(input: ComposeBatchPayloadInput): number {
   const { baseline, draft } = input;
@@ -679,7 +740,34 @@ export function countDraftChanges(input: ComposeBatchPayloadInput): number {
     (k) => baselineKeys.has(k) && !draft.deletions.has(k),
   ).length;
 
-  return additions + deletions + geometryOverrides;
+  let tierOverrides = 0;
+  if (baseline.eventId) {
+    const baselineTierIds = new Map<string, string[]>();
+    for (const z of baseline.zones ?? []) {
+      baselineTierIds.set(refKey({ kind: 'zone', id: z.id }), z.ticketTierIds ?? []);
+    }
+    for (const t of baseline.tables ?? []) {
+      baselineTierIds.set(refKey({ kind: 'table', id: t.id }), t.ticketTierIds ?? []);
+    }
+    const isSameTierSet = (a: readonly string[], b: readonly string[]): boolean => {
+      if (a.length !== b.length) return false;
+      const sortedA = [...a].sort();
+      const sortedB = [...b].sort();
+      return sortedA.every((v, i) => v === sortedB[i]);
+    };
+    for (const [key, draftTierIds] of Object.entries(draft.tierAssignmentsByKey)) {
+      // Items deleted in this batch don't survive into the saved state, so
+      // their tier overrides are reconciled out automatically — don't count
+      // them as user-perceived changes here.
+      if (draft.deletions.has(key)) continue;
+      const persisted = baselineTierIds.get(key) ?? [];
+      if (!isSameTierSet(draftTierIds, persisted)) {
+        tierOverrides++;
+      }
+    }
+  }
+
+  return additions + deletions + geometryOverrides + tierOverrides;
 }
 
 /**

@@ -36,6 +36,7 @@ import {
   type CanvasEditorDraftState,
 } from '../canvasEditorGeometry';
 import {
+  AssignableKind,
   TableShape,
   ZoneShape,
   DecorationKind,
@@ -1084,5 +1085,222 @@ describe('countDraftChanges', () => {
         draft: { ...draft, deletions: mutableDeletions },
       }),
     ).toBe(3); // 1 delete + 1 override + 1 add
+  });
+});
+
+// ─────────────────── S8.8c: tier-assignment composer + counter ───────────────────
+
+describe('composeBatchPayload — tier assignments (S8.8c)', () => {
+  it('returns null tierAssignments for template layouts (no eventId)', () => {
+    const z = fakeZone('z1', 'X');
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-1'];
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], eventId: null }),
+      draft,
+    });
+    // Template layouts can't carry tier assignments (TicketTier lives on Event).
+    expect(payload.tierAssignments).toBeNull();
+  });
+
+  it('always sends a tierAssignments block for event-attached layouts', () => {
+    const z = fakeZone('z1', 'X');
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+      draft: emptyDraft(),
+    });
+    expect(payload.tierAssignments).not.toBeNull();
+    expect(payload.tierAssignments).toHaveLength(1);
+    expect(payload.tierAssignments![0]).toMatchObject({
+      kind: AssignableKind.Zone,
+      assignableId: 'z1',
+      tierIds: [],
+    });
+  });
+
+  it('emits one tierAssignments entry per surviving baseline + draft-added zone/table', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: ['tier-A'] };
+    const t = { ...fakeTable('t1', 'T1'), ticketTierIds: ['tier-B'] };
+    const draft = emptyDraft();
+    const newZone = fakeZone('cli-z', 'New');
+
+    draft.additions.zones.push(newZone);
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'cli-z' })] = ['tier-A'];
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], tables: [t], eventId: 'E1' }),
+      draft,
+    });
+    expect(payload.tierAssignments).toHaveLength(3);
+    const byId = new Map(payload.tierAssignments!.map((ta) => [ta.assignableId, ta]));
+    expect(byId.get('z1')?.tierIds).toEqual(['tier-A']);
+    expect(byId.get('t1')?.tierIds).toEqual(['tier-B']);
+    expect(byId.get('cli-z')?.tierIds).toEqual(['tier-A']);
+  });
+
+  it('overlays draft tier overrides onto baseline tierIds', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: ['tier-A'] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-B', 'tier-C'];
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+      draft,
+    });
+    expect(payload.tierAssignments).toHaveLength(1);
+    expect(payload.tierAssignments![0].tierIds).toEqual(['tier-B', 'tier-C']);
+  });
+
+  it('omits deleted zones from tierAssignments so backend cleans up orphans', () => {
+    const kept = { ...fakeZone('keep', 'Kept'), ticketTierIds: ['tier-A'] };
+    const removed = { ...fakeZone('drop', 'Drop'), ticketTierIds: ['tier-A'] };
+    const draft = emptyDraft();
+    const mutableDeletions = new Set(draft.deletions);
+    mutableDeletions.add(refKey({ kind: 'zone', id: 'drop' }));
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [kept, removed], eventId: 'E1' }),
+      draft: { ...draft, deletions: mutableDeletions },
+    });
+    expect(payload.tierAssignments).toHaveLength(1);
+    expect(payload.tierAssignments![0].assignableId).toBe('keep');
+  });
+
+  it('emits clientId on newly-added zones so backend can resolve client-side Guids', () => {
+    const draft = emptyDraft();
+    const newZone = fakeZone('client-uuid-1', 'New');
+    draft.additions.zones.push(newZone);
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ eventId: 'E1' }),
+      draft,
+    });
+    const added = payload.zones!.find((z) => z.id === null);
+    expect(added).toBeDefined();
+    expect(added!.clientId).toBe('client-uuid-1');
+  });
+
+  it('emits clientId on newly-added tables', () => {
+    const draft = emptyDraft();
+    const newTable = fakeTable('client-uuid-t', 'NewT');
+    draft.additions.tables.push(newTable);
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ eventId: 'E1' }),
+      draft,
+    });
+    const added = payload.tables!.find((t) => t.id === null);
+    expect(added).toBeDefined();
+    expect(added!.clientId).toBe('client-uuid-t');
+  });
+
+  it('does not set clientId on existing items (preserved id is enough)', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: [] };
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+      draft: emptyDraft(),
+    });
+    expect(payload.zones![0].id).toBe('z1');
+    // clientId field should be undefined / null — not set for existing items.
+    expect(payload.zones![0].clientId ?? null).toBeNull();
+  });
+});
+
+describe('countDraftChanges — tier overrides (S8.8c)', () => {
+  it('counts a tier override that adds a tier to a baseline zone', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: [] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-A'];
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(1);
+  });
+
+  it('counts a tier override that removes a tier from a baseline zone', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: ['tier-A'] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = [];
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(1);
+  });
+
+  it('does not count a tier override that matches baseline (toggle on then off)', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: ['tier-A'] };
+    const draft = emptyDraft();
+    // User toggled a tier on then off — override exists but matches baseline.
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-A'];
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(0);
+  });
+
+  it('does not count tier order differences (tierIds is order-insensitive)', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: ['tier-A', 'tier-B'] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-B', 'tier-A'];
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(0);
+  });
+
+  it('counts each item with a meaningful tier override separately', () => {
+    const z1 = { ...fakeZone('z1', 'X'), ticketTierIds: [] };
+    const z2 = { ...fakeZone('z2', 'Y'), ticketTierIds: ['tier-A'] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-A'];
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z2' })] = []; // remove all
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z1, z2], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(2);
+  });
+
+  it('combines tier counts with geometry/addition/deletion counts', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: [] };
+    const draft = emptyDraft();
+    draft.geometryByKey[refKey({ kind: 'zone', id: 'z1' })] = RECT_GEOM_100_100;
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-A'];
+    draft.additions.zones.push(fakeZone('cli-1', 'New'));
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: 'E1' }),
+        draft,
+      }),
+    ).toBe(3); // 1 geom override + 1 tier override + 1 addition
+  });
+
+  it('skips tier overrides on template layouts (cannot persist them anyway)', () => {
+    const z = { ...fakeZone('z1', 'X'), ticketTierIds: [] };
+    const draft = emptyDraft();
+    draft.tierAssignmentsByKey[refKey({ kind: 'zone', id: 'z1' })] = ['tier-A'];
+
+    expect(
+      countDraftChanges({
+        baseline: fakeBaseline({ zones: [z], eventId: null }),
+        draft,
+      }),
+    ).toBe(0);
   });
 });

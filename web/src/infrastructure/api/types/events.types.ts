@@ -2873,6 +2873,17 @@ export interface BatchLayoutPayload {
   zones?: BatchZone[] | null;
   tables?: BatchTable[] | null;
   decorations?: BatchDecoration[] | null;
+  /**
+   * Slice 8 S8.8c: declarative reconciliation of the polymorphic
+   * `tier_assignments` junction. The list is the *complete desired state*
+   * per `(kind, assignableId)` tuple — server diffs against current and
+   * applies the minimum mutations inside the same transaction.
+   * `null` (or omitted) → skip reconciliation. `[]` → remove all
+   * assignments. For newly-added zones/tables, `assignableId` may be the
+   * client-side draft Guid; backend resolves via `clientId` on
+   * `BatchZone`/`BatchTable`.
+   */
+  tierAssignments?: BatchTierAssignment[] | null;
 }
 
 export interface BatchCanvasConfig {
@@ -2891,6 +2902,12 @@ export interface BatchZone {
   /** `ZoneShape` enum value serialized as a string (matches backend converter). */
   shape: ZoneShape;
   geometry?: string | null;
+  /**
+   * Slice 8 S8.8c: client-side draft Guid for newly-added zones (`id` ==
+   * null). Lets `BatchTierAssignment.assignableId` reference the new zone
+   * before the server has assigned its real Guid. Ignored when `id` is set.
+   */
+  clientId?: string | null;
 }
 
 export interface BatchTable {
@@ -2901,6 +2918,8 @@ export interface BatchTable {
   sortOrder: number;
   zoneId?: string | null;
   geometry?: string | null;
+  /** Slice 8 S8.8c — see {@link BatchZone.clientId}. */
+  clientId?: string | null;
 }
 
 export interface BatchDecoration {
@@ -2910,6 +2929,19 @@ export interface BatchDecoration {
   sortOrder: number;
   geometry?: string | null;
   properties?: string | null;
+}
+
+/**
+ * Slice 8 S8.8c: desired tier-assignment state for a single zone or table
+ * in the canvas-editor batch save. `tierIds` is the complete set of tiers
+ * the organizer wants assigned to `(kind, assignableId)` after the save
+ * lands — backend reconciles via the minimum set of `AssignToZone` /
+ * `AssignToTable` / `RemoveAssignment` domain calls in the same UoW commit.
+ */
+export interface BatchTierAssignment {
+  kind: AssignableKind;
+  assignableId: string;
+  tierIds: string[];
 }
 
 // ============================================================================

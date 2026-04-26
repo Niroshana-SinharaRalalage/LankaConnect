@@ -65,7 +65,29 @@
 
 ---
 
-## 🚀 CURRENT STATUS — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26 later)
+## 🚀 CURRENT STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING (2026-04-26)
+
+**Date**: 2026-04-26
+**Session**: Phase 7E.3a sub-slice — free B-mode RSVP API for both authenticated and anonymous flows, plus defensive Mode-aware guards on `Event.RegisterWithAttendees` and `UpdateRsvpCommandHandler`.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Three commits (`c364dba6`, `58c1f76e`, `0f393b2c`); three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).
+
+**Scope**: Authenticated `POST /api/Events/{id}/rsvp` + anonymous `POST /api/Events/{id}/register-anonymous` accept new `LeadAttendeeName + HeadCount + TierCounts?` payload alongside the existing `Attendees`. Handler dispatches by `event.RegistrationMode` BEFORE format detection; Mode C → 400 with architect-spec message; B-mode → new `HandleHeadCountRsvp` / `HandleHeadCountAnonymousRegistration` builds `HeadCountBreakdown` via mode-specific factory and delegates to new `Event.RegisterWithHeadCount` domain method. Free events ONLY (paid → clear "deferred to 7E.3b" failure). `UpdateRsvpCommandHandler` defensively rejects B/C events with clear messages.
+
+**Smoke evidence (staging, post-deploy)**: Mode B2 auth RSVP `{adults:2, children:1}` → 204 + registration Confirmed + email fired and landed in inbox ✓; anonymous Mode-B register → 200 ✓; Mode C → 400 ✓; UpdateRsvp on B/C → 400 ✓.
+
+**Documented limitation (handed to 7E.4)**: Mode-B confirmation email currently renders without head-count info because the existing template's `{{#if HasDetailedAttendees}}` block falls through silently when `Attendees` is empty. The `EmailTemplateContract.FlexibleRegistration` constants from 7E.2 are populated in 7E.4. The user-visible gap is exactly what 7E.4 closes.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.3b** — Paid B-mode RSVP + Stripe amount-calc tests
+2. **7E.3c** — Paid B-mode RSVP + TierCounts axis
+3. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals (next slice)
+4. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+5. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from 7E.0 §5
+6. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26 later)
 
 **Date**: 2026-04-26 (later)
 **Session**: Phase 7E.2 — application + API surface for the flexible registration modes feature. Single source of truth (`RegistrationModeCompatibility`) shared across Create / Update / Query handlers — 14-row compatibility table from Phase 7E plan §2 lives in one place, exercised by [Theory]-driven test.

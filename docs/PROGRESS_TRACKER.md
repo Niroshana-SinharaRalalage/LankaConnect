@@ -5,7 +5,37 @@
 
 ---
 
-## 🚀 Current Session Status (2026-04-26 — Phase 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING)
+## 🚀 Current Session Status (2026-04-26 — Phase 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING)
+
+**Status**: ✅ **PHASE 7E.3a DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Three commits: `c364dba6` (auth + domain method + 14 tests), `58c1f76e` (anonymous + UpdateRsvp guard), `0f393b2c` (controller-DTO wire-up caught during staging smoke). All three deploy-staging.yml runs (`24960739093`, `24960887174`, `24961766646`) `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new Phase 7E.3a tests over the 2319 post-7E.2 baseline).
+
+**Scope shipped this session (7E.3a sub-slice = free B-mode RSVP only)**:
+- New `Event.RegisterWithHeadCount(userId?, leadName, headCount, contact)` domain method on `Event.RegistrationMode.cs` partial — mirrors `RegisterWithAttendees` guards (status, date, duplicate by UserId+email cross-path, MaxAttendeesPerRegistration, capacity), enforces event is in a B mode, capacity uses `HeadCountBreakdown.Total` via `Registration.GetAttendeeCount()`, raises `RegistrationConfirmedEvent` / `AnonymousRegistrationConfirmedEvent` identical to Mode-A path so existing email pipeline fires. Free events ONLY in 7E.3a; paid path returns clear "deferred to 7E.3b" failure.
+- Defensive `RegisterWithAttendees` Mode-A guard — rejects calls when `event.RegistrationMode != DetailedAttendees` so stale clients can't create rows that contradict the event mode (architect §6 hot-spot).
+- `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` — new `LeadAttendeeName` + `HeadCount` (and shared `HeadCountDto` + `TierCountDto`) optional fields. Backward compatible — Mode-A clients unaffected.
+- `RsvpToEventCommandHandler` + `RegisterAnonymousAttendeeCommandHandler` — dispatch by `event.RegistrationMode` BEFORE the legacy/multi-attendee detection. Mode C → 400; B-mode → new `HandleHeadCountRsvp` / `HandleHeadCountAnonymousRegistration` that build `HeadCountBreakdown` via the mode-specific factory, resolve tier names from `event.TicketTiers` (snapshotted), delegate to `RegisterWithHeadCount`. DetailedAttendees → existing flow (zero behaviour change).
+- `UpdateRsvpCommandHandler` — defensive Mode-aware guard: Mode C → 400 "nothing to update"; B-mode → 400 with deferred-message (head-count delta is a follow-up). Prevents stale clients from corrupting head-count registrations via the legacy `UpdateRegistration(userId, newQuantity)` path.
+- Controller `RsvpRequest` + `AnonymousRegistrationRequest` DTOs — `LeadAttendeeName` + `HeadCount` fields wired through to the application-layer command (caught during staging API smoke; same pattern as the 7E.1 EventDto gap).
+- 14 new tests in `Phase7E3aHeadCountRsvpTests.cs` — B1/B2/B3/B4 free RSVP success, defensive Mode-A guard against B/C events, Mode-A regression test, capacity guard, MaxAttendeesPerRegistration guard, duplicate detection (UserId + cross-path email), paid B-mode rejected with deferred message.
+
+**API smoke evidence (staging, post-deploy)**:
+- Mode B2 auth RSVP `POST /api/Events/{id}/rsvp` with `{leadAttendeeName: "Niroshana", headCount: {adults: 2, children: 1}}` → **HTTP 204** + registration `fa71dba6-2af7-4f4a-92e7-50bad498dbfd` Confirmed + email landed at `niroshhh@gmail.com` ✓
+- Mode B anonymous register `POST /register-anonymous` with `{leadAttendeeName, headCount, email}` → **HTTP 200** "Registration successful! You will receive a confirmation email shortly." ✓
+- Mode C RSVP → **HTTP 400** *"Registration is not required for this event. Standalone donations / sponsors / add-on purchases / collections are still accepted via their own endpoints."* ✓
+- UpdateRsvp on Mode B → **HTTP 400** *"Head-count registration updates (HeadCountByAge) are not yet supported via this endpoint. ..."* ✓
+- UpdateRsvp on Mode C → **HTTP 400** *"This event does not require registration. There is nothing to update."* ✓
+
+**Documented limitation handed to 7E.4**: the Mode-B confirmation email currently renders without head-count info (no "X attendees" / breakdown line / lead name surfaced) — the existing template's `{{#if HasDetailedAttendees}}` block falls through silently when `Attendees` is empty, and the `EmailTemplateContract.FlexibleRegistration` constants from 7E.2 are not yet populated by the email handlers. Closing this is exactly 7E.4's scope.
+
+**Why durable**: (1) Single `Registration.GetAttendeeCount()` mutation point — every `Event.CurrentRegistrations` / `ReservedCapacity` / `SpotsLeft` aggregator automatically Mode-B aware (the 7E.0 §2 audit's 9 entries didn't need editing). (2) `RegisterWithHeadCount` and `RegisterWithAttendees` both defensively reject the wrong mode — bidirectional guard prevents data corruption regardless of which API client is stale. (3) Free-only scope for 7E.3a means no Stripe code path was touched; paid B-mode lands in 7E.3b alongside explicit amount-calc tests. (4) Domain events fired identically (`RegistrationConfirmedEvent` / `AnonymousRegistrationConfirmedEvent`) — existing email pipeline runs unchanged for B-mode (just renders without the new params until 7E.4 ships).
+
+**In-flight catch (caught during staging smoke, not after)**: the controller's `RsvpRequest` / `AnonymousRegistrationRequest` DTOs deserialize the body and map to the application command. Without `LeadAttendeeName` / `HeadCount` fields on the request DTOs, the JSON payload's `leadAttendeeName` / `headCount` were silently dropped during the mapping. Smoke caught it ("Lead attendee name is required" returned despite the field being in the payload) → 0f393b2c fix. Pattern is now consistent: 7E.1 EventDto → 7E.2 EventDto round-trip → 7E.3a controller-DTO → application-command DTO → handler.
+
+**Next**: Slice 7E.4 — Email templates v2. Affected handlers populate the `EmailTemplateContract.FlexibleRegistration` constants (from 7E.2); v2 templates author the mode-aware Handlebars block (`{{#if HasDetailedAttendees}} attendee table {{else}} Lead: <name> · Total: 3 · 2 adults · 1 child {{/if}}`) + anchor comments + tone-B subject line. ~9 affected templates; seeding via standard seeder (no inline `REGEXP_REPLACE` per memory).
+
+---
+
+## 🚀 Previous Session Status (2026-04-26 — Phase 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING)
 
 **Status**: ✅ **PHASE 7E.2 DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 [Theory]-driven compatibility tests over the 2292 post-7E.1 baseline).
 

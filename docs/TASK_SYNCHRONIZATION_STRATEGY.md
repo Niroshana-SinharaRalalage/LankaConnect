@@ -3,7 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING
+## 🚀 CURRENT SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
+**Date**: 2026-04-26
+**Session**: Phase 7E.3a sub-slice — free B-mode RSVP API (auth + anonymous) + UpdateRsvp Mode-aware guard. New `Event.RegisterWithHeadCount` domain method mirrors `RegisterWithAttendees` guards. Defensive Mode-A guard on `RegisterWithAttendees` rejects B/C-mode events. `UpdateRsvpCommandHandler` defensively rejects B/C events with clear deferred-message.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Commits `c364dba6` (auth + 14 tests) + `58c1f76e` (anonymous + UpdateRsvp guard) + `0f393b2c` (controller-DTO wire-up). Three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).
+**API smoke (staging)**: Mode B2 auth RSVP → 204 + registration Confirmed + email landed in inbox ✓; anonymous Mode-B register → 200 ✓; Mode C → 400 ✓; UpdateRsvp on B/C → 400 ✓.
+**In-flight catch (caught during smoke, not after)**: controller `RsvpRequest` / `AnonymousRegistrationRequest` DTOs were dropping `LeadAttendeeName` / `HeadCount` during mapping → fixed in `0f393b2c`. Same pattern as the 7E.1 `EventDto` gap.
+**Documented limitation handed to 7E.4**: Mode-B confirmation email currently renders without head-count info — existing template falls through silently when `Attendees` is empty. `EmailTemplateContract.FlexibleRegistration` constants populated in 7E.4.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.4 — Email templates v2. ~9 affected handlers populate `EmailTemplateContract.FlexibleRegistration` constants; v2 templates author mode-aware Handlebars blocks + anchor comments + tone-B subject line. Seeding via standard seeder (no inline `REGEXP_REPLACE` per memory).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING
 **Date**: 2026-04-26 (later)
 **Session**: Phase 7E.2 — application + API surface for flexible registration modes. Single source of truth (`RegistrationModeCompatibility` static helper) shared across Create / Update / Query handlers; 14-row compatibility table from Phase 7E plan §2 lives in one place; architect-required `[Theory]`-driven test exercises every distinct row.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 [Theory]-driven compatibility tests over 2292 post-7E.1 baseline).

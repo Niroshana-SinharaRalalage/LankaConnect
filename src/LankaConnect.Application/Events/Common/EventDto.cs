@@ -22,6 +22,17 @@ public record EventDto
     /// </summary>
     public int MaxAttendeesPerRegistration { get; init; } = 10;
 
+    /// <summary>
+    /// Phase 7E: Per-event registration capture mode chosen by the organiser.
+    /// - DetailedAttendees (default for all pre-7E events): per-attendee Name + Age + Gender.
+    /// - HeadCountOnly / HeadCountByAge / HeadCountByGender / HeadCountByAgeAndGender:
+    ///   lead name + composite head-count (with optional demographic + tier-count axes).
+    /// - NoRegistration: drop-in event; standalone donations/sponsors/add-ons/collections still work.
+    /// Defaults to <see cref="RegistrationMode.DetailedAttendees"/> so legacy clients with stale
+    /// React Query cache (no field present) tolerate the new shape without crashes.
+    /// </summary>
+    public RegistrationMode RegistrationMode { get; init; } = RegistrationMode.DetailedAttendees;
+
     public EventStatus Status { get; init; }
     public EventCategory Category { get; init; }
     public DateTime CreatedAt { get; init; }

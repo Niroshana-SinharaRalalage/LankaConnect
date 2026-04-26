@@ -670,7 +670,10 @@ public class EventsController : BaseController<EventsController>
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
-            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
+            // Phase 7E.3a: Pass head-count payload for B-mode events
+            LeadAttendeeName: request.LeadAttendeeName,
+            HeadCount: request.HeadCount
         );
         var result = await Mediator.Send(command);
 
@@ -768,7 +771,10 @@ public class EventsController : BaseController<EventsController>
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
-            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
+            // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
+            LeadAttendeeName: request.LeadAttendeeName,
+            HeadCount: request.HeadCount
         );
 
         var result = await Mediator.Send(command);
@@ -3391,7 +3397,11 @@ public record RsvpRequest(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
+    // handler dispatches by event.RegistrationMode).
+    string? LeadAttendeeName = null,
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3431,7 +3441,10 @@ public record AnonymousRegistrationRequest(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null);
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
+    string? LeadAttendeeName = null,
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration

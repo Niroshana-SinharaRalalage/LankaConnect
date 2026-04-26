@@ -31,6 +31,9 @@ import type {
   RegistrationDetailsDto,
   AttendeeDto,
   EventAttendeesResponse, // Phase 6A.45
+  // Phase 7E.5: Mode picker reactivity
+  RegistrationMode,
+  AllowedRegistrationModesRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -47,6 +50,9 @@ export const eventKeys = {
   detail: (id: string) => [...eventKeys.details(), id] as const,
   search: (searchTerm: string) => [...eventKeys.all, 'search', searchTerm] as const,
   featured: (userId?: string, lat?: number, lng?: number) => [...eventKeys.all, 'featured', { userId, lat, lng }] as const,
+  // Phase 7E.5: Allowed registration modes for a draft event shape (Mode picker reactivity).
+  allowedRegistrationModes: (shape: AllowedRegistrationModesRequest) =>
+    [...eventKeys.all, 'allowed-registration-modes', shape] as const,
 };
 
 /**
@@ -242,6 +248,48 @@ export function useFeaturedEvents(
     queryFn: () => eventsRepository.getFeaturedEvents(userId, latitude, longitude),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
+ * Phase 7E.5: useAllowedRegistrationModes
+ *
+ * React Query hook that fetches the set of registration modes compatible with the given
+ * event shape. Re-runs whenever any shape parameter changes — drives the Mode picker's
+ * disabled-options state and auto-clears invalid selections (architect hot-spot #5).
+ *
+ * Pattern: pass the *current* form-state values from `react-hook-form`'s `watch()` straight
+ * into the request shape. React Query memoises by `eventKeys.allowedRegistrationModes(shape)`,
+ * which is structurally compared, so identical shapes share the cached response and
+ * unnecessary refetches are skipped.
+ *
+ * @example
+ * ```tsx
+ * const isFree = watch('isFree');
+ * const { data: allowed = [RegistrationMode.DetailedAttendees] } = useAllowedRegistrationModes({
+ *   isFreeAttendance: isFree,
+ *   hasDualPricing: watch('enableDualPricing'),
+ *   hasGroupTiers: watch('enableGroupPricing'),
+ *   hasTicketTiers: watch('enableTieredTicketing'),
+ * });
+ * ```
+ *
+ * Defensive default: if the query is loading or errors, fall back to
+ * `[RegistrationMode.DetailedAttendees]` so the picker never shows zero options.
+ */
+export function useAllowedRegistrationModes(
+  shape: AllowedRegistrationModesRequest,
+  options?: Omit<UseQueryOptions<RegistrationMode[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: eventKeys.allowedRegistrationModes(shape),
+    queryFn: () => eventsRepository.getAllowedRegistrationModes(shape),
+    // Compatibility table is pure logic — long stale time is fine; will refetch only if
+    // shape changes (handled by queryKey).
+    staleTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false,
     retry: 1,
     ...options,
   });

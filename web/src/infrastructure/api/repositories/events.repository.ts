@@ -76,6 +76,9 @@ import type {
   // Seating Redesign Slice 1
   SetSeatingModeRequest,
   SeatingMode,
+  // Phase 7E.5: Flexible Registration Modes
+  RegistrationMode,
+  AllowedRegistrationModesRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -282,6 +285,37 @@ export class EventsRepository {
    */
   async updateEvent(id: string, data: UpdateEventRequest): Promise<void> {
     await apiClient.put<void>(`${this.basePath}/${id}`, data);
+  }
+
+  /**
+   * Phase 7E.5: Returns the set of registration modes compatible with a given draft event shape.
+   * Drives the frontend Mode picker so disabled options match server-side validation. Public
+   * endpoint — no auth needed (the response is shape-only metadata).
+   *
+   * Architect hot-spot #5: callers should re-invoke this on every form-state change
+   * (`isFree`, `hasSeating`, `hasTicketTiers`, etc.) so toggling pricing after Mode C
+   * is selected auto-clears the invalid selection. Use a React Query hook or `useEffect`
+   * dependency array — never call once-on-mount.
+   */
+  async getAllowedRegistrationModes(shape: AllowedRegistrationModesRequest): Promise<RegistrationMode[]> {
+    const params = new URLSearchParams();
+    if (shape.isFreeAttendance != null) params.set('isFreeAttendance', String(shape.isFreeAttendance));
+    if (shape.hasSeating != null) params.set('hasSeating', String(shape.hasSeating));
+    if (shape.hasNamedSeating != null) params.set('hasNamedSeating', String(shape.hasNamedSeating));
+    if (shape.requiresAttendeeNameOnTicket != null)
+      params.set('requiresAttendeeNameOnTicket', String(shape.requiresAttendeeNameOnTicket));
+    if (shape.hasDualPricing != null) params.set('hasDualPricing', String(shape.hasDualPricing));
+    if (shape.hasGroupTiers != null) params.set('hasGroupTiers', String(shape.hasGroupTiers));
+    if (shape.hasTicketTiers != null) params.set('hasTicketTiers', String(shape.hasTicketTiers));
+    if (shape.hasIdentityBoundAddOn != null)
+      params.set('hasIdentityBoundAddOn', String(shape.hasIdentityBoundAddOn));
+    if (shape.hasMatrixPricing != null) params.set('hasMatrixPricing', String(shape.hasMatrixPricing));
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/allowed-registration-modes?${queryString}`
+      : `${this.basePath}/allowed-registration-modes`;
+    return apiClient.get<RegistrationMode[]>(url);
   }
 
   /**

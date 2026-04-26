@@ -176,6 +176,28 @@ export enum TicketingMode {
 }
 
 /**
+ * Phase 7E: Per-event registration capture mode chosen by the organiser.
+ * Matches backend `LankaConnect.Domain.Events.Enums.RegistrationMode`. String-valued
+ * to align with backend `JsonStringEnumConverter` (memory 6A.124 — numeric TS enums
+ * compared against backend's string output silently never match).
+ *
+ * - DetailedAttendees (default for all pre-7E events): per-attendee Name + Age + Gender.
+ * - HeadCountOnly (B1): lead name + total head count.
+ * - HeadCountByAge (B2): lead + Adults + Children (Total auto-derived).
+ * - HeadCountByGender (B3): lead + Males + Females (Total auto-derived).
+ * - HeadCountByAgeAndGender (B4): lead + 4 leaf counts (AM/AF/CM/CF; Total auto-derived).
+ * - NoRegistration (C): drop-in event; standalone donations/sponsors/add-ons/collections still work.
+ */
+export enum RegistrationMode {
+  DetailedAttendees = 'DetailedAttendees',
+  HeadCountOnly = 'HeadCountOnly',
+  HeadCountByAge = 'HeadCountByAge',
+  HeadCountByGender = 'HeadCountByGender',
+  HeadCountByAgeAndGender = 'HeadCountByAgeAndGender',
+  NoRegistration = 'NoRegistration',
+}
+
+/**
  * Phase 8: Ticket category for multi-tier ticket generation.
  * Matches backend LankaConnect.Domain.Events.Enums.TicketCategory
  */
@@ -363,6 +385,15 @@ export interface EventDto {
    * Configurable by event organizer (default: 10, max: 50)
    */
   maxAttendeesPerRegistration: number;
+
+  /**
+   * Phase 7E: Per-event registration capture mode chosen by the organiser.
+   * Defaults to `DetailedAttendees` for legacy events (DB-level DEFAULT 0). Consumers MUST
+   * use the nullish-coalesce default `event.registrationMode ?? RegistrationMode.DetailedAttendees`
+   * to tolerate stale React Query cached payloads from before deploy.
+   */
+  registrationMode?: RegistrationMode;
+
   status: EventStatus;
   category: EventCategory;
   createdAt: string;
@@ -832,6 +863,10 @@ export interface CreateEventRequest {
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
 
+  // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
+  // to DetailedAttendees when absent for back-compat with pre-7E API clients.
+  registrationMode?: RegistrationMode;
+
   // Donation Feature: Donation configuration
   donationsEnabled?: boolean;
   donationSuggestedAmounts?: number[];
@@ -913,6 +948,10 @@ export interface UpdateEventRequest {
 
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
+
+  // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
+  // to DetailedAttendees when absent for back-compat with pre-7E API clients.
+  registrationMode?: RegistrationMode;
 
   // Donation Feature: Donation configuration
   donationsEnabled?: boolean;
@@ -2982,4 +3021,23 @@ export interface CreateLayoutFromPresetRequest {
   presetId: string;
   /** Omit to create a user-scoped template. Supply to attach to an event you own. */
   eventId?: string | null;
+}
+
+/**
+ * Phase 7E.5 — query parameters for `GET /api/Events/allowed-registration-modes`.
+ * Matches backend `GetAllowedRegistrationModesQuery` shape. All fields optional and default
+ * to `false` server-side; the frontend Mode picker passes the current draft form-state on
+ * every change so disabled options reflect server-side validation in real time
+ * (architect hot-spot #5).
+ */
+export interface AllowedRegistrationModesRequest {
+  isFreeAttendance?: boolean;
+  hasSeating?: boolean;
+  hasNamedSeating?: boolean;
+  requiresAttendeeNameOnTicket?: boolean;
+  hasDualPricing?: boolean;
+  hasGroupTiers?: boolean;
+  hasTicketTiers?: boolean;
+  hasIdentityBoundAddOn?: boolean;
+  hasMatrixPricing?: boolean;
 }

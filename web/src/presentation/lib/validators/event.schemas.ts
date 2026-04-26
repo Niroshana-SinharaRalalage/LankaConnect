@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, RegistrationMode, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -181,6 +181,11 @@ export const createEventSchema = z.object({
 
   // Pricing (Required)
   isFree: z.boolean(),
+
+  // Phase 7E.5: Per-event registration capture mode. Optional — defaults to
+  // DetailedAttendees server-side when absent. Picker UI sets this; legacy create-event
+  // payloads (no field) keep working unchanged.
+  registrationMode: z.nativeEnum(RegistrationMode).optional(),
 
   // Legacy single pricing (backward compatibility)
   // Note: valueAsNumber converts empty strings to NaN, so we preprocess to handle this
@@ -660,6 +665,9 @@ const baseEditEventSchema = z.object({
 
   // Pricing
   isFree: z.boolean(),
+
+  // Phase 7E.5: Per-event registration capture mode (mirrored on the edit schema).
+  registrationMode: z.nativeEnum(RegistrationMode).optional(),
 
   // Note: valueAsNumber converts empty strings to NaN, so we preprocess to handle this
   ticketPriceAmount: z

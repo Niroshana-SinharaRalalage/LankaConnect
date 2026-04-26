@@ -92,6 +92,27 @@ export class VenueLayoutsRepository {
     );
   }
 
+  /**
+   * Slice 8 S8.9b: clones an existing layout as a per-user template
+   * (`isTemplate=true`, `eventId=null`, `createdByUserId` = current user).
+   * Backend's `VenueLayout.CloneAsTemplate` factory preserves zones, tables,
+   * decorations, canvas, and per-seat `IsEnabled`/`IsAccessible` flags.
+   * Tier mappings are deliberately dropped — templates are tier-free.
+   *
+   * Returns the newly-created template DTO. Throws an `ApiError` when the
+   * caller isn't authorized to read the source layout (403) or when the
+   * source can't be found (404).
+   */
+  async saveLayoutAsTemplate(
+    sourceLayoutId: string,
+    templateName: string,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/${sourceLayoutId}/save-as-template`,
+      { templateName },
+    );
+  }
+
   async getLayout(layoutId: string): Promise<VenueLayoutDto> {
     return await apiClient.get<VenueLayoutDto>(`${this.basePath}/${layoutId}`);
   }

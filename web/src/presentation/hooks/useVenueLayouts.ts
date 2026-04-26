@@ -154,6 +154,30 @@ export function useCreateLayoutFromPreset() {
 }
 
 /**
+ * Slice 8 S8.9b — POST /api/venue-layouts/{sourceLayoutId}/save-as-template.
+ * Clones an existing layout as a per-user template. Returns the newly-created
+ * template DTO; the source layout is unchanged. Invalidates the layout-list
+ * cache so the new template appears in the user's templates list when it's
+ * opened (Slice 8 still doesn't have a "My Templates" picker UI — the
+ * invalidation is futureproofing against the upcoming preset-modal "Mine" tab).
+ */
+export function useSaveLayoutAsTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    VenueLayoutDto,
+    ApiError,
+    { sourceLayoutId: string; templateName: string }
+  >({
+    mutationFn: ({ sourceLayoutId, templateName }) =>
+      venueLayoutsRepository.saveLayoutAsTemplate(sourceLayoutId, templateName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+    },
+  });
+}
+
+/**
  * Generate seats for a zone
  */
 export function useGenerateSeats() {

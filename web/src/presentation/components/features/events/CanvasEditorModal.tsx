@@ -41,13 +41,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { venueLayoutsRepository } from '@/infrastructure/api/repositories/venue-layouts.repository';
-import { useBatchUpdateVenueLayout } from '@/presentation/hooks/useVenueLayouts';
+import {
+  useBatchUpdateVenueLayout,
+  useSaveLayoutAsTemplate,
+} from '@/presentation/hooks/useVenueLayouts';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
 import { CanvasEditor, type CanvasEditorDraftSummary } from './CanvasEditor';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
@@ -97,6 +101,49 @@ export function CanvasEditorModal({
 
   const mutation = useBatchUpdateVenueLayout(layout.id, layout.eventId ?? null);
   const isSaving = mutation.isPending;
+
+  // Slice 8 S8.9b: save-as-personal-template mutation. Independent of the
+  // batch-save flow — fires from a separate footer button + name-prompt
+  // dialog and never closes the editor (user keeps editing the source).
+  const saveAsTemplateMutation = useSaveLayoutAsTemplate();
+  const [saveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const isSavingAsTemplate = saveAsTemplateMutation.isPending;
+
+  const openSaveAsTemplate = useCallback(() => {
+    setTemplateName(`${layout.name} (Template)`);
+    setSaveAsTemplateOpen(true);
+  }, [layout.name]);
+
+  const cancelSaveAsTemplate = useCallback(() => {
+    if (isSavingAsTemplate) return; // don't yank the prompt mid-flight
+    setSaveAsTemplateOpen(false);
+  }, [isSavingAsTemplate]);
+
+  const submitSaveAsTemplate = useCallback(async () => {
+    const trimmed = templateName.trim();
+    if (trimmed.length === 0) return;
+    try {
+      await saveAsTemplateMutation.mutateAsync({
+        sourceLayoutId: layout.id,
+        templateName: trimmed,
+      });
+      toast.success('Saved as template — find it in your Templates list.');
+      setSaveAsTemplateOpen(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 403) {
+        toast.error(
+          "You don't have permission to save this layout as a template.",
+        );
+        return;
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Could not save the template. Please try again.';
+      toast.error(`Save as template failed: ${message}`);
+    }
+  }, [templateName, saveAsTemplateMutation, layout.id]);
 
   // Slice 8 S8.9a: dirty-close guard. Any close path (X / footer Close /
   // Esc / backdrop click) routes through this. When the draft has unsaved
@@ -203,6 +250,16 @@ export function CanvasEditorModal({
             <Button
               type="button"
               variant="outline"
+              onClick={openSaveAsTemplate}
+              disabled={isSavingAsTemplate}
+              className="mr-auto"
+              data-testid="canvas-editor-save-as-template"
+            >
+              Save as Template
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={attemptClose}
               data-testid="canvas-editor-cancel"
             >
@@ -230,6 +287,62 @@ export function CanvasEditorModal({
         onConfirm={confirmDiscard}
         variant="warning"
       />
+
+      {/* Slice 8 S8.9b: Save-as-Template name prompt. Inline Dialog (not
+          ConfirmDialog) so we can host an input field. The submit button is
+          disabled when the trimmed name is empty so the backend's
+          NotEmpty(TemplateName) gate doesn't trip on an avoidable misclick. */}
+      <Dialog open={saveAsTemplateOpen} onOpenChange={setSaveAsTemplateOpen}>
+        <DialogContent className="max-w-md" data-testid="save-as-template-dialog">
+          <DialogHeader>
+            <DialogTitle>Save layout as template</DialogTitle>
+            <DialogDescription>
+              The new template will appear under your Templates and can be
+              re-applied to future events. Tier mappings are not copied.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label
+              htmlFor="save-as-template-name-input"
+              className="block text-sm font-medium mb-1"
+            >
+              Template name
+            </label>
+            <input
+              id="save-as-template-name-input"
+              type="text"
+              className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              maxLength={200}
+              disabled={isSavingAsTemplate}
+              data-testid="save-as-template-name-input"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelSaveAsTemplate}
+              disabled={isSavingAsTemplate}
+              data-testid="save-as-template-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={submitSaveAsTemplate}
+              disabled={
+                isSavingAsTemplate || templateName.trim().length === 0
+              }
+              data-testid="save-as-template-confirm"
+            >
+              {isSavingAsTemplate ? 'Saving…' : 'Save Template'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

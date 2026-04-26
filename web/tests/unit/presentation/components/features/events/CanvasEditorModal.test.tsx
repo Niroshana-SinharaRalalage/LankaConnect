@@ -42,8 +42,20 @@ const useBatchUpdateMock = vi.fn((..._args: unknown[]) => ({
   mutateAsync: mutateAsyncSpy,
   isPending: mutationIsPending,
 }));
+
+// Slice 8 S8.9b: stub the save-as-template mutation so the test can
+// resolve / reject and verify dispatched variables (sourceLayoutId +
+// templateName) without spinning up a real client.
+const saveAsTemplateMutateAsyncSpy = vi.fn();
+let saveAsTemplateIsPending = false;
+const useSaveAsTemplateMock = vi.fn(() => ({
+  mutateAsync: saveAsTemplateMutateAsyncSpy,
+  isPending: saveAsTemplateIsPending,
+}));
+
 vi.mock('@/presentation/hooks/useVenueLayouts', () => ({
   useBatchUpdateVenueLayout: (...args: unknown[]) => useBatchUpdateMock(...args),
+  useSaveLayoutAsTemplate: () => useSaveAsTemplateMock(),
 }));
 
 // Slice 8 S8.8b: upgrade the CanvasEditor stub to expose draft-change
@@ -129,8 +141,15 @@ function fakeLayout(overrides: Partial<VenueLayoutDto> = {}): VenueLayoutDto {
 beforeEach(() => {
   vi.clearAllMocks();
   mutationIsPending = false;
-  // Default: mutation resolves successfully — individual tests override.
+  saveAsTemplateIsPending = false;
+  // Default: mutations resolve successfully — individual tests override.
   mutateAsyncSpy.mockResolvedValue(undefined);
+  saveAsTemplateMutateAsyncSpy.mockResolvedValue({
+    id: 'new-template-id',
+    name: 'Theater Classic (Template)',
+    isTemplate: true,
+    eventId: null,
+  });
 });
 
 describe('CanvasEditorModal', () => {
@@ -425,6 +444,23 @@ describe('CanvasEditorModal — warn before close (S8.9a)', () => {
     expect(screen.queryByText(/discard unsaved changes/i)).toBeNull();
   });
 
+  it('does not show discard prompt on the post-Save-as-Template path', async () => {
+    // Save-as-Template doesn't change the editor's draft, so the dirty flag
+    // stays true — but the action's success shouldn't pop the discard prompt
+    // because we don't close the modal on save-as-template (user keeps editing).
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('stub-mark-dirty'));
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    // The save-as-template flow keeps the modal open + does NOT trigger
+    // the discard guard.
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.queryByText(/discard unsaved changes/i)).toBeNull();
+  });
+
   it('does not show discard prompt on the post-Save close path', async () => {
     // After a successful save, the modal closes itself — no dirty state at
     // that point (mutateAsync resolved → onLayoutSaved + onOpenChange(false)
@@ -437,5 +473,128 @@ describe('CanvasEditorModal — warn before close (S8.9a)', () => {
     });
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(screen.queryByText(/discard unsaved changes/i)).toBeNull();
+  });
+});
+
+// ─────────────────────── S8.9b: Save-as-Template flow ───────────────────────
+
+describe('CanvasEditorModal — Save as personal template (S8.9b)', () => {
+  it('renders a Save-as-Template button in the footer', () => {
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    expect(screen.getByTestId('canvas-editor-save-as-template')).toBeInTheDocument();
+  });
+
+  it('Save-as-Template button is enabled even with no draft changes', () => {
+    // User can save the current persisted state as a template at any time —
+    // unlike Save (atomic batch), there's no "must have changes" gate.
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    expect(screen.getByTestId('canvas-editor-save-as-template')).not.toBeDisabled();
+  });
+
+  it('opens a name-prompt dialog with default "<source.name> (Template)" on click', () => {
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    const input = screen.getByTestId('save-as-template-name-input') as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('Theater Classic (Template)');
+  });
+
+  it('confirm submits useSaveLayoutAsTemplate with the source layout id + entered name', async () => {
+    render(
+      <CanvasEditorModal
+        open
+        onOpenChange={vi.fn()}
+        layout={fakeLayout({ id: 'source-L1', name: 'Source Hall' })}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    const input = screen.getByTestId('save-as-template-name-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'My Renamed Template' } });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    expect(saveAsTemplateMutateAsyncSpy).toHaveBeenCalledTimes(1);
+    expect(saveAsTemplateMutateAsyncSpy).toHaveBeenCalledWith({
+      sourceLayoutId: 'source-L1',
+      templateName: 'My Renamed Template',
+    });
+  });
+
+  it('shows a success toast and closes the prompt on successful save', async () => {
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
+    expect(toastSuccessMock.mock.calls[0][0]).toMatch(/template saved|saved as template/i);
+    // Prompt is gone.
+    expect(screen.queryByTestId('save-as-template-name-input')).toBeNull();
+  });
+
+  it('keeps the editor modal open on success (only the prompt closes)', async () => {
+    const onOpenChange = vi.fn();
+    render(<CanvasEditorModal open onOpenChange={onOpenChange} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalled());
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('shows a 403-specific error toast on Forbidden response', async () => {
+    saveAsTemplateMutateAsyncSpy.mockRejectedValueOnce(new ApiError('Forbidden', 403));
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+    expect(toastErrorMock.mock.calls[0][0]).toMatch(/permission|allowed|forbidden/i);
+  });
+
+  it('shows a generic error toast on other errors', async () => {
+    saveAsTemplateMutateAsyncSpy.mockRejectedValueOnce(new ApiError('Internal Server Error', 500));
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-as-template-confirm'));
+    });
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('cancel on the prompt does not fire the mutation', () => {
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    fireEvent.click(screen.getByTestId('save-as-template-cancel'));
+    expect(saveAsTemplateMutateAsyncSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('save-as-template-name-input')).toBeNull();
+  });
+
+  it('disables Confirm button when the name input is empty / whitespace', () => {
+    render(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    const input = screen.getByTestId('save-as-template-name-input');
+    fireEvent.change(input, { target: { value: '   ' } });
+    expect(screen.getByTestId('save-as-template-confirm')).toBeDisabled();
+  });
+
+  it('shows "Saving..." on confirm button while mutation is pending', () => {
+    // Open the prompt first (with isPending=false so the trigger button
+    // isn't disabled), then flip the pending flag and re-render to mirror
+    // what happens after the user clicks Save Template — mid-flight the
+    // confirm button must reflect the pending state.
+    const { rerender } = render(
+      <CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />,
+    );
+    fireEvent.click(screen.getByTestId('canvas-editor-save-as-template'));
+    expect(screen.getByTestId('save-as-template-confirm')).not.toBeDisabled();
+
+    saveAsTemplateIsPending = true;
+    rerender(<CanvasEditorModal open onOpenChange={vi.fn()} layout={fakeLayout()} />);
+    const confirmBtn = screen.getByTestId('save-as-template-confirm');
+    expect(confirmBtn).toBeDisabled();
+    expect(confirmBtn).toHaveTextContent(/saving/i);
   });
 });

@@ -5,7 +5,39 @@
 
 ---
 
-## 🚀 Current Session Status (2026-04-26 — Phase 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING)
+## 🚀 Current Session Status (2026-04-26 — Phase 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING)
+
+**Status**: ✅ **PHASE 7E.2 DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 [Theory]-driven compatibility tests over the 2292 post-7E.1 baseline).
+
+**Scope shipped this session**:
+- New `Domain/Events/Services/RegistrationModeCompatibility.cs` — static helper with `Check(mode, ctx)` and `AllowedModes(ctx)` methods (bidirectional contract verified by test). Single source of truth for the 14-row compatibility table from the Phase 7E plan §2.
+- New `Domain/Events/Services/RegistrationModeContext.cs` — record capturing event-shape axes (`IsFreeAttendance`, `HasSeating`, `HasNamedSeating`, `RequiresAttendeeNameOnTicket`, `HasDualPricing`, `HasGroupTiers`, `HasTicketTiers`, `HasIdentityBoundAddOn`, `HasMatrixPricing`). Forward-extensible — axes not yet on `Event` default to `false` and exercised end-to-end as later slices add fields.
+- `CreateEventCommand` + `UpdateEventCommand` — `RegistrationMode` field added (defaults to `DetailedAttendees` on create; null = "don't modify" on update).
+- `CreateEventCommandHandler` — early `Compatibility.Check` validation (fail-fast); `Event.SetRegistrationMode` after `Event.Create` for non-default modes.
+- `UpdateEventCommandHandler` — validates mode change against post-update event shape; `Event.SetRegistrationMode` surfaces registration-lock guard as 400 with attendee count in message.
+- New `GetAllowedRegistrationModesQuery` + handler — pure-function query (no DB) delegating to `Compatibility.AllowedModes`. Drives the frontend mode picker (architect hot-spot #5: re-query on every form-state change).
+- New API endpoint `GET /api/Events/allowed-registration-modes` — public, query-string driven, returns `string[]` via `JsonStringEnumConverter`.
+- New `EmailTemplateContract.FlexibleRegistration` section — 7 constants (`HasDetailedAttendees`, `HasHeadCount`, `HasHeadCountBreakdown`, `HasTierBreakdown`, `HeadCountTotal`, `HeadCountBreakdownLine`, `TierBreakdownLine`) gating 7E.4 HTML release. Startup `EmailTemplateValidationService` passed at staging deploy.
+- 27 new tests in `Phase7E2RegistrationModeCompatibilityTests.cs` — `[Theory]`-driven over 13 distinct compatibility rows; bidirectional `Check ↔ AllowedModes` contract test; `DetailedAttendees_IsAlways_Allowed` invariant test (architect: A is the maximum-info capture, never excluded by any shape).
+
+**API smoke evidence (staging, post-deploy)**:
+- `GET /api/Events/allowed-registration-modes?isFreeAttendance=true` → all 6 modes ✓
+- `GET ...?isFreeAttendance=false&hasDualPricing=true` → `[DetailedAttendees, HeadCountByAge, HeadCountByAgeAndGender]` (architect's earlier B4 correction reflected) ✓
+- `GET ...?hasMatrixPricing=true` → `[DetailedAttendees]` ✓
+- `GET ...?hasNamedSeating=true` → `[DetailedAttendees]` ✓
+- `POST /api/Events` Mode C + paid → **400** *"NoRegistration mode requires free attendance..."* ✓
+- `POST /api/Events` Mode B1 + dual pricing → **400** *"HeadCountOnly cannot be used with dual pricing..."* ✓
+- `POST /api/Events` Mode B2 + free → **201** + subsequent `GET` round-trips `registrationMode: "HeadCountByAge"` ✓
+
+**Why durable**: (1) Single `RegistrationModeCompatibility` helper — Create, Update, and Query handlers all delegate to it; coverage rot is impossible because the [Theory] data table iterates the full matrix. (2) `Check ↔ AllowedModes` bidirectional contract enforced by test — disagreement is a test failure, not a runtime surprise. (3) Forward-extensibility designed in: each `RegistrationModeContext` axis maps to one rule; adding a new field defaults to false at all callers and the table picks up the new constraint without case-by-case wiring. (4) Email contract constants land BEFORE the v2 templates that consume them — startup gate proven green on staging.
+
+**In-flight catch (not a regression)**: original `CheckNoRegistration` rule didn't exclude Mode C when `RequiresAttendeeNameOnTicket=true`. Mode C produces no tickets at all, so "names required per ticket" is contradictory with C. Caught at local test run before commit, fixed with a clear rejection message.
+
+**Next**: Slice 7E.3 — RSVP API for B modes (sub-slices 7E.3a free B / 7E.3b paid B + Stripe / 7E.3c paid B + tier counts axis).
+
+---
+
+## 🚀 Previous Session Status (2026-04-26 earlier — Phase 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING)
 
 **Status**: ✅ **PHASE 7E.1 DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` (domain+persistence+tests) + `038c92bc` (DTO field). Both deploy-staging.yml runs (`24945013711` + `24946516265`) `conclusion=success`. EF migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Full Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests over the 2253 pre-7E baseline).
 

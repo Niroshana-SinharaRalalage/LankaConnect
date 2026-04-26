@@ -65,7 +65,30 @@
 
 ---
 
-## 🚀 CURRENT STATUS — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26)
+## 🚀 CURRENT STATUS — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26 later)
+
+**Date**: 2026-04-26 (later)
+**Session**: Phase 7E.2 — application + API surface for the flexible registration modes feature. Single source of truth (`RegistrationModeCompatibility`) shared across Create / Update / Query handlers — 14-row compatibility table from Phase 7E plan §2 lives in one place, exercised by [Theory]-driven test.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 tests over 2292 post-7E.1 baseline).
+
+**Scope**: New `RegistrationModeCompatibility` static helper + `RegistrationModeContext` record; `RegistrationMode` field added to `CreateEventCommand`/`UpdateEventCommand`; both handlers validate via the helper; `Event.SetRegistrationMode` registration-lock guard surfaces as 400 from Update; new `GetAllowedRegistrationModesQuery` (pure function, no DB) + public `GET /api/Events/allowed-registration-modes` endpoint; `EmailTemplateContract.FlexibleRegistration` section with 7 constants gating 7E.4.
+
+**Smoke evidence (staging, post-deploy)**:
+- 4 shape variants on the new endpoint return correct allowed sets (`isFreeAttendance=true` → all 6; `hasDualPricing=true` → A/B2/B4; `hasMatrixPricing=true` → A only; `hasNamedSeating=true` → A only).
+- `POST /api/Events` Mode C + paid → 400 with clear validator message.
+- `POST /api/Events` Mode B1 + dual pricing → 400 with clear validator message.
+- `POST /api/Events` Mode B2 + free → 201; `GET` round-trips `registrationMode: "HeadCountByAge"`.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.3** — RSVP API for B modes (sub-slices 3a free B / 3b paid B + Stripe / 3c paid B + tier counts axis)
+2. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals (consumes 7E.2's contract constants)
+3. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+4. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from 7E.0 §5
+5. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26)
 
 **Date**: 2026-04-26
 **Session**: Phase 7E.1 — domain model + persistence + EF migration for the flexible registration modes feature.

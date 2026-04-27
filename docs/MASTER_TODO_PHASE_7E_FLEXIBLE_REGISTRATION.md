@@ -1,6 +1,6 @@
 # Master TODO — Phase 7E: Flexible Event Registration Modes
 
-**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ · 7E.4 ✅ core · 7E.5 ✅ (Mode picker UI on create + edit forms, reactive disabled options, auto-clear on shape change) · 7E.6 next
+**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ · 7E.4 ✅ core · 7E.5 ✅ · 7E.6 ✅ (B-mode HeadCountRsvpForm + Mode-C notice via RsvpFormSection dispatcher) · 7E.7+8a ✅ (organiser tab Mode-aware: backend query + Mode-C empty state) · 7E.8 remaining (CSV + INNER JOIN→LEFT JOIN) deferred · 7E.9 regression sweep next
 **Architect-approved**: ✅ yes (review iteration 2, 2026-04-25)
 **Plan reference**: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
 **Master index entry**: [PHASE_6A_MASTER_INDEX.md § Phase 7E](./PHASE_6A_MASTER_INDEX.md)

@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Commands.CreateVenueLayout;
 using LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
+using LankaConnect.Application.Events.Commands.CreateLayoutFromTemplate;
 using LankaConnect.Application.Events.Commands.SaveLayoutAsTemplate;
+using LankaConnect.Application.Events.Queries.GetUserTemplates;
 using LankaConnect.Application.Events.Commands.GenerateSeats;
 using LankaConnect.Application.Events.Commands.HoldSeats;
 using LankaConnect.Application.Events.Commands.ReleaseSeats;
@@ -155,6 +157,68 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     /// Request body for <see cref="CreateLayoutFromPreset"/>.
     /// </summary>
     public record CreateLayoutFromPresetRequest(string PresetId, Guid? EventId);
+
+    /// <summary>
+    /// Slice 8 S8.10: lists every venue layout the calling user has saved as a
+    /// template (<c>IsTemplate == true</c> + <c>CreatedByUserId == caller</c>),
+    /// most-recent-first. Powers the canvas editor's "My Templates" picker tab.
+    /// Empty list when the user has no saved templates.
+    /// </summary>
+    [HttpGet("templates")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<VenueLayoutDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMyTemplates()
+    {
+        var userId = User.GetUserId();
+        var result = await Mediator.Send(new GetUserTemplatesQuery(userId));
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Slice 8 S8.10: applies one of the caller's saved templates to a target
+    /// event the caller organizes. Mirror of <see cref="CreateLayoutFromPreset"/>
+    /// but for user-saved templates instead of built-in presets. The new layout
+    /// is event-attached (<c>IsTemplate == false</c>, <c>EventId == request.EventId</c>)
+    /// and the source template is unchanged.
+    /// </summary>
+    [HttpPost("from-template")]
+    [Authorize]
+    [ProducesResponseType(typeof(VenueLayoutDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateLayoutFromTemplate(
+        [FromBody] CreateLayoutFromTemplateRequest request)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "CreateLayoutFromTemplate: user={UserId}, sourceTemplateId={SourceTemplateId}, eventId={EventId}, layoutName={LayoutName}",
+            userId, request.SourceTemplateId, request.EventId, request.LayoutName);
+
+        var command = new CreateLayoutFromTemplateCommand(
+            request.SourceTemplateId,
+            userId,
+            request.EventId,
+            request.LayoutName);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultWithCreated(
+            result,
+            nameof(GetLayout),
+            new { id = result.IsSuccess ? result.Value!.Id : Guid.Empty });
+    }
+
+    /// <summary>
+    /// Request body for <see cref="CreateLayoutFromTemplate"/>.
+    /// </summary>
+    public record CreateLayoutFromTemplateRequest(
+        Guid SourceTemplateId,
+        Guid EventId,
+        string? LayoutName);
 
     /// <summary>
     /// Slice 8 S8.9b: clones an existing venue layout as a per-user template.

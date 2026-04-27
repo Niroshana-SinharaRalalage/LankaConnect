@@ -116,11 +116,78 @@ public class VenueLayout : BaseEntity
         if (source is null)
             return Result<VenueLayout>.Failure("Source layout is required");
 
+        return CloneStructure(
+            source,
+            newName,
+            newOwnerUserId,
+            eventId: null,
+            isTemplate: true,
+            nameFieldLabel: "Template name");
+    }
+
+    /// <summary>
+    /// Slice 8 S8.10: applies a saved template to a target event. Mirror of
+    /// <see cref="CloneAsTemplate"/> in the opposite direction — clones a
+    /// per-user template (<c>IsTemplate == true</c>, <c>EventId == null</c>)
+    /// into a fresh event-attached layout (<c>IsTemplate == false</c>,
+    /// <c>EventId == targetEventId</c>) so the organizer can apply a saved
+    /// template to a new event without re-building the structure by hand.
+    ///
+    /// Source MUST be a template — applying an event-attached layout via this
+    /// path is intentionally rejected; the organizer should clone-as-template
+    /// first, then apply.
+    ///
+    /// Tier mappings are not copied (the target event's tiers are owned by
+    /// the <see cref="TicketTier"/> aggregate, and the template carries no
+    /// tier rows by S8.9b's design — assigning tiers happens after the layout
+    /// is applied, via the canvas editor's tier panel + S8.8c batch save).
+    /// </summary>
+    public static Result<VenueLayout> CloneFromTemplate(
+        VenueLayout template,
+        Guid targetEventId,
+        string newName,
+        Guid newOwnerUserId)
+    {
+        if (template is null)
+            return Result<VenueLayout>.Failure("Source template is required");
+
+        if (!template.IsTemplate)
+            return Result<VenueLayout>.Failure(
+                "Source must be a template — only templates can be applied via clone-from-template");
+
+        if (targetEventId == Guid.Empty)
+            return Result<VenueLayout>.Failure("Target event ID is required");
+
+        return CloneStructure(
+            template,
+            newName,
+            newOwnerUserId,
+            eventId: targetEventId,
+            isTemplate: false,
+            nameFieldLabel: "Layout name");
+    }
+
+    /// <summary>
+    /// Slice 8 S8.10: shared internal helper for both clone factories
+    /// (<see cref="CloneAsTemplate"/> and <see cref="CloneFromTemplate"/>).
+    /// Walks the source aggregate (canvas, decorations, zones, tables, seats)
+    /// and produces a new <see cref="VenueLayout"/> with fresh server-side IDs.
+    /// The two public factories differ only in their final
+    /// <c>(eventId, isTemplate)</c> tuple, so all aggregate-walk logic lives here.
+    /// </summary>
+    private static Result<VenueLayout> CloneStructure(
+        VenueLayout source,
+        string newName,
+        Guid newOwnerUserId,
+        Guid? eventId,
+        bool isTemplate,
+        string nameFieldLabel)
+    {
         if (string.IsNullOrWhiteSpace(newName))
-            return Result<VenueLayout>.Failure("Template name is required");
+            return Result<VenueLayout>.Failure($"{nameFieldLabel} is required");
 
         if (newName.Trim().Length > 200)
-            return Result<VenueLayout>.Failure("Template name cannot exceed 200 characters");
+            return Result<VenueLayout>.Failure($"{nameFieldLabel} cannot exceed 200 characters");
 
         if (newOwnerUserId == Guid.Empty)
             return Result<VenueLayout>.Failure("Owner user ID is required");
@@ -141,8 +208,8 @@ public class VenueLayout : BaseEntity
             newName,
             source.LayoutType,
             newOwnerUserId,
-            eventId: null,
-            isTemplate: true,
+            eventId: eventId,
+            isTemplate: isTemplate,
             canvas: canvasResult.Value);
         if (layoutResult.IsFailure)
             return layoutResult;

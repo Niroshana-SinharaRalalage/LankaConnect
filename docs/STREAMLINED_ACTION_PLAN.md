@@ -67,6 +67,32 @@
 
 ---
 
+## 🎨 2026-04-27 (later) — SEATING SLICE 8: S8.11 (Delete saved templates from Mine tab) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-27
+**Session**: Closes the smallest of the post-S8.10 follow-ups — organizers can now remove saved templates instead of having a write-only growth path. Frontend-only commit `ea34769f` (backend `DELETE /api/venue-layouts/{id}` already exists since Slice 5 Chunk 9). New `useDeleteUserTemplate()` hook (mutation-variable layoutId so it's N-cards safe), Mine card gets a `Trash2` sibling button (no nested interactive elements), `ConfirmDialog` (danger variant) at modal scope.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. `deploy-ui-staging.yml` run `25021150896` `conclusion=success` (5m10s). Tests: 27/27 modal cases pass (19 prior + 8 new). Wider events+hooks+utils suite 349/349 sequential green (excluding the pre-existing `CanvasEditor.test.tsx` flake). `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.11** | `ea34769f` | `useDeleteUserTemplate()` hook + Mine card Delete sibling button + danger `ConfirmDialog` + 422-specific "in use" toast + generic error toast |
+
+**Why durable**: (1) Mutation-variable `layoutId` means one hook handles every card without violating React rules-of-hooks. (2) Sibling-button structure avoids HTML-spec violation of nested interactive elements. (3) `ConfirmDialog` at modal scope survives card re-renders + isn't `<li>`-nested. (4) `RowVersion` is the `If-Match` token — same optimistic-concurrency pattern as every other layout mutation. (5) 422 toast tells the user the problem is fixable vs. generic failure.
+**Evidence**:
+- 27/27 modal tests + 349/349 wider sequential. `tsc --noEmit` exit 0.
+- `deploy-ui-staging.yml` run `25021150896` `conclusion=success`.
+- **Staging API smoke (full lifecycle)**:
+  - POST `/save-as-template` `{name: "S8.11 to-delete smoke"}` → HTTP 201 + `691e5178-186e-4d34-aa69-4b1a84163cc7` (rowVersion `5318641`).
+  - GET `/templates` → 18 templates (was 17, +1).
+  - DELETE `/691e5178-…` `If-Match: 5318641` → HTTP 204 (correlation `d8fc3bb7-…`).
+  - GET → 17 templates; deleted one gone.
+  - Re-DELETE with same rowVersion → HTTP 404 (idempotency confirms actual DB deletion).
+
+**Out of scope (deferred)**: Rename templates (`PUT /api/venue-layouts/{id}` exists; UI is future polish), Duplicate templates (already works via Save-as-Template against any source), empty-state CTA deep-link, same-name warn on apply-template.
+
+**Slice 8 status**: **11 chunks shipped**. Slice still functionally complete. Remaining open: S8.9c retire `SeatSelector.tsx` + Slice 4 Release N+1 column drop — both gated by production soak time.
+
+---
+
 ## 🎨 2026-04-27 — SEATING SLICE 8: S8.10 (My Templates picker + apply-template) SHIPPED + WIRE-VERIFIED ON STAGING
 **Date**: 2026-04-27
 **Session**: Closes the only user-visible gap from S8.9b — organizers can now reapply their saved templates to new events through the UI. Backend adds `GET /api/venue-layouts/templates` + `POST /api/venue-layouts/from-template` endpoints, a domain refactor extracting `VenueLayout.CloneAsTemplate`'s body into a shared `CloneStructure` helper, and a new symmetric `VenueLayout.CloneFromTemplate` factory. Frontend extends `PresetLibraryModal` with a "Mine" tab and wires the apply-template flow through `SeatingLayoutPicker`. Plus a list-capacity fix that staging caught.

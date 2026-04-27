@@ -136,6 +136,12 @@ public class GetEventAttendeesQueryHandler
                         AdultCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult),
                         ChildCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Child),
 
+                        // Phase 7E.8: explicit male/female counters so CSV/Excel exports stay
+                        // accurate under Mode B (post-processing overrides these from the
+                        // demographic axis when r.Attendees is empty).
+                        MaleCount = r.Attendees.Count(a => a.Gender == Gender.Male),
+                        FemaleCount = r.Attendees.Count(a => a.Gender == Gender.Female),
+
                         // Gender distribution with full names (Phase 6A.45 fix - avoid Excel formula interpretation)
                         GenderDistribution = string.Join(", ",
                             r.Attendees
@@ -218,6 +224,8 @@ public class GetEventAttendeesQueryHandler
                     // existing column in the AttendeeManagementTab is informative without UI changes.
                     var males = (demo.Males ?? 0) + (demo.AdultMales ?? 0) + (demo.ChildMales ?? 0);
                     var females = (demo.Females ?? 0) + (demo.AdultFemales ?? 0) + (demo.ChildFemales ?? 0);
+                    dto.MaleCount = males;
+                    dto.FemaleCount = females;
                     if (males > 0 || females > 0)
                     {
                         dto.GenderDistribution = $"{males} Male, {females} Female";
@@ -228,6 +236,8 @@ public class GetEventAttendeesQueryHandler
                     // B1: Total only, no demographic axis.
                     dto.AdultCount = 0;
                     dto.ChildCount = 0;
+                    dto.MaleCount = 0;
+                    dto.FemaleCount = 0;
                     dto.GenderDistribution = string.Empty;
                     dto.HeadCountBreakdownLine = string.Empty;
                 }

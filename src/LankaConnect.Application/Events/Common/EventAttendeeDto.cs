@@ -27,6 +27,8 @@ public class EventAttendeeDto
     public int TotalAttendees { get; set; }
     public int AdultCount { get; set; }
     public int ChildCount { get; set; }
+    public int MaleCount { get; set; }
+    public int FemaleCount { get; set; }
     public string GenderDistribution { get; set; } = string.Empty;
 
     // Phase 7E.7: Mode-aware fields. Populated by GetEventAttendeesQueryHandler.

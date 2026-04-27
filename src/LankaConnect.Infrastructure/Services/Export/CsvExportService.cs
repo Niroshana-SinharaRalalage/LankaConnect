@@ -79,23 +79,21 @@ public class CsvExportService : ICsvExportService
         // Write data rows
         foreach (var a in attendees.Attendees)
         {
-            var mainAttendee = a.Attendees.FirstOrDefault()?.Name ?? "Unknown";
-            var additionalAttendees = a.TotalAttendees > 1
-                ? string.Join(", ", a.Attendees.Skip(1).Select(att => att.Name))
-                : "";
-            var maleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Male);
-            var femaleCount = a.Attendees.Count(att => att.Gender == Domain.Events.Enums.Gender.Female);
-            var genderDistribution = GetGenderDistribution(a.Attendees);
+            // Phase 7E.8: source these from the DTO so Mode-B registrations export the
+            // lead name / "+N attendees" / demographic counts that the post-processing
+            // pass populated. Mode A still gets the existing per-attendee shape since
+            // MainAttendeeName / AdditionalAttendees fall back to the Attendees list.
+            var additionalAttendeesCsv = a.AdditionalAttendees == "—" ? "" : a.AdditionalAttendees;
 
             // Phase 6A.68: Removed RegistrationId from export
-            csv.WriteField(mainAttendee);
-            csv.WriteField(additionalAttendees);
+            csv.WriteField(a.MainAttendeeName);
+            csv.WriteField(additionalAttendeesCsv);
             csv.WriteField(a.TotalAttendees);
             csv.WriteField(a.AdultCount);
             csv.WriteField(a.ChildCount);
-            csv.WriteField(maleCount);
-            csv.WriteField(femaleCount);
-            csv.WriteField(genderDistribution);
+            csv.WriteField(a.MaleCount);
+            csv.WriteField(a.FemaleCount);
+            csv.WriteField(a.GenderDistribution);
             csv.WriteField(a.ContactEmail);
             csv.WriteField(a.ContactPhone ?? "");
             csv.WriteField(a.ContactAddress ?? "");
@@ -375,20 +373,6 @@ public class CsvExportService : ICsvExportService
         sanitized = sanitized.Replace(" ", "-");
 
         return sanitized;
-    }
-
-    /// <summary>
-    /// Generate gender distribution string (e.g., "2 Male, 1 Female")
-    /// </summary>
-    private static string GetGenderDistribution(List<AttendeeDetailsDto> attendees)
-    {
-        var genderCounts = attendees
-            .Where(a => a.Gender.HasValue)
-            .GroupBy(a => a.Gender!.Value)
-            .Select(g => $"{g.Count()} {g.Key}")
-            .ToList();
-
-        return genderCounts.Any() ? string.Join(", ", genderCounts) : "";
     }
 
     /// <summary>

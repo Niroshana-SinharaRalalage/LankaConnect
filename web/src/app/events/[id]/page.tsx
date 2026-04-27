@@ -22,7 +22,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -299,6 +299,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const activeForms = eventForms?.filter(form =>
     form.status === ('Active' as any) || form.status === EventFormStatus.Active
   ) || [];
+
+  // Phase 7E (UX): Mode-aware labels for the registration nav button + section heading.
+  // - Mode A (DetailedAttendees) → "Register" (per-attendee form)
+  // - Mode B (HeadCount*)        → "RSVP"     (lightweight head-count form)
+  // - Mode C (NoRegistration)    → button hidden + section heading "About this event"
+  // Defensive read tolerates stale React Query cached payloads from before 7E shipped.
+  const registrationMode = event?.registrationMode ?? RegistrationMode.DetailedAttendees;
+  const isModeC = registrationMode === RegistrationMode.NoRegistration;
+  const isModeB =
+    registrationMode === RegistrationMode.HeadCountOnly ||
+    registrationMode === RegistrationMode.HeadCountByAge ||
+    registrationMode === RegistrationMode.HeadCountByGender ||
+    registrationMode === RegistrationMode.HeadCountByAgeAndGender;
+  const registrationCtaLabel = isModeB ? 'RSVP' : 'Register';
+  const registrationSectionTitle = isModeC
+    ? 'About this event'
+    : isModeB
+      ? 'RSVP for this Event'
+      : 'Register for this Event';
 
   // Phase 6A.128: Use React Query's useQueries for user form responses (single source of truth)
   // Replaces manual useEffect + useState — cache invalidation from mutations propagates automatically
@@ -758,7 +777,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {/* Quick Navigation Bar — anchor links to sections below */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
-                  { id: 'registration', label: 'Register', icon: <Users className="h-3.5 w-3.5" />, show: true },
+                  { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
                   { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
                   { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
                   { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
@@ -966,9 +985,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 ? "You're Registered!"
                 : registrationDetails?.status === 'Cancelled'
                 ? 'Registration Cancelled'
-                : 'Register for this Event'}
+                : registrationSectionTitle}
               description={isCancelled
                 ? 'This event has been cancelled. Registration is not available.'
+                : isModeC
+                ? "This is a drop-in event — no registration needed. Donations, sponsorships, and other contributions are still welcome."
                 : isUserRegistered
                 ? 'Click to view your registration details'
                 : registrationDetails?.status === 'Cancelled'

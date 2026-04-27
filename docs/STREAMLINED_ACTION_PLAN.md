@@ -29,6 +29,78 @@
 
 ---
 
+## 🎯 2026-04-27 — PHASE 7E.8 + 7E.9 (Flexible Event Registration Modes — exports + regression sweep) SHIPPED + STAGING-VERIFIED
+**Date**: 2026-04-27
+**Session**: Final two slices of Phase 7E. 7E.8 makes the attendee CSV/Excel exports Mode-aware (Mode B was emitting "Unknown" with zero counts). 7E.9 is the end-to-end regression sweep against the 7E.0 call-site checklist + architect's flagged hot-spots (4 left-join entries, 2 defensive-read entries, Mode C standalone-contribution path).
+
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Commits `8220b4ca` (export Mode-aware) + `7092b591` (docs). Build: clean (0 warnings, 0 errors). Tests: 68/68 Phase 7E suite + 2333+ Application baseline still green. Deploy `24972376188` → `conclusion=success`.
+
+**7E.8 — what shipped**:
+- `EventAttendeeDto.MaleCount` / `FemaleCount` added with `set` accessors. Populated by SQL projection in `GetEventAttendeesQueryHandler` (Mode A, mirrors AdultCount/ChildCount) and overridden by the Mode-B post-processing pass from `HeadCount.Demographics` (males = `Males + AdultMales + ChildMales`, females = symmetric).
+- `CsvExportService` and `ExcelExportService` now consume the DTO directly: `MainAttendeeName` / `AdditionalAttendees` / `MaleCount` / `FemaleCount` / `GenderDistribution`. The CSV strips `AdditionalAttendees`'s em-dash for legacy-Mode-A single-attendee parity. Removed the now-dead `GetGenderDistribution` helper.
+
+**7E.9 — what was verified**:
+- **Architect hot-spots cleared**: 4 `left-join-fix` entries (Donation FK / AddOnPurchase FK / DonationRepository.GetByRegistrationIdAsync / PaymentCompletedEventHandler call-site) confirmed are nullable single-column lookups that survive Mode C; 2 `defensive-read` entries (`AttendeeManagementTab.tsx:184`, `RsvpFormSection.tsx:56`) confirmed wired with `event.registrationMode ?? RegistrationMode.DetailedAttendees`.
+- **Staging smoke (fresh events)**:
+  - **Mode A regression** (legacy event `c0cd6cfd-…`): CSV export 13 columns, MainAttendeeName + MaleCount/FemaleCount populated correctly, no shape regression. Event detail still returns `mode=DetailedAttendees`.
+  - **Mode B (HeadCountByAge)** event `16eeb15c-…`: 2 registrations totaling 9 attendees → CSV `"Smoke Lead Adult","+4 attendees","5","3","2",…` and `"Anon Family","+3 attendees","4","2","2",…` — TOTAL row aggregates 9.
+  - **Mode B (HeadCountByGender)** event `69d4c455-…`: B3 RSVP `{males:2, females:1}` → `currentRegistrations=3` (canonical aggregator honors `HeadCount.Total`), CSV `"B3 Lead","+2 attendees","3","0","0","2","1","2 Male, 1 Female"`. Attendees endpoint confirmed mode-aware row populated by post-processing.
+  - **Mode C (NoRegistration)** events `64bd61d3-…` and `40c8279a-…`: RSVP rejected HTTP 400 *"Registration is not required for this event…"* (auth + anonymous paths). Standalone donation on Mode C event → HTTP 200 with Stripe checkout URL; donation listed in `/donations` with `regId=None` (architect's INNER-JOIN concern empirically resolved).
+- **Azure container logs scanned** over a 500-line window covering the smoke: zero unexpected exceptions, zero 5xx, zero EF migration errors.
+
+**Phase 7E core SHIPPED**: free B-mode RSVP (B1/B2/B3/B4) + Mode C drop-in events + Mode-aware confirmation emails (chunk 1 of 7E.4) + Mode-aware organiser AttendeeManagementTab + Mode-aware CSV/Excel exports + back-compat for pre-7E events (default `DetailedAttendees`).
+
+**Deferred to Phase 7F** (architect-locked):
+1. Paid B-mode (Stripe redirect for paid head-count + tier-counts pricing) — 7E.3b/c sub-slices
+2. Tier × age matrix axis on `HeadCountBreakdown` → unlocks "tier × age matrix pricing" Mode A only
+3. A↔B mode change with attendee backfill (today: forbidden once registrations exist)
+4. Mode B organiser-side attendance check-in (`actualHeadCountAttended` + organiser CTA)
+5. CSV tier-breakdown column (needs paid-B + tier counts to even exist)
+6. `event-cancellation` / `event-reminder` / `event-add-attendees-confirmation` template Mode-B variants (chunks 3-5 of 7E.4) — current behaviour is acceptable for ship; templates simply omit the head-count line
+
+**Files touched (7E.8)**:
+- `src/LankaConnect.Application/Events/Common/EventAttendeeDto.cs` — added MaleCount/FemaleCount
+- `src/LankaConnect.Application/Events/Queries/GetEventAttendees/GetEventAttendeesQueryHandler.cs` — SQL projection + post-processing override
+- `src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs` — DTO-sourced rows; removed dead helper
+- `src/LankaConnect.Infrastructure/Services/Export/ExcelExportService.cs` — DTO-sourced rows
+- `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` — 7E.8 status updated, deferred items called out
+
+---
+
+## 🎨 2026-04-27 — SEATING SLICE 8: S8.10 (My Templates picker + apply-template) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-27
+**Session**: Closes the only user-visible gap from S8.9b — organizers can now reapply their saved templates to new events through the UI. Backend adds `GET /api/venue-layouts/templates` + `POST /api/venue-layouts/from-template` endpoints, a domain refactor extracting `VenueLayout.CloneAsTemplate`'s body into a shared `CloneStructure` helper, and a new symmetric `VenueLayout.CloneFromTemplate` factory. Frontend extends `PresetLibraryModal` with a "Mine" tab and wires the apply-template flow through `SeatingLayoutPicker`. Plus a list-capacity fix that staging caught.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Domain + Application + API (`6ce938ee`); frontend (`cbf374bc`); list-capacity fix (`9749c63f`). All deploy-*-staging.yml runs `conclusion=success`. Tests: backend Domain 29/29 (16 prior CloneAsTemplate + 13 new CloneFromTemplate); Application 2352 / 6 skipped / 0 failed (3 new GetUserTemplates + 9 new CreateLayoutFromTemplate handler cases). Frontend 341/341 sequential green across 16 files (9 new modal Mine-tab cases) excluding the pre-existing `CanvasEditor.test.tsx` parallelism flake unrelated to S8.10. `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.10 backend** | `6ce938ee` | Domain refactor + `VenueLayout.CloneFromTemplate` factory; `GetUserTemplatesQuery` + handler; `CreateLayoutFromTemplateCommand` + handler; `GET /api/venue-layouts/templates` + `POST /api/venue-layouts/from-template` controller routes |
+| **S8.10 frontend** | `cbf374bc` | New `CreateLayoutFromTemplateRequest` type + repo methods + `useUserTemplates` / `useCreateLayoutFromTemplate` hooks; `PresetLibraryModal` two-tab UI (Built-in default + Mine); `SeatingLayoutPicker` apply-template flow |
+| **S8.10 fix** | `9749c63f` | Templates list now `Include`s Seats + Tables + Decorations + `AsSplitQuery` so Mine cards show accurate `totalCapacity` (was 0 due to incomplete include graph) |
+
+**Why durable**: (1) Shared `CloneStructure` private helper means one walker for both clone directions — bug fixes propagate automatically. (2) Apply-template rejects non-template sources at the domain layer; no risk of "applying" an event-attached layout into a different event and orphaning the source's tier mappings. (3) `useUserTemplates` is enabled-gated by the active tab so the common preset-only path doesn't cost a request. (4) Both new endpoints reuse the existing auth gates (template-ownership + organizer-for-target-event) — same security surface, no new attack vectors. (5) `AsSplitQuery` on the listing prevents the cartesian explosion the Phase 6A perf RCA flagged.
+**Evidence**:
+- Backend Domain 29/29 + Application 2352/6 skip/0 fail (no regressions to the 2340 baseline; +12 net for new tests).
+- Frontend 341/341 sequential across 16 files (excluding the pre-existing CanvasEditor.test.tsx flake).
+- Backend deploy `24993590068` (canvas FK fix predecessor `24993124447` + initial backend `24974262575` also success); frontend deploy `24993124441`. All `conclusion=success`.
+- **Staging API smoke** confirmed both endpoints end-to-end:
+  - `GET /api/venue-layouts/templates` → HTTP 200 + 17 templates including the S8.9b smoke clone `a636c96e-94cf-4713-bcc1-f30522bfe3cd`.
+  - `POST /api/venue-layouts/from-template` body `{sourceTemplateId: a636c96e-…, eventId: e4792b64-…, layoutName: "S8.10 smoke applied"}` → HTTP 201 + new layout `e5d40a94-7563-4d1e-9117-5d973d1b67ef`. GET confirms `isTemplate: false`, `eventId: e4792b64-…`, `createdByUserId: 5e782b4d-…` (caller), `totalCapacity: 200`, zone "Main Floor" with 200 fresh-GUID seats (sample `I10`/`H20`/`G4`/`F9` show row+number+label+sortOrder preserved from source template).
+
+**Scope discipline**: ships the picker + apply path. Template management (rename / delete / duplicate via UI) is deliberately out of scope — templates today can only be created (S8.9b) or applied (S8.10). The Mine tab's empty-state mentions "Save as Template" but doesn't deep-link to the canvas editor (future polish). Same-name UX: picker doesn't warn if a same-name template exists — user can apply twice and end up with multiple identically-named layouts on the event (cosmetic; functionality fine).
+**Open follow-ups (non-blocking)**:
+1. Empty-state CTA — deep-link "Save as Template" mention to the canvas editor.
+2. Template management UI — rename / delete / duplicate via Mine tab.
+3. Pre-existing `CanvasEditor.test.tsx` parallelism flake — separate triage.
+4. Same-name UX warning when applying a template whose name collides with an existing layout on the event.
+**Next**:
+1. **S8.9c** retirement of `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week from prod ship).
+2. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` ≥1 week after Slice 4 Release N ships.
+
+**Slice 8 status**: 10 chunks shipped end-to-end. Both remaining items above are scheduled cleanup, not implementation gaps. **The slice is functionally complete from a user perspective.**
+
+---
+
 ## 🎨 2026-04-26 (later) — SEATING SLICE 8: S8.9b (Save layout as personal template) SHIPPED + WIRE-VERIFIED ON STAGING
 **Date**: 2026-04-26
 **Session**: Architect Option B for the seat-clone strategy: faithful clone via a new `VenueLayout.CloneAsTemplate(source, newName, newOwnerUserId)` static factory on the aggregate root + internal `RebuildSeatsFrom` on `VenueZone`/`VenueTable`. Per-seat `IsEnabled` and `IsAccessible` flags round-trip; tier mappings (which live on the `TicketTier` aggregate, owned by the source's event) are deliberately dropped — templates are tier-free by design.

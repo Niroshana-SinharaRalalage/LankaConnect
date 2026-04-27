@@ -34,6 +34,8 @@ import type {
   // Phase 7E.5: Mode picker reactivity
   RegistrationMode,
   AllowedRegistrationModesRequest,
+  // Phase 7E (bug fix): Mode-B head-count payload threading
+  HeadCountDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -475,7 +477,7 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string; addOnSelections?: { definitionId: string; quantity: number }[]; collectionAmount?: number; collectionNotes?: string; sponsorAmount?: number; sponsorOrganization?: string; sponsorNotes?: string }) => {
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string; addOnSelections?: { definitionId: string; quantity: number }[]; collectionAmount?: number; collectionNotes?: string; sponsorAmount?: number; sponsorOrganization?: string; sponsorNotes?: string; leadAttendeeName?: string; headCount?: HeadCountDto }) => {
       // Phase 6A.11: Construct full RsvpRequest with all fields (legacy and new format support)
       // Donation Feature: Include donation fields for combined checkout
       // Phase 6A.137D: Include add-on selections for bundled checkout
@@ -511,6 +513,11 @@ export function useRsvpToEvent() {
           sponsorOrganization: data.sponsorOrganization,
           sponsorNotes: data.sponsorNotes,
         }),
+        // Phase 7E (bug fix): thread Mode-B head-count payload through. Without these
+        // fields the auth-path RSVP for B1-B4 events fails with "Lead attendee name is
+        // required for HeadCountOnly events" because the hook silently dropped them.
+        ...(data.leadAttendeeName && { leadAttendeeName: data.leadAttendeeName }),
+        ...(data.headCount && { headCount: data.headCount }),
       };
       return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);
     },

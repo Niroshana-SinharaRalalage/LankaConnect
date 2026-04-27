@@ -202,7 +202,7 @@ export function HeadCountRsvpForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-1">
-            Email <span className="text-destructive">*</span>
+            Email {!isAuthenticated && <span className="text-destructive">*</span>}
           </label>
           <Input
             id="email"
@@ -212,7 +212,11 @@ export function HeadCountRsvpForm({
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             disabled={isProcessing || isAuthenticated}
+            className={isAuthenticated ? 'bg-neutral-50 text-neutral-600 cursor-not-allowed' : undefined}
           />
+          {isAuthenticated && (
+            <p className="text-xs text-neutral-500 mt-1">Using your account email</p>
+          )}
         </div>
         <div>
           <label htmlFor="phoneNumber" className="block text-sm font-medium text-neutral-700 mb-1">

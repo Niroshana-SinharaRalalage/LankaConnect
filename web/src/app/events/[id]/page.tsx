@@ -423,6 +423,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           sponsorAmount: (data as any).sponsorAmount ?? undefined,
           sponsorOrganization: (data as any).sponsorOrganization ?? undefined,
           sponsorNotes: (data as any).sponsorNotes ?? undefined,
+          // Phase 7E (bug fix): thread Mode-B head-count payload through. The
+          // HeadCountRsvpForm sends these for B1-B4 events; without them the hook
+          // silently dropped the fields and the backend returned "Lead attendee
+          // name is required for HeadCountOnly events".
+          leadAttendeeName: (data as any).leadAttendeeName ?? undefined,
+          headCount: (data as any).headCount ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment

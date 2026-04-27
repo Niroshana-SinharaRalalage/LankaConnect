@@ -3064,6 +3064,18 @@ export interface CreateLayoutFromPresetRequest {
 }
 
 /**
+ * Slice 8 S8.10 — POST /api/venue-layouts/from-template body. Matches backend
+ * `CreateLayoutFromTemplateRequest`. Applies one of the caller's saved
+ * templates to a target event the caller organizes. `layoutName` is optional —
+ * server defaults to the source template's name.
+ */
+export interface CreateLayoutFromTemplateRequest {
+  sourceTemplateId: string;
+  eventId: string;
+  layoutName?: string | null;
+}
+
+/**
  * Phase 7E.5 — query parameters for `GET /api/Events/allowed-registration-modes`.
  * Matches backend `GetAllowedRegistrationModesQuery` shape. All fields optional and default
  * to `false` server-side; the frontend Mode picker passes the current draft form-state on

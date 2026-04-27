@@ -36,6 +36,7 @@ import type {
   BatchLayoutPayload,
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
+  CreateLayoutFromTemplateRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -49,6 +50,9 @@ export const venueLayoutKeys = {
   byEvent: (eventId: string) => [...venueLayoutKeys.all, 'by-event', eventId] as const,
   seatAvailability: (eventId: string) => [...venueLayoutKeys.all, 'seats', eventId] as const,
   presets: [...['venue-layouts'] as const, 'presets'] as const,
+  /** Slice 8 S8.10: per-user template list. Stable across mounts so the
+   * "Mine" tab in PresetLibraryModal hits the cache on re-open. */
+  userTemplates: [...['venue-layouts'] as const, 'my-templates'] as const,
 };
 
 /**
@@ -144,6 +148,43 @@ export function useCreateLayoutFromPreset() {
 
   return useMutation<VenueLayoutDto, ApiError, CreateLayoutFromPresetRequest>({
     mutationFn: (request) => venueLayoutsRepository.createFromPreset(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      if (data.eventId) {
+        queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(data.eventId) });
+      }
+    },
+  });
+}
+
+/**
+ * Slice 8 S8.10: lists the calling user's saved templates. Empty array when
+ * the user has none. Powers the "My Templates" tab in `PresetLibraryModal`.
+ * The list is invalidated on `useSaveLayoutAsTemplate` success (S8.9b) and on
+ * `useCreateLayoutFromTemplate` success (S8.10), so newly-saved templates
+ * appear without a manual refetch.
+ */
+export function useUserTemplates(
+  options?: Omit<UseQueryOptions<VenueLayoutDto[], ApiError>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: venueLayoutKeys.userTemplates,
+    queryFn: () => venueLayoutsRepository.listUserTemplates(),
+    ...options,
+  });
+}
+
+/**
+ * Slice 8 S8.10: applies a saved template to a target event. Mirror of
+ * `useCreateLayoutFromPreset` for user templates instead of built-in presets.
+ * Invalidates the target event's layout cache (so the picker refetches and
+ * the new layout shows up) and the shared layouts tree.
+ */
+export function useCreateLayoutFromTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, CreateLayoutFromTemplateRequest>({
+    mutationFn: (request) => venueLayoutsRepository.createFromTemplate(request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
       if (data.eventId) {

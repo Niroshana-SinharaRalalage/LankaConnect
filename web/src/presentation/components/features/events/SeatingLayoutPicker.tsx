@@ -26,6 +26,7 @@ import {
   useLayoutPresets, // imported for type-check awareness; used through modal
   useVenueLayoutByEvent,
   useCreateLayoutFromPreset,
+  useCreateLayoutFromTemplate,
   useAssignLayoutToEvent,
 } from '@/presentation/hooks/useVenueLayouts';
 import { Button } from '@/presentation/components/ui/Button';
@@ -51,12 +52,15 @@ export function SeatingLayoutPicker({
 }: SeatingLayoutPickerProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [pickingPresetId, setPickingPresetId] = useState<string | null>(null);
+  // Slice 8 S8.10: when the user picks from the "Mine" tab.
+  const [pickingTemplateId, setPickingTemplateId] = useState<string | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
   // Slice 8 S8.1: canvas editor is a separate modal, opened only once a layout exists.
   const [editorOpen, setEditorOpen] = useState(false);
 
   const layoutQuery = useVenueLayoutByEvent(eventId);
   const createFromPreset = useCreateLayoutFromPreset();
+  const createFromTemplate = useCreateLayoutFromTemplate();
   const assignLayout = useAssignLayoutToEvent();
 
   const handlePresetSelected = useCallback(
@@ -85,6 +89,44 @@ export function SeatingLayoutPicker({
       }
     },
     [assignLayout, createFromPreset, eventId, onLayoutChanged],
+  );
+
+  /**
+   * Slice 8 S8.10: apply one of the user's saved templates to this event.
+   * Mirror of {@link handlePresetSelected} for the "Mine" tab — the difference
+   * is which mutation creates the cloned layout. Once the layout exists we
+   * still call assign-to-event so the event's `VenueLayoutId` is wired up.
+   */
+  const handleTemplateSelected = useCallback(
+    async (template: VenueLayoutDto) => {
+      setFlowError(null);
+      setPickingTemplateId(template.id);
+      try {
+        const layout = await createFromTemplate.mutateAsync({
+          sourceTemplateId: template.id,
+          eventId,
+          // Backend defaults LayoutName to source.Name when null/whitespace —
+          // pass null and let it match the source. The user can rename
+          // through the canvas editor's property panel afterward.
+          layoutName: null,
+        });
+        await assignLayout.mutateAsync({
+          eventId,
+          layoutId: layout.id,
+        });
+        setModalOpen(false);
+        onLayoutChanged?.(layout);
+      } catch (e) {
+        const message =
+          e instanceof Error ? e.message : 'Failed to apply the template.';
+        // eslint-disable-next-line no-console
+        console.error('[SeatingLayoutPicker] template flow failed:', e);
+        setFlowError(message);
+      } finally {
+        setPickingTemplateId(null);
+      }
+    },
+    [assignLayout, createFromTemplate, eventId, onLayoutChanged],
   );
 
   const layout = layoutQuery.data ?? null;
@@ -186,6 +228,9 @@ export function SeatingLayoutPicker({
         onSelect={handlePresetSelected}
         isSelecting={createFromPreset.isPending || assignLayout.isPending}
         selectingPresetId={pickingPresetId}
+        onSelectMine={handleTemplateSelected}
+        isSelectingMine={createFromTemplate.isPending || assignLayout.isPending}
+        selectingMineId={pickingTemplateId}
       />
 
       {layout && (

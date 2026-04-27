@@ -21,6 +21,7 @@ import type {
   AssignableKind,
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
+  CreateLayoutFromTemplateRequest,
 } from '../types/events.types';
 
 /**
@@ -76,6 +77,33 @@ export class VenueLayoutsRepository {
    */
   async listPresets(): Promise<LayoutPresetDto[]> {
     return await apiClient.get<LayoutPresetDto[]>(`${this.basePath}/presets`);
+  }
+
+  /**
+   * Slice 8 S8.10: lists every venue layout the calling user has saved as a
+   * template (`isTemplate=true` AND `createdByUserId=caller`), most-recent-first.
+   * Powers the "My Templates" tab in `PresetLibraryModal`. Empty array when
+   * the user has no saved templates.
+   */
+  async listUserTemplates(): Promise<VenueLayoutDto[]> {
+    return await apiClient.get<VenueLayoutDto[]>(`${this.basePath}/templates`);
+  }
+
+  /**
+   * Slice 8 S8.10: applies one of the caller's saved templates to a target
+   * event. Mirror of {@link createFromPreset} for user templates instead of
+   * built-in presets. The new layout is event-attached
+   * (`isTemplate=false`, `eventId=request.eventId`); the source template is
+   * unchanged. Throws `ApiError` on 403 (caller doesn't own template OR
+   * isn't event organizer) / 404 (source or target missing).
+   */
+  async createFromTemplate(
+    request: CreateLayoutFromTemplateRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/from-template`,
+      request,
+    );
   }
 
   /**

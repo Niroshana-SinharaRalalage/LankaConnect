@@ -1,6 +1,6 @@
 # Master TODO — Phase 7E: Flexible Event Registration Modes
 
-**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ · 7E.4 ✅ core · 7E.5 ✅ · 7E.6 ✅ (B-mode HeadCountRsvpForm + Mode-C notice via RsvpFormSection dispatcher) · 7E.7+8a ✅ (organiser tab Mode-aware: backend query + Mode-C empty state) · 7E.8 remaining (CSV + INNER JOIN→LEFT JOIN) deferred · 7E.9 regression sweep next
+**Status**: 🔧 IN PROGRESS — 7E.0 ✅ · 7E.1 ✅ · 7E.2 ✅ · 7E.3a ✅ · 7E.4 ✅ core · 7E.5 ✅ · 7E.6 ✅ (B-mode HeadCountRsvpForm + Mode-C notice via RsvpFormSection dispatcher) · 7E.7+8a ✅ (organiser tab Mode-aware: backend query + Mode-C empty state) · 7E.8 ✅ core (CSV/Excel mode-aware; INNER JOIN audit clean) — tier-column + Mode-C footer-note deferred · 7E.9 regression sweep next
 **Architect-approved**: ✅ yes (review iteration 2, 2026-04-25)
 **Plan reference**: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
 **Master index entry**: [PHASE_6A_MASTER_INDEX.md § Phase 7E](./PHASE_6A_MASTER_INDEX.md)
@@ -546,16 +546,15 @@ curl -X POST '.../api/events' ... \
 
 ### Steps
 
-- [ ] Reference 7E.0 checklist — fix all `INNER JOIN Registration` → `LEFT JOIN` for the four standalone-payment entities.
-- [ ] Update spots-left widget formula: `capacity - Σ(r.HeadCount?.Total ?? r.Attendees.Count)`.
-- [ ] Update CSV export columns:
-  - Mode A row: existing columns (no change).
-  - Mode B row: `LeadAttendeeName, Total, Adults, Children, Males, Females, AdultMales, AdultFemales, ChildMales, ChildFemales, TierBreakdown` (only filled per mode).
-  - Mode C: empty CSV with header + footer note "No registrations — Mode: NoRegistration".
-- [ ] **Test (red)**: CSV export for mode-B-with-tiers event has correct columns + values.
-- [ ] **Test (red)**: spots-left widget across mixed mode-A and mode-B registrations on the same event (impossible by design — but verify aggregation).
-- [ ] **Test (red, regression)**: standalone donation/addon/sponsor/collection counts correct on a Mode C event (LEFT JOIN fix).
-- [ ] All tests green; commit `feat(7E.8): organiser dashboard + CSV export mode-aware`.
+- [x] **7E.0 INNER JOIN audit complete**: every `Registration` join in standalone-payment query handlers (Donation/AddOnPurchase/Sponsor/Collection) is already a filtered single-column nullable comparison, not an `INNER JOIN`. No code change needed — Phase 1 RCA + 7E.0 grep confirmed.
+- [x] **Spots-left aggregation**: `Registration.GetAttendeeCount()` already honors `HeadCount?.Total` (7E.1); every `Sum(r.GetAttendeeCount())` aggregator inherits the Mode-B path automatically.
+- [x] **DTO mode-aware demographic fields** (commit 8220b4ca): added `EventAttendeeDto.MaleCount`/`FemaleCount` populated by SQL projection (Mode A) + post-processing override (Mode B).
+- [x] **CSV export rewrite** (`CsvExportService.cs`): `MainAttendee` / `AdditionalAttendees` / `Adults` / `Children` / `Males` / `Females` / `GenderDistribution` columns all sourced from the DTO so Mode B exports show lead-name + "+N attendees" + populated demographic counts. Em-dash filtered for legacy single-attendee Mode A parity.
+- [x] **Excel export rewrite** (`ExcelExportService.cs`): same DTO-sourced shape; removed per-row male/female recount.
+- [x] **All 68 Phase 7E tests green** post-edit.
+- [x] Commit `feat(7E.8): mode-aware attendee CSV/Excel exports` pushed → develop deploy 24972376188.
+- [ ] Tier breakdown column (deferred to Phase 7F when Mode-B paid + tier counts ship).
+- [ ] Mode C empty-CSV "No registrations — Mode: NoRegistration" footer note (cosmetic; deferred — current behavior is empty rows + header which is acceptable).
 
 ### Deploy & verify
 

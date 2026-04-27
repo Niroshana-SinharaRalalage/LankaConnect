@@ -133,9 +133,21 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
 
             try
             {
+                // Slice 8 S8.10: include Seats + Tables + Decorations so the Mine
+                // tab card shows an accurate `totalCapacity` (computed from the
+                // EnabledSeatCount of every zone + table). Pre-S8.10 the include
+                // graph stopped at Zones, so totalCapacity always rendered as 0
+                // — cosmetic but misleading. AsSplitQuery prevents the cartesian
+                // explosion EventRepository hit at high cardinality (the Phase
+                // 6A perf RCA's pattern).
                 var templates = await _dbSet
                     .AsNoTracking()
+                    .AsSplitQuery()
                     .Include(v => v.Zones)
+                        .ThenInclude(z => z.Seats)
+                    .Include(v => v.Tables)
+                        .ThenInclude(t => t.Seats)
+                    .Include(v => v.Decorations)
                     .Where(v => v.CreatedByUserId == userId && v.IsTemplate)
                     .OrderByDescending(v => v.CreatedAt)
                     .ToListAsync(cancellationToken);

@@ -12,7 +12,7 @@ import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationD
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
-import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
+import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
@@ -1044,25 +1044,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </p>
                       </div>
                     ) : !isFull ? (
-                      <EventRegistrationForm
-                        eventId={id}
+                      // Phase 7E.6: dispatcher routes to per-attendee form (Mode A), head-count
+                      // form (Mode B), or "no registration required" notice (Mode C).
+                      <RsvpFormSection
+                        event={event}
                         spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        seatingMode={event.seatingMode}
-                        ticketingMode={event.ticketingMode}
-                        ticketTiers={event.ticketTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        collectionConfig={event.collectionConfig}
-                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1499,24 +1485,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </p>
                       </div>
                       {!isFull ? (
-                        <EventRegistrationForm
-                          eventId={id}
+                        // Phase 7E.6: mode-aware dispatch
+                        <RsvpFormSection
+                          event={event}
                           spotsLeft={spotsLeft}
-                          isFree={event.isFree}
-                          ticketPrice={event.ticketPriceAmount ?? undefined}
-                          hasDualPricing={event.hasDualPricing}
-                          adultPrice={event.adultPriceAmount ?? undefined}
-                          childPrice={event.childPriceAmount ?? undefined}
-                          childAgeLimit={event.childAgeLimit ?? undefined}
-                          hasGroupPricing={event.hasGroupPricing}
-                          groupPricingTiers={event.groupPricingTiers}
-                          ticketingMode={event.ticketingMode}
-                          ticketTiers={event.ticketTiers}
-                          maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                          donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                          collectionConfig={event.collectionConfig}
-                          sponsorConfig={event.sponsorConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1763,24 +1735,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         Your previous checkout session expired. Complete the form below to get a new payment link.
                       </p>
                     </div>
-                    <EventRegistrationForm
-                      eventId={id}
+                    {/* Phase 7E.6: mode-aware dispatch */}
+                    <RsvpFormSection
+                      event={event}
                       spotsLeft={spotsLeft}
-                      isFree={event.isFree}
-                      ticketPrice={event.ticketPriceAmount ?? undefined}
-                      hasDualPricing={event.hasDualPricing}
-                      adultPrice={event.adultPriceAmount ?? undefined}
-                      childPrice={event.childPriceAmount ?? undefined}
-                      childAgeLimit={event.childAgeLimit ?? undefined}
-                      hasGroupPricing={event.hasGroupPricing}
-                      groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
-                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                      donationConfig={event.donationConfig}
-                      addOnConfig={event.addOnConfig}
-                      collectionConfig={event.collectionConfig}
-                      sponsorConfig={event.sponsorConfig}
                       isProcessing={isProcessing}
                       onSubmit={handleRegistration}
                       error={error}
@@ -1795,24 +1753,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         Your previous registration had incomplete payment. Complete the form below to get a new payment link.
                       </p>
                     </div>
-                    <EventRegistrationForm
-                      eventId={id}
+                    {/* Phase 7E.6: mode-aware dispatch */}
+                    <RsvpFormSection
+                      event={event}
                       spotsLeft={spotsLeft}
-                      isFree={event.isFree}
-                      ticketPrice={event.ticketPriceAmount ?? undefined}
-                      hasDualPricing={event.hasDualPricing}
-                      adultPrice={event.adultPriceAmount ?? undefined}
-                      childPrice={event.childPriceAmount ?? undefined}
-                      childAgeLimit={event.childAgeLimit ?? undefined}
-                      hasGroupPricing={event.hasGroupPricing}
-                      groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
-                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                      donationConfig={event.donationConfig}
-                      addOnConfig={event.addOnConfig}
-                      collectionConfig={event.collectionConfig}
-                      sponsorConfig={event.sponsorConfig}
                       isProcessing={isProcessing}
                       onSubmit={handleRegistration}
                       error={error}
@@ -1829,24 +1773,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
                 ) : !isFull ? (
-                  <EventRegistrationForm
-                    eventId={id}
+                  // Phase 7E.6: mode-aware dispatch
+                  <RsvpFormSection
+                    event={event}
                     spotsLeft={spotsLeft}
-                    isFree={event.isFree}
-                    ticketPrice={event.ticketPriceAmount ?? undefined}
-                    hasDualPricing={event.hasDualPricing}
-                    adultPrice={event.adultPriceAmount ?? undefined}
-                    childPrice={event.childPriceAmount ?? undefined}
-                    childAgeLimit={event.childAgeLimit ?? undefined}
-                    hasGroupPricing={event.hasGroupPricing}
-                    groupPricingTiers={event.groupPricingTiers}
-                    ticketingMode={event.ticketingMode}
-                    ticketTiers={event.ticketTiers}
-                    maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                    donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                    collectionConfig={event.collectionConfig}
-                    sponsorConfig={event.sponsorConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}

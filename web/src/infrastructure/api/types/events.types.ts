@@ -1015,6 +1015,42 @@ export interface RsvpRequest {
   // Phase 2: Assigned seating — seat hold session
   seatSessionId?: string;
   seatIds?: string[];
+
+  // Phase 7E.3a: Head-count payload for Mode B events. Mutually exclusive with `attendees`.
+  // Backend dispatches by event.RegistrationMode and rejects mismatched shapes with 400.
+  leadAttendeeName?: string;
+  headCount?: HeadCountDto;
+}
+
+/**
+ * Phase 7E.3a — head-count payload for Mode B (B1-B4) RSVPs. The backend's mode-specific
+ * factory validates which fields are required:
+ * - HeadCountOnly (B1): `total` required.
+ * - HeadCountByAge (B2): `adults` + `children` required (Total auto-derived).
+ * - HeadCountByGender (B3): `males` + `females` required (Total auto-derived).
+ * - HeadCountByAgeAndGender (B4): all four leaf counts required.
+ * - `tierCounts` is required iff the event has ticket tiers configured (7E.3c).
+ */
+export interface HeadCountDto {
+  total?: number;
+  adults?: number;
+  children?: number;
+  males?: number;
+  females?: number;
+  adultMales?: number;
+  adultFemales?: number;
+  childMales?: number;
+  childFemales?: number;
+  tierCounts?: TierCountDto[];
+}
+
+/**
+ * Phase 7E.3c — per-tier count for a registration. `tierName` is resolved server-side from
+ * `tierId` and snapshotted onto the registration; client supplies `tierId` + `count` only.
+ */
+export interface TierCountDto {
+  tierId: string;
+  count: number;
 }
 
 /**
@@ -1060,6 +1096,10 @@ export interface AnonymousRegistrationRequest {
   donorName?: string | null;
   donorPhone?: string | null;
   donorNotes?: string | null;
+
+  // Phase 7E.3a: Head-count payload for Mode B (anonymous flow). Mutually exclusive with `attendees`.
+  leadAttendeeName?: string;
+  headCount?: HeadCountDto;
 }
 
 /**

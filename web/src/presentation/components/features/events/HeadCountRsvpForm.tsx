@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Users, AlertCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+import { useProfileStore } from '@/presentation/store/useProfileStore';
 import { RegistrationMode } from '@/infrastructure/api/types/events.types';
 import type {
   AnonymousRegistrationRequest,
@@ -53,6 +54,7 @@ export function HeadCountRsvpForm({
   error,
 }: HeadCountRsvpFormProps) {
   const { user } = useAuthStore();
+  const { profile, loadProfile } = useProfileStore();
   const isAuthenticated = !!user;
 
   // Form state — controlled inputs; lightweight (no react-hook-form needed for this scope).
@@ -61,6 +63,26 @@ export function HeadCountRsvpForm({
   );
   const [email, setEmail] = useState(isAuthenticated ? user.email ?? '' : '');
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  // Phase 7E.6 fix: phone is REQUIRED at the domain layer (RegistrationContact.Create
+  // enforces it for both Mode A and Mode B). Earlier label said "(optional)" — that was
+  // wrong and surfaced as a confusing backend rejection. Pre-fill phone from the user's
+  // profile when available so most authenticated users don't have to type it again.
+  useEffect(() => {
+    if (user?.userId && !profile) {
+      loadProfile(user.userId).catch(() => {
+        // Profile fetch failure is non-blocking — user can still type phone manually.
+      });
+    }
+  }, [user?.userId, profile, loadProfile]);
+
+  useEffect(() => {
+    if (isAuthenticated && profile?.phoneNumber && !phoneNumber) {
+      setPhoneNumber(profile.phoneNumber);
+    }
+    // Intentionally narrow deps — only auto-fill once when profile arrives + field is still empty.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, profile?.phoneNumber]);
 
   // Mode-specific demographic spinners. All start at 0; submit-time validation enforces
   // the mode's invariants (Total > 0 etc.).
@@ -102,6 +124,11 @@ export function HeadCountRsvpForm({
 
     if (!email.trim()) {
       setSubmitError('Email is required.');
+      return;
+    }
+
+    if (!phoneNumber.trim()) {
+      setSubmitError('Phone number is required.');
       return;
     }
 
@@ -220,11 +247,12 @@ export function HeadCountRsvpForm({
         </div>
         <div>
           <label htmlFor="phoneNumber" className="block text-sm font-medium text-neutral-700 mb-1">
-            Phone (optional)
+            Phone <span className="text-destructive">*</span>
           </label>
           <Input
             id="phoneNumber"
             type="tel"
+            required
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             placeholder="555-0100"

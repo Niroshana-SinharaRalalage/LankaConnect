@@ -8,11 +8,23 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 vi.mock('@/presentation/hooks/useVenueLayouts', () => ({
   useLayoutPresets: vi.fn(),
   useUserTemplates: vi.fn(),
+  useDeleteUserTemplate: vi.fn(),
+}));
+
+// Slice 8 S8.11: shared toast spies so individual tests can assert on
+// success / error toasts without booting a real Toaster.
+const toastErrorMock = vi.fn();
+const toastSuccessMock = vi.fn();
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: (...args: unknown[]) => toastErrorMock(...args),
+    success: (...args: unknown[]) => toastSuccessMock(...args),
+  },
 }));
 
 // next/image expects Next's runtime; shim it to a plain <img>.
@@ -22,12 +34,21 @@ vi.mock('next/image', () => ({
     React.createElement('img', props),
 }));
 
-import { useLayoutPresets, useUserTemplates } from '@/presentation/hooks/useVenueLayouts';
+import {
+  useLayoutPresets,
+  useUserTemplates,
+  useDeleteUserTemplate,
+} from '@/presentation/hooks/useVenueLayouts';
 import { PresetLibraryModal } from '@/presentation/components/features/events/PresetLibraryModal';
+import { ApiError } from '@/infrastructure/api/client/api-errors';
 import type { LayoutPresetDto, VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 const mockUseLayoutPresets = useLayoutPresets as unknown as ReturnType<typeof vi.fn>;
 const mockUseUserTemplates = useUserTemplates as unknown as ReturnType<typeof vi.fn>;
+const mockUseDeleteUserTemplate = useDeleteUserTemplate as unknown as ReturnType<typeof vi.fn>;
+
+const deleteMutateAsyncSpy = vi.fn();
+let deleteIsPending = false;
 
 /** Default templates-hook stub: empty list, idle state. Individual tests override. */
 function setUseUserTemplatesIdle() {
@@ -85,6 +106,14 @@ beforeEach(() => {
   // Default the user-templates hook so existing tests (which only target the
   // built-in tab) don't crash if the modal renders the Mine tabpanel ever.
   setUseUserTemplatesIdle();
+  // Slice 8 S8.11: default the delete-template hook to an idle resolved
+  // mutation so any incidental render that touches it works.
+  deleteIsPending = false;
+  deleteMutateAsyncSpy.mockResolvedValue(undefined);
+  mockUseDeleteUserTemplate.mockImplementation(() => ({
+    mutateAsync: deleteMutateAsyncSpy,
+    isPending: deleteIsPending,
+  }));
 });
 
 describe('PresetLibraryModal', () => {
@@ -403,5 +432,116 @@ describe('PresetLibraryModal — Mine tab (S8.10)', () => {
     // Click should not throw.
     fireEvent.click(screen.getByTestId('mine-card-tmpl-1'));
     // Nothing else to assert — the test just verifies no exception.
+  });
+});
+
+// ──────────────── S8.11: Mine-tab template management — Delete ────────────────
+
+describe('PresetLibraryModal — Mine tab Delete (S8.11)', () => {
+  function mountWithTemplates() {
+    mockUseUserTemplates.mockReturnValue({
+      data: fakeTemplates,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    return mountLoaded({ onSelectMine: vi.fn() });
+  }
+
+  it('renders a Delete button on each Mine card', () => {
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    expect(screen.getByTestId('mine-card-delete-tmpl-1')).toBeInTheDocument();
+    expect(screen.getByTestId('mine-card-delete-tmpl-2')).toBeInTheDocument();
+  });
+
+  it('clicking Delete on a card opens a danger ConfirmDialog naming the template', () => {
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    expect(screen.getByText(/delete this template/i)).toBeInTheDocument();
+    // Template name appears at least twice (once in the card behind the
+    // dialog, once in the dialog description) — confirming the description
+    // tells the user which template they're nuking.
+    const matches = screen.getAllByText(/My Theater Setup/);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('Cancel button on the prompt dismisses without firing the mutation', () => {
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    fireEvent.click(screen.getByRole('button', { name: /keep template/i }));
+    expect(deleteMutateAsyncSpy).not.toHaveBeenCalled();
+    // Prompt is gone.
+    expect(screen.queryByText(/delete this template/i)).toBeNull();
+  });
+
+  it('clicking Delete then Confirm fires useDeleteUserTemplate with layoutId + rowVersion', async () => {
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    });
+    expect(deleteMutateAsyncSpy).toHaveBeenCalledTimes(1);
+    expect(deleteMutateAsyncSpy).toHaveBeenCalledWith({
+      layoutId: 'tmpl-1',
+      rowVersion: 1,
+    });
+  });
+
+  it('shows a success toast on delete success', async () => {
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    });
+    await waitFor(() => expect(toastSuccessMock).toHaveBeenCalledTimes(1));
+    expect(toastSuccessMock.mock.calls[0][0]).toMatch(/template deleted|deleted/i);
+  });
+
+  it('shows a 422-specific error toast when the layout has held seats / pending registrations', async () => {
+    deleteMutateAsyncSpy.mockRejectedValueOnce(
+      new ApiError('Cannot delete layout with held seats', 422),
+    );
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    });
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+    expect(toastErrorMock.mock.calls[0][0]).toMatch(/in use|held|reservations/i);
+  });
+
+  it('shows a generic error toast on other failures', async () => {
+    deleteMutateAsyncSpy.mockRejectedValueOnce(new ApiError('boom', 500));
+    mountWithTemplates();
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    });
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('clicking Delete does not fire onSelectMine (event propagation stopped)', async () => {
+    mockUseUserTemplates.mockReturnValue({
+      data: fakeTemplates,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const onSelectMine = vi.fn();
+    mountLoaded({ onSelectMine });
+    fireEvent.click(screen.getByTestId('preset-modal-tab-mine'));
+    fireEvent.click(screen.getByTestId('mine-card-delete-tmpl-1'));
+    // The card's parent <button> click handler is onSelectMine — it must
+    // NOT fire when the user clicks the Delete sub-button.
+    expect(onSelectMine).not.toHaveBeenCalled();
   });
 });

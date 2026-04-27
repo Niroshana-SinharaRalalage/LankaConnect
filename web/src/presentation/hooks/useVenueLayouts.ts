@@ -334,6 +334,34 @@ export function useUpdateVenueLayout(layoutId: string, eventId?: string | null) 
   });
 }
 
+/**
+ * Slice 8 S8.11: per-card delete for the Mine tab. Mirror of
+ * `useDeleteVenueLayout` but with the layoutId in the mutation variable
+ * instead of in the closure — that lets one hook instance handle every
+ * Mine card without violating React's rules of hooks. Templates have no
+ * `eventId` so we only need to invalidate the templates-list scope.
+ *
+ * Distinct from `useDeleteVenueLayout` because Mine-tab cards delete
+ * templates (eventId=null) and don't need the event-side invalidations the
+ * legacy hook does (seatAvailability, eventKeys.detail) — those scopes are
+ * only relevant when you delete an event-attached layout.
+ */
+export function useDeleteUserTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { layoutId: string; rowVersion: number }>({
+    mutationFn: ({ layoutId, rowVersion }) =>
+      venueLayoutsRepository.deleteLayout(layoutId, rowVersion),
+    onSuccess: (_void, variables) => {
+      queryClient.removeQueries({
+        queryKey: venueLayoutKeys.detail(variables.layoutId),
+      });
+      // Refetch the user-templates list so the deleted card disappears.
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.userTemplates });
+    },
+  });
+}
+
 /** Slice 5 Chunk 9 — DELETE /api/venue-layouts/{id} (hard delete). */
 export function useDeleteVenueLayout(layoutId: string, eventId?: string | null) {
   const queryClient = useQueryClient();

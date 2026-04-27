@@ -21,7 +21,8 @@
 
 import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { AlertCircle, Loader2, Layers } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { AlertCircle, Loader2, Layers, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -30,10 +31,13 @@ import {
   DialogTitle,
 } from '@/presentation/components/ui/Dialog';
 import { Button } from '@/presentation/components/ui/Button';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import {
   useLayoutPresets,
   useUserTemplates,
+  useDeleteUserTemplate,
 } from '@/presentation/hooks/useVenueLayouts';
+import { ApiError } from '@/infrastructure/api/client/api-errors';
 import type {
   LayoutPresetDto,
   VenueLayoutDto,
@@ -95,6 +99,12 @@ export function PresetLibraryModal({
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
+  // Slice 8 S8.11: per-card delete state. The whole "queued for delete"
+  // template lives at modal scope so the ConfirmDialog can render outside
+  // the card's <li> + survive a single render cycle without flicker.
+  const [templateToDelete, setTemplateToDelete] = useState<VenueLayoutDto | null>(null);
+  const deleteTemplate = useDeleteUserTemplate();
+
   const handlePickPreset = useCallback(
     async (preset: LayoutPresetDto) => {
       try {
@@ -120,6 +130,37 @@ export function PresetLibraryModal({
     },
     [onSelectMine],
   );
+
+  /**
+   * Slice 8 S8.11: confirm-then-delete handler. Fired by the ConfirmDialog
+   * after the user clicks "Delete". Wraps the mutation in try/catch so the
+   * dialog stays open + we can surface an actionable toast for the
+   * structural-edit-rejected case (held seats / pending registrations) the
+   * backend's `DeleteLayoutCommand` returns 422 for.
+   */
+  const handleConfirmDeleteTemplate = useCallback(async () => {
+    if (!templateToDelete) return;
+    try {
+      await deleteTemplate.mutateAsync({
+        layoutId: templateToDelete.id,
+        rowVersion: templateToDelete.rowVersion,
+      });
+      toast.success(`Template deleted — "${templateToDelete.name}"`);
+      setTemplateToDelete(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 422) {
+        toast.error(
+          "This template is still in use — it has held seats or pending reservations. Resolve those first.",
+        );
+        return;
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Could not delete the template. Please try again.';
+      toast.error(`Delete failed: ${message}`);
+    }
+  }, [templateToDelete, deleteTemplate]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -275,6 +316,27 @@ export function PresetLibraryModal({
           </div>
         )}
 
+        {/* Slice 8 S8.11: per-template delete confirmation. Lives at modal
+            scope so it survives card re-renders and so we don't nest dialogs
+            inside <li>s. variant="danger" matches the destructive intent. */}
+        <ConfirmDialog
+          open={templateToDelete !== null}
+          onOpenChange={(next) => {
+            if (!next && !deleteTemplate.isPending) setTemplateToDelete(null);
+          }}
+          title="Delete this template?"
+          description={
+            templateToDelete
+              ? `"${templateToDelete.name}" will be permanently removed. This cannot be undone — you'll need to rebuild it from scratch if you change your mind.`
+              : ''
+          }
+          confirmLabel="Delete"
+          cancelLabel="Keep template"
+          onConfirm={handleConfirmDeleteTemplate}
+          variant="danger"
+          isLoading={deleteTemplate.isPending}
+        />
+
         {activeTab === 'mine' && (
           <div role="tabpanel" data-testid="preset-modal-tabpanel-mine">
             {templatesQuery.isLoading && (
@@ -326,7 +388,7 @@ export function PresetLibraryModal({
                   const isThisSelecting = isSelectingMine && selectingMineId === t.id;
                   const disabled = isSelectingMine && !isThisSelecting;
                   return (
-                    <li key={t.id}>
+                    <li key={t.id} className="relative">
                       <button
                         type="button"
                         className={[
@@ -356,7 +418,7 @@ export function PresetLibraryModal({
                           )}
                         </div>
                         <div className="p-3">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-2 pr-8">
                             <h3 className="text-sm font-semibold text-neutral-900 leading-snug">
                               {t.name}
                             </h3>
@@ -368,6 +430,30 @@ export function PresetLibraryModal({
                             {t.layoutType}
                           </p>
                         </div>
+                      </button>
+                      {/* Slice 8 S8.11: Delete action — sibling <button> so we
+                          don't nest interactive elements (invalid HTML). The
+                          card-select button never fires because the click
+                          stays on the Delete button's subtree. */}
+                      <button
+                        type="button"
+                        aria-label={`Delete template ${t.name}`}
+                        className={[
+                          'absolute bottom-3 right-3 inline-flex items-center justify-center',
+                          'h-7 w-7 rounded-md border border-neutral-200 bg-white text-neutral-500',
+                          'hover:text-red-600 hover:border-red-300 hover:bg-red-50',
+                          'focus:outline-none focus:ring-2 focus:ring-red-500',
+                          'transition-colors',
+                          disabled ? 'opacity-40 cursor-not-allowed' : '',
+                        ].join(' ')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTemplateToDelete(t);
+                        }}
+                        disabled={disabled}
+                        data-testid={`mine-card-delete-${t.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </li>
                   );

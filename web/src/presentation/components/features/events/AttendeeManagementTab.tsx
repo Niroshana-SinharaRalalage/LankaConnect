@@ -33,8 +33,8 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventAttendees, useExportEventAttendees } from '@/presentation/hooks/useEvents';
-import { RegistrationStatus, PaymentStatus, AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { useEventAttendees, useExportEventAttendees, useEventById } from '@/presentation/hooks/useEvents';
+import { RegistrationStatus, PaymentStatus, AgeCategory, Gender, RegistrationMode } from '@/infrastructure/api/types/events.types';
 import type { EventAttendeeDto } from '@/infrastructure/api/types/events.types';
 import { ResendConfirmationDialog } from './ResendConfirmationDialog';
 import { QRCodeModal } from './QRCodeModal';
@@ -175,6 +175,13 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
   // Fetch attendees
   const { data: attendeesData, isLoading, error } = useEventAttendees(eventId);
   const exportMutation = useExportEventAttendees();
+
+  // Phase 7E.7: Fetch event to read its registration mode (so we can show the Mode C
+  // empty-state message instead of an empty table). Defensive read pattern handles stale
+  // React Query cached payloads from before the registrationMode field shipped on the wire.
+  const { data: eventForMode } = useEventById(eventId);
+  const eventRegistrationMode =
+    eventForMode?.registrationMode ?? RegistrationMode.DetailedAttendees;
 
   // Toggle row expansion
   const toggleRow = (registrationId: string) => {
@@ -420,8 +427,22 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
         </CardHeader>
 
         <CardContent>
-          {/* No Attendees State */}
-          {attendees.length === 0 ? (
+          {/* Phase 7E.7: Mode C events don't accept registrations — show a permanent
+              empty-state explaining why instead of "No Registrations Yet" (which implies
+              registrations are coming and would mislead organisers). */}
+          {eventRegistrationMode === RegistrationMode.NoRegistration ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-600 text-lg font-medium mb-2">
+                This event doesn&rsquo;t require registration
+              </p>
+              <p className="text-neutral-500 text-sm max-w-md mx-auto">
+                You picked <strong>No Registration</strong> as the mode for this event.
+                Standalone donations, sponsorships, add-ons, and collections are still recorded
+                under their own tabs.
+              </p>
+            </div>
+          ) : attendees.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
               <p className="text-neutral-600 text-lg font-medium mb-2">No Registrations Yet</p>

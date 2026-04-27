@@ -20,11 +20,28 @@ public class EventAttendeeDto
     public string? ContactAddress { get; init; }
 
     // Attendee Details
+    // Phase 7E.7: Switched from `init` to `set` for the demographic fields so the post-processing
+    // pass can override them for Mode B registrations after the SQL projection materialises.
+    // (The custom JSONB ValueConverter on Registration.HeadCount prevents SQL-side sub-field access.)
     public List<AttendeeDetailsDto> Attendees { get; init; } = new();
-    public int TotalAttendees { get; init; }
-    public int AdultCount { get; init; }
-    public int ChildCount { get; init; }
-    public string GenderDistribution { get; init; } = string.Empty;
+    public int TotalAttendees { get; set; }
+    public int AdultCount { get; set; }
+    public int ChildCount { get; set; }
+    public string GenderDistribution { get; set; } = string.Empty;
+
+    // Phase 7E.7: Mode-aware fields. Populated by GetEventAttendeesQueryHandler.
+    /// <summary>Snapshot of the registration's mode (DetailedAttendees / HeadCountOnly / etc.).</summary>
+    public RegistrationMode RegistrationMode { get; init; } = RegistrationMode.DetailedAttendees;
+
+    /// <summary>For Mode B (B1-B4): the lead attendee's name. Null for Mode A.</summary>
+    public string? LeadAttendeeName { get; init; }
+
+    /// <summary>
+    /// Pre-rendered demographic breakdown line for Mode B, e.g. "2 adults · 1 child".
+    /// Empty string for Mode A and B1 (B1 has no demographic axis). Mirrors the email
+    /// rendering for consistency. Populated in post-processing.
+    /// </summary>
+    public string HeadCountBreakdownLine { get; set; } = string.Empty;
 
     // Payment Info
     /// <summary>
@@ -85,8 +102,29 @@ public class EventAttendeeDto
     public bool HasTicket { get; init; }
 
     // Computed Properties
-    public string MainAttendeeName => Attendees.FirstOrDefault()?.Name ?? "Unknown";
-    public string AdditionalAttendees => TotalAttendees > 1
-        ? string.Join(", ", Attendees.Skip(1).Select(a => a.Name))
-        : "—";
+    /// <summary>
+    /// Phase 7E.7: For Mode B, returns the snapshotted LeadAttendeeName. For Mode A, falls back
+    /// to the first attendee's name. "Unknown" only when neither is populated (legacy edge cases).
+    /// </summary>
+    public string MainAttendeeName =>
+        !string.IsNullOrWhiteSpace(LeadAttendeeName)
+            ? LeadAttendeeName!
+            : Attendees.FirstOrDefault()?.Name ?? "Unknown";
+
+    /// <summary>
+    /// Phase 7E.7: For Mode A, comma-joined names of attendees beyond the first. For Mode B,
+    /// returns "+N attendees" or empty if Total is 1 (just the lead). Em-dash for Mode A
+    /// single-attendee preserves the existing UX.
+    /// </summary>
+    public string AdditionalAttendees
+    {
+        get
+        {
+            if (RegistrationMode != RegistrationMode.DetailedAttendees && TotalAttendees > 1)
+                return $"+{TotalAttendees - 1} attendee{(TotalAttendees - 1 == 1 ? "" : "s")}";
+            if (TotalAttendees > 1)
+                return string.Join(", ", Attendees.Skip(1).Select(a => a.Name));
+            return "—";
+        }
+    }
 }

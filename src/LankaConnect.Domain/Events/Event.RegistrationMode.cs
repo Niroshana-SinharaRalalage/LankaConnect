@@ -57,17 +57,28 @@ public partial class Event
         // - RefundRequested: still consumes capacity until refund completes.
         // - Pending (deprecated): treat like Preliminary for safety.
 #pragma warning disable CS0618 // Pending is deprecated but still excluded for back-compat.
-        var activeRegistrations = _registrations.Count(r =>
-            r.Status != RegistrationStatus.Cancelled &&
-            r.Status != RegistrationStatus.Refunded &&
-            r.Status != RegistrationStatus.Abandoned);
+        var activeRegistrations = _registrations
+            .Where(r => r.Status != RegistrationStatus.Cancelled &&
+                        r.Status != RegistrationStatus.Refunded &&
+                        r.Status != RegistrationStatus.Abandoned)
+            .ToList();
 #pragma warning restore CS0618
 
-        if (activeRegistrations > 0)
+        if (activeRegistrations.Count > 0)
         {
+            // Phase 7E follow-up: surface the blocking status breakdown so the organiser can act.
+            // The dashboard's CurrentRegistrations only shows Confirmed → if the dashboard says
+            // "0 registered" but this guard fires, the row is in an intermediate state
+            // (Preliminary stuck Stripe checkout / Waitlisted / RefundRequested awaiting webhook).
+            var byStatus = string.Join(", ",
+                activeRegistrations
+                    .GroupBy(r => r.Status)
+                    .OrderBy(g => g.Key.ToString())
+                    .Select(g => $"{g.Count()} {g.Key}"));
+
             return Result.Failure(
-                $"Cannot change registration mode while active registrations exist. " +
-                $"Active registrations: {activeRegistrations}. " +
+                $"Cannot change registration mode while active registrations exist " +
+                $"({byStatus}). Cancel or wait for these to resolve before changing the mode. " +
                 $"Mode change with attendee backfill is deferred to Phase 7F. " +
                 $"EventId={Id}, CurrentMode={RegistrationMode}, RequestedMode={mode}");
         }

@@ -102,6 +102,13 @@ export class AdminUsersRepository {
   async downgradeUser(userId: string, reason: string): Promise<void> {
     await apiClient.post(`${this.basePath}/${userId}/downgrade`, { reason });
   }
+
+  /**
+   * Phase 6A.139: Upgrade a GeneralUser to EventOrganizer (admin-initiated).
+   */
+  async upgradeUser(userId: string, reason: string): Promise<void> {
+    await apiClient.post(`${this.basePath}/${userId}/upgrade`, { reason });
+  }
 }
 
 // Singleton instance

@@ -107,6 +107,7 @@
 | 6A.134 | Newsletter/Notification UX Refactoring | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-05 |
 | 6A.135-137F | Registration Bundling + Add-On Fixes | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-25 to 2026-03-29 |
 | 6A.138 | Photo Album Video Upload Support | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-29 |
+| 6A.139 | Admin-Initiated Upgrade to Event Organizer (symmetric to 6A.106 downgrade) | 🔧 In Progress | See PROGRESS_TRACKER.md | 2026-04-28 |
 
 ---
 

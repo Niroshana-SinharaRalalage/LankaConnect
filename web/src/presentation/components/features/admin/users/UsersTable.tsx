@@ -17,6 +17,7 @@ import {
   XCircle,
   AlertTriangle,
   ArrowDownCircle,
+  ArrowUpCircle,
 } from 'lucide-react';
 import type { AdminUserDto } from '@/infrastructure/api/types/admin-users.types';
 import { ROLE_BADGE_COLORS } from '@/infrastructure/api/types/admin-users.types';
@@ -31,6 +32,8 @@ interface UsersTableProps {
   onResendVerification: (userId: string) => void;
   onForcePasswordReset: (userId: string) => void;
   onDowngrade: (user: AdminUserDto) => void;
+  /** Phase 6A.139: Admin-initiated upgrade (GeneralUser → EventOrganizer) */
+  onUpgrade: (user: AdminUserDto) => void;
   loadingUserId: string | null;
   currentUserId: string;
   currentUserRole: string;
@@ -46,6 +49,7 @@ export function UsersTable({
   onResendVerification,
   onForcePasswordReset,
   onDowngrade,
+  onUpgrade,
   loadingUserId,
   currentUserId,
   currentUserRole,
@@ -94,6 +98,13 @@ export function UsersTable({
   const canDowngrade = (user: AdminUserDto) => {
     if (user.role === 'Member' || user.role === 'GeneralUser') return false;
     return canManageUser(user); // Already handles self-check, AdminManager protection
+  };
+
+  // Phase 6A.139: Symmetric counterpart to canDowngrade.
+  // Only GeneralUsers can be upgraded to EventOrganizer; mutually exclusive with canDowngrade.
+  const canUpgrade = (user: AdminUserDto) => {
+    if (user.role !== 'Member' && user.role !== 'GeneralUser') return false;
+    return canManageUser(user); // Reuses self-check + role hierarchy guards
   };
 
   const getRoleBadgeStyle = (role: string) => {
@@ -321,6 +332,20 @@ export function UsersTable({
                                 >
                                   <ArrowDownCircle className="w-4 h-4 text-orange-500" />
                                   Downgrade to Member
+                                </button>
+                              )}
+
+                              {/* Phase 6A.139: Upgrade GeneralUser to EventOrganizer */}
+                              {canUpgrade(user) && (
+                                <button
+                                  onClick={() => {
+                                    onUpgrade(user);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <ArrowUpCircle className="w-4 h-4 text-emerald-500" />
+                                  Upgrade to Event Organizer
                                 </button>
                               )}
 

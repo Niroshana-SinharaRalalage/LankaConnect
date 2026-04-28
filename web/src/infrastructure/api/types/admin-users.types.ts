@@ -72,6 +72,14 @@ export interface DowngradeUserRequest {
   reason: string;
 }
 
+/**
+ * Phase 6A.139: Admin-initiated upgrade request body.
+ * Mirrors DowngradeUserRequest for audit symmetry.
+ */
+export interface UpgradeUserRequest {
+  reason: string;
+}
+
 export type UserRole =
   | 'Member'
   | 'EventOrganizer'

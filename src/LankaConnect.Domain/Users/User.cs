@@ -945,4 +945,34 @@ public class User : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.139: Upgrades user role from GeneralUser to EventOrganizer by admin (admin-initiated).
+    /// Symmetric counterpart to DowngradeToGeneralUserByAdmin().
+    /// Enforces domain invariants: must currently be GeneralUser, not already EventOrganizer.
+    /// Clears any pending upgrade request (short-circuits the user-initiated approval queue).
+    /// </summary>
+    public Result UpgradeToEventOrganizerByAdmin()
+    {
+        if (Role == UserRole.EventOrganizer)
+            return Result.Failure("User is already an Event Organizer");
+
+        if (Role != UserRole.GeneralUser)
+            return Result.Failure("Only General Users can be upgraded to Event Organizer");
+
+        var oldRole = Role;
+        Role = UserRole.EventOrganizer;
+
+        // Clear any pending upgrade request (short-circuit the approval queue)
+        if (PendingUpgradeRole.HasValue)
+        {
+            PendingUpgradeRole = null;
+            UpgradeRequestedAt = null;
+        }
+
+        MarkAsUpdated();
+        RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, UserRole.EventOrganizer));
+
+        return Result.Success();
+    }
+
 }

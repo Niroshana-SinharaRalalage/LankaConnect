@@ -29,6 +29,48 @@
 
 ---
 
+## 🎯 2026-04-28 — PHASE 6A.139 (Admin-Initiated Upgrade to Event Organizer) IMPLEMENTED LOCALLY
+**Date**: 2026-04-28
+**Session**: Closes the asymmetry surfaced when the user noticed the User Management tab's row menu had "Downgrade to Member" (Phase 6A.106) but no "Upgrade to Event Organizer". RCA: missing-feature across all 4 layers (UI/Auth/API/DB) — not a bug.
+
+**Status**: 🔧 **IMPLEMENTED LOCALLY**. All 6 architect-approved slices complete. Pending Slice 6: deploy + curl smoke + UI verification on staging.
+
+**RCA**: Missing-feature, not a bug. Verified each layer individually:
+- UI: row menu correctly shows wired actions; no upgrade action wired.
+- Auth: `RequireAdmin` policy works for downgrade; would work identically for upgrade.
+- Backend: existing endpoints correct in scope; no upgrade endpoint exists.
+- DB: `users.role` / `pending_upgrade_role` / `upgrade_requested_at` / `admin_audit_logs` columns already support the change. **No migration needed.**
+
+**Scope shipped (local)**:
+- **Slice 1 — Domain**: `User.UpgradeToEventOrganizerByAdmin()` symmetric to `DowngradeToGeneralUserByAdmin()`. Invariants: must currently be `GeneralUser`, transitions to `EventOrganizer`, clears `PendingUpgradeRole` + `UpgradeRequestedAt` (short-circuits user-initiated approval queue), raises `UserRoleChangedEvent`. **9 unit tests in `UserUpgradeToEventOrganizerByAdminTests.cs`**.
+- **Slice 2 — Application**: `AdminUpgradeUserCommand` + validator (reason ≤500 chars) + handler. Side effects mirror `ApproveRoleUpgradeCommandHandler`: in-app `NotificationType.RoleUpgradeApproved` notification + `OrganizerRoleApprovalEmailParams` email (reused, not duplicated) + audit log with `ShortCircuitedPendingRequest: true` flag when applicable. Auth guards: `RequireAdmin` policy + handler self-action guard + domain "must be GeneralUser" guard (3 layers). Email send is **fail-silent** — role change must not be reverted if Azure ACS is down. **15 handler tests in `AdminUpgradeUserCommandHandlerTests.cs`** (happy path, auth/self-action guards, not-found cases, domain validation, audit log, domain event, notification + email, fail-silent email, cancellation token).
+- **Slice 3 — API**: `POST /api/admin/users/{userId}/upgrade` body `{reason: string}` on `AdminUsersController.cs`. `[Authorize(Policy="RequireAdmin")]` (Admin OR AdminManager) — drops the role-hierarchy clause from downgrade since target must be GeneralUser. Symmetric `UpgradeUserRequest` DTO.
+- **Slice 4 — Frontend types/repo/hook**: `UpgradeUserRequest` type + `adminUsersRepository.upgradeUser()` + `useUpgradeUser` React Query hook (invalidates same keys as `useDowngradeUser`: `adminUserKeys.lists()` + `.statistics()`). Note: pending-approvals tab is parent-driven props (no React Query cache), so no extra invalidation needed there.
+- **Slice 5 — Frontend UI**: `UpgradeUserModal.tsx` (cloned `DowngradeUserModal` structure with emerald positive variant + `ArrowUpCircle` icon + JWT-staleness copy "User must log out and back in"). `canUpgrade(user)` predicate (mutually exclusive with `canDowngrade` by role). Row menu wires "Upgrade to Event Organizer" item next to existing "Downgrade to Member". `UserManagementTab` adds modal state + handlers symmetric to downgrade.
+
+**Reuse (no duplication)**:
+- `RequireAdmin` auth policy
+- `IAdminAuditLogRepository` + `AdminAuditLog.CreateForUserAction`
+- `OrganizerRoleApprovalEmailParams.Create()` from Phase 6A.100
+- `NotificationType.RoleUpgradeApproved` from Phase 6A.6
+- `DowngradeUserModal` as structural template
+- `canDowngrade` predicate as template for `canUpgrade`
+- `useDowngradeUser` invalidation pattern
+
+**Tests**: full Application suite **2376 passed / 6 skipped / 0 failed** (+24 new 6A.139 tests over the 2352 baseline). Frontend `tsc --noEmit` clean.
+
+**Risks/guardrails verified**:
+- `UserRoleChangedEvent` has no application/infra subscribers (grep confirmed; only raise sites in `User.cs`) — safe in either direction.
+- Existing downgrade flow has zero shared mutable state; only shared touchpoint is the row-menu predicates which are now mutually exclusive by role.
+- JWT staleness: upgraded user's existing JWT keeps `role=GeneralUser` until next login — surfaced in success toast.
+- **No DB migration required** (verified column-by-column).
+
+**Pending — Slice 6 (next session/this session)**:
+- Push backend → `deploy-staging.yml` → curl `POST /api/admin/users/{id}/upgrade` as `niroshhh@gmail.com` → verify `role=3`, `pending_upgrade_role=NULL`, `admin_audit_logs` row with action `USER_ROLE_UPGRADED`.
+- Push frontend → `deploy-ui-staging.yml` → manually upgrade a GeneralUser → verify badge update + email arrival + in-app notification.
+
+---
+
 ## 🎯 2026-04-27 — PHASE 7E.8 + 7E.9 (Flexible Event Registration Modes — exports + regression sweep) SHIPPED + STAGING-VERIFIED
 **Date**: 2026-04-27
 **Session**: Final two slices of Phase 7E. 7E.8 makes the attendee CSV/Excel exports Mode-aware (Mode B was emitting "Unknown" with zero counts). 7E.9 is the end-to-end regression sweep against the 7E.0 call-site checklist + architect's flagged hot-spots (4 left-join entries, 2 defensive-read entries, Mode C standalone-contribution path).

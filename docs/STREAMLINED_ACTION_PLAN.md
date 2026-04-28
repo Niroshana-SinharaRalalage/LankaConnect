@@ -6,6 +6,29 @@
 
 ---
 
+## 🎯 2026-04-28 (later) — Event Create/Edit/Manage UI consistency (SHIPPED, deploy in flight)
+
+**Issue**: Event Detail page already used `<CollapsibleSection>` (Show/Hide details affordance) on its 6 informational sections — but Event **Create**, **Edit**, and Manage page's **Event Details tab** rendered every section as a fully-expanded `<Card>`, producing 1,900+ line scrolls per form. Pure UI/UX gap; no backend, auth, DB, or API change required.
+
+**Action taken** (commit `fe0673c4`, frontend-only):
+- ✅ `CollapsibleSection` extended with backward-compatible controlled-mode props (`open` + `onOpenChange`); existing detail-page call-sites at `web/src/app/events/[id]/page.tsx:981+` unchanged (pass nothing → existing uncontrolled behaviour preserved).
+- ✅ 4 sub-config forms (`DonationConfigForm`, `CollectionConfigForm`, `SponsorConfigForm`, `AddOnConfigForm`) refactored to contents-only — parent now owns card chrome (eliminates double-card when wrapped externally). Verified zero external call-sites first.
+- ✅ Wrapped 11 sections per form/tab: Create lands with only "Basic Information" open; Edit lands fully collapsed; Manage's Event Details tab lands with Statistics + Event Details open.
+- ✅ Auto-expand-on-error wired via `handleSubmit(onValid, onInvalid)` and a static `FIELD_TO_SECTION` map next to each Zod schema. First errored section is `requestAnimationFrame`-deferred scrolled into view. Bottom error summary `<li>` upgraded to clickable `<button>` for repeat navigation.
+- ✅ Stable `id` anchors + `scroll-mt-20` on each section wrapper for future deep-link / scroll-to flows.
+- ✅ 20 new vitest tests (12 CollapsibleSection + 8 sub-config form regressions); all pass. Existing `MediaGallery.test.tsx` (20 cases) still passes — no regression in events directory.
+- ✅ `tsc --noEmit` clean; `next build` succeeded.
+- ⏳ `deploy-ui-staging.yml` run `25073969534` triggered (typically 5–6 min). UI verification on staging Create/Edit/Manage pages pending deploy completion.
+
+**Deferred / out of scope for this slice**:
+- Other Manage tabs (Attendees & Finance, Signup Lists, Volunteers, Forms, Communications, Photo Album) — already segmented via TabPanel + table layouts, not stacked `<Card>` forms. Apply this pattern there as separate slices if needed.
+- Pattern propagation to non-event forms (newsletter editor, admin user pages, marketplace product create, signup-form builder).
+- Sticky table-of-contents sidebar (anchors landed; sidebar not).
+- Per-user "remember which sections were open last time" persistence.
+- Section-level "completed" badges (would require Zod partial-validation per section).
+
+---
+
 ## 🔥 2026-04-25 — Production Performance RCA (CLOSED)
 
 **Issue**: Prod `/api/events/{id}` taking 10-35s + returning 503s on popular events (85+ registrations). Root cause: cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in a single non-split query → ~100K-row LEFT JOIN).

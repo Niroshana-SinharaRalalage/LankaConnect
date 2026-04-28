@@ -352,6 +352,32 @@ public class Registration : BaseEntity
     }
 
     /// <summary>
+    /// Force-cancels a registration that is stuck in <see cref="RegistrationStatus.RefundRequested"/>
+    /// because the Stripe webhook never completed (or the refund was processed off-platform).
+    ///
+    /// Why this exists: <c>RefundRequested</c> rows consume capacity until Stripe confirms the
+    /// refund. If Stripe never resolves them — common for very old events or when refunds were
+    /// processed manually outside the system — the rows are permanently stuck. They block
+    /// <see cref="Event.SetRegistrationMode"/> and clutter dashboards. Only an event organiser
+    /// (verified at the application layer) can invoke this. Marks the row <c>Cancelled</c> —
+    /// <c>Refunded</c> would be misleading because we're not actually issuing a refund here.
+    /// </summary>
+    /// <returns>Success if the row was force-cancelled, failure with a clear message otherwise.</returns>
+    public Result ForceCancelStuckRefund()
+    {
+        if (Status != RegistrationStatus.RefundRequested)
+        {
+            return Result.Failure(
+                $"Force-cancel is only valid for registrations in RefundRequested status. " +
+                $"Current status: {Status}. RegistrationId={Id}");
+        }
+
+        Status = RegistrationStatus.Cancelled;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Phase 6A.X FIX: Confirms a registration with payment status validation.
     ///
     /// CRITICAL GUARD: This method now validates that PaymentStatus is NOT Pending

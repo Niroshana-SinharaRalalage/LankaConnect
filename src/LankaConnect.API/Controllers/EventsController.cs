@@ -14,6 +14,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
+using LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
@@ -866,6 +867,64 @@ public class EventsController : BaseController<EventsController>
         {
             Logger.LogInformation("[Phase 6A.91] Refund request withdrawn successfully - EventId: {EventId}, UserId: {UserId}",
                 id, userId);
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 7E follow-up: Organiser-initiated force-cancellation of a registration that
+    /// is stuck in <c>RefundRequested</c> status because the Stripe webhook never confirmed
+    /// the refund. Authorization mirrors <see cref="ExportEventAttendees"/>: caller must be
+    /// the event organiser (owner or co-organizer).
+    ///
+    /// Effect: the row's status is moved <c>RefundRequested → Cancelled</c>. We don't move
+    /// it to <c>Refunded</c> because no refund is being issued by us — this is a clean-up
+    /// for off-platform / abandoned refund flows.
+    /// </summary>
+    [HttpPost("{eventId:guid}/registrations/{registrationId:guid}/force-cancel-stuck-refund")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ForceCancelStuckRefund(Guid eventId, Guid registrationId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "User {UserId} requesting force-cancel of stuck refund - EventId={EventId}, RegistrationId={RegistrationId}",
+            userId, eventId, registrationId);
+
+        // Authorization: load event via the GetEventByIdQuery so we get the populated
+        // IsCurrentUserOrganizer flag (mirrors ExportEventAttendees pattern, Phase 6A.133).
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
+        {
+            Logger.LogWarning(
+                "User {UserId} attempted to force-cancel a registration without organizer privileges - EventId={EventId}, RegistrationId={RegistrationId}",
+                userId, eventId, registrationId);
+            return Forbid();
+        }
+
+        var command = new ForceCancelStuckRefundCommand(eventId, registrationId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "Force-cancel succeeded - Organizer={UserId}, EventId={EventId}, RegistrationId={RegistrationId}",
+                userId, eventId, registrationId);
         }
 
         return HandleResult(result);

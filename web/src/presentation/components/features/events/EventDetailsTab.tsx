@@ -34,7 +34,7 @@ import {
   PackagePlus,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
@@ -103,12 +103,12 @@ export function EventDetailsTab({
       {/* Phase 6A.X: Table-Style Grid Layout for Better Readability */}
 
       {/* Statistics Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Event Statistics</CardTitle>
-          <CardDescription>Track your event's performance</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="statistics" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Event Statistics"
+          description="Track your event's performance"
+          defaultOpen={true}
+        >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center justify-between mb-2">
@@ -127,16 +127,16 @@ export function EventDetailsTab({
               <p className="text-xs text-green-600 mt-1">Total capacity: {event.capacity}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
       {/* Event Details Section - Combined */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Event Details</CardTitle>
-          <CardDescription>Basic information, schedule, and location</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="details" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Event Details"
+          description="Basic information, schedule, and location"
+          defaultOpen={true}
+        >
           <div className="space-y-3">
             {/* Event Title */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-3 border-b pb-3">
@@ -223,16 +223,16 @@ export function EventDetailsTab({
               <span className="text-sm text-neutral-900">{event.capacity} attendees</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
       {/* Pricing Section - Table Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Pricing Information</CardTitle>
-          <CardDescription>Ticket prices and payment details</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="pricing" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Pricing Information"
+          description="Ticket prices and payment details"
+          defaultOpen={false}
+        >
           <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start">
             <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-[#FF7900]" />
@@ -296,16 +296,16 @@ export function EventDetailsTab({
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
       {/* Issue #51: Registration Settings Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Registration Settings</CardTitle>
-          <CardDescription>Configure how attendees can register for this event</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="registration-settings" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Registration Settings"
+          description="Configure how attendees can register for this event"
+          defaultOpen={false}
+        >
           <div className="grid grid-cols-[180px_1fr] gap-x-4 items-start">
             <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
               <Settings className="h-4 w-4 text-[#FF7900]" />
@@ -363,16 +363,16 @@ export function EventDetailsTab({
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
       {/* Email Groups Section - Table Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Email Groups</CardTitle>
-          <CardDescription>Newsletter groups assigned to this event</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="email-groups" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Email Groups"
+          description="Newsletter groups assigned to this event"
+          defaultOpen={false}
+        >
           <div className="grid grid-cols-[140px_1fr] gap-x-4 items-start">
             <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
               <Mail className="h-4 w-4 text-[#FF7900]" />
@@ -412,24 +412,22 @@ export function EventDetailsTab({
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
       {/* Organizer Contact Section - Read-only display */}
       {event.organizerContacts && event.organizerContacts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts</CardTitle>
-            <CardDescription>
-              Event organizer contact information
-              {linkedCount > 0 && (
-                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                  {linkedCount}/{totalContacts} co-organizers linked
-                </span>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div id="organizer-contacts" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Organizer Contacts"
+            description="Event organizer contact information"
+            defaultOpen={false}
+            badge={linkedCount > 0 ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                {linkedCount}/{totalContacts} co-organizers linked
+              </span>
+            ) : undefined}
+          >
             <div className="overflow-x-auto rounded-lg border border-neutral-200">
               <table className="w-full text-sm">
                 <thead>
@@ -481,18 +479,18 @@ export function EventDetailsTab({
                 To add or manage co-organizers, use the Edit Event page.
               </p>
             )}
-          </CardContent>
-        </Card>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Donation Feature: Donation Configuration Section */}
       {event.donationConfig && (
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Donation Configuration</CardTitle>
-            <CardDescription>Donation settings for this event</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div id="donation-config" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Donation Configuration"
+            description="Donation settings for this event"
+            defaultOpen={false}
+          >
             <div className="space-y-3">
               <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
@@ -576,18 +574,18 @@ export function EventDetailsTab({
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Collection Configuration Section */}
       {event.collectionConfig && (
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Collection Configuration</CardTitle>
-            <CardDescription>Event fund collection settings for this event</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div id="collection-config" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Collection Configuration"
+            description="Event fund collection settings for this event"
+            defaultOpen={false}
+          >
             <div className="space-y-3">
               <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
@@ -720,18 +718,18 @@ export function EventDetailsTab({
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Sponsor Configuration Section */}
       {event.sponsorConfig && (
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Sponsor Configuration</CardTitle>
-            <CardDescription>Sponsorship settings for this event</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div id="sponsor-config" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Sponsor Configuration"
+            description="Sponsorship settings for this event"
+            defaultOpen={false}
+          >
             <div className="space-y-3">
               <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
@@ -836,18 +834,18 @@ export function EventDetailsTab({
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Add-On Configuration Section */}
       {event.addOnConfig && (
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ color: '#8B1538' }}>Add-On Configuration</CardTitle>
-            <CardDescription>Add-on settings for this event</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div id="addon-config" className="scroll-mt-20">
+          <CollapsibleSection
+            title="Add-On Configuration"
+            description="Add-on settings for this event"
+            defaultOpen={false}
+          >
             <div className="space-y-3">
               <div className="grid grid-cols-[180px_1fr] gap-x-4 items-center border-b pb-3">
                 <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
@@ -984,17 +982,17 @@ export function EventDetailsTab({
                 </>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </CollapsibleSection>
+        </div>
       )}
 
       {/* Media Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle style={{ color: '#8B1538' }}>Event Media</CardTitle>
-          <CardDescription>Upload images and videos to promote your event</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div id="event-media" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Event Media"
+          description="Upload images and videos to promote your event"
+          defaultOpen={false}
+        >
           <div className="space-y-6">
             {/* Images */}
             <div>
@@ -1024,8 +1022,8 @@ export function EventDetailsTab({
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CollapsibleSection>
+      </div>
 
     </div>
   );

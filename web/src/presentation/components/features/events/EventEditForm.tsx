@@ -5,8 +5,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X, Mail, Link2, Star } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
+import { Calendar, MapPin, Users, DollarSign, FileText, Tag, X, Mail, Link2, Star, Heart, Wallet, HandCoins, PackagePlus } from 'lucide-react';
+import { Card, CardContent } from '@/presentation/components/ui/Card';
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
@@ -33,6 +34,53 @@ import { AddOnConfigForm } from './AddOnConfigForm';
 import { CoOrganizerInlineSearch } from './CoOrganizerInlineSearch';
 import { SecondaryLocationFieldset } from './SecondaryLocationFieldset';
 import type { UserSearchResultDto } from '@/infrastructure/api/types/events.types';
+
+// Identifiers for each collapsible section. Stable across create/edit.
+type SectionKey =
+  | 'basic'
+  | 'datetime'
+  | 'location'
+  | 'capacity'
+  | 'email'
+  | 'organizer'
+  | 'donations'
+  | 'collections'
+  | 'sponsors'
+  | 'addons';
+
+// Map a Zod-validated form field path to the section that owns it. Used to
+// auto-expand the offending section when validation fails on submit. Donations
+// /collections/sponsors/addons live in component state (not in the Zod schema)
+// so they don't appear here.
+const FIELD_TO_SECTION: Record<string, SectionKey> = {
+  title: 'basic',
+  description: 'basic',
+  category: 'basic',
+  startDate: 'datetime',
+  endDate: 'datetime',
+  locationName: 'location',
+  locationAddress: 'location',
+  locationCity: 'location',
+  locationState: 'location',
+  locationZipCode: 'location',
+  locationCountry: 'location',
+  capacity: 'capacity',
+  maxAttendeesPerRegistration: 'capacity',
+  isFree: 'capacity',
+  ticketPriceAmount: 'capacity',
+  ticketPriceCurrency: 'capacity',
+  adultPriceAmount: 'capacity',
+  childPriceAmount: 'capacity',
+  enableDualPricing: 'capacity',
+  enableGroupPricing: 'capacity',
+  enableTieredTicketing: 'capacity',
+  ticketTiers: 'capacity',
+  groupPricingTiers: 'capacity',
+  registrationMode: 'capacity',
+  emailGroupIds: 'email',
+  publishOrganizerContact: 'organizer',
+  organizerContacts: 'organizer',
+};
 
 interface EventEditFormProps {
   event: EventDto;
@@ -91,6 +139,32 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [addOnAvailableDuringRegistration, setAddOnAvailableDuringRegistration] = useState(event.addOnConfig?.availableDuringRegistration ?? true);
   const [addOnAvailableStandalone, setAddOnAvailableStandalone] = useState(event.addOnConfig?.availableStandalone ?? true);
   const [addOnMessage, setAddOnMessage] = useState(event.addOnConfig?.addOnMessage ?? '');
+
+  // Section open/close state. Edit flow lands with EVERYTHING collapsed because
+  // the user typically returns to tweak one specific area; an all-open layout
+  // forces them to scroll past everything. Children stay mounted (CSS-grid
+  // animation, not unmount), so react-hook-form state survives toggling.
+  const [sectionOpen, setSectionOpen] = useState<Record<SectionKey, boolean>>({
+    basic: false,
+    datetime: false,
+    location: false,
+    capacity: false,
+    email: false,
+    organizer: false,
+    donations: false,
+    collections: false,
+    sponsors: false,
+    addons: false,
+  });
+  const setOpen = (key: SectionKey, value: boolean) =>
+    setSectionOpen((prev) => ({ ...prev, [key]: value }));
+  const openSection = (key: SectionKey) => {
+    setSectionOpen((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+    requestAnimationFrame(() => {
+      const el = document.getElementById(key);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   // Phase 6A.32: Fetch email groups for selection
   const { data: emailGroups = [], isLoading: isLoadingEmailGroups } = useEmailGroups();
@@ -768,6 +842,36 @@ export function EventEditForm({ event }: EventEditFormProps) {
     } finally {
       setIsSubmitting(false);
     }
+  }, (validationErrors: Record<string, any>) => {
+    // Auto-expand sections that contain a Zod error so the user is not stuck
+    // looking at a hidden invalid field. The first errored section is also
+    // scrolled into view after React applies the open-state update.
+    const errorFields = Object.keys(validationErrors);
+    console.error('❌ Edit form validation failed:', errorFields);
+    const sectionsToOpen = new Set<SectionKey>();
+    let firstSection: SectionKey | null = null;
+    errorFields.forEach((field) => {
+      const section = FIELD_TO_SECTION[field];
+      if (section) {
+        sectionsToOpen.add(section);
+        if (firstSection === null) firstSection = section;
+      } else if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[EventEditForm] No FIELD_TO_SECTION mapping for errored field: ${field}`);
+      }
+    });
+    if (sectionsToOpen.size > 0) {
+      setSectionOpen((prev) => {
+        const next = { ...prev };
+        sectionsToOpen.forEach((k) => (next[k] = true));
+        return next;
+      });
+      requestAnimationFrame(() => {
+        if (firstSection) {
+          const el = document.getElementById(firstSection);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
   });
 
   // Phase 6A.47: Convert reference data to dropdown options
@@ -779,17 +883,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
       {/* Phase 6A.X: Table-Style Grid Layout for Better Readability */}
 
       {/* Basic Information Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Basic Information</CardTitle>
-          </div>
-          <CardDescription>
-            Update the essential details about your event
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <div id="basic" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Basic Information"
+          description="Update the essential details about your event"
+          icon={<FileText className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.basic}
+          onOpenChange={(o) => setOpen('basic', o)}
+        >
+          <div className="space-y-5">
           {/* Event Title */}
           <div className="border-b pb-4">
             <label htmlFor="title" className="block text-sm font-semibold text-neutral-700 mb-2">
@@ -855,21 +957,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
               <p className="mt-1 text-sm text-destructive">{errors.category.message}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Date & Time Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Date & Time</CardTitle>
-          </div>
-          <CardDescription>
-            Update when your event will take place
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="datetime" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Date & Time"
+          description="Update when your event will take place"
+          icon={<Calendar className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.datetime}
+          onOpenChange={(o) => setOpen('datetime', o)}
+        >
+          <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Start Date & Time */}
             <div>
@@ -903,21 +1004,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Location Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Location</CardTitle>
-          </div>
-          <CardDescription>
-            Update where the event will take place (Optional but recommended)
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="location" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Location"
+          description="Update where the event will take place (Optional but recommended)"
+          icon={<MapPin className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.location}
+          onOpenChange={(o) => setOpen('location', o)}
+        >
+          <div className="space-y-4">
           {/* Venue Name (Phase 7C.1) */}
           <div>
             <label htmlFor="locationName" className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1031,21 +1131,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
             setValue={setValue}
             errors={errors}
           />
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Capacity & Pricing Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Capacity & Pricing</CardTitle>
-          </div>
-          <CardDescription>
-            Update attendance limits and ticket pricing
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="capacity" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Capacity & Pricing"
+          description="Update attendance limits and ticket pricing"
+          icon={<Users className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.capacity}
+          onOpenChange={(o) => setOpen('capacity', o)}
+        >
+          <div className="space-y-4">
           {/* Capacity */}
           <div>
             <label htmlFor="capacity" className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1593,21 +1692,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Phase 6A.32: Email Groups Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Mail className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Email Groups (Optional)</CardTitle>
-          </div>
-          <CardDescription>
-            Select email groups to notify about this event
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="email" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Email Groups (Optional)"
+          description="Select email groups to notify about this event"
+          icon={<Mail className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.email}
+          onOpenChange={(o) => setOpen('email', o)}
+        >
+          <div className="space-y-4">
           <MultiSelect
             options={emailGroups.map(group => ({
               id: group.id,
@@ -1622,21 +1720,20 @@ export function EventEditForm({ event }: EventEditFormProps) {
             errorMessage={errors.emailGroupIds?.message}
             helperText="Select groups that should receive invitations for this event"
           />
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Organizer Contact Details (Multiple Contacts) */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5" style={{ color: '#FF7900' }} />
-            <CardTitle style={{ color: '#8B1538' }}>Organizer Contacts (Optional)</CardTitle>
-          </div>
-          <CardDescription>
-            Publish organizer contact information so attendees can reach you
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="organizer" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Organizer Contacts (Optional)"
+          description="Publish organizer contact information so attendees can reach you"
+          icon={<Users className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.organizer}
+          onOpenChange={(o) => setOpen('organizer', o)}
+        >
+          <div className="space-y-4">
           {/* Publish Toggle Checkbox */}
           <div className="flex items-start space-x-3">
             <input
@@ -1789,77 +1886,118 @@ export function EventEditForm({ event }: EventEditFormProps) {
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </div>
+        </CollapsibleSection>
+      </div>
 
       {/* Donation Feature: Donation Configuration */}
-      <DonationConfigForm
-        isEnabled={donationsEnabled}
-        onEnabledChange={setDonationsEnabled}
-        suggestedAmounts={donationSuggestedAmounts}
-        onSuggestedAmountsChange={setDonationSuggestedAmounts}
-        allowCustomAmount={donationAllowCustom}
-        onAllowCustomAmountChange={setDonationAllowCustom}
-        minAmount={donationMinAmount}
-        onMinAmountChange={setDonationMinAmount}
-        maxAmount={donationMaxAmount}
-        onMaxAmountChange={setDonationMaxAmount}
-        donationMessage={donationMessage}
-        onDonationMessageChange={setDonationMessage}
-        showDonationSummary={showDonationSummary}
-        onShowDonationSummaryChange={setShowDonationSummary}
-      />
+      <div id="donations" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Donations (Optional)"
+          description="Allow attendees and visitors to donate to support your event"
+          icon={<Heart className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.donations}
+          onOpenChange={(o) => setOpen('donations', o)}
+        >
+          <DonationConfigForm
+            isEnabled={donationsEnabled}
+            onEnabledChange={setDonationsEnabled}
+            suggestedAmounts={donationSuggestedAmounts}
+            onSuggestedAmountsChange={setDonationSuggestedAmounts}
+            allowCustomAmount={donationAllowCustom}
+            onAllowCustomAmountChange={setDonationAllowCustom}
+            minAmount={donationMinAmount}
+            onMinAmountChange={setDonationMinAmount}
+            maxAmount={donationMaxAmount}
+            onMaxAmountChange={setDonationMaxAmount}
+            donationMessage={donationMessage}
+            onDonationMessageChange={setDonationMessage}
+            showDonationSummary={showDonationSummary}
+            onShowDonationSummaryChange={setShowDonationSummary}
+          />
+        </CollapsibleSection>
+      </div>
 
       {/* Collection (Event Fund) Configuration */}
-      <CollectionConfigForm
-        isEnabled={collectionsEnabled}
-        onEnabledChange={setCollectionsEnabled}
-        goalAmount={collectionGoalAmount}
-        onGoalAmountChange={setCollectionGoalAmount}
-        showProgress={collectionShowProgress}
-        onShowProgressChange={setCollectionShowProgress}
-        suggestedAmounts={collectionSuggestedAmounts}
-        onSuggestedAmountsChange={setCollectionSuggestedAmounts}
-        allowCustomAmount={collectionAllowCustom}
-        onAllowCustomAmountChange={setCollectionAllowCustom}
-        minAmount={collectionMinAmount}
-        onMinAmountChange={setCollectionMinAmount}
-        maxAmount={collectionMaxAmount}
-        onMaxAmountChange={setCollectionMaxAmount}
-        collectionMessage={collectionMessage}
-        onCollectionMessageChange={setCollectionMessage}
-        showContributorCount={showContributorCount}
-        onShowContributorCountChange={setShowContributorCount}
-      />
+      <div id="collections" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Event Fund / Collections (Optional)"
+          description="Set up a fundraising collection to gather contributions for your event"
+          icon={<Wallet className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.collections}
+          onOpenChange={(o) => setOpen('collections', o)}
+        >
+          <CollectionConfigForm
+            isEnabled={collectionsEnabled}
+            onEnabledChange={setCollectionsEnabled}
+            goalAmount={collectionGoalAmount}
+            onGoalAmountChange={setCollectionGoalAmount}
+            showProgress={collectionShowProgress}
+            onShowProgressChange={setCollectionShowProgress}
+            suggestedAmounts={collectionSuggestedAmounts}
+            onSuggestedAmountsChange={setCollectionSuggestedAmounts}
+            allowCustomAmount={collectionAllowCustom}
+            onAllowCustomAmountChange={setCollectionAllowCustom}
+            minAmount={collectionMinAmount}
+            onMinAmountChange={setCollectionMinAmount}
+            maxAmount={collectionMaxAmount}
+            onMaxAmountChange={setCollectionMaxAmount}
+            collectionMessage={collectionMessage}
+            onCollectionMessageChange={setCollectionMessage}
+            showContributorCount={showContributorCount}
+            onShowContributorCountChange={setShowContributorCount}
+          />
+        </CollapsibleSection>
+      </div>
 
       {/* Sponsor Configuration */}
-      <SponsorConfigForm
-        isEnabled={sponsorsEnabled}
-        onEnabledChange={setSponsorsEnabled}
-        acceptMoneySponsors={acceptMoneySponsors}
-        onAcceptMoneySponsorsChange={setAcceptMoneySponsors}
-        acceptItemSponsors={acceptItemSponsors}
-        onAcceptItemSponsorsChange={setAcceptItemSponsors}
-        minSponsorAmount={minSponsorAmount}
-        onMinSponsorAmountChange={setMinSponsorAmount}
-        sponsorMessage={sponsorMessage}
-        onSponsorMessageChange={setSponsorMessage}
-        showSponsorList={showSponsorList}
-        onShowSponsorListChange={setShowSponsorList}
-      />
+      <div id="sponsors" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Sponsorships (Optional)"
+          description="Allow individuals and organizations to sponsor your event with monetary or item contributions"
+          icon={<HandCoins className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.sponsors}
+          onOpenChange={(o) => setOpen('sponsors', o)}
+        >
+          <SponsorConfigForm
+            isEnabled={sponsorsEnabled}
+            onEnabledChange={setSponsorsEnabled}
+            acceptMoneySponsors={acceptMoneySponsors}
+            onAcceptMoneySponsorsChange={setAcceptMoneySponsors}
+            acceptItemSponsors={acceptItemSponsors}
+            onAcceptItemSponsorsChange={setAcceptItemSponsors}
+            minSponsorAmount={minSponsorAmount}
+            onMinSponsorAmountChange={setMinSponsorAmount}
+            sponsorMessage={sponsorMessage}
+            onSponsorMessageChange={setSponsorMessage}
+            showSponsorList={showSponsorList}
+            onShowSponsorListChange={setShowSponsorList}
+          />
+        </CollapsibleSection>
+      </div>
 
       {/* Add-On Configuration */}
-      <AddOnConfigForm
-        isEnabled={addOnsEnabled}
-        onEnabledChange={setAddOnsEnabled}
-        availableDuringRegistration={addOnAvailableDuringRegistration}
-        onAvailableDuringRegistrationChange={setAddOnAvailableDuringRegistration}
-        availableStandalone={addOnAvailableStandalone}
-        onAvailableStandaloneChange={setAddOnAvailableStandalone}
-        addOnMessage={addOnMessage}
-        onAddOnMessageChange={setAddOnMessage}
-        eventId={event.id}
-      />
+      <div id="addons" className="scroll-mt-20">
+        <CollapsibleSection
+          title="Add-Ons (Optional)"
+          description="Offer additional items or services that attendees can purchase alongside their registration"
+          icon={<PackagePlus className="h-5 w-5" style={{ color: '#FF7900' }} />}
+          open={sectionOpen.addons}
+          onOpenChange={(o) => setOpen('addons', o)}
+        >
+          <AddOnConfigForm
+            isEnabled={addOnsEnabled}
+            onEnabledChange={setAddOnsEnabled}
+            availableDuringRegistration={addOnAvailableDuringRegistration}
+            onAvailableDuringRegistrationChange={setAddOnAvailableDuringRegistration}
+            availableStandalone={addOnAvailableStandalone}
+            onAvailableStandaloneChange={setAddOnAvailableStandalone}
+            addOnMessage={addOnMessage}
+            onAddOnMessageChange={setAddOnMessage}
+            eventId={event.id}
+          />
+        </CollapsibleSection>
+      </div>
 
       {/* Note about Media */}
       <Card>
@@ -1887,11 +2025,26 @@ export function EventEditForm({ event }: EventEditFormProps) {
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
           <p className="text-sm font-semibold text-red-700 mb-2">Please fix the following errors:</p>
           <ul className="text-sm text-red-600 space-y-1 list-disc list-inside">
-            {Object.entries(errors).map(([field, error]: any) => (
-              <li key={field}>
-                <strong>{field}:</strong> {error.message || 'Invalid value'}
-              </li>
-            ))}
+            {Object.entries(errors).map(([field, error]: any) => {
+              const targetSection = FIELD_TO_SECTION[field];
+              return (
+                <li key={field}>
+                  {targetSection ? (
+                    <button
+                      type="button"
+                      onClick={() => openSection(targetSection)}
+                      className="text-left underline decoration-dotted hover:text-red-900 hover:decoration-solid focus:outline-none focus:ring-2 focus:ring-red-400 rounded"
+                    >
+                      <strong>{field}:</strong> {error.message || 'Invalid value'}
+                    </button>
+                  ) : (
+                    <span>
+                      <strong>{field}:</strong> {error.message || 'Invalid value'}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

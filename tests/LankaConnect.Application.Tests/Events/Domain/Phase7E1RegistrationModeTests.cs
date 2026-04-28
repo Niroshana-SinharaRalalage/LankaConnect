@@ -113,6 +113,35 @@ public class Phase7E1RegistrationModeTests
         @event.RegistrationMode.Should().Be(RegistrationMode.DetailedAttendees);
     }
 
+    /// <summary>
+    /// Phase 7E follow-up bug fix: SetRegistrationMode should ignore Cancelled / Refunded /
+    /// Abandoned registrations because they are historical-only — they don't consume capacity
+    /// and don't need attendee backfill on A↔B conversion. The dashboard's CurrentRegistrations
+    /// already excludes them; the mode-change guard must use the same definition or organisers
+    /// see "Cannot change mode (30 existing)" while the UI shows "0 registered".
+    /// </summary>
+    [Fact]
+    public void Event_SetRegistrationMode_Succeeds_WhenAllRegistrationsAreCancelled()
+    {
+        var @event = CreateEvent();
+        @event.Publish();
+        var userId = Guid.NewGuid();
+        @event.Register(userId, 1).IsSuccess.Should().BeTrue();
+
+        // Cancel the only registration. Dashboard CurrentRegistrations should be 0 now.
+        var registration = @event.Registrations.Single();
+        registration.Cancel();
+
+        @event.CurrentRegistrations.Should().Be(0,
+            "sanity check — once cancelled, the registration should not count toward active");
+
+        var result = @event.SetRegistrationMode(RegistrationMode.HeadCountByAge);
+
+        result.IsSuccess.Should().BeTrue(
+            $"a Cancelled registration leaves no active claim that needs backfill. Errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
+        @event.RegistrationMode.Should().Be(RegistrationMode.HeadCountByAge);
+    }
+
     #endregion
 
     #region 3. TierCount factory

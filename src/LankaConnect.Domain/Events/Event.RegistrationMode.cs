@@ -43,12 +43,31 @@ public partial class Event
     /// <returns>Result indicating success or failure with a clear message.</returns>
     public Result SetRegistrationMode(RegistrationMode mode)
     {
-        // Architect rule (Phase 7E plan §3.2): forbid mode change once registrations exist.
-        if (_registrations.Any())
+        // Architect rule (Phase 7E plan §3.2): forbid mode change while ACTIVE registrations
+        // exist — those are the rows that would need attendee backfill on A↔B conversion.
+        // Cancelled / Refunded / Abandoned registrations are historical-only: they don't
+        // consume capacity and have nothing to backfill. Counting them caused the bug where
+        // an event showing "0 registered / 75 spots left" on the dashboard refused mode-change
+        // with "Existing registrations: 30" — the dashboard's CurrentRegistrations and the
+        // mode-change guard were using different definitions of "exists".
+        //
+        // Active = anything not in {Cancelled, Refunded, Abandoned}.
+        // - Confirmed / Waitlisted / CheckedIn / Attended: live, would need backfill.
+        // - Preliminary: awaiting payment; if it completes, it'd carry the wrong mode shape.
+        // - RefundRequested: still consumes capacity until refund completes.
+        // - Pending (deprecated): treat like Preliminary for safety.
+#pragma warning disable CS0618 // Pending is deprecated but still excluded for back-compat.
+        var activeRegistrations = _registrations.Count(r =>
+            r.Status != RegistrationStatus.Cancelled &&
+            r.Status != RegistrationStatus.Refunded &&
+            r.Status != RegistrationStatus.Abandoned);
+#pragma warning restore CS0618
+
+        if (activeRegistrations > 0)
         {
             return Result.Failure(
-                $"Cannot change registration mode while registrations exist. " +
-                $"Existing registrations: {_registrations.Count}. " +
+                $"Cannot change registration mode while active registrations exist. " +
+                $"Active registrations: {activeRegistrations}. " +
                 $"Mode change with attendee backfill is deferred to Phase 7F. " +
                 $"EventId={Id}, CurrentMode={RegistrationMode}, RequestedMode={mode}");
         }

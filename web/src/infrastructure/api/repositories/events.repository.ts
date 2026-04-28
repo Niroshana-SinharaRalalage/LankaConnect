@@ -440,6 +440,23 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 7E follow-up: Organiser-only force-cancellation of a registration that is
+   * stuck in `RefundRequested` because Stripe never confirmed the refund. Marks the
+   * row `Cancelled` (not `Refunded` — no refund is being issued by us). Used to free
+   * up events that won't allow registration-mode changes because of stuck refunds.
+   *
+   * Authorization: backend rejects with 403 if the caller is not the event organiser.
+   *
+   * @param eventId - Event the registration belongs to.
+   * @param registrationId - Registration row to force-cancel.
+   */
+  async forceCancelStuckRefund(eventId: string, registrationId: string): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/registrations/${registrationId}/force-cancel-stuck-refund`,
+    );
+  }
+
+  /**
    * Update RSVP quantity
    * Changes number of attendees for registration
    */

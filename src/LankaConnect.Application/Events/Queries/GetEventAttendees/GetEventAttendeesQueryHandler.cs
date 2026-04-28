@@ -104,7 +104,11 @@ public class GetEventAttendeesQueryHandler
                     where r.Status == RegistrationStatus.Confirmed ||
                           r.Status == RegistrationStatus.Waitlisted ||
                           r.Status == RegistrationStatus.CheckedIn ||
-                          r.Status == RegistrationStatus.Attended
+                          r.Status == RegistrationStatus.Attended ||
+                          // Phase 7E follow-up: RefundRequested rows still consume capacity until
+                          // Stripe confirms the refund (per RegistrationStatus enum doc). Surface
+                          // them so organisers can spot stuck rows and force-cancel them.
+                          r.Status == RegistrationStatus.RefundRequested
                     join t in _context.Tickets on r.Id equals t.RegistrationId into tickets
                     from ticket in tickets.DefaultIfEmpty()
                     orderby r.CreatedAt
@@ -193,7 +197,8 @@ public class GetEventAttendeesQueryHandler
                         (r.Status == RegistrationStatus.Confirmed ||
                          r.Status == RegistrationStatus.Waitlisted ||
                          r.Status == RegistrationStatus.CheckedIn ||
-                         r.Status == RegistrationStatus.Attended))
+                         r.Status == RegistrationStatus.Attended ||
+                         r.Status == RegistrationStatus.RefundRequested))
             .Select(r => new { r.Id, r.HeadCount })
             .ToListAsync(cancellationToken);
 

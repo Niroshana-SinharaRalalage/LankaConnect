@@ -29,11 +29,11 @@
 
 ---
 
-## 🎯 2026-04-28 — PHASE 6A.139 (Admin-Initiated Upgrade to Event Organizer) IMPLEMENTED LOCALLY
+## 🎯 2026-04-28 — PHASE 6A.139 (Admin-Initiated Upgrade to Event Organizer) SHIPPED + STAGING-VERIFIED
 **Date**: 2026-04-28
 **Session**: Closes the asymmetry surfaced when the user noticed the User Management tab's row menu had "Downgrade to Member" (Phase 6A.106) but no "Upgrade to Event Organizer". RCA: missing-feature across all 4 layers (UI/Auth/API/DB) — not a bug.
 
-**Status**: 🔧 **IMPLEMENTED LOCALLY**. All 6 architect-approved slices complete. Pending Slice 6: deploy + curl smoke + UI verification on staging.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Commit `e163757c`. All 6 architect-approved slices complete. Both staging deploys (`deploy-staging.yml` run `25056782778` + `deploy-ui-staging.yml` run `25056782733`) `conclusion=success`. API smoke 5/5 + happy-path full handler trace + email send confirmed via Azure container logs. UI manual verification awaits user.
 
 **RCA**: Missing-feature, not a bug. Verified each layer individually:
 - UI: row menu correctly shows wired actions; no upgrade action wired.
@@ -65,9 +65,13 @@
 - JWT staleness: upgraded user's existing JWT keeps `role=GeneralUser` until next login — surfaced in success toast.
 - **No DB migration required** (verified column-by-column).
 
-**Pending — Slice 6 (next session/this session)**:
-- Push backend → `deploy-staging.yml` → curl `POST /api/admin/users/{id}/upgrade` as `niroshhh@gmail.com` → verify `role=3`, `pending_upgrade_role=NULL`, `admin_audit_logs` row with action `USER_ROLE_UPGRADED`.
-- Push frontend → `deploy-ui-staging.yml` → manually upgrade a GeneralUser → verify badge update + email arrival + in-app notification.
+**Slice 6 — staging verification evidence (this session)**:
+- Both deploy workflows green: `deploy-staging.yml` run `25056782778` + `deploy-ui-staging.yml` run `25056782733`.
+- **Happy path** as `admin@lankaconnect.com` (AdminManager) on `niroshanaks@gmail.com`: GeneralUser → POST `/upgrade` → HTTP 200 → GET round-trip confirms `role=EventOrganizer`.
+- **Azure container logs full handler trace** (correlation `a20274e8-…`): `AdminUpgradeUser START` → `Upgrading user CurrentRole=GeneralUser HadPendingUpgrade=False` → `Notification created NotificationId=54be2b04-…` → `template-organizer-role-approval rendered from database` → `Email sent successfully Duration=5992ms` → `AdminUpgradeUser COMPLETE OldRole=GeneralUser NewRole=EventOrganizer Duration=6067ms`. Single MediatR pipeline, single audit log, single email.
+- **5 negative tests** all return exact expected status + error message: re-upgrade EventOrganizer → 400 "User is already an Event Organizer"; empty reason → 400 "Reason is required" (validator); non-admin token → 403 (RequireAdmin policy); admin upgrades self → 400 "Cannot upgrade your own account" (handler guard); unauthenticated → 401.
+- Staging restored: `niroshanaks@gmail.com` downgraded back to GeneralUser via existing 6A.106 endpoint (also confirms the existing downgrade flow regresses cleanly under the new code).
+- **User-driven manual UI smoke** still recommended: open User Management tab → find `niroshanaks@gmail.com` row → click ⋮ → see new "Upgrade to Event Organizer" item next to "Downgrade to Member" → modal requires 10+ char reason → on confirm, badge updates without page refresh + success toast surfaces JWT-staleness reminder.
 
 ---
 

@@ -6,6 +6,18 @@
 
 ---
 
+## 🎯 2026-04-28 (latest) — Slice 8 Bug 1 fix DEPLOYED + API smoke 15/15 PASS + Bug 2 follow-up queued
+
+**Issue 1 (Bug 1, FIXED)**: User reported "Save failed: If-Match header is required" on Customize → Save through the canvas editor (with screenshot). RCA: the Next.js proxy at [web/src/app/api/proxy/[...path]/route.ts](../web/src/app/api/proxy/[...path]/route.ts) used an explicit-allow header whitelist that did NOT include `If-Match`. EVERY UI-side optimistic-concurrency mutation since Slice 5 Chunk 4 (Apr 20) had been silently 400-ing through the proxy. Fix in commit `86f626e0` adds the conditional-request header family (`If-Match` / `If-None-Match` / `If-Modified-Since` / `If-Unmodified-Since`) so the proxy passes them through unchanged. `deploy-ui-staging.yml` run `25073572878` `conclusion=success`. Verified end-to-end through `/api/proxy/...`: PUT `/batch` without If-Match → 400; with `If-Match: <rowVersion>` → 204. Pre-fix this exact request hit 400 (proxy stripped it). 4 orphan layouts cleaned off staging event `e4792b64-…`.
+
+**Issue 2 (API smoke, COMPLETE)**: User asked "push to staging and start testing all the feature you implemented via APIs". Created [docs/MASTER_TODO_SLICE8_API_SMOKE.md](MASTER_TODO_SLICE8_API_SMOKE.md) — 15-test repeatable suite covering Slice 6 baselines, S8.8a/b/c batch save (incl. concurrency + foreign-tier rejects), S8.9b save-as-template, S8.10 list + apply templates (incl. non-template source rejection), S8.11 delete templates lifecycle, and cleanup. **Result: 15/15 PASS** with correlation IDs captured for every successful test. Smoke doc updated with full evidence and new run-history row.
+
+**Issue 3 (Bug 2, DOCUMENTED FOR FOLLOW-UP)**: "Change layout" UI flow leaves orphan layouts on staging. Two cooperating root causes: (a) `CreateLayoutFromPresetCommandHandler` at [src/LankaConnect.Application/Events/Commands/CreateLayoutFromPreset/CreateLayoutFromPresetCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CreateLayoutFromPreset/CreateLayoutFromPresetCommandHandler.cs) does NOT unassign+delete the previously-attached layout before creating the new one — relies on the frontend orchestrating an explicit assign call; if that step is racy or fails, the OLD layout stays in `venue_layouts` with the same `event_id`. (b) [VenueLayoutRepository.cs:90-96](../src/LankaConnect.Infrastructure/Data/Repositories/VenueLayoutRepository.cs#L90-L96) `GetByEventIdAsync` uses `WHERE event_id = X` (not `WHERE id = events.venue_layout_id`), so when multiple rows transiently share an `event_id`, `FirstOrDefaultAsync`'s ordering is undefined and a stale or wrong layout can be returned. Recommended fix (architect-review-required): canonical read via `events.venue_layout_id` (single source of truth), plus atomic detach-and-delete in the from-preset / from-template command handlers. Surface as a separate Slice 8 follow-up chunk before any further UI work touches the change-layout flow. Captured in [docs/MASTER_TODO_SLICE8_API_SMOKE.md](MASTER_TODO_SLICE8_API_SMOKE.md) run-history row.
+
+**No backend / DB / migration changes in this session** — proxy fix is the only code change and is frontend-only (Next.js API route handler).
+
+---
+
 ## 🎯 2026-04-28 (later) — Event Create/Edit/Manage UI consistency (SHIPPED, deploy in flight)
 
 **Issue**: Event Detail page already used `<CollapsibleSection>` (Show/Hide details affordance) on its 6 informational sections — but Event **Create**, **Edit**, and Manage page's **Event Details tab** rendered every section as a fully-expanded `<Card>`, producing 1,900+ line scrolls per form. Pure UI/UX gap; no backend, auth, DB, or API change required.

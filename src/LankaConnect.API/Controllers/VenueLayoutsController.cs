@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Events.Commands.CreateVenueLayout;
+using LankaConnect.Application.Events.Commands.ApplyPresetToEvent;
+using LankaConnect.Application.Events.Commands.ApplyTemplateToEvent;
 using LankaConnect.Application.Events.Commands.CreateLayoutFromPreset;
 using LankaConnect.Application.Events.Commands.CreateLayoutFromTemplate;
 using LankaConnect.Application.Events.Commands.SaveLayoutAsTemplate;
@@ -159,6 +161,44 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     public record CreateLayoutFromPresetRequest(string PresetId, Guid? EventId);
 
     /// <summary>
+    /// Slice 9.2: atomic preset apply. Replaces the broken from-preset+assign
+    /// two-step. In one transaction: builds the layout from the preset, persists
+    /// it, and flips the event into assigned-seating mode pointing at the new
+    /// layout. No auto-tier-mapping (organiser maps tiers in Customize).
+    /// </summary>
+    [HttpPost("apply-preset")]
+    [Authorize]
+    [ProducesResponseType(typeof(VenueLayoutDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ApplyPresetToEvent(
+        [FromBody] ApplyPresetToEventRequest request)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "ApplyPresetToEvent: user={UserId}, presetId={PresetId}, eventId={EventId}",
+            userId, request.PresetId, request.EventId);
+
+        var command = new ApplyPresetToEventCommand(
+            request.PresetId,
+            request.EventId,
+            userId);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultWithCreated(
+            result,
+            nameof(GetLayout),
+            new { id = result.IsSuccess ? result.Value!.Id : Guid.Empty });
+    }
+
+    /// <summary>Request body for <see cref="ApplyPresetToEvent"/>.</summary>
+    public record ApplyPresetToEventRequest(string PresetId, Guid EventId);
+
+    /// <summary>
     /// Slice 8 S8.10: lists every venue layout the calling user has saved as a
     /// template (<c>IsTemplate == true</c> + <c>CreatedByUserId == caller</c>),
     /// most-recent-first. Powers the canvas editor's "My Templates" picker tab.
@@ -216,6 +256,47 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
     /// Request body for <see cref="CreateLayoutFromTemplate"/>.
     /// </summary>
     public record CreateLayoutFromTemplateRequest(
+        Guid SourceTemplateId,
+        Guid EventId,
+        string? LayoutName);
+
+    /// <summary>
+    /// Slice 9.2: atomic template apply. Mirror of <see cref="ApplyPresetToEvent"/>
+    /// for user-saved templates. Single transaction: clones the template, persists,
+    /// flips the event into assigned-seating mode pointing at the clone.
+    /// </summary>
+    [HttpPost("apply-template")]
+    [Authorize]
+    [ProducesResponseType(typeof(VenueLayoutDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ApplyTemplateToEvent(
+        [FromBody] ApplyTemplateToEventRequest request)
+    {
+        var userId = User.GetUserId();
+
+        Logger.LogInformation(
+            "ApplyTemplateToEvent: user={UserId}, sourceTemplateId={SourceTemplateId}, eventId={EventId}, layoutName={LayoutName}",
+            userId, request.SourceTemplateId, request.EventId, request.LayoutName);
+
+        var command = new ApplyTemplateToEventCommand(
+            request.SourceTemplateId,
+            request.EventId,
+            userId,
+            request.LayoutName);
+
+        var result = await Mediator.Send(command);
+
+        return HandleResultWithCreated(
+            result,
+            nameof(GetLayout),
+            new { id = result.IsSuccess ? result.Value!.Id : Guid.Empty });
+    }
+
+    /// <summary>Request body for <see cref="ApplyTemplateToEvent"/>.</summary>
+    public record ApplyTemplateToEventRequest(
         Guid SourceTemplateId,
         Guid EventId,
         string? LayoutName);

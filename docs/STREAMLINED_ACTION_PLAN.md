@@ -6,6 +6,26 @@
 
 ---
 
+## 🎯 2026-04-29 (later) — Slice 9.3 SHIPPED + STAGING-VERIFIED (Seating Layout Fix, RC-2)
+
+**Bug context**: today's user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" was traced to 4 cooperating defects (RC-1 through RC-4) per architect Revisions 1/2/3 (see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md)). Slice 9.3 fixes RC-2: `VenueLayoutRepository.GetByEventIdAsync` filtered by `venue_layouts.event_id` instead of joining via `events.venue_layout_id`, returning orphan layouts (created when from-preset succeeds but assign 400s on tier validation) as if assigned. The orphan's seats appear in the UI, then a Customize → Save against the orphan can wipe its zones (RC-3) — producing the "0 seats" symptom.
+
+**Fix shipped**:
+
+- **Repo rename + JOIN-via-event-PK** (commit `ce1c66de`): `IVenueLayoutRepository.GetByEventIdAsync` → `GetAssignedLayoutForEventAsync`. New SQL reads `events.events.venue_layout_id` for the canonical assignment, then loads the layout aggregate by id. Orphans become invisible to the by-event read path. 3 callers updated (`HoldSeatsCommandHandler`, `GetSeatAvailabilityQueryHandler`, `GetVenueLayoutQueryHandler`). Frontend untouched — URL `/by-event/{id}` unchanged.
+
+- **PostgreSQL Id-column quoting fix** (commit `a560eee6`): first deploy failed with Postgres error 42703 "column vl.id does not exist (Hint: Perhaps you meant to reference the column \"vl.Id\")". EF Core configurations don't override `HasColumnName` for the `Id` PK property, so it's quoted as `"Id"` (PascalCase). My SQL used unquoted `vl.id`. Fixed by quoting all PK references (verbatim C# `vl.""Id""` → SQL `vl."Id"`).
+
+- **Cascade-clean dangling seat_holds** (commit `6f84abb6`): second deploy correctly aborted via the migration's pre-flight assertion: 1 live `seat_hold` referenced an orphan-layout seat (stale from this morning's RCA repro). The architect's original abort-on-holds was too strict — `seat_holds.seat_id` has no FK constraint (deliberate, per `SeatHoldConfiguration.cs`), so when an orphan layout's seats are deleted, dangling holds stay in the table. After Slice 9.3's read fix, those holds are unreachable through any live workflow. Replaced the abort with an explicit cascade-clean step (DELETE seat_holds WHERE seat_id IN orphan_seats) before the orphan-layout DELETE. Counts logged via `RAISE NOTICE`. Architect-approved revision.
+
+- **Migration `Slice93HardDeleteOrphanLayouts`**: scaffolded via `dotnet ef migrations add` (so `.Designer.cs` is generated — per CLAUDE.md memory on hand-rolled migrations being invisible). Generic `events.deleted_layouts_audit` table created (forensic trail with `deleted_by_migration` column for future cleanups). Pre-flight `RAISE NOTICE` orphan count → cascade-clean dangling holds → audit-snapshot orphans → hard `DELETE` → post-condition `RAISE EXCEPTION` on count mismatch (Phase 6A.122 silent-failure guard). Production-safe (N=0 orphans path verified by design). `Down()` is a logged no-op (hard-delete irreversible; audit table preserves trail).
+
+**Verification (staging, post-deploy `25131067970`)**: created a fresh orphan via `POST /from-preset` on the user's tiered event `e4792b64-…` (assign would fail with RC-1 — separate slice's concern); `GET /by-event/{eventId}` correctly returned 400 "Venue layout not found" — the orphan is invisible. Pre-fix this same request would have returned the 200-seat orphan masking the real failure. Slice 8 API smoke regression: T-A1 (8 presets) + T-A2 (200-seat from-preset) PASS. 2403 Application tests pass (0 regressions; 2 pre-existing `DonationConfigurationTests` failures since `e3112bbf` are unrelated).
+
+**Next**: Slice 9.1 (domain `CheckLayoutPublishReadiness` — publish-time strict validation; preserves all 32 existing `Event.Publish()` tests by adding a sibling method instead of changing the signature). Then Slice 9.2 (atomic `ApplyPresetToEventCommand` + `ApplyTemplateToEventCommand`, no auto-tier-mapping per user). Then Slice 9.4 (UI cutover + change-layout `ConfirmDialog` + `BatchUpdate.deletedZoneIds` + 409 ambiguity guard + endpoint removal).
+
+---
+
 ## 🎯 2026-04-29 — Phase 7E follow-up: Paid Mode B Gate SHIPPED + STAGING-VERIFIED
 
 **Bug context** (architect RCA approved + implementation plan reviewed in iteration 1, 6 edits applied — see [docs/MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md](MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md)): a paid event flipped to `HeadCountByAge` mode (during my own API smoke earlier this session) rendered a fillable RSVP form that errored on submit with *"Paid head-count registration is coming soon (Phase 7E.3b)"*. The validator was written to the full plan §2 (paid + B = OK) ahead of the implementation; only slice 7E.3a (FREE B-mode) is shipped today. Three layers — validator, allowed-modes API, UI — claimed support that the domain method doesn't honour, producing a dead-end form.

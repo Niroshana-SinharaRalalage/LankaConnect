@@ -73,33 +73,56 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
     }
 
     /// <inheritdoc />
-    public async Task<VenueLayout?> GetByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task<VenueLayout?> GetAssignedLayoutForEventAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
-        using (LogContext.PushProperty("Operation", "GetByEventId"))
+        using (LogContext.PushProperty("Operation", "GetAssignedLayoutForEvent"))
         using (LogContext.PushProperty("EntityType", "VenueLayout"))
         using (LogContext.PushProperty("EventId", eventId))
         {
             var stopwatch = Stopwatch.StartNew();
 
-            _repoLogger.LogDebug("GetByEventIdAsync START: EventId={EventId}", eventId);
+            _repoLogger.LogDebug("GetAssignedLayoutForEventAsync START: EventId={EventId}", eventId);
 
             try
             {
-                // Slice 5 Chunk 6: match GetWithZonesAndSeatsAsync — return the full
-                // aggregate so the event's layout-scoped write surface sees tables too.
+                // Slice 9.3: read the canonical assignment via events.venue_layout_id, NOT
+                // venue_layouts.event_id. Filtering by event_id returned orphan layouts
+                // (created via from-preset but where the subsequent assign step failed —
+                // see Slice 8 RC-2). The canonical assignment is the events table column.
+                //
+                // Step 1: resolve the event's assigned layoutId. Untracked because we don't
+                // need to mutate the event here.
+                var assignedLayoutId = await _context.Events
+                    .AsNoTracking()
+                    .Where(e => e.Id == eventId)
+                    .Select(e => e.VenueLayoutId)
+                    .SingleOrDefaultAsync(cancellationToken);
+
+                if (assignedLayoutId is null)
+                {
+                    stopwatch.Stop();
+                    _repoLogger.LogInformation(
+                        "GetAssignedLayoutForEventAsync COMPLETE: EventId={EventId}, Found=False (no layout assigned), Duration={ElapsedMs}ms",
+                        eventId,
+                        stopwatch.ElapsedMilliseconds);
+                    return null;
+                }
+
+                // Step 2: load the full aggregate by id (matches GetWithZonesAndSeatsAsync).
                 var layout = await _dbSet
                     .Include(v => v.Zones)
                         .ThenInclude(z => z.Seats)
                     .Include(v => v.Tables)
                         .ThenInclude(t => t.Seats)
                     .Include(v => v.Decorations)
-                    .FirstOrDefaultAsync(v => v.EventId == eventId, cancellationToken);
+                    .FirstOrDefaultAsync(v => v.Id == assignedLayoutId.Value, cancellationToken);
 
                 stopwatch.Stop();
 
                 _repoLogger.LogInformation(
-                    "GetByEventIdAsync COMPLETE: EventId={EventId}, Found={Found}, Duration={ElapsedMs}ms",
+                    "GetAssignedLayoutForEventAsync COMPLETE: EventId={EventId}, AssignedLayoutId={LayoutId}, Found={Found}, Duration={ElapsedMs}ms",
                     eventId,
+                    assignedLayoutId.Value,
                     layout != null,
                     stopwatch.ElapsedMilliseconds);
 
@@ -110,7 +133,7 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
                 stopwatch.Stop();
 
                 _repoLogger.LogError(ex,
-                    "GetByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    "GetAssignedLayoutForEventAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     eventId,
                     stopwatch.ElapsedMilliseconds,
                     ex.Message);

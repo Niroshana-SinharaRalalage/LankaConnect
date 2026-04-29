@@ -42,7 +42,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
             return Result<HoldSeatsResult>.Failure("Cannot hold more than 10 seats at once");
 
         // Verify the layout exists for this event and seats belong to it
-        var layout = await _venueLayoutRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+        var layout = await _venueLayoutRepository.GetAssignedLayoutForEventAsync(request.EventId, cancellationToken);
         if (layout == null)
             return Result<HoldSeatsResult>.Failure("No venue layout found for this event");
 

@@ -34,7 +34,7 @@ public class GetVenueLayoutQueryHandler : IQueryHandler<GetVenueLayoutQuery, Ven
         }
         else if (request.EventId.HasValue)
         {
-            layout = await _venueLayoutRepository.GetByEventIdAsync(request.EventId.Value, cancellationToken);
+            layout = await _venueLayoutRepository.GetAssignedLayoutForEventAsync(request.EventId.Value, cancellationToken);
         }
         else
         {

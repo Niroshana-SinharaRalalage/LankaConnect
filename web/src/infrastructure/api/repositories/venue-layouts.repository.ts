@@ -22,6 +22,8 @@ import type {
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
   CreateLayoutFromTemplateRequest,
+  ApplyPresetToEventRequest,
+  ApplyTemplateToEventRequest,
 } from '../types/events.types';
 
 /**
@@ -116,6 +118,36 @@ export class VenueLayoutsRepository {
   ): Promise<VenueLayoutDto> {
     return await apiClient.post<VenueLayoutDto>(
       `${this.basePath}/from-preset`,
+      request,
+    );
+  }
+
+  /**
+   * Slice 9.2: atomic preset apply. Single round-trip replacement for the
+   * broken {@link createFromPreset} + {@link assignLayoutToEvent} two-step.
+   * The backend creates the layout AND flips the event into assigned-seating
+   * mode pointing at the new layout in a single transaction — no orphan on
+   * partial failure. No auto-tier-mapping (organiser maps later in Customize).
+   * 403 → caller does not own the event. 404 → event not found.
+   */
+  async applyPresetToEvent(
+    request: ApplyPresetToEventRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/apply-preset`,
+      request,
+    );
+  }
+
+  /**
+   * Slice 9.2: atomic template apply. Mirror of {@link applyPresetToEvent}
+   * for user-saved templates.
+   */
+  async applyTemplateToEvent(
+    request: ApplyTemplateToEventRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/apply-template`,
       request,
     );
   }

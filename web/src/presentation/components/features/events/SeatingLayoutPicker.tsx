@@ -1,5 +1,5 @@
 /**
- * Slice 6 Chunk S6.9: SeatingLayoutPicker
+ * Slice 6 Chunk S6.9: SeatingLayoutPicker (revised in Slice 9.4 — atomic apply)
  *
  * Bridges the preset-library modal with the event's venue layout. Rendered
  * only when the event has been saved (we have an `eventId`). For in-progress
@@ -9,9 +9,14 @@
  * Flow:
  *   1. Read current layout via useVenueLayoutByEvent(eventId).
  *   2a. No layout yet → "Choose a layout" button opens PresetLibraryModal.
- *   2b. Layout exists → LayoutPreview + capacity + "Change layout" button.
- *   3. Preset pick → useCreateLayoutFromPreset({presetId, eventId}) →
- *      useAssignLayoutToEvent({eventId, layoutId}) → cache refetch.
+ *   2b. Layout exists → LayoutPreview + capacity + "Change layout" button
+ *       (the latter goes through ConfirmDialog before re-opening the modal,
+ *       per Slice 9.4 — the swap detaches the current layout, which becomes
+ *       an orphan candidate for future cleanup).
+ *   3. Preset pick → useApplyPresetToEvent — single transaction creates the
+ *      layout AND flips event seatingMode + VenueLayoutId in one shot. No
+ *      orphan-on-partial-failure (Slice 9.2 design).
+ *   4. Template pick → useApplyTemplateToEvent — mirror.
  *
  * Errors surface inline (component does not throw). Logs go via console so
  * dev observability still works; production errors bubble through the
@@ -25,11 +30,11 @@ import { Armchair, Loader2, AlertCircle } from 'lucide-react';
 import {
   useLayoutPresets, // imported for type-check awareness; used through modal
   useVenueLayoutByEvent,
-  useCreateLayoutFromPreset,
-  useCreateLayoutFromTemplate,
-  useAssignLayoutToEvent,
+  useApplyPresetToEvent,
+  useApplyTemplateToEvent,
 } from '@/presentation/hooks/useVenueLayouts';
 import { Button } from '@/presentation/components/ui/Button';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { PresetLibraryModal } from './PresetLibraryModal';
 import { LayoutPreview } from './LayoutPreview';
 import { CanvasEditorModal } from './CanvasEditorModal';
@@ -57,24 +62,26 @@ export function SeatingLayoutPicker({
   const [flowError, setFlowError] = useState<string | null>(null);
   // Slice 8 S8.1: canvas editor is a separate modal, opened only once a layout exists.
   const [editorOpen, setEditorOpen] = useState(false);
+  // Slice 9.4: confirm-before-replace guard for "Change layout" when one is attached.
+  const [changeConfirmOpen, setChangeConfirmOpen] = useState(false);
 
   const layoutQuery = useVenueLayoutByEvent(eventId);
-  const createFromPreset = useCreateLayoutFromPreset();
-  const createFromTemplate = useCreateLayoutFromTemplate();
-  const assignLayout = useAssignLayoutToEvent();
+  const applyPreset = useApplyPresetToEvent();
+  const applyTemplate = useApplyTemplateToEvent();
 
   const handlePresetSelected = useCallback(
     async (preset: LayoutPresetDto) => {
       setFlowError(null);
       setPickingPresetId(preset.id);
       try {
-        const layout = await createFromPreset.mutateAsync({
+        // Slice 9.2: single atomic call. Old two-step (createFromPreset+assign)
+        // could 400 on the assign with "Zone must be mapped to a ticket tier"
+        // because preset zones come without tier_assignments. The new
+        // apply-preset endpoint persists the layout AND flips the event's
+        // seatingMode in one transaction — no partial-failure orphans.
+        const layout = await applyPreset.mutateAsync({
           presetId: preset.id,
           eventId,
-        });
-        await assignLayout.mutateAsync({
-          eventId,
-          layoutId: layout.id,
         });
         setModalOpen(false);
         onLayoutChanged?.(layout);
@@ -82,37 +89,31 @@ export function SeatingLayoutPicker({
         const message =
           e instanceof Error ? e.message : 'Failed to apply the preset.';
         // eslint-disable-next-line no-console
-        console.error('[SeatingLayoutPicker] preset flow failed:', e);
+        console.error('[SeatingLayoutPicker] preset apply failed:', e);
         setFlowError(message);
       } finally {
         setPickingPresetId(null);
       }
     },
-    [assignLayout, createFromPreset, eventId, onLayoutChanged],
+    [applyPreset, eventId, onLayoutChanged],
   );
 
   /**
-   * Slice 8 S8.10: apply one of the user's saved templates to this event.
-   * Mirror of {@link handlePresetSelected} for the "Mine" tab — the difference
-   * is which mutation creates the cloned layout. Once the layout exists we
-   * still call assign-to-event so the event's `VenueLayoutId` is wired up.
+   * Slice 8 S8.10 / Slice 9.4: apply one of the user's saved templates.
+   * Single atomic call (Slice 9.2 apply-template endpoint) replaces the old
+   * createFromTemplate+assign two-step.
    */
   const handleTemplateSelected = useCallback(
     async (template: VenueLayoutDto) => {
       setFlowError(null);
       setPickingTemplateId(template.id);
       try {
-        const layout = await createFromTemplate.mutateAsync({
+        const layout = await applyTemplate.mutateAsync({
           sourceTemplateId: template.id,
           eventId,
-          // Backend defaults LayoutName to source.Name when null/whitespace —
-          // pass null and let it match the source. The user can rename
-          // through the canvas editor's property panel afterward.
+          // Backend defaults LayoutName to source.Name when null/whitespace.
+          // The user can rename via the canvas editor's property panel.
           layoutName: null,
-        });
-        await assignLayout.mutateAsync({
-          eventId,
-          layoutId: layout.id,
         });
         setModalOpen(false);
         onLayoutChanged?.(layout);
@@ -120,13 +121,13 @@ export function SeatingLayoutPicker({
         const message =
           e instanceof Error ? e.message : 'Failed to apply the template.';
         // eslint-disable-next-line no-console
-        console.error('[SeatingLayoutPicker] template flow failed:', e);
+        console.error('[SeatingLayoutPicker] template apply failed:', e);
         setFlowError(message);
       } finally {
         setPickingTemplateId(null);
       }
     },
-    [assignLayout, createFromTemplate, eventId, onLayoutChanged],
+    [applyTemplate, eventId, onLayoutChanged],
   );
 
   const layout = layoutQuery.data ?? null;
@@ -191,7 +192,7 @@ export function SeatingLayoutPicker({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setModalOpen(true)}
+                onClick={() => setChangeConfirmOpen(true)}
                 data-testid="layout-picker-change"
               >
                 Change layout
@@ -226,11 +227,33 @@ export function SeatingLayoutPicker({
           setModalOpen(v);
         }}
         onSelect={handlePresetSelected}
-        isSelecting={createFromPreset.isPending || assignLayout.isPending}
+        isSelecting={applyPreset.isPending}
         selectingPresetId={pickingPresetId}
         onSelectMine={handleTemplateSelected}
-        isSelectingMine={createFromTemplate.isPending || assignLayout.isPending}
+        isSelectingMine={applyTemplate.isPending}
         selectingMineId={pickingTemplateId}
+      />
+
+      {/*
+        Slice 9.4: confirm-before-replace guard. The user has clicked
+        "Change layout" while a layout is already attached — picking a new
+        preset will detach the current one (it becomes an orphan that
+        future cleanup migrations remove). Confirming opens the picker
+        modal; cancelling is a no-op. Reuses the existing ConfirmDialog
+        primitive (same pattern as save-as-template + warn-before-close).
+      */}
+      <ConfirmDialog
+        open={changeConfirmOpen}
+        onOpenChange={setChangeConfirmOpen}
+        title="Replace current seating layout?"
+        description="Changing the seating layout will discard the current one, including any zones, seats, or tier mappings you have configured. This cannot be undone."
+        confirmLabel="Replace layout"
+        cancelLabel="Keep current layout"
+        variant="danger"
+        onConfirm={() => {
+          setChangeConfirmOpen(false);
+          setModalOpen(true);
+        }}
       />
 
       {layout && (

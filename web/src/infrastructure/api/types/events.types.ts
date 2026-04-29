@@ -3088,6 +3088,28 @@ export interface CreateLayoutFromTemplateRequest {
 }
 
 /**
+ * Slice 9.2 — POST /api/venue-layouts/apply-preset body. Atomic preset apply:
+ * single transaction that creates the layout AND flips the event into
+ * assigned-seating mode pointing at the new layout. Replaces the broken
+ * from-preset+assign two-step flow. No auto-tier-mapping.
+ */
+export interface ApplyPresetToEventRequest {
+  presetId: string;
+  eventId: string;
+}
+
+/**
+ * Slice 9.2 — POST /api/venue-layouts/apply-template body. Mirror of
+ * {@link ApplyPresetToEventRequest} for user-saved templates.
+ * `layoutName` is optional — server defaults to the source template's name.
+ */
+export interface ApplyTemplateToEventRequest {
+  sourceTemplateId: string;
+  eventId: string;
+  layoutName?: string | null;
+}
+
+/**
  * Phase 7E.5 — query parameters for `GET /api/Events/allowed-registration-modes`.
  * Matches backend `GetAllowedRegistrationModesQuery` shape. All fields optional and default
  * to `false` server-side; the frontend Mode picker passes the current draft form-state on

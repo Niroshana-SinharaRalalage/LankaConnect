@@ -37,6 +37,8 @@ import type {
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
   CreateLayoutFromTemplateRequest,
+  ApplyPresetToEventRequest,
+  ApplyTemplateToEventRequest,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -190,6 +192,58 @@ export function useCreateLayoutFromTemplate() {
       if (data.eventId) {
         queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(data.eventId) });
       }
+    },
+  });
+}
+
+/**
+ * Slice 9.2: atomic preset apply. Single round-trip replacement for
+ * `useCreateLayoutFromPreset` + `useAssignLayoutToEvent` — eliminates the
+ * orphan-on-partial-failure problem when the assign step's tier validation
+ * rejected fresh presets. Invalidates byEvent + event detail caches so the
+ * SeatingLayoutPicker tile reflects the new layout immediately.
+ */
+export function useApplyPresetToEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, ApplyPresetToEventRequest>({
+    mutationFn: (request) => venueLayoutsRepository.applyPresetToEvent(request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.byEvent(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.seatAvailability(variables.eventId),
+      });
+      // Event aggregate also changed (seatingMode + venueLayoutId) — refetch.
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(variables.eventId),
+      });
+    },
+  });
+}
+
+/**
+ * Slice 9.2: atomic template apply. Mirror of {@link useApplyPresetToEvent}
+ * for user-saved templates.
+ */
+export function useApplyTemplateToEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, ApplyTemplateToEventRequest>({
+    mutationFn: (request) => venueLayoutsRepository.applyTemplateToEvent(request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.byEvent(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.seatAvailability(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(variables.eventId),
+      });
     },
   });
 }

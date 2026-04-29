@@ -151,13 +151,9 @@ export function HeadCountRsvpForm({
       return;
     }
 
-    if (!isFree) {
-      // Paid B-mode flow lands in 7E.3b (Stripe amount-calc tests required first).
-      setSubmitError(
-        'Paid head-count registration is coming soon (Phase 7E.3b). For now, please contact the organiser directly.'
-      );
-      return;
-    }
+    // Phase 7E.3b: paid B-mode is now supported. The backend creates a Stripe Checkout
+    // session and the page-level handler redirects to its URL on success (same flow as
+    // Mode A's paid path). No client-side short-circuit for paid events.
 
     // Build the head-count payload matching backend HeadCountDto.
     const headCount: RsvpRequest['headCount'] = {

@@ -85,6 +85,22 @@ describe('RsvpFormSection — paid-B-mode gate dispatcher', () => {
       expect(screen.queryByText('Registration coming soon')).not.toBeInTheDocument();
     });
 
+    it('renders HeadCountRsvpForm for paid Mode B after Phase 7E.3b shipped', () => {
+      // Phase 7E.3b lifted the PaidHeadCountDeferred gate. Paid + Mode B events with
+      // registrationModeStatus = "active" must render the form; the form's submit
+      // path returns a Stripe Checkout URL which the page redirects to.
+      const event = buildEvent({
+        registrationMode: RegistrationMode.HeadCountByAge,
+        registrationModeStatus: 'active',
+        isFree: false,
+      });
+
+      render(<RsvpFormSection event={event} spotsLeft={50} isProcessing={false} onSubmit={noop} />);
+
+      expect(screen.getByTestId('mock-headcount-rsvp-form')).toBeInTheDocument();
+      expect(screen.queryByText('Registration coming soon')).not.toBeInTheDocument();
+    });
+
     it('renders the "no registration required" notice for Mode C', () => {
       const event = buildEvent({
         registrationMode: RegistrationMode.NoRegistration,

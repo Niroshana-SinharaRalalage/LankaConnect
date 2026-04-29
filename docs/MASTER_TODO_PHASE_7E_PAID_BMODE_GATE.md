@@ -1,7 +1,13 @@
 # Master TODO — Phase 7E follow-up: Paid Mode B Gate (deferred-feature handling)
 
-**Status**: ✅ ARCHITECT-APPROVED with edits applied — awaiting user sign-off, then implementation.
-**Architect review iteration**: 1 (6 edits applied below — see §6 Architect notes).
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED** (2026-04-29).
+**Architect review iteration**: 1 (6 edits applied — all incorporated).
+**Commits**: `ca5314d6` (Slice 1 validator), `d4bac3ed` (Slice 2 DTO + mapper + handler integration), `84ca2d82` (Slice 3 FE coming-soon panel).
+**Deploys**: backend `25115122343`, `25121840037`, `25123122840` — all `success`. UI `25121840030`, `25123122751` — all `success`.
+**Legacy rollback**: `d543629f-…` reverted to `DetailedAttendees` via PUT (start date bumped to T+7 per architect edit #3).
+**Prod scan @ 2026-04-29T18:03:48Z**: 3 events surveyed, 0 paid+B-mode events. Phase 7E not deployed to prod yet — registrationMode field absent.
+**Staging scan @ 2026-04-29T18:05:24Z**: 59 events surveyed, 1 paid+B-mode event found (`d543629f-…`) and rolled back.
+**Container log scan**: 1000-line window post-Slice-1 — zero `PaidHeadCountDeferred` failures from real (non-smoke) traffic.
 **Origin**: Architect RCA on `Christmas Dinner Dance 2025` event showing a Mode-B form on a paid event with a dead-end "Coming soon (Phase 7E.3b)" submit error. Validator was target-state (paid+B = OK per plan §2); only free B-mode is implemented today (slice 7E.3a). UI/validator/domain disagreed → fillable-but-broken form.
 **Architect RCA conclusion**: Tighten the validator (single source of truth) + carry a server-side `registrationModeStatus` so the frontend renders a clean "coming soon" panel instead of a fillable form for not-yet-implemented combinations.
 **Out of scope for this slice**: Phase 7E.3b (paid B-mode + Stripe checkout) is queued separately and not started here.

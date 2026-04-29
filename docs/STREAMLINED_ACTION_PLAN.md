@@ -6,6 +6,32 @@
 
 ---
 
+## 🎯 2026-04-29 — Phase 7E follow-up: Paid Mode B Gate SHIPPED + STAGING-VERIFIED
+
+**Bug context** (architect RCA approved + implementation plan reviewed in iteration 1, 6 edits applied — see [docs/MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md](MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md)): a paid event flipped to `HeadCountByAge` mode (during my own API smoke earlier this session) rendered a fillable RSVP form that errored on submit with *"Paid head-count registration is coming soon (Phase 7E.3b)"*. The validator was written to the full plan §2 (paid + B = OK) ahead of the implementation; only slice 7E.3a (FREE B-mode) is shipped today. Three layers — validator, allowed-modes API, UI — claimed support that the domain method doesn't honour, producing a dead-end form.
+
+**Fix (single source of truth at the validator)**:
+
+- **Slice 1** (commit `ca5314d6`): new `RegistrationModeErrorCodes.PaidHeadCountDeferred` constant + `IsFreeAttendance` gate inside `RegistrationModeCompatibility.CheckCommonHeadCountConstraints` with an inline `// PHASE_7E_3B: remove this gate when paid B-mode + Stripe ships` breadcrumb (architect edits #2 + #6). Cascades to `GetAllowedRegistrationModesQueryHandler` (mode picker hides B for paid), `UpdateEventCommandHandler` (rejects new paid+B flips), and the Slice 2 mapper. 9 new test rows (paid+B negative ×4 asserting the constant; free+B regression ×4; AllowedModes_ExcludesAllBModes for paid). Existing rows 5/7/8/9 updated to "A only (paid B-mode gated until 7E.3b)" — they revert when 7E.3b ships.
+
+- **Slice 2** (commit `d4bac3ed`): `EventDto.RegistrationModeStatus` (architect edit #1: defaults to `"deferred"` fail-safe, mapper sets `"active"` only when compatibility passes). Mapper helper `ComputeRegistrationModeStatus(Event src)` builds a `RegistrationModeContext` from src (IsFreeAttendance, HasDualPricing, HasGroupTiers, HasTicketTiers — the axes representable on Event today) and runs the same validator. 11 mapper unit tests (paid+B → deferred ×4; free+B → active ×4; legacy paid+A → active; free+C → active). Architect-required handler-level integration test (edit #5) `GetEventByIdRegistrationModeStatusTests` × 3 — wires the real `EventMappingProfile` through a real `MapperConfiguration` and asserts end-to-end propagation, catches DI / profile-registration breaks the mapper unit misses.
+
+- **Slice 3** (commit `84ca2d82`): `RsvpFormSection` reads `event.registrationModeStatus`. If `'deferred'`, renders an amber-card "Registration coming soon" panel pointing the user at the Event Organiser Contacts section instead of `HeadCountRsvpForm`. Defaults to `'active'` client-side for legacy cached payloads. 6 RTL dispatcher tests covering all branches.
+
+- **Slice 4** (legacy rollback + scans): prod scan @ 2026-04-29T18:03:48Z surveyed 3 events, **0 paid+B-mode** (Phase 7E not deployed to prod yet). Staging scan @ 2026-04-29T18:05:24Z surveyed 59 events, **1 paid+B** (`d543629f-…` — the smoke artefact, exactly as expected). Rolled back via PUT with start date bumped to T+7 days (architect edit #3 — avoids the past-date guard, single audit-log entry, no SQL/back-door). Post-rollback verification: `mode=DetailedAttendees`, `registrationModeStatus=active`, `startDate=2026-05-06`.
+
+- **Slice 5** (this entry + 7E.3b ship-checklist breadcrumb): added a "Gate-removal checklist" block under the 7E.3b heading in [MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) so the implementer doesn't forget to lift the temporary gate when paid B-mode + Stripe ships.
+
+**Architect-required DoD evidence**:
+- Test totals: backend 92/92 in the impacted suite (78 Phase 7E + 11 mapper + 3 handler integration); frontend 6/6 RsvpFormSection RTL dispatcher.
+- All 5 deploys (3 backend `25115122343` + `25121840037` + `25123122840`; 2 UI `25121840030` + `25123122751`) `conclusion=success`.
+- Container-log scan post-Slice-1 over 1000 lines — zero `PaidHeadCountDeferred` failures from real (non-smoke) traffic. Free traffic does not trip the gate.
+- Prod paid+B count documented: 0 @ 2026-04-29T18:03:48Z. Staging paid+B count: 1 → 0 after rollback.
+
+**What's still queued**: "X of Y spots left" copy bug at `HeadCountRsvpForm.tsx:178` (separate P3 polish ticket — orthogonal to this slice and we're rendering the panel instead of the form for the relevant case anyway). Phase 7E.3b paid B-mode + Stripe checkout itself is the next significant slice; the gate-removal checklist is on its ship list.
+
+---
+
 ## 🎯 2026-04-28 (latest) — Slice 8 Bug 1 fix DEPLOYED + API smoke 15/15 PASS + Bug 2 follow-up queued
 
 **Issue 1 (Bug 1, FIXED)**: User reported "Save failed: If-Match header is required" on Customize → Save through the canvas editor (with screenshot). RCA: the Next.js proxy at [web/src/app/api/proxy/[...path]/route.ts](../web/src/app/api/proxy/[...path]/route.ts) used an explicit-allow header whitelist that did NOT include `If-Match`. EVERY UI-side optimistic-concurrency mutation since Slice 5 Chunk 4 (Apr 20) had been silently 400-ing through the proxy. Fix in commit `86f626e0` adds the conditional-request header family (`If-Match` / `If-None-Match` / `If-Modified-Since` / `If-Unmodified-Since`) so the proxy passes them through unchanged. `deploy-ui-staging.yml` run `25073572878` `conclusion=success`. Verified end-to-end through `/api/proxy/...`: PUT `/batch` without If-Match → 400; with `If-Match: <rowVersion>` → 204. Pre-fix this exact request hit 400 (proxy stripped it). 4 orphan layouts cleaned off staging event `e4792b64-…`.

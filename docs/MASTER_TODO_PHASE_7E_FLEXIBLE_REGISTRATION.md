@@ -306,6 +306,25 @@ curl -X POST '.../api/events' ... \
 
 **Architect-gated**: explicit Stripe amount-calc tests required before merge.
 
+**🚧 Gate-removal checklist (added 2026-04-29 by paid-B-mode-gate fix)**: when this slice
+ships, the implementer MUST also remove the temporary gate that currently rejects paid +
+B-mode at the validator. The gate exists in `RegistrationModeCompatibility.cs` —
+`grep -n PHASE_7E_3B src/LankaConnect.Domain/Events/Services/RegistrationModeCompatibility.cs`
+finds the inline breadcrumb. Removal steps:
+1. Delete the `if (!ctx.IsFreeAttendance) return Result.Failure(RegistrationModeErrorCodes.PaidHeadCountDeferred);`
+   block inside `CheckCommonHeadCountConstraints`.
+2. Update `Phase7E2RegistrationModeCompatibilityTests`: rows 5/7/8/9 revert from
+   "A only (paid B-mode gated until 7E.3b)" → the original target-state expectations
+   ("Paid single price → A + all B", "Paid dual pricing → A, B2, or B4", etc.). The
+   theory rows in `Check_Fails_WithPaidHeadCountDeferred_ForPaidEvents` should also flip
+   to assert success or be removed.
+3. After deploy, `EventDto.RegistrationModeStatus` will start emitting "active" again for
+   paid + B-mode events. No mapper change needed — the gate removal cascades.
+4. Verify: free Mode B regression still works; paid B-mode RSVP creates registrations as
+   expected; the `// PHASE_7E_3B` breadcrumb comments + `RegistrationModeErrorCodes.PaidHeadCountDeferred`
+   constant can stay one release as no-ops, then be removed in a separate cleanup commit.
+Full RCA + paid-B-mode-gate slice details: [docs/MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md](MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md).
+
 - [ ] **Test (red)**: `RsvpToEvent_ModeB1Paid_SinglePrice_TotalPriceEquals_TotalTimesPrice`
 - [ ] **Test (red)**: `RsvpToEvent_ModeB2Paid_DualPrice_TotalPriceEquals_AdultsTimesAdultPrice_PlusChildrenTimesChildPrice`
 - [ ] **Test (red)**: `RsvpToEvent_ModeB4Paid_DualPrice_DerivesAdultsAndChildren_FromFourLeaves_AndPricesCorrectly`

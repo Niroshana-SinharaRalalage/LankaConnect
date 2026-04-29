@@ -97,8 +97,11 @@ public class GetEventByIdRegistrationModeStatusTests
     }
 
     [Fact]
-    public async Task Handler_PopulatesRegistrationModeStatus_Deferred_ForPaidBModeEvent()
+    public async Task Handler_PopulatesRegistrationModeStatus_Active_ForPaidSinglePriceBModeEvent()
     {
+        // Phase 7E.3b shipped paid B-mode + Stripe checkout. Paid single-price + HeadCountByAge
+        // is now "active" through the handler — architect-required integration check that the
+        // gate-removal cascades correctly through DI + AutoMapper profile + handler with-expression.
         var @event = CreatePaidEvent();
         @event.SetRegistrationMode(RegistrationMode.HeadCountByAge);
         _eventRepository
@@ -109,9 +112,9 @@ public class GetEventByIdRegistrationModeStatusTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value!.RegistrationModeStatus.Should().Be("deferred",
-            "paid + HeadCountByAge currently fails compatibility (paid B-mode deferred to 7E.3b) — " +
-            "this is the architect-required handler-integration check that catches DI / profile-registration breaks");
+        result.Value!.RegistrationModeStatus.Should().Be("active",
+            "Phase 7E.3b lifted the PaidHeadCountDeferred gate — paid + HeadCountByAge now passes " +
+            "compatibility through the full handler pipeline");
     }
 
     [Fact]

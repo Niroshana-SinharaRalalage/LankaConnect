@@ -1,6 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -204,25 +205,23 @@ public partial class Event
                 $"Event does not have enough capacity for {headCount.Total} attendees. " +
                 $"Available: {Capacity - ReservedCapacity}.");
 
-        // 7. Phase 7E.3a scope: free events ONLY. Paid path lands in 7E.3b alongside Stripe
-        //    amount-calc tests for HeadCountByAge / TierCounts.
-        if (!IsFree())
-            return Result.Failure(
-                "Paid B-mode RSVP arrives in Phase 7E.3b (Stripe amount-calc tests required). " +
-                "For now, switch the event to free attendance to use head-count registration.");
+        // 7. Pricing — Phase 7E.3b paid B-mode lands here. Free events get Money.Zero(USD);
+        //    paid events get Total × ticketPrice (single) or
+        //    Adults × adultPrice + Children × childPrice (dual price, B2/B4 only). TierCounts
+        //    axis is still gated until Phase 7E.3c (PaidHeadCountTiersDeferred).
+        var priceResult = CalculateHeadCountPrice(headCount);
+        if (priceResult.IsFailure)
+            return Result.Failure(priceResult.Errors);
+        var totalPrice = priceResult.Value;
 
-        // 8. Build the registration via the dedicated factory.
-        // Currency on a free registration's TotalPrice is informational only; default to USD.
-        var freePriceResult = Money.Create(0m, Currency.USD);
-        if (freePriceResult.IsFailure)
-            return Result.Failure(freePriceResult.Errors); // unreachable but type-safe.
+        var isPaidEvent = !IsFree();
 
         var registrationResult = Registration.CreateWithHeadCount(
             Id, userId, RegistrationMode,
             leadAttendeeName.Trim(),
             headCount, contact,
-            freePriceResult.Value,
-            isPaidEvent: false);
+            totalPrice,
+            isPaidEvent: isPaidEvent);
 
         if (registrationResult.IsFailure)
             return Result.Failure(registrationResult.Errors);
@@ -230,19 +229,140 @@ public partial class Event
         _registrations.Add(registrationResult.Value);
         MarkAsUpdated();
 
-        // 9. Raise the same domain events as RegisterWithAttendees so downstream email / WhatsApp
-        //    handlers continue to fire identically — they read RegistrationMode + HeadCount from
-        //    the loaded registration when rendering content (lands in 7E.4 templates).
-        var attendeeCount = headCount.Total;
-        if (userId.HasValue)
+        // 8. Raise domain events. For free events the registration goes straight to Confirmed
+        //    and we raise the confirmation event here. For paid events the row is Preliminary
+        //    until the Stripe webhook fires; CompletePayment() raises the confirmation event
+        //    at that point. Mirrors Mode A's behaviour exactly (see RegisterWithAttendees).
+        if (registrationResult.Value.Status == RegistrationStatus.Confirmed)
         {
-            RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeCount, DateTime.UtcNow));
-        }
-        else
-        {
-            RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeCount, DateTime.UtcNow));
+            var attendeeCount = headCount.Total;
+            if (userId.HasValue)
+            {
+                RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId.Value, attendeeCount, DateTime.UtcNow));
+            }
+            else
+            {
+                RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, contact.Email, attendeeCount, DateTime.UtcNow));
+            }
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7E.3b: pricing helper for head-count (Mode B) registrations. Mirrors Mode A's
+    /// <see cref="CalculatePriceForAttendees"/> shape but operates on the head-count breakdown
+    /// instead of a per-attendee list.
+    ///
+    /// Pricing logic (matches plan §3 + architect review iteration 1):
+    /// <list type="bullet">
+    /// <item>Free event → <c>Money.Zero(USD)</c> (currency informational).</item>
+    /// <item>Tiered ticketing → REJECT (<see cref="RegistrationModeErrorCodes.PaidHeadCountTiersDeferred"/>) until 7E.3c.</item>
+    /// <item>TierCounts axis present → REJECT (same gate).</item>
+    /// <item>GroupTiered pricing → <c>Pricing.CalculateGroupPrice(headCount.Total)</c> (per-architect: parity with Mode A).</item>
+    /// <item>AgeDual + B2 (HeadCountByAge) → adults × adultPrice + children × childPrice.</item>
+    /// <item>AgeDual + B4 (HeadCountByAgeAndGender) → (AM+AF) × adultPrice + (CM+CF) × childPrice.</item>
+    /// <item>AgeDual + B1/B3 → REJECT defensively (validator already excludes; defence-in-depth).</item>
+    /// <item>Standard / single price + any B → Total × ticketPrice.</item>
+    /// </list>
+    /// </summary>
+    private Result<Money> CalculateHeadCountPrice(HeadCountBreakdown headCount)
+    {
+        if (headCount == null)
+            return Result<Money>.Failure("Head-count breakdown is required");
+
+        // Free → zero. Currency is informational on a $0 registration.
+        if (IsFree())
+        {
+            var zero = Money.Create(0m, Currency.USD);
+            return zero.IsSuccess ? Result<Money>.Success(zero.Value) : Result<Money>.Failure(zero.Errors);
+        }
+
+        // Defensive: paid event must have pricing configured.
+        if (!IsFreeEvent && Pricing == null && TicketPrice == null)
+            return Result<Money>.Failure(
+                "Paid event pricing is not configured. Use SetPricing(), SetDualPricing(), or SetGroupPricing().");
+
+        // PHASE_7E_3C: remove these gates when paid B-mode + TierCounts ships.
+        // See docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md (slice 7E.3c).
+        if (TicketingMode == Enums.TicketingMode.Tiered)
+            return Result<Money>.Failure(RegistrationModeErrorCodes.PaidHeadCountTiersDeferred);
+        if (headCount.TierCounts != null && headCount.TierCounts.Count > 0)
+            return Result<Money>.Failure(RegistrationModeErrorCodes.PaidHeadCountTiersDeferred);
+
+        // Group-tiered pricing — single tier price covers everyone in the basket; calculator
+        // chooses the correct tier from Total.
+        if (Pricing != null && Pricing.Type == Enums.PricingType.GroupTiered)
+        {
+            var groupResult = Pricing.CalculateGroupPrice(headCount.Total);
+            return groupResult.IsSuccess
+                ? Result<Money>.Success(groupResult.Value)
+                : Result<Money>.Failure(groupResult.Error);
+        }
+
+        // Dual pricing (AgeDual): adults / children counts must be derivable from this mode.
+        if (Pricing != null && Pricing.Type == Enums.PricingType.AgeDual)
+        {
+            int adults;
+            int children;
+            switch (RegistrationMode)
+            {
+                case RegistrationMode.HeadCountByAge:
+                    var demoB2 = headCount.Demographics;
+                    if (demoB2 == null)
+                        return Result<Money>.Failure(
+                            "HeadCountByAge requires a demographic breakdown with adults/children counts.");
+                    adults = demoB2.Adults ?? 0;
+                    children = demoB2.Children ?? 0;
+                    break;
+
+                case RegistrationMode.HeadCountByAgeAndGender:
+                    var demoB4 = headCount.Demographics;
+                    if (demoB4 == null)
+                        return Result<Money>.Failure(
+                            "HeadCountByAgeAndGender requires the 4-leaf demographic breakdown.");
+                    adults = (demoB4.AdultMales ?? 0) + (demoB4.AdultFemales ?? 0);
+                    children = (demoB4.ChildMales ?? 0) + (demoB4.ChildFemales ?? 0);
+                    break;
+
+                case RegistrationMode.HeadCountOnly:
+                case RegistrationMode.HeadCountByGender:
+                    // Defensive — validator excludes these combos. If reached, it's a bug.
+                    return Result<Money>.Failure(
+                        $"{RegistrationMode} cannot be used with dual pricing — adult/child counts are not " +
+                        "captured by this mode. The compatibility validator should have rejected this combination.");
+
+                default:
+                    return Result<Money>.Failure(
+                        $"Unsupported RegistrationMode for head-count pricing: {RegistrationMode}");
+            }
+
+            var adultMoney = Pricing.CalculateForCategory(Enums.AgeCategory.Adult);
+            var childMoney = Pricing.CalculateForCategory(Enums.AgeCategory.Child);
+
+            // Build the total: adults × adultPrice + children × childPrice.
+            var adultsTotalResult = adultMoney.Multiply(adults);
+            if (adultsTotalResult.IsFailure)
+                return Result<Money>.Failure(adultsTotalResult.Errors);
+
+            var childrenTotalResult = childMoney.Multiply(children);
+            if (childrenTotalResult.IsFailure)
+                return Result<Money>.Failure(childrenTotalResult.Errors);
+
+            var sumResult = adultsTotalResult.Value.Add(childrenTotalResult.Value);
+            return sumResult.IsSuccess
+                ? Result<Money>.Success(sumResult.Value)
+                : Result<Money>.Failure(sumResult.Errors);
+        }
+
+        // Standard / single price (Pricing.Type == Standard OR legacy TicketPrice fallback).
+        var unitPrice = Pricing?.AdultPrice ?? TicketPrice;
+        if (unitPrice == null)
+            return Result<Money>.Failure("Event pricing is not configured");
+
+        var multiplyResult = unitPrice.Multiply(headCount.Total);
+        return multiplyResult.IsSuccess
+            ? Result<Money>.Success(multiplyResult.Value)
+            : Result<Money>.Failure(multiplyResult.Errors);
     }
 }

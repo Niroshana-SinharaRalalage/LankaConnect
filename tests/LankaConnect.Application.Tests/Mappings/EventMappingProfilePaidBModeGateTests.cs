@@ -59,17 +59,16 @@ public class EventMappingProfilePaidBModeGateTests
     }
 
     [Fact]
-    public void Mapper_Returns_Deferred_ForPaidEvent_InHeadCountByAge()
+    public void Mapper_Returns_Active_ForPaidSinglePriceEvent_InHeadCountByAge()
     {
+        // Phase 7E.3b shipped paid B-mode. Paid + HeadCountByAge (single-price) is now "active".
         var @event = CreatePaidEvent();
-        // Configure mode (the legacy state we're emulating — the gate now blocks NEW flips,
-        // but existing rows like the one this test simulates need the "deferred" status).
         @event.SetRegistrationMode(RegistrationMode.HeadCountByAge).IsSuccess.Should().BeTrue();
 
         var dto = _mapper.Map<EventDto>(@event);
 
-        dto.RegistrationModeStatus.Should().Be("deferred",
-            "paid + HeadCountByAge fails compatibility today (paid B-mode is deferred to 7E.3b)");
+        dto.RegistrationModeStatus.Should().Be("active",
+            "Phase 7E.3b shipped paid B-mode — paid + HeadCountByAge (single-price) passes compatibility");
     }
 
     [Theory]
@@ -77,14 +76,15 @@ public class EventMappingProfilePaidBModeGateTests
     [InlineData(RegistrationMode.HeadCountByAge)]
     [InlineData(RegistrationMode.HeadCountByGender)]
     [InlineData(RegistrationMode.HeadCountByAgeAndGender)]
-    public void Mapper_Returns_Deferred_ForPaidEvent_InAnyBMode(RegistrationMode bMode)
+    public void Mapper_Returns_Active_ForPaidSinglePriceEvent_InAnyBMode(RegistrationMode bMode)
     {
+        // Phase 7E.3b: all four B-modes now compatible with paid single-price events.
         var @event = CreatePaidEvent(25m);
         @event.SetRegistrationMode(bMode).IsSuccess.Should().BeTrue();
 
         var dto = _mapper.Map<EventDto>(@event);
 
-        dto.RegistrationModeStatus.Should().Be("deferred", $"paid + {bMode} is gated until 7E.3b");
+        dto.RegistrationModeStatus.Should().Be("active", $"paid + {bMode} (single-price) ships in 7E.3b");
     }
 
     [Theory]

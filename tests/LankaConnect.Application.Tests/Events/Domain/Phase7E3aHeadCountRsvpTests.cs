@@ -131,9 +131,11 @@ public class Phase7E3aHeadCountRsvpTests
     }
 
     [Fact]
-    public void RegisterWithHeadCount_PaidEvent_FailsWith7E3bDeferralMessage()
+    public void RegisterWithHeadCount_PaidEvent_NowSucceeds_AfterPhase7E3b()
     {
-        // 7E.3a scope: free events ONLY. Paid B-mode lands in 7E.3b alongside Stripe amount-calc tests.
+        // Phase 7E.3b shipped paid B-mode + Stripe checkout. Paid B1 RSVP now succeeds and
+        // creates a Preliminary registration with TotalPrice = Total × ticketPrice. The earlier
+        // 7E.3a-era failure-message assertion is obsolete after the gate was lifted.
         var ev = Event.Create(
             EventTitle.Create("Paid B Event").Value,
             EventDescription.Create("Paid B").Value,
@@ -146,8 +148,11 @@ public class Phase7E3aHeadCountRsvpTests
         var hc = HeadCountBreakdown.ForTotalOnly(2).Value;
         var result = ev.RegisterWithHeadCount(Guid.NewGuid(), "Lead", hc, Contact());
 
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Contains("7E.3b"));
+        result.IsSuccess.Should().BeTrue($"errors: {string.Join("; ", result.Errors ?? Enumerable.Empty<string>())}");
+        var registration = ev.Registrations.Single();
+        registration.TotalPrice!.Amount.Should().Be(30m, "2 × $15");
+        registration.Status.Should().Be(RegistrationStatus.Preliminary,
+            "paid event registration awaits Stripe webhook before Confirmed");
     }
 
     [Fact]

@@ -394,6 +394,18 @@ export interface EventDto {
    */
   registrationMode?: RegistrationMode;
 
+  /**
+   * Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the UI whether the
+   * configured `registrationMode` is currently implementable.
+   * - `'active'` — configured mode passes the compatibility validator AND is shipped; render the proper RSVP form.
+   * - `'deferred'` — configured mode is fine per the target-state plan but the implementation
+   *   slice hasn't shipped yet (today: paid + B-mode, awaiting Phase 7E.3b). Render a read-only
+   *   "coming soon — contact organiser" panel instead of a fillable form.
+   * Optional + defaults to `'deferred'` (fail-safe) so any pre-fix cached payload doesn't
+   * accidentally render a form for a known-broken combination.
+   */
+  registrationModeStatus?: 'active' | 'deferred';
+
   status: EventStatus;
   category: EventCategory;
   createdAt: string;

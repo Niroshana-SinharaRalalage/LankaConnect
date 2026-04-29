@@ -4,6 +4,7 @@ using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
 using DonationConfiguration = LankaConnect.Domain.Events.ValueObjects.DonationConfiguration;
 
@@ -33,6 +34,13 @@ public class EventMappingProfile : Profile
             // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
             .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
+            // Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the frontend
+            // whether the configured RegistrationMode is currently implementable. "deferred" is
+            // the fail-safe default in EventDto; the mapper explicitly sets "active" when the
+            // compatibility validator passes for this event's shape. Frontend's "coming soon"
+            // panel hangs off "deferred". When 7E.3b ships paid B-mode + Stripe, the validator
+            // gate is removed and this mapping starts emitting "active" for paid + B again.
+            .ForMember(dest => dest.RegistrationModeStatus, opt => opt.MapFrom(src => ComputeRegistrationModeStatus(src)))
             // Location mapping (nullable)
             .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Street : null))
             .ForMember(dest => dest.City, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.City : null))
@@ -166,5 +174,46 @@ public class EventMappingProfile : Profile
 
         // Phase 6A.8: EventTemplate -> EventTemplateDto mapping
         CreateMap<EventTemplate, EventTemplateDto>();
+    }
+
+    /// <summary>
+    /// Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): computes
+    /// <see cref="EventDto.RegistrationModeStatus"/> from the source <see cref="Event"/>.
+    ///
+    /// Returns <c>"active"</c> if <see cref="RegistrationModeCompatibility.Check"/> passes for
+    /// the event's current mode + shape; <c>"deferred"</c> otherwise. The only failure path
+    /// today is the paid-B-mode gate (returns <see cref="RegistrationModeErrorCodes.PaidHeadCountDeferred"/>),
+    /// but the contract is "is the configured mode currently compatible" — any future
+    /// implementation gate plugs into the same path.
+    ///
+    /// Context fields populated from the event: <c>IsFreeAttendance</c>, <c>HasDualPricing</c>,
+    /// <c>HasGroupTiers</c>, <c>HasTicketTiers</c>. The plan-7F axes (named seating, identity-bound
+    /// add-ons, matrix pricing, names-required-on-ticket) are not yet representable on the
+    /// <see cref="Event"/> aggregate and default to <c>false</c>; this matches the create / update
+    /// command handlers' context-building behaviour today.
+    /// </summary>
+    private static string ComputeRegistrationModeStatus(Event src)
+    {
+        try
+        {
+            var ctx = new RegistrationModeContext
+            {
+                IsFreeAttendance = src.IsFree(),
+                HasDualPricing = src.Pricing != null && src.Pricing.HasChildPricing,
+                HasGroupTiers = src.Pricing != null && src.Pricing.HasGroupTiers,
+                HasTicketTiers = src.HasTicketTiers,
+            };
+
+            var result = RegistrationModeCompatibility.Check(src.RegistrationMode, ctx);
+            return result.IsSuccess ? "active" : "deferred";
+        }
+        catch
+        {
+            // Fail-safe: any unexpected exception during status computation must NOT crash the
+            // mapper. Return "deferred" so the frontend renders the "coming soon" panel rather
+            // than letting an event detail GET fail or render a broken form. The exception is
+            // already logged at the AutoMapper layer when it bubbles.
+            return "deferred";
+        }
     }
 }

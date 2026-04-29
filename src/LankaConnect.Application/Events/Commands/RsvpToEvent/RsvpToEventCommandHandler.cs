@@ -26,6 +26,8 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
     private readonly IUnitOfWork _unitOfWork;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRevenueCalculatorService _revenueCalculatorService;
+    // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared between auth + anon handlers.
+    private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
     private readonly ILogger<RsvpToEventCommandHandler> _logger;
 
     public RsvpToEventCommandHandler(
@@ -38,6 +40,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         IUnitOfWork unitOfWork,
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
+        LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
         ILogger<RsvpToEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -49,6 +52,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         _unitOfWork = unitOfWork;
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
+        _checkoutService = checkoutService;
         _logger = logger;
     }
 
@@ -1152,9 +1156,27 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             return Result<string?>.Failure(registerResult.Errors);
 
         _eventRepository.Update(@event);
-        await _unitOfWork.CommitAsync(cancellationToken);
 
-        // Free path: no Stripe checkout URL.
+        // Phase 7E.3b: paid B-mode → create Stripe Checkout session via the shared service.
+        // For free events the registration is already Confirmed; just commit and return null.
+        var registration = @event.Registrations.Last();
+        if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
+        {
+            if (string.IsNullOrWhiteSpace(request.SuccessUrl) || string.IsNullOrWhiteSpace(request.CancelUrl))
+                return Result<string?>.Failure("Success and Cancel URLs are required for paid events");
+
+            var checkoutResult = await _checkoutService.CreateSessionForRegistrationAsync(
+                @event, registration,
+                request.SuccessUrl!, request.CancelUrl!,
+                cancellationToken);
+            if (checkoutResult.IsFailure)
+                return Result<string?>.Failure(checkoutResult.Error);
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+            return Result<string?>.Success(checkoutResult.Value);
+        }
+
+        await _unitOfWork.CommitAsync(cancellationToken);
         return Result<string?>.Success(null);
     }
 }

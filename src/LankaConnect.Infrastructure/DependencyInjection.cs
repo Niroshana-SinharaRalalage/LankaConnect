@@ -471,6 +471,12 @@ public static class DependencyInjection
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
 
+        // Phase 7E.3b: Mode-B paid RSVP checkout-session creator (architect edit #2 — single
+        // test surface for the money path, used by both auth + anonymous head-count handlers).
+        services.AddScoped<
+            LankaConnect.Application.Events.Services.IRegistrationCheckoutService,
+            LankaConnect.Application.Events.Services.RegistrationCheckoutService>();
+
         // Phase 0: Register webhook handler services (extracted from PaymentsController)
         services.AddScoped<IRegistrationWebhookHandler, RegistrationWebhookHandler>();
         services.AddScoped<IAdditionWebhookHandler, AdditionWebhookHandler>();

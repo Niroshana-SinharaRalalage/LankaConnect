@@ -6,7 +6,31 @@
 
 ---
 
-## 🎯 2026-04-29 (latest) — Phase 7E.3b SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP + Stripe Checkout
+## 🎯 2026-04-29 (latest) — Slice 9 Seating Fix COMPLETE — All 4 slices SHIPPED + STAGING-VERIFIED end-to-end
+
+**Bug context**: user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" symptoms (with screenshots). RCA via 3 architect review rounds identified 4 cooperating defects (RC-1 through RC-4) — see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md) for the full design.
+
+**Fix shipped — 4 slices, ship order 9.3 → 9.1 → 9.2 → 9.4**:
+
+- **Slice 9.3** (commits `ce1c66de` / `a560eee6` / `6f84abb6`): repository read fix (RC-2). `IVenueLayoutRepository.GetByEventIdAsync` renamed to `GetAssignedLayoutForEventAsync` and rewritten to JOIN via `events.venue_layout_id` (canonical assignment), not `venue_layouts.event_id` (which returned orphans). Hard-delete migration `Slice93HardDeleteOrphanLayouts` with audit snapshot + cascade-clean for dangling `seat_holds` (no FK constraint). Two iterations on the migration (Postgres `Id` quoting + abort-vs-cascade-clean revision) before clean deploy.
+
+- **Slice 9.1** (commit `f182a879`): domain publish-readiness gate (RC-1). `VenueLayout.ValidateForEvent` gains optional `bool requireTierMapping = true` parameter — apply-preset/apply-template paths pass `false`, publish path passes `true`. New `Event.CheckLayoutPublishReadiness(VenueLayout? layout)` sibling method on `Event.Seating.cs` (architect Option D — `Publish()` signature unchanged, preserves all 32 existing publish tests untouched). `PublishEventCommandHandler` injects `IVenueLayoutRepository`, fetches assigned layout when `event.VenueLayoutId.HasValue`, calls readiness check, fails-fast on unmapped zones with specific error message.
+
+- **Slice 9.2** (commit `94080409`): atomic apply commands (RC-1+RC-4). New `ApplyPresetToEventCommand` + `ApplyTemplateToEventCommand` collapse from-preset+assign and from-template+assign two-steps into single Unit-of-Work transactions. Build layout → structural-only validation (`requireTierMapping: false`) → persist via `AddAsync` → `event.EnableAssignedSeating(layout.Id)` → `CommitAsync`. No orphan-on-partial-failure. New endpoints `POST /api/venue-layouts/apply-preset` and `POST /api/venue-layouts/apply-template`.
+
+- **Slice 9.4** (commit `475163a1`): frontend cutover (RC-1+RC-4). `SeatingLayoutPicker.handlePresetSelected` and `handleTemplateSelected` rewritten to use new `useApplyPresetToEvent` / `useApplyTemplateToEvent` hooks (single round-trip, no orphan accumulation). New TS types + repo methods. "Change layout" button now gated by `ConfirmDialog` (danger variant, reuses existing primitive used in save-as-template + warn-before-close patterns) — wording: "Replace current seating layout?" / "Replace layout" / "Keep current layout". Prevents accidental destruction of customised layouts (architect Q3).
+
+**Verification (staging, end-to-end)**: clean event `e4792b64-…` → `POST /apply-preset {presetId:"theater-classic", eventId:…}` → 200 with full layout DTO (capacity 200) + event auto-flipped to `seatingMode: AssignedSeating` + `venueLayoutId` set in same transaction. `GET /by-event/{id}` returned the assigned layout via the Slice 9.3 read fix. `POST /publish` against the unmapped layout → 400 `"Zone 'Main Floor' must be mapped to a ticket tier"` (Slice 9.1 publish gate firing correctly). Frontend deploy run `25139142184` `conclusion=success`.
+
+**Test posture**: 2419 Application tests pass (no regressions). 8 new domain tests for ValidateForEvent flag + CheckLayoutPublishReadiness. tsc --noEmit clean. 2 pre-existing `DonationConfigurationTests` failures unrelated (since `e3112bbf`).
+
+**Deferred to follow-up slices** (architect-approved):
+- **9.4b**: `BatchUpdate.deletedZoneIds` + 409 ambiguity guard for destructive-wipe protection (architect Q4 Option 3). The current PUT-replaces-all semantics persist; UX guidance + the new flow's atomicity are the near-term mitigation.
+- **9.4c**: remove deprecated hooks (`useCreateLayoutFromPreset` / `useCreateLayoutFromTemplate` / `useAssignLayoutToEvent`) + repo methods + backend endpoints (`from-preset` / `from-template` / `assign`) + 3 command handlers (architect Q5). Pending verification that no other callers regressed.
+
+---
+
+## 🎯 2026-04-29 (earlier) — Phase 7E.3b SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP + Stripe Checkout
 
 **Bug context**: Phase 7E.3a shipped FREE B-mode RSVP only; the paid path was deferred per architect risk #5 (Stripe amount-calc tests required as a pre-merge gate). The 2026-04-29 paid-B-mode-gate fix added a `PaidHeadCountDeferred` constant + validator gate to make the deferred state safe; this slice ships the actual implementation and lifts the gate.
 

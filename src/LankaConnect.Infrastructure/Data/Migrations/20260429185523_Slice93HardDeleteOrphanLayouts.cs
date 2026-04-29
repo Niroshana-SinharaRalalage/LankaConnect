@@ -87,7 +87,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     FROM events.venue_layouts vl
                     WHERE vl.event_id IS NOT NULL
                       AND NOT EXISTS (
-                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.id
+                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
                       );
 
                     RAISE NOTICE '[Slice93] Found % orphan venue_layouts row(s) to delete', v_orphan_count;
@@ -102,27 +102,27 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     SELECT COUNT(*) INTO v_hold_count
                     FROM events.seat_holds sh
                     WHERE sh.seat_id IN (
-                        SELECT s.id
+                        SELECT s.""Id""
                         FROM events.seats s
                         WHERE s.venue_zone_id IN (
-                            SELECT z.id
+                            SELECT z.""Id""
                             FROM events.venue_zones z
                             WHERE z.venue_layout_id IN (
-                                SELECT vl.id FROM events.venue_layouts vl
+                                SELECT vl.""Id"" FROM events.venue_layouts vl
                                 WHERE vl.event_id IS NOT NULL
                                   AND NOT EXISTS (
-                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.id
+                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
                                   )
                             )
                         )
                         OR s.venue_table_id IN (
-                            SELECT t.id
+                            SELECT t.""Id""
                             FROM events.venue_tables t
                             WHERE t.venue_layout_id IN (
-                                SELECT vl.id FROM events.venue_layouts vl
+                                SELECT vl.""Id"" FROM events.venue_layouts vl
                                 WHERE vl.event_id IS NOT NULL
                                   AND NOT EXISTS (
-                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.id
+                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
                                   )
                             )
                         )
@@ -138,26 +138,26 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     INSERT INTO events.deleted_layouts_audit
                         (layout_id, layout_name, event_id, original_created_at, zone_count, seat_count, deleted_by_migration)
                     SELECT
-                        vl.id,
+                        vl.""Id"",
                         vl.name,
                         vl.event_id,
                         vl.created_at,
-                        (SELECT COUNT(*) FROM events.venue_zones z WHERE z.venue_layout_id = vl.id),
+                        (SELECT COUNT(*) FROM events.venue_zones z WHERE z.venue_layout_id = vl.""Id""),
                         (
                             (SELECT COUNT(*)
                              FROM events.seats s
-                             JOIN events.venue_zones z ON z.id = s.venue_zone_id
-                             WHERE z.venue_layout_id = vl.id)
+                             JOIN events.venue_zones z ON z.""Id"" = s.venue_zone_id
+                             WHERE z.venue_layout_id = vl.""Id"")
                           + (SELECT COUNT(*)
                              FROM events.seats s
-                             JOIN events.venue_tables t ON t.id = s.venue_table_id
-                             WHERE t.venue_layout_id = vl.id)
+                             JOIN events.venue_tables t ON t.""Id"" = s.venue_table_id
+                             WHERE t.venue_layout_id = vl.""Id"")
                         ),
                         'Slice93HardDeleteOrphanLayouts'
                     FROM events.venue_layouts vl
                     WHERE vl.event_id IS NOT NULL
                       AND NOT EXISTS (
-                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.id
+                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
                       );
 
                     GET DIAGNOSTICS v_audit_count = ROW_COUNT;
@@ -173,7 +173,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     DELETE FROM events.venue_layouts vl
                     WHERE vl.event_id IS NOT NULL
                       AND NOT EXISTS (
-                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.id
+                          SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
                       );
 
                     GET DIAGNOSTICS v_deleted_count = ROW_COUNT;

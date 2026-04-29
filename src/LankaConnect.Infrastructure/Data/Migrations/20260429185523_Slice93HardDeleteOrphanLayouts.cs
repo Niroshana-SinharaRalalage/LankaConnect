@@ -30,8 +30,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
     /// Safety guards (per MEMORY 6A.122 silent-failure rule):
     /// <list type="bullet">
     /// <item>Pre-flight: count orphans, RAISE NOTICE.</item>
-    /// <item>Pre-flight: ensure no live <c>seat_holds</c> reference orphan-layout
-    /// seats — RAISE EXCEPTION if any (cascade safety; admin must investigate).</item>
+    /// <item>Cascade-clean dangling <c>seat_holds</c> referencing orphan-layout
+    /// seats. <c>seat_holds.seat_id</c> has no FK constraint (deliberate, see
+    /// <c>SeatHoldConfiguration.cs</c>) so manual cleanup is required. These
+    /// holds are unreachable through live workflows (the new
+    /// <c>GetAssignedLayoutForEventAsync</c> returns null for unassigned
+    /// layouts), so they are safe to delete.</item>
     /// <item>Audit snapshot into a generic <c>events.deleted_layouts_audit</c> table
     /// before DELETE. Forensic trail; not enough to reconstruct (zones/seats are
     /// not snapshotted) but enough to identify what was lost.</item>
@@ -97,42 +101,54 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         RETURN;
                     END IF;
 
-                    -- 3. Pre-flight: ensure no live seat_holds reference orphan-layout seats.
-                    --    If any exist, abort — cascade would silently destroy active holds.
-                    SELECT COUNT(*) INTO v_hold_count
-                    FROM events.seat_holds sh
-                    WHERE sh.seat_id IN (
-                        SELECT s.""Id""
+                    -- 3. Cascade-clean dangling seat_holds first.
+                    --    Background: events.seat_holds has no FK constraint to events.seats
+                    --    (SeatHoldConfiguration.cs deliberately omits HasOne to avoid
+                    --    cascade complexity in the registration write path). So when an
+                    --    orphan layout's zones+seats are deleted, seat_holds rows pointing
+                    --    at those seats become dangling — they won't auto-cascade.
+                    --
+                    --    A seat_hold pointing at an orphan-layout seat is unreachable: no
+                    --    live workflow can produce one because GetAssignedLayoutForEventAsync
+                    --    (Slice 9.3) returns null for unassigned layouts. So these holds
+                    --    are stale residue from prior buggy flows and must be deleted to
+                    --    keep the seat_holds table clean.
+                    --
+                    --    We delete them BEFORE the orphan-layout DELETE so the migration
+                    --    can verify the cleanup count, log it, and roll back atomically
+                    --    if anything is off.
+
+                    WITH orphan_layouts AS (
+                        SELECT vl.""Id"" AS layout_id
+                        FROM events.venue_layouts vl
+                        WHERE vl.event_id IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
+                          )
+                    ),
+                    orphan_seats AS (
+                        SELECT s.""Id"" AS seat_id
                         FROM events.seats s
                         WHERE s.venue_zone_id IN (
-                            SELECT z.""Id""
-                            FROM events.venue_zones z
-                            WHERE z.venue_layout_id IN (
-                                SELECT vl.""Id"" FROM events.venue_layouts vl
-                                WHERE vl.event_id IS NOT NULL
-                                  AND NOT EXISTS (
-                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
-                                  )
-                            )
+                            SELECT z.""Id"" FROM events.venue_zones z
+                            WHERE z.venue_layout_id IN (SELECT layout_id FROM orphan_layouts)
                         )
                         OR s.venue_table_id IN (
-                            SELECT t.""Id""
-                            FROM events.venue_tables t
-                            WHERE t.venue_layout_id IN (
-                                SELECT vl.""Id"" FROM events.venue_layouts vl
-                                WHERE vl.event_id IS NOT NULL
-                                  AND NOT EXISTS (
-                                      SELECT 1 FROM events.events e WHERE e.venue_layout_id = vl.""Id""
-                                  )
-                            )
+                            SELECT t.""Id"" FROM events.venue_tables t
+                            WHERE t.venue_layout_id IN (SELECT layout_id FROM orphan_layouts)
                         )
-                    );
+                    )
+                    DELETE FROM events.seat_holds sh
+                    USING orphan_seats os
+                    WHERE sh.seat_id = os.seat_id;
+
+                    GET DIAGNOSTICS v_hold_count = ROW_COUNT;
 
                     IF v_hold_count > 0 THEN
-                        RAISE EXCEPTION '[Slice93] % live seat_hold(s) reference orphan-layout seats. Aborting cascade-unsafe delete. Investigate before re-running.', v_hold_count;
+                        RAISE NOTICE '[Slice93] Cascade-cleaned % dangling seat_hold(s) referencing orphan-layout seats', v_hold_count;
+                    ELSE
+                        RAISE NOTICE '[Slice93] No dangling seat_holds to clean';
                     END IF;
-
-                    RAISE NOTICE '[Slice93] Pre-flight passed: 0 live seat_holds reference orphan-layout seats';
 
                     -- 4. Audit snapshot BEFORE delete.
                     INSERT INTO events.deleted_layouts_audit

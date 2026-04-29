@@ -138,6 +138,18 @@ public static class RegistrationModeCompatibility
     {
         // Constraints common to all B modes (B1-B4):
 
+        // PHASE_7E_3B: remove this gate when paid B-mode + Stripe ships.
+        // See docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md (paid B-mode slice 7E.3b)
+        // and docs/MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md for the full RCA + recovery plan.
+        // The validator was written to the full plan §2 but slice 7E.3a only implements
+        // FREE B-mode RSVP. Until 7E.3b lands the Stripe checkout path, paid + B is rejected
+        // here so the mode picker, update handler, and EventDto.registrationModeStatus all
+        // honour the implementation gate consistently. Frontend pattern-matches on the
+        // RegistrationModeErrorCodes.PaidHeadCountDeferred constant (NOT this English copy)
+        // to render its "coming soon" panel.
+        if (!ctx.IsFreeAttendance)
+            return Result.Failure(RegistrationModeErrorCodes.PaidHeadCountDeferred);
+
         if (ctx.RequiresAttendeeNameOnTicket)
             return Result.Failure(
                 $"{mode} cannot be used when each ticket must carry a unique attendee name. " +

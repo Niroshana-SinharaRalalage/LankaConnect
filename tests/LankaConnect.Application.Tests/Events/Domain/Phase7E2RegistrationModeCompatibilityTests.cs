@@ -63,19 +63,17 @@ public class Phase7E2RegistrationModeCompatibilityTests
             new[] { RegistrationMode.DetailedAttendees },
         };
 
-        // 5. Paid attendance, single flat price, names not required → A or any B (NOT C).
+        // 5. Paid attendance, single flat price, names not required → A only TODAY.
+        // Phase 7E paid-B-mode gate review (2026-04-28): the 14-row plan §2 says A + all B
+        // (no C). However, paid B-mode RSVP (Stripe checkout) is deferred to slice 7E.3b.
+        // Until that ships, the validator returns PaidHeadCountDeferred for paid + B and
+        // only A is allowed. The test row is updated to reflect TODAY'S behaviour, not the
+        // target-state plan; when 7E.3b ships the row reverts to "A + all B (no C)".
         yield return new object[]
         {
-            "Paid single price, names not required — A + all B (no C)",
+            "Paid single price, names not required — A only (paid B-mode gated until 7E.3b)",
             new RegistrationModeContext { IsFreeAttendance = false },
-            new[]
-            {
-                RegistrationMode.DetailedAttendees,
-                RegistrationMode.HeadCountOnly,
-                RegistrationMode.HeadCountByAge,
-                RegistrationMode.HeadCountByGender,
-                RegistrationMode.HeadCountByAgeAndGender,
-            },
+            new[] { RegistrationMode.DetailedAttendees },
         };
 
         // 6. Paid attendance, single flat price, names required → A only.
@@ -86,47 +84,30 @@ public class Phase7E2RegistrationModeCompatibilityTests
             new[] { RegistrationMode.DetailedAttendees },
         };
 
-        // 7. Paid dual pricing (Adult/Child) → A, B2, or B4.
+        // 7. Paid dual pricing (Adult/Child) → A only TODAY (was A, B2, B4 per plan §2).
+        // Same rationale as row 5: paid B-mode gated until 7E.3b. When 7E.3b ships, this
+        // row reverts to A + B2 + B4.
         yield return new object[]
         {
-            "Paid dual pricing → A, B2, or B4",
+            "Paid dual pricing → A only (paid B-mode gated until 7E.3b)",
             new RegistrationModeContext { IsFreeAttendance = false, HasDualPricing = true },
-            new[]
-            {
-                RegistrationMode.DetailedAttendees,
-                RegistrationMode.HeadCountByAge,
-                RegistrationMode.HeadCountByAgeAndGender,
-            },
+            new[] { RegistrationMode.DetailedAttendees },
         };
 
-        // 8. Paid + group-tier discount (count-based) → A or any B.
+        // 8. Paid + group-tier discount (count-based) → A only TODAY (was A + all B per plan).
         yield return new object[]
         {
-            "Paid + group-tier discount — A + all B (no C)",
+            "Paid + group-tier discount — A only (paid B-mode gated until 7E.3b)",
             new RegistrationModeContext { IsFreeAttendance = false, HasGroupTiers = true },
-            new[]
-            {
-                RegistrationMode.DetailedAttendees,
-                RegistrationMode.HeadCountOnly,
-                RegistrationMode.HeadCountByAge,
-                RegistrationMode.HeadCountByGender,
-                RegistrationMode.HeadCountByAgeAndGender,
-            },
+            new[] { RegistrationMode.DetailedAttendees },
         };
 
-        // 9. Paid + ticket tiers (mixed-tier flat prices via TierCounts axis) → A or any B.
+        // 9. Paid + ticket tiers (mixed-tier flat prices via TierCounts axis) → A only TODAY.
         yield return new object[]
         {
-            "Paid + ticket tiers (mixed flat prices) — A + all B (no C)",
+            "Paid + ticket tiers (mixed flat prices) — A only (paid B-mode gated until 7E.3b)",
             new RegistrationModeContext { IsFreeAttendance = false, HasTicketTiers = true },
-            new[]
-            {
-                RegistrationMode.DetailedAttendees,
-                RegistrationMode.HeadCountOnly,
-                RegistrationMode.HeadCountByAge,
-                RegistrationMode.HeadCountByGender,
-                RegistrationMode.HeadCountByAgeAndGender,
-            },
+            new[] { RegistrationMode.DetailedAttendees },
         };
 
         // 10. Paid + tier × age matrix pricing → A only.
@@ -238,4 +219,66 @@ public class Phase7E2RegistrationModeCompatibilityTests
         var allowed = RegistrationModeCompatibility.AllowedModes(anyShape);
         allowed.Should().Contain(RegistrationMode.DetailedAttendees);
     }
+
+    #region Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28)
+
+    /// <summary>
+    /// Paid + any B-mode must fail with the stable <see cref="RegistrationModeErrorCodes.PaidHeadCountDeferred"/>
+    /// constant. The frontend's "coming soon" panel hangs off this constant — pattern-matching
+    /// on English copy in the failure message is forbidden by architect review.
+    /// </summary>
+    [Theory]
+    [InlineData(RegistrationMode.HeadCountOnly)]
+    [InlineData(RegistrationMode.HeadCountByAge)]
+    [InlineData(RegistrationMode.HeadCountByGender)]
+    [InlineData(RegistrationMode.HeadCountByAgeAndGender)]
+    public void Check_Fails_WithPaidHeadCountDeferred_ForPaidEvents(RegistrationMode bMode)
+    {
+        var paidContext = new RegistrationModeContext { IsFreeAttendance = false };
+
+        var result = RegistrationModeCompatibility.Check(bMode, paidContext);
+
+        result.IsFailure.Should().BeTrue($"paid + {bMode} is gated until Phase 7E.3b");
+        result.Errors.Should().Contain(
+            RegistrationModeErrorCodes.PaidHeadCountDeferred,
+            "frontend pattern-matches on the stable constant, not human copy");
+    }
+
+    /// <summary>
+    /// Free + any B-mode must continue to succeed. Regression guard for the gate — must not
+    /// over-fire on free events.
+    /// </summary>
+    [Theory]
+    [InlineData(RegistrationMode.HeadCountOnly)]
+    [InlineData(RegistrationMode.HeadCountByAge)]
+    [InlineData(RegistrationMode.HeadCountByGender)]
+    [InlineData(RegistrationMode.HeadCountByAgeAndGender)]
+    public void Check_Succeeds_ForFree_BModes_UnchangedByPaidGate(RegistrationMode bMode)
+    {
+        var freeContext = new RegistrationModeContext { IsFreeAttendance = true };
+
+        var result = RegistrationModeCompatibility.Check(bMode, freeContext);
+
+        result.IsSuccess.Should().BeTrue($"free + {bMode} must still work; the gate fires on paid only");
+    }
+
+    /// <summary>
+    /// AllowedModes for a paid event must NEVER include any B-mode. Mirror of the Check_Fails_…
+    /// theory above, exercised through the picker-driving query path.
+    /// </summary>
+    [Fact]
+    public void AllowedModes_ExcludesAllBModes_ForPaidEvents()
+    {
+        var paidContext = new RegistrationModeContext { IsFreeAttendance = false };
+
+        var allowed = RegistrationModeCompatibility.AllowedModes(paidContext);
+
+        allowed.Should().NotContain(RegistrationMode.HeadCountOnly);
+        allowed.Should().NotContain(RegistrationMode.HeadCountByAge);
+        allowed.Should().NotContain(RegistrationMode.HeadCountByGender);
+        allowed.Should().NotContain(RegistrationMode.HeadCountByAgeAndGender);
+        allowed.Should().Contain(RegistrationMode.DetailedAttendees);
+    }
+
+    #endregion
 }

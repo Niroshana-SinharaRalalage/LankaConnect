@@ -6,6 +6,34 @@
 
 ---
 
+## 🎯 2026-04-29 (latest) — Phase 7E.3b SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP + Stripe Checkout
+
+**Bug context**: Phase 7E.3a shipped FREE B-mode RSVP only; the paid path was deferred per architect risk #5 (Stripe amount-calc tests required as a pre-merge gate). The 2026-04-29 paid-B-mode-gate fix added a `PaidHeadCountDeferred` constant + validator gate to make the deferred state safe; this slice ships the actual implementation and lifts the gate.
+
+**Fix (architect-approved 5-slice plan in [docs/MASTER_TODO_PHASE_7E_3B_PAID_BMODE.md](MASTER_TODO_PHASE_7E_3B_PAID_BMODE.md))**:
+
+- **Slice 1+2 merged** (commit `5ae304fe`): new `Event.CalculateHeadCountPrice` private helper mirroring Mode A's `CalculatePriceForAttendees` shape — Free → zero, AgeDual + B2 → `adults × adultPrice + children × childPrice`, AgeDual + B4 → derive `(AM+AF) × adultPrice + (CM+CF) × childPrice`, GroupTiered → `CalculateGroupPrice(Total)`, Standard + B → `Total × ticketPrice`, B1/B3 + dual → defensive reject, TierCounts → reject `PaidHeadCountTiersDeferred` until 7E.3c. Removed "free events ONLY" guard from `RegisterWithHeadCount`. Lifted `PaidHeadCountDeferred` validator gate. New `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred` constant. Compatibility test rows 5/7/8/9 reverted to target-state plan §2 expectations. Mapper + handler-integration tests flipped: paid+B → "active". Merged into one commit per architect edit #1 — gate removal without the impl creates a real-money dead-end.
+
+- **Slice 3** (commit `9bcfd200`): new `IRegistrationCheckoutService` + impl. Single-line-item Stripe Checkout session creation with revenue-breakdown calc + session-ID storage. Auth + anonymous head-count handlers wired through it (architect edit #2: shared service prevents auth/anon fork). DI registered in Infrastructure. Mode A's complex bundled-extras flow currently stays inline as a **controlled deviation** from architect edit #2 — anti-fork concern was primarily about pricing math (already shared); Mode B has no bundled-extras path. 6 service unit tests including cents-exact assertion.
+
+- **Slice 4** (commit `0fa002a6`): removed `HeadCountRsvpForm` paid-event short-circuit. Page-level handler already redirects to `checkoutUrl` — no page changes needed. Added paid + Mode B RTL test for symmetry.
+
+- **Slice 5**: this entry + architect-required paid-B refund regression test (`Phase7E3bPaidBRefundTests.RefundHandler_PaidBRegistration_RefundsTotalPrice_Successfully`).
+
+**Architect-required cents-exact Stripe verification (DoD edit #5)**:
+- **B2 dual-price** ($15 adult / $7 child) event `18491dd1-…`: RSVP 2 adults + 1 child → `totalPriceAmount=37.0` = **3700 cents EXACT** (math: 2×$15 + 1×$7 = $37). Stripe session `cs_test_a1ZBtQDIXX…`.
+- **B1 single-price** ($25) event `95f28ef1-…`: RSVP total=4 → `totalPriceAmount=100.0` = **10000 cents EXACT** (math: 4×$25). Stripe session `cs_test_a1p2UgVuc1…`.
+- Both land in `Preliminary` + `paymentStatus=Pending` awaiting Stripe webhook (correct lifecycle).
+- `Allowed-modes` API for paid context now returns all 5 modes — gate-removal cascade verified.
+
+**Test totals**: 16 new domain pricing tests + 6 service tests + 1 refund test + 1 RTL test. Application suite **2418 passed / 6 skipped / 0 failed**. `tsc --noEmit` clean.
+
+**Deploys**: Slice 1+2 backend `25115122343` success; Slice 3+4 deployed via the composite seating-fix run `25131067970` success (intermediate runs blocked by an unrelated `Slice93` seating-stream migration that was fixed and re-deployed by the seating team).
+
+**Out of scope (lands in 7E.3c)**: TierCounts axis pricing — gated by `PaidHeadCountTiersDeferred`. Gate-removal breadcrumb in `MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` under 7E.3c.
+
+---
+
 ## 🎯 2026-04-29 (later) — Slice 9.3 SHIPPED + STAGING-VERIFIED (Seating Layout Fix, RC-2)
 
 **Bug context**: today's user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" was traced to 4 cooperating defects (RC-1 through RC-4) per architect Revisions 1/2/3 (see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md)). Slice 9.3 fixes RC-2: `VenueLayoutRepository.GetByEventIdAsync` filtered by `venue_layouts.event_id` instead of joining via `events.venue_layout_id`, returning orphan layouts (created when from-preset succeeds but assign 400s on tier validation) as if assigned. The orphan's seats appear in the UI, then a Customize → Save against the orphan can wipe its zones (RC-3) — producing the "0 seats" symptom.

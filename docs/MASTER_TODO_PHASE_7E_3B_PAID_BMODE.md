@@ -1,6 +1,11 @@
 # Master TODO — Phase 7E.3b: Paid B-mode RSVP + Stripe Checkout
 
-**Status**: ✅ ARCHITECT-APPROVED with 5 edits applied (review iteration 1, 2026-04-29) — awaiting user sign-off, then implementation.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED** (2026-04-29).
+**Commits**: `5ae304fe` (Slice 1+2 merged), `9bcfd200` (Slice 3), `0fa002a6` (Slice 4), Slice 5 docs follow.
+**Test totals**: 16 new domain pricing tests + 6 service unit tests + 1 refund regression test + 1 RTL test added; full Application suite 2418 / 6 skipped / 0 failed; Slice 1+2 backend deploy `25115122343` success; Slice 3+4 deployed via composite seating-fix run `25131067970` success (intermediate runs blocked by an unrelated Slice93 seating migration that was fixed and re-deployed by the seating team).
+**Stripe end-to-end staging smoke (cents-exact, architect-required)**:
+- Paid B2 dual-price ($15/$7) event `18491dd1-…`: 2 adults + 1 child → `totalPriceAmount=37.0` (= **3700 cents** EXACT) + Stripe session `cs_test_a1ZBtQDIXX…` + `status=Preliminary` + `paymentStatus=Pending`. Pricing math: 2×$15 + 1×$7 = $37 ✓
+- Paid B1 single-price ($25) event `95f28ef1-…`: total=4 → `totalPriceAmount=100.0` (= **10000 cents** EXACT) + Stripe session `cs_test_a1p2UgVuc1…`. Pricing math: 4×$25 = $100 ✓
 **Origin**: continuation of Phase 7E. Slice 7E.3a shipped FREE B-mode; the paid path was deferred per architect risk #5 ("Stripe `TotalPrice` for paid HeadCountByAge / TierCounts — gated 7E.3b/c sub-slices with explicit amount-calc tests").
 **Out of scope (lands in 7E.3c)**: TierCounts axis pricing (e.g. "VIP × 2 + General × 3"). 7E.3b ships single-price + dual-price (Adult/Child) paid B-mode only.
 **Classification (per architect RCA pattern)**: **feature missing** — paid B-mode + Stripe checkout. Validator already accepts paid+B "in target state" but is currently gated by the `PaidHeadCountDeferred` rule shipped in 2026-04-29; this slice ships the implementation and lifts the gate.

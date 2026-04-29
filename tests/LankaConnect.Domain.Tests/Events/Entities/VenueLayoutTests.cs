@@ -595,6 +595,54 @@ public class VenueLayoutTests
         result.Error.Should().Contain("enabled seats");
     }
 
+    // ────── Slice 9.1: requireTierMapping flag ──────
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingFalse_UnmappedZone_Should_Succeed()
+    {
+        // Apply-preset / apply-template path: zones arrive without tier_assignments.
+        // The permissive flag must allow this.
+        var layout = CreateValidLayout();
+        layout.AddZone("Main Floor", "#3b82f6", 1);
+        var tiers = CreateTestTiers();
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingFalse_StillEnforcesCapacityForMappedZones()
+    {
+        // Even in permissive mode, a zone that IS mapped must respect the tier capacity.
+        // This guarantees apply-preset never accepts an inconsistent state.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 10, seatsPerRow: 10); // 100 seats vs cap 30
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("enabled seats");
+    }
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingTrue_IsDefault_PreservesExistingBehaviour()
+    {
+        // Default-true keeps every existing caller's strict behaviour. Regression guard.
+        var layout = CreateValidLayout();
+        layout.AddZone("VIP", "#FF0000", 1);
+        var tiers = CreateTestTiers();
+
+        // No flag passed — defaults to requireTierMapping=true.
+        var result = layout.ValidateForEvent(tiers);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("must be mapped");
+    }
+
     #endregion
 
     #region UpdateName Tests

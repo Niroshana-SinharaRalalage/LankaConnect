@@ -604,12 +604,23 @@ public class VenueLayout : BaseEntity
 
     /// <summary>
     /// Validates that this layout is suitable for an event with the given tiers.
-    /// Every zone with seats must be mapped to an active tier via <see cref="TierAssignment"/>,
-    /// and zone seat count must not exceed the mapped tier's capacity.
+    /// <para>
+    /// <b>Slice 9.1</b>: <paramref name="requireTierMapping"/> gates the per-zone tier-mapping
+    /// invariant. Pass <c>false</c> at apply-preset / apply-template time when zones are
+    /// expected to arrive without tier assignments (organiser maps later in Customize).
+    /// Pass <c>true</c> at publish time to enforce the strict invariant. Capacity checks
+    /// (when a zone IS mapped) always run regardless of the flag — a zone wired to a tier
+    /// must not exceed that tier's capacity. Default is <c>true</c> (strict) so existing
+    /// callers keep current behaviour.
+    /// </para>
+    /// <para>
     /// (Slice 4 — the legacy <c>VenueZone.TicketTierId</c> read path was replaced by the
     /// polymorphic <c>tier_assignments</c> junction.)
+    /// </para>
     /// </summary>
-    public Result ValidateForEvent(IReadOnlyList<TicketTier> eventTiers)
+    public Result ValidateForEvent(
+        IReadOnlyList<TicketTier> eventTiers,
+        bool requireTierMapping = true)
     {
         if (!_zones.Any())
             return Result.Failure("Layout must have at least one zone");
@@ -629,7 +640,15 @@ public class VenueLayout : BaseEntity
         foreach (var zone in _zones)
         {
             if (!zoneToTier.TryGetValue(zone.Id, out var tier))
-                return Result.Failure($"Zone '{zone.Name}' must be mapped to a ticket tier");
+            {
+                // Slice 9.1: only enforce mapping when caller asks for strict validation.
+                // Apply-preset / apply-template paths pass requireTierMapping=false so an
+                // unmapped zone is acceptable (the organiser will map it in Customize and
+                // the publish gate enforces the invariant before anyone can buy tickets).
+                if (requireTierMapping)
+                    return Result.Failure($"Zone '{zone.Name}' must be mapped to a ticket tier");
+                continue;
+            }
 
             if (zone.EnabledSeatCount > tier.Capacity)
                 return Result.Failure(

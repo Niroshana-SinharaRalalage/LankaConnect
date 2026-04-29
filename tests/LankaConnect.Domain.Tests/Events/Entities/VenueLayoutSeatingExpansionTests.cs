@@ -328,4 +328,84 @@ public class VenueLayoutSeatingExpansionTests
     }
 
     #endregion
+
+    #region Slice 9.1 Event.CheckLayoutPublishReadiness
+
+    [Fact]
+    public void CheckLayoutPublishReadiness_GAEvent_NoLayout_Returns_Success()
+    {
+        // GA event with no layout — publish-ready (no readiness check applies).
+        var title = EventTitle.Create("GA Event").Value;
+        var description = EventDescription.Create("General admission only").Value;
+        var evt = Event.Create(title, description,
+            DateTime.UtcNow.AddDays(30), DateTime.UtcNow.AddDays(30).AddHours(3),
+            _userId, 100).Value;
+
+        var result = evt.CheckLayoutPublishReadiness(layout: null);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CheckLayoutPublishReadiness_GAEvent_LayoutSupplied_Returns_Failure()
+    {
+        // Defence in depth: caller mistakenly passes a layout for a non-seated event.
+        var title = EventTitle.Create("GA Event").Value;
+        var description = EventDescription.Create("General admission only").Value;
+        var evt = Event.Create(title, description,
+            DateTime.UtcNow.AddDays(30), DateTime.UtcNow.AddDays(30).AddHours(3),
+            _userId, 100).Value;
+        var layout = NewLayout();
+
+        var result = evt.CheckLayoutPublishReadiness(layout);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("no venue layout");
+    }
+
+    [Fact]
+    public void CheckLayoutPublishReadiness_SeatedEvent_LayoutNull_Returns_Failure()
+    {
+        // Seated event but caller failed to load the layout — fail loudly.
+        var evt = BuildTieredEvent();
+        evt.EnableAssignedSeating(Guid.NewGuid());
+
+        var result = evt.CheckLayoutPublishReadiness(layout: null);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("but none was supplied");
+    }
+
+    [Fact]
+    public void CheckLayoutPublishReadiness_LayoutIdMismatch_Returns_Failure()
+    {
+        // Defence in depth: caller hands the wrong layout aggregate.
+        var evt = BuildTieredEvent();
+        evt.EnableAssignedSeating(Guid.NewGuid());          // event references some layout id
+        var differentLayout = NewLayout();                  // distinct id
+
+        var result = evt.CheckLayoutPublishReadiness(differentLayout);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Layout id mismatch");
+    }
+
+    [Fact]
+    public void CheckLayoutPublishReadiness_LayoutWithUnmappedZone_Returns_Failure_StrictValidation()
+    {
+        // Slice 9.1: publish-readiness uses ValidateForEvent(requireTierMapping=true).
+        // A zone with no tier_assignment must fail at publish even though it's allowed
+        // at apply-preset time.
+        var evt = BuildTieredEvent();
+        var layout = NewLayout();
+        layout.AddZone("Main Floor", "#3b82f6", 1);
+        evt.EnableAssignedSeating(layout.Id);
+
+        var result = evt.CheckLayoutPublishReadiness(layout);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("must be mapped to a ticket tier");
+    }
+
+    #endregion
 }

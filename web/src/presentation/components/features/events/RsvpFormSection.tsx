@@ -55,6 +55,30 @@ interface RsvpFormSectionProps {
 export function RsvpFormSection(props: RsvpFormSectionProps) {
   const mode = props.event.registrationMode ?? RegistrationMode.DetailedAttendees;
 
+  // Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): if the server says the
+  // configured mode is currently unimplemented, render a read-only "coming soon" panel
+  // instead of a fillable form. Today this fires for paid + B-mode; lifts when 7E.3b ships.
+  // Defaults to 'active' for legacy cached payloads from before this field shipped — those
+  // events must keep working through the normal mode-dispatch path below.
+  const modeStatus = props.event.registrationModeStatus ?? 'active';
+  if (modeStatus === 'deferred') {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div className="flex items-start gap-2">
+          <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">Registration coming soon</p>
+            <p className="text-sm text-amber-800 mt-1">
+              The organiser configured this event for head-count registration, but that flow
+              is still being built (Phase 7E.3b). Please contact the organiser directly to
+              register — see the Event Organiser Contacts section below.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Mode C: no registration form. Standalone donate / sponsor / add-on / collection actions
   // remain accessible elsewhere on the event detail page (per architect §5).
   if (mode === RegistrationMode.NoRegistration) {

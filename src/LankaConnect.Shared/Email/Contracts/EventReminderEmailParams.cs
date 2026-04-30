@@ -211,6 +211,34 @@ public class EventReminderEmailParams : IEmailParameters
 
     #endregion
 
+    #region Phase 7F-A — Flexible Registration Mode Properties (Mode-B head-count rendering)
+
+    /// <summary>Phase 7F-A: True for Mode A (DetailedAttendees). Toggles the per-attendee block.</summary>
+    public bool HasDetailedAttendees { get; set; } = false;
+
+    /// <summary>Phase 7F-A: True for any Mode B variant (B1-B4).</summary>
+    public bool HasHeadCount { get; set; } = false;
+
+    /// <summary>Phase 7F-A: True for B2/B3/B4 (demographic axis present); false for B1.</summary>
+    public bool HasHeadCountBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7F-A: True when the registration carries TierCounts.</summary>
+    public bool HasTierBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7F-A: Pre-rendered total head count (string).</summary>
+    public string HeadCountTotal { get; set; } = string.Empty;
+
+    /// <summary>Phase 7F-A: Pre-rendered demographic line, e.g. "2 adults · 1 child".</summary>
+    public string HeadCountBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>Phase 7F-A: Pre-rendered tier line, e.g. "VIP × 2, General × 3".</summary>
+    public string TierBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>Phase 7F-A: Lead attendee name for Mode B registrations.</summary>
+    public string LeadAttendeeName { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -263,6 +291,16 @@ public class EventReminderEmailParams : IEmailParameters
             // Event image params (for {{#HasEventImage}} conditional)
             { EmailTemplateContract.EventImage.HasEventImage, HasEventImage },
             { EmailTemplateContract.EventImage.EventImageUrl, EventImageUrl },
+
+            // Phase 7F-A: Flexible registration mode params (always emit booleans true AND false).
+            { EmailTemplateContract.FlexibleRegistration.HasDetailedAttendees, HasDetailedAttendees },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCount, HasHeadCount },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCountBreakdown, HasHeadCountBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HasTierBreakdown, HasTierBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
+            { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            { "LeadAttendeeName", LeadAttendeeName },
 
             // Footer
             { "Year", DateTime.UtcNow.Year }

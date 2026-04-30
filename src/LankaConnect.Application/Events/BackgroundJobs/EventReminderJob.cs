@@ -267,6 +267,30 @@ public class EventReminderJob
                             );
                         }
 
+                        // Phase 7F-A: populate FlexibleRegistration params via the shared
+                        // formatter. Mode A leaves attendee table; Mode B renders Lead/Total/
+                        // breakdown lines via the {{#if HasDetailedAttendees}} ... {{else}}
+                        // block in the template.
+                        try
+                        {
+                            var flex = LankaConnect.Application.Events.Common.HeadCountEmailFormatter.Compute(registration);
+                            emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                            emailParams.HasHeadCount = flex.hasHeadCount;
+                            emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                            emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                            emailParams.HeadCountTotal = flex.headCountTotal;
+                            emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                            emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                            emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                        }
+                        catch (Exception flexEx)
+                        {
+                            _logger.LogWarning(flexEx,
+                                "[Phase 7F-A] FlexibleRegistration params computation failed for reminder email " +
+                                "to {Email} (registration {RegistrationId}) — continuing with default Mode-A fields.",
+                                toEmail, registration.Id);
+                        }
+
                         // Phase 6A.100: Send via typed email service
                         var typedResult = await _typedEmailService.SendEmailAsync(
                             emailParams,
@@ -481,6 +505,27 @@ public class EventReminderJob
                             ticketCode: ticket.TicketCode,
                             expiryDate: EmailDateTimeHelper.FormatEventDate(ticket.ExpiresAt, @event.TimeZoneId)  // Phase 6A.97: Uses event's timezone
                         );
+                    }
+
+                    // Phase 7F-A: populate FlexibleRegistration params via the shared formatter.
+                    try
+                    {
+                        var flex = LankaConnect.Application.Events.Common.HeadCountEmailFormatter.Compute(registration);
+                        emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                        emailParams.HasHeadCount = flex.hasHeadCount;
+                        emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                        emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                        emailParams.HeadCountTotal = flex.headCountTotal;
+                        emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                        emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                        emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                    }
+                    catch (Exception flexEx)
+                    {
+                        _logger.LogWarning(flexEx,
+                            "[Phase 7F-A] FlexibleRegistration params computation failed for reminder email " +
+                            "to {Email} (registration {RegistrationId}) — continuing with default Mode-A fields.",
+                            toEmail, registration.Id);
                     }
 
                     // Phase 6A.100: Send via typed email service

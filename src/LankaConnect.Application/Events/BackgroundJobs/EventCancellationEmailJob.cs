@@ -280,6 +280,39 @@ public class EventCancellationEmailJob
                     // Phase 7C.2b: emit decomposed location keys for the template rewrite.
                     emailParams.WithLocationDetails(@event.ProjectEmailLocation());
 
+                    // Phase 7F-A: populate FlexibleRegistration params (Mode-B head-count
+                    // rendering) when this recipient is a registered attendee. Non-registration
+                    // recipients (sign-up committed users, newsletter subscribers) have no
+                    // registration to attach — leave Flexible* fields at their defaults so the
+                    // Mode-B block in the template falls through naturally.
+                    try
+                    {
+                        var matchingReg = user != null
+                            ? confirmedRegistrations.FirstOrDefault(r => r.UserId == user.Id)
+                            : null;
+                        if (matchingReg != null)
+                        {
+                            var flex = LankaConnect.Application.Events.Common.HeadCountEmailFormatter.Compute(matchingReg);
+                            emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                            emailParams.HasHeadCount = flex.hasHeadCount;
+                            emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                            emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                            emailParams.HeadCountTotal = flex.headCountTotal;
+                            emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                            emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                            emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                        }
+                    }
+                    catch (Exception flexEx)
+                    {
+                        // Non-blocking: registration-confirmation cancel email must still send
+                        // even if FlexibleRegistration param computation throws unexpectedly.
+                        _logger.LogWarning(flexEx,
+                            "[Phase 7F-A] FlexibleRegistration params computation failed for cancellation email " +
+                            "to {Email} — continuing with default Mode-A fields.",
+                            email);
+                    }
+
                     // Phase 6A.103: Add event image if available
                     emailParams.WithEventImage(eventImageUrl);
 

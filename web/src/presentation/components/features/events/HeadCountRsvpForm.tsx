@@ -111,6 +111,12 @@ export function HeadCountRsvpForm({
   // is in `TicketingMode.Tiered`. Initialised lazily from the tier list so the keys exist
   // even if the user never touches a particular tier (count defaults to 0).
   const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
+  // Phase 7F-C: optional per-tier-by-age split. Only relevant for B2/B4 + tiered events
+  // and only on tiers that have a configured ChildPrice (`tier.hasChildPricing === true`).
+  // Architect Q2 default: age-unaware default + opt-in toggle per tier.
+  const [tierAgeSplit, setTierAgeSplit] = useState<
+    Record<string, { adultCount: number; childCount: number } | null>
+  >({});
   useEffect(() => {
     if (isTieredEvent && Object.keys(tierCounts).length === 0) {
       const initial: Record<string, number> = {};
@@ -123,6 +129,61 @@ export function HeadCountRsvpForm({
   }, [isTieredEvent, tierList.length]);
 
   const tierTotal = Object.values(tierCounts).reduce((sum, n) => sum + n, 0);
+
+  // Phase 7F-C: per-tier-by-age axis is only meaningful in B2 / B4 modes; B1 / B3 capture
+  // no age axis at the registration level so the toggle stays hidden in those modes.
+  const ageAxisAvailable =
+    isTieredEvent &&
+    (registrationMode === RegistrationMode.HeadCountByAge ||
+      registrationMode === RegistrationMode.HeadCountByAgeAndGender);
+
+  // Helper: clamp an age leaf so adultCount + childCount === tier total at all times.
+  const updateAgeLeaf = (
+    tierId: string,
+    leaf: 'adultCount' | 'childCount',
+    nextValue: number,
+  ) => {
+    const tierTotalForId = tierCounts[tierId] ?? 0;
+    setTierAgeSplit((prev) => {
+      const current = prev[tierId] ?? { adultCount: tierTotalForId, childCount: 0 };
+      const clamped = Math.max(0, Math.min(tierTotalForId, nextValue));
+      const other = leaf === 'adultCount' ? 'childCount' : 'adultCount';
+      const next = { ...current, [leaf]: clamped, [other]: tierTotalForId - clamped };
+      return { ...prev, [tierId]: next };
+    });
+  };
+
+  const toggleAgeSplit = (tierId: string, on: boolean) => {
+    const tierTotalForId = tierCounts[tierId] ?? 0;
+    setTierAgeSplit((prev) => ({
+      ...prev,
+      [tierId]: on ? { adultCount: tierTotalForId, childCount: 0 } : null,
+    }));
+  };
+
+  // When the user changes the tier total, re-balance the age split so it still sums correctly.
+  useEffect(() => {
+    setTierAgeSplit((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const tier of tierList) {
+        const split = next[tier.id];
+        if (!split) continue;
+        const total = tierCounts[tier.id] ?? 0;
+        if (split.adultCount + split.childCount !== total) {
+          // Preserve the proportion as best we can; on shrink, drop children first;
+          // on grow, add to adults.
+          const adults = Math.min(split.adultCount, total);
+          const children = total - adults;
+          if (adults !== split.adultCount || children !== split.childCount) {
+            next[tier.id] = { adultCount: adults, childCount: children };
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [tierCounts, tierList]);
 
   // Compute the derived total. For TIERED events the source of truth is the tier counts;
   // demographic spinners (B2/B4) capture organiser-reporting info but don't drive total.
@@ -207,6 +268,62 @@ export function HeadCountRsvpForm({
         );
         return;
       }
+
+      // Phase 7F-C: when per-tier age splits are opted-in, the cross-axis sum must agree
+      // with the demographic axis (architect Q1 strict) — sum of tier-adultCount must equal
+      // demographic adults; same for children. Mirrors the domain-level invariant in
+      // HeadCountBreakdown.ValidateTierCounts.
+      const anyTierAgeSplit = tierList.some((t) => tierAgeSplit[t.id] != null);
+      if (anyTierAgeSplit) {
+        // All-or-nothing across the basket: every tier with non-zero count must opt in.
+        const partialSplit = tierList.some(
+          (t) => (tierCounts[t.id] ?? 0) > 0 && tierAgeSplit[t.id] == null,
+        );
+        if (partialSplit) {
+          setSubmitError(
+            'Per-age split is enabled on some tiers but not others. Enable it on every selected ' +
+              'tier (or none) so the age totals can be checked.',
+          );
+          return;
+        }
+
+        const tierAdultSum = tierList.reduce(
+          (sum, t) => sum + (tierAgeSplit[t.id]?.adultCount ?? 0),
+          0,
+        );
+        const tierChildSum = tierList.reduce(
+          (sum, t) => sum + (tierAgeSplit[t.id]?.childCount ?? 0),
+          0,
+        );
+
+        const expectedAdults =
+          registrationMode === RegistrationMode.HeadCountByAge
+            ? adults
+            : registrationMode === RegistrationMode.HeadCountByAgeAndGender
+              ? adultMales + adultFemales
+              : null;
+        const expectedChildren =
+          registrationMode === RegistrationMode.HeadCountByAge
+            ? children
+            : registrationMode === RegistrationMode.HeadCountByAgeAndGender
+              ? childMales + childFemales
+              : null;
+
+        if (expectedAdults != null && tierAdultSum !== expectedAdults) {
+          setSubmitError(
+            `Per-tier adult total (${tierAdultSum}) must equal demographic adults (${expectedAdults}). ` +
+              'Adjust the per-tier split or the Adults spinner so they agree.',
+          );
+          return;
+        }
+        if (expectedChildren != null && tierChildSum !== expectedChildren) {
+          setSubmitError(
+            `Per-tier child total (${tierChildSum}) must equal demographic children (${expectedChildren}). ` +
+              'Adjust the per-tier split or the Children spinner so they agree.',
+          );
+          return;
+        }
+      }
     }
 
     // Build the head-count payload matching backend HeadCountDto.
@@ -225,7 +342,14 @@ export function HeadCountRsvpForm({
       ...(isTieredEvent && {
         tierCounts: Object.entries(tierCounts)
           .filter(([, count]) => count > 0)
-          .map(([tierId, count]) => ({ tierId, count })),
+          .map(([tierId, count]) => {
+            const split = tierAgeSplit[tierId];
+            // Phase 7F-C: forward the optional per-tier-by-age axis when the user opted in.
+            // Domain factory will reject half-set / sum-mismatch / B1+age-axis combinations.
+            return split != null
+              ? { tierId, count, adultCount: split.adultCount, childCount: split.childCount }
+              : { tierId, count };
+          }),
       }),
     };
 
@@ -318,40 +442,100 @@ export function HeadCountRsvpForm({
         </div>
       </div>
 
-      {/* Phase 7E.3c — Tier-count selector for tiered events */}
+      {/* Phase 7E.3c — Tier-count selector for tiered events. Phase 7F-C: opt-in
+          per-tier-by-age axis on B2/B4 modes when the tier has child pricing configured. */}
       {isTieredEvent && (
         <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
           <p className="text-sm font-semibold text-neutral-800">
             Choose your ticket tier(s)
           </p>
           <div className="space-y-2">
-            {tierList.map((tier) => (
-              <div
-                key={tier.id}
-                className="flex items-center justify-between gap-3 bg-white rounded-md border border-orange-100 px-3 py-2"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-900 truncate">{tier.name}</p>
-                  <p className="text-xs text-neutral-500">
-                    {tier.isFree
-                      ? 'Free'
-                      : `$${tier.adultPriceAmount.toFixed(2)} ${tier.adultPriceCurrency}`}
-                    {tier.availableQuantity > 0
-                      ? ` · ${tier.availableQuantity} left`
-                      : ' · sold out'}
-                  </p>
+            {tierList.map((tier) => {
+              const tierCount = tierCounts[tier.id] ?? 0;
+              const split = tierAgeSplit[tier.id] ?? null;
+              const splitOn = split !== null;
+              // Architect Q6: hide the toggle entirely when the tier has no ChildPrice.
+              const canShowAgeToggle = ageAxisAvailable && tier.hasChildPricing;
+
+              return (
+                <div
+                  key={tier.id}
+                  className="bg-white rounded-md border border-orange-100 px-3 py-2 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-neutral-900 truncate">{tier.name}</p>
+                      <p className="text-xs text-neutral-500">
+                        {tier.isFree
+                          ? 'Free'
+                          : `$${tier.adultPriceAmount.toFixed(2)} ${tier.adultPriceCurrency}`}
+                        {tier.hasChildPricing && tier.childPriceAmount != null
+                          ? ` · child $${tier.childPriceAmount.toFixed(2)}`
+                          : ''}
+                        {tier.availableQuantity > 0
+                          ? ` · ${tier.availableQuantity} left`
+                          : ' · sold out'}
+                      </p>
+                    </div>
+                    <Spinner
+                      id={`tier-${tier.id}`}
+                      label=""
+                      value={tierCount}
+                      onChange={(v) => setTierCounts((prev) => ({ ...prev, [tier.id]: v }))}
+                      min={0}
+                      max={Math.min(tier.availableQuantity, maxAttendeesPerRegistration)}
+                      disabled={isProcessing}
+                    />
+                  </div>
+
+                  {/* Phase 7F-C: opt-in age toggle (only shown when the tier has ChildPrice
+                      AND the event is in B2/B4 with tiered pricing). */}
+                  {canShowAgeToggle && tierCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 border-t border-orange-100 pt-2">
+                      <label className="flex items-center gap-2 text-xs text-neutral-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={splitOn}
+                          onChange={(e) => toggleAgeSplit(tier.id, e.target.checked)}
+                          disabled={isProcessing}
+                          className="h-3.5 w-3.5"
+                        />
+                        Add per-age split (adults / children)
+                      </label>
+                      {splitOn && split && (
+                        <div className="flex items-center gap-3">
+                          <Spinner
+                            id={`tier-${tier.id}-adults`}
+                            label="Adults"
+                            value={split.adultCount}
+                            onChange={(v) => updateAgeLeaf(tier.id, 'adultCount', v)}
+                            min={0}
+                            max={tierCount}
+                            disabled={isProcessing}
+                          />
+                          <Spinner
+                            id={`tier-${tier.id}-children`}
+                            label="Children"
+                            value={split.childCount}
+                            onChange={(v) => updateAgeLeaf(tier.id, 'childCount', v)}
+                            min={0}
+                            max={tierCount}
+                            disabled={isProcessing}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Helper for tiers without ChildPrice when in B2/B4 — explains why no toggle. */}
+                  {ageAxisAvailable && !tier.hasChildPricing && tierCount > 0 && (
+                    <p className="text-xs italic text-neutral-500 border-t border-orange-100 pt-2">
+                      This tier doesn&rsquo;t have child pricing — children are billed at adult price.
+                    </p>
+                  )}
                 </div>
-                <Spinner
-                  id={`tier-${tier.id}`}
-                  label=""
-                  value={tierCounts[tier.id] ?? 0}
-                  onChange={(v) => setTierCounts((prev) => ({ ...prev, [tier.id]: v }))}
-                  min={0}
-                  max={Math.min(tier.availableQuantity, maxAttendeesPerRegistration)}
-                  disabled={isProcessing}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="text-sm text-neutral-700 border-t border-orange-200 pt-2">
             Total: <strong>{tierTotal}</strong> attendee{tierTotal === 1 ? '' : 's'}

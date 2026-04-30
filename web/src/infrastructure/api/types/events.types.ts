@@ -1059,10 +1059,17 @@ export interface HeadCountDto {
 /**
  * Phase 7E.3c — per-tier count for a registration. `tierName` is resolved server-side from
  * `tierId` and snapshotted onto the registration; client supplies `tierId` + `count` only.
+ *
+ * Phase 7F-C (architect-approved 2026-04-30): optional `adultCount` + `childCount` per-tier-
+ * by-age axis. Used in B2 / B4 modes with tiered pricing when the user opts into per-tier-by-
+ * age billing (adults pay `tier.AdultPrice`, children pay `tier.ChildPrice`). Domain invariant:
+ * both fields set or both null (half-set is rejected); when set, sum must equal `count`.
  */
 export interface TierCountDto {
   tierId: string;
   count: number;
+  adultCount?: number;
+  childCount?: number;
 }
 
 /**

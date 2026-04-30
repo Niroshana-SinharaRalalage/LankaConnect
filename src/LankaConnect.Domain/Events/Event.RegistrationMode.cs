@@ -218,11 +218,21 @@ public partial class Event
                     "Specify counts per tier (e.g. VIP × 2, General × 3).");
 
             // Validate all tier IDs exist before reserving — fail-fast prevents partial state.
+            // Phase 7F-C: also reject any tier whose ChildPrice isn't configured but the
+            // payload claims ChildCount > 0 — otherwise CalculatePriceForAttendee(Child) would
+            // silently fall back to AdultPrice and the user would be UNDER-charged.
             foreach (var tc in headCount.TierCounts)
             {
-                if (!_ticketTiers.Any(t => t.Id == tc.TierId))
+                var matchedTier = _ticketTiers.FirstOrDefault(t => t.Id == tc.TierId);
+                if (matchedTier == null)
                     return Result.Failure(
                         $"Ticket tier {tc.TierId} not found on this event. RegistrationId not yet created — no rollback needed.");
+
+                if (tc.HasAgeSplit && (tc.ChildCount ?? 0) > 0 && !matchedTier.HasChildPricing)
+                    return Result.Failure(
+                        $"Tier '{matchedTier.Name}' has no child pricing configured but the registration " +
+                        $"claims {tc.ChildCount} children in this tier. Either configure a ChildPrice on the tier " +
+                        $"or remove the age split from this tier's count (children would otherwise be billed at AdultPrice).");
             }
 
             // Reserve atomically. If any reserve fails, prior reserves on this call are lost
@@ -405,17 +415,29 @@ public partial class Event
     }
 
     /// <summary>
-    /// Phase 7E.3c (architect edit #4): TierCounts pricing for paid Mode-B RSVP. Mirrors
-    /// Mode A's <see cref="Event.CalculateTieredPriceForAttendees"/> — uses
-    /// <c>tier.AdultPrice</c> for ALL attendees regardless of demographic category, because
-    /// today's <c>TicketTier</c> charges per-tier flat (not per attendee category).
-    /// <c>TicketTier.ChildPrice</c> exists for tier × age matrix pricing — that's Phase 7F
-    /// scope and not used here for B-mode TierCounts. The deliberate parity is asserted by
-    /// the architect-required parity test in <c>Phase7E3cTierCountsPricingTests</c>.
+    /// Phase 7F-C (architect-approved single-shape refactor 2026-04-30): TierCounts pricing
+    /// for paid Mode-B RSVP. Mirrors Mode A's
+    /// <see cref="Event.CalculateTieredPriceForAttendees"/> — routes through
+    /// <see cref="TicketTier.CalculatePriceForAttendee"/> per attendee category, so adults
+    /// pay <c>tier.AdultPrice</c> and children pay <c>tier.ChildPrice</c> (when the tier has
+    /// child pricing configured).
     ///
-    /// Tier-name snapshot is preserved: the registration's <see cref="HeadCountBreakdown.TierCounts"/>
-    /// holds the snapshotted <c>TierName</c> at registration time (set by the handler before
-    /// calling RegisterWithHeadCount). This method only touches PRICE, never name.
+    /// Single-shape derivation:
+    /// <code>
+    /// adultCount = tc.AdultCount ?? tc.Count   // legacy null-axis path → all "adults" for pricing
+    /// childCount = tc.ChildCount ?? 0
+    /// lineTotal  = tier.AdultPrice × adultCount + tier.CalculatePriceForAttendee(Child) × childCount
+    /// </code>
+    /// Legacy 7E.3c (B1 / B3 / B-without-age-split) registrations — where both
+    /// <see cref="TierCount.AdultCount"/> and <see cref="TierCount.ChildCount"/> are null —
+    /// keep producing <c>AdultPrice × Count</c> per architect Q7 ("legacy null-axis stays
+    /// a valid choice indefinitely"). The architect-required Mode A vs Mode B parity test
+    /// in <c>Phase7FCTierAgeMatrixPricingTests</c> asserts that the new shape produces the
+    /// same Money for the same basket as Mode A.
+    ///
+    /// Pre-condition (architect edit #8 in 7F-C plan): <see cref="RegisterWithHeadCount"/>
+    /// already rejected any (tier, ChildCount > 0) where the tier has no <c>ChildPrice</c>,
+    /// so this method does not need to re-check — the silent under-charge cannot reach here.
     /// </summary>
     private Result<Money> CalculateTierCountsPrice(IReadOnlyList<TierCount>? tierCounts)
     {
@@ -433,9 +455,19 @@ public partial class Event
                     $"Ticket tier {tc.TierId} not found on this event. " +
                     "TierCount has gone stale — verify the event's tier list before retrying.");
 
-            // Architect edit #4 parity: same `tier.AdultPrice` choice as Mode A's
-            // CalculateTieredPriceForAttendees on Event.cs:438-442.
-            var lineTotalResult = tier.AdultPrice.Multiply(tc.Count);
+            var adultCount = tc.AdultCount ?? tc.Count; // legacy null-axis falls back to all-adults pricing
+            var childCount = tc.ChildCount ?? 0;
+
+            var adultLineResult = tier.AdultPrice.Multiply(adultCount);
+            if (adultLineResult.IsFailure)
+                return Result<Money>.Failure(adultLineResult.Errors);
+
+            var childUnitPrice = tier.CalculatePriceForAttendee(Enums.AgeCategory.Child);
+            var childLineResult = childUnitPrice.Multiply(childCount);
+            if (childLineResult.IsFailure)
+                return Result<Money>.Failure(childLineResult.Errors);
+
+            var lineTotalResult = adultLineResult.Value.Add(childLineResult.Value);
             if (lineTotalResult.IsFailure)
                 return Result<Money>.Failure(lineTotalResult.Errors);
 

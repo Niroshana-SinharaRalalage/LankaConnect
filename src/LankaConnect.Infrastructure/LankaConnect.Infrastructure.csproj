@@ -71,4 +71,11 @@
     <EmbeddedResource Include="Data\Migrations\Resources\Phase7E4\*.html" />
   </ItemGroup>
 
+  <!-- Phase 7F-A: ship v2 lifecycle templates (cancellation broadcast, reminder,
+       attendees-added) with the Mode-B head-count card inserted at the
+       HasOrganizerContact anchor. Same embedded-resource pattern. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7F_A\*.html" />
+  </ItemGroup>
+
 </Project>

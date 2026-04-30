@@ -1,6 +1,14 @@
 # Master TODO — Phase 7E.3c: Paid B-mode RSVP with TierCounts axis
 
-**Status**: ✅ ARCHITECT-APPROVED with 5 edits applied (review iteration 1, 2026-04-29) — awaiting user sign-off, then implementation.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED** (2026-04-29).
+**Commits**: `0a98ef6e` (Slice 1: domain + lift gates + per-tier capacity + 8 new tests), `c9153331` (Slice 2: frontend tier-count selector + helper text + 7/7 RTL tests), Slice 3 docs follow.
+**Backend deploy**: `25140191059` (Slice 1) + `25141600995` (Slice 2 — backend rebuild) — both `success`.
+**UI deploy**: `25141600975` (Slice 2) — `success`.
+**Architect-required cents-exact Stripe verification (DoD edit #5)**:
+- **Paid B2 + tiered** event `749013e8-…`: VIP × 2 + General × 3 = `totalPriceAmount=190.0` = **19000 cents EXACT** (math: 2×$50 + 3×$30). Stripe session `cs_test_a1LsBcPTeC…`. Status=Preliminary + paymentStatus=Pending.
+- **Paid B1 + tiered** event `7096c2fa-…`: VIP × 1 + General × 4 = `totalPriceAmount=170.0` = **17000 cents EXACT** (math: 1×$50 + 4×$30). Stripe session `cs_test_a1o9GBEHhE…`.
+- **Capacity-overflow**: anonymous register requesting VIP × 9 (only 8 available) → HTTP 400 *"Insufficient capacity in this tier"*. Atomic — no Stripe session created, no partial reserve held.
+**Test totals**: 8 new domain tests + 1 flipped 7E.3b test + 7/7 RTL pass; full Application suite 2427 / 6 skipped / 0 failed (no regressions).
 **Origin**: continuation of Phase 7E.3b (paid Mode-B RSVP). 7E.3b shipped single-price + dual-price (Adult/Child) paid B-mode and gated TierCounts behind `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred`. 7E.3c lifts that gate.
 **Classification (per architect RCA pattern)**: **feature missing** — TierCounts pricing for paid Mode-B RSVP. Validator already accepts the mode/shape combination; the gate lives in `Event.CalculateHeadCountPrice` + a defensive check on `TicketingMode == Tiered`.
 **Out of scope (Phase 7F)**: tier × age matrix pricing — applying both TierCounts AND dual-price age axis simultaneously. Today, an event is EITHER `TicketingMode.Tiered` OR `SingleTier` (mutually exclusive), so this question only arises if a future change relaxes that mutual exclusion.

@@ -6,7 +6,35 @@
 
 ---
 
-## 🎯 2026-04-29 (latest) — Slice 9 Seating Fix COMPLETE — All 4 slices SHIPPED + STAGING-VERIFIED end-to-end
+## 🎯 2026-04-29 (latest) — Phase 7E.3c SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP with TierCounts axis pricing
+
+**Context**: Phase 7E.3b shipped paid B-mode for single-price + dual-price events but gated TierCounts (e.g. "VIP × 2 + General × 3") behind `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred`. 7E.3c lifts that gate and ships the actual TierCounts pricing path. **Phase 7E is now complete end-to-end** — free + paid + Mode C + tier-counts all shipped. Tier × age matrix remains Phase 7F.
+
+**Fix (architect-approved 3-slice plan in [docs/MASTER_TODO_PHASE_7E_3C_TIERCOUNTS.md](MASTER_TODO_PHASE_7E_3C_TIERCOUNTS.md), 5 architect edits applied)**:
+
+- **Slice 1** (commit `0a98ef6e`): domain `Event.CalculateTierCountsPrice` private helper — `sum(tier.AdultPrice × tc.Count)`. Architect edit #4 inline comment references Mode A's `CalculateTieredPriceForAttendees` for deliberate AdultPrice-only parity (ChildPrice belongs in Phase 7F tier × age matrix scope). Both `PaidHeadCountTiersDeferred` gates lifted; defensive replacement rejects TierCounts on SingleTier events. Per-tier capacity reservation moved to `RegisterWithHeadCount` BEFORE pricing branches per architect edit #2 — applies to free + paid tiered events; atomic semantics + pre-validation of all tier IDs. 8 new domain tests including architect-required parity (Mode A vs Mode B + tier counts → identical TotalPrice) + race + free-tiered capacity.
+
+- **Slice 2** (commit `c9153331`): frontend tier-count selector in `HeadCountRsvpForm` rendered when `event.ticketingMode === 'Tiered'`. Per-tier counter UI with name + price + remaining stock; tier total drives registration's `headCount.total`; demographic spinners still captured for B2/B4 organiser reporting. Helper italic text on B2/B4 tiered: *"Demographics are for organiser reporting only — pricing is per tier"* per architect edit #3. Submit-time validation: tier total > 0 + B2/B4 demographic-tier-sum match. tierCounts payload built only from non-zero counts. 7/7 RsvpFormSection RTL tests pass + tsc clean.
+
+- **Slice 3** (this commit): Stripe end-to-end smoke (cents-exact) + tracking docs.
+
+**Architect-required cents-exact Stripe verification (DoD edit #5)**:
+- **B2 + tiered** event `749013e8-…`: VIP × 2 + General × 3 → `totalPriceAmount=190.0` = **19000 cents EXACT** (math: 2×$50 + 3×$30). Stripe session `cs_test_a1LsBcPTeC…`.
+- **B1 + tiered** event `7096c2fa-…`: VIP × 1 + General × 4 → `totalPriceAmount=170.0` = **17000 cents EXACT** (math: 1×$50 + 4×$30). Stripe session `cs_test_a1o9GBEHhE…`.
+- **Capacity-overflow** (DoD edit #5): anonymous register VIP × 9 against 8 available → HTTP 400 *"Insufficient capacity in this tier"*. Atomic — no Stripe session created, no partial reserve held.
+- Both successful registrations land in `Preliminary` + `paymentStatus=Pending` awaiting Stripe webhook.
+
+**Test totals**: 8 new domain tests + 1 flipped 7E.3b test (TierCounts on SingleTier event now rejected with the new "TicketingMode.Tiered required" message) + 7 RTL tests; Application suite **2427 passed / 6 skipped / 0 failed**.
+
+**Deploys**: Slice 1 backend `25140191059` success; Slice 2 deploys `25141600995` (backend) + `25141600975` (UI) both `success`.
+
+**Skipped per architect (saves time)**: tier-rename snapshot test (already covered by 7E.1 JSON round-trip + handler resolution); paid-B-tiered refund regression (7E.3b coverage + mode-agnostic refund handler is sufficient).
+
+**Out of scope (Phase 7F)**: tier × age matrix pricing (separate adult/child prices per tier). `PaidHeadCountTiersDeferred` constant remains as a no-op for one release.
+
+---
+
+## 🎯 2026-04-29 (earlier) — Slice 9 Seating Fix COMPLETE — All 4 slices SHIPPED + STAGING-VERIFIED end-to-end
 
 **Bug context**: user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" symptoms (with screenshots). RCA via 3 architect review rounds identified 4 cooperating defects (RC-1 through RC-4) — see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md) for the full design.
 

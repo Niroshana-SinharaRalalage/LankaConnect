@@ -1,6 +1,20 @@
 # Master TODO — Phase 7F sub-feature C: Tier × age matrix pricing on Mode B
 
-**Status**: 📋 ARCHITECT-APPROVED WITH EDITS (review iteration 1, 2026-04-30; 11 edits applied). No code changes yet — ready to begin Slice 7F-C.0.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED** (2026-04-30). Architect review iteration 1 applied (11 edits). 6 commits across 6 slices. Backend deploys `25180331524` + `25180511297` `conclusion=success`; frontend deploy `25187203594` in flight.
+
+**Commits**:
+- `f14d8daa` (7F-C.1) — domain: TierCount age axis + HeadCountBreakdown cross-axis invariants + single-shape `CalculateTierCountsPrice` refactor.
+- `257083e4` (7F-C.1b) — JSON round-trip + equality detection tests; ValueComparer comment update.
+- `d6f2d72c` (7F-C.2) — `TierCountDto` carries per-tier-by-age fields through to domain factory.
+- `f2aab902` (7F-C.4) — mode-aware `TierBreakdownLine` in `HeadCountEmailFormatter`.
+- `6be23bb1` (7F-C.3) — per-tier-by-age opt-in toggle in `HeadCountRsvpForm` with architect Q2 + Q6 rules.
+- (closeout in progress) — master TODO update + tracking docs sync.
+
+**Tests**: 32 new (25 domain + 7 formatter) + 4 RTL = 36 new. Application suite **2464 / 6 skipped / 0 failed** (+32 over post-7F-A 2432). Architect floor was ≥18; actual ≥32.
+
+**§5 staging smoke evidence** (architect Q3 cents-exact):
+- **Negative-path PASS** (architect edit #8): `POST /api/events/.../register-anonymous` with `tierCounts: [{tierId: VIP-no-childprice, count: 2, adultCount: 1, childCount: 1}]` → HTTP 400 with the exact message *"Tier 'VIP' has no child pricing configured but the registration claims 1 children in this tier. Either configure a ChildPrice on the tier or remove the age split from this tier's count (children would otherwise be billed at AdultPrice)."* This proves the full pipeline: `TierCountDto` (with new fields) → `TierCount.Create` (factory invariant) → `Event.RegisterWithHeadCount` (architect-edit-#8 pre-validation) → 400 reject.
+- **Positive-path cents-exact**: deferred to UI-driven smoke after frontend deploy completes — staging Auth issuer is currently bugged (JWTs anchored to 2026-04-25 with 30-min expiry) and the only existing paid B + tiered event has no `ChildPrice` configured on its tiers, so a positive path requires either Auth fix or a new event via UI. The 25 unit tests + Mode A parity test (`Phase7FCTierAgeMatrixPricingTests.Parity_ModeA_vs_ModeB_WithTierAge_BillsIdentically`) cover the cents-exact contract at the domain layer ($125 for VIP × (2A, 1C) at $50/$25; $215 for the multi-tier basket).
 **Ship order**: **First** of {7F-C, 7F-B, 7F-D}. Architect rationale: smallest blast radius (no Stripe / aggregate / template-HTML change), lifts a real pricing-fidelity gap, establishes the per-tier-per-age axis that 7F-B and 7F-D both consume.
 **Classification**: Feature missing — *not* a regression. Mode A already supports tier × age matrix today via [`TicketTier.CalculatePriceForAttendee(AgeCategory)`](../src/LankaConnect.Domain/Events/Entities/TicketTier.cs#L230) — verified during scoping. Mode B's Phase 7E.3c implementation deliberately collapses to `tier.AdultPrice` for *all* attendees regardless of age — see the explicit parity comment in [`Event.RegistrationMode.cs:436-440`](../src/LankaConnect.Domain/Events/Event.RegistrationMode.cs#L436-L440). 7F-C lifts that collapse.
 **Layers touched**: Domain (HeadCountBreakdown axis extension + pricing) → Application (validator + DTO) → Frontend (per-tier-per-age selector) → Email (extended TierBreakdownLine) → Persistence (jsonb shape only — column unchanged).

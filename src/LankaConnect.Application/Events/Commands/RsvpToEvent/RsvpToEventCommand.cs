@@ -99,8 +99,16 @@ public record HeadCountDto(
 /// Phase 7E.3c: Per-tier count for a registration. <c>TierName</c> is resolved server-side
 /// from <c>EventId + TierId</c> at command-handle time and snapshotted onto the registration —
 /// the client supplies <c>TierId</c> + <c>Count</c> only.
+///
+/// Phase 7F-C (architect-approved 2026-04-30): optional <c>AdultCount</c> + <c>ChildCount</c>
+/// per-tier-by-age axis. Used in B2 / B4 modes with tiered pricing when the organiser opts
+/// into per-tier-by-age billing (adults pay <c>tier.AdultPrice</c>, children pay
+/// <c>tier.ChildPrice</c>). Domain invariant: both fields set or both null (half-set is
+/// rejected by <c>TierCount.Create</c>); when set, sum must equal <c>Count</c>.
 /// </summary>
 public record TierCountDto(
     Guid TierId,
-    int Count
+    int Count,
+    int? AdultCount = null,
+    int? ChildCount = null
 );

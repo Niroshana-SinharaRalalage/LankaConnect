@@ -1007,4 +1007,54 @@ public class Registration : BaseEntity
         };
     }
 #pragma warning restore CS0618
+
+    /// <summary>
+    /// Phase 7F-B internal: collapses a Mode-A registration into a Mode-B head-count shape.
+    /// Called only via <see cref="Event.ConvertRegistrationMode"/> after the aggregate has
+    /// validated and built the new shape. NOT a public API — this method is intentionally
+    /// internal so cross-aggregate code can't call it without going through Event.
+    ///
+    /// Snapshot semantics: the live row's <see cref="RegistrationMode"/> flips to the new
+    /// mode. Audit table preserves the pre-conversion <see cref="Attendees"/> shape via the
+    /// <c>BeforeShape</c> jsonb (recorded by the handler).
+    /// </summary>
+    internal Result ApplyConvertToHeadCountMode(
+        RegistrationMode targetMode,
+        HeadCountBreakdown headCount,
+        string? leadName)
+    {
+        if (!IsHeadCountTargetMode(targetMode))
+            return Result.Failure($"ApplyConvertToHeadCountMode: target mode {targetMode} is not a head-count mode");
+        if (headCount == null)
+            return Result.Failure("ApplyConvertToHeadCountMode: headCount is required");
+
+        _attendees.Clear();
+        HeadCount = headCount;
+        LeadAttendeeName = leadName;
+        RegistrationMode = targetMode;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7F-B internal: explodes a Mode-B registration into Mode-A placeholder rows.
+    /// </summary>
+    internal Result ApplyConvertToDetailedAttendees(IReadOnlyList<AttendeeDetails> placeholders)
+    {
+        if (placeholders == null || placeholders.Count == 0)
+            return Result.Failure("ApplyConvertToDetailedAttendees: placeholders are required");
+
+        _attendees.Clear();
+        foreach (var p in placeholders)
+            _attendees.Add(p);
+        HeadCount = null;
+        LeadAttendeeName = null;
+        RegistrationMode = RegistrationMode.DetailedAttendees;
+        return Result.Success();
+    }
+
+    private static bool IsHeadCountTargetMode(RegistrationMode mode) =>
+        mode == RegistrationMode.HeadCountOnly
+        || mode == RegistrationMode.HeadCountByAge
+        || mode == RegistrationMode.HeadCountByGender
+        || mode == RegistrationMode.HeadCountByAgeAndGender;
 }

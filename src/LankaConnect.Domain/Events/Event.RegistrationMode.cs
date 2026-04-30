@@ -95,6 +95,401 @@ public partial class Event
     }
 
     /// <summary>
+    /// Phase 7F-B (architect-approved 2026-04-30): convert all *active* registrations on this
+    /// event from one <see cref="RegistrationMode"/> to another, performing the appropriate
+    /// attendee backfill at each registration row.
+    ///
+    /// Conversion semantics (per architect plan §2):
+    /// - <strong>A → B</strong>: collapse the per-attendee list into a head-count + lead name +
+    ///   demographic axis derived from per-attendee AgeCategory/Gender + per-tier-age axis
+    ///   derived from per-attendee TicketTierId × AgeCategory (depends on 7F-C live).
+    /// - <strong>B → A</strong>: explode the head-count into N placeholder
+    ///   <see cref="AttendeeDetails"/> rows with deterministic ordering and name fabrication
+    ///   (row 1 = unmodified <c>LeadAttendeeName</c>; rows 2..N = <c>{LeadName} (n)</c>).
+    ///
+    /// Skipped (per-registration, surfaced in the report):
+    /// - Source carries <c>Gender.Other</c> attendees AND target is B3/B4 (those modes don't
+    ///   model <c>Other</c>) → <c>GenderOtherNotSupportedByMode</c>.
+    /// - Source carries an attendee with a named-seat assignment AND target is B → named seats
+    ///   require Mode A's per-attendee identity → <c>NamedSeatsRequireDetailedAttendees</c>.
+    /// - Registration is in <see cref="ConversionPolicy.RegistrationIdsWithPendingAdditions"/>
+    ///   (set by handler) → <c>PendingAdditionMustResolveFirst</c>.
+    ///
+    /// Hard rejects (whole conversion fails):
+    /// - Active registration count exceeds <see cref="ConversionPolicy.BatchCap"/> (architect Q7).
+    /// - Currency / pricing / target-mode invariants violated by the request (e.g. <c>Total=0</c>
+    ///   after Other-gender filtering).
+    ///
+    /// Idempotent on same-mode (no rows migrated, no rows skipped, returns empty report).
+    /// Untouched: Cancelled / Refunded / Abandoned registrations stay in their original mode
+    /// snapshot (their snapshot powers historical email re-renders; flipping it would corrupt them).
+    ///
+    /// When <see cref="ConversionPolicy.DryRun"/> is true, the method computes the report
+    /// but does NOT mutate any registration or the event itself — the report is the basis
+    /// for the UI's diff-preview confirmation dialog.
+    /// </summary>
+    public Result<ConversionReport> ConvertRegistrationMode(
+        RegistrationMode targetMode, ConversionPolicy policy)
+    {
+        if (policy == null)
+            return Result<ConversionReport>.Failure("ConversionPolicy is required");
+
+        // Same-mode is a no-op (idempotent).
+        if (targetMode == RegistrationMode)
+            return Result<ConversionReport>.Success(ConversionReport.Empty);
+
+        // Pre-condition #1: A↔B only in this slice. C-conversions still require zero active
+        // registrations (architect §2.3 — current guard's behaviour preserved). If either side
+        // is C, defer to SetRegistrationMode (which has the zero-reg guard).
+        if (RegistrationMode == RegistrationMode.NoRegistration
+            || targetMode == RegistrationMode.NoRegistration)
+            return Result<ConversionReport>.Failure(
+                "Conversions involving Mode C (NoRegistration) must use SetRegistrationMode and " +
+                "require zero active registrations. Cancel or wait for active registrations to resolve first.");
+
+#pragma warning disable CS0618 // Pending is deprecated but excluded for back-compat.
+        var activeRegistrations = _registrations
+            .Where(r => r.Status != RegistrationStatus.Cancelled
+                        && r.Status != RegistrationStatus.Refunded
+                        && r.Status != RegistrationStatus.Abandoned)
+            .ToList();
+#pragma warning restore CS0618
+
+        if (activeRegistrations.Count > policy.BatchCap)
+            return Result<ConversionReport>.Failure(
+                $"Conversion batch size ({activeRegistrations.Count}) exceeds the cap ({policy.BatchCap}). " +
+                "Split into multiple smaller batches — cancel or pre-resolve a subset first, then re-run.");
+
+        var migrated = new List<MigratedRow>();
+        var skipped = new List<SkippedRow>();
+
+        foreach (var reg in activeRegistrations)
+        {
+            // Architect Q8 — pending RegistrationAddition.
+            if (policy.RegistrationIdsWithPendingAdditions.Contains(reg.Id))
+            {
+                skipped.Add(new SkippedRow(reg.Id, "PendingAdditionMustResolveFirst",
+                    "Registration has a pending add-attendees payment. Complete or cancel it before converting."));
+                continue;
+            }
+
+            var convertResult = ConvertSingleRegistration(reg, targetMode, policy);
+            if (convertResult.skipped is { } skip)
+            {
+                skipped.Add(skip);
+                continue;
+            }
+
+            // Successful migration — apply it (unless DryRun).
+            if (!policy.DryRun)
+            {
+                var applyResult = ApplySingleConversion(reg, convertResult.migration!);
+                if (applyResult.IsFailure)
+                    return Result<ConversionReport>.Failure(applyResult.Errors);
+            }
+
+            migrated.Add(convertResult.migration!);
+        }
+
+        // Flip the event's mode (only when not dry-run AND at least one migration applied OR
+        // there were no active registrations to migrate at all).
+        if (!policy.DryRun && (migrated.Count > 0 || activeRegistrations.Count == 0))
+        {
+            RegistrationMode = targetMode;
+            MarkAsUpdated();
+        }
+
+        return Result<ConversionReport>.Success(new ConversionReport(migrated, skipped));
+    }
+
+    private (MigratedRow? migration, SkippedRow? skipped) ConvertSingleRegistration(
+        Registration reg, RegistrationMode targetMode, ConversionPolicy policy)
+    {
+        // A → B
+        if (reg.RegistrationMode == RegistrationMode.DetailedAttendees && IsHeadCountMode(targetMode))
+            return ConvertAToB(reg, targetMode);
+
+        // B → A
+        if (IsHeadCountMode(reg.RegistrationMode) && targetMode == RegistrationMode.DetailedAttendees)
+            return ConvertBToA(reg, targetMode);
+
+        // B → B (same family or cross-family) — out of scope for 7F-B.1; architect plan only
+        // covers A↔B. Skip rather than reject the whole batch.
+        return (null, new SkippedRow(reg.Id, "BModeToBModeNotSupported",
+            "B↔B conversion (e.g. B2→B4) is not supported in this slice. Convert to Mode A first, then to the target B mode."));
+    }
+
+    private static bool IsHeadCountMode(RegistrationMode mode) =>
+        mode == RegistrationMode.HeadCountOnly
+        || mode == RegistrationMode.HeadCountByAge
+        || mode == RegistrationMode.HeadCountByGender
+        || mode == RegistrationMode.HeadCountByAgeAndGender;
+
+    private (MigratedRow? migration, SkippedRow? skipped) ConvertAToB(
+        Registration reg, RegistrationMode targetMode)
+    {
+        // Per-registration named-seat check (architect §2.4 missing-edit). Mode B has no named-
+        // seat concept; collapsing here would orphan the seat assignment.
+        if (reg.Attendees.Any(a => a.SeatId.HasValue))
+            return (null, new SkippedRow(reg.Id, "NamedSeatsRequireDetailedAttendees",
+                "Registration has named-seat assignments which Mode B cannot represent. Re-seat as general admission first."));
+
+        // Architect Q1: B3 / B4 don't model Gender.Other. Skip per registration.
+        if ((targetMode == RegistrationMode.HeadCountByGender
+             || targetMode == RegistrationMode.HeadCountByAgeAndGender)
+            && reg.Attendees.Any(a => a.Gender == Enums.Gender.Other))
+            return (null, new SkippedRow(reg.Id, "GenderOtherNotSupportedByMode",
+                $"Registration has attendee(s) with Gender=Other; target mode {targetMode} does not capture this category."));
+
+        var attendees = reg.Attendees.ToList();
+        var total = attendees.Count;
+        if (total <= 0)
+            return (null, new SkippedRow(reg.Id, "NoAttendeesToConvert",
+                "Registration has no attendees — nothing to migrate."));
+
+        // Build per-tier-age axis (depends on 7F-C: TierCount.AdultCount/ChildCount).
+        IReadOnlyList<TierCount>? tierCounts = null;
+        if (TicketingMode == Enums.TicketingMode.Tiered && attendees.Any(a => a.TicketTierId.HasValue))
+        {
+            // Stable sort: by SortOrder ascending, fall back to TierName.
+            var orderedTiers = _ticketTiers.OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToList();
+            var tcList = new List<TierCount>();
+            foreach (var tier in orderedTiers)
+            {
+                var inTier = attendees.Where(a => a.TicketTierId == tier.Id).ToList();
+                if (inTier.Count == 0) continue;
+
+                int? adultCount = null, childCount = null;
+                // Populate per-tier-age axis when target mode captures age (B2 / B4).
+                if (targetMode == RegistrationMode.HeadCountByAge
+                    || targetMode == RegistrationMode.HeadCountByAgeAndGender)
+                {
+                    adultCount = inTier.Count(a => a.AgeCategory == Enums.AgeCategory.Adult);
+                    childCount = inTier.Count(a => a.AgeCategory == Enums.AgeCategory.Child);
+                }
+                var tcResult = TierCount.Create(tier.Id, tier.Name, inTier.Count, adultCount, childCount);
+                if (tcResult.IsFailure)
+                    return (null, new SkippedRow(reg.Id, "TierAxisDerivationFailed",
+                        $"Could not build tier-age axis for tier '{tier.Name}': {tcResult.Error}"));
+                tcList.Add(tcResult.Value);
+            }
+            tierCounts = tcList;
+        }
+
+        // Build the head-count breakdown for the target mode.
+        Result<HeadCountBreakdown> hcResult = targetMode switch
+        {
+            RegistrationMode.HeadCountOnly =>
+                HeadCountBreakdown.ForTotalOnly(total, tierCounts),
+
+            RegistrationMode.HeadCountByAge =>
+                HeadCountBreakdown.ForByAge(
+                    adults: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Adult),
+                    children: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Child),
+                    tierCounts),
+
+            RegistrationMode.HeadCountByGender =>
+                HeadCountBreakdown.ForByGender(
+                    males: attendees.Count(a => a.Gender == Enums.Gender.Male),
+                    females: attendees.Count(a => a.Gender == Enums.Gender.Female),
+                    tierCounts),
+
+            RegistrationMode.HeadCountByAgeAndGender =>
+                HeadCountBreakdown.ForByAgeAndGender(
+                    adultMales: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Adult && a.Gender == Enums.Gender.Male),
+                    adultFemales: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Adult && a.Gender == Enums.Gender.Female),
+                    childMales: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Child && a.Gender == Enums.Gender.Male),
+                    childFemales: attendees.Count(a => a.AgeCategory == Enums.AgeCategory.Child && a.Gender == Enums.Gender.Female),
+                    tierCounts),
+
+            _ => Result<HeadCountBreakdown>.Failure($"Unsupported target mode: {targetMode}"),
+        };
+
+        if (hcResult.IsFailure)
+            return (null, new SkippedRow(reg.Id, "HeadCountBreakdownConstructionFailed",
+                $"Could not build head-count breakdown: {string.Join("; ", hcResult.Errors!)}"));
+
+        // Lead name on A→B: use the first attendee's name. RegistrationContact has no
+        // FullName field today (only Email / Phone / Address), so the architect-Q6 fallback
+        // chain reduces to attendees[0].Name. If Contact ever gains a name field, prepend
+        // that as the preferred source.
+        var leadName = attendees[0].Name;
+
+        return (new MigratedRow(
+            RegistrationId: reg.Id,
+            BeforeAttendees: attendees,
+            BeforeHeadCount: null,
+            AfterAttendees: null,
+            AfterHeadCount: hcResult.Value,
+            AfterLeadAttendeeName: leadName), null);
+    }
+
+    private (MigratedRow? migration, SkippedRow? skipped) ConvertBToA(
+        Registration reg, RegistrationMode targetMode)
+    {
+        var hc = reg.HeadCount;
+        if (hc == null)
+            return (null, new SkippedRow(reg.Id, "MissingHeadCountOnSourceMode",
+                "Registration is in Mode B but has no HeadCount populated — cannot explode into placeholders."));
+
+        var leadName = reg.LeadAttendeeName ?? "Attendee";
+        var placeholders = new List<AttendeeDetails>();
+
+        // Placeholder allocation order — deterministic per architect §2.2:
+        // 1. Sort tiers by SortOrder asc, then TierName asc.
+        // 2. Within each tier (or if no tiers), allocate Adults before Children, Males before Females.
+        var orderedTiers = new List<(Guid? tierId, string? tierName, int total, int? adult, int? child)>();
+        if (hc.TierCounts == null)
+        {
+            orderedTiers.Add((null, null, hc.Total, null, null));
+        }
+        else
+        {
+            var withSort = hc.TierCounts.Select(tc =>
+            {
+                var liveTier = _ticketTiers.FirstOrDefault(t => t.Id == tc.TierId);
+                return new
+                {
+                    TierId = (Guid?)tc.TierId,
+                    TierName = (string?)(liveTier?.Name ?? tc.TierName),
+                    Total = tc.Count,
+                    Adult = tc.AdultCount,
+                    Child = tc.ChildCount,
+                    SortOrder = liveTier?.SortOrder ?? int.MaxValue,
+                };
+            });
+            foreach (var x in withSort.OrderBy(x => x.SortOrder).ThenBy(x => x.TierName))
+                orderedTiers.Add((x.TierId, x.TierName, x.Total, x.Adult, x.Child));
+        }
+
+        var rowIndex = 0;
+        foreach (var (tierId, tierName, total, adultOrNull, childOrNull) in orderedTiers)
+        {
+            int adults, children;
+            if (adultOrNull.HasValue)
+            {
+                adults = adultOrNull.Value;
+                children = childOrNull ?? 0;
+            }
+            else if (reg.RegistrationMode == RegistrationMode.HeadCountByAge && hc.Demographics != null)
+            {
+                // Single-tier (or no-tier) B2 — derive from Demographics.
+                adults = hc.Demographics.Adults ?? total;
+                children = hc.Demographics.Children ?? 0;
+            }
+            else if (reg.RegistrationMode == RegistrationMode.HeadCountByAgeAndGender && hc.Demographics != null
+                && hc.TierCounts == null)
+            {
+                adults = (hc.Demographics.AdultMales ?? 0) + (hc.Demographics.AdultFemales ?? 0);
+                children = (hc.Demographics.ChildMales ?? 0) + (hc.Demographics.ChildFemales ?? 0);
+            }
+            else
+            {
+                // B1 / B3 (no age axis), or per-tier without an age split — treat all as adults.
+                adults = total;
+                children = 0;
+            }
+
+            // Fill in gender per leaf for B3 / B4. For B1 / B2 use null gender.
+            // Allocation ratios for gender — pull from Demographics.
+            int adultMales, adultFemales, childMales, childFemales;
+            if (reg.RegistrationMode == RegistrationMode.HeadCountByGender && hc.Demographics != null)
+            {
+                // B3 has no age axis → treat all as Adult; split by gender.
+                adultMales = hc.Demographics.Males ?? 0;
+                adultFemales = hc.Demographics.Females ?? 0;
+                adults = adultMales + adultFemales;
+                children = 0;
+                childMales = childFemales = 0;
+            }
+            else if (reg.RegistrationMode == RegistrationMode.HeadCountByAgeAndGender && hc.Demographics != null
+                && hc.TierCounts == null)
+            {
+                adultMales = hc.Demographics.AdultMales ?? 0;
+                adultFemales = hc.Demographics.AdultFemales ?? 0;
+                childMales = hc.Demographics.ChildMales ?? 0;
+                childFemales = hc.Demographics.ChildFemales ?? 0;
+            }
+            else
+            {
+                adultMales = adultFemales = childMales = childFemales = 0;
+            }
+
+            // Build attendee rows. Order: (Adult,Male)→(Adult,Female)→(Child,Male)→(Child,Female)
+            // for B4; (Adult)→(Child) for B2; (Male)→(Female) for B3; flat for B1.
+            void AppendRow(Enums.AgeCategory age, Enums.Gender? gender)
+            {
+                var name = rowIndex == 0 ? leadName : $"{leadName} ({rowIndex + 1})";
+                var attendee = AttendeeDetails.Create(
+                    name, age, gender,
+                    ticketTierId: tierId,
+                    ticketTierName: tierName);
+                if (attendee.IsFailure)
+                    throw new InvalidOperationException(
+                        $"Could not synthesise placeholder for registration {reg.Id}: {attendee.Error}");
+                placeholders.Add(attendee.Value);
+                rowIndex++;
+            }
+
+            if (reg.RegistrationMode == RegistrationMode.HeadCountByAgeAndGender && hc.TierCounts == null)
+            {
+                for (var i = 0; i < adultMales; i++) AppendRow(Enums.AgeCategory.Adult, Enums.Gender.Male);
+                for (var i = 0; i < adultFemales; i++) AppendRow(Enums.AgeCategory.Adult, Enums.Gender.Female);
+                for (var i = 0; i < childMales; i++) AppendRow(Enums.AgeCategory.Child, Enums.Gender.Male);
+                for (var i = 0; i < childFemales; i++) AppendRow(Enums.AgeCategory.Child, Enums.Gender.Female);
+            }
+            else if (reg.RegistrationMode == RegistrationMode.HeadCountByGender)
+            {
+                for (var i = 0; i < adultMales; i++) AppendRow(Enums.AgeCategory.Adult, Enums.Gender.Male);
+                for (var i = 0; i < adultFemales; i++) AppendRow(Enums.AgeCategory.Adult, Enums.Gender.Female);
+            }
+            else
+            {
+                // B1, B2, or B-with-tier-age-axis — Adults first, then Children, no gender.
+                for (var i = 0; i < adults; i++) AppendRow(Enums.AgeCategory.Adult, null);
+                for (var i = 0; i < children; i++) AppendRow(Enums.AgeCategory.Child, null);
+            }
+        }
+
+        return (new MigratedRow(
+            RegistrationId: reg.Id,
+            BeforeAttendees: null,
+            BeforeHeadCount: hc,
+            AfterAttendees: placeholders,
+            AfterHeadCount: null,
+            AfterLeadAttendeeName: null), null);
+    }
+
+    private static Result ApplySingleConversion(Registration reg, MigratedRow migration)
+    {
+        if (migration.AfterHeadCount != null)
+        {
+            // A → B
+            return reg.ApplyConvertToHeadCountMode(
+                ResolveTargetMode(migration), migration.AfterHeadCount, migration.AfterLeadAttendeeName);
+        }
+        if (migration.AfterAttendees != null)
+        {
+            // B → A
+            return reg.ApplyConvertToDetailedAttendees(migration.AfterAttendees);
+        }
+        return Result.Failure("MigratedRow has neither AfterHeadCount nor AfterAttendees — programming error.");
+    }
+
+    private static RegistrationMode ResolveTargetMode(MigratedRow migration)
+    {
+        var hc = migration.AfterHeadCount!;
+        // The target mode is encoded in the demographic shape we built.
+        if (hc.Demographics == null) return RegistrationMode.HeadCountOnly;
+        if (hc.Demographics.AdultMales.HasValue || hc.Demographics.AdultFemales.HasValue
+            || hc.Demographics.ChildMales.HasValue || hc.Demographics.ChildFemales.HasValue)
+            return RegistrationMode.HeadCountByAgeAndGender;
+        if (hc.Demographics.Males.HasValue || hc.Demographics.Females.HasValue)
+            return RegistrationMode.HeadCountByGender;
+        return RegistrationMode.HeadCountByAge;
+    }
+
+    /// <summary>
     /// Phase 7E.3a: Registers a head-count (B-mode) RSVP for this event.
     ///
     /// Mirrors <see cref="RegisterWithAttendees"/> but builds a <see cref="HeadCountBreakdown"/>-backed

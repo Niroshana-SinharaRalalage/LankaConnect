@@ -205,10 +205,41 @@ public partial class Event
                 $"Event does not have enough capacity for {headCount.Total} attendees. " +
                 $"Available: {Capacity - ReservedCapacity}.");
 
-        // 7. Pricing — Phase 7E.3b paid B-mode lands here. Free events get Money.Zero(USD);
-        //    paid events get Total × ticketPrice (single) or
-        //    Adults × adultPrice + Children × childPrice (dual price, B2/B4 only). TierCounts
-        //    axis is still gated until Phase 7E.3c (PaidHeadCountTiersDeferred).
+        // 7. Per-tier capacity reservation (Phase 7E.3c, architect edit #2): for tiered events
+        //    with TierCounts, reserve capacity per tier BEFORE pricing. Mirrors Mode A's
+        //    behaviour at Event.cs:444-451. Atomic — if any tier reservation fails the whole
+        //    RSVP rejects (no partial reserve held). Applies to free + paid tiered events:
+        //    even free tiered events need to prevent over-selling a tier.
+        if (TicketingMode == Enums.TicketingMode.Tiered)
+        {
+            if (headCount.TierCounts == null || headCount.TierCounts.Count == 0)
+                return Result.Failure(
+                    "Tiered events require TierCounts on the head-count payload. " +
+                    "Specify counts per tier (e.g. VIP × 2, General × 3).");
+
+            // Validate all tier IDs exist before reserving — fail-fast prevents partial state.
+            foreach (var tc in headCount.TierCounts)
+            {
+                if (!_ticketTiers.Any(t => t.Id == tc.TierId))
+                    return Result.Failure(
+                        $"Ticket tier {tc.TierId} not found on this event. RegistrationId not yet created — no rollback needed.");
+            }
+
+            // Reserve atomically. If any reserve fails, prior reserves on this call are lost
+            // (no rollback path exists today — same limitation Mode A has). For 7E.3c the
+            // pre-validation above + the fail-fast on the first failure keeps blast radius small.
+            foreach (var tc in headCount.TierCounts)
+            {
+                var tier = _ticketTiers.First(t => t.Id == tc.TierId);
+                var reserveResult = tier.Reserve(tc.Count);
+                if (reserveResult.IsFailure)
+                    return Result.Failure(reserveResult.Errors);
+            }
+        }
+
+        // 8. Pricing — Phase 7E.3b paid B-mode + Phase 7E.3c TierCounts. Free events get
+        //    Money.Zero(USD); paid events get the appropriate pricing (single, dual, or
+        //    tiered) based on the event's pricing configuration.
         var priceResult = CalculateHeadCountPrice(headCount);
         if (priceResult.IsFailure)
             return Result.Failure(priceResult.Errors);
@@ -283,12 +314,19 @@ public partial class Event
             return Result<Money>.Failure(
                 "Paid event pricing is not configured. Use SetPricing(), SetDualPricing(), or SetGroupPricing().");
 
-        // PHASE_7E_3C: remove these gates when paid B-mode + TierCounts ships.
-        // See docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md (slice 7E.3c).
+        // Phase 7E.3c (2026-04-29): lifted the PaidHeadCountTiersDeferred gates. Tiered
+        // ticketing now uses TierCounts pricing; standalone TierCounts (without tiered
+        // ticketing) is still rejected because there's no tier price to look up.
+        if (headCount.TierCounts != null && headCount.TierCounts.Count > 0
+            && TicketingMode != Enums.TicketingMode.Tiered)
+            return Result<Money>.Failure(
+                "TierCounts can only be used with TicketingMode.Tiered events. " +
+                "Remove TierCounts from the head-count payload, or configure tiered ticketing on the event.");
+
+        // Tiered ticketing → use TierCounts pricing path. Free + tiered short-circuited
+        // earlier (IsFree() returned zero); reaching here means paid + tiered.
         if (TicketingMode == Enums.TicketingMode.Tiered)
-            return Result<Money>.Failure(RegistrationModeErrorCodes.PaidHeadCountTiersDeferred);
-        if (headCount.TierCounts != null && headCount.TierCounts.Count > 0)
-            return Result<Money>.Failure(RegistrationModeErrorCodes.PaidHeadCountTiersDeferred);
+            return CalculateTierCountsPrice(headCount.TierCounts);
 
         // Group-tiered pricing — single tier price covers everyone in the basket; calculator
         // chooses the correct tier from Total.
@@ -364,5 +402,56 @@ public partial class Event
         return multiplyResult.IsSuccess
             ? Result<Money>.Success(multiplyResult.Value)
             : Result<Money>.Failure(multiplyResult.Errors);
+    }
+
+    /// <summary>
+    /// Phase 7E.3c (architect edit #4): TierCounts pricing for paid Mode-B RSVP. Mirrors
+    /// Mode A's <see cref="Event.CalculateTieredPriceForAttendees"/> — uses
+    /// <c>tier.AdultPrice</c> for ALL attendees regardless of demographic category, because
+    /// today's <c>TicketTier</c> charges per-tier flat (not per attendee category).
+    /// <c>TicketTier.ChildPrice</c> exists for tier × age matrix pricing — that's Phase 7F
+    /// scope and not used here for B-mode TierCounts. The deliberate parity is asserted by
+    /// the architect-required parity test in <c>Phase7E3cTierCountsPricingTests</c>.
+    ///
+    /// Tier-name snapshot is preserved: the registration's <see cref="HeadCountBreakdown.TierCounts"/>
+    /// holds the snapshotted <c>TierName</c> at registration time (set by the handler before
+    /// calling RegisterWithHeadCount). This method only touches PRICE, never name.
+    /// </summary>
+    private Result<Money> CalculateTierCountsPrice(IReadOnlyList<TierCount>? tierCounts)
+    {
+        if (tierCounts == null || tierCounts.Count == 0)
+            return Result<Money>.Failure(
+                "TierCounts is required when TicketingMode is Tiered. " +
+                "Specify counts per tier (e.g. VIP × 2, General × 3).");
+
+        Money? total = null;
+        foreach (var tc in tierCounts)
+        {
+            var tier = _ticketTiers.FirstOrDefault(t => t.Id == tc.TierId);
+            if (tier == null)
+                return Result<Money>.Failure(
+                    $"Ticket tier {tc.TierId} not found on this event. " +
+                    "TierCount has gone stale — verify the event's tier list before retrying.");
+
+            // Architect edit #4 parity: same `tier.AdultPrice` choice as Mode A's
+            // CalculateTieredPriceForAttendees on Event.cs:438-442.
+            var lineTotalResult = tier.AdultPrice.Multiply(tc.Count);
+            if (lineTotalResult.IsFailure)
+                return Result<Money>.Failure(lineTotalResult.Errors);
+
+            if (total == null)
+            {
+                total = lineTotalResult.Value;
+            }
+            else
+            {
+                var addResult = total.Add(lineTotalResult.Value);
+                if (addResult.IsFailure)
+                    return Result<Money>.Failure(addResult.Errors);
+                total = addResult.Value;
+            }
+        }
+
+        return Result<Money>.Success(total!);
     }
 }

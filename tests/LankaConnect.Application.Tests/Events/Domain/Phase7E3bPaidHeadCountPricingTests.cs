@@ -143,9 +143,12 @@ public class Phase7E3bPaidHeadCountPricingTests
     }
 
     [Fact]
-    public void RsvpToEvent_ModeBPaid_TierCounts_Rejected_With_PaidHeadCountTiersDeferred()
+    public void RsvpToEvent_ModeBPaid_TierCounts_OnNonTieredEvent_Rejected()
     {
-        // 7E.3c gate: paid B-mode + tier counts is still gated.
+        // Phase 7E.3c: TierCounts only valid on TicketingMode.Tiered events. Sending TierCounts
+        // to a SingleTier event is rejected with a clear "tier-counts only with tiered ticketing"
+        // message (the PaidHeadCountTiersDeferred gate was lifted; tiered events with TierCounts
+        // succeed via Phase7E3cTierCountsPricingTests).
         var @event = CreatePublishedPaidEvent(singleAdultPrice: 50m);
         @event.SetRegistrationMode(RegistrationMode.HeadCountByAge).IsSuccess.Should().BeTrue();
         var tier = TierCount.Create(Guid.NewGuid(), "VIP", 2).Value;
@@ -153,10 +156,8 @@ public class Phase7E3bPaidHeadCountPricingTests
 
         var result = @event.RegisterWithHeadCount(Guid.NewGuid(), "Lead", head, CreateContact());
 
-        result.IsFailure.Should().BeTrue("paid + B + tier counts is gated until 7E.3c");
-        result.Errors.Should().Contain(
-            RegistrationModeErrorCodes.PaidHeadCountTiersDeferred,
-            "frontend pattern-matches on the stable constant");
+        result.IsFailure.Should().BeTrue("TierCounts on a SingleTier event is invalid");
+        result.Errors.Should().Contain(e => e.Contains("TicketingMode.Tiered"));
     }
 
     /// <summary>

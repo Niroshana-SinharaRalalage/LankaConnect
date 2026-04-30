@@ -58,25 +58,37 @@ Architect plan §6.2 inventory listed 6 lifecycle templates needing Mode-B updat
 
 ## 5. End-to-end staging API smoke (post-deploy)
 
-Pending. Plan:
+**Status (2026-04-30):** Evidence collected; full Mode-B API trigger blocked by an unrelated staging-auth bug.
 
-1. Get fresh token.
-2. Use the existing free-Mode-B2 staging event (`16eeb15c-…`) OR the paid B2 event (`749013e8-…`).
-3. **Cancellation broadcast**: cancel the event via `POST /api/events/{id}/cancel` → fetch the ACS sent log → assert the email body contains the Mode-B head-count line ("Lead: X · Total: 5 · 2 adults · 1 child").
-4. **Reminder cron**: trigger via `POST /api/admin/event-reminders/run` (if endpoint exists) → fetch ACS log → assert head-count line present.
-5. **Attendees-added**: this fires only on Mode A today; expect no Mode-B emission yet. Verify Mode-A regression baseline unchanged.
+### 5.1 Evidence collected
 
-DB verification via `psycopg2`:
-```python
-SELECT name, length(html_template), position('attendee-block-7e' in html_template) > 0 AS has_block
-FROM communications.email_templates
-WHERE name IN (
-    'template-event-cancellation-notifications',
-    'template-event-reminder',
-    'template-attendees-added-confirmation'
-);
-```
-Expected: 3 rows, all `has_block = true`, lengths increased by ~7272.
+| Layer | Check | Result |
+|---|---|---|
+| **DB — templates** | All 3 rows contain `attendee-block-7e` anchor; lengths exactly +7272 chars vs pre-7F-A backups (78778 / 91884 / 93210). | ✅ |
+| **DB — backup table** | `communications.email_templates_backup_phase7c2*` not affected; the 7F-A migration's own `email_template_backups` row holds the pre-7F-A bodies for rollback. | ✅ |
+| **DB — Mode-B events with regs** | 4 Mode-B candidates exist with confirmed registrations; head_count JSONB round-trips correctly (`{"total": 5, "demographics": {"adults": 3, "children": 2}}` etc.). | ✅ |
+| **Mode-A regression — reminder** | `event_reminders_sent` shows a 7-day reminder sent 2026-04-29 19:00 UTC on the post-7F-A build (Christmas Dinner Dance 2025, Mode 0). No exception in the new try/catch fail-soft branch → Mode-A path unbroken. | ✅ |
+| **Tests — params** | `Phase7FA_FlexibleRegistrationParamsTests` — 5 / 5 green. Application suite 2432 / 6 skipped / 0 failed. | ✅ |
+
+### 5.2 Mode-B API trigger gap
+
+The two unblocked steps — `POST /api/events/{id}/cancel` against the chosen Mode-B event and `POST /api/admin/event-reminders/run` — both require an `[Authorize]` JWT. As of 2026-04-30 ~10:00 UTC the staging `/api/Auth/login` endpoint issues access tokens whose `iat`/`exp` claims are anchored to **2026-04-25 11:46/12:16** (5 days stale, immediately expired) even though the response's `tokenExpiresAt` JSON field reports a fresh 2026-04-30 timestamp. JWT decode of the latest issued token confirms `iat=1777131975`, `exp=1777133775`. Open endpoints (`GET /api/events`) work because they don't validate the JWT; protected ones (`/cancel`, `/Users/me`) reject with HTTP 401.
+
+This is an environment bug in the staging Auth issuer (likely a clock-skew / mocked-time issue in the JWT signing pipeline), not a Phase 7F-A code issue. The new EventCancellationEmailJob / EventReminderJob code is unreachable through the API until staging auth is fixed.
+
+### 5.3 Natural Mode-B cron coverage
+
+Mode-B events with confirmed registrations all start ≥ 2026-05-13. The 7-day reminder cron will therefore exercise the new Mode-B code path naturally on/after 2026-05-06 against `7096c2fa…` (paid B1 tiered) and `749013e8…` (paid B2 tiered). `event_reminders_sent` will record those rows when they fire.
+
+### 5.4 Closeout decision
+
+Phase 7F-A is shipped on the strength of:
+- DB-state proof of the migrated templates,
+- contract tests proving `ToDictionary` emits all 8 FlexibleRegistration keys for Mode-A defaults and Mode-B values,
+- post-deploy Mode-A reminder running clean (no regression),
+- handler code review confirming the per-recipient registration lookup + try/catch fail-soft pattern.
+
+The Mode-B end-to-end "ACS sent log shows the rendered head-count line" smoke is deferred to (a) the next staging Auth fix, or (b) the natural 7-day reminder cron firing on `7096c2fa` / `749013e8` after 2026-05-06 — whichever comes first. Tracked in [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md) as a follow-up.
 
 ---
 

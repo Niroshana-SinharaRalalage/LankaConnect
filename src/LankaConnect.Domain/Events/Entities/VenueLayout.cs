@@ -622,8 +622,12 @@ public class VenueLayout : BaseEntity
         IReadOnlyList<TicketTier> eventTiers,
         bool requireTierMapping = true)
     {
-        if (!_zones.Any())
-            return Result.Failure("Layout must have at least one zone");
+        // Slice 9.4 follow-up fix: a banquet layout has tables but no zones —
+        // its tables hold the seats directly. The original "must have ≥1 zone"
+        // check rejected every banquet preset at apply-time. Accept zones OR
+        // tables; reject only the empty-shell case (neither).
+        if (!_zones.Any() && !_tables.Any())
+            return Result.Failure("Layout must have at least one zone or table");
 
         var activeTiers = eventTiers.Where(t => t.IsActive).ToList();
 

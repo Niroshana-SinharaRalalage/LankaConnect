@@ -629,6 +629,37 @@ public class VenueLayoutTests
     }
 
     [Fact]
+    public void ValidateForEvent_BanquetLayoutWithTablesOnlyNoZones_Should_Succeed()
+    {
+        // Slice 9.4 follow-up fix: banquet presets (round tables, square tables, etc.)
+        // legitimately have NO zones — seats live directly on the tables. The original
+        // "≥1 zone" check rejected every banquet apply-preset request. Validation must
+        // accept zones OR tables.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var addTableResult = layout.GenerateRoundTable("Table 1", capacity: 8, sortOrder: 1);
+        addTableResult.IsSuccess.Should().BeTrue();
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateForEvent_EmptyLayout_NoZonesAndNoTables_Should_Fail()
+    {
+        // Regression guard for the truly-empty case — previously the only failure
+        // path. Now updated message to match new contract.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var result = layout.ValidateForEvent(tiers);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("at least one zone or table");
+    }
+
+    [Fact]
     public void ValidateForEvent_RequireTierMappingTrue_IsDefault_PreservesExistingBehaviour()
     {
         // Default-true keeps every existing caller's strict behaviour. Regression guard.

@@ -111,15 +111,42 @@ public static class HeadCountEmailFormatter
     }
 
     /// <summary>
-    /// Builds the tier line. Output: "VIP × 2, General × 3".
-    /// Empty string when <paramref name="tierCounts"/> is null or empty.
+    /// Builds the tier line. Mode-aware per Phase 7F-C architect edit #11:
+    /// <list type="bullet">
+    /// <item>Legacy (<see cref="TierCount.HasAgeSplit"/> == false): <c>"VIP × 2, General × 3"</c></item>
+    /// <item>With age split: <c>"VIP: 2 adults · 1 child, General: 5 adults"</c></item>
+    /// </list>
+    /// Mixed lists (some tiers with age split, some without) are not allowed by domain
+    /// invariants, so this method assumes all-or-nothing across <paramref name="tierCounts"/>.
     /// Tier name is the SNAPSHOT from registration time (architect-required) — survives
     /// downstream tier rename/delete on the underlying event.
     /// </summary>
     public static string FormatTierLine(IReadOnlyList<TierCount>? tierCounts)
     {
         if (tierCounts == null || tierCounts.Count == 0) return string.Empty;
-        return string.Join(", ", tierCounts.Select(tc => $"{tc.TierName} × {tc.Count}"));
+        return string.Join(", ", tierCounts.Select(FormatSingleTier));
+    }
+
+    private static string FormatSingleTier(TierCount tc)
+    {
+        if (!tc.HasAgeSplit)
+            return $"{tc.TierName} × {tc.Count}";
+
+        // Age-split path: "VIP: 2 adults · 1 child" — only emit non-zero leaves so that
+        // an all-adult tier still reads "VIP: 3 adults" (not "VIP: 3 adults · 0 children").
+        var parts = new List<string>();
+        var adults = tc.AdultCount ?? 0;
+        var children = tc.ChildCount ?? 0;
+        if (adults > 0)
+            parts.Add($"{adults} {(adults == 1 ? "adult" : "adults")}");
+        if (children > 0)
+            parts.Add($"{children} {(children == 1 ? "child" : "children")}");
+
+        // Defence: HasAgeSplit==true but both zero → emit "0 adults" so the line is informative.
+        if (parts.Count == 0)
+            parts.Add("0 adults");
+
+        return $"{tc.TierName}: {string.Join(" · ", parts)}";
     }
 
     private static void AddLeaf(List<string> parts, int? value, string singular, string plural, bool emitZero)

@@ -233,6 +233,26 @@ public class VenueLayoutTests
     }
 
     [Fact]
+    public void GenerateTheaterSeats_OnPopulatedZone_Should_Fail()
+    {
+        // Slice 9.5 contract: refusing to regenerate seats on an already-populated
+        // zone is a defence-in-depth check (the canvas-editor UI also gates the
+        // seat-gen panel on totalSeatCount === 0). Removing existing seats via
+        // the domain orphans them due to the optional XOR-with-VenueTableId FK,
+        // which then violates the Postgres ck_seats_zone_xor_table CHECK at
+        // SaveChanges. Refusing fast keeps the error precise + clean.
+        var layout = CreateValidLayout();
+        var zone = layout.AddZone("Main Floor", "#FF0000", 1).Value;
+        layout.GenerateTheaterSeats(zone.Id, rows: 3, seatsPerRow: 4); // populate first
+
+        var result = layout.GenerateTheaterSeats(zone.Id, rows: 5, seatsPerRow: 5);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("already has");
+        zone.Seats.Should().HaveCount(12); // original seats preserved
+    }
+
+    [Fact]
     public void GenerateTheaterSeats_Should_Label_Correctly()
     {
         var layout = CreateValidLayout();
@@ -263,16 +283,24 @@ public class VenueLayoutTests
     }
 
     [Fact]
-    public void GenerateTheaterSeats_Should_Clear_Existing_Seats_First()
+    public void GenerateTheaterSeats_Should_Refuse_Regeneration_On_Populated_Zone()
     {
+        // Slice 9.5 contract update: regenerating seats on a populated zone is
+        // refused. Background: the optional XOR-with-VenueTableId FK means EF
+        // Core orphans removed seats by setting VenueZoneId=null, which violates
+        // the Postgres ck_seats_zone_xor_table CHECK at SaveChanges. Domain-level
+        // refusal is defence-in-depth; the canvas-editor UI also gates the seat-
+        // gen panel on totalSeatCount === 0.
         var layout = CreateValidLayout();
         var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 5, seatsPerRow: 5); // 25 seats
         zone.Seats.Should().HaveCount(25);
 
-        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3); // Regenerate: 6 seats
+        var result = layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3);
 
-        zone.Seats.Should().HaveCount(6);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("already has");
+        zone.Seats.Should().HaveCount(25); // original seats preserved (not 6, not 0)
     }
 
     [Fact]

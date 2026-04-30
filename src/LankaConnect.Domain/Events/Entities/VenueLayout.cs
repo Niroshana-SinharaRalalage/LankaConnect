@@ -400,6 +400,18 @@ public class VenueLayout : BaseEntity
     /// <summary>
     /// Generates theater-style seats for a zone: rows × seats per row.
     /// Row labels: A, B, C, ... (or custom start). Seat labels: "A1", "A2", "B1", etc.
+    ///
+    /// <para>
+    /// <b>Slice 9.5 contract</b>: refuses to run if the zone already has seats.
+    /// Removing populated seats via the domain's <c>ClearSeats</c> orphans them
+    /// (sets <c>VenueZoneId = null</c>) because the EF Core relationship is
+    /// optional — required by the XOR with <c>VenueTableId</c>. Orphaned seats
+    /// then violate the <c>ck_seats_zone_xor_table</c> Postgres CHECK
+    /// constraint. To regenerate, callers must first delete the zone (which
+    /// cascades through to seats correctly via <c>OnDelete.Cascade</c>) and
+    /// add a new one. The canvas-editor UI already gates the seat-gen panel
+    /// on <c>totalSeatCount == 0</c>; this is defence in depth.
+    /// </para>
     /// </summary>
     public Result GenerateTheaterSeats(
         Guid zoneId,
@@ -410,6 +422,10 @@ public class VenueLayout : BaseEntity
         var zone = _zones.FirstOrDefault(z => z.Id == zoneId);
         if (zone == null)
             return Result.Failure("Zone not found in this layout");
+
+        if (zone.Seats.Any())
+            return Result.Failure(
+                $"Zone '{zone.Name}' already has {zone.Seats.Count} seats. Delete the zone and re-add it to change the seat layout.");
 
         if (rows <= 0)
             return Result.Failure("Number of rows must be greater than 0");
@@ -425,9 +441,6 @@ public class VenueLayout : BaseEntity
 
         if (string.IsNullOrWhiteSpace(startRowLabel))
             return Result.Failure("Start row label is required");
-
-        // Clear existing seats in this zone before regeneration
-        zone.ClearSeats();
 
         int startCharCode = char.ToUpper(startRowLabel.Trim()[0]);
         int sortIndex = 0;

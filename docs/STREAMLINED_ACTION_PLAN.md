@@ -6,7 +6,30 @@
 
 ---
 
-## 🎯 2026-04-30 (latest) — Phase 7F sub-feature A SHIPPED + STAGING-VERIFIED — Mode-B head-count card on 3 lifecycle email templates
+## 🎯 2026-04-30 (latest) — Slice 9.5 SHIPPED + STAGING-VERIFIED — theater seat generation in canvas editor
+
+**User-reported gap**: "how do I add seats if I am going to create a new layout?" — the canvas editor's `+ Zone` button created empty zones with no UI to populate them. Built-in presets (Theater Classic etc.) auto-generate seats; tables auto-generate from `capacity`; but custom zones had no path to seats.
+
+**Fix shipped (commits `6e11c1af` + `1b935ab6`, deploys `25145376702` / `25145376697` / `25146174322` all `success`)**:
+
+- **Backend**: `BatchZone` DTO extended with optional `RowCount` + `SeatsPerRow` fields. When both are positive integers, `BatchUpdateLayoutCommandHandler` invokes `VenueLayout.GenerateTheaterSeats(zoneId, rows, cols)` on the affected zone (works for both add and update paths). Structured logging on every seat-gen.
+- **Frontend**: `BatchZone` TS interface mirrors the new fields. `CanvasEditorDraftState` gains `seatGenByZoneId: Record<string, {rowCount, seatsPerRow}>`. `composeBatchPayload` forwards entries to both kept and added zones; `countDraftChanges` treats them as user changes. `CanvasEditorPropertyPanel` renders a "Seats" subsection with Rows + "Seats per row" inputs (max 100 each) and a live `N seats will be generated on Save` preview — ONLY when the selected zone has zero seats. Zones with existing seats render a hint instead ("Editing seat layout for an existing zone is coming in a future release"). Handler `handleSeatGenChange` writes through the existing history pipeline (undo/redo works); deletion of a zone clears any pending seat-gen override.
+- **Bug discovered + fixed mid-smoke**: regen on populated zone returned `500 DatabaseError` (Postgres CHECK `ck_seats_zone_xor_table` violation, correlation `e055882b-…`). Root cause: `Seat.VenueZoneId` is nullable (XOR with `VenueTableId`), making EF Core's `Seat → VenueZone` relationship optional → `zone.ClearSeats()` orphans seats by setting `VenueZoneId=null` instead of cascade-DELETE → orphan UPDATE violates the XOR. **Fix**: `GenerateTheaterSeats` refuses regen on populated zones with precise message *"Zone 'X' already has N seats. Delete the zone and re-add it to change the seat layout."* — defence in depth matching the UI's empty-only gate. The existing `_should_clear_existing_seats_first` test was updated to assert the new contract.
+
+**Smoke verification (staging)**:
+- T1 (add new zone with seat-gen): `PUT /batch` payload with `{name:"Balcony", rowCount:3, seatsPerRow:5}` → HTTP 204; layout total 200 + 15 = 215 seats; new zone has 15 seats with row labels A1..C5.
+- T2 (regen rejection): `PUT /batch` with seat-gen on populated zone → HTTP 400 `"Zone 'Main Floor' already has 200 seats..."` (precise message, not opaque 500).
+- 55/55 VenueLayoutTests pass; 2432 Application tests pass; tsc --noEmit clean.
+- Cleanup: smoke layout `8c00aaac-…` deleted; event `e4792b64-…` back to `venueLayoutId: None`, `seatingMode: GeneralAdmission`.
+
+**Deferred to follow-up**:
+- Capacity input on the property panel for tables (round/rect tables already auto-generate default 8 seats on Save; capacity-edit would be additive).
+- Curvature parameter for theater zones with curved fronts.
+- "Regenerate seats" path on populated zones with an explicit destructive confirmation dialog.
+
+---
+
+## 🎯 2026-04-30 (earlier) — Phase 7F sub-feature A SHIPPED + STAGING-VERIFIED — Mode-B head-count card on 3 lifecycle email templates
 
 **Bug context**: Phase 7E.4 chunk 1 (registration-confirmation email) shipped Mode-B head-count rendering. The remaining 5 lifecycle templates from architect plan §6.2 were carried forward to "Phase 7F-A". Pre-condition probing during this slice revealed 3 of those 5 (waitlist-promoted / registration-modified / organizer-new-registration-notification) DO NOT EXIST in the codebase — they're aspirational placeholders. Scope correctly tightened to **3 actually-existing templates**.
 

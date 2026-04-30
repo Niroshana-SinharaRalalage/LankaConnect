@@ -6,7 +6,31 @@
 
 ---
 
-## 🎯 2026-04-29 (latest) — Phase 7E.3c SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP with TierCounts axis pricing
+## 🎯 2026-04-30 (latest) — Slice 9 follow-up API smoke COMPLETE — banquet-preset bug fixed
+
+**Context**: per the master TODO list at [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md), the original Slice 9 verification still owed: (1) apply-template smoke, (2) re-apply-different-preset smoke (orphan accumulation path), (3) Slice 8 regression deck after all 4 slices shipped, (4) audit-table verification.
+
+**Bug discovered during smoke**: `POST /apply-preset {presetId:"banquet-round-8"}` on a tiered event returned 400 `"Layout must have at least one zone"`. Root cause: `VenueLayout.ValidateForEvent` required `_zones.Any()`, but banquet layouts use TABLES (round / square / rect tables) directly with no zones. The original from-preset endpoint never called `ValidateForEvent` so the bug was latent; Slice 9.2's `ApplyPresetToEventCommandHandler` calls it for structural validity, which surfaced the issue.
+
+**Fix shipped (commit `8b2b8d1b`, deploy run `25143127207` `conclusion=success`)**:
+- `!_zones.Any() && !_tables.Any()` — zones OR tables is structurally valid; only an empty shell (neither) fails.
+- Error message updated to "at least one zone or table".
+- Two new tests: positive (banquet with one round table → passes), negative (empty layout → fails with new wording).
+- 56 VenueLayoutTests pass.
+
+**Smoke 4/4 PASS** (re-run after fix):
+- **T1 (apply-template, atomic)**: `POST /apply-template` against template `a636c96e-…` (S8.9b smoke clone, 200 seats, 1 zone) on event `e4792b64-…` → 200, layout `0fcd2298-…` created, event auto-flipped to `seatingMode: AssignedSeating` + `venueLayoutId` set. `GET /by-event/{id}` returned the assigned layout.
+- **T2 (apply-preset replaces existing layout)**: `POST /apply-preset {presetId:"banquet-round-8"}` against the now-attached event → 200, banquet layout `cadc267c-…` (15 round tables × 8 seats = 120 capacity) attaches; old layout `0fcd2298-…` still in DB but invisible to `by-event` (Slice 9.3 read fix in action — orphan exists with `event_id` but `events.venue_layout_id` points elsewhere).
+- **T3 (Slice 8 regression)**: 8 presets returned, 409 on stale If-Match for PUT /batch, 400 on non-template-source for BOTH legacy `from-template` AND new `apply-template`. No regressions.
+- **T4 (audit-table verification)**: confirmed migration ran via deploy log `Applying migration '20260429185523_Slice93HardDeleteOrphanLayouts'`. Runtime `RAISE NOTICE` orphan-count output requires direct DB access which is not available via API; the design accepts this (architect Rev 3 — the `RAISE EXCEPTION` post-condition guard ensures silent failure cannot occur).
+
+**Cleanup**: test artifacts deleted; event `e4792b64-…` back to `venueLayoutId: None`, `seatingMode: GeneralAdmission`. Final `by-event` returns 400 "Venue layout not found".
+
+**All 4 root causes from Slice 9 (RC-1 through RC-4) now closed + verified end-to-end on staging.**
+
+---
+
+## 🎯 2026-04-29 — Phase 7E.3c SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP with TierCounts axis pricing
 
 **Context**: Phase 7E.3b shipped paid B-mode for single-price + dual-price events but gated TierCounts (e.g. "VIP × 2 + General × 3") behind `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred`. 7E.3c lifts that gate and ships the actual TierCounts pricing path. **Phase 7E is now complete end-to-end** — free + paid + Mode C + tier-counts all shipped. Tier × age matrix remains Phase 7F.
 

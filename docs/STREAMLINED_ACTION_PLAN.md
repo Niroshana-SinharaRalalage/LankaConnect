@@ -6,7 +6,37 @@
 
 ---
 
-## 🎯 2026-04-30 (latest) — Slice 9 follow-up API smoke COMPLETE — banquet-preset bug fixed
+## 🎯 2026-04-30 (latest) — Phase 7F sub-feature A SHIPPED + STAGING-VERIFIED — Mode-B head-count card on 3 lifecycle email templates
+
+**Bug context**: Phase 7E.4 chunk 1 (registration-confirmation email) shipped Mode-B head-count rendering. The remaining 5 lifecycle templates from architect plan §6.2 were carried forward to "Phase 7F-A". Pre-condition probing during this slice revealed 3 of those 5 (waitlist-promoted / registration-modified / organizer-new-registration-notification) DO NOT EXIST in the codebase — they're aspirational placeholders. Scope correctly tightened to **3 actually-existing templates**.
+
+**Fix (architect-approved 1-iteration plan in [docs/MASTER_TODO_PHASE_7F_A_LIFECYCLE_EMAILS.md](MASTER_TODO_PHASE_7F_A_LIFECYCLE_EMAILS.md))**:
+
+- **Slice 1** (commit `1e7678f3`): `EventCancellationEmailParams`, `EventReminderEmailParams`, `AttendeesAddedEmailParams` gain a Phase 7F-A region with the 8 FlexibleRegistration keys (`HasDetailedAttendees` / `HasHeadCount` / `HasHeadCountBreakdown` / `HasTierBreakdown` / `HeadCountTotal` / `HeadCountBreakdownLine` / `TierBreakdownLine` / `LeadAttendeeName`). `ToDictionary` always emits all 8 (true OR false, never omitted) per architect rule. Handlers populate via `HeadCountEmailFormatter.Compute(registration)`: `EventCancellationEmailJob` per-recipient `user.Id → confirmedRegistration` lookup; `EventReminderJob` in both reminder-send branches; `AttendeesAddedEventHandler` from already-loaded registration. All wrapped in try/catch fail-soft (registration cancellation/reminder/add still sends even if formatter throws). 5 new params-emit-Flexible-keys unit tests.
+
+- **Slice 2** (commit `fcde946a`): `psycopg2`-probed staging on 2026-04-30 to capture authoritative bodies (84612 / 85938 / 71506 chars), located `{{#if HasOrganizerContact}}` anchors at positions 58509 / 65496 / 51080, inserted the Phase 7E.4 chunk 1 Mode-B card snippet (7271 chars; anchor-wrapped with `<!-- attendee-block-7e --> ... <!-- /attendee-block-7e -->`) immediately before the `HasOrganizerContact` block. Saved as 3 embedded resources in `Resources/Phase7F_A/*.html`. New `Phase7FATemplates.LoadHtml` helper. EF-scaffolded migration `Phase7F_A_FlexibleRegistrationLifecycleTemplates` with `Up()` doing defensive `CREATE IF NOT EXISTS` on the backup table + per-template backup INSERT + parameterised UPDATE; `Down()` restoring each body from the backup row (idempotent).
+
+**Architect-required pre-conditions all clean**:
+- Mode C silent: both `EventCancellationEmailJob` (line 122) and `EventReminderJob` (line 145) iterate `event.Registrations` which is empty for Mode C → loops execute 0 times → templates never rendered for Mode C. Naturally silent, no explicit guard added.
+- Template DB rows pinned via `psycopg2` probe: 84612 / 85938 / 71506 chars confirmed.
+- N/A `LeadAttendeeName` at waitlist-promotion: waitlist email infrastructure doesn't exist.
+
+**DB verification post-deploy** (via `psycopg2`):
+- All 3 templates contain `attendee-block-7e` anchor.
+- Lengths grew exactly +7272 chars each: 78778 / 91884 / 93210.
+- `communications.email_template_backups` has all 3 pre-7F-A bodies for rollback.
+
+**Test totals**: 5 new params tests; full Application suite **2432 passed / 6 skipped / 0 failed**.
+
+**Deploys**: backend `25145447580` `conclusion=success`. Frontend not changed in this slice.
+
+**Verification gap honestly noted**: the `communications.email_messages` audit table is empty in staging — emails are sent via ACS without DB persistence, so the actual rendered-email body can't be verified via DB query. The implementation contract is verified via the chain: handler populates Flexible* fields (covered by 2432-test suite) → ToDictionary emits all 8 keys (5 new unit tests) → DB body contains `{{#HasHeadCount}}` block at the expected anchor (verified via `psycopg2`). Real end-to-end ACS-side verification will happen organically as organisers cancel/remind on Mode-B events.
+
+**Out of scope (separate work if/when needed)**: `event-waitlist-promoted` (no waitlist code), `event-registration-modified` (no separate template; UpdateRsvp rejects B/C anyway), `organizer-new-registration-notification` (no separate template).
+
+---
+
+## 🎯 2026-04-30 (earlier) — Slice 9 follow-up API smoke COMPLETE — banquet-preset bug fixed
 
 **Context**: per the master TODO list at [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md), the original Slice 9 verification still owed: (1) apply-template smoke, (2) re-apply-different-preset smoke (orphan accumulation path), (3) Slice 8 regression deck after all 4 slices shipped, (4) audit-table verification.
 

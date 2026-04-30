@@ -551,6 +551,16 @@ export interface CanvasEditorDraftState {
   /** S8.7 per-item tier overrides. NOT persisted by S8.8b — tier persistence
    * lives behind the slice 4 single-tier endpoints and lands in S8.8c. */
   tierAssignmentsByKey: Record<string, string[]>;
+  /**
+   * Slice 9.5: per-zone theater seat-generation overrides. Keyed by zoneId
+   * (works for both kept zones in `baseline.zones` and added zones in
+   * `additions.zones` — the keys are unique). Each entry triggers
+   * `VenueLayout.GenerateTheaterSeats` server-side on save (clears existing
+   * seats then creates rows × seatsPerRow grid). The Property panel only
+   * surfaces this when the selected zone is empty — destructive overwrite
+   * is gated by the UI even though the domain method allows it.
+   */
+  seatGenByZoneId: Record<string, { rowCount: number; seatsPerRow: number }>;
 }
 
 export interface ComposeBatchPayloadInput {
@@ -581,27 +591,38 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
 
   const keptZones: BatchZone[] = (baseline.zones ?? [])
     .filter((z) => !isDeleted('zone', z.id))
-    .map((z) => ({
-      id: z.id,
-      name: z.name,
-      color: z.color,
-      sortOrder: z.sortOrder,
-      shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
-      geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
-    }));
+    .map((z) => {
+      const seatGen = draft.seatGenByZoneId[z.id];
+      return {
+        id: z.id,
+        name: z.name,
+        color: z.color,
+        sortOrder: z.sortOrder,
+        shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+        geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
+        // Slice 9.5 — seat-gen override for this kept zone.
+        rowCount: seatGen?.rowCount ?? null,
+        seatsPerRow: seatGen?.seatsPerRow ?? null,
+      };
+    });
 
   // S8.8c: stamp the client-side draft Guid as `clientId` on newly-added zones
   // so the backend can resolve any `BatchTierAssignment.assignableId` that
   // references this zone before it has a server-side Guid.
-  const addedZones: BatchZone[] = draft.additions.zones.map((z) => ({
-    id: null,
-    name: z.name,
-    color: z.color,
-    sortOrder: z.sortOrder,
-    shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
-    geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? z.geometry ?? null,
-    clientId: z.id,
-  }));
+  const addedZones: BatchZone[] = draft.additions.zones.map((z) => {
+    const seatGen = draft.seatGenByZoneId[z.id];
+    return {
+      id: null,
+      name: z.name,
+      color: z.color,
+      sortOrder: z.sortOrder,
+      shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+      geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? z.geometry ?? null,
+      clientId: z.id,
+      rowCount: seatGen?.rowCount ?? null,
+      seatsPerRow: seatGen?.seatsPerRow ?? null,
+    };
+  });
 
   const keptTables: BatchTable[] = (baseline.tables ?? [])
     .filter((t) => !isDeleted('table', t.id))
@@ -767,7 +788,15 @@ export function countDraftChanges(input: ComposeBatchPayloadInput): number {
     }
   }
 
-  return additions + deletions + geometryOverrides + tierOverrides;
+  // Slice 9.5 — seat-generation overrides count as user changes.
+  // Skip entries whose zone is being deleted in this same batch (no-op).
+  let seatGenOverrides = 0;
+  for (const zoneId of Object.keys(draft.seatGenByZoneId)) {
+    if (draft.deletions.has(refKey({ kind: 'zone', id: zoneId }))) continue;
+    seatGenOverrides++;
+  }
+
+  return additions + deletions + geometryOverrides + tierOverrides + seatGenOverrides;
 }
 
 /**

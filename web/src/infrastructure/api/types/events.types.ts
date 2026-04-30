@@ -2999,6 +2999,16 @@ export interface BatchZone {
    * before the server has assigned its real Guid. Ignored when `id` is set.
    */
   clientId?: string | null;
+  /**
+   * Slice 9.5: optional theater-style seat-generation parameters. When BOTH
+   * are provided (positive integers), the backend invokes
+   * `VenueLayout.GenerateTheaterSeats(rows × seatsPerRow)` after the zone is
+   * added/updated. The domain method clears existing seats first, so the
+   * frontend property panel only surfaces these inputs for empty zones (UX
+   * gate) — sending them for a zone with existing seats would wipe them.
+   */
+  rowCount?: number | null;
+  seatsPerRow?: number | null;
 }
 
 export interface BatchTable {

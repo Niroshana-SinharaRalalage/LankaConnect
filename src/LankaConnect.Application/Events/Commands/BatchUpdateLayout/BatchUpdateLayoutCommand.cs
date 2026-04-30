@@ -67,7 +67,18 @@ public record BatchZone(
     /// reference the new zone before the server has assigned its real Guid.
     /// Ignored when <see cref="Id"/> is set.
     /// </summary>
-    Guid? ClientId = null
+    Guid? ClientId = null,
+    /// <summary>
+    /// Slice 9.5 — theater-style seat-generation parameters. When BOTH are
+    /// supplied (non-null AND positive), the handler invokes
+    /// <c>VenueLayout.GenerateTheaterSeats</c> on the zone after add/update.
+    /// The domain method clears any existing seats before regenerating, so
+    /// passing these for a zone that already has seats is destructive — the
+    /// frontend property panel currently only surfaces these inputs for
+    /// empty zones. Both omitted = no seat-gen (preserves existing seats).
+    /// </summary>
+    int? RowCount = null,
+    int? SeatsPerRow = null
 );
 
 public record BatchTable(

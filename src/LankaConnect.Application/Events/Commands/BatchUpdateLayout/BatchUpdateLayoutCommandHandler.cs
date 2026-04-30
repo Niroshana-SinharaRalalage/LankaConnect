@@ -191,6 +191,22 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 zoneDto.Shape, zoneDto.Geometry);
             if (updateResult.IsFailure) return updateResult;
             changesCount++;
+
+            // Slice 9.5 — optional seat regeneration for the existing zone. The
+            // domain method ClearSeats() then GenerateTheaterSeats(rows × cols).
+            // Frontend currently only sends these for empty zones (UI gate),
+            // but the domain handles either case correctly.
+            if (zoneDto.RowCount is { } rowCount && rowCount > 0
+                && zoneDto.SeatsPerRow is { } seatsPerRow && seatsPerRow > 0)
+            {
+                var seatGenResult = layout.GenerateTheaterSeats(
+                    zoneDto.Id!.Value, rowCount, seatsPerRow);
+                if (seatGenResult.IsFailure) return seatGenResult;
+                _logger.LogInformation(
+                    "BatchUpdateLayout: regenerated {SeatCount} seats in zone {ZoneId} ({Rows}×{Cols})",
+                    rowCount * seatsPerRow, zoneDto.Id!.Value, rowCount, seatsPerRow);
+                changesCount++;
+            }
         }
 
         // Track newly-created zones so we can resolve table.ZoneId references below
@@ -218,6 +234,19 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 clientIdToZoneServerGuid[clientGuid] = addResult.Value.Id;
             }
             changesCount++;
+
+            // Slice 9.5 — optional seat generation for the newly-added zone.
+            if (zoneDto.RowCount is { } rowCount && rowCount > 0
+                && zoneDto.SeatsPerRow is { } seatsPerRow && seatsPerRow > 0)
+            {
+                var seatGenResult = layout.GenerateTheaterSeats(
+                    addResult.Value.Id, rowCount, seatsPerRow);
+                if (seatGenResult.IsFailure) return seatGenResult;
+                _logger.LogInformation(
+                    "BatchUpdateLayout: generated {SeatCount} seats in new zone {ZoneId} ({Rows}×{Cols})",
+                    rowCount * seatsPerRow, addResult.Value.Id, rowCount, seatsPerRow);
+                changesCount++;
+            }
         }
 
         // Table updates.

@@ -115,6 +115,7 @@ const INITIAL_DRAFT: DraftState = {
   additions: { zones: [], tables: [], decorations: [] },
   deletions: new Set<string>(),
   tierAssignmentsByKey: {},
+  seatGenByZoneId: {},
 };
 
 const DEFAULT_CANVAS_WIDTH = 1000;
@@ -240,6 +241,37 @@ export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorP
     [history, effectiveLayout],
   );
 
+  /**
+   * Slice 9.5 — seat-gen handler. Sets / clears the per-zone override in the
+   * canvas-editor draft. Passing `null` removes the entry (the panel emits
+   * `null` whenever either input is empty/zero, signalling "don't generate").
+   * Empty entries — entries where rowCount=0 OR seatsPerRow=0 — are also
+   * pruned here so `composeBatchPayload` doesn't emit half-baked nulls.
+   */
+  const handleSeatGenChange = useCallback(
+    (
+      zoneId: string,
+      next: { rowCount: number; seatsPerRow: number } | null,
+    ) => {
+      history.commit((prev) => {
+        const without = { ...prev.seatGenByZoneId };
+        if (
+          next === null ||
+          next.rowCount <= 0 ||
+          next.seatsPerRow <= 0
+        ) {
+          delete without[zoneId];
+          return { ...prev, seatGenByZoneId: without };
+        }
+        return {
+          ...prev,
+          seatGenByZoneId: { ...prev.seatGenByZoneId, [zoneId]: next },
+        };
+      });
+    },
+    [history],
+  );
+
   const factoryCenter = useMemo(
     () => ({
       x: (layout.canvas?.width ?? DEFAULT_CANVAS_WIDTH) / 2,
@@ -345,11 +377,15 @@ export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorP
       // S8.8's save diff doesn't resurrect assignments for a tombstoned id.
       const nextTierAssignments = { ...prev.tierAssignmentsByKey };
       delete nextTierAssignments[key];
+      // Slice 9.5 — drop pending seat-gen override too (only zones can have one).
+      const nextSeatGen = { ...prev.seatGenByZoneId };
+      if (selected.kind === 'zone') delete nextSeatGen[selected.id];
       return {
         geometryByKey: nextGeometry,
         additions: nextAdditions,
         deletions: nextDeletions,
         tierAssignmentsByKey: nextTierAssignments,
+        seatGenByZoneId: nextSeatGen,
       };
     });
     setSelected(null);
@@ -480,6 +516,8 @@ export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorP
           tiersLoading={tiersQuery.isLoading}
           draftTierAssignmentsByKey={draft.tierAssignmentsByKey}
           onToggleTierAssignment={handleToggleTierAssignment}
+          seatGenByZoneId={draft.seatGenByZoneId}
+          onSeatGenChange={handleSeatGenChange}
         />
       </div>
     </div>

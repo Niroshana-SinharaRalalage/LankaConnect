@@ -60,6 +60,18 @@ export interface CanvasEditorPropertyPanelProps {
   tiersLoading?: boolean;
   draftTierAssignmentsByKey?: Record<string, string[]>;
   onToggleTierAssignment?: (ref: CanvasItemRef, tierId: string) => void;
+  /**
+   * Slice 9.5: seat-generation overrides for zones, keyed by zone id.
+   * The panel surfaces a Rows + Seats-per-row subsection whenever a zone
+   * is selected AND it currently has zero seats (regenerating a populated
+   * zone is destructive — gated by the UI to require an explicit empty
+   * state). Optional so older callers degrade gracefully.
+   */
+  seatGenByZoneId?: Record<string, { rowCount: number; seatsPerRow: number }>;
+  onSeatGenChange?: (
+    zoneId: string,
+    next: { rowCount: number; seatsPerRow: number } | null,
+  ) => void;
   className?: string;
 }
 
@@ -100,6 +112,8 @@ export function CanvasEditorPropertyPanel({
   tiersLoading,
   draftTierAssignmentsByKey,
   onToggleTierAssignment,
+  seatGenByZoneId,
+  onSeatGenChange,
   className,
 }: CanvasEditorPropertyPanelProps) {
   return (
@@ -138,6 +152,8 @@ export function CanvasEditorPropertyPanel({
             tiersLoading={tiersLoading}
             draftTierAssignmentsByKey={draftTierAssignmentsByKey}
             onToggleTierAssignment={onToggleTierAssignment}
+            seatGenByZoneId={seatGenByZoneId}
+            onSeatGenChange={onSeatGenChange}
           />
         )}
       </div>
@@ -154,6 +170,8 @@ function SelectedItemEditor({
   tiersLoading,
   draftTierAssignmentsByKey,
   onToggleTierAssignment,
+  seatGenByZoneId,
+  onSeatGenChange,
 }: {
   layout: VenueLayoutDto;
   selected: CanvasItemRef;
@@ -163,6 +181,11 @@ function SelectedItemEditor({
   tiersLoading?: boolean;
   draftTierAssignmentsByKey?: Record<string, string[]>;
   onToggleTierAssignment?: (ref: CanvasItemRef, tierId: string) => void;
+  seatGenByZoneId?: Record<string, { rowCount: number; seatsPerRow: number }>;
+  onSeatGenChange?: (
+    zoneId: string,
+    next: { rowCount: number; seatsPerRow: number } | null,
+  ) => void;
 }) {
   const item = findItem(layout, selected);
   if (!item) {
@@ -330,6 +353,130 @@ function SelectedItemEditor({
             onToggleTier={(tierId) => onToggleTierAssignment(selected, tierId)}
           />
         )}
+
+      {/* Slice 9.5: theater-style seat generation for zones with no seats.
+          Surfaced only when the selected zone is empty (existing seats are
+          read from `item.totalSeatCount`) — regenerating populated zones is
+          destructive and the UI gates that path. */}
+      {selected.kind === 'zone' && onSeatGenChange && (
+        <ZoneSeatGenerationSection
+          zone={item as VenueZoneDto}
+          seatGen={seatGenByZoneId?.[selected.id] ?? null}
+          onChange={(next) => onSeatGenChange(selected.id, next)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ZoneSeatGenerationSectionProps {
+  zone: VenueZoneDto;
+  seatGen: { rowCount: number; seatsPerRow: number } | null;
+  onChange: (next: { rowCount: number; seatsPerRow: number } | null) => void;
+}
+
+/**
+ * Slice 9.5 — seat-generation UI for empty zones. Two number inputs for
+ * rows + seats-per-row. The handler emits a per-zone override into the
+ * canvas-editor draft state (`seatGenByZoneId`) which the
+ * <c>composeBatchPayload</c> forwards to the backend's
+ * <c>VenueLayout.GenerateTheaterSeats</c> on save.
+ *
+ * For zones that already have seats we render a hint instead of inputs —
+ * regenerating is destructive (clears existing seats) and we don't expose
+ * that path in this slice. A future "Regenerate seats" button can be
+ * added with an explicit confirmation dialog if organisers need it.
+ */
+function ZoneSeatGenerationSection({
+  zone,
+  seatGen,
+  onChange,
+}: ZoneSeatGenerationSectionProps) {
+  const existingSeats = zone.totalSeatCount ?? zone.seats?.length ?? 0;
+
+  if (existingSeats > 0) {
+    return (
+      <div
+        className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600"
+        data-testid="property-panel-seat-gen-existing"
+      >
+        This zone already has {existingSeats} seats. Editing seat layout for
+        an existing zone is coming in a future release.
+      </div>
+    );
+  }
+
+  const handleRowsCommit = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      onChange(null);
+      return;
+    }
+    const seatsPerRow = seatGen?.seatsPerRow ?? 0;
+    if (seatsPerRow > 0) {
+      onChange({ rowCount: Math.floor(parsed), seatsPerRow });
+    } else {
+      // Stash partial value — completion happens when user fills the second field.
+      onChange({ rowCount: Math.floor(parsed), seatsPerRow: 0 });
+    }
+  };
+
+  const handleSeatsPerRowCommit = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      onChange(null);
+      return;
+    }
+    const rowCount = seatGen?.rowCount ?? 0;
+    if (rowCount > 0) {
+      onChange({ rowCount, seatsPerRow: Math.floor(parsed) });
+    } else {
+      onChange({ rowCount: 0, seatsPerRow: Math.floor(parsed) });
+    }
+  };
+
+  const totalSeats =
+    (seatGen?.rowCount ?? 0) > 0 && (seatGen?.seatsPerRow ?? 0) > 0
+      ? (seatGen?.rowCount ?? 0) * (seatGen?.seatsPerRow ?? 0)
+      : 0;
+
+  return (
+    <div
+      className="space-y-3 pt-3 border-t border-neutral-200"
+      data-testid="property-panel-seat-gen"
+    >
+      <div>
+        <p className="text-xs uppercase tracking-wide text-neutral-500">Seats</p>
+        <p className="text-xs text-neutral-500 mt-0.5">
+          Lay out theater-style seats in this zone.
+        </p>
+      </div>
+      <NumberField
+        id="prop-zone-rows"
+        label="Rows"
+        value={seatGen?.rowCount ?? 0}
+        step={1}
+        min={0}
+        max={100}
+        onCommit={handleRowsCommit}
+      />
+      <NumberField
+        id="prop-zone-seats-per-row"
+        label="Seats per row"
+        value={seatGen?.seatsPerRow ?? 0}
+        step={1}
+        min={0}
+        max={100}
+        onCommit={handleSeatsPerRowCommit}
+      />
+      {totalSeats > 0 && (
+        <p
+          className="text-xs text-neutral-700 bg-primary-50/50 border border-primary-200 rounded-md px-2 py-1.5"
+          data-testid="property-panel-seat-gen-total"
+        >
+          {totalSeats} seats will be generated on Save.
+        </p>
+      )}
     </div>
   );
 }

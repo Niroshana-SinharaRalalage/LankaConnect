@@ -34,6 +34,12 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
     // - Snapshot: deep clone via JSON round-trip — defends against any future mutable field
     //   replicating the Phase 6A.129 mutate-in-place-defeats-snapshot trap.
     // - Hash: ValueObject's hash combine.
+    //
+    // Phase 7F-C (2026-04-30): TierCount gained nullable AdultCount/ChildCount fields.
+    // No comparer change required — the JSON-roundtrip snapshot inherently picks up new
+    // fields, and TierCount.GetEqualityComponents already yields them so structural equality
+    // detects per-tier-age changes. Verified by round-trip test in
+    // Phase7FCTierAgeMatrixPricingTests.HeadCountBreakdown_JsonRoundTrip_PreservesAgeSplit.
     private static readonly ValueComparer<HeadCountBreakdown?> HeadCountComparer = new(
         (a, b) => HeadCountStructuralEquals(a, b),
         v => v == null ? 0 : v.GetHashCode(),

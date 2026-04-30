@@ -444,4 +444,86 @@ public class Phase7FCTierAgeMatrixPricingTests
         deserialised.ChildCount.Should().BeNull();
         deserialised.HasAgeSplit.Should().BeFalse();
     }
+
+    /// <summary>
+    /// Phase 7F-C.1b — round-trip persistence test using the SAME JsonSerializerOptions
+    /// the EF Core <c>RegistrationConfiguration</c>'s ValueComparer uses for jsonb storage.
+    /// Asserts the new <see cref="TierCount.AdultCount"/> / <see cref="TierCount.ChildCount"/>
+    /// fields survive serialise → deserialise (so EF's deep-copy snapshot picks them up
+    /// and the comparer detects per-tier-age changes — Phase 6A.129 mutate-in-place trap defence).
+    ///
+    /// Production config (<c>RegistrationConfiguration.HeadCountJsonOptions</c>):
+    /// camelCase + ignore-null-on-write. Mirrored exactly here.
+    /// </summary>
+    [Fact]
+    public void HeadCountBreakdown_JsonRoundTrip_PreservesAgeSplit()
+    {
+        var productionOptions = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        };
+
+        var vipId = Guid.NewGuid();
+        var generalId = Guid.NewGuid();
+        var original = HeadCountBreakdown.ForByAge(
+            adults: 3, children: 2,
+            new[]
+            {
+                TierCount.Create(vipId, "VIP", count: 3, adultCount: 2, childCount: 1).Value,
+                TierCount.Create(generalId, "General", count: 2, adultCount: 1, childCount: 1).Value,
+            }).Value;
+
+        // Serialise with the production config
+        var json = System.Text.Json.JsonSerializer.Serialize(original, productionOptions);
+        json.Should().Contain("\"adultCount\":2", because: "VIP tier age split must land in JSON");
+        json.Should().Contain("\"childCount\":1");
+
+        // Deserialise (round trip)
+        var rehydrated = System.Text.Json.JsonSerializer.Deserialize<HeadCountBreakdown>(json, productionOptions);
+
+        rehydrated.Should().NotBeNull();
+        rehydrated!.Total.Should().Be(5);
+        rehydrated.Demographics!.Adults.Should().Be(3);
+        rehydrated.Demographics.Children.Should().Be(2);
+        rehydrated.TierCounts.Should().HaveCount(2);
+
+        var vip = rehydrated.TierCounts!.Single(t => t.TierId == vipId);
+        vip.Count.Should().Be(3);
+        vip.AdultCount.Should().Be(2);
+        vip.ChildCount.Should().Be(1);
+        vip.HasAgeSplit.Should().BeTrue();
+
+        var general = rehydrated.TierCounts!.Single(t => t.TierId == generalId);
+        general.AdultCount.Should().Be(1);
+        general.ChildCount.Should().Be(1);
+
+        // Structural equality — proves ValueObject.Equals + GetEqualityComponents picks
+        // up the new fields. Without that the EF ValueComparer's `Equals` lambda would
+        // miss per-tier-age changes and never write the column.
+        rehydrated.Should().Be(original, because: "round-trip preserves equality including new age axis");
+    }
+
+    /// <summary>
+    /// Phase 7F-C.1b — equality detection test. Two HeadCountBreakdowns with identical Count
+    /// but different (AdultCount, ChildCount) splits MUST be considered different. Without
+    /// this, the EF ValueComparer's Equals lambda would treat them as equal → no UPDATE
+    /// emitted → silent data drift on writes.
+    /// </summary>
+    [Fact]
+    public void HeadCountBreakdown_DifferentAgeSplits_AreNotEqual()
+    {
+        var vipId = Guid.NewGuid();
+
+        var splitA = HeadCountBreakdown.ForByAge(
+            adults: 3, children: 0,
+            new[] { TierCount.Create(vipId, "VIP", count: 3, adultCount: 3, childCount: 0).Value }).Value;
+
+        var splitB = HeadCountBreakdown.ForByAge(
+            adults: 2, children: 1,
+            new[] { TierCount.Create(vipId, "VIP", count: 3, adultCount: 2, childCount: 1).Value }).Value;
+
+        splitA.Should().NotBe(splitB,
+            because: "tier age splits are part of equality — without this EF would never detect a change");
+    }
 }

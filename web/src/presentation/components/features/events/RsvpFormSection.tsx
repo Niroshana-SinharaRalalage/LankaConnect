@@ -115,6 +115,8 @@ export function RsvpFormSection(props: RsvpFormSectionProps) {
         isProcessing={props.isProcessing}
         onSubmit={props.onSubmit}
         error={props.error}
+        ticketingMode={props.event.ticketingMode}
+        ticketTiers={props.ticketTiers ?? props.event.ticketTiers}
       />
     );
   }

@@ -6,10 +6,11 @@ import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useProfileStore } from '@/presentation/store/useProfileStore';
-import { RegistrationMode } from '@/infrastructure/api/types/events.types';
+import { RegistrationMode, TicketingMode } from '@/infrastructure/api/types/events.types';
 import type {
   AnonymousRegistrationRequest,
   RsvpRequest,
+  TicketTierDto,
 } from '@/infrastructure/api/types/events.types';
 
 /**
@@ -41,6 +42,10 @@ interface HeadCountRsvpFormProps {
   /** Submit handler — accepts either `RsvpRequest` (auth) or `AnonymousRegistrationRequest`. */
   onSubmit: (data: RsvpRequest | AnonymousRegistrationRequest) => Promise<void>;
   error?: string | null;
+  /** Phase 7E.3c: when the event is `Tiered`, render a per-tier counter section. */
+  ticketingMode?: TicketingMode;
+  /** Phase 7E.3c: tier list for the event — only consumed when `ticketingMode === 'Tiered'`. */
+  ticketTiers?: readonly TicketTierDto[];
 }
 
 export function HeadCountRsvpForm({
@@ -52,7 +57,11 @@ export function HeadCountRsvpForm({
   isProcessing,
   onSubmit,
   error,
+  ticketingMode,
+  ticketTiers,
 }: HeadCountRsvpFormProps) {
+  const isTieredEvent = ticketingMode === TicketingMode.Tiered && (ticketTiers?.length ?? 0) > 0;
+  const tierList = isTieredEvent ? ticketTiers! : [];
   const { user } = useAuthStore();
   const { profile, loadProfile } = useProfileStore();
   const isAuthenticated = !!user;
@@ -98,9 +107,29 @@ export function HeadCountRsvpForm({
 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Compute the derived total (auto-derived for B2/B3/B4) so the user sees what they're committing.
-  const derivedTotal =
-    registrationMode === RegistrationMode.HeadCountOnly
+  // Phase 7E.3c: per-tier counts state. Map of `tierId → count`. Only used when the event
+  // is in `TicketingMode.Tiered`. Initialised lazily from the tier list so the keys exist
+  // even if the user never touches a particular tier (count defaults to 0).
+  const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (isTieredEvent && Object.keys(tierCounts).length === 0) {
+      const initial: Record<string, number> = {};
+      tierList.forEach((t) => {
+        initial[t.id] = 0;
+      });
+      setTierCounts(initial);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTieredEvent, tierList.length]);
+
+  const tierTotal = Object.values(tierCounts).reduce((sum, n) => sum + n, 0);
+
+  // Compute the derived total. For TIERED events the source of truth is the tier counts;
+  // demographic spinners (B2/B4) capture organiser-reporting info but don't drive total.
+  // For SingleTier events the demographic axes drive total as before.
+  const derivedTotal = isTieredEvent
+    ? tierTotal
+    : registrationMode === RegistrationMode.HeadCountOnly
       ? total
       : registrationMode === RegistrationMode.HeadCountByAge
         ? adults + children
@@ -155,9 +184,36 @@ export function HeadCountRsvpForm({
     // session and the page-level handler redirects to its URL on success (same flow as
     // Mode A's paid path). No client-side short-circuit for paid events.
 
+    // Phase 7E.3c: TIERED events require TierCounts on the head-count payload. For B2/B4
+    // the demographic spinners are still captured for organiser reporting, but the TOTAL
+    // comes from tierCounts. Validate sum for B2/B4 against the demographic sum.
+    if (isTieredEvent) {
+      if (tierTotal === 0) {
+        setSubmitError('Select at least one ticket from the tier list.');
+        return;
+      }
+      // For B2/B4 + tiered, demographics must align with the tier total to avoid
+      // ambiguous reporting. (Pricing is per tier; demographics are reporting-only.)
+      const demoSum =
+        registrationMode === RegistrationMode.HeadCountByAge
+          ? adults + children
+          : registrationMode === RegistrationMode.HeadCountByAgeAndGender
+            ? adultMales + adultFemales + childMales + childFemales
+            : tierTotal; // B1/B3 don't capture demographics under tiered → no mismatch possible.
+      if (demoSum !== tierTotal) {
+        setSubmitError(
+          `Demographic total (${demoSum}) must match tier total (${tierTotal}). ` +
+            'Demographics are for organiser reporting only — pricing is per tier.'
+        );
+        return;
+      }
+    }
+
     // Build the head-count payload matching backend HeadCountDto.
     const headCount: RsvpRequest['headCount'] = {
-      ...(registrationMode === RegistrationMode.HeadCountOnly && { total }),
+      ...(registrationMode === RegistrationMode.HeadCountOnly && {
+        total: isTieredEvent ? tierTotal : total,
+      }),
       ...(registrationMode === RegistrationMode.HeadCountByAge && { adults, children }),
       ...(registrationMode === RegistrationMode.HeadCountByGender && { males, females }),
       ...(registrationMode === RegistrationMode.HeadCountByAgeAndGender && {
@@ -165,6 +221,11 @@ export function HeadCountRsvpForm({
         adultFemales,
         childMales,
         childFemales,
+      }),
+      ...(isTieredEvent && {
+        tierCounts: Object.entries(tierCounts)
+          .filter(([, count]) => count > 0)
+          .map(([tierId, count]) => ({ tierId, count })),
       }),
     };
 
@@ -257,13 +318,56 @@ export function HeadCountRsvpForm({
         </div>
       </div>
 
+      {/* Phase 7E.3c — Tier-count selector for tiered events */}
+      {isTieredEvent && (
+        <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
+          <p className="text-sm font-semibold text-neutral-800">
+            Choose your ticket tier(s)
+          </p>
+          <div className="space-y-2">
+            {tierList.map((tier) => (
+              <div
+                key={tier.id}
+                className="flex items-center justify-between gap-3 bg-white rounded-md border border-orange-100 px-3 py-2"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-900 truncate">{tier.name}</p>
+                  <p className="text-xs text-neutral-500">
+                    {tier.isFree
+                      ? 'Free'
+                      : `$${tier.adultPriceAmount.toFixed(2)} ${tier.adultPriceCurrency}`}
+                    {tier.availableQuantity > 0
+                      ? ` · ${tier.availableQuantity} left`
+                      : ' · sold out'}
+                  </p>
+                </div>
+                <Spinner
+                  id={`tier-${tier.id}`}
+                  label=""
+                  value={tierCounts[tier.id] ?? 0}
+                  onChange={(v) => setTierCounts((prev) => ({ ...prev, [tier.id]: v }))}
+                  min={0}
+                  max={Math.min(tier.availableQuantity, maxAttendeesPerRegistration)}
+                  disabled={isProcessing}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-neutral-700 border-t border-orange-200 pt-2">
+            Total: <strong>{tierTotal}</strong> attendee{tierTotal === 1 ? '' : 's'}
+          </p>
+        </div>
+      )}
+
       {/* Mode-specific demographic spinners */}
       <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
         <p className="text-sm font-semibold text-neutral-800">
-          How many people are you bringing (including yourself)?
+          {isTieredEvent
+            ? 'Tell us about your group (for organiser reporting)'
+            : 'How many people are you bringing (including yourself)?'}
         </p>
 
-        {registrationMode === RegistrationMode.HeadCountOnly && (
+        {registrationMode === RegistrationMode.HeadCountOnly && !isTieredEvent && (
           <Spinner
             id="total"
             label="Total attendees"
@@ -282,7 +386,7 @@ export function HeadCountRsvpForm({
           </div>
         )}
 
-        {registrationMode === RegistrationMode.HeadCountByGender && (
+        {registrationMode === RegistrationMode.HeadCountByGender && !isTieredEvent && (
           <div className="grid grid-cols-2 gap-3">
             <Spinner id="males" label="Males" value={males} onChange={setMales} min={0} max={maxAttendeesPerRegistration} disabled={isProcessing} />
             <Spinner id="females" label="Females" value={females} onChange={setFemales} min={0} max={maxAttendeesPerRegistration} disabled={isProcessing} />
@@ -296,6 +400,20 @@ export function HeadCountRsvpForm({
             <Spinner id="childMales" label="Child Males" value={childMales} onChange={setChildMales} min={0} max={maxAttendeesPerRegistration} disabled={isProcessing} />
             <Spinner id="childFemales" label="Child Females" value={childFemales} onChange={setChildFemales} min={0} max={maxAttendeesPerRegistration} disabled={isProcessing} />
           </div>
+        )}
+
+        {/* Phase 7E.3c (architect edit #3): demographics-for-reporting helper text on tiered events */}
+        {isTieredEvent && (registrationMode === RegistrationMode.HeadCountByAge || registrationMode === RegistrationMode.HeadCountByAgeAndGender) && (
+          <p className="text-xs italic text-neutral-500">
+            Demographics are for organiser reporting only — pricing is per tier.
+          </p>
+        )}
+
+        {/* For tiered B1/B3 mode hide the entire demographic block (mode doesn't capture them) */}
+        {isTieredEvent && (registrationMode === RegistrationMode.HeadCountOnly || registrationMode === RegistrationMode.HeadCountByGender) && (
+          <p className="text-xs italic text-neutral-500">
+            No demographic capture in this mode — pricing is per tier.
+          </p>
         )}
 
         <p className="text-sm text-neutral-700 border-t border-orange-200 pt-2">

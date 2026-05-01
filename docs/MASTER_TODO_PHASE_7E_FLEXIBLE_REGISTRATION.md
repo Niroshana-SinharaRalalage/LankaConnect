@@ -699,3 +699,126 @@ After **phase complete (7E.9)**:
 ## Last updated
 
 2026-04-25 — Phase 7E created, architect-approved (iteration 2). Slice 7E.0 ready to start.
+
+---
+
+# Phase 7F-E — Registration Display Consistency Across Surfaces
+
+**Status**: 📋 ARCHITECT-APPROVED WITH 10 EDITS (review iteration 1, 2026-05-01) — appended to this 7E master TODO per operator request (single source of truth, no separate file). Ready to begin Slice 7F-E.1.
+
+**Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
+1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
+2. Confirmation email: no per-attendee count + tier breakdown
+3. Event-detail "You're Registered!" card: only `Number of attendees: 4` — no tier or demographic
+4. No demographic placeholders anywhere — even when mode doesn't capture age/gender, user wants explicit `Adult/Child: N/A` / `Male/Female: N/A` (so absence is visible)
+5. RSVP form: tier selector and demographic spinners are in two separate sections — user wants merged per-tier (Phase 7F-C's opt-in age-split toggle should be the default for B2/B4 + tiered)
+
+## Classification
+
+- **UI**: ✅ primary issue — 4 surfaces don't render consistently (PDF, email, event-detail card, RSVP form layout)
+- **Backend API/DTO**: ⚠️ partial — `TicketPdfData` and `RegistrationDetailsDto` lack Mode-B fields
+- **Database**: ❌ data is correctly captured (`head_count` JSONB has all fields)
+- **Auth**: ❌ N/A
+- **Feature gap**: ✅ architectural — no shared projection of "what does a registration look like to a human"; surfaces drifted because each one formatted independently
+
+## Root cause (architect-confirmed)
+
+The five symptoms manifest one architectural gap: **four surfaces independently formatting the same domain concept with no shared contract**. The existing `HeadCountEmailFormatter` is a partial version, but it's email-coupled (returns flat strings shaped for email rendering). Each new surface (PDF, FE card, RSVP form) re-invented its own rendering, leading to drift.
+
+**The fix is architectural**: promote the existing email-only helper to a shared application-layer projection (`RegistrationBreakdown`) that all 4 surfaces consume. The 5 gaps are downstream symptoms.
+
+## Architect-approved domain shape (Slice 1 ships)
+
+```csharp
+public sealed record BreakdownPair {
+    public bool Captured { get; init; }     // false → render "N/A"
+    public int Left { get; init; }          // adults / males
+    public int Right { get; init; }         // children / females
+    public string LeftLabel { get; init; }  // "Adult" / "Male"
+    public string RightLabel { get; init; } // "Child" / "Female"
+}
+
+public sealed record RegistrationBreakdownRow {
+    public string? TierName { get; init; }   // null = non-tiered
+    public int Count { get; init; }
+    public BreakdownPair Age { get; init; }       // Captured iff B2/B4/Mode A
+    public BreakdownPair Gender { get; init; }    // Captured iff B3/B4/Mode A
+}
+
+public sealed record RegistrationBreakdown {
+    public IReadOnlyList<RegistrationBreakdownRow> Rows { get; init; }
+    public int TotalAttendees { get; init; }
+    public RegistrationMode Mode { get; init; }
+    public bool IsTiered { get; init; }
+}
+```
+
+Architect edit #1: `Captured` boolean makes "N/A" a property of the data, not the renderer — every surface renders identically.
+
+## Architect-approved 4-slice ship order (1 → 2 → 3 → 4a → 4b)
+
+| Slice | Focus | User-visible blast radius | Risk | Independence |
+|---|---|---|---|---|
+| **7F-E.1** | `RegistrationBreakdown` + `RegistrationBreakdownFormatter` (covers Mode A + B1/B2/B3/B4 × tiered/non-tiered) + ≥24 unit tests + 90% coverage | Zero — pure prep | Low | Hard pre-req for all others |
+| **7F-E.2** | `RegistrationDetailsDto` extension + Event-detail "You're Registered!" card render | One surface (FE only) | Low | Ships independently after .1 |
+| **7F-E.3** | Email template token migration: `{{HeadCountBreakdownLine}}` + `{{TierBreakdownLine}}` → single `{{RegistrationBreakdownHtml}}` token (pre-rendered HTML fragment) | Email surface only | **High** — template-content invariants | Ships independently after .1 |
+| **7F-E.4a** | PDF ticket renderer + `TicketPdfData.RegistrationBreakdown` extension | PDF only | Medium — visual regressions | Ships independently after .1 |
+| **7F-E.4b** | `HeadCountRsvpForm` merged tier+demographic layout per architect Q4 auto-detect rules | Form (write-side) | Medium | **MUST ship LAST** — write-side change; if shipped before read sides, new commitments display incorrectly across stale surfaces |
+
+**Order rationale (architect)**: Slice 1 unblocks all others (hard dep). Slice 2 (FE card) is lowest risk and validates the formatter shape against real rendering before email/PDF lock it in. Slice 3 (email) follows the existing Phase 7C.2 / 6A.122 playbook for template-content migrations. Slice 4 (PDF + form) closes out; 4b is the only write-side change so ships last.
+
+## Architect-mandated UX rules for 7F-E.4b (RSVP form merge)
+
+| Mode + Tiered | Layout |
+|---|---|
+| B1 + tiered | Tier-count spinner only (no demographic data to capture) |
+| B2 + tiered with `ChildPrice` configured | **Merged**: per-tier Adults/Children spinners inline under tier card |
+| B2 + tiered without `ChildPrice` | Fall back to current layout (tier-only count + separate Adults/Children) — pricing depends on it |
+| B3 + tiered | **Merged**: per-tier Males/Females always (gender is capture-only, no pricing dependency) |
+| B4 + tiered | **Merged**: per-tier 4-leaf always |
+| Any non-tiered B-mode | Single demographic section (no per-tier dimension) |
+
+## Mode A integration scope
+
+- ✅ Include Mode A in formatter scope (architect-required — same drift otherwise)
+- ✅ "In addition to" the existing attendee-name list, NOT replace (operator default 2026-05-01)
+- Formatter takes either `HeadCountBreakdown` (Mode B) OR `IReadOnlyList<AttendeeDetails>` (Mode A) and projects both into the same `RegistrationBreakdown`
+
+## Cancel/reminder email scope
+
+- ✅ Include in 7F-E.3 — same flat-token drift
+- The existing Phase 7F-A Mode-B blocks in `template-event-cancellation-notifications`, `template-event-reminder`, and `template-attendees-added-confirmation` use the same `{{HeadCountBreakdownLine}}` / `{{TierBreakdownLine}}` tokens; migrating them in the same slice keeps consistency
+- Architect-mandated playbook: psycopg2 staging probe → unique HTML comment anchor → row count assertion → negative-evidence smoke per memory `feedback_email_smoke.md`
+
+## Deferred / out of scope
+
+- **Organiser "Manage Attendees" view** — likely has the same drift but operator confirmed defer; can ship as 7F-E.5 if needed after .4b
+- **i18n** — bake EN strings into formatter (operator default; Phase A is EN-only per `ADR-001-i18n-scope-phase-a.md`); revisit when i18n hooks are introduced
+
+## Architect-required risks (named explicitly)
+
+1. **Slice 7F-E.3 (email migration) is the riskiest single change.** Apply existing playbook: psycopg2 probe staging template body before writing migration; anchor on unique HTML comment (`<!-- registration-breakdown-7e -->`); verify post-UPDATE row count > 0. **Non-negotiable.**
+2. **`RegistrationDetailsDto` schema change** in Slice .2 — verify scope (mobile / external consumers?). If FE-only, fine.
+3. **JSONB `headCount` field** ValueComparer audit per memory 6A.129/6A.130.
+4. **`HeadCountRsvpForm` usage scan** — `grep -r "HeadCountRsvpForm" web/src/` before .4b changes (could be used in organiser preview/dry-run too).
+5. **Form layout regression risk** in .4b — screenshot every (mode × tiered/non-tiered) combination before/after.
+
+## Test floor (architect-mandated)
+
+- **Slice 7F-E.1**: ≥24 cases (6 modes × 2 tiered/non-tiered + edges); 90% coverage on the formatter class — non-negotiable, this is the load-bearing component for 4 surfaces
+- **Slice 7F-E.2**: backend DTO snapshot + 1 component test per mode rendering the card
+- **Slice 7F-E.3**: golden-file HTML render per mode + staging negative-evidence smoke
+- **Slice 7F-E.4a**: structured `RegistrationBreakdown` populated correctly + visual inspection on staging
+- **Slice 7F-E.4b**: form component test per mode × `ChildPrice` configured/not branches
+
+## Naming (architect edits #10)
+
+- `RegistrationBreakdown` (not `RegistrationSummary`) — domain-vocabulary consistency with existing `HeadCountBreakdown`
+- `BreakdownPair` (not `RegistrationSummaryCell`) — "cell" is rendering vocabulary leaking into the model
+- `Captured` flag — correct ("data was collected for this mode")
+
+## Slice 1 scope discipline (architect edit #7)
+
+Frame Slice 7F-E.1 as **"promoting the email-only `HeadCountEmailFormatter` to a shared application projection"** — not as introducing a brand-new abstraction. The behaviour exists; it just needs to move to where 4 surfaces can reuse it.
+
+Old `HeadCountEmailFormatter.FormatDemographicLine` / `FormatTierLine` flat-string methods stay as thin delegators that wrap `RegistrationBreakdownFormatter` output for backward compatibility, then get deleted in Slice 3 once the email template no longer references them.

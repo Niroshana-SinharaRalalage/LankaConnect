@@ -16,6 +16,7 @@ import { RsvpFormSection } from '@/presentation/components/features/events/RsvpF
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
+import { AddHeadCountModal } from '@/presentation/components/features/events/AddHeadCountModal';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
@@ -2337,8 +2338,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         onAddAttendeesClick={() => setShowAddAttendeesModal(true)}
       />
 
-      {/* Add-Only Attendees: Modal for adding attendees to paid registrations */}
-      {registrationDetails && (
+      {/* Add-Only Attendees: dispatches by registration mode (Phase 7F-D adds Mode-B path).
+          Mode A → existing per-attendee modal; Mode B (1/2/3/4) → head-count delta modal. */}
+      {registrationDetails && isModeB && (
+        <AddHeadCountModal
+          open={showAddAttendeesModal}
+          onOpenChange={setShowAddAttendeesModal}
+          registrationId={registrationDetails.id}
+          mode={registrationMode}
+          maxAttendeesPerRegistration={event?.maxAttendeesPerRegistration ?? 10}
+          currentAttendeeCount={registrationDetails.attendees?.length || registrationDetails.quantity}
+          onSuccess={() => {
+            window.location.reload();
+          }}
+        />
+      )}
+      {registrationDetails && !isModeB && (
         <AddAttendeesModal
           open={showAddAttendeesModal}
           onOpenChange={setShowAddAttendeesModal}

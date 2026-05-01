@@ -3182,3 +3182,14 @@ export interface ConvertRegistrationModeResult {
   skipped: SkippedRegistrationRow[];
   wasDryRun: boolean;
 }
+
+/**
+ * Phase 7F-D (architect-approved 2026-04-30): request body for
+ * `POST /api/events/registrations/{id}/add-headcount`. Reuses HeadCountDto so the FE
+ * can share the same form components used by RSVP (architect Q5).
+ */
+export interface InitiateAddHeadCountRequest {
+  headCountDelta: HeadCountDto;
+  successUrl: string;
+  cancelUrl: string;
+}

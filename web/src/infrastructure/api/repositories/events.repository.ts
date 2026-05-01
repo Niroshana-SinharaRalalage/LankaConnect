@@ -82,6 +82,8 @@ import type {
   // Phase 7F-B: A↔B mode conversion with attendee backfill
   ConvertRegistrationModeRequest,
   ConvertRegistrationModeResult,
+  // Phase 7F-D: paid Mode-B add-attendees with delta payment
+  InitiateAddHeadCountRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -402,6 +404,21 @@ export class EventsRepository {
   ): Promise<ConvertRegistrationModeResult> {
     return apiClient.post<ConvertRegistrationModeResult>(
       `${this.basePath}/${eventId}/convert-registration-mode`,
+      payload,
+    );
+  }
+
+  /**
+   * Phase 7F-D (architect-approved 2026-04-30): initiate adding head-count attendees
+   * to an existing paid Mode-B registration. Returns the same envelope shape as
+   * `initiateAddAttendees` so the FE can reuse the success / pending / error handling.
+   */
+  async initiateAddHeadCount(
+    registrationId: string,
+    payload: InitiateAddHeadCountRequest,
+  ): Promise<InitiateAddAttendeesResult> {
+    return apiClient.post<InitiateAddAttendeesResult>(
+      `${this.basePath}/registrations/${registrationId}/add-headcount`,
       payload,
     );
   }

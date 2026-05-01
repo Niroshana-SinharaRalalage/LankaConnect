@@ -61,6 +61,32 @@ public record RegistrationDetailsDto
     /// Represents the actual amount charged by Stripe. Null if no bundled items.
     /// </summary>
     public decimal? GrandTotal { get; init; }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Phase 7F-E.2 (architect-approved 2026-05-01): mode-aware fields so
+    // the FE can render the "You're Registered!" card consistently
+    // across Mode A and Mode B (B1/B2/B3/B4).
+    // ────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Phase 7F-E.2: Snapshotted registration mode at construction time. Drives the
+    /// FE rendering branch for the breakdown card.
+    /// </summary>
+    public RegistrationMode RegistrationMode { get; init; } = RegistrationMode.DetailedAttendees;
+
+    /// <summary>
+    /// Phase 7F-E.2: Lead attendee name (Mode B only — null for Mode A which uses the
+    /// per-attendee list). Surfaced for the FE card's headline.
+    /// </summary>
+    public string? LeadAttendeeName { get; init; }
+
+    /// <summary>
+    /// Phase 7F-E.2: Server-projected breakdown produced by
+    /// <c>RegistrationBreakdownFormatter</c>. Single shared shape consumed by event-
+    /// detail card, confirmation email, and PDF ticket. <c>null</c> only when the
+    /// registration has neither a HeadCount nor any Attendees (defensive).
+    /// </summary>
+    public RegistrationBreakdown? Breakdown { get; init; }
 }
 
 /// <summary>

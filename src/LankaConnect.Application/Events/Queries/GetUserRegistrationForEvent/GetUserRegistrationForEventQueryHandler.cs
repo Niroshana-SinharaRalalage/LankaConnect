@@ -128,6 +128,30 @@ public class GetUserRegistrationForEventQueryHandler
                     })
                     .FirstOrDefaultAsync(cancellationToken);
 
+                // Phase 7F-E.2: load mode + lead-name + RegistrationBreakdown via the
+                // shared projector so the FE event-detail card renders Mode A and Mode B
+                // (B1/B2/B3/B4) registrations through one consistent shape.
+                if (registration != null)
+                {
+                    try
+                    {
+                        var bd = await RegistrationBreakdownProjector.LoadAsync(
+                            _context, registration.Id, cancellationToken);
+                        registration = registration with
+                        {
+                            RegistrationMode = bd.Mode,
+                            LeadAttendeeName = bd.LeadAttendeeName,
+                            Breakdown = bd.Breakdown,
+                        };
+                    }
+                    catch (Exception bdEx)
+                    {
+                        _logger.LogWarning(bdEx,
+                            "[7F-E.2] Failed to load RegistrationBreakdown — RegistrationId={RegistrationId}; FE will fall back to legacy quantity-only display",
+                            registration.Id);
+                    }
+                }
+
                 // Phase 6A.81 Part 3: Retrieve checkout URL from Stripe for Preliminary registrations
                 if (registration != null &&
                     registration.Status == RegistrationStatus.Preliminary &&

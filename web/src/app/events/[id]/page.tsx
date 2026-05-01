@@ -17,6 +17,7 @@ import { MediaGallery } from '@/presentation/components/features/events/MediaGal
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
 import { AddHeadCountModal } from '@/presentation/components/features/events/AddHeadCountModal';
+import { RegistrationBreakdownCard } from '@/presentation/components/features/events/RegistrationBreakdownCard';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
@@ -1147,6 +1148,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                     </p>
                                   )}
                                 </div>
+                              </div>
+                            )}
+
+                            {/* Phase 7F-E.2: cross-surface RegistrationBreakdown card.
+                                Shows per-tier rows with N/A placeholders for un-captured
+                                axes (B1: both N/A; B2: gender N/A; B3: age N/A; B4: both
+                                captured). Renders for both Mode A AND Mode B per architect
+                                "in addition to" rule — Mode A still shows the per-attendee
+                                list below. */}
+                            {registrationDetails.breakdown && (
+                              <div className="mb-3">
+                                <RegistrationBreakdownCard
+                                  breakdown={registrationDetails.breakdown}
+                                  leadAttendeeName={registrationDetails.leadAttendeeName}
+                                />
                               </div>
                             )}
 

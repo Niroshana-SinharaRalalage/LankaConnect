@@ -765,6 +765,55 @@ Architect edit #1: `Captured` boolean makes "N/A" a property of the data, not th
 | **7F-E.4a** | PDF ticket renderer + `TicketPdfData.RegistrationBreakdown` extension | PDF only | Medium — visual regressions | Ships independently after .1 |
 | **7F-E.4b** | `HeadCountRsvpForm` merged tier+demographic layout per architect Q4 auto-detect rules | Form (write-side) | Medium | **MUST ship LAST** — write-side change; if shipped before read sides, new commitments display incorrectly across stale surfaces |
 
+## API testing requirements per slice (operator-mandated, 2026-05-01)
+
+Each slice ships with explicit API verification. No "endpoint registered" claims without exercising the actual code path. The format below mirrors what user expects to see in closeout commits.
+
+### 7F-E.1 — formatter
+- No API surface — verified by 25 unit tests + the suite-level regression check (2538/6/0)
+
+### 7F-E.2 — DTO + event-detail card
+- **API smoke target**: the registration-details GET endpoint that the FE card consumes (likely `/api/registrations/me?eventId={id}` or `/api/events/{id}/registrations/{regId}` — confirm during implementation)
+- **What to verify**: response includes the new `breakdown` field with `Rows[]`, `TotalAttendees`, `Mode`, `IsTiered`. Run for each Mode (A, B1, B2, B3, B4) on staging using existing test registrations.
+- **Assertions per mode**:
+   - B1 → `Rows[i].Age.Captured = false` AND `Rows[i].Gender.Captured = false`
+   - B2 → `Rows[i].Age.Captured = true` AND `Rows[i].Gender.Captured = false`
+   - B3 → `Rows[i].Age.Captured = false` AND `Rows[i].Gender.Captured = true`
+   - B4 → both Captured = true
+   - Mode A → both derived from attendees (Captured iff data present)
+- **Cleanup**: no DB mutation expected.
+
+### 7F-E.3 — email template migration
+- **API smoke target**: triggering a real registration that fires the confirmation email (anonymous register on a free B-mode event), then inspecting the rendered HTML.
+- **What to verify**:
+   - psycopg2 probe: `template-event-registration-confirmation` template body contains the new anchor `<!-- registration-breakdown-7e -->` post-migration
+   - Run negative-evidence smoke per `feedback_email_smoke.md`: register on B1 event, B2 event, B3 event, B4 event; for each fetch the rendered HTML from ACS log (or `email_messages` table if populated)
+   - Assert the rendered fragment contains the per-tier table with N/A placeholders for un-captured axes
+- **Mandatory pre-flight**: probe staging DB body BEFORE writing the migration anchor (memory `feedback_template_body_is_authoritative.md`).
+
+### 7F-E.4a — PDF ticket
+- **API smoke target**: ticket generation path — `GET /api/registrations/{id}/ticket-pdf` (or wherever)
+- **What to verify**:
+   - Download the PDF for a Mode-B tiered registration
+   - Visually inspect: per-tier table renders with N/A placeholders where mode doesn't capture an axis
+   - Mode A regression: existing PDF still shows the attendee-name list AND adds the breakdown summary block
+
+### 7F-E.4b — RSVP form merge
+- **API smoke target**: register through the new merged form on B2 + tiered + ChildPrice event, confirm the `tierCounts[]` payload carries `adultCount`/`childCount` per tier (not separate from a top-level age section)
+- **What to verify**:
+   - Network panel of the form submission shows the merged payload shape
+   - Resulting `head_count` JSONB on the registration row has per-tier `AdultCount`/`ChildCount` fields populated
+   - B1 / B3 paths still work (form falls back to non-merged for B1; B3 always merges per architect rule)
+
+### Cross-slice operator testing checkpoints (UI-testable from user side)
+
+After **7F-E.2** ships → user can test: register on Mode-B event, see per-tier breakdown card on event detail page.
+After **7F-E.3** ships → user can test: register, check inbox for confirmation email with per-tier table.
+After **7F-E.4a** ships → user can test: register, download PDF ticket with per-tier breakdown.
+After **7F-E.4b** ships → user can test: register through merged form on a B2 + tiered + ChildPrice event.
+
+I'll explicitly tell the user "ready for UI testing" after each slice deploy completes.
+
 **Order rationale (architect)**: Slice 1 unblocks all others (hard dep). Slice 2 (FE card) is lowest risk and validates the formatter shape against real rendering before email/PDF lock it in. Slice 3 (email) follows the existing Phase 7C.2 / 6A.122 playbook for template-content migrations. Slice 4 (PDF + form) closes out; 4b is the only write-side change so ships last.
 
 ## Architect-mandated UX rules for 7F-E.4b (RSVP form merge)

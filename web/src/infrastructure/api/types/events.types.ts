@@ -1190,6 +1190,46 @@ export interface RegistrationDetailsDto {
   sponsorTotal?: number | null;
   /** Grand total = totalPriceAmount (tickets) + donationAmount + addOnTotal + collectionTotal + sponsorTotal */
   grandTotal?: number | null;
+
+  /**
+   * Phase 7F-E.2 (architect-approved 2026-05-01): mode-aware fields so the FE event-
+   * detail card renders Mode A (DetailedAttendees) and Mode B (B1/B2/B3/B4)
+   * registrations through one consistent shape.
+   */
+  registrationMode?: RegistrationMode;
+  /** Mode B only — null on Mode A (Mode A uses the per-attendee `attendees` list). */
+  leadAttendeeName?: string | null;
+  /** Server-projected per-tier breakdown. Null only when registration has neither
+   * a HeadCount nor any Attendees (defensive). */
+  breakdown?: RegistrationBreakdownDto | null;
+}
+
+/**
+ * Phase 7F-E.1: shared cross-surface projection. Shape mirrors the backend
+ * `RegistrationBreakdown` record. Each row represents one tier (or the whole
+ * registration when non-tiered). `BreakdownPair.captured = false` → renderer shows "N/A".
+ */
+export interface RegistrationBreakdownDto {
+  rows: RegistrationBreakdownRowDto[];
+  totalAttendees: number;
+  mode: RegistrationMode;
+  isTiered: boolean;
+}
+
+export interface RegistrationBreakdownRowDto {
+  /** null = non-tiered */
+  tierName: string | null;
+  count: number;
+  age: BreakdownPairDto;
+  gender: BreakdownPairDto;
+}
+
+export interface BreakdownPairDto {
+  captured: boolean;
+  left: number;
+  right: number;
+  leftLabel: string;   // "Adult" / "Male"
+  rightLabel: string;  // "Child" / "Female"
 }
 
 /**

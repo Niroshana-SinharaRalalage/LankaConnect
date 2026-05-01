@@ -6,7 +6,36 @@
 
 ---
 
-## 🎯 2026-04-30 (latest) — Slice S1 (Architect Rev 4) SHIPPED + STAGING-VERIFIED — seat-gen pruning fix
+## 🎯 2026-05-01 — Slice S1.5 hot-fix SHIPPED + 3/3 JOURNEY SMOKE GREEN — orphan-cleanup + Mode B incompatibility guard
+
+**User-reported bugs** (architect-ruled S1.5 in same review session):
+- **Bug A**: "Change layout doesn't work after customizing" → `apply-preset` hit `ix_venue_layouts_event_id_name` unique constraint when the new preset name matched an orphan from a prior session. 500 DatabaseError. Reproduced via API: apply A → B → A again → 500.
+- **Bug B**: "Seating cannot be selected at registration" (event `d543629f-…`) → `HeadCountRsvpForm` (Mode B) has no SeatPicker integration. The combination `AssignedSeating + HeadCountByAge` was allowed at organiser time but had no buyer flow. Feature-missing gap, not a code bug.
+
+**Why S1's smoke missed both**: endpoint-isolated calls. I tested `apply-preset → 201` once on a clean event, never walked the realistic "apply preset, change mind, apply again" journey. Process gap, not just code gap. Master TODO now requires per-slice named journey smoke (J-A through J-F) as ship gates.
+
+**Fix shipped (commit `5afbb018`, backend deploy `25229502083` + UI `25229502072` both `conclusion=success`)**:
+
+- **Bug A — orphan cleanup**: new `IVenueLayoutRepository.HardDeleteByEventIdAsync` cascade-deletes all `venue_layouts` rows for an event AND manually cleans polymorphic `tier_assignments` rows referencing the doomed zones/tables (raw SQL `ExecuteSqlInterpolatedAsync`, same pattern as Slice 9.3's seat_holds cleanup). Called BEFORE `AddAsync` in `ApplyPresetToEventCommandHandler` + `ApplyTemplateToEventCommandHandler` in a single UoW transaction. Architect Rev 2 §3.4's "don't delete inline" rule amended — semantically correct for layouts whose only ownership is `event_id`.
+- **Bug B — domain invariant**: `Event.EnableAssignedSeating` rejects when `RegistrationMode != DetailedAttendees`. `Event.SetRegistrationMode` rejects switching to a head-count mode when `SeatingMode == AssignedSeating`. Both with precise architect-approved error messages.
+- **Bug B — frontend banner**: `RsvpFormSection.tsx` early-return amber banner for the incompatible state ("Registration temporarily unavailable — organiser configuration in progress"). NO auto-mutation of existing data — organiser-resolved per architect.
+
+**JOURNEY SMOKE 3/3 GREEN end-to-end on staging**:
+- **J-B (the orphan-collision bug fix)**: apply Theater Classic → apply Theater With Balcony → apply Theater Classic AGAIN → apply Theater Classic AGAIN. All 4 returned HTTP 201 (vs. pre-fix HTTP 500 on step 3). Each prior layout id verified deleted (HTTP 400 "Venue layout not found" on lookup). Final event points at the latest layout, no orphan accumulation.
+- **J-F (Mode B + AssignedSeating rejection)**: applied to `d543629f-…` (HeadCountByAge event) → HTTP 400 with body *"Assigned seating requires individual-attendee registration (DetailedAttendees mode). This event uses HeadCountByAge which tracks counts, not individuals — the buyer flow cannot map seats to attendees in that mode. Switch the registration mode to DetailedAttendees first, or keep general-admission seating."* Event state untouched (no orphan written, `venueLayoutId: None` preserved).
+- **J-A retroactive (S1 seat-gen regression)**: apply Theater Classic → PUT `/batch` with new "Balcony" zone + `rowCount:4, seatsPerRow:5` → 204 → totalCapacity = 220 (200 + 20 generated). Slice S1 still works after S1.5 changes.
+
+**Tests**: 28 domain seating tests pass; 2513 Application tests pass (baseline 2432, increase from concurrent merges, no regression); `tsc --noEmit` clean.
+
+**Pre-flight findings**: FK cascades on `venue_zones` / `venue_tables` / `seats` / `venue_decorations` are all `OnDelete.Cascade`. `tier_assignments` has no FK (polymorphic). `seat_holds` / `seat_reservations` have no FK — S2 will extend the structural-edit guard to cover active holds.
+
+**Mode B + AssignedSeating end-to-end** is a Rev 5 backlog feature; not promised in this MVP.
+
+**Next**: Slice S2 (PUT-with-`deletedZoneIds` destructive-wipe protection + extend hold guard to active holds, 2–3 days). All journey smoke definitions for S2–S6 pre-listed in master TODO with explicit ship gates.
+
+---
+
+## 🎯 2026-04-30 — Slice S1 (Architect Rev 4) SHIPPED + STAGING-VERIFIED — seat-gen pruning fix
 
 **Context**: user authorized the architect Rev 4 4-week production-ready plan ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)) covering S1 → S6. Slice S1 unblocks the user's headline bug: "Rows + Seats per row typed in property panel, click Save → layout still shows 0 seats."
 

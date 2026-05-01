@@ -766,6 +766,7 @@ function emptyDraft(): CanvasEditorDraftState {
     additions: { zones: [], tables: [], decorations: [] },
     deletions: new Set<string>(),
     tierAssignmentsByKey: {},
+    seatGenByZoneId: {},
   };
 }
 
@@ -1085,6 +1086,103 @@ describe('countDraftChanges', () => {
         draft: { ...draft, deletions: mutableDeletions },
       }),
     ).toBe(3); // 1 delete + 1 override + 1 add
+  });
+});
+
+// ─────────────────── Slice S1: seat-gen partial-state filter ───────────────────
+//
+// Architect Rev 4 §B.1 fix shape: pruning of partial seat-gen state happens at
+// composeBatchPayload time, not in the editor's draft state. The draft holds
+// whatever the user has typed (rowCount: 4, seatsPerRow: 0 between blurs);
+// composeBatchPayload only emits rowCount + seatsPerRow on the BatchZone when
+// BOTH are positive integers. Anything partial is held client-side until the
+// user fills both fields.
+
+describe('composeBatchPayload — seat-gen (Slice S1)', () => {
+  it('emits rowCount + seatsPerRow on a kept zone when both are positive', () => {
+    const z = fakeZone('z1', 'Main Floor');
+    const draft = emptyDraft();
+    draft.seatGenByZoneId[z.id] = { rowCount: 4, seatsPerRow: 5 };
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z] }),
+      draft,
+    });
+
+    expect(payload.zones).toHaveLength(1);
+    expect(payload.zones![0].rowCount).toBe(4);
+    expect(payload.zones![0].seatsPerRow).toBe(5);
+  });
+
+  it('omits rowCount + seatsPerRow when seatsPerRow is 0 (partial state, user mid-type)', () => {
+    const z = fakeZone('z1', 'Main Floor');
+    const draft = emptyDraft();
+    // Simulate user typing Rows=4 first; seatsPerRow not yet entered.
+    draft.seatGenByZoneId[z.id] = { rowCount: 4, seatsPerRow: 0 };
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z] }),
+      draft,
+    });
+
+    expect(payload.zones).toHaveLength(1);
+    // CRITICAL: partial state must NOT emit either field — backend would no-op
+    // anyway, but emitting them inflates ChangesCount and pollutes audit logs.
+    expect(payload.zones![0].rowCount ?? null).toBeNull();
+    expect(payload.zones![0].seatsPerRow ?? null).toBeNull();
+  });
+
+  it('omits when rowCount is 0 (partial state, user typed seatsPerRow first)', () => {
+    const z = fakeZone('z1', 'Main Floor');
+    const draft = emptyDraft();
+    draft.seatGenByZoneId[z.id] = { rowCount: 0, seatsPerRow: 5 };
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z] }),
+      draft,
+    });
+
+    expect(payload.zones![0].rowCount ?? null).toBeNull();
+    expect(payload.zones![0].seatsPerRow ?? null).toBeNull();
+  });
+
+  it('emits seat-gen on an added zone when both fields are positive', () => {
+    const newZone: VenueZoneDto = {
+      id: 'client-uuid-xyz',
+      name: 'Balcony',
+      color: '#fff',
+      sortOrder: 1,
+      enabledSeatCount: 0,
+      totalSeatCount: 0,
+      seats: [],
+      shape: ZoneShape.Rect,
+      geometry: RECT_GEOM_100_100,
+      ticketTierIds: [],
+    };
+    const draft = emptyDraft();
+    draft.additions.zones.push(newZone);
+    draft.seatGenByZoneId[newZone.id] = { rowCount: 3, seatsPerRow: 8 };
+
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline(),
+      draft,
+    });
+
+    expect(payload.zones).toHaveLength(1);
+    expect(payload.zones![0].id).toBeNull(); // new zone
+    expect(payload.zones![0].rowCount).toBe(3);
+    expect(payload.zones![0].seatsPerRow).toBe(8);
+  });
+
+  it('does not emit seat-gen for zones with no entry in seatGenByZoneId', () => {
+    const z = fakeZone('z1', 'Main Floor');
+    const payload = composeBatchPayload({
+      baseline: fakeBaseline({ zones: [z] }),
+      draft: emptyDraft(),
+    });
+
+    expect(payload.zones![0].rowCount ?? null).toBeNull();
+    expect(payload.zones![0].seatsPerRow ?? null).toBeNull();
   });
 });
 

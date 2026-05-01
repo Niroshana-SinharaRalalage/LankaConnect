@@ -544,6 +544,25 @@ export interface CanvasEditorDraftAdditions {
   decorations: VenueDecorationDto[];
 }
 
+/**
+ * Slice S1 (Architect Rev 4): a seat-gen entry is "complete" only when BOTH
+ * dimensions are positive integers. Partial state (user typed one field but
+ * not the other) is held in draft state but never emitted to the backend
+ * payload — the user fills both fields before save triggers seat generation.
+ *
+ * Returns the entry if complete, otherwise <c>null</c>. Centralises the rule
+ * so <c>composeBatchPayload</c> + <c>countDraftChanges</c> + the property
+ * panel preview share one source of truth.
+ */
+export function pickCompleteSeatGen(
+  entry: { rowCount: number; seatsPerRow: number } | undefined,
+): { rowCount: number; seatsPerRow: number } | null {
+  if (!entry) return null;
+  if (!Number.isFinite(entry.rowCount) || entry.rowCount <= 0) return null;
+  if (!Number.isFinite(entry.seatsPerRow) || entry.seatsPerRow <= 0) return null;
+  return entry;
+}
+
 export interface CanvasEditorDraftState {
   geometryByKey: Record<string, string>;
   additions: CanvasEditorDraftAdditions;
@@ -592,7 +611,7 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
   const keptZones: BatchZone[] = (baseline.zones ?? [])
     .filter((z) => !isDeleted('zone', z.id))
     .map((z) => {
-      const seatGen = draft.seatGenByZoneId[z.id];
+      const seatGen = pickCompleteSeatGen(draft.seatGenByZoneId[z.id]);
       return {
         id: z.id,
         name: z.name,
@@ -600,7 +619,9 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
         sortOrder: z.sortOrder,
         shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
         geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
-        // Slice 9.5 — seat-gen override for this kept zone.
+        // Slice S1 (Architect Rev 4): only emit seat-gen fields when BOTH are
+        // positive integers. Partial state (user mid-typing one field) stays
+        // client-side until both are filled.
         rowCount: seatGen?.rowCount ?? null,
         seatsPerRow: seatGen?.seatsPerRow ?? null,
       };
@@ -610,7 +631,7 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
   // so the backend can resolve any `BatchTierAssignment.assignableId` that
   // references this zone before it has a server-side Guid.
   const addedZones: BatchZone[] = draft.additions.zones.map((z) => {
-    const seatGen = draft.seatGenByZoneId[z.id];
+    const seatGen = pickCompleteSeatGen(draft.seatGenByZoneId[z.id]);
     return {
       id: null,
       name: z.name,
@@ -788,11 +809,14 @@ export function countDraftChanges(input: ComposeBatchPayloadInput): number {
     }
   }
 
-  // Slice 9.5 — seat-generation overrides count as user changes.
+  // Slice 9.5 + S1 — only complete seat-gen entries (both fields positive)
+  // count as user changes. Partial state (user mid-typing) is held client-
+  // side and isn't a "real" pending change for the save-button gate.
   // Skip entries whose zone is being deleted in this same batch (no-op).
   let seatGenOverrides = 0;
-  for (const zoneId of Object.keys(draft.seatGenByZoneId)) {
+  for (const [zoneId, entry] of Object.entries(draft.seatGenByZoneId)) {
     if (draft.deletions.has(refKey({ kind: 'zone', id: zoneId }))) continue;
+    if (pickCompleteSeatGen(entry) === null) continue;
     seatGenOverrides++;
   }
 

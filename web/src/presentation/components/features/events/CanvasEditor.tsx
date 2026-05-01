@@ -242,11 +242,24 @@ export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorP
   );
 
   /**
-   * Slice 9.5 — seat-gen handler. Sets / clears the per-zone override in the
-   * canvas-editor draft. Passing `null` removes the entry (the panel emits
-   * `null` whenever either input is empty/zero, signalling "don't generate").
-   * Empty entries — entries where rowCount=0 OR seatsPerRow=0 — are also
-   * pruned here so `composeBatchPayload` doesn't emit half-baked nulls.
+   * Slice S1 (Architect Rev 4) — seat-gen handler. Stores partial state.
+   *
+   * <para>
+   * Old behaviour (Slice 9.5, BUGGY): pruned the entry whenever either field
+   * was 0, which made per-input commits stomp each other. User typed Rows=4
+   * → handler stored {rowCount:4, seatsPerRow:0} → pruner saw 0 →
+   * deleted the entry. Then user typed seatsPerRow=5 → handler read
+   * rowCount from now-empty entry as 0 → emitted {rowCount:0, seatsPerRow:5}
+   * → pruned again. Save persisted 0 seats every time.
+   * </para>
+   *
+   * <para>
+   * New behaviour: store whatever the user types. Only delete the entry when
+   * both fields are 0 (full clear) OR when caller explicitly passes null.
+   * Pruning of incomplete state moves to <c>composeBatchPayload</c> via
+   * <c>pickCompleteSeatGen</c> — the payload only emits seat-gen fields when
+   * both are positive integers.
+   * </para>
    */
   const handleSeatGenChange = useCallback(
     (
@@ -255,17 +268,27 @@ export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorP
     ) => {
       history.commit((prev) => {
         const without = { ...prev.seatGenByZoneId };
-        if (
-          next === null ||
-          next.rowCount <= 0 ||
-          next.seatsPerRow <= 0
-        ) {
+        // Full clear: caller passed null, or user zeroed both fields.
+        const isFullClear =
+          next === null || (next.rowCount <= 0 && next.seatsPerRow <= 0);
+        if (isFullClear) {
           delete without[zoneId];
           return { ...prev, seatGenByZoneId: without };
         }
+        // Otherwise store partial or complete state. Negative inputs
+        // are clamped to 0 to keep the stored shape predictable.
+        const safeRow = Number.isFinite(next.rowCount) && next.rowCount > 0
+          ? Math.floor(next.rowCount)
+          : 0;
+        const safeCol = Number.isFinite(next.seatsPerRow) && next.seatsPerRow > 0
+          ? Math.floor(next.seatsPerRow)
+          : 0;
         return {
           ...prev,
-          seatGenByZoneId: { ...prev.seatGenByZoneId, [zoneId]: next },
+          seatGenByZoneId: {
+            ...prev.seatGenByZoneId,
+            [zoneId]: { rowCount: safeRow, seatsPerRow: safeCol },
+          },
         };
       });
     },

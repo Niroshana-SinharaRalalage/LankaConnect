@@ -406,33 +406,46 @@ function ZoneSeatGenerationSection({
     );
   }
 
+  // Slice S1 (Architect Rev 4): per-input commits MUST preserve the partner
+  // value. Old code called onChange(null) when the current input was 0 or
+  // empty, which combined with the over-eager pruner in CanvasEditor.tsx
+  // wiped any previously-typed value. Now: only clear the full entry when
+  // BOTH fields are explicitly empty / non-positive. Partial state lives in
+  // the draft; composeBatchPayload prunes at save time.
   const handleRowsCommit = (raw: string) => {
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      onChange(null);
+    const trimmed = raw.trim();
+    const partner = seatGen?.seatsPerRow ?? 0;
+    if (trimmed === '') {
+      // User cleared the field — full-clear only if partner is also empty.
+      if (partner <= 0) onChange(null);
+      else onChange({ rowCount: 0, seatsPerRow: partner });
       return;
     }
-    const seatsPerRow = seatGen?.seatsPerRow ?? 0;
-    if (seatsPerRow > 0) {
-      onChange({ rowCount: Math.floor(parsed), seatsPerRow });
-    } else {
-      // Stash partial value — completion happens when user fills the second field.
-      onChange({ rowCount: Math.floor(parsed), seatsPerRow: 0 });
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      // Treat as cleared (same logic as empty input).
+      if (partner <= 0) onChange(null);
+      else onChange({ rowCount: 0, seatsPerRow: partner });
+      return;
     }
+    onChange({ rowCount: Math.floor(parsed), seatsPerRow: partner });
   };
 
   const handleSeatsPerRowCommit = (raw: string) => {
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      onChange(null);
+    const trimmed = raw.trim();
+    const partner = seatGen?.rowCount ?? 0;
+    if (trimmed === '') {
+      if (partner <= 0) onChange(null);
+      else onChange({ rowCount: partner, seatsPerRow: 0 });
       return;
     }
-    const rowCount = seatGen?.rowCount ?? 0;
-    if (rowCount > 0) {
-      onChange({ rowCount, seatsPerRow: Math.floor(parsed) });
-    } else {
-      onChange({ rowCount: 0, seatsPerRow: Math.floor(parsed) });
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      if (partner <= 0) onChange(null);
+      else onChange({ rowCount: partner, seatsPerRow: 0 });
+      return;
     }
+    onChange({ rowCount: partner, seatsPerRow: Math.floor(parsed) });
   };
 
   const totalSeats =

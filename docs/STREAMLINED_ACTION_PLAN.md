@@ -6,7 +6,40 @@
 
 ---
 
-## 🎯 2026-04-30 (latest) — Slice 9.5 SHIPPED + STAGING-VERIFIED — theater seat generation in canvas editor
+## 🎯 2026-04-30 (latest) — Slice S1 (Architect Rev 4) SHIPPED + STAGING-VERIFIED — seat-gen pruning fix
+
+**Context**: user authorized the architect Rev 4 4-week production-ready plan ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)) covering S1 → S6. Slice S1 unblocks the user's headline bug: "Rows + Seats per row typed in property panel, click Save → layout still shows 0 seats."
+
+**Bug context (Slice 9.5 regression)**: per-input commit handlers in `CanvasEditorPropertyPanel.tsx` read `seatGen?.seatsPerRow ?? 0` (the partner field). On the FIRST commit (user typed Rows=4 first), seatsPerRow was 0 because no entry existed yet. Handler emitted `{rowCount:4, seatsPerRow:0}`. The over-eager pruner in `CanvasEditor.handleSeatGenChange` saw `seatsPerRow <= 0` and deleted the entry. Second commit (seatsPerRow=5) re-read rowCount as 0 from now-empty entry. Save persisted 0 seats every time.
+
+**Fix shipped (commit `3e63620a`, deploy run `25200133808` `success`)**:
+
+- New `pickCompleteSeatGen(entry)` utility centralises the rule — returns the entry only when BOTH dimensions are positive integers; otherwise null.
+- `composeBatchPayload` uses it for both kept zones and added zones — partial state never reaches the BatchZone payload.
+- `countDraftChanges` uses it — partial state isn't counted as a "real" pending change for the save-button gate.
+- `CanvasEditor.handleSeatGenChange` only deletes on full clear (caller passes null OR both fields explicitly 0). Otherwise stores partial state with floors clamped to 0.
+- Property-panel commits carry the partner field through every commit. Empty / non-positive inputs preserve the partner instead of nulling the whole entry.
+
+**Tests**:
+- 5 new red-then-green `composeBatchPayload` cases (complete emits, partial omits each direction, added zone emits, no entry omits).
+- 22/22 existing `CanvasEditorPropertyPanel` tests unchanged.
+- 98/98 `canvasEditorGeometry` tests pass.
+- tsc --noEmit clean.
+
+**API smoke** end-to-end on user's event `e4792b64-…`: apply Theater Classic preset → PUT `/batch` with new "Balcony" zone + `{rowCount:3, seatsPerRow:5}` → HTTP 204 → totalCapacity = 215 (200 from preset + 15 generated). Cleanup successful.
+
+**Change-layout UI flow runtime verification** deferred to S6 Playwright suite — static inspection of `SeatingLayoutPicker` + `useApplyPresetToEvent` hook + cache invalidation chain looks correct; no obvious wiring bug. If the user reports it still doesn't work post-S1 deploy, S2 will address.
+
+**Next slices in the architect Rev 4 4-week plan**:
+- **S2** (2–3 days): PUT-with-`deletedZoneIds` + 409 ambiguity guard + extend `SeatStructuralEditGuard` to cover active holds. Closes the destructive-wipe class of bugs.
+- **S3** (1–2 days): Layout rename UI + truthful customize-modal subtitle.
+- **S4** (3–4 days): Tier-mapping summary pane + pre-publish validation (`ValidateLayoutForPublishQuery`).
+- **S5** (4–5 days): `SeatLocation` value object replaces nullable XOR — eliminates orphan-seat accumulation.
+- **S6** (5–7 days, MVP gate): Playwright e2e (organizer + buyer + race) + observability metrics + 1000-seat perf benchmark.
+
+---
+
+## 🎯 2026-04-30 (earlier) — Slice 9.5 SHIPPED + STAGING-VERIFIED — theater seat generation in canvas editor
 
 **User-reported gap**: "how do I add seats if I am going to create a new layout?" — the canvas editor's `+ Zone` button created empty zones with no UI to populate them. Built-in presets (Theater Classic etc.) auto-generate seats; tables auto-generate from `capacity`; but custom zones had no path to seats.
 

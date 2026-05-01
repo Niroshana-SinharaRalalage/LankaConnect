@@ -53,6 +53,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<MetroArea> MetroAreas => Set<MetroArea>();
     public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>(); // Phase 6A.8
 
+    // Phase 7F-B: registration-mode conversion audit
+    public DbSet<LankaConnect.Domain.Events.Entities.RegistrationModeConversion> RegistrationModeConversions
+        => Set<LankaConnect.Domain.Events.Entities.RegistrationModeConversion>();
+    public DbSet<LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow> RegistrationModeConversionRows
+        => Set<LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow>();
+
     // Business Entity Sets
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<Service> Services => Set<Service>();
@@ -165,6 +171,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
+        // Phase 7F-B: registration-mode conversion audit (architect-approved 2026-04-30)
+        modelBuilder.ApplyConfiguration(new RegistrationModeConversionConfiguration());
+        modelBuilder.ApplyConfiguration(new RegistrationModeConversionRowConfiguration());
         modelBuilder.ApplyConfiguration(new SignUpListConfiguration()); // Sign-up lists
         modelBuilder.ApplyConfiguration(new SignUpItemConfiguration()); // Sign-up items (category-based)
         modelBuilder.ApplyConfiguration(new SignUpCommitmentConfiguration()); // User commitments
@@ -432,7 +441,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Seat), // Phase 2: Seat Booking
             typeof(SeatHold), // Phase 2: Seat Booking
             typeof(SeatReservation), // Phase 2: Seat Booking
-            typeof(TierAssignment) // Slice 4 Release N: polymorphic tier→zone/table mapping
+            typeof(TierAssignment), // Slice 4 Release N: polymorphic tier→zone/table mapping
+            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion), // Phase 7F-B: mode-conversion audit
+            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow) // Phase 7F-B: per-row audit detail
         };
 
         // Get all types from Domain assembly that aren't in our configured list

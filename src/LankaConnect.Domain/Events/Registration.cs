@@ -1057,4 +1057,181 @@ public class Registration : BaseEntity
         || mode == RegistrationMode.HeadCountByAge
         || mode == RegistrationMode.HeadCountByGender
         || mode == RegistrationMode.HeadCountByAgeAndGender;
+
+    /// <summary>
+    /// Phase 7F-D (architect-approved 2026-04-30): merges a Mode-B head-count addition
+    /// into this registration. Mirrors <see cref="AddAttendees"/> at the contract level
+    /// (Confirmed + PaymentCompleted required, max-attendees cap enforced) but operates
+    /// on the head-count axis instead of per-attendee rows.
+    ///
+    /// Mode-match invariant (architect §2.2): the addition's mode MUST equal the
+    /// registration's <see cref="RegistrationMode"/>. Cross-mode merges (Mode-A
+    /// registration + Mode-B addition, or B2 + B4) are rejected — defence in depth on top
+    /// of the application-layer validator.
+    ///
+    /// Tier-counts merge by <c>TierId</c> (sum of counts; tier-name from the addition,
+    /// architect "live name preferred over snapshot" pattern). Demographics accumulate
+    /// leaf-by-leaf within the same family (B2+B2, B4+B4); cross-family already rejected
+    /// by the mode-match check.
+    ///
+    /// LeadAttendeeName is intentionally preserved — additions don't change the lead.
+    ///
+    /// Atomic / replay-safe: this method only mutates state when all guards pass. The
+    /// Stripe webhook handler is responsible for idempotency at the addition-row level
+    /// (architect plan §3 7F-D.5).
+    /// </summary>
+    /// <param name="additionMode">Mode snapshot from the <c>RegistrationAddition</c> row.</param>
+    /// <param name="headCountDelta">The delta head-count to merge in.</param>
+    /// <param name="newTotalPrice">Post-merge total price (computed by the handler upstream).</param>
+    /// <param name="maxAttendeesPerRegistration">Event-level cap applied to the merged total.</param>
+    public Result MergeHeadCountAddition(
+        RegistrationMode additionMode,
+        HeadCountBreakdown headCountDelta,
+        Money newTotalPrice,
+        int maxAttendeesPerRegistration = 10)
+    {
+        if (Status != RegistrationStatus.Confirmed)
+            return Result.Failure(
+                $"MergeHeadCountAddition: registration must be Confirmed to merge an addition. " +
+                $"Current status: {Status}.");
+
+        if (PaymentStatus != PaymentStatus.Completed)
+            return Result.Failure(
+                $"MergeHeadCountAddition: payment must be completed before merging. " +
+                $"Current payment status: {PaymentStatus}.");
+
+        if (headCountDelta == null)
+            return Result.Failure("Head-count delta is required");
+
+        if (newTotalPrice == null)
+            return Result.Failure("New total price is required");
+
+        // Mode-match invariant (architect §2.2): addition mode == registration mode.
+        if (additionMode != RegistrationMode)
+            return Result.Failure(
+                $"Cannot merge a {additionMode} addition into a {RegistrationMode} registration. " +
+                "Addition mode must match the parent's RegistrationMode.");
+
+        // Defence in depth — Mode A and Mode C should never reach here, but be explicit.
+        if (RegistrationMode == RegistrationMode.DetailedAttendees
+            || RegistrationMode == RegistrationMode.NoRegistration)
+            return Result.Failure(
+                $"MergeHeadCountAddition is for head-count modes only. RegistrationMode={RegistrationMode}.");
+
+        if (HeadCount == null)
+            return Result.Failure(
+                "Registration has no HeadCount populated — cannot merge a head-count delta.");
+
+        // Compute the merged shape.
+        var mergeResult = MergeHeadCountBreakdowns(HeadCount, headCountDelta);
+        if (mergeResult.IsFailure)
+            return Result.Failure(mergeResult.Errors);
+        var merged = mergeResult.Value;
+
+        // Max-attendees cap.
+        var effectiveMax = Math.Min(maxAttendeesPerRegistration, Event.SYSTEM_MAX_ATTENDEES_PER_REGISTRATION);
+        if (merged.Total > effectiveMax)
+            return Result.Failure(
+                $"Maximum {effectiveMax} attendees per registration. " +
+                $"Current: {HeadCount.Total}, delta: {headCountDelta.Total}, post-merge: {merged.Total}.");
+
+        // All guards pass — apply.
+        HeadCount = merged;
+        TotalPrice = newTotalPrice;
+        Quantity = merged.Total;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Internal helper: builds a new <see cref="HeadCountBreakdown"/> by accumulating the
+    /// delta into the existing one. Same-family modes only (mode-match invariant already
+    /// enforced upstream).
+    /// </summary>
+    private static Result<HeadCountBreakdown> MergeHeadCountBreakdowns(
+        HeadCountBreakdown existing, HeadCountBreakdown delta)
+    {
+        // Tier-counts merge by TierId. Live name from the delta (latest), falling back to
+        // the existing snapshot if the delta doesn't carry that tier.
+        IReadOnlyList<TierCount>? mergedTiers = null;
+        if (existing.TierCounts != null || delta.TierCounts != null)
+        {
+            var byId = new Dictionary<Guid, TierCount>();
+            foreach (var tc in existing.TierCounts ?? Array.Empty<TierCount>())
+                byId[tc.TierId] = tc;
+            foreach (var tc in delta.TierCounts ?? Array.Empty<TierCount>())
+            {
+                if (byId.TryGetValue(tc.TierId, out var prior))
+                {
+                    var sum = prior.Count + tc.Count;
+                    int? adultSum = (prior.AdultCount.HasValue || tc.AdultCount.HasValue)
+                        ? (prior.AdultCount ?? prior.Count) + (tc.AdultCount ?? tc.Count) -
+                          // Subtract whichever side doesn't have age split (we're double-counting otherwise).
+                          ((!prior.AdultCount.HasValue ? prior.Count : 0) + (!tc.AdultCount.HasValue ? tc.Count : 0))
+                          + (!prior.AdultCount.HasValue && !tc.AdultCount.HasValue ? sum : 0)
+                        : null;
+                    int? childSum = (prior.ChildCount.HasValue || tc.ChildCount.HasValue)
+                        ? (prior.ChildCount ?? 0) + (tc.ChildCount ?? 0)
+                        : null;
+                    // If neither side had age split, leave both null.
+                    if (!prior.AdultCount.HasValue && !tc.AdultCount.HasValue)
+                    {
+                        adultSum = null;
+                        childSum = null;
+                    }
+                    var rebuilt = TierCount.Create(tc.TierId, tc.TierName, sum, adultSum, childSum);
+                    if (rebuilt.IsFailure)
+                        return Result<HeadCountBreakdown>.Failure(rebuilt.Errors);
+                    byId[tc.TierId] = rebuilt.Value;
+                }
+                else
+                {
+                    byId[tc.TierId] = tc;
+                }
+            }
+            mergedTiers = byId.Values.ToList();
+        }
+
+        // Mode-specific demographic merge.
+        // Sums leaf-by-leaf within the same family.
+        Result<HeadCountBreakdown> rebuilt2;
+        if (existing.Demographics == null && delta.Demographics == null)
+        {
+            // B1 + B1 — TotalOnly
+            rebuilt2 = HeadCountBreakdown.ForTotalOnly(existing.Total + delta.Total, mergedTiers);
+        }
+        else if (existing.Demographics?.Adults != null
+                 || existing.Demographics?.Children != null
+                 || delta.Demographics?.Adults != null
+                 || delta.Demographics?.Children != null)
+        {
+            // B2 family
+            rebuilt2 = HeadCountBreakdown.ForByAge(
+                adults: (existing.Demographics?.Adults ?? 0) + (delta.Demographics?.Adults ?? 0),
+                children: (existing.Demographics?.Children ?? 0) + (delta.Demographics?.Children ?? 0),
+                mergedTiers);
+        }
+        else if (existing.Demographics?.Males != null
+                 || existing.Demographics?.Females != null
+                 || delta.Demographics?.Males != null
+                 || delta.Demographics?.Females != null)
+        {
+            // B3 family
+            rebuilt2 = HeadCountBreakdown.ForByGender(
+                males: (existing.Demographics?.Males ?? 0) + (delta.Demographics?.Males ?? 0),
+                females: (existing.Demographics?.Females ?? 0) + (delta.Demographics?.Females ?? 0),
+                mergedTiers);
+        }
+        else
+        {
+            // B4 — 4-leaf
+            rebuilt2 = HeadCountBreakdown.ForByAgeAndGender(
+                adultMales: (existing.Demographics?.AdultMales ?? 0) + (delta.Demographics?.AdultMales ?? 0),
+                adultFemales: (existing.Demographics?.AdultFemales ?? 0) + (delta.Demographics?.AdultFemales ?? 0),
+                childMales: (existing.Demographics?.ChildMales ?? 0) + (delta.Demographics?.ChildMales ?? 0),
+                childFemales: (existing.Demographics?.ChildFemales ?? 0) + (delta.Demographics?.ChildFemales ?? 0),
+                mergedTiers);
+        }
+
+        return rebuilt2;
+    }
 }

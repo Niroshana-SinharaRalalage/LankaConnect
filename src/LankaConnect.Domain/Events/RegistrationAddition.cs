@@ -24,7 +24,30 @@ public class RegistrationAddition : BaseEntity
     public Guid RegistrationId { get; private set; }
     public Guid EventId { get; private set; }
 
-    // New attendees to be added
+    // Phase 7F-D (architect-approved 2026-04-30): registration mode snapshot at addition
+    // creation. Drives the polymorphic discriminator + the mode-match invariant on merge.
+    // Default DetailedAttendees so legacy rows materialise correctly post-migration.
+    public RegistrationMode RegistrationMode { get; private set; } = RegistrationMode.DetailedAttendees;
+
+    /// <summary>
+    /// Phase 7F-D: Mode-B head-count delta. Mutually exclusive with <see cref="NewAttendees"/>:
+    /// a Mode-A addition has attendees + null head-count; a Mode-B addition has head-count + empty
+    /// attendees list. Enforced in factory + DB CHECK constraint (7F-D.2 migration).
+    /// </summary>
+    public HeadCountBreakdown? HeadCountDelta { get; private set; }
+
+    /// <summary>
+    /// Phase 7F-D (architect edit #1): polymorphic discriminator based on the snapshotted
+    /// RegistrationMode, NOT on `_newAttendees.Count > 0`. The latter would give a false
+    /// positive AFTER a Mode-A addition is merged (the list is moved to the registration
+    /// but the row stays). Always read this property for Mode-A vs Mode-B routing.
+    /// </summary>
+    public bool IsModeBAddition => RegistrationMode != RegistrationMode.DetailedAttendees
+                                   && RegistrationMode != RegistrationMode.NoRegistration;
+
+    public bool IsModeAAddition => !IsModeBAddition;
+
+    // New attendees to be added (Mode A only — empty in Mode B additions).
     private readonly List<AttendeeDetails> _newAttendees = new();
     public IReadOnlyList<AttendeeDetails> NewAttendees => _newAttendees.AsReadOnly();
 
@@ -157,6 +180,72 @@ public class RegistrationAddition : BaseEntity
             previousTotalPrice,
             newTotalPrice,
             additionalAmount);
+
+        return Result<RegistrationAddition>.Success(addition);
+    }
+
+    /// <summary>
+    /// Phase 7F-D (architect-approved 2026-04-30): factory for a Mode-B head-count delta
+    /// addition. Mutually exclusive with <see cref="Create"/> (which builds a Mode-A
+    /// per-attendee list addition). Required architect-mandated invariants:
+    ///
+    ///   - <paramref name="mode"/> must be a head-count mode (B1/B2/B3/B4); Mode A and
+    ///     Mode C are rejected at the factory.
+    ///   - <paramref name="headCountDelta"/> is required.
+    ///   - All three Money values share the same currency.
+    ///   - <paramref name="additionalAmount"/> matches <c>newTotal − previousTotal</c>
+    ///     within 1 cent (mirrors Mode A's tolerance at line 148).
+    ///   - For free-event additions, <paramref name="additionalAmount"/> = zero is allowed
+    ///     (architect §2.5 — same code path as free Mode-A; no fork).
+    /// </summary>
+    public static Result<RegistrationAddition> CreateForHeadCountDelta(
+        Guid registrationId,
+        Guid eventId,
+        RegistrationMode mode,
+        HeadCountBreakdown headCountDelta,
+        Money previousTotal,
+        Money newTotal,
+        Money additionalAmount)
+    {
+        if (registrationId == Guid.Empty)
+            return Result<RegistrationAddition>.Failure("Registration ID is required");
+
+        if (eventId == Guid.Empty)
+            return Result<RegistrationAddition>.Failure("Event ID is required");
+
+        if (headCountDelta == null)
+            return Result<RegistrationAddition>.Failure("Head-count delta is required for a Mode-B addition");
+
+        // Mode must be a head-count mode (architect §2.2 mode-match invariant).
+        if (mode == RegistrationMode.DetailedAttendees
+            || mode == RegistrationMode.NoRegistration)
+            return Result<RegistrationAddition>.Failure(
+                $"CreateForHeadCountDelta requires a head-count mode (B1/B2/B3/B4); got {mode}. " +
+                "Use the per-attendee Create factory for Mode-A additions.");
+
+        if (previousTotal == null || newTotal == null || additionalAmount == null)
+            return Result<RegistrationAddition>.Failure("All Money values are required");
+
+        if (previousTotal.Currency != newTotal.Currency
+            || previousTotal.Currency != additionalAmount.Currency)
+            return Result<RegistrationAddition>.Failure("All prices must have the same currency");
+
+        if (additionalAmount.Amount < 0)
+            return Result<RegistrationAddition>.Failure("Additional amount cannot be negative");
+
+        var expectedAdditional = newTotal.Amount - previousTotal.Amount;
+        if (Math.Abs(additionalAmount.Amount - expectedAdditional) > 0.01m)
+            return Result<RegistrationAddition>.Failure(
+                $"Additional amount ({additionalAmount.Amount}) does not match price difference ({expectedAdditional})");
+
+        var addition = new RegistrationAddition(
+            registrationId, eventId,
+            newAttendees: new List<AttendeeDetails>(), // Mode B: empty attendee list
+            previousTotal, newTotal, additionalAmount)
+        {
+            RegistrationMode = mode,
+            HeadCountDelta = headCountDelta,
+        };
 
         return Result<RegistrationAddition>.Success(addition);
     }

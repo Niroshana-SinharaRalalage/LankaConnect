@@ -3144,3 +3144,41 @@ export interface AllowedRegistrationModesRequest {
   hasIdentityBoundAddOn?: boolean;
   hasMatrixPricing?: boolean;
 }
+
+/**
+ * Phase 7F-B (architect-approved 2026-04-30): request body for
+ * `POST /api/events/{id}/convert-registration-mode`.
+ *
+ * - `dryRun`: when true, the backend computes the conversion report but does NOT mutate
+ *   any registration. Drives the UI's diff-preview confirmation dialog.
+ * - `notifyAttendees`: default false. When true, the backend (Phase 7F-B.4) sends each
+ *   affected registrant an "your registration format changed" email via Hangfire fire-
+ *   and-forget. Default-off avoids surprise inbox traffic during operator testing.
+ */
+export interface ConvertRegistrationModeRequest {
+  targetMode: RegistrationMode;
+  dryRun?: boolean;
+  notifyAttendees?: boolean;
+}
+
+export interface ConvertedRegistrationRow {
+  registrationId: string;
+  beforeAttendeeCount: number;
+  afterAttendeeCount: number;
+}
+
+export interface SkippedRegistrationRow {
+  registrationId: string;
+  reasonCode: string;
+  reason: string;
+}
+
+export interface ConvertRegistrationModeResult {
+  aggregateConversionId: string | null;
+  totalProcessed: number;
+  migratedCount: number;
+  skippedCount: number;
+  migrated: ConvertedRegistrationRow[];
+  skipped: SkippedRegistrationRow[];
+  wasDryRun: boolean;
+}

@@ -79,6 +79,9 @@ import type {
   // Phase 7E.5: Flexible Registration Modes
   RegistrationMode,
   AllowedRegistrationModesRequest,
+  // Phase 7F-B: A↔B mode conversion with attendee backfill
+  ConvertRegistrationModeRequest,
+  ConvertRegistrationModeResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -383,6 +386,24 @@ export class EventsRepository {
   async postponeEvent(id: string, reason: string): Promise<void> {
     const request: PostponeEventRequest = { reason };
     await apiClient.post<void>(`${this.basePath}/${id}/postpone`, request);
+  }
+
+  /**
+   * Phase 7F-B: Convert all active registrations on an event from one RegistrationMode
+   * to another, performing per-registration backfill (A→B collapses attendee rows into
+   * a head-count + lead name; B→A explodes head-count into placeholder attendee rows).
+   *
+   * @param dryRun  true = compute the report without applying (drives the UI's diff preview).
+   *                false = commit the conversion + write audit rows.
+   */
+  async convertRegistrationMode(
+    eventId: string,
+    payload: ConvertRegistrationModeRequest,
+  ): Promise<ConvertRegistrationModeResult> {
+    return apiClient.post<ConvertRegistrationModeResult>(
+      `${this.basePath}/${eventId}/convert-registration-mode`,
+      payload,
+    );
   }
 
   // ==================== RSVP OPERATIONS ====================

@@ -298,6 +298,34 @@ export function useAllowedRegistrationModes(
 }
 
 /**
+ * Phase 7F-B (architect-approved 2026-04-30): mutation hook for the registration-mode
+ * conversion endpoint. Used by both the dry-run preview AND the real commit — the dialog
+ * orchestrates two calls (one with `dryRun: true` then one with `dryRun: false`).
+ *
+ * On a non-dry-run success:
+ * - Invalidates the event detail cache so the caller sees the new `registrationMode`.
+ * - Invalidates the lists cache so dashboards reflect the change.
+ *
+ * Dry-run runs leave the cache untouched.
+ */
+export function useConvertRegistrationMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, payload }: {
+      eventId: string;
+      payload: import('@/infrastructure/api/types/events.types').ConvertRegistrationModeRequest;
+    }) => eventsRepository.convertRegistrationMode(eventId, payload),
+    onSuccess: (result, vars) => {
+      if (!vars.payload.dryRun) {
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(vars.eventId) });
+        queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      }
+    },
+  });
+}
+
+/**
  * useCreateEvent Hook
  *
  * Mutation hook for creating a new event

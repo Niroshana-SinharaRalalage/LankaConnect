@@ -15,6 +15,7 @@ import { editEventSchema, type EditEventFormData } from '@/presentation/lib/vali
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { EventCategory, Currency, RegistrationMode, type EventDto } from '@/infrastructure/api/types/events.types';
 import { RegistrationModePicker } from './RegistrationModePicker';
+import { ConvertRegistrationModeDialog } from './ConvertRegistrationModeDialog';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
@@ -1205,24 +1206,45 @@ export function EventEditForm({ event }: EventEditFormProps) {
             control={control}
             name="registrationMode"
             render={({ field }) => (
-              <RegistrationModePicker
-                value={field.value ?? RegistrationMode.DetailedAttendees}
-                onChange={field.onChange}
-                shape={{
-                  isFreeAttendance: isFree ?? true,
-                  hasDualPricing: !isFree && enableDualPricing,
-                  hasGroupTiers: !isFree && (watch('enableGroupPricing') ?? false),
-                  hasTicketTiers: !isFree && (watch('enableTieredTicketing') ?? false),
-                }}
-                helpText={
-                  // The domain method Event.SetRegistrationMode rejects mode change once
-                  // registrations exist on the event. Show a hint so organisers know why
-                  // changes after publishing may fail server-side.
-                  event.currentRegistrations > 0
-                    ? `Note: ${event.currentRegistrations} registration${event.currentRegistrations === 1 ? '' : 's'} already exist. Server may reject mode changes (Phase 7F adds backfill).`
-                    : undefined
-                }
-              />
+              <>
+                <RegistrationModePicker
+                  value={field.value ?? RegistrationMode.DetailedAttendees}
+                  onChange={field.onChange}
+                  shape={{
+                    isFreeAttendance: isFree ?? true,
+                    hasDualPricing: !isFree && enableDualPricing,
+                    hasGroupTiers: !isFree && (watch('enableGroupPricing') ?? false),
+                    hasTicketTiers: !isFree && (watch('enableTieredTicketing') ?? false),
+                  }}
+                  helpText={
+                    // Phase 7F-B (architect-approved 2026-04-30): when registrations exist
+                    // and the user picks a different mode, the regular PUT /events/{id}
+                    // path is bypassed in favour of the dedicated convert endpoint with a
+                    // dry-run preview confirmation dialog (button below). Helper text
+                    // explains the flow.
+                    event.currentRegistrations > 0
+                      ? `${event.currentRegistrations} registration${event.currentRegistrations === 1 ? '' : 's'} exist. Picking a different mode opens a preview-and-confirm dialog (Phase 7F-B).`
+                      : undefined
+                  }
+                />
+                {/* Phase 7F-B.5: convert button — visible when target mode differs from
+                    current event mode AND there's something to migrate (active regs > 0).
+                    For zero-reg events the regular PUT flow handles the change. */}
+                {event.currentRegistrations > 0
+                  && field.value != null
+                  && field.value !== event.registrationMode && (
+                  <Phase7FBConvertModeButton
+                    eventId={event.id}
+                    fromMode={event.registrationMode ?? RegistrationMode.DetailedAttendees}
+                    targetMode={field.value}
+                    onCompleted={(result) => {
+                      // Surface the converted mode locally so the form reflects reality.
+                      // Cache invalidation is already handled by the hook's onSuccess.
+                      console.info('[7F-B] mode conversion committed', result);
+                    }}
+                  />
+                )}
+              </>
             )}
           />
 
@@ -2076,5 +2098,48 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Phase 7F-B.5: small inline component that opens the
+ * <see cref="ConvertRegistrationModeDialog"/> when clicked. Kept separate from the form's
+ * react-hook-form Controller so the dialog state is local and doesn't pollute the form.
+ */
+function Phase7FBConvertModeButton({
+  eventId,
+  fromMode,
+  targetMode,
+  onCompleted,
+}: {
+  eventId: string;
+  fromMode: RegistrationMode;
+  targetMode: RegistrationMode;
+  onCompleted?: (result: import('@/infrastructure/api/types/events.types').ConvertRegistrationModeResult) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className="text-sm"
+      >
+        Preview &amp; convert mode →
+      </Button>
+      <p className="text-xs text-neutral-500 mt-1">
+        Preview the per-registration migration before committing — pending payments and
+        named-seat registrations will be skipped automatically.
+      </p>
+      <ConvertRegistrationModeDialog
+        open={open}
+        onOpenChange={setOpen}
+        eventId={eventId}
+        fromMode={fromMode}
+        targetMode={targetMode}
+        onComplete={onCompleted}
+      />
+    </div>
   );
 }

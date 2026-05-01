@@ -35,7 +35,12 @@ public interface IApplicationDbContext
     DbSet<SignUpItem> SignUpItems { get; } // Phase 6A.16: Required for cascade deletion
     DbSet<SignUpCommitment> SignUpCommitments { get; } // Phase 6A.16: Cascade deletion
     DbSet<Registration> Registrations { get; }
+    DbSet<RegistrationAddition> RegistrationAdditions { get; } // Add-Only Attendees Feature (read-only view for cross-aggregate queries)
     DbSet<Ticket> Tickets { get; } // Phase 6A.X: QR Code Display feature
+
+    // Phase 7F-B: registration-mode conversion audit (architect-approved 2026-04-30)
+    DbSet<RegistrationModeConversion> RegistrationModeConversions { get; }
+    DbSet<RegistrationModeConversionRow> RegistrationModeConversionRows { get; }
 
     // Communications Domain
     DbSet<EmailMessage> EmailMessages { get; }

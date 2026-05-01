@@ -602,6 +602,35 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 7F-B: Convert all active registrations on an event from one
+    /// <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/> to another.
+    /// Owner only. Pass <c>dryRun=true</c> to compute the conversion report without
+    /// applying — drives the UI's diff-preview confirmation dialog.
+    /// </summary>
+    [HttpPost("{id:guid}/convert-registration-mode")]
+    [Authorize]
+    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ConvertRegistrationMode(
+        Guid id, [FromBody] ConvertRegistrationModeRequest request)
+    {
+        Logger.LogInformation(
+            "[7F-B] ConvertRegistrationMode endpoint hit — EventId={EventId} TargetMode={TargetMode} DryRun={DryRun}",
+            id, request.TargetMode, request.DryRun);
+
+        var command = new LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeCommand(
+            EventId: id,
+            TargetMode: request.TargetMode,
+            DryRun: request.DryRun,
+            NotifyAttendees: request.NotifyAttendees);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Postpone an event with reason (Owner only)
     /// </summary>
     [HttpPost("{id:guid}/postpone")]
@@ -3428,6 +3457,14 @@ public class EventsController : BaseController<EventsController>
 
 // Request DTOs
 public record CancelEventRequest(string Reason);
+
+/// <summary>
+/// Phase 7F-B: request body for <see cref="EventsController.ConvertRegistrationMode"/>.
+/// </summary>
+public record ConvertRegistrationModeRequest(
+    LankaConnect.Domain.Events.Enums.RegistrationMode TargetMode,
+    bool DryRun = false,
+    bool NotifyAttendees = false);
 public record PostponeEventRequest(string Reason);
 // Phase 6A.11: Updated to support multi-attendee registrations with detailed attendee information
 public record RsvpRequest(

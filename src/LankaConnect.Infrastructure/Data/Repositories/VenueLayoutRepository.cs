@@ -144,6 +144,72 @@ public class VenueLayoutRepository : Repository<VenueLayout>, IVenueLayoutReposi
     }
 
     /// <inheritdoc />
+    public async Task<int> HardDeleteByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "HardDeleteByEventId"))
+        using (LogContext.PushProperty("EntityType", "VenueLayout"))
+        using (LogContext.PushProperty("EventId", eventId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _repoLogger.LogDebug("HardDeleteByEventIdAsync START: EventId={EventId}", eventId);
+
+            try
+            {
+                // Step 1: capture the zone + table ids of every layout for this event,
+                // so we can delete their tier_assignments rows manually (polymorphic FK
+                // has no DB cascade — same pattern as Slice 9.3's seat_holds cleanup).
+                var doomedLayoutIds = await _dbSet
+                    .Where(v => v.EventId == eventId)
+                    .Select(v => v.Id)
+                    .ToListAsync(cancellationToken);
+
+                if (doomedLayoutIds.Count == 0)
+                {
+                    stopwatch.Stop();
+                    _repoLogger.LogInformation(
+                        "HardDeleteByEventIdAsync COMPLETE: EventId={EventId}, DeletedCount=0 (no rows), Duration={ElapsedMs}ms",
+                        eventId, stopwatch.ElapsedMilliseconds);
+                    return 0;
+                }
+
+                // Step 2: cascade-clean tier_assignments referencing zones/tables of the
+                // doomed layouts. Use raw SQL because EF Core's polymorphic-junction model
+                // doesn't allow a navigation-based delete here.
+                var assignmentsCleaned = await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    DELETE FROM events.tier_assignments ta
+                    WHERE (ta.assignable_kind = 'Zone' AND ta.assignable_id IN (
+                        SELECT z.""Id"" FROM events.venue_zones z
+                        WHERE z.venue_layout_id = ANY({doomedLayoutIds})))
+                       OR (ta.assignable_kind = 'Table' AND ta.assignable_id IN (
+                        SELECT t.""Id"" FROM events.venue_tables t
+                        WHERE t.venue_layout_id = ANY({doomedLayoutIds})))
+                ", cancellationToken);
+
+                // Step 3: delete the layouts. Cascade FKs handle zones / tables / seats /
+                // decorations / canvas (verified S1.5 pre-flight — all OnDelete.Cascade).
+                var layoutsDeleted = await _dbSet
+                    .Where(v => doomedLayoutIds.Contains(v.Id))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "HardDeleteByEventIdAsync COMPLETE: EventId={EventId}, LayoutsDeleted={LayoutsDeleted}, TierAssignmentsCleaned={AssignmentsCleaned}, Duration={ElapsedMs}ms",
+                    eventId, layoutsDeleted, assignmentsCleaned, stopwatch.ElapsedMilliseconds);
+
+                return layoutsDeleted;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "HardDeleteByEventIdAsync FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    eventId, stopwatch.ElapsedMilliseconds, ex.Message);
+                throw;
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<VenueLayout>> GetTemplatesByUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetTemplatesByUser"))

@@ -35,6 +35,32 @@ public interface IVenueLayoutRepository : IRepository<VenueLayout>
     Task<IReadOnlyList<VenueLayout>> GetTemplatesByUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Slice S1.5: hard-deletes ALL venue_layouts rows whose <c>event_id</c> equals
+    /// the given event id, plus the <c>tier_assignments</c> rows referencing those
+    /// rows' zones/tables (polymorphic FK has no DB cascade — manual cleanup).
+    /// FK cascades handle the rest: zones / tables / seats / decorations all
+    /// cascade-delete via <c>OnDelete.Cascade</c> (verified by S1.5 pre-flight).
+    ///
+    /// <para>
+    /// Used by <c>ApplyPresetToEventCommand</c> + <c>ApplyTemplateToEventCommand</c>
+    /// to atomically clean up the previously-attached layout AND any orphan rows
+    /// before inserting the new one — closes the
+    /// <c>ix_venue_layouts_event_id_name</c> unique-constraint collision class.
+    /// </para>
+    ///
+    /// <para>
+    /// Returns the count of <c>venue_layouts</c> rows deleted (0 when none matched).
+    /// Idempotent. Does NOT verify the structural-edit guard — callers should run
+    /// the guard separately if active holds / reservations might exist (the
+    /// architect's S2 work — for now, S1.5 trusts that organisers re-apply
+    /// presets only on events without live registrations because of
+    /// <c>EnableAssignedSeating</c>'s pre-existing
+    /// "no registrations exist" rule).
+    /// </para>
+    /// </summary>
+    Task<int> HardDeleteByEventIdAsync(Guid eventId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Checks if a layout name is already in use for the given event.
     /// </summary>
     Task<bool> NameExistsForEventAsync(string name, Guid eventId, CancellationToken cancellationToken = default);

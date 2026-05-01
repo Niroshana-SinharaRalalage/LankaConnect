@@ -89,6 +89,19 @@ public partial class Event
             return Result.Success(); // Idempotent — no change to make.
         }
 
+        // Slice S1.5 invariant: AssignedSeating requires DetailedAttendees. Block any
+        // mode change that would orphan an existing assigned-seating layout (Mode B/C
+        // can't bind seats to attendees). Organiser must revert seating mode to GA
+        // first, then change registration mode.
+        if (SeatingMode == SeatingMode.AssignedSeating
+            && mode != RegistrationMode.DetailedAttendees)
+        {
+            return Result.Failure(
+                $"Cannot change registration mode to {mode} while assigned seating is enabled. " +
+                $"Assigned seating requires individual-attendee registration. " +
+                $"Switch seating mode to General Admission first, then change registration mode.");
+        }
+
         RegistrationMode = mode;
         MarkAsUpdated();
         return Result.Success();

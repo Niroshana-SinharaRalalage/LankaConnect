@@ -28,6 +28,153 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 
 ---
 
+## Smoke testing protocol (mandatory per slice, MUST pass before slice is marked complete)
+
+**Lesson learned 2026-05-01**: prior smoke runs were endpoint-by-endpoint isolated calls. They missed bugs that are only visible when you walk a real user journey. Slice 9.5 / Slice S1's "apply-preset works" smoke called `POST /apply-preset` ONCE on a clean event and got 201 — but the actual user-blocking bug ("Change layout doesn't work after customizing") was a unique-constraint collision visible *only* on the second apply-preset for the same event. The user surfaced it; the smoke missed it.
+
+**New rule**: every slice has a "Journey Smoke" section with at least 3 named user journeys covering the slice's surface area. Each journey is a sequence of API calls + expected end-state, not a single endpoint hit. The slice is NOT complete until the listed journeys all run green on staging post-deploy.
+
+### Standard journey definitions (reused across slices)
+
+**J-A — Organizer first-time setup (happy path)**:
+1. Login.
+2. Create event with `TicketingMode: Tiered`, 2 tiers.
+3. Apply preset (e.g., theater-classic).
+4. Verify `events.venue_layout_id` set, `seatingMode = AssignedSeating`, layout has expected seats.
+5. Customize: add zone, set rows + cols, save.
+6. Verify total seat count = preset seats + new zone seats.
+7. Publish event.
+8. Verify `events.status = Published`.
+
+**J-B — Organizer changes their mind (the journey that surfaced today's bug)**:
+1. Apply preset A.
+2. Verify event points at preset A's layout.
+3. Apply preset B (different name).
+4. Verify event points at preset B's layout, NO orphans (`SELECT count(*) FROM venue_layouts WHERE event_id = X` = 1).
+5. Apply preset A again (same name as step 1).
+6. Verify event points at preset A's layout again, still no orphans.
+7. Apply preset A AGAIN (idempotent).
+8. Verify same result, still no orphans.
+
+**J-C — Buyer end-to-end (Mode A + AssignedSeating)**:
+1. Organizer set up event per J-A, published.
+2. Buyer (different user) opens event detail page.
+3. Starts registration → sees seat picker.
+4. Picks N seats → sees them held.
+5. Completes payment.
+6. Receives confirmation email + ticket PDF with seat numbers.
+
+**J-D — Buyer end-to-end (Mode B head-count, no assigned seating)**:
+1. Organizer set up B-mode event (DetailedAttendees off, GA seating), published.
+2. Buyer opens registration → sees tier counters + demographics, NO seat picker.
+3. Submits → confirmation email correct.
+
+**J-E — Concurrent / race scenarios**:
+1. Organizer A holds editor open.
+2. Organizer B saves changes via API.
+3. Organizer A tries to save → expects 409 with current state shown.
+
+**J-F — Invalid-combination guards**:
+1. Try to enable AssignedSeating on a HeadCountByAge event → expects 400 with descriptive message.
+2. Try to switch registration mode to HeadCountByAge while AssignedSeating is on → expects 400 with confirm-or-revert prompt.
+
+### Per-slice journey requirements
+
+| Slice | Journeys MUST run green |
+|---|---|
+| S1.5 | J-B (full sequence — the orphan-collision journey), J-F (Mode B + AssignedSeating rejection) |
+| S1 (already shipped) | J-A steps 1–6 (already covered) — RETROACTIVE: also run J-B step 5 (re-apply same preset) |
+| S2 | J-B + a destructive-payload journey (omit a zone, expect 409) |
+| S3 | J-A with rename injected between steps 5 + 6 |
+| S4 | J-A + a publish-with-unmapped-zone journey (expect blocker) + J-D with B-mode |
+| S5 | J-A end-to-end (regression check) + verify no orphan seat rows in DB after `apply-preset` replace |
+| S6 | All of J-A, J-B, J-C, J-D, J-E, J-F via Playwright e2e on staging |
+
+**The slice is NOT complete until its journeys pass.** Adding journeys post-hoc to "find bugs faster" doesn't work — they have to gate the merge.
+
+---
+
+## Slice S1.5 — HOT-FIX: apply-preset orphan cleanup + Mode B incompatibility guard (1 day)
+
+**Authorized 2026-05-01** by architect after user-reported regressions surfaced two bugs that the (endpoint-level) S1 smoke missed.
+
+**Bug A — Apply-preset name collision**: `ix_venue_layouts_event_id_name` unique constraint blocks INSERT when an orphan exists with the same `(event_id, name)`. User-visible as "Change layout doesn't work" — re-applying the same preset (or any preset whose name matches an orphan) returns 500. Reproduced via journey J-B step 5.
+
+**Bug B — Mode B + AssignedSeating combination has no buyer flow**: `HeadCountRsvpForm` doesn't render the seat picker; only `EventRegistrationForm` (Mode A) does. The combination was allowed at organizer time but was never wired end-to-end on the buyer side. User-visible as "Seating cannot be selected at registration" on event `d543629f`.
+
+### Pre-flight check (before TDD red phase)
+
+- [ ] Verify FK cascade rules on `venue_zones`, `venue_tables`, `seats`, `venue_decorations`, `tier_assignments` are `ON DELETE CASCADE`. If any are `NO ACTION` / `RESTRICT`, the inline hard-delete will fail and would need a migration. Check via DB inspection or EF config.
+
+### TDD red phase
+
+**Bug A (apply-preset orphan cleanup):**
+- [ ] Handler test: `Apply_NoExistingLayout_CreatesLayoutAndAttaches` (baseline regression).
+- [ ] Handler test: `Apply_ExistingAttachedLayout_DetachesAndHardDeletesOldLayout`.
+- [ ] Handler test: `Apply_OrphanLayoutWithSameEventIdAndName_HardDeletesOrphanBeforeInsert` (the actual bug).
+- [ ] Handler test: `Apply_MultipleOrphansSameEventId_HardDeletesAll` (defensive; clean ALL orphans).
+- [ ] Handler test: `Apply_HardDeleteCascades_ZonesTablesSeatsDecorationsTierAssignmentsAllRemoved` (verify cascade integrity, child row counts = 0 after).
+- [ ] Handler test: `Apply_TransactionRollback_OnInsertFailure_OldLayoutPreserved` (atomicity).
+- [ ] Handler test: `Apply_NotEventOwner_ThrowsForbidden_NoDeletes` (auth before deletes).
+- [ ] Repo test: `HardDeleteByEventIdAsync_RemovesAllLayoutsForEvent_AndCascades` (new repo method).
+- [ ] Repo test: `HardDeleteByEventIdAsync_NoMatches_ReturnsZero_NoException` (idempotent).
+
+**Bug B (domain invariant + UI gate):**
+- [ ] Domain test: `EnableAssignedSeating_RegistrationModeIsHeadCountByAge_ThrowsDomainException`.
+- [ ] Domain test: `EnableAssignedSeating_RegistrationModeIsHeadCountSimple_ThrowsDomainException`.
+- [ ] Domain test: `EnableAssignedSeating_RegistrationModeIsDetailedAttendees_Succeeds` (happy path).
+- [ ] Domain test: `SetRegistrationMode_FromDetailedToHeadCount_WhileSeatingIsAssigned_ThrowsDomainException`.
+- [ ] Domain test: `SetRegistrationMode_FromHeadCountToDetailed_WhileSeatingIsGA_Succeeds` (no false block).
+- [ ] Application test: `EnableAssignedSeatingCommand_HeadCountEvent_Returns400_NotASystemError`.
+- [ ] Application test: `ApplyPresetToEventCommand_HeadCountEvent_Returns400_BeforeAnyDbWrites`.
+- [ ] Run tests → red.
+
+### Implementation
+
+**Bug A:**
+- [ ] New `IVenueLayoutRepository.HardDeleteByEventIdAsync(Guid eventId, CancellationToken ct)` returning `Task<int>` (rows deleted, for logging).
+- [ ] `ApplyPresetToEventCommandHandler` order: `LoadEvent → AuthorizeOwnership → ValidateModeCompatibility (Bug B) → DetachVenueLayoutId → HardDeleteByEventIdAsync(eventId) → BuildNewLayoutFromPreset → AddAsync → AssignToEvent → CommitTransaction`.
+- [ ] Wrap in single `IUnitOfWork` transaction.
+- [ ] Log: `"Apply-preset cleanup: deleted {OrphanCount} prior layouts for event {EventId}"`.
+- [ ] Same hard-delete-old-layout pattern in `ApplyTemplateToEventCommandHandler` for parity.
+
+**Bug B:**
+- [ ] Domain invariant `Event.AssignedSeating ⇒ DetailedAttendees`. Add to `EnableAssignedSeating` AND `SetRegistrationMode` paths.
+- [ ] `RsvpFormSection.tsx` early-return banner for the broken combination: `seatingMode === AssignedSeating && registrationMode !== DetailedAttendees` → "Registration temporarily unavailable — organizer configuration in progress."
+- [ ] Frontend: existing `seatingMode` toggle disabled with tooltip when `registrationMode !== DetailedAttendees`.
+
+**Existing-data cleanup (NO auto-mutation):**
+- [ ] Detection query: `SELECT id, name FROM events WHERE seating_mode = 'AssignedSeating' AND registration_mode IN ('HeadCountByAge', 'HeadCountSimple', ...)` — runs once during deployment, logs the affected event IDs. Organizer-driven resolution per architect.
+
+### Journey smoke (mandatory pre-completion)
+
+- [ ] **J-B (apply-preset replacement journey)** — full sequence:
+  - login → create event → apply preset A (theater-classic) → 201
+  - verify `event.venueLayoutId` set
+  - apply preset B (theater-with-balcony) → 201
+  - verify `event.venueLayoutId` updated, layout count = 1 (no orphan)
+  - apply preset A again (theater-classic, same name as step 3) → 201 (this is the bug fix)
+  - verify event points at preset A, layout count = 1 still
+  - apply preset A again (idempotent) → 201
+  - cleanup
+- [ ] **J-F (Mode B + AssignedSeating rejection)**:
+  - login → create event with `registrationMode: HeadCountByAge`
+  - try `apply-preset` → expect 400 with descriptive message
+  - try direct `EnableAssignedSeating` (if endpoint exists) → expect 400
+  - flip event back to `DetailedAttendees`, retry `apply-preset` → 201
+- [ ] **J-A retroactive verification (Slice S1's surface)**: re-run S1's seat-gen smoke after S1.5 ships to confirm no regression.
+
+### Verification + deploy
+
+- [ ] All tests green locally.
+- [ ] Commit + push + deploy via `deploy-staging.yml` + `deploy-ui-staging.yml`.
+- [ ] J-B + J-F + J-A journeys run green against staging post-deploy.
+- [ ] User's event `d543629f-…` shows the banner (or organizer fixes the configuration via the new validation).
+- [ ] 0 ERROR-level logs in container for 24h post-deploy.
+- [ ] Update tracker docs.
+
+---
+
 ## Slice S1 — Unblock the user TODAY: seat-gen pruning + change-layout (1–2 days)
 
 **Goal**: fix the two confirmed user-blocking bugs.

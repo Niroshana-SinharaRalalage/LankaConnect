@@ -142,6 +142,17 @@ public class ApplyTemplateToEventCommandHandler
         // Persist + flip event seating mode in one UoW transaction.
         try
         {
+            // Slice S1.5 — clean prior layouts + orphans for this event before INSERT.
+            // See ApplyPresetToEventCommandHandler for the rationale.
+            var orphansDeleted = await _venueLayoutRepository.HardDeleteByEventIdAsync(
+                request.EventId, cancellationToken);
+            if (orphansDeleted > 0)
+            {
+                _logger.LogInformation(
+                    "ApplyTemplateToEvent: cleanup deleted {OrphanCount} prior layout(s) for event {EventId}",
+                    orphansDeleted, request.EventId);
+            }
+
             await _venueLayoutRepository.AddAsync(clone, cancellationToken);
 
             var enableResult = @event.EnableAssignedSeating(clone.Id);

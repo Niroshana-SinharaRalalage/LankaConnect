@@ -130,6 +130,20 @@ public class ApplyPresetToEventCommandHandler
         // Persist layout AND flip event seating mode in one UoW transaction.
         try
         {
+            // Slice S1.5 — clean up the previously-attached layout AND any orphan rows
+            // matching this event_id BEFORE inserting the new one. Closes the unique-
+            // constraint collision class on `ix_venue_layouts_event_id_name` that
+            // surfaced as user-reported "Change layout doesn't work" when re-applying
+            // a preset whose name matched a stale orphan. Architect Rev 4 §A1 ruling.
+            var orphansDeleted = await _venueLayoutRepository.HardDeleteByEventIdAsync(
+                request.EventId, cancellationToken);
+            if (orphansDeleted > 0)
+            {
+                _logger.LogInformation(
+                    "ApplyPresetToEvent: cleanup deleted {OrphanCount} prior layout(s) for event {EventId}",
+                    orphansDeleted, request.EventId);
+            }
+
             await _venueLayoutRepository.AddAsync(layout, cancellationToken);
 
             var enableResult = @event.EnableAssignedSeating(layout.Id);

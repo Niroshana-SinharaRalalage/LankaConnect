@@ -13,7 +13,7 @@ import {
   type SponsorConfigurationDto,
   type GroupPricingTierDto,
   type TicketTierDto,
-  type SeatingMode,
+  SeatingMode,
   type TicketingMode,
 } from '@/infrastructure/api/types/events.types';
 import { EventRegistrationForm } from './EventRegistrationForm';
@@ -72,6 +72,37 @@ export function RsvpFormSection(props: RsvpFormSectionProps) {
               The organiser configured this event for head-count registration, but that flow
               is still being built (Phase 7E.3b). Please contact the organiser directly to
               register — see the Event Organiser Contacts section below.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Slice S1.5 invariant guard: AssignedSeating + non-DetailedAttendees is an unsupported
+  // combination. The buyer flow has no path to map seats to attendees in head-count modes.
+  // The domain now blocks this at organiser time; existing events stuck in the broken state
+  // get a banner explaining the configuration needs organiser action. Architect Rev 4 §B.
+  if (
+    props.event.seatingMode === SeatingMode.AssignedSeating
+    && mode !== RegistrationMode.DetailedAttendees
+  ) {
+    return (
+      <div
+        className="rounded-lg border border-amber-200 bg-amber-50 p-4"
+        role="alert"
+        data-testid="rsvp-incompatible-config-banner"
+      >
+        <div className="flex items-start gap-2">
+          <Info className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-amber-900">Registration temporarily unavailable</p>
+            <p className="text-sm text-amber-800 mt-1">
+              This event combines assigned seating with head-count registration, which is not
+              currently supported (assigned seating requires individual-attendee registration so
+              each seat can be matched to an attendee). The organiser needs to either switch to
+              detailed-attendee registration or revert to general-admission seating before
+              registration can open. Please contact the organiser if this seems unexpected.
             </p>
           </div>
         </div>

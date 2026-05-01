@@ -191,6 +191,19 @@ public partial class Event
                 "Assigned seating requires tiered ticketing mode. " +
                 "Enable tiered ticketing first, then enable assigned seating.");
 
+        // Slice S1.5 invariant: AssignedSeating requires DetailedAttendees registration.
+        // Mode B (head-count*) tracks aggregated counts only — there is no individual
+        // attendee to bind a seat to. The buyer flow's HeadCountRsvpForm has no seat
+        // picker. Allowing the combination here would let the organiser publish an event
+        // with AssignedSeating that buyers literally cannot register for.
+        // Mode C (NoRegistration) has no buyer flow at all.
+        if (RegistrationMode != RegistrationMode.DetailedAttendees)
+            return Result.Failure(
+                $"Assigned seating requires individual-attendee registration (DetailedAttendees mode). " +
+                $"This event uses {RegistrationMode} which tracks counts, not individuals — " +
+                $"the buyer flow cannot map seats to attendees in that mode. " +
+                $"Switch the registration mode to DetailedAttendees first, or keep general-admission seating.");
+
         if (_registrations.Any(r =>
             r.Status == RegistrationStatus.Confirmed ||
             r.Status == RegistrationStatus.Preliminary))

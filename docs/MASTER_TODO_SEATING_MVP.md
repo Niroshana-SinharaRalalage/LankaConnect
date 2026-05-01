@@ -28,11 +28,28 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 
 ---
 
-## Smoke testing protocol (mandatory per slice, MUST pass before slice is marked complete)
+## API Testing Protocol (MANDATORY per slice — concrete curl recipes, not narrative)
 
 **Lesson learned 2026-05-01**: prior smoke runs were endpoint-by-endpoint isolated calls. They missed bugs that are only visible when you walk a real user journey. Slice 9.5 / Slice S1's "apply-preset works" smoke called `POST /apply-preset` ONCE on a clean event and got 201 — but the actual user-blocking bug ("Change layout doesn't work after customizing") was a unique-constraint collision visible *only* on the second apply-preset for the same event. The user surfaced it; the smoke missed it.
 
-**New rule**: every slice has a "Journey Smoke" section with at least 3 named user journeys covering the slice's surface area. Each journey is a sequence of API calls + expected end-state, not a single endpoint hit. The slice is NOT complete until the listed journeys all run green on staging post-deploy.
+**Stronger rule shipped 2026-05-01 (user feedback)**: every slice MUST include an **"API Tests"** subsection containing the exact curl commands to run on staging post-deploy, the expected HTTP status + body, and an evidence slot for the actual response (timestamp + correlation id). The slice is NOT complete until every curl in the list returns the expected response on staging. Reviewer should be able to re-run any test by pasting the command into a terminal.
+
+### Where API tests live in this doc
+
+1. **Per-slice "API Tests" subsection** — concrete curl commands (login → setup → exercise → cleanup), with expected status codes inline. Updated to GREEN with timestamp + correlation id when the test passes on staging.
+2. **Per-slice "Journey Smoke" subsection** — multi-call user journeys (J-A through J-F below), composed of the curl recipes from the API Tests subsection. The journey describes the *user intent*; the recipes execute it.
+3. **Run-history table** — one row per slice with `Tests` column (counts) + `Smoke` column (J-letters that passed) + `Date`.
+
+### Reusable token script
+
+```bash
+TOKEN=$(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"niroshhh@gmail.com","password":"1qaz!QAZ","rememberMe":true,"ipAddress":"string"}' \
+  | python -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
+```
+
+### Standard journey definitions (reused across slices)
 
 ### Standard journey definitions (reused across slices)
 
@@ -146,23 +163,89 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 **Existing-data cleanup (NO auto-mutation):**
 - [ ] Detection query: `SELECT id, name FROM events WHERE seating_mode = 'AssignedSeating' AND registration_mode IN ('HeadCountByAge', 'HeadCountSimple', ...)` — runs once during deployment, logs the affected event IDs. Organizer-driven resolution per architect.
 
-### Journey smoke (mandatory pre-completion)
+### API Tests — concrete curl recipes (executed against staging post-deploy)
 
-- [ ] **J-B (apply-preset replacement journey)** — full sequence:
-  - login → create event → apply preset A (theater-classic) → 201
-  - verify `event.venueLayoutId` set
-  - apply preset B (theater-with-balcony) → 201
-  - verify `event.venueLayoutId` updated, layout count = 1 (no orphan)
-  - apply preset A again (theater-classic, same name as step 3) → 201 (this is the bug fix)
-  - verify event points at preset A, layout count = 1 still
-  - apply preset A again (idempotent) → 201
-  - cleanup
-- [ ] **J-F (Mode B + AssignedSeating rejection)**:
-  - login → create event with `registrationMode: HeadCountByAge`
-  - try `apply-preset` → expect 400 with descriptive message
-  - try direct `EnableAssignedSeating` (if endpoint exists) → expect 400
-  - flip event back to `DetailedAttendees`, retry `apply-preset` → 201
-- [ ] **J-A retroactive verification (Slice S1's surface)**: re-run S1's seat-gen smoke after S1.5 ships to confirm no regression.
+`API_BASE=https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io`
+`EVENT_ID=e4792b64-9d35-4567-82fa-6c0624d0f8e7` (Mode A test event with VIP+Basic tiers)
+`B_EVENT_ID=d543629f-a5ba-4475-b124-3d0fc5200f2f` (Mode B / HeadCountByAge test event)
+
+#### Test 1 — apply-preset succeeds on clean event (baseline)
+```bash
+curl -i -X POST "$API_BASE/api/venue-layouts/apply-preset" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"presetId\":\"theater-classic\",\"eventId\":\"$EVENT_ID\"}"
+```
+- Expected: `HTTP/1.1 201 Created`, body has `id`, `name: "Theater Classic"`, `totalCapacity: 200`.
+- [x] PASS — 2026-05-01 21:02 UTC, layoutId `5b835ccf-ad43-44b9-93d5-0aeffc20bf4a`.
+
+#### Test 2 — apply DIFFERENT preset replaces layout cleanly
+```bash
+curl -i -X POST "$API_BASE/api/venue-layouts/apply-preset" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"presetId\":\"theater-with-balcony\",\"eventId\":\"$EVENT_ID\"}"
+```
+- Expected: HTTP 201; `event.venueLayoutId` now points at NEW id; previous layout `5b835ccf-…` returns 400 "Venue layout not found" on lookup.
+- [x] PASS — 2026-05-01 21:02 UTC, layoutId `875ef728-a318-4970-bb11-1ab117971aea`.
+
+#### Test 3 — apply SAME preset NAME again (the bug-fix)
+```bash
+curl -i -X POST "$API_BASE/api/venue-layouts/apply-preset" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"presetId\":\"theater-classic\",\"eventId\":\"$EVENT_ID\"}"
+```
+- Expected: HTTP 201 (pre-fix this returned 500 due to `ix_venue_layouts_event_id_name` collision).
+- [x] PASS — 2026-05-01 21:02 UTC, layoutId `0d03eb39-…`.
+
+#### Test 4 — apply SAME preset AGAIN (idempotency)
+```bash
+curl -i -X POST "$API_BASE/api/venue-layouts/apply-preset" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"presetId\":\"theater-classic\",\"eventId\":\"$EVENT_ID\"}"
+```
+- Expected: HTTP 201; new layout id; previous (`0d03eb39-…`) is hard-deleted.
+- [x] PASS — 2026-05-01 21:02 UTC, layoutId `bc875400-…`. Verify event points at this id.
+
+#### Test 5 — verify all prior layouts deleted (no orphan accumulation)
+```bash
+for OLD_ID in 5b835ccf-... 875ef728-... 0d03eb39-...; do
+  curl -s -o /dev/null -w "$OLD_ID: %{http_code}\n" \
+    -H "Authorization: Bearer $TOKEN" \
+    "$API_BASE/api/venue-layouts/$OLD_ID"
+done
+```
+- Expected: each returns HTTP 400 "Venue layout not found".
+- [x] PASS — 2026-05-01 21:02 UTC, all 3 prior layouts confirmed gone.
+
+#### Test 6 — apply-preset on a B-mode event is rejected with descriptive 400
+```bash
+curl -i -X POST "$API_BASE/api/venue-layouts/apply-preset" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"presetId\":\"theater-classic\",\"eventId\":\"$B_EVENT_ID\"}"
+```
+- Expected: HTTP 400 with body `detail` containing *"Assigned seating requires individual-attendee registration (DetailedAttendees mode)"*. Event state untouched (`venueLayoutId: None`, `seatingMode: GeneralAdmission`).
+- [x] PASS — 2026-05-01 21:09 UTC; body matched expected message; event state preserved.
+
+#### Test 7 — Slice S1 seat-gen still works (regression)
+```bash
+# Setup: apply preset on Mode A event
+curl -X POST "$API_BASE/api/venue-layouts/apply-preset" ...  # 201
+# Capture layoutId, rowVersion, zoneId from response.
+# Then PUT /batch with new zone + seat-gen:
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d '{"zones":[{"id":"...","name":"Main Floor",...},{"name":"Balcony","clientId":"...","rowCount":4,"seatsPerRow":5,...}]}'
+# Verify total = 220
+curl -H "Authorization: Bearer $TOKEN" "$API_BASE/api/venue-layouts/$LAYOUT_ID" | python -c "..."
+```
+- Expected: PUT returns 204; subsequent GET shows `totalCapacity: 220` and zone "Balcony" with 20 seats.
+- [x] PASS — 2026-05-01 21:09 UTC, totalCapacity=220.
+
+### Journey smoke (composed from above tests)
+
+- [x] **J-B (Tests 1+2+3+4+5)** — apply-preset replacement journey: A → B → A → A, no orphans. ✓ GREEN.
+- [x] **J-F (Test 6)** — Mode B + AssignedSeating rejection. ✓ GREEN.
+- [x] **J-A retroactive (Test 7)** — Slice S1 seat-gen regression check. ✓ GREEN.
 
 ### Verification + deploy
 
@@ -235,12 +318,83 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 - [ ] Frontend: TS types mirror the backend.
 - [ ] ADR-006: `docs/architecture/ADR-006-canvas-batch-update-semantics.md`.
 
+### API Tests — concrete curl recipes (executed against staging post-deploy)
+
+`API_BASE=https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io`
+`EVENT_ID=e4792b64-...` (Mode A test event)
+
+#### S2-T1 — payload omits zone, no `deletedZoneIds` → 409 Conflict
+Setup: apply Theater Classic to clean event → capture `layoutId, rowVersion, zoneIdMain` (Main Floor zone).
+```bash
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d '{"zones":[],"tables":null,"decorations":null}'
+```
+- Expected: **HTTP 409 Conflict** with body containing the omitted zone ids and a clear "include in zones[] or list in deletedZoneIds" message. DB unchanged (zone Main Floor still has 200 seats).
+- [ ] PASS — date/correlation:
+
+#### S2-T2 — payload omits zone WITH explicit `deletedZoneIds` → 200, deletes
+```bash
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d "{\"zones\":[],\"deletedZoneIds\":[\"$ZONE_ID_MAIN\"]}"
+```
+- Expected: **HTTP 204** (success). Subsequent GET shows zone gone, totalCapacity = 0.
+- [ ] PASS — date/correlation:
+
+#### S2-T3 — full payload with all existing zones, no missing → 200 (back-compat)
+```bash
+# Send every existing zone unchanged + add a new zone
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d '{"zones":[{"id":"...","name":"Main Floor",...},{"name":"Balcony","clientId":"...",...}]}'
+```
+- Expected: HTTP 204; existing zone preserved; new zone added. (The path Slice S1.5's J-A already covers — regression check after S2 lands.)
+- [ ] PASS — date/correlation:
+
+#### S2-T4 — `deletedZoneIds` listing a zone that has reserved seats → 422 (existing structural guard)
+Setup: apply preset → buyer registers + completes payment for a seat (creates `seat_reservations` row).
+```bash
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d "{\"zones\":[],\"deletedZoneIds\":[\"$ZONE_ID_WITH_RESERVATION\"]}"
+```
+- Expected: **HTTP 422** "Cannot delete zone with reserved seats". Existing behavior preserved.
+- [ ] PASS — date/correlation:
+
+#### S2-T5 — `deletedZoneIds` listing a zone with ACTIVE HOLDS → 409 (NEW guard)
+Setup: apply preset → buyer holds a seat (creates `seat_holds` row, expires_at > now).
+```bash
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d "{\"zones\":[],\"deletedZoneIds\":[\"$ZONE_ID_WITH_HOLD\"]}"
+```
+- Expected: **HTTP 409** "Seats are currently held by other buyers. Try again in N minutes." (NEW behavior — pre-S2 this would succeed and silently invalidate buyer's hold mid-checkout.)
+- [ ] PASS — date/correlation:
+
+#### S2-T6 — `deletedTableIds` and `deletedDecorationIds` work the same way
+Mirror of S2-T1 + S2-T2 but for tables + decorations.
+- [ ] PASS — date/correlation:
+
+### Journey smoke (composed)
+
+- [ ] **J-G (NEW — destructive payload protection)**: tests S2-T1 + S2-T2 + S2-T3 in sequence — proves the omitted-zone path 409s, the explicit-delete path 204s, and the full-state path remains backward-compatible.
+- [ ] **J-E (Concurrent / hold-race scenario)**: organizer holds a hold → tries to delete the zone → 409. Expires the hold → retries → succeeds. Tests S2-T5.
+- [ ] **J-A regression**: Slice S1 seat-gen still works after S2 changes (Test 7 from S1.5 above).
+- [ ] **J-B regression**: Slice S1.5 apply-preset replacement journey still works.
+
 ### Verification + deploy
 
-- [ ] All tests green.
+- [ ] All tests green locally.
 - [ ] Deploy backend + frontend.
-- [ ] API smoke: each scenario above via curl.
-- [ ] UI smoke: delete a zone in canvas editor + save → 200; manually omit a zone via curl payload → 409.
+- [ ] All 6 S2-T curl tests pass on staging.
+- [ ] All 4 listed journeys pass on staging.
+- [ ] Update tracker docs.
 
 ---
 
@@ -260,10 +414,36 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 - [ ] Frontend: layout name input in canvas editor header (or inline-editable title in CanvasEditorModal). Commits via dedicated PATCH (not via batch-update — naming is independent of structural edits and shouldn't share a concurrency token).
 - [ ] Update modal subtitle: "Currently: N seats · M zones · K tables" — clearly secondary metadata. Header shows the editable name.
 
+### API Tests — concrete curl recipes
+
+#### S3-T1 — PATCH /name with valid body → 204
+```bash
+curl -i -X PATCH "$API_BASE/api/venue-layouts/$LAYOUT_ID/name" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "If-Match: $ROW_VERSION" \
+  -d '{"name":"My Custom Banquet Layout"}'
+```
+- Expected: HTTP 204; subsequent GET shows new name; rowVersion bumped.
+- [ ] PASS — date/correlation:
+
+#### S3-T2 — PATCH /name with stale If-Match → 409
+- Expected: HTTP 409. Layout name unchanged.
+- [ ] PASS — date/correlation:
+
+#### S3-T3 — PATCH /name with empty/oversize name → 400 (validation)
+- Empty: `{"name":""}` → 400.
+- 256-char name → 400 (assuming 200-char limit).
+- [ ] PASS — date/correlation:
+
+#### S3-T4 — non-owner attempts PATCH /name → 403
+- [ ] PASS — date/correlation:
+
 ### Verification
 
-- [ ] All tests green.
-- [ ] Deploy + UI smoke.
+- [ ] All tests green locally.
+- [ ] Deploy backend + frontend.
+- [ ] All 4 S3-T curl tests pass on staging.
+- [ ] J-A regression (rename injected between S1's apply-preset and customize → seats survive rename).
 
 ---
 
@@ -286,11 +466,38 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 - [ ] Frontend: same overview surfaced (read-only) in `SeatingLayoutPicker` summary.
 - [ ] Frontend: publish button wired to validator.
 
+### API Tests — concrete curl recipes
+
+#### S4-T1 — GET ValidateLayoutForPublish on layout with unmapped zones → blockers
+```bash
+curl -i -H "Authorization: Bearer $TOKEN" \
+  "$API_BASE/api/venue-layouts/$LAYOUT_ID/publish-readiness"
+```
+- Expected: HTTP 200, body `{warnings:[],blockers:[{kind:"UnmappedZone",zoneName:"Balcony"}]}`.
+- [ ] PASS — date/correlation:
+
+#### S4-T2 — POST publish when blockers present → 422
+```bash
+curl -i -X POST "$API_BASE/api/Events/$EVENT_ID/publish" \
+  -H "Authorization: Bearer $TOKEN"
+```
+- Expected: HTTP 422 with body listing the blockers.
+- [ ] PASS — date/correlation:
+
+#### S4-T3 — POST publish when only warnings (no blockers) → 200
+- Expected: HTTP 200; event publishes; warnings logged.
+- [ ] PASS — date/correlation:
+
+#### S4-T4 — fully-mapped layout publishes cleanly
+- Expected: HTTP 200; no warnings, no blockers.
+- [ ] PASS — date/correlation:
+
 ### Verification
 
-- [ ] All tests green.
-- [ ] Deploy + API smoke (publish with bad config → 422).
-- [ ] UI smoke: organizer sees tier-mapping holistically + publish-time validation.
+- [ ] All tests green locally.
+- [ ] Deploy backend + frontend.
+- [ ] All 4 S4-T curl tests pass on staging.
+- [ ] J-A end-to-end (organizer happy path) regression.
 
 ---
 
@@ -315,12 +522,32 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 - [ ] Update every callsite of the old `VenueZoneId` / `VenueTableId` properties.
 - [ ] ADR-007: `docs/architecture/ADR-007-seat-location-value-object.md`.
 
+### API Tests — concrete curl recipes
+
+#### S5-T1 — apply-preset followed by full GET shows seats with new SeatLocation shape
+- Expected: HTTP 200; each seat in the response has the new `location: {kind: "Zone"|"Table", ownerId: ...}` shape (or whatever shape the API DTO ends up using).
+- [ ] PASS — date/correlation:
+
+#### S5-T2 — `regenerate seats` produces no orphan rows in DB
+Migration verification: post-regenerate, run `SELECT count(*) FROM events.seats WHERE id NOT IN (SELECT s.id FROM events.seats s JOIN events.venue_zones z ON ... UNION ...)`; expect 0.
+- This requires DB-level access. Acceptable substitute: GET /by-event-id BEFORE and AFTER, count seats. Counts match.
+- [ ] PASS — date/correlation:
+
+#### S5-T3 — DELETE layout cascades through to seats correctly
+- Apply preset (200 seats) → DELETE layout → GET layout → 404. Seat count drops to expected (verified via GET event-id totalCapacity = 0).
+- [ ] PASS — date/correlation:
+
+#### S5-T4 — Slice S1.5 J-B journey still passes (regression)
+- Re-run S1.5 Tests 1–5: apply-preset replacement, no orphans.
+- [ ] PASS — date/correlation:
+
 ### Verification
 
 - [ ] 90%+ unit coverage on the new shape.
 - [ ] EF integration tests against a real PostgreSQL.
 - [ ] Local `dotnet ef database update` succeeds; rollback is clean.
-- [ ] Staging deploy: pick preset → save → check seat row count in DB matches generated count exactly (no orphans).
+- [ ] Staging deploy: all 4 S5-T curl tests pass.
+- [ ] J-A + J-B + J-F all regression-pass.
 
 ---
 
@@ -351,9 +578,19 @@ S1 → S2 → S3 → S4 → S5 → S6, then optionally S7.
 - [ ] Batch-update payload size for 1000 seats verified < 500KB.
 - [ ] Seat-availability query p95 < 200ms with 1000 seats.
 
+### API Tests (composed) — every slice's API tests run as a regression suite
+
+S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4, S5 must run green as a final regression in addition to the new Playwright e2e suite. That's the entire seating-system API surface verified end-to-end.
+
+- [ ] **Regression bundle** — re-run every API test from S1, S1.5, S2, S3, S4, S5 against staging. Document any drift.
+- [ ] **NEW S6-T1** — concurrent organizer + buyer race: while buyer has hold, organizer attempts deletion → 409 (S2 guard fires).
+- [ ] **NEW S6-T2** — 1000-seat layout payload roundtrip < 500KB and < 2s.
+- [ ] **NEW S6-T3** — Stripe webhook replay does not duplicate reservation (use Stripe CLI to replay an event).
+
 ### Verification
 
 - [ ] Playwright suite green against staging.
+- [ ] All API regression tests green (S1+S1.5+S2+S3+S4+S5+S6 = ~30+ curl tests).
 - [ ] Metrics visible in App Insights.
 - [ ] Perf benchmark passes.
 

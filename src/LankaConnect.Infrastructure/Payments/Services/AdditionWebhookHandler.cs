@@ -195,20 +195,36 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
             return;
         }
 
-        // Merge attendees into the registration
-        var addAttendeesResult = registration.AddAttendees(
-            addition.NewAttendees,
-            newTotalPriceResult.Value,
-            payment,
-            additionId,
-            maxAttendeesPerRegistration);
+        // Phase 7F-D (architect-approved 2026-04-30): dispatch by addition mode. Mode A
+        // additions go through registration.AddAttendees (per-attendee path); Mode B
+        // additions go through registration.MergeHeadCountAddition (head-count axis).
+        Result mergeResult;
+        if (addition.IsModeBAddition && addition.HeadCountDelta != null)
+        {
+            _logger.LogInformation(
+                "[AddOnlyAttendees] [Webhook-Addition-6b] Mode-B head-count merge — CorrelationId: {CorrelationId}, AdditionMode: {Mode}, DeltaTotal: {Total}",
+                correlationId, addition.RegistrationMode, addition.HeadCountDelta.Total);
+            mergeResult = registration.MergeHeadCountAddition(
+                additionMode: addition.RegistrationMode,
+                headCountDelta: addition.HeadCountDelta,
+                newTotalPrice: newTotalPriceResult.Value,
+                maxAttendeesPerRegistration: maxAttendeesPerRegistration);
+        }
+        else
+        {
+            mergeResult = registration.AddAttendees(
+                addition.NewAttendees,
+                newTotalPriceResult.Value,
+                payment,
+                additionId,
+                maxAttendeesPerRegistration);
+        }
 
-        if (addAttendeesResult.IsFailure)
+        if (mergeResult.IsFailure)
         {
             _logger.LogError(
-                "[AddOnlyAttendees] [Webhook-Addition-ERROR] AddAttendees failed - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
-                correlationId, registrationId, addAttendeesResult.Error);
-            // Mark addition as failed
+                "[AddOnlyAttendees] [Webhook-Addition-ERROR] Merge failed (Mode={Mode}) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
+                addition.RegistrationMode, correlationId, registrationId, mergeResult.Error);
             addition.MarkAsFailed();
             _additionRepository.Update(addition);
             await _unitOfWork.CommitAsync();
@@ -216,8 +232,10 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
         }
 
         _logger.LogInformation(
-            "[AddOnlyAttendees] [Webhook-Addition-7] Attendees merged - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewAttendeeCount: {NewCount}, TotalAttendees: {TotalCount}",
-            correlationId, registrationId, addition.NewAttendees.Count, registration.Attendees.Count);
+            "[AddOnlyAttendees] [Webhook-Addition-7] Merge complete (Mode={Mode}) — CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewAttendeeCount: {NewCount}, PostMergeTotal: {Total}",
+            addition.RegistrationMode, correlationId, registrationId,
+            addition.IsModeBAddition ? addition.HeadCountDelta!.Total : addition.NewAttendees.Count,
+            addition.IsModeBAddition ? registration.HeadCount?.Total ?? 0 : registration.Attendees.Count);
 
         // Phase 6A.X FIX: Recalculate revenue breakdown for cumulative total
         try
@@ -268,12 +286,12 @@ public class AdditionWebhookHandler : IAdditionWebhookHandler
         }
 
         // Mark addition as merged
-        var mergeResult = addition.MarkAsMerged();
-        if (mergeResult.IsFailure)
+        var markMergedResult = addition.MarkAsMerged();
+        if (markMergedResult.IsFailure)
         {
             _logger.LogWarning(
                 "[AddOnlyAttendees] [Webhook-Addition-WARN] MarkAsMerged failed but continuing - CorrelationId: {CorrelationId}, AdditionId: {AdditionId}, Error: {Error}",
-                correlationId, additionId, mergeResult.Error);
+                correlationId, additionId, markMergedResult.Error);
         }
 
         // Save all changes and dispatch domain events

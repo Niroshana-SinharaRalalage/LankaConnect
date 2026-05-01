@@ -3303,6 +3303,46 @@ public class EventsController : BaseController<EventsController>
     /// Creates a pending addition and returns a Stripe checkout URL.
     /// Part of the Add-Only Attendees with Delta Payment feature.
     /// </summary>
+    /// <summary>
+    /// Phase 7F-D (architect-approved 2026-04-30): initiate adding head-count attendees
+    /// to an existing paid Mode-B registration. Mirrors /add-attendees but operates on
+    /// the head-count axis. For free events the merge happens immediately + returns
+    /// success with no Stripe URL; for paid events returns a Stripe checkout URL.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/add-headcount")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.InitiateAddAttendees.InitiateAddAttendeesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> InitiateAddHeadCount(
+        Guid registrationId,
+        [FromBody] InitiateAddHeadCountRequest request)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+        Logger.LogInformation(
+            "[7F-D] API: InitiateAddHeadCount RegId={RegId} UserId={UserId} Total={Total}",
+            registrationId, userId, request.HeadCountDelta?.Total);
+
+        if (request.HeadCountDelta == null)
+            return BadRequest(new ProblemDetails { Title = "Missing body", Detail = "headCountDelta is required", Status = 400 });
+
+        var command = new LankaConnect.Application.Events.Commands.InitiateAddHeadCount.InitiateAddHeadCountCommand(
+            RegistrationId: registrationId,
+            HeadCountDelta: request.HeadCountDelta,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+        if (result.IsFailure)
+            return BadRequest(new ProblemDetails { Title = "Failed", Detail = result.Error, Status = 400 });
+
+        if (!result.Value.Success)
+            return BadRequest(new ProblemDetails { Title = "Validation", Detail = result.Value.ErrorMessage, Status = 400 });
+
+        return Ok(result.Value);
+    }
+
     [HttpPost("registrations/{registrationId:guid}/add-attendees")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(InitiateAddAttendeesResult), StatusCodes.Status200OK)]
@@ -3767,6 +3807,15 @@ public record CalculateAdditionPriceRequest(
 /// Request to initiate adding attendees to a paid registration.
 /// Part of the Add-Only Attendees with Delta Payment feature.
 /// </summary>
+/// <summary>
+/// Phase 7F-D request body. <c>HeadCountDelta</c> uses the same shape as RSVP so the
+/// frontend's existing head-count form components can be reused.
+/// </summary>
+public record InitiateAddHeadCountRequest(
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto HeadCountDelta,
+    string SuccessUrl,
+    string CancelUrl);
+
 public record InitiateAddAttendeesRequest(
     List<AddAttendeeDto>? NewAttendees,
     string SuccessUrl,

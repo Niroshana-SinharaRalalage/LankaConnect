@@ -702,6 +702,15 @@ public partial class Event
     /// <item>Standard / single price + any B → Total × ticketPrice.</item>
     /// </list>
     /// </summary>
+    /// <summary>
+    /// Phase 7F-D: public wrapper around <see cref="CalculateHeadCountPrice"/> so the
+    /// application layer can compute the post-merge price for a Mode-B add-attendees flow
+    /// (build the merged shape, call this method, diff against the registration's current
+    /// TotalPrice). Stays a thin delegator — keeps the pricing rules in the domain.
+    /// </summary>
+    public Result<Money> CalculatePriceForHeadCount(HeadCountBreakdown headCount)
+        => CalculateHeadCountPrice(headCount);
+
     private Result<Money> CalculateHeadCountPrice(HeadCountBreakdown headCount)
     {
         if (headCount == null)

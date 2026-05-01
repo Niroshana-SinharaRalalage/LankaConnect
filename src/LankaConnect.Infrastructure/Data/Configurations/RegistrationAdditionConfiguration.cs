@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 
@@ -11,6 +16,39 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 /// </summary>
 public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<RegistrationAddition>
 {
+    // Phase 7F-D (architect-approved 2026-04-30): JSON config for the head_count_delta
+    // jsonb column. Mirrors RegistrationConfiguration.HeadCountJsonOptions exactly so the
+    // serialised shape is consistent across the registration's HeadCount + the addition's
+    // HeadCountDelta. Custom ValueConverter + deep-copy ValueComparer (NOT OwnsOne.ToJson —
+    // Phase 6A.130 IReadOnlyList rehydration trap).
+    private static readonly JsonSerializerOptions HeadCountDeltaJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    private static readonly ValueConverter<HeadCountBreakdown?, string?> HeadCountDeltaConverter = new(
+        v => v == null ? null : JsonSerializer.Serialize(v, HeadCountDeltaJsonOptions),
+        v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<HeadCountBreakdown>(v, HeadCountDeltaJsonOptions));
+
+    private static readonly ValueComparer<HeadCountBreakdown?> HeadCountDeltaComparer = new(
+        (a, b) => HeadCountStructuralEquals(a, b),
+        v => v == null ? 0 : v.GetHashCode(),
+        v => v == null ? null : DeepCloneHeadCount(v));
+
+    private static bool HeadCountStructuralEquals(HeadCountBreakdown? a, HeadCountBreakdown? b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a is null || b is null) return false;
+        return a.Equals(b);
+    }
+
+    private static HeadCountBreakdown DeepCloneHeadCount(HeadCountBreakdown source)
+    {
+        var json = JsonSerializer.Serialize(source, HeadCountDeltaJsonOptions);
+        return JsonSerializer.Deserialize<HeadCountBreakdown>(json, HeadCountDeltaJsonOptions)!;
+    }
+
     public void Configure(EntityTypeBuilder<RegistrationAddition> builder)
     {
         builder.ToTable("registration_additions", "events");
@@ -104,6 +142,24 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
             .HasConversion<string>()
             .HasMaxLength(30)
             .IsRequired();
+
+        // Phase 7F-D: registration-mode snapshot at addition creation. NOT NULL with DB
+        // default 0 (DetailedAttendees) so legacy rows materialise correctly post-migration
+        // (memory 6A.123: NOT NULL columns need a DB default).
+        builder.Property(ra => ra.RegistrationMode)
+            .HasColumnName("registration_mode")
+            .HasConversion<short>()
+            .IsRequired()
+            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+
+        // Phase 7F-D: optional Mode-B head-count delta. jsonb with deep-copy ValueComparer
+        // (memory 6A.129) so EF detects changes when the delta's nested TierCount or
+        // Demographics fields are mutated.
+        builder.Property(ra => ra.HeadCountDelta)
+            .HasColumnName("head_count_delta")
+            .HasColumnType("jsonb")
+            .HasConversion(HeadCountDeltaConverter)
+            .Metadata.SetValueComparer(HeadCountDeltaComparer);
 
         // Timestamps
         builder.Property(ra => ra.CheckoutExpiresAt)

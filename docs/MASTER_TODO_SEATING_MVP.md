@@ -405,23 +405,22 @@ Mirror of S2-T1 + S2-T2 but for tables + decorations.
 
 **Goal**: organizer can rename the layout; modal title/subtitle are consistent.
 
+**Decision (deviation from architect-Rev-4 spec)**: skip the redundant `PATCH /api/venue-layouts/{id}/name` endpoint and reuse the **existing `PUT /api/venue-layouts/{id}`** (Slice 5 Chunk 4 `UpdateLayoutCommand` with the `name` field only). The existing PUT already satisfies the spirit of Rev 4's requirement (own If-Match handling, separate from the structural `/batch` endpoint, single-purpose concurrency token). Avoids a duplicate code path and a "what's the difference?" maintenance question. **Tests below were rewritten to PUT.**
+
 ### TDD red phase
 
-- [ ] Backend test: `PATCH /api/venue-layouts/{id}/name` with new name → 200, name persisted, RowVersion bumped.
-- [ ] Frontend test: canvas editor renders editable name field; commit triggers PATCH; modal title updates.
-- [ ] Run → red.
+- [x] Frontend test: canvas editor renders editable name field; commit triggers PUT; modal title updates. **10 tests** in [CanvasEditorTitleEditor.test.tsx](web/src/presentation/components/features/events/__tests__/CanvasEditorTitleEditor.test.tsx) covering Enter/blur/Esc/empty/409/disabled/cache-sync/maxLength.
 
 ### Implementation
 
-- [ ] Backend: new `PATCH /api/venue-layouts/{id}/name` endpoint + `RenameVenueLayoutCommand` handler. Optimistic concurrency via If-Match (RowVersion).
-- [ ] Frontend: layout name input in canvas editor header (or inline-editable title in CanvasEditorModal). Commits via dedicated PATCH (not via batch-update — naming is independent of structural edits and shouldn't share a concurrency token).
-- [ ] Update modal subtitle: "Currently: N seats · M zones · K tables" — clearly secondary metadata. Header shows the editable name.
+- [x] Frontend: new `CanvasEditorTitleEditor` component — inline editable layout name in the canvas-editor header. Commits via existing `useUpdateVenueLayout(layoutId, eventId)` mutation (which posts to `PUT /api/venue-layouts/{id}` with `{name: trimmed}` only). Inflight-commit dedup ref prevents Enter+blur double-commit. Architect-prescribed 409 toast on stale If-Match; revert on error; sync from prop on cache refetch when not focused.
+- [x] Frontend: `CanvasEditorModal` header now mounts the `CanvasEditorTitleEditor` (DialogTitle kept visually hidden for a11y); subtitle reformatted to "Currently: N seats · M zones · K tables · L decorations".
 
-### API Tests — concrete curl recipes
+### API Tests — concrete curl recipes (against existing `PUT /api/venue-layouts/{id}`)
 
-#### S3-T1 — PATCH /name with valid body → 204
+#### S3-T1 — PUT with valid body → 204
 ```bash
-curl -i -X PATCH "$API_BASE/api/venue-layouts/$LAYOUT_ID/name" \
+curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID" \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -H "If-Match: $ROW_VERSION" \
   -d '{"name":"My Custom Banquet Layout"}'
@@ -429,21 +428,22 @@ curl -i -X PATCH "$API_BASE/api/venue-layouts/$LAYOUT_ID/name" \
 - Expected: HTTP 204; subsequent GET shows new name; rowVersion bumped.
 - [ ] PASS — date/correlation:
 
-#### S3-T2 — PATCH /name with stale If-Match → 409
+#### S3-T2 — PUT with stale If-Match → 409
 - Expected: HTTP 409. Layout name unchanged.
 - [ ] PASS — date/correlation:
 
-#### S3-T3 — PATCH /name with empty/oversize name → 400 (validation)
-- Empty: `{"name":""}` → 400.
-- 256-char name → 400 (assuming 200-char limit).
+#### S3-T3 — PUT with empty/oversize name → 400 (validation)
+- Empty: `{"name":""}` → 400 ("Layout name is required").
+- 256-char name → 400 ("Layout name cannot exceed 200 characters").
 - [ ] PASS — date/correlation:
 
-#### S3-T4 — non-owner attempts PATCH /name → 403
+#### S3-T4 — non-owner attempts PUT → 403
 - [ ] PASS — date/correlation:
 
 ### Verification
 
-- [ ] All tests green locally.
+- [x] All frontend tests green locally (10/10 + 208/208 existing seating-related tests).
+- [x] tsc --noEmit clean.
 - [ ] Deploy backend + frontend.
 - [ ] All 4 S3-T curl tests pass on staging.
 - [ ] J-A regression (rename injected between S1's apply-preset and customize → seats survive rename).

@@ -54,6 +54,7 @@ import {
 } from '@/presentation/hooks/useVenueLayouts';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
 import { CanvasEditor, type CanvasEditorDraftSummary } from './CanvasEditor';
+import { CanvasEditorTitleEditor } from './CanvasEditorTitleEditor';
 import type { VenueLayoutDto } from '@/infrastructure/api/types/events.types';
 
 export interface CanvasEditorModalProps {
@@ -217,10 +218,29 @@ export function CanvasEditorModal({
         >
           <DialogHeader className="flex-row items-start justify-between gap-4 p-4 border-b border-neutral-200 mb-0 space-y-0">
             <div className="flex-1 min-w-0">
-              <DialogTitle className="truncate">Customize layout — {layout.name}</DialogTitle>
-              <DialogDescription>
-                {layout.layoutType} · {layout.totalCapacity} seats · {layout.zones?.length ?? 0}{' '}
-                zone{(layout.zones?.length ?? 0) === 1 ? '' : 's'}
+              {/* Slice S3 — inline editable layout name. Dialog title is kept
+                  visually hidden for a11y so screen readers still announce
+                  the dialog purpose; the editable input carries its own
+                  aria-label. */}
+              <DialogTitle className="sr-only">
+                Customize layout — {layout.name}
+              </DialogTitle>
+              <CanvasEditorTitleEditor
+                layoutId={layout.id}
+                eventId={layout.eventId ?? null}
+                currentName={layout.name}
+                rowVersion={layout.rowVersion}
+                disabled={isSaving}
+              />
+              <DialogDescription className="px-2">
+                Currently: {layout.totalCapacity} seat
+                {layout.totalCapacity === 1 ? '' : 's'} ·{' '}
+                {layout.zones?.length ?? 0} zone
+                {(layout.zones?.length ?? 0) === 1 ? '' : 's'} ·{' '}
+                {layout.tables?.length ?? 0} table
+                {(layout.tables?.length ?? 0) === 1 ? '' : 's'} ·{' '}
+                {layout.decorations?.length ?? 0} decoration
+                {(layout.decorations?.length ?? 0) === 1 ? '' : 's'}
               </DialogDescription>
             </div>
             <Button

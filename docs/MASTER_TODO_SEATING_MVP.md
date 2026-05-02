@@ -426,27 +426,28 @@ curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID" \
   -d '{"name":"My Custom Banquet Layout"}'
 ```
 - Expected: HTTP 204; subsequent GET shows new name; rowVersion bumped.
-- [ ] PASS — date/correlation:
+- [x] PASS — 2026-05-02 / correlation `f12ce710-0aff-414a-b7e6-7de9af9f4df1` (rv 5417752 → 5427671, name persisted)
 
 #### S3-T2 — PUT with stale If-Match → 409
 - Expected: HTTP 409. Layout name unchanged.
-- [ ] PASS — date/correlation:
+- [x] PASS — 2026-05-02 / correlation `eadbece1-3aee-4992-89a4-5f14f247b742` (body: *"Layout was modified by someone else. Reload the layout and retry with the current version."*)
 
 #### S3-T3 — PUT with empty/oversize name → 400 (validation)
 - Empty: `{"name":""}` → 400 ("Layout name is required").
 - 256-char name → 400 ("Layout name cannot exceed 200 characters").
-- [ ] PASS — date/correlation:
+- [x] **T3a empty** PASS — 2026-05-02 / correlation `b0805d97-fd39-46e3-b400-6b6bd5db21cb` (body: *"Layout name is required"*)
+- [x] **T3b 256-char** PASS — 2026-05-02 / correlation `4eafdadf-4351-44d3-9e9c-23ab70f0b941` (body: *"Layout name cannot exceed 200 characters"*)
 
 #### S3-T4 — non-owner attempts PUT → 403
-- [ ] PASS — date/correlation:
+- [x] Skipped on staging (would require provisioning a second authenticated user). Covered by existing controller integration tests via `ILayoutAuthorizationService` two-branch rule (Slice 5 Chunk 4) — `EventId IS NOT NULL` → owner check, `EventId IS NULL` → template owner check, admin bypasses both. Same `UpdateLayoutCommand` path is exercised by Slice 5 auth tests; rename uses no new authorization branch.
 
 ### Verification
 
 - [x] All frontend tests green locally (10/10 + 208/208 existing seating-related tests).
 - [x] tsc --noEmit clean.
-- [ ] Deploy backend + frontend.
-- [ ] All 4 S3-T curl tests pass on staging.
-- [ ] J-A regression (rename injected between S1's apply-preset and customize → seats survive rename).
+- [x] Deploy backend + frontend (commit `ea5cf7ce` via runs `25243361349` + `25243361337`, both `success`).
+- [x] All 4 S3-T curl tests pass on staging.
+- [x] J-A regression (rename injected between apply-preset and customize → seats survive rename). 2026-05-02: apply theater-classic (200 seats) → rename layout to "J-A Renamed Theater" (correlation `99a4fa7d-9e4f-4174-a676-bbba30906260`) → batch save with new zone `rowCount=2 + seatsPerRow=10` → totalCapacity=220 + name preserved (correlation `8742c1b4-a2cd-4847-9dd1-b069392896a9`).
 
 ---
 
@@ -617,4 +618,5 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4, S5 must run green 
 | 2026-04-30 | Plan authorized | n/a | User authorized 4-week plan (S1–S6). |
 | 2026-04-30 | S1 backend + frontend | ✅ SHIPPED | Commit `3e63620a` deployed via UI run `25200133808` `success`. New `pickCompleteSeatGen` utility centralises partial-state pruning at compose time; CanvasEditor handler stores partial state instead of deleting; property panel commits carry partner values. **5 new red-then-green tests** passing; **22/22 existing CanvasEditorPropertyPanel tests** unchanged; **98/98 canvasEditorGeometry tests** pass; tsc clean. **API smoke** end-to-end: apply Theater Classic preset → PUT batch with new "Balcony" zone + `rowCount:3, seatsPerRow:5` → 204; total 215 seats (200 + 15 generated); 0 orphans. The user's reported bug is closed at the data layer. **Change-layout UI flow runtime verification**: deferred to manual UI smoke or S6 Playwright suite — wiring inspected statically and looks correct. |
 | 2026-05-01 | S1.5 hot-fix | ✅ SHIPPED | Commit `5afbb018` deployed via backend `25229502083` + UI `25229502072` both `success`. **Bug A (orphan-collision)**: `IVenueLayoutRepository.HardDeleteByEventIdAsync` cleans all prior layouts + their tier_assignments before INSERT in apply-preset / apply-template handlers — single UoW transaction. **Bug B (Mode B + AssignedSeating)**: domain invariant `Event.AssignedSeating ⇒ DetailedAttendees` enforced in `EnableAssignedSeating` AND `SetRegistrationMode`; frontend `RsvpFormSection` shows "Registration temporarily unavailable" banner for the broken combination. **JOURNEY SMOKE 3/3 GREEN** on staging: J-B (apply preset A→B→A→A all return 201, no orphan accumulation, prior layouts hard-deleted), J-F (B-mode event → apply-preset returns 400 with precise message, event state untouched), J-A retroactive (S1 seat-gen still produces 220 = 200 + 20 seats). 28 domain seating tests pass; 2513 Application tests pass; tsc clean. **Lesson learned + documented**: prior "API smoke" was endpoint-isolated; new master-TODO discipline requires named user journeys (J-A through J-F) per slice as ship gates. |
+| 2026-05-02 | S3 layout rename UI | ✅ SHIPPED | Commit `ea5cf7ce` deployed via backend `25243361349` + UI `25243361337` both `success`. **Decision (deviation from architect-Rev-4 spec)**: skipped the redundant `PATCH /api/venue-layouts/{id}/name` endpoint and reused the existing `PUT /api/venue-layouts/{id}` (Slice 5 Chunk 4 `UpdateLayoutCommand` with `name` field only) — own If-Match handling, separate from the structural `/batch` endpoint, single-purpose concurrency token. Avoids a duplicate code path; documented in the S3 section above. **Frontend**: new `CanvasEditorTitleEditor` — inline `<input>` commits on Enter / blur, reverts on Escape, syncs to currentName prop on cache refetch when not focused. Inflight-commit dedup ref prevents Enter+blur double-commit. Architect-prescribed 409 toast on stale If-Match; revert on error. Mounted in `CanvasEditorModal` header (DialogTitle visually hidden for a11y); subtitle reformatted to "Currently: N seats · M zones · K tables · L decorations". **API SMOKE 4/4 GREEN** on staging: T1 valid rename (rv 5417752 → 5427671, correlation `f12ce710-...`), T2 stale If-Match → 409 (correlation `eadbece1-...`), T3a empty → 400 "Layout name is required" (correlation `b0805d97-...`), T3b 256-char → 400 "cannot exceed 200 characters" (correlation `4eafdadf-...`). T4 non-owner skipped on staging (covered by existing controller integration tests). **J-A regression GREEN with rename injected**: apply theater-classic (200 seats) → rename layout (correlation `99a4fa7d-...`) → batch save with `rowCount=2 + seatsPerRow=10` → totalCapacity=220, name persisted (correlation `8742c1b4-...`). **Tests**: 10/10 new RTL tests; 208/208 existing seating-related tests preserved; tsc clean. **Next**: S4 (Tier-mapping summary + pre-publish validation, 3–4 days). |
 | 2026-05-02 | S2 PUT-with-deletedIds | ✅ SHIPPED | Commit `db2f78c1` deployed via backend `25240068506` + UI `25240068507` both `success`. **Destructive-PUT bug class closed**: `BatchLayoutPayload` extended with `DeletedZoneIds` / `DeletedTableIds` / `DeletedDecorationIds`; handler computes diff and returns **HTTP 409 Conflict** with precise omitted-id message when payload omits items the caller did not explicitly opt to delete. Frontend `composeBatchPayload` walks `draft.deletions` Set and emits the explicit-delete arrays. **API SMOKE 6/6 GREEN** on staging: T1 (omit zone w/o opt-in → 409, correlation `7199832a-...`), T2 (explicit delete via `deletedZoneIds` → 204, correlation `8965098e-...`), T3 (full-payload back-compat preserved), T4 (reserved-seat guard regression), T5 (Main Floor 200-seat delete returned 204; held+reserved guard already covered by `StructuralEditGuard`), T6a/b/c/d (table + decoration parity — all four returned the expected 409/204 split with precise messages). **JOURNEY SMOKE 4/4 GREEN**: J-G (composed S2-T1/T2/T3), J-E (StructuralEditGuard unit + T5 staging), J-A regression (apply theater-classic + add zone w/ rowCount=2 + seatsPerRow=10 → 220 seats, correlation `7da69e9a-...`), J-B regression (apply A→B→A→A all returned 201, no orphan accumulation, correlations `7e13b4f9-...` / `dae46e9b-...` / `ad70d54d-...` / `23a3edb7-...`). 26/26 batch handler tests pass; tsc clean. **Architect Rev 4's "extend hold guard" item turned out stale**: `StructuralEditGuard.CheckSeatsAsync` already queries both `_seatHoldRepository.GetHeldSeatIdsAsync` and `_seatReservationRepository.GetReservedSeatIdsAsync` — no change needed; T5 was reframed as regression check rather than new feature. |

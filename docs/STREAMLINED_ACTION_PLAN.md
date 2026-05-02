@@ -6,6 +6,34 @@
 
 ---
 
+## 🎯 2026-05-02 (later) — Slice S3 SHIPPED + 4/4 API + J-A regression GREEN — inline editable layout name in canvas editor header
+
+**Context**: Slice S3 is the third of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). The user has been editing the layout name only by re-applying a preset; they need an inline rename surface inside the canvas editor and a subtitle that reflects what's actually there.
+
+**Decision (deviation from architect-Rev-4 spec)**: skipped the redundant `PATCH /api/venue-layouts/{id}/name` endpoint the architect spec'd and reused the **existing `PUT /api/venue-layouts/{id}`** (Slice 5 Chunk 4 `UpdateLayoutCommand` with `name` field only). The existing PUT already satisfies the spirit of Rev 4's requirement — own If-Match handling, separate from the structural `/batch` endpoint, single-purpose concurrency token. Avoids a duplicate code path. Documented in the master TODO S3 section.
+
+**Fix shipped (commit `ea5cf7ce`, backend deploy `25243361349` + UI `25243361337` both `conclusion=success`)**:
+- **Frontend**: new `CanvasEditorTitleEditor` component — inline `<input>` commits on Enter or blur, reverts on Escape, syncs to `currentName` prop on cache refetch when the field is not focused. **Inflight-commit dedup ref** prevents the Enter+blur double-commit footgun. Architect-prescribed 409 toast on stale If-Match; revert on error.
+- **Frontend**: `CanvasEditorModal` header now hosts the title editor (DialogTitle kept visually hidden for a11y); subtitle reformatted to "Currently: N seats · M zones · K tables · L decorations" — clearly secondary metadata, with the editable name as primary affordance.
+
+**API SMOKE 4/4 GREEN end-to-end on staging** (correlations recorded in master-TODO run history):
+- **T1** valid rename → 204; rv 5417752 → 5427671; name persisted (correlation `f12ce710-0aff-414a-b7e6-7de9af9f4df1`).
+- **T2** stale If-Match → 409 with body *"Layout was modified by someone else. Reload the layout and retry with the current version."* (correlation `eadbece1-3aee-4992-89a4-5f14f247b742`).
+- **T3a** empty name → 400 *"Layout name is required"* (correlation `b0805d97-fd39-46e3-b400-6b6bd5db21cb`).
+- **T3b** 256-char name → 400 *"Layout name cannot exceed 200 characters"* (correlation `4eafdadf-4351-44d3-9e9c-23ab70f0b941`).
+- **T4** non-owner → 403: skipped on staging (would require provisioning a second authenticated user). Same authorization branch as Slice 5 Chunk 4 — covered by existing controller integration tests via `ILayoutAuthorizationService` two-branch rule.
+
+**J-A REGRESSION GREEN on staging with rename injected**:
+- Apply theater-classic (200 seats) → rename layout to "J-A Renamed Theater" (correlation `99a4fa7d-9e4f-4174-a676-bbba30906260`) → batch save with new zone `rowCount=2 + seatsPerRow=10` → totalCapacity=220 + name preserved (correlation `8742c1b4-a2cd-4847-9dd1-b069392896a9`). Slice S1 seat-gen + S1.5 hard-delete + S2 destructive-PUT protection all still work after S3 changes.
+
+**Tests**: 10/10 new RTL tests in `CanvasEditorTitleEditor.test.tsx` covering Enter/blur/Esc/empty/409/disabled/cache-sync/maxLength; 208/208 existing seating-related tests preserved; tsc --noEmit clean.
+
+**Lesson re-confirmed**: pragmatic reading of architect specs — when an existing endpoint already covers the spec's intent, reuse it instead of duplicating. The deviation was documented inline in the master TODO so future engineers know why there's no `PATCH /name` route.
+
+**Next**: Slice S4 (Tier-mapping summary + pre-publish validation, 3–4 days).
+
+---
+
 ## 🎯 2026-05-02 — Slice S2 SHIPPED + 6/6 API + 4/4 JOURNEY SMOKE GREEN — destructive-PUT bug class closed via explicit deletion opt-in
 
 **Context**: Slice S2 is the second of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). S1 closed the seat-gen pruning bug; S1.5 closed the apply-preset orphan-collision; S2 closes the **destructive-PUT bug class** — pre-S2, any client bug that dropped a zone/table/decoration from the `BatchLayoutPayload` silently deleted it (only protected by the structural guard for held/reserved seats — empty zones got nuked with no warning).

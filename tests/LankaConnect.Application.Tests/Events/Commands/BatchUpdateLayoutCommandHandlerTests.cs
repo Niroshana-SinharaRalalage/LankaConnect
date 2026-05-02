@@ -195,13 +195,18 @@ public class BatchUpdateLayoutCommandHandlerTests
         _mockGuard.Setup(g => g.CheckSeatsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(Result.StructuralEditRejected("4 seats are held"));
 
-        // Payload omits the zone → removal → guard runs → rejected
+        // Slice S2: payload EXPLICITLY deletes the zone via DeletedZoneIds → ambiguity
+        // guard passes → structural guard runs → rejected because seats are held.
+        // (Pre-S2 the omission path would have reached the guard implicitly; S2's
+        // contract requires explicit opt-in to deletion.)
         var command = new BatchUpdateLayoutCommand(
             layout.Id, layout.RowVersion,
             new BatchLayoutPayload(Name: null, Canvas: null,
                 Zones: new List<BatchZone>(),
                 Tables: null,
-                Decorations: null));
+                Decorations: null,
+                TierAssignments: null,
+                DeletedZoneIds: new List<Guid> { zone.Id }));
 
         var result = await _sut.Handle(command, CancellationToken.None);
 
@@ -308,8 +313,12 @@ public class BatchUpdateLayoutCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Should_Remove_Items_Missing_From_Payload_When_No_Seats_Held()
+    public async Task Handle_Should_Remove_Items_When_Listed_In_DeletedIds()
     {
+        // Slice S2 (Architect Rev 4 §A.3) — explicit deletion contract.
+        // Pre-S2 this test asserted that omission alone removes items. That
+        // silent-deletion behavior is now the bug class S2 closes — see
+        // Handle_Should_Return_409_When_Payload_Omits_Zone_Without_DeletedZoneIds.
         var layout = CreateLayout();
         var keptZone = AddZone(layout, "Kept");
         var removedZone = AddZone(layout, "Removed");  // no seats → guard passes
@@ -323,7 +332,7 @@ public class BatchUpdateLayoutCommandHandlerTests
                   .ReturnsAsync(Result.Success());
         _mockUow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        // Payload keeps keptZone + removes removedZone + removes the decoration (by omission)
+        // Payload keeps keptZone, explicitly deletes removedZone + the decoration.
         var payload = new BatchLayoutPayload(
             Name: null, Canvas: null,
             Zones: new List<BatchZone>
@@ -332,7 +341,11 @@ public class BatchUpdateLayoutCommandHandlerTests
                     Shape: ZoneShape.Rect, Geometry: null),
             },
             Tables: new List<BatchTable>(),
-            Decorations: new List<BatchDecoration>());
+            Decorations: new List<BatchDecoration>(),
+            TierAssignments: null,
+            DeletedZoneIds: new List<Guid> { removedZone.Id },
+            DeletedTableIds: null,
+            DeletedDecorationIds: new List<Guid> { decoration.Id });
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
 
@@ -342,6 +355,105 @@ public class BatchUpdateLayoutCommandHandlerTests
         layout.Zones.Should().HaveCount(1);
         layout.Zones[0].Id.Should().Be(keptZone.Id);
         layout.Decorations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_Should_Return_409_When_Payload_Omits_Zone_Without_DeletedZoneIds()
+    {
+        // Slice S2: omitting a zone from the payload without listing it in
+        // DeletedZoneIds is now an unambiguous error (was silent delete pre-S2).
+        var layout = CreateLayout();
+        var keptZone = AddZone(layout, "Kept");
+        var ambiguouslyOmitted = AddZone(layout, "Omitted");
+
+        _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Result<VenueLayout>.Success(layout));
+        _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(layout);
+
+        var payload = new BatchLayoutPayload(
+            Name: null, Canvas: null,
+            Zones: new List<BatchZone>
+            {
+                new(Id: keptZone.Id, Name: "Kept", Color: "#fff", SortOrder: 0,
+                    Shape: ZoneShape.Rect, Geometry: null),
+            },
+            Tables: null,
+            Decorations: null);  // no DeletedZoneIds → ambiguous
+
+        var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
+
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        result.Error.Should().Contain(ambiguouslyOmitted.Id.ToString());
+        // DB state unchanged — both zones still on the aggregate.
+        layout.Zones.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_Should_Return_409_When_Payload_Omits_Table_Without_DeletedTableIds()
+    {
+        var layout = CreateLayout();
+        var keptZone = AddZone(layout, "Z");
+        var omittedTable = AddTable(layout, "Round 1", capacity: 8);
+
+        _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Result<VenueLayout>.Success(layout));
+        _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(layout);
+
+        var payload = new BatchLayoutPayload(
+            Name: null, Canvas: null,
+            Zones: new List<BatchZone>
+            {
+                new(Id: keptZone.Id, Name: "Z", Color: "#fff", SortOrder: 0,
+                    Shape: ZoneShape.Rect, Geometry: null),
+            },
+            Tables: new List<BatchTable>(),  // omits omittedTable
+            Decorations: null);  // no DeletedTableIds → ambiguous
+
+        var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
+
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        result.Error.Should().Contain(omittedTable.Id.ToString());
+        layout.Tables.Should().HaveCount(1);  // unchanged
+    }
+
+    [Fact]
+    public async Task Handle_Should_Return_409_When_Payload_Omits_Decoration_Without_DeletedDecorationIds()
+    {
+        var layout = CreateLayout();
+        var keptZone = AddZone(layout, "Z");
+        var omittedDeco = AddDecoration(layout, DecorationKind.Stage);
+
+        _mockAuth.Setup(a => a.AuthorizeAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                 .ReturnsAsync(Result<VenueLayout>.Success(layout));
+        _mockLayoutRepo.Setup(r => r.GetWithZonesAndSeatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                       .ReturnsAsync(layout);
+
+        var payload = new BatchLayoutPayload(
+            Name: null, Canvas: null,
+            Zones: new List<BatchZone>
+            {
+                new(Id: keptZone.Id, Name: "Z", Color: "#fff", SortOrder: 0,
+                    Shape: ZoneShape.Rect, Geometry: null),
+            },
+            Tables: null,
+            Decorations: new List<BatchDecoration>());  // omits, no DeletedDecorationIds
+
+        var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
+
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorKind.Should().Be(ErrorKind.Conflict);
+        result.Error.Should().Contain(omittedDeco.Id.ToString());
+        layout.Decorations.Should().HaveCount(1);
     }
 
     [Fact]
@@ -512,7 +624,10 @@ public class BatchUpdateLayoutCommandHandlerTests
             {
                 new(Id: updatedDecoration.Id, Kind: DecorationKind.DanceFloor, Label: "Floor",
                     SortOrder: 0, Geometry: null, Properties: null),
-            });
+            },
+            TierAssignments: null,
+            // Slice S2: explicit deletion opt-in for the "removed" zone.
+            DeletedZoneIds: new List<Guid> { removedZone.Id });
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
 
@@ -842,7 +957,9 @@ public class BatchUpdateLayoutCommandHandlerTests
                       .ReturnsAsync((IReadOnlyList<TicketTier>)new[] { tier });
         _mockUow.Setup(u => u.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        // Payload omits droppedZone (so it's removed) and only mentions keptZone in tierAssignments.
+        // Slice S2: payload explicitly deletes droppedZone via DeletedZoneIds and
+        // only mentions keptZone in tierAssignments. The reconciler picks up the
+        // orphan-tier-assignment cleanup as before.
         var payload = new BatchLayoutPayload(
             Name: null, Canvas: null,
             Zones: new List<BatchZone>
@@ -854,7 +971,8 @@ public class BatchUpdateLayoutCommandHandlerTests
             TierAssignments: new List<BatchTierAssignment>
             {
                 new(AssignableKind.Zone, keptZone.Id, new List<Guid> { tier.Id }),
-            });
+            },
+            DeletedZoneIds: new List<Guid> { droppedZone.Id });
 
         var command = new BatchUpdateLayoutCommand(layout.Id, layout.RowVersion, payload);
 

@@ -740,6 +740,32 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
     }
   }
 
+  // Slice S2: explicit deletion opt-in. The backend now requires every shape
+  // omitted from the payload to be listed in deletedXIds. Compute the deletes
+  // from the draft.deletions Set (the kind-prefixed ref keys). Without this,
+  // the backend returns 409 — closing the destructive-PUT bug class.
+  const deletedZoneIds: string[] = [];
+  const deletedTableIds: string[] = [];
+  const deletedDecorationIds: string[] = [];
+  for (const key of draft.deletions) {
+    // refKey shape is `${kind}:${id}` — split safely.
+    const sep = key.indexOf(':');
+    if (sep < 0) continue;
+    const kind = key.slice(0, sep);
+    const id = key.slice(sep + 1);
+    // Only baseline items that are explicitly deleted go here. Items that were
+    // ADDED then DELETED in the same draft session don't need server-side
+    // deletion (they were never persisted) — they're already excluded from
+    // keptZones/addedZones above by the deletions Set.
+    if (kind === 'zone' && (baseline.zones ?? []).some((z) => z.id === id)) {
+      deletedZoneIds.push(id);
+    } else if (kind === 'table' && (baseline.tables ?? []).some((t) => t.id === id)) {
+      deletedTableIds.push(id);
+    } else if (kind === 'decoration' && (baseline.decorations ?? []).some((d) => d.id === id)) {
+      deletedDecorationIds.push(id);
+    }
+  }
+
   return {
     name: null,
     canvas: null,
@@ -747,6 +773,9 @@ export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayou
     tables: [...keptTables, ...addedTables],
     decorations: [...keptDecorations, ...addedDecorations],
     tierAssignments,
+    deletedZoneIds: deletedZoneIds.length > 0 ? deletedZoneIds : null,
+    deletedTableIds: deletedTableIds.length > 0 ? deletedTableIds : null,
+    deletedDecorationIds: deletedDecorationIds.length > 0 ? deletedDecorationIds : null,
   };
 }
 

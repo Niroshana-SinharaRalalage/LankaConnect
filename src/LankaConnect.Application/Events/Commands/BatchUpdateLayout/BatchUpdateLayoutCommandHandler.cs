@@ -131,6 +131,60 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         var zonesToRemove = layout.Zones.Where(z => !payloadZoneIds.Contains(z.Id)).ToList();
         var tablesToRemove = layout.Tables.Where(t => !payloadTableIds.Contains(t.Id)).ToList();
 
+        // Slice S2 (Architect Rev 4 §A.3) — destructive-PUT protection. Any item
+        // that's missing from the payload AND not explicitly listed in deletedXIds
+        // is a CLIENT-side bug, not an intentional deletion. Return 409 Conflict
+        // so the bug surfaces instead of silently destroying data. Pre-S2, this
+        // check did not exist — empty zones / tables / decorations were nuked with
+        // no warning whenever a client payload accidentally dropped them.
+        var deletedZoneIds = (payload.DeletedZoneIds ?? new List<Guid>()).ToHashSet();
+        var deletedTableIds = (payload.DeletedTableIds ?? new List<Guid>()).ToHashSet();
+        var deletedDecorationIds = (payload.DeletedDecorationIds ?? new List<Guid>()).ToHashSet();
+
+        var unintendedZoneRemovals = zonesToRemove
+            .Where(z => !deletedZoneIds.Contains(z.Id))
+            .Select(z => z.Id)
+            .ToList();
+        var unintendedTableRemovals = tablesToRemove
+            .Where(t => !deletedTableIds.Contains(t.Id))
+            .Select(t => t.Id)
+            .ToList();
+        var payloadDecorationIdsForGuard = decorations.Where(d => d.Id.HasValue).Select(d => d.Id!.Value).ToHashSet();
+        var unintendedDecorationRemovals = layout.Decorations
+            .Where(d => !payloadDecorationIdsForGuard.Contains(d.Id) && !deletedDecorationIds.Contains(d.Id))
+            .Select(d => d.Id)
+            .ToList();
+
+        if (unintendedZoneRemovals.Count > 0
+            || unintendedTableRemovals.Count > 0
+            || unintendedDecorationRemovals.Count > 0)
+        {
+            _logger.LogWarning(
+                "BatchUpdateLayout: ambiguous payload — unintended removals. LayoutId={LayoutId}, " +
+                "OmittedZones={OmittedZones}, OmittedTables={OmittedTables}, OmittedDecorations={OmittedDecorations}",
+                request.LayoutId,
+                unintendedZoneRemovals.Count, unintendedTableRemovals.Count, unintendedDecorationRemovals.Count);
+
+            // Build a precise message naming the omitted ids so the client can either
+            // include them in the payload (to keep them) or list them in deletedXIds
+            // (to delete them).
+            var parts = new List<string>();
+            if (unintendedZoneRemovals.Count > 0)
+                parts.Add($"{unintendedZoneRemovals.Count} zone(s): [{string.Join(", ", unintendedZoneRemovals)}]");
+            if (unintendedTableRemovals.Count > 0)
+                parts.Add($"{unintendedTableRemovals.Count} table(s): [{string.Join(", ", unintendedTableRemovals)}]");
+            if (unintendedDecorationRemovals.Count > 0)
+                parts.Add($"{unintendedDecorationRemovals.Count} decoration(s): [{string.Join(", ", unintendedDecorationRemovals)}]");
+
+            var message =
+                $"Layout has shapes the payload neither lists nor explicitly deletes: {string.Join("; ", parts)}. " +
+                $"To keep them, include them in the corresponding zones/tables/decorations array. " +
+                $"To delete them, list their IDs in deletedZoneIds / deletedTableIds / deletedDecorationIds.";
+
+            _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
+            return Result.Conflict(message);
+        }
+
         var seatsAtRisk = zonesToRemove.SelectMany(z => z.Seats.Select(s => s.Id))
             .Concat(tablesToRemove.SelectMany(t => t.Seats.Select(s => s.Id)))
             .ToList();

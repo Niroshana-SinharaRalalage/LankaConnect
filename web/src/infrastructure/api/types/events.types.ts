@@ -3022,6 +3022,20 @@ export interface BatchLayoutPayload {
    * `BatchZone`/`BatchTable`.
    */
   tierAssignments?: BatchTierAssignment[] | null;
+  /**
+   * Slice S2 (Architect Rev 4 §A.3): explicit deletion opt-in. Any item
+   * present in the existing layout but missing from the corresponding
+   * `zones` / `tables` / `decorations` array MUST be listed here, otherwise
+   * the backend returns **HTTP 409 Conflict**. Closes the destructive-PUT
+   * bug class — pre-S2 a client bug that dropped a shape from state would
+   * silently delete it (only protected by the structural guard for held
+   * /reserved seats; empty zones got nuked silently).
+   * `null` / omitted = "no explicit deletions" — therefore any omission is
+   * unintentional → 409.
+   */
+  deletedZoneIds?: string[] | null;
+  deletedTableIds?: string[] | null;
+  deletedDecorationIds?: string[] | null;
 }
 
 export interface BatchCanvasConfig {

@@ -44,7 +44,21 @@ public record BatchLayoutPayload(
     /// draft Guid — the handler resolves it to the server-assigned Guid via
     /// each <see cref="BatchZone.ClientId"/> / <see cref="BatchTable.ClientId"/>.
     /// </summary>
-    List<BatchTierAssignment>? TierAssignments = null
+    List<BatchTierAssignment>? TierAssignments = null,
+    /// <summary>
+    /// Slice S2 (Architect Rev 4 §A.3): explicit deletion opt-in. When the
+    /// payload's <c>Zones</c> list omits an existing zone, the handler now
+    /// requires the omitted zone's id to appear in <c>DeletedZoneIds</c> —
+    /// otherwise the call returns <b>HTTP 409 Conflict</b>. Closes the
+    /// destructive-PUT bug class: pre-S2, any client bug that dropped a zone
+    /// from the payload silently deleted it (only protected by the structural
+    /// guard for held/reserved seats — empty zones got nuked with no warning).
+    /// <c>null</c> AND <c>empty list</c> both mean "no explicit deletions" —
+    /// any omission is therefore unintentional → 409.
+    /// </summary>
+    List<Guid>? DeletedZoneIds = null,
+    List<Guid>? DeletedTableIds = null,
+    List<Guid>? DeletedDecorationIds = null
 );
 
 public record BatchCanvasConfig(

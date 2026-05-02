@@ -366,7 +366,7 @@ curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
 - Expected: **HTTP 422** "Cannot delete zone with reserved seats". Existing behavior preserved.
 - [ ] PASS — date/correlation:
 
-#### S2-T5 — `deletedZoneIds` listing a zone with ACTIVE HOLDS → 409 (NEW guard)
+#### S2-T5 — `deletedZoneIds` listing a zone with ACTIVE HOLDS → 422 (existing guard already covers)
 Setup: apply preset → buyer holds a seat (creates `seat_holds` row, expires_at > now).
 ```bash
 curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
@@ -374,7 +374,7 @@ curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID/batch" \
   -H "If-Match: $ROW_VERSION" \
   -d "{\"zones\":[],\"deletedZoneIds\":[\"$ZONE_ID_WITH_HOLD\"]}"
 ```
-- Expected: **HTTP 409** "Seats are currently held by other buyers. Try again in N minutes." (NEW behavior — pre-S2 this would succeed and silently invalidate buyer's hold mid-checkout.)
+- Expected: **HTTP 422** with body containing "seat(s) currently held". The existing `StructuralEditGuard.CheckSeatsAsync` already queries `_seatHoldRepository.GetHeldSeatIdsAsync` (line 37 of `StructuralEditGuard.cs`) AND `_seatReservationRepository.GetReservedSeatIdsAsync` (line 38). Both held + reserved seats already block. **Architect Rev 4's "extend hold guard" item was based on a stale read of the code; the guard already covers active holds.** This test is included as a regression check, not a new feature.
 - [ ] PASS — date/correlation:
 
 #### S2-T6 — `deletedTableIds` and `deletedDecorationIds` work the same way

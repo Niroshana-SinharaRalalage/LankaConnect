@@ -31,41 +31,29 @@ public static class RegistrationBreakdownProjector
     public static async Task<BreakdownProjection> LoadAsync(
         IApplicationDbContext context, Guid registrationId, CancellationToken ct = default)
     {
-        var data = await context.Registrations
+        // Load the full Registration entity. Using a Select projection with
+        // `r.Attendees.ToList()` doesn't translate cleanly because Attendees is mapped
+        // via OwnsMany.ToJson() — EF Core can't project owned-JSON collections into an
+        // anonymous-type projection here. Loading the entity and reading properties
+        // in-memory is simpler and avoids the translation pitfall.
+        var entity = await context.Registrations
             .Where(r => r.Id == registrationId)
-            .Select(r => new
-            {
-                r.RegistrationMode,
-                r.LeadAttendeeName,
-                r.HeadCount,
-                Attendees = r.Attendees.ToList(),
-            })
             .FirstOrDefaultAsync(ct);
 
-        if (data == null)
+        if (entity == null)
             return new BreakdownProjection(RegistrationMode.DetailedAttendees, null, null);
 
         RegistrationBreakdown? breakdown = null;
-        try
+        if (entity.HeadCount != null)
         {
-            if (data.HeadCount != null)
-            {
-                breakdown = RegistrationBreakdownFormatter.FromHeadCount(data.HeadCount, data.RegistrationMode);
-            }
-            else if (data.Attendees.Count > 0)
-            {
-                breakdown = RegistrationBreakdownFormatter.FromAttendees(data.Attendees);
-            }
-            // else: registration has neither (defensive — leave Breakdown null)
+            breakdown = RegistrationBreakdownFormatter.FromHeadCount(entity.HeadCount, entity.RegistrationMode);
         }
-        catch (Exception)
+        else if (entity.Attendees.Count > 0)
         {
-            // Defensive: never block the query response on a formatter exception. Logging
-            // happens at the caller (handler) level; we just degrade to null breakdown so
-            // the FE shows the legacy fallback rather than 500'ing.
-            breakdown = null;
+            breakdown = RegistrationBreakdownFormatter.FromAttendees(entity.Attendees);
         }
+        // else: registration has neither (defensive — leave Breakdown null)
 
-        return new BreakdownProjection(data.RegistrationMode, data.LeadAttendeeName, breakdown);
+        return new BreakdownProjection(entity.RegistrationMode, entity.LeadAttendeeName, breakdown);
     }
 }

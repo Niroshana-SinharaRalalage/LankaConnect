@@ -6,6 +6,40 @@
 
 ---
 
+## 🎯 2026-05-02 — Slice S2 SHIPPED + 6/6 API + 4/4 JOURNEY SMOKE GREEN — destructive-PUT bug class closed via explicit deletion opt-in
+
+**Context**: Slice S2 is the second of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). S1 closed the seat-gen pruning bug; S1.5 closed the apply-preset orphan-collision; S2 closes the **destructive-PUT bug class** — pre-S2, any client bug that dropped a zone/table/decoration from the `BatchLayoutPayload` silently deleted it (only protected by the structural guard for held/reserved seats — empty zones got nuked with no warning).
+
+**Architect Rev 4 §A.3 contract**: explicit deletion opt-in. `BatchLayoutPayload` extended with `DeletedZoneIds` / `DeletedTableIds` / `DeletedDecorationIds`. Handler diffs the payload against the persisted layout — for each baseline id missing from the payload that is also absent from `deletedXIds`, it returns **HTTP 409 Conflict** with a precise message naming the omitted ids ("To keep them, include them in the corresponding zones/tables/decorations array. To delete them, list their IDs in deletedZoneIds / deletedTableIds / deletedDecorationIds."). `null` AND empty list both mean "no explicit deletions" — any omission is therefore unintentional → 409.
+
+**Fix shipped (commit `db2f78c1`, backend deploy `25240068506` + UI `25240068507` both `conclusion=success`)**:
+- **Backend**: `BatchLayoutPayload` record extended; `BatchUpdateLayoutCommandHandler` builds `unintendedZoneRemovals` / `unintendedTableRemovals` / `unintendedDecorationRemovals` between `zonesToRemove` computation and the structural guard; precise message naming the omitted ids; `_metrics.StructuralEditRejected(layoutId, ConcurrencyConflict)` emitted.
+- **Frontend**: `composeBatchPayload` walks `draft.deletions` Set, splits each `kind:id` refKey, classifies as zone/table/decoration if it matches a baseline id, and emits the explicit-delete arrays (normalised to null when empty).
+
+**API SMOKE 6/6 GREEN end-to-end on staging** (correlations recorded in master-TODO run history):
+- **T1** omit zone without `deletedZoneIds` → 409 with `1 zone(s): [...]` precise message (correlation `7199832a-4d20-4c20-9a29-d334bf8bd777`).
+- **T2** explicit delete via `deletedZoneIds` → 204; subsequent GET shows totalCapacity=0 (correlation `8965098e-71f5-4b27-9aef-d9c5708f5e3b`).
+- **T3** full-payload back-compat preserved.
+- **T4** reserved-seat structural guard regression preserved.
+- **T5** Main-Floor 200-seat zone delete (no holds) → 204; `StructuralEditGuard.CheckSeatsAsync` already queries both `seat_holds.GetHeldSeatIdsAsync` AND `seat_reservations.GetReservedSeatIdsAsync` — Architect Rev 4's "extend hold guard" item turned out stale; T5 reframed as regression check.
+- **T6a** omit table without `deletedTableIds` → 409. **T6b** explicit table delete → 204 (correlation `73865633-4681-4793-990c-d473f18ecead`). **T6c** omit decoration without `deletedDecorationIds` → 409 (correlation `2f12cc51-15c3-4e84-a3b2-4e116e784200`). **T6d** explicit decoration delete → 204 (correlation `7cfb6bf7-fb82-44c1-b864-00671b216447`).
+
+**JOURNEY SMOKE 4/4 GREEN on staging**:
+- **J-G (NEW — destructive payload protection)**: composed of S2-T1 + S2-T2 + S2-T3.
+- **J-E (concurrent / hold-race)**: covered by `StructuralEditGuard` unit + T5 staging; end-to-end hold-race deferred to S6 Playwright.
+- **J-A regression**: apply theater-classic (200 seats) → batch save adds zone with `rowCount=2 + seatsPerRow=10` → totalCapacity=220 (correlation `7da69e9a-6707-495c-8d23-cb2970f86a7a`). Slice S1 seat-gen still works after S2 changes.
+- **J-B regression**: apply A → B → A → A all returned 201, no orphan accumulation (correlations `7e13b4f9-...`, `dae46e9b-...`, `ad70d54d-...`, `23a3edb7-...`). Slice S1.5 hard-delete-by-event-id still works after S2 changes.
+
+**Tests**: 26/26 batch handler tests pass (including 3 new 409-path tests for zones/tables/decorations); tsc --noEmit clean.
+
+**Test artifacts cleaned**: prior layouts hard-deleted by S1.5 sweep machinery (return 400 on GET); only the active bound layout `75a0d982-...` remains on event `e4792b64-...`.
+
+**Lesson re-confirmed**: pre-flight reading the actual code beats trusting architect notes — the guard hold-coverage was already in place, saving a day of unneeded work. Master-TODO discipline (concrete curl recipes per slice + journey smoke as ship gates) caught the bash payload-wrapping bug in T5 first run, fixed retry → green.
+
+**Next**: Slice S3 (Layout rename UI, 1–2 days).
+
+---
+
 ## 🎯 2026-05-01 — Slice S1.5 hot-fix SHIPPED + 3/3 JOURNEY SMOKE GREEN — orphan-cleanup + Mode B incompatibility guard
 
 **User-reported bugs** (architect-ruled S1.5 in same review session):

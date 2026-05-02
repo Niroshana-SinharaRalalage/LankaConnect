@@ -31,6 +31,7 @@ using LankaConnect.Application.Events.Commands.DeleteDecoration;
 using LankaConnect.Application.Events.Queries.GetVenueLayout;
 using LankaConnect.Application.Events.Queries.GetSeatAvailability;
 using LankaConnect.Application.Events.Queries.GetLayoutPresets;
+using LankaConnect.Application.Events.Queries.GetLayoutPublishReadiness;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.API.Extensions;
 
@@ -87,6 +88,24 @@ public class VenueLayoutsController : BaseController<VenueLayoutsController>
         var query = new GetVenueLayoutQuery(id, null);
         var result = await Mediator.Send(query);
 
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Slice S4 — non-gating publish-readiness snapshot for the canvas-editor /
+    /// seating section UI. Returns every blocker + warning + per-tier mapping
+    /// summary at once, so the organiser can see the full fix list before
+    /// attempting to publish. The strict publish gate remains
+    /// <c>POST /api/Events/{id}/publish</c> (returns 422 on the first blocker).
+    /// </summary>
+    [HttpGet("{id:guid}/publish-readiness")]
+    [Authorize]
+    [ProducesResponseType(typeof(PublishReadinessReportDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLayoutPublishReadiness(Guid id)
+    {
+        var result = await Mediator.Send(new GetLayoutPublishReadinessQuery(id));
         return HandleResult(result);
     }
 

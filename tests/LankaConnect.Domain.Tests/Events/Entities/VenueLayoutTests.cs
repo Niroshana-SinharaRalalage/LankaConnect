@@ -1,5 +1,6 @@
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
@@ -700,6 +701,171 @@ public class VenueLayoutTests
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("must be mapped");
+    }
+
+    #endregion
+
+    #region BuildPublishReadinessReport Tests (Slice S4)
+
+    [Fact]
+    public void BuildPublishReadinessReport_EmptyLayout_Should_Block_With_LayoutEmptyCode()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().ContainSingle(b => b.Code == PublishReadinessCode.LayoutEmpty);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_ZoneWithSeatsButNoTier_Should_Block_With_ZoneUnmapped()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("Main Floor", "#3b82f6", 1).Value;
+        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 5);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        var blocker = report.Blockers.Should().ContainSingle(b =>
+            b.Code == PublishReadinessCode.ZoneUnmapped).Subject;
+        blocker.ShapeId.Should().Be(zone.Id);
+        blocker.ShapeName.Should().Be("Main Floor");
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_EmptyZoneNoTier_Should_Warn_Not_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        layout.AddZone("Empty Zone", "#3b82f6", 1);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Blockers.Should().NotContain(b => b.Code == PublishReadinessCode.ZoneUnmapped);
+        report.Warnings.Should().Contain(w => w.Code == PublishReadinessCode.ZoneEmptyAndUnmapped);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_ZoneOverCapacity_Should_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers(); // first tier capacity = 30
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 10, seatsPerRow: 10); // 100 > 30
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().Contain(b =>
+            b.Code == PublishReadinessCode.ZoneOverCapacity);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TierWithoutMapping_Should_Warn_With_TierWithoutMapping()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        // Zone exists, mapped to tier 0; tier 1 has no mapping
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 5);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Warnings.Should().Contain(w =>
+            w.Code == PublishReadinessCode.TierWithoutMapping
+            && w.TierId == tiers[1].Id);
+        // Layout itself is publish-ready — no blockers, only the tier-coverage warning.
+        report.IsPublishReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TierTotalOverCapacity_Should_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers(); // tier 0 capacity = 30
+        // Two zones each at 20 seats, both mapped to tier 0 — 40 total > 30 capacity
+        var zoneA = layout.AddZone("VIP A", "#FF0000", 1).Value;
+        var zoneB = layout.AddZone("VIP B", "#FFAA00", 2).Value;
+        tiers[0].AssignToZone(zoneA.Id);
+        tiers[0].AssignToZone(zoneB.Id);
+        layout.GenerateTheaterSeats(zoneA.Id, rows: 2, seatsPerRow: 10); // 20
+        layout.GenerateTheaterSeats(zoneB.Id, rows: 2, seatsPerRow: 10); // 20
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().Contain(b =>
+            b.Code == PublishReadinessCode.TierTotalOverCapacity
+            && b.TierId == tiers[0].Id);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TableWithSeatsButNoTier_Should_Block_With_TableUnmapped()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var table = layout.GenerateRoundTable("Table 1", capacity: 8, sortOrder: 1).Value;
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        var blocker = report.Blockers.Should().ContainSingle(b =>
+            b.Code == PublishReadinessCode.TableUnmapped).Subject;
+        blocker.ShapeId.Should().Be(table.Id);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_FullyMappedHappyPath_Should_Be_PublishReady()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        var table = layout.GenerateRoundTable("Banquet 1", capacity: 8, sortOrder: 2).Value;
+        tiers[0].AssignToZone(zone.Id);
+        tiers[1].AssignToTable(table.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 10); // 20 ≤ 30
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeTrue();
+        report.Blockers.Should().BeEmpty();
+        report.Warnings.Should().BeEmpty();
+        report.TierSummary.Should().HaveCount(2);
+        report.TierSummary.Should().ContainSingle(s =>
+            s.TierId == tiers[0].Id
+            && s.MappedZones.Count == 1
+            && s.TotalEnabledSeats == 20);
+        report.TierSummary.Should().ContainSingle(s =>
+            s.TierId == tiers[1].Id
+            && s.MappedTables.Count == 1
+            && s.TotalEnabledSeats == 8);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_EnumeratesAllIssues_NotShortCircuit()
+    {
+        // Architect requirement: report must list every issue at once, unlike
+        // ValidateForEvent which short-circuits on the first failure.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var zoneA = layout.AddZone("Unmapped A", "#FF0000", 1).Value;
+        layout.GenerateTheaterSeats(zoneA.Id, rows: 1, seatsPerRow: 3);
+        var zoneB = layout.AddZone("Unmapped B", "#00FF00", 2).Value;
+        layout.GenerateTheaterSeats(zoneB.Id, rows: 1, seatsPerRow: 3);
+        layout.GenerateRoundTable("Unmapped Table", capacity: 4, sortOrder: 3);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Blockers.Count(b => b.Code == PublishReadinessCode.ZoneUnmapped).Should().Be(2);
+        report.Blockers.Should().Contain(b => b.Code == PublishReadinessCode.TableUnmapped);
+        // Both tiers have no mappings → 2 TierWithoutMapping warnings.
+        report.Warnings.Count(w => w.Code == PublishReadinessCode.TierWithoutMapping).Should().Be(2);
     }
 
     #endregion

@@ -676,6 +676,176 @@ public class VenueLayout : BaseEntity
     }
 
     /// <summary>
+    /// Slice S4 — non-gating publish-readiness snapshot used by the UI surface.
+    /// Distinct from <see cref="ValidateForEvent"/> which short-circuits on the first
+    /// issue. This method enumerates every blocker and warning at once + builds a
+    /// per-tier mapping summary, so the canvas editor + seating section can list
+    /// EVERY misconfiguration the organiser needs to fix before publishing.
+    /// </summary>
+    /// <remarks>
+    /// The strict publish gate is still <see cref="ValidateForEvent"/> with
+    /// <c>requireTierMapping=true</c> (called by
+    /// <see cref="LankaConnect.Domain.Events.Event.CheckLayoutPublishReadiness"/>).
+    /// This method must remain semantically *broader-or-equal* to that gate — every
+    /// failure ValidateForEvent would surface MUST appear here as a blocker, plus
+    /// the additional checks (table mapping, multi-zone tier-total capacity, empty
+    /// shapes) that the strict path does not cover today.
+    /// </remarks>
+    public PublishReadinessReport BuildPublishReadinessReport(IReadOnlyList<TicketTier> eventTiers)
+    {
+        var blockers = new List<PublishReadinessIssue>();
+        var warnings = new List<PublishReadinessIssue>();
+        var tierSummary = new List<TierMappingSummary>();
+
+        if (!_zones.Any() && !_tables.Any())
+        {
+            blockers.Add(new PublishReadinessIssue(
+                PublishReadinessCode.LayoutEmpty,
+                "Layout has no zones or tables. Apply a preset or add a zone before publishing."));
+        }
+
+        var activeTiers = eventTiers.Where(t => t.IsActive).ToList();
+
+        // Build polymorphic reverse lookups (zone → tier, table → tier).
+        var zoneToTier = new Dictionary<Guid, TicketTier>();
+        var tableToTier = new Dictionary<Guid, TicketTier>();
+        foreach (var tier in activeTiers)
+        {
+            foreach (var assignment in tier.Assignments)
+            {
+                if (assignment.AssignableKind == AssignableKind.Zone)
+                    zoneToTier.TryAdd(assignment.AssignableId, tier);
+                else if (assignment.AssignableKind == AssignableKind.Table)
+                    tableToTier.TryAdd(assignment.AssignableId, tier);
+            }
+        }
+
+        // Per-tier summary + total-capacity check.
+        foreach (var tier in activeTiers)
+        {
+            var mappedZones = _zones
+                .Where(z => zoneToTier.TryGetValue(z.Id, out var t) && t.Id == tier.Id)
+                .Select(z => new MappedShapeRef(z.Id, z.Name, z.EnabledSeatCount))
+                .ToList();
+            var mappedTables = _tables
+                .Where(tbl => tableToTier.TryGetValue(tbl.Id, out var t) && t.Id == tier.Id)
+                .Select(tbl => new MappedShapeRef(tbl.Id, tbl.Label, tbl.EnabledSeatCount))
+                .ToList();
+
+            var totalEnabledSeats =
+                mappedZones.Sum(s => s.EnabledSeatCount)
+                + mappedTables.Sum(s => s.EnabledSeatCount);
+
+            tierSummary.Add(new TierMappingSummary(
+                tier.Id,
+                tier.Name,
+                tier.Capacity,
+                mappedZones,
+                mappedTables,
+                totalEnabledSeats));
+
+            if (mappedZones.Count == 0 && mappedTables.Count == 0)
+            {
+                warnings.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TierWithoutMapping,
+                    $"Tier '{tier.Name}' is active but isn't mapped to any zone or table. Buyers in this tier won't be able to choose a seat.",
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+
+            if (totalEnabledSeats > tier.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TierTotalOverCapacity,
+                    $"Tier '{tier.Name}' is mapped to {totalEnabledSeats} seats across its zones/tables, exceeding its capacity of {tier.Capacity}. Reduce mappings or raise the tier capacity.",
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        // Per-zone validation.
+        foreach (var zone in _zones)
+        {
+            var hasMapping = zoneToTier.TryGetValue(zone.Id, out var tier);
+            if (!hasMapping)
+            {
+                if (zone.EnabledSeatCount > 0)
+                {
+                    blockers.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.ZoneUnmapped,
+                        $"Zone '{zone.Name}' has {zone.EnabledSeatCount} seats but no tier mapping.",
+                        ShapeId: zone.Id,
+                        ShapeName: zone.Name));
+                }
+                else
+                {
+                    warnings.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.ZoneEmptyAndUnmapped,
+                        $"Zone '{zone.Name}' has no seats and no tier mapping. Add seats or remove the zone.",
+                        ShapeId: zone.Id,
+                        ShapeName: zone.Name));
+                }
+                continue;
+            }
+
+            // tier is non-null here because hasMapping was true.
+            if (zone.EnabledSeatCount > tier!.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.ZoneOverCapacity,
+                    $"Zone '{zone.Name}' has {zone.EnabledSeatCount} enabled seats but the linked tier '{tier.Name}' only has capacity for {tier.Capacity}.",
+                    ShapeId: zone.Id,
+                    ShapeName: zone.Name,
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        // Per-table validation.
+        foreach (var table in _tables)
+        {
+            var enabled = table.EnabledSeatCount;
+            var hasMapping = tableToTier.TryGetValue(table.Id, out var tier);
+            if (!hasMapping)
+            {
+                if (enabled > 0)
+                {
+                    blockers.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.TableUnmapped,
+                        $"Table '{table.Label}' has {enabled} seats but no tier mapping.",
+                        ShapeId: table.Id,
+                        ShapeName: table.Label));
+                }
+                else
+                {
+                    warnings.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.TableEmptyAndUnmapped,
+                        $"Table '{table.Label}' has no seats and no tier mapping.",
+                        ShapeId: table.Id,
+                        ShapeName: table.Label));
+                }
+                continue;
+            }
+
+            if (enabled > tier!.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TableOverCapacity,
+                    $"Table '{table.Label}' has {enabled} enabled seats but the linked tier '{tier.Name}' only has capacity for {tier.Capacity}.",
+                    ShapeId: table.Id,
+                    ShapeName: table.Label,
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        return new PublishReadinessReport(
+            blockers.AsReadOnly(),
+            warnings.AsReadOnly(),
+            tierSummary.AsReadOnly());
+    }
+
+    /// <summary>
     /// Updates the layout name.
     /// </summary>
     public Result UpdateName(string name)

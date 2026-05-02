@@ -223,6 +223,14 @@ public class EventCancellationEmailParams : IEmailParameters
     /// <summary>Phase 7F-A: Lead attendee name for Mode B registrations.</summary>
     public string LeadAttendeeName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Phase 7F-E.3: pre-rendered HTML fragment from
+    /// <c>RegistrationBreakdownEmailRenderer.Render</c>. Replaces the legacy flat tokens
+    /// with one structured per-tier table that includes "N/A" placeholders for un-
+    /// captured axes.
+    /// </summary>
+    public string RegistrationBreakdownHtml { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -282,6 +290,8 @@ public class EventCancellationEmailParams : IEmailParameters
             { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
             { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
             { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            // Phase 7F-E.3: structured per-tier HTML fragment.
+            { EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml, RegistrationBreakdownHtml },
             { "LeadAttendeeName", LeadAttendeeName },
 
             { "Year", DateTime.UtcNow.Year }

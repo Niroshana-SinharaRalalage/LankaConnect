@@ -1218,6 +1218,20 @@ public static class EmailTemplateContract
         /// time — survive downstream tier rename/delete.
         /// </summary>
         public const string TierBreakdownLine = "TierBreakdownLine";
+
+        /// <summary>
+        /// Phase 7F-E.3 (architect-approved 2026-05-01): pre-rendered HTML fragment
+        /// produced by <c>RegistrationBreakdownEmailRenderer.Render</c>. Drops in at the
+        /// <c>&lt;!-- attendee-block-7e --&gt;</c> anchor of every email template. ONE
+        /// token replaces the legacy <see cref="HeadCountTotal"/> +
+        /// <see cref="HeadCountBreakdownLine"/> + <see cref="TierBreakdownLine"/> trio,
+        /// keeping rendering logic out of the templates (memory
+        /// <c>feedback_regex_on_email_html.md</c>).
+        ///
+        /// Empty string when the registration has no <c>RegistrationBreakdown</c> rows
+        /// (defensive — surrounding template renders nothing).
+        /// </summary>
+        public const string RegistrationBreakdownHtml = "RegistrationBreakdownHtml";
     }
 
     #endregion

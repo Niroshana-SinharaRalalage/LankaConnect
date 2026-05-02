@@ -185,6 +185,15 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
     /// </summary>
     public string LeadAttendeeName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Phase 7F-E.3: pre-rendered HTML fragment from
+    /// <c>RegistrationBreakdownEmailRenderer.Render</c>. Replaces the legacy
+    /// HeadCountTotal + HeadCountBreakdownLine + TierBreakdownLine trio with one
+    /// structured per-tier table that includes "N/A" placeholders for un-captured axes.
+    /// Empty string when no breakdown rows (defensive).
+    /// </summary>
+    public string RegistrationBreakdownHtml { get; set; } = string.Empty;
+
     #endregion
 
     #region Organizer Contact Properties
@@ -304,6 +313,8 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
             { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
             { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            // Phase 7F-E.3: structured per-tier HTML fragment.
+            { EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml, RegistrationBreakdownHtml },
             { "LeadAttendeeName", LeadAttendeeName },
 
             // Organizer contact parameters

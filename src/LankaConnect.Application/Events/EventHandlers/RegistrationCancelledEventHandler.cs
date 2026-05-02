@@ -154,6 +154,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
                     emailParams.TierBreakdownLine = flex.tierBreakdownLine;
                     emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                    emailParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
                 }
 
                 // Phase 6A.100: Send via typed email service

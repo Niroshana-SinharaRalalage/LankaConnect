@@ -197,6 +197,9 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
             typedParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
             typedParams.TierBreakdownLine = flex.tierBreakdownLine;
             typedParams.LeadAttendeeName = flex.leadAttendeeName;
+            // Phase 7F-E.3: structured per-tier HTML fragment (drops in at the
+            // <!-- attendee-block-7e --> anchor in the migrated templates).
+            typedParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
 
             // Set event image
             typedParams.WithEventImage(eventImageUrl);

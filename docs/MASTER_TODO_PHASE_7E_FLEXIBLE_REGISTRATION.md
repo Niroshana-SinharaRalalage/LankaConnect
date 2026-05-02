@@ -704,7 +704,7 @@ After **phase complete (7E.9)**:
 
 # Phase 7F-E — Registration Display Consistency Across Surfaces
 
-**Status**: 📋 ARCHITECT-APPROVED WITH 10 EDITS (review iteration 1, 2026-05-01) — appended to this 7E master TODO per operator request (single source of truth, no separate file). Ready to begin Slice 7F-E.1.
+**Status**: 🚧 IN FLIGHT (2026-05-02) — Slices 7F-E.1, 7F-E.2 SHIPPED + STAGING-VERIFIED. Slice 7F-E.3a (email renderer + 7 tests) and 7F-E.3b (contract token + 5 EmailParams + 6 handlers) wired in code; 7F-E.3c migration written (5 templates → `{{{RegistrationBreakdownHtml}}}` via embedded resources, backed up to `email_template_backups` with tag `Phase7F_E_3`). Build green; full Application suite 2548/6/0. Pending: deploy + psycopg2 probe + email smoke (7F-E.3d), then 4a/4b.
 
 **Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
 1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
@@ -790,6 +790,12 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
    - Run negative-evidence smoke per `feedback_email_smoke.md`: register on B1 event, B2 event, B3 event, B4 event; for each fetch the rendered HTML from ACS log (or `email_messages` table if populated)
    - Assert the rendered fragment contains the per-tier table with N/A placeholders for un-captured axes
 - **Mandatory pre-flight**: probe staging DB body BEFORE writing the migration anchor (memory `feedback_template_body_is_authoritative.md`).
+
+#### 7F-E.3 close-out (2026-05-02)
+- [x] **7F-E.3a** — `RegistrationBreakdownEmailRenderer` ships inline-styled HTML matching Phase 7F-A warm-card aesthetic (cream background `#fefaf7`, brown border `#f3e4d5`); HTML-encodes lead name + tier name; returns empty string when no rows. 7 TDD tests cover Mode A (1 row), Mode B1 (NotCaptured both), B2 (Age captured), B3 (Gender captured), B4 (4-leaf), tiered (multi-row), and empty fallback.
+- [x] **7F-E.3b** — `EmailTemplateContract.RegistrationBreakdownHtml = "RegistrationBreakdownHtml"` constant added. 5 EmailParams classes gained `RegistrationBreakdownHtml` field + ToDictionary entry: `FreeEventRegistrationEmailParams`, `EventCancellationEmailParams`, `EventReminderEmailParams`, `AttendeesAddedEmailParams`, `RegistrationCancellationEmailParams`. 6 producer sites populate via `flex.registrationBreakdownHtml`: `RegistrationConfirmedEventHandler`, `AnonymousRegistrationConfirmedEventHandler`, `AttendeesAddedEventHandler`, `RegistrationCancelledEventHandler`, `EventCancellationEmailJob`, `EventReminderJob` (2 sites). `HeadCountEmailFormatter.Compute()` calls `RegistrationBreakdownEmailRenderer.Render` with try-catch fail-soft so renderer faults don't break email send.
+- [x] **7F-E.3c** — Migration `20260502040451_Phase7FE3_RegistrationBreakdownTemplateMigration` UPDATEs 5 templates from embedded resources (`Data/Migrations/Resources/Phase7F_E/*.html`, wired in `LankaConnect.Infrastructure.csproj`). 4 templates have `<!-- attendee-block-7e -->` inner replaced with `{{{RegistrationBreakdownHtml}}}`; paid-with-ticket gets a NEW anchor block inserted before `<!-- PAYMENT CONFIRMATION CARD -->` (fixes the user-reported gap where paid-event emails had no per-tier breakdown at all). Each pre-update body backed up to `communications.email_template_backups` with `migration_tag='Phase7F_E_3'`. `Down()` restores from that table. Build green; 2548/6/0 Application tests; 32 targeted Phase 7F-E tests pass.
+- [ ] **7F-E.3d** — Push to develop, wait for `deploy-staging.yml`, run psycopg2 probe of all 5 template lengths against staging DB (expected post-migration: 74185 / 84832 / 86158 / 71726 / 109254 +/- minor whitespace), then negative-evidence email smoke per `feedback_email_smoke.md`: register on B-mode event, confirm rendered HTML contains the new card with N/A placeholders for un-captured axes.
 
 ### 7F-E.4a — PDF ticket
 - **API smoke target**: ticket generation path — `GET /api/registrations/{id}/ticket-pdf` (or wherever)

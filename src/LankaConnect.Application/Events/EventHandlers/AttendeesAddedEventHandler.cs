@@ -288,6 +288,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
                     emailParams.TierBreakdownLine = flex.tierBreakdownLine;
                     emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                    emailParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
                 }
                 catch (Exception flexEx)
                 {

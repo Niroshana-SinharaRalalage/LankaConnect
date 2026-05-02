@@ -35,10 +35,39 @@ public static class HeadCountEmailFormatter
                           && registration.Attendees.Any();
         var hasHeadCount = registration.HeadCount != null;
 
+        // Phase 7F-E.3: build the structured per-tier HTML fragment via the shared
+        // RegistrationBreakdownEmailRenderer. Same shape across 5 templates.
+        // Mode A: derive from attendees. Mode B: derive from HeadCount.
+        string registrationBreakdownHtml = string.Empty;
+        try
+        {
+            RegistrationBreakdown? bd = null;
+            if (registration.HeadCount != null)
+            {
+                bd = RegistrationBreakdownFormatter.FromHeadCount(
+                    registration.HeadCount, registration.RegistrationMode);
+            }
+            else if (registration.Attendees.Any())
+            {
+                bd = RegistrationBreakdownFormatter.FromAttendees(registration.Attendees);
+            }
+            if (bd != null)
+            {
+                registrationBreakdownHtml = RegistrationBreakdownEmailRenderer.Render(
+                    bd, leadAttendeeName: registration.LeadAttendeeName);
+            }
+        }
+        catch
+        {
+            // Defensive fail-soft per architect: never block the email pipeline. If the
+            // renderer throws (shouldn't happen given input invariants), the legacy
+            // flat-line tokens still cover the visible block.
+            registrationBreakdownHtml = string.Empty;
+        }
+
         if (!hasHeadCount)
         {
-            // Mode A (or legacy single-attendee). Empty head-count strings; HasDetailedAttendees
-            // toggles the existing per-attendee block in the template.
+            // Mode A (or legacy single-attendee).
             return new FlexibleRegistrationDisplay(
                 hasDetailedAttendees: hasDetailed,
                 hasHeadCount: false,
@@ -47,7 +76,8 @@ public static class HeadCountEmailFormatter
                 headCountTotal: string.Empty,
                 headCountBreakdownLine: string.Empty,
                 tierBreakdownLine: string.Empty,
-                leadAttendeeName: string.Empty);
+                leadAttendeeName: string.Empty,
+                registrationBreakdownHtml: registrationBreakdownHtml);
         }
 
         // Mode B path.
@@ -63,7 +93,8 @@ public static class HeadCountEmailFormatter
             headCountTotal: hc.Total.ToString(),
             headCountBreakdownLine: demographicLine,
             tierBreakdownLine: tierLine,
-            leadAttendeeName: registration.LeadAttendeeName ?? string.Empty);
+            leadAttendeeName: registration.LeadAttendeeName ?? string.Empty,
+            registrationBreakdownHtml: registrationBreakdownHtml);
     }
 
     /// <summary>
@@ -171,4 +202,5 @@ public sealed record FlexibleRegistrationDisplay(
     string headCountTotal,
     string headCountBreakdownLine,
     string tierBreakdownLine,
-    string leadAttendeeName);
+    string leadAttendeeName,
+    string registrationBreakdownHtml);

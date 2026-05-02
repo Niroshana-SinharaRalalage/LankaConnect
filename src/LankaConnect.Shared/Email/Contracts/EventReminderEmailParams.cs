@@ -237,6 +237,9 @@ public class EventReminderEmailParams : IEmailParameters
     /// <summary>Phase 7F-A: Lead attendee name for Mode B registrations.</summary>
     public string LeadAttendeeName { get; set; } = string.Empty;
 
+    /// <summary>Phase 7F-E.3: pre-rendered per-tier HTML fragment with N/A placeholders.</summary>
+    public string RegistrationBreakdownHtml { get; set; } = string.Empty;
+
     #endregion
 
     #region IEmailParameters Implementation
@@ -300,6 +303,7 @@ public class EventReminderEmailParams : IEmailParameters
             { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
             { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
             { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            { EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml, RegistrationBreakdownHtml },
             { "LeadAttendeeName", LeadAttendeeName },
 
             // Footer

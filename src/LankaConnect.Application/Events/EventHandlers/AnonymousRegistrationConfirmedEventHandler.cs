@@ -182,6 +182,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                 emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
                 emailParams.TierBreakdownLine = flex.tierBreakdownLine;
                 emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                emailParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
 
                 // Set event image
                 emailParams.WithEventImage(eventImageUrl);

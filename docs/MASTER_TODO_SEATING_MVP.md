@@ -507,9 +507,11 @@ curl -i -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-## Slice S5 — SeatLocation value object + EF migration (4–5 days)
+## Slice S5 — SeatLocation value object + EF migration — DEFERRED to S7 polish
 
-**Goal**: eliminate the nullable-XOR vs EF cascade conflict. Domain model becomes self-documenting; orphan seat rows stop accumulating.
+**Decision (2026-05-03)**: deferred to post-MVP polish. The architect's stated motivation for S5 was "orphan seat rows stop accumulating" + "domain model becomes self-documenting." Re-checking the codebase: the orphan motivation is already addressed end-to-end (Slice 2+3 added the DB CHECK constraint enforcing the XOR; `VenueZoneConfiguration`/`VenueTableConfiguration` already configure `OnDelete.Cascade` on the seats FK, so zone/table delete cascades to seats; Slice S1.5's `HardDeleteByEventIdAsync` clears layout-level orphans before a new preset attaches). The remaining benefit is purely aesthetic — refactoring the nullable-XOR to a `SeatLocation` value object — and would touch ~12 real call sites (domain entities, command handlers, query handlers, EF configurations, repositories) plus a destructive DB migration. Risk vs user value is poor on the MVP timeline. **Reclassified to S7** below; original plan retained verbatim for traceability.
+
+**Goal (original)**: eliminate the nullable-XOR vs EF cascade conflict. Domain model becomes self-documenting; orphan seat rows stop accumulating.
 
 ### TDD red phase
 
@@ -606,6 +608,7 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4, S5 must run green 
 
 ## Slice S7 — Polish (post-MVP, ship at leisure)
 
+- [ ] **(reclassified from S5)** SeatLocation value object + EF migration: replace the nullable-XOR (`Seat.ZoneId XOR Seat.TableId`) with a `SeatLocation` value object. ~12 real call sites, 1 destructive migration. No user-visible benefit (orphans + cascades already correct). See deferred S5 section above for full plan.
 - [ ] Delete deprecated endpoints `from-preset` / `from-template` / `assign` + their hooks + repo methods (Slice 9.4c).
 - [ ] Capacity input on property panel for tables.
 - [ ] Curvature parameter for theater zones with curved fronts.

@@ -39,6 +39,7 @@ import { PresetLibraryModal } from './PresetLibraryModal';
 import { LayoutPreview } from './LayoutPreview';
 import { CanvasEditorModal } from './CanvasEditorModal';
 import type { LayoutPresetDto, VenueLayoutDto } from '@/infrastructure/api/types/events.types';
+import { TierMappingSummary } from './TierMappingSummary';
 
 // Re-export the imported hook so unused-import linting does not fire.
 // The hook is consumed inside <PresetLibraryModal/>; this keeps the
@@ -205,6 +206,13 @@ export function SeatingLayoutPicker({
               className="w-full aspect-[3/2] max-h-72"
               showSeats={layout.totalCapacity <= 200}
             />
+          </div>
+          {/* Slice S4 — read-only tier-mapping summary surfaced through
+              GET /api/venue-layouts/{id}/publish-readiness. Always visible
+              once a layout is attached so the organiser sees what's wired
+              up before they click "Customize". */}
+          <div className="border-t border-neutral-100 pt-3">
+            <TierMappingSummary layoutId={layout.id} />
           </div>
         </div>
       )}

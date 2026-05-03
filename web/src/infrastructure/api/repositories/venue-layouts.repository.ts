@@ -24,6 +24,7 @@ import type {
   CreateLayoutFromTemplateRequest,
   ApplyPresetToEventRequest,
   ApplyTemplateToEventRequest,
+  PublishReadinessReportDto,
 } from '../types/events.types';
 
 /**
@@ -185,6 +186,20 @@ export class VenueLayoutsRepository {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Slice S4 — non-gating publish-readiness snapshot. Returns every blocker +
+   * warning + per-tier mapping summary at once. Distinct from the strict
+   * publish gate (`POST /api/Events/{id}/publish`) which short-circuits on
+   * the first issue.
+   */
+  async getLayoutPublishReadiness(
+    layoutId: string,
+  ): Promise<PublishReadinessReportDto> {
+    return await apiClient.get<PublishReadinessReportDto>(
+      `${this.basePath}/${layoutId}/publish-readiness`,
+    );
   }
 
   /** Slice 5 Chunk 4 — update layout name/canvas. Requires If-Match. */

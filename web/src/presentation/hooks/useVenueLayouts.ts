@@ -39,6 +39,7 @@ import type {
   CreateLayoutFromTemplateRequest,
   ApplyPresetToEventRequest,
   ApplyTemplateToEventRequest,
+  PublishReadinessReportDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -55,6 +56,9 @@ export const venueLayoutKeys = {
   /** Slice 8 S8.10: per-user template list. Stable across mounts so the
    * "Mine" tab in PresetLibraryModal hits the cache on re-open. */
   userTemplates: [...['venue-layouts'] as const, 'my-templates'] as const,
+  /** Slice S4 — non-gating publish-readiness snapshot. */
+  publishReadiness: (id: string) =>
+    [...venueLayoutKeys.all, 'publish-readiness', id] as const,
 };
 
 /**
@@ -69,6 +73,35 @@ export function useVenueLayout(
     queryFn: () => venueLayoutsRepository.getLayout(layoutId!),
     enabled: !!layoutId,
     staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Slice S4 — non-gating publish-readiness snapshot.
+ *
+ * Returns every blocker + warning + per-tier mapping summary at once. Used
+ * by the canvas-editor sidebar and seating-section summary so the organiser
+ * can see the full fix list before attempting to publish. The strict
+ * publish gate is still `POST /api/Events/{id}/publish` (returns 422 on
+ * the first blocker via `Event.CheckLayoutPublishReadiness`).
+ *
+ * The hook re-fetches whenever any layout-scoped invalidation fires (the
+ * batch-update and apply-preset paths invalidate `venueLayoutKeys.all`,
+ * which encompasses this query key).
+ */
+export function useLayoutPublishReadiness(
+  layoutId: string | undefined,
+  options?: Omit<
+    UseQueryOptions<PublishReadinessReportDto, ApiError>,
+    'queryKey' | 'queryFn'
+  >,
+) {
+  return useQuery({
+    queryKey: venueLayoutKeys.publishReadiness(layoutId!),
+    queryFn: () => venueLayoutsRepository.getLayoutPublishReadiness(layoutId!),
+    enabled: !!layoutId,
+    staleTime: 30 * 1000,
     ...options,
   });
 }

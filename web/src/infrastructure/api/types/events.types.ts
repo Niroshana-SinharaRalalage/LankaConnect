@@ -3181,6 +3181,43 @@ export interface ApplyTemplateToEventRequest {
 }
 
 /**
+ * Slice S4 — DTOs for `GET /api/venue-layouts/{id}/publish-readiness`.
+ * Mirrors the backend `PublishReadinessReportDto` shape. Codes are strings
+ * (serialised from the `PublishReadinessCode` domain enum) so the FE doesn't
+ * have to keep a parallel TS enum in lockstep.
+ */
+export interface PublishReadinessReportDto {
+  isPublishReady: boolean;
+  blockers: PublishReadinessIssueDto[];
+  warnings: PublishReadinessIssueDto[];
+  tierSummary: TierMappingSummaryDto[];
+}
+
+export interface PublishReadinessIssueDto {
+  code: string;
+  message: string;
+  shapeId?: string | null;
+  shapeName?: string | null;
+  tierId?: string | null;
+  tierName?: string | null;
+}
+
+export interface TierMappingSummaryDto {
+  tierId: string;
+  tierName: string;
+  tierCapacity: number;
+  mappedZones: MappedShapeRefDto[];
+  mappedTables: MappedShapeRefDto[];
+  totalEnabledSeats: number;
+}
+
+export interface MappedShapeRefDto {
+  id: string;
+  name: string;
+  enabledSeatCount: number;
+}
+
+/**
  * Phase 7E.5 — query parameters for `GET /api/Events/allowed-registration-modes`.
  * Matches backend `GetAllowedRegistrationModesQuery` shape. All fields optional and default
  * to `false` server-side; the frontend Mode picker passes the current draft form-state on

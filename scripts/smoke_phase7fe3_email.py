@@ -99,8 +99,18 @@ def main() -> int:
     # Routing the smoke there lets the user visually verify the rendered breakdown card
     # (the database-side email_messages table is empty in staging — ACS-direct sends
     # don't persist there, so a live inbox is the only way to inspect rendered HTML).
+    #
+    # IMPORTANT: anonymous-register rejects member emails ("This email is already
+    # registered as a member. Please log in to register for events."), so we MUST use
+    # a Gmail '+tag' alias to bypass the duplicate-member check while still routing to
+    # the operator's inbox. Operator reported (2026-05-03) that some Gmail filters can
+    # send tagged variants to All Mail — if a smoke email isn't visible in the primary
+    # inbox, search Gmail for sender 'events@lankaconnect.app' across All Mail / Spam.
+    # For testing-via-authenticated-RSVP (which uses the user's plain account email),
+    # see scripts/smoke_phase7fe3_authenticated.py (TBD) once a B-mode event without
+    # an existing niroshhh registration is available.
     suffix = uuid.uuid4().hex[:8]
-    inbox = "niroshhh+7fe3@gmail.com"  # Gmail '+tag' addressing — same inbox
+    inbox = f"niroshhh+7fe3-{suffix}@gmail.com"
 
     smokes = [
         {

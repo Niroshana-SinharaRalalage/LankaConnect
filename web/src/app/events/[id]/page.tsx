@@ -1166,7 +1166,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               </div>
                             )}
 
-                            {/* Attendees Section - Show if we have attendees array with items */}
+                            {/* Attendees Section - Show if we have attendees array with items.
+                                Phase 7F-E.4b fix: under Mode B the attendees list is empty AND
+                                the breakdown card above already shows "Number of attendees" —
+                                so the legacy fallback line is suppressed when breakdown is set
+                                to avoid the duplicated count. */}
                             {registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
                               <div>
                                 <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
@@ -1190,11 +1194,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   ))}
                                 </div>
                               </div>
-                            ) : (
+                            ) : !registrationDetails.breakdown ? (
                               <div className="text-sm text-green-800 dark:text-green-200">
                                 <p>Number of attendees: {registrationDetails.quantity || userRsvp?.currentRegistrations || 1}</p>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         ) : (
                           <div className="text-sm text-green-800 dark:text-green-200">

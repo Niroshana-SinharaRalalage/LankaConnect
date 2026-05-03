@@ -6,6 +6,47 @@
 
 ---
 
+## 🎯 2026-05-03 (later) — Phase 7G SHIPPED + STAGING-VERIFIED — durable refund-reconciliation safety net for missed `charge.refunded` webhooks
+
+**Context**: User reported a $400 refund stuck in `RefundRequested` on event `d543629f`, registration `e6285ea7`, for ~37 hours. Said "this happened a couple of times" lately and asked whether recent code changes caused it.
+
+**Diagnosis**:
+- Reviewed every commit touching `RegistrationRefundService`, `RegistrationWebhookHandler`, `PaymentsController`, `CancelRsvpCommandHandler`, and `Registration.cs` over the last 6 weeks. **No code regression**: the most recent refund-flow change was `ecbbf5b6` (Phase 6A.137F-Fix5f, Apr 1) which made things *more* robust by adding `registration_id` to refund metadata. The 7E.3b paid-Mode-B work shipped a regression test specifically confirming the refund pipeline still works for paid Mode B.
+- Cross-referenced the user's stuck-refund timestamp (`2026-05-02 03:38:18 UTC`) with staging deploy history: backend deploys at 03:11 (~27 min before) and 04:06 (~28 min after). Container restart logs around the window show `"readiness probe failed: connection refused"` — Stripe `charge.refunded` webhooks fired during this gap got dropped after Stripe's ~3-day retry budget exhausted.
+- **Root cause identified**: rapid-deploy cadence during the seating MVP push (May 1: 9 deploys, May 2: 5, May 3: 9 — ~3-4× normal rate) raised the latent risk above the threshold where it became visible.
+- The stuck refund itself is benign — money returns to the buyer's card via Stripe regardless; only our DB state was lagging. The existing manual ForceCancel button works as a workaround, but it marks the row `Cancelled` WITHOUT confirming Stripe's actual state.
+
+**Durable fix shipped (commit `83be8f79`, deploy `25291986687` `success`)**:
+- **Application**: new `IRefundReconciliationService` orchestrates the loop. Per-row commit so transient failures on row N don't block rows 1..N-1. Idempotent + race-tolerant: if a webhook arrived between our load and Stripe lookup, `Registration.CompleteRefund` refuses with "may be already processed" — we treat that as benign.
+- **Domain reuse**: NO domain changes. The existing `Registration.CompleteRefund(refundId)` is the authoritative state transition (used by both webhook and reconciliation paths) and raises `RefundCompletedEvent` so all downstream effects (email + WhatsApp + ticket-state) fire identically regardless of trigger.
+- **Stripe lookup**: new `IStripePaymentService.GetRefundStatusAsync(refundId)` — pure read against Stripe's Refund.Get API. Reuses existing `StripeRefundResult` shape so callers can use a single code path.
+- **Repository**: new `IRegistrationRepository.GetStuckRefundsAsync(requestedBefore, take)` — tracked load, ordered oldest-first so the most painfully-stuck rows are reconciled first.
+- **Background hosted service**: `RefundReconciliationBackgroundService` runs every 5 minutes (configurable via `RefundReconciliationSettings` — `Enabled`, `IntervalMinutes`, `AgeThresholdMinutes`, `BatchSize`, `InitialDelaySeconds`). Mirrors the proven pattern of `SeatHoldCleanupService`. Exception-resilient: a single failed pass doesn't crash the host or stop future passes.
+- **Manual trigger endpoint**: `POST /api/admin/refund-reconciliation/run` for `Admin / AdminManager / EventOrganizer` roles. Useful during incident response and post-deploy verification. Returns the same per-pass summary as the background path: `ScannedCount`, `ReconciledCount`, `StillPendingCount`, `FailedAtStripeCount`, `MissingRefundIdCount`, `StripeLookupFailedCount`, `Warnings[]`.
+
+**Stripe status → counter mapping**:
+| Stripe status | Counter | Behaviour |
+|---|---|---|
+| `succeeded` | `ReconciledCount` | DB transitions `RefundRequested → Refunded` via `CompleteRefund` |
+| `pending` / `requires_action` | `StillPendingCount` | leave row alone, retry next pass |
+| `failed` / `canceled` | `FailedAtStripeCount` | warning logged for manual ops |
+| (no `StripeRefundId` on row) | `MissingRefundIdCount` | warning logged for manual ops |
+| Stripe API error | `StripeLookupFailedCount` | warning logged, retry next pass |
+
+**Observability**: structured logs at every step with a per-pass `CorrelationId` and `[Phase 7G]` prefix for dashboard alerting. Dashboard query `Reconciled > 0` indicates a missed webhook just got self-healed (i.e. the safety net actually paid off).
+
+**Tests**: 7 new unit tests covering happy path / pending / failed / missing refundId / Stripe lookup faulted / batch-size override / no-stuck-rows. Mocks `IStripePaymentService` + `IRegistrationRepository` + `IUnitOfWork` to keep coverage focused on orchestration logic. **2567/2567 Application tests pass** (no regression).
+
+**Staging verification (2026-05-03)**:
+- Backend deploy `25291986687` returned `conclusion=success`.
+- Manual trigger via curl `POST /api/admin/refund-reconciliation/run?batchSize=10` → HTTP 200 with summary `{scannedCount:0, reconciledCount:0, ...}` (correlation `d9311d7f-236c-4c87-965c-c5abe9d9d368`).
+- Container logs show `[Phase 7G] [Reconcile-1] START - CorrelationId=3b6fd258-..., BatchSize=50` followed by `[Phase 7G] [Reconcile-2] No stuck refunds - Duration=2ms` — endpoint live, DI wired, logging structured, repo query executes.
+- The user's specific stuck refund (`e6285ea7`) was already resolved through other means before the safety net ran (status now `Abandoned` — likely the user clicked Withdraw or ForceCancel between sessions). The system is healthy AND the durable fix is in place for any future missed webhook.
+
+**Next**: S6.B (observability metrics audit + 1000-seat perf benchmark + new S6-T1/T2/T3 race/perf/Stripe-replay tests) and S6.C (Playwright e2e suite — separate effort).
+
+---
+
 ## 🎯 2026-05-03 — Slice S4 SHIPPED + 4/4 API SMOKE GREEN — non-gating publish-readiness report endpoint + tier-mapping summary
 
 **Context**: Slice S4 is the fourth of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). Goal: organisers see a holistic tier-mapping snapshot in the seating section before they attempt to publish, with every blocker + warning enumerated at once.

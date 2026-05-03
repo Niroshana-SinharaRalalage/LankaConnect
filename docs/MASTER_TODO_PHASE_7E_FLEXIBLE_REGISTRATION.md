@@ -704,7 +704,7 @@ After **phase complete (7E.9)**:
 
 # Phase 7F-E — Registration Display Consistency Across Surfaces
 
-**Status**: 🚧 IN FLIGHT (2026-05-03) — Slices 7F-E.1, 7F-E.2, **7F-E.3** SHIPPED + STAGING-VERIFIED. 7F-E.3 close-out evidence: commit `27990602` deployed via run `25243524495`; psycopg2 probe PASS (5/5 templates carry new token, lengths match exactly, 5/5 backups present); email smoke PASS (B2 + B3 anon-register HTTP 200, container log `AnonymousRegistrationConfirmed COMPLETE` with zero exceptions). Pending: 4a (PDF ticket) + 4b (RSVP form merge).
+**Status**: 🚧 IN FLIGHT (2026-05-03) — Slices 7F-E.1, 7F-E.2, 7F-E.3, **7F-E.4a** SHIPPED + STAGING-VERIFIED. 7F-E.4a close-out evidence: commit `505ed846` deployed via run `25282974985`; PDF smoke PASS (Mode A keeps the per-attendee list AND adds the new breakdown summary; Mode B2 tiered shows `Tier: VIP × 4` / `Adult/Child: 2/2` / `Male/Female: N/A` — N/A on the un-captured gender axis as specified). Pending: 4b (RSVP form merge — write-side, ships LAST per architect).
 
 **Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
 1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
@@ -812,7 +812,10 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
 - [x] **Producer wiring** — `TicketService.cs` populates the field at all 3 PDF-build sites (`GenerateTicketAsync`, `RegeneratePdfAsync`, `RegenerateTicketPdfForRegistrationAsync`). The assembler is recomputed from the CURRENT registration each time so post-add-attendee regenerations (slice 7F-D path) reflect new counts.
 - [x] **Renderer** — `PdfTicketService.ComposeRegistrationBreakdown` adds a "Registration Breakdown" section after the per-attendee list and before the Payment section. Architect "in addition to" rule preserved: Mode A keeps the existing attendee list AND ALSO surfaces the breakdown; Mode B (no per-attendee data) uses the breakdown as the primary attendee block. Per-row layout: `Tier:` line iff tiered, then `Adult/Child:` and `Male/Female:` with `X/Y` or `N/A` per `BreakdownPair.Captured`.
 - [x] **Tests + build** — Application 2560/6/0 + Infrastructure 317/0/0 all green; zero compile warnings introduced.
-- [ ] **Staging deploy + API smoke** — push, wait for `deploy-staging.yml`, then exercise `GET /api/Events/{id}/registrations/{registrationId}/ticket-pdf` for a paid Mode-A and a paid Mode-B registration; download both PDFs and visually verify the new section renders correctly with N/A placeholders where applicable.
+- [x] **Staging deploy + API smoke** — commit `505ed846` deployed via run `25282974985` (success). `scripts/smoke_phase7fe4a_pdf.py`: logs in as `niroshhh@gmail.com`, clears `PdfBlobUrl` on a paid Mode-A and a paid Mode-B2 ticket to force regeneration via the new code path, downloads each through `GET /api/Events/{id}/my-registration/ticket/pdf` (200 / `application/pdf`), and asserts the extracted text contains the new section. Result PASS:
+   - **Mode A** (`fb32341f-...` Phase 6A.136 Payment Test): per-attendee bullet `• Niroshana Sinharage (Adult)` preserved AND new section renders `Total: 1 attendee(s)` / `Adult/Child: 1/0` / `Male/Female: 1/0` (architect "in addition to" rule satisfied).
+   - **Mode B2 tiered** (`e6285ea7-...` Christmas Dinner Dance 2025): no per-attendee list (Mode B has no detailed attendees), new section renders `Total: 4 attendee(s)` / `Tier: VIP × 4` / `Adult/Child: 2/2` / `Male/Female: N/A` (B2 captures Age, NotCaptured for Gender).
+   - PDFs saved to `c:/tmp/7fe4a-Mode_A-fb32341f.pdf` and `c:/tmp/7fe4a-Mode_B2-e6285ea7.pdf` for operator visual verification.
 
 ### 7F-E.4b — RSVP form merge
 - **API smoke target**: register through the new merged form on B2 + tiered + ChildPrice event, confirm the `tierCounts[]` payload carries `adultCount`/`childCount` per tier (not separate from a top-level age section)

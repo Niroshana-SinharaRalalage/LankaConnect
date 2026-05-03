@@ -30,4 +30,18 @@ public interface IRegistrationRepository : IRepository<Registration>
     /// Used by charge.refunded webhook handler as fallback when refund metadata is missing.
     /// </summary>
     Task<Registration?> GetByPaymentIntentIdAsync(string paymentIntentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 7G — returns registrations stuck in <see cref="RegistrationStatus.RefundRequested"/>
+    /// whose <see cref="Registration.RefundRequestedAt"/> is older than
+    /// <paramref name="requestedBefore"/>. Used by the refund-reconciliation
+    /// safety net to detect rows where the <c>charge.refunded</c> webhook was
+    /// missed (typically because the API container restarted mid-delivery).
+    /// Entities are loaded WITH change-tracking so the caller can complete the
+    /// state transition and persist via the existing <c>IUnitOfWork</c>.
+    /// </summary>
+    Task<IReadOnlyList<Registration>> GetStuckRefundsAsync(
+        DateTime requestedBefore,
+        int take,
+        CancellationToken cancellationToken = default);
 }

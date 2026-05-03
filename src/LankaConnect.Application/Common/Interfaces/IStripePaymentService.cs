@@ -37,6 +37,16 @@ public interface IStripePaymentService
     // Phase 6A.91: Create refund for a completed payment
     Task<Result<StripeRefundResult>> CreateRefundAsync(CreateRefundRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Phase 7G — fetches the current status of a Stripe refund by id, used by the
+    /// refund-reconciliation safety net to detect missed <c>charge.refunded</c>
+    /// webhooks. Returns the same <see cref="StripeRefundResult"/> shape as
+    /// <see cref="CreateRefundAsync"/> so callers can reuse <c>IsSucceeded</c>.
+    /// Failure means the lookup itself faulted (Stripe API error, refund id not
+    /// found) — caller should log and move on rather than escalate.
+    /// </summary>
+    Task<Result<StripeRefundResult>> GetRefundStatusAsync(string refundId, CancellationToken cancellationToken = default);
+
     // Add-Only Attendees Feature: Create checkout session for additional attendees
     Task<Result<AdditionCheckoutResult>> CreateAdditionCheckoutSessionAsync(
         CreateAdditionCheckoutSessionRequest request,

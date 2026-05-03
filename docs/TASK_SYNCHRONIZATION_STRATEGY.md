@@ -3554,3 +3554,22 @@ Infrastructure Integration:
 
 **Architect Recommendation Status**: ✅ SUCCESSFULLY EXECUTED - Systematic approach achieved massive error reduction enabling CI/CD deployment capability.
 
+
+---
+
+## Phase 7F-E Close-Out (2026-05-03)
+
+All 5 slices of Phase 7F-E (cross-surface registration display consistency) shipped to staging:
+- 7F-E.1 shared formatter
+- 7F-E.2 event-detail card
+- 7F-E.3 email migration (5 templates, embedded resources, backed up to `email_template_backups` with tag `Phase7F_E_3`)
+- 7F-E.4a PDF ticket renderer
+- 7F-E.4b RSVP form merged tier+demographic layout
+
+Backend & DB changes: 7F-E.3 only (5-template UPDATE migration, idempotent backup). 7F-E.1 / 4a / 4b are pure code; 7F-E.2 added a DTO field. No production deploy yet — all staging-verified, awaiting batch into next prod release window.
+
+**Outstanding cross-cutting items** (per `MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`):
+- Path-filter fallback on `deploy-ui-production.yml`
+- Orphan migration cleanup (`20260214230204_Phase6A113_*`)
+- UI test red-suite triage (217 failures pre-existing)
+

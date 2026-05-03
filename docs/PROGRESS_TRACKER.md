@@ -6270,3 +6270,19 @@ return await _context.EventForms
 **Commits**: `a6d58a14`, `b08e0740`
 
 ---
+
+## Phase 7F-E — Cross-Surface Registration Display Consistency (2026-05-01 → 2026-05-03)
+
+**Goal:** A single shared `RegistrationBreakdown` projection drives the email body, event-detail card, PDF ticket, and RSVP form so all four surfaces show the same per-tier × demographic table with explicit `N/A` placeholders for un-captured axes.
+
+| Slice | Commit | Deploy run | Evidence |
+|---|---|---|---|
+| 7F-E.1 — Shared formatter | `3e2b4280` | `25178…` | 25 unit tests covering Mode A + B1/B2/B3/B4 × tiered/non-tiered |
+| 7F-E.2 — Event-detail card + DTO | `764c1dea` + `582ff45f` | `2521…` | 9 RTL tests; staging API smoke confirmed `breakdown` field on registration GET |
+| 7F-E.3 — Email migration | `27990602` + `ae636fe3` | `25243524495` | psycopg2 probe: 5/5 templates have `{{{RegistrationBreakdownHtml}}}` token + 5/5 backups (`scripts/verify_phase7fe3_migration.py`); email smoke `AnonymousRegistrationConfirmed COMPLETE` no exceptions |
+| 7F-E.4a — PDF ticket | `505ed846` + `98345cd2` | `25282974985` | 8 assembler tests; PDF smoke `scripts/smoke_phase7fe4a_pdf.py` PASS — Mode A keeps per-attendee list AND adds breakdown; Mode B2 tiered shows `Tier: VIP × 4` / `Adult/Child: 2/2` / `Male/Female: N/A` |
+| 7F-E.4b — RSVP form merge | `fb2566f1` + `6a0fe3d8` (duplicate-line fix) + `93f8ab05` | `25284251135` + `25284684263` | 9 form tests; UI deploy success; backend untouched (per-tier values aggregate to existing wire fields on submit) |
+
+**Test counts**: Application 2560/6/0 + Infrastructure 317/0/0 + Web events feature 78/78 green.
+**Outstanding**: operator browser verification of merged form on B3+tiered / B4+tiered events. Master TODO: `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md`.
+

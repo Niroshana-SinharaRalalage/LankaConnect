@@ -8847,3 +8847,18 @@ This streamlined plan focuses on **getting to a working MVP fast** while maintai
 4. **Community Forums** - Forum system with moderation capabilities
 
 **Achievement:** Complete authentication system with zero failing tests!
+---
+
+## Phase 7F-E — Cross-Surface Registration Display Consistency (CLOSED 2026-05-03)
+
+**Status:** All 5 slices SHIPPED + STAGING-VERIFIED.
+
+Single shared `RegistrationBreakdown` projection (Application/Events/Common/RegistrationBreakdownFormatter.cs) drives 4 read surfaces (event-detail card, email body, PDF ticket, soon-to-be RSVP receipt) and the 1 write surface (HeadCountRsvpForm). All surfaces render identical per-tier × demographic tables with explicit `N/A` for axes the registration mode doesn't capture.
+
+Final deploy: UI run `25284684263` (duplicate-line fix). Master TODO: `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` carries the full evidence chain (commits, deploy runs, psycopg2 probe output, PDF smoke output).
+
+**Active follow-ups** (from `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md` "Deferred follow-ups"):
+1. Path-filter fallback on `deploy-ui-production.yml` (silent-skip edge case found during 2026-04-25 prod release)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing before 7F-E)
+3. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + `__EFMigrationsHistory` row
+

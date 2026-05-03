@@ -1,13 +1,23 @@
 name: Deploy UI to Azure Production
 
+# 2026-05-03 — `paths:` filter REMOVED (architect-approved fix for the 2026-04-25
+# silent-skip incident; see docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md
+# R-NEW). PR #103 (develop → main, 161 commits, 300+ files changed) tripped
+# GitHub's documented 300-file diff truncation, so web/** paths fell outside
+# the filter's view and the UI deploy silently skipped. Operator had to rescue
+# via `gh workflow run`. Trade-off: ~3-5 min CI per non-web push to main.
+# Reliability beats CI minutes — UI deploys must never silently skip on a prod
+# release merge again.
 on:
   push:
     branches:
       - main
-    paths:
-      - 'web/**'
-      - '.github/workflows/deploy-ui-production.yml'
   workflow_dispatch:
+
+# Run name surfaces the trigger SHA + event so the Actions list reads e.g.
+# "UI prod · 85aa3a71 · push" — makes it trivial to reconstruct whether a run
+# came from a push or a manual dispatch (rescue scenario).
+run-name: "UI prod · ${{ github.sha }} · ${{ github.event_name }}"
 
 env:
   AZURE_CONTAINER_REGISTRY: lankaconnectprod
@@ -27,6 +37,18 @@ jobs:
       # ========================================================================
       # PHASE 1: BUILD AND TEST
       # ========================================================================
+
+      - name: Annotate trigger source for observability
+        run: |
+          {
+            echo "### Trigger source"
+            echo ""
+            echo "- **Event:** \`${{ github.event_name }}\`"
+            echo "- **Actor:** \`${{ github.actor }}\`"
+            echo "- **SHA:** \`${{ github.sha }}\`"
+            echo "- **Ref:** \`${{ github.ref }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+        working-directory: .
 
       - name: Checkout code
         uses: actions/checkout@v4

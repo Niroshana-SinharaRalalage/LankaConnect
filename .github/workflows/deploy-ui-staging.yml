@@ -1,13 +1,22 @@
 name: Deploy UI to Azure Staging
 
+# 2026-05-03 — `paths:` filter REMOVED (architect-approved fix for the 2026-04-25
+# silent-skip incident; see docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md
+# R-NEW). GitHub's path-filter machinery hard-caps file enumeration at 300 files;
+# large merges (e.g. PR #103: 161 commits, 300+ files) push web/** paths past the
+# truncation cutoff and the workflow silently skips. Trade-off: ~3-5 min of CI
+# time per non-web push to develop. Reliability beats CI minutes — UI deploys
+# must never silently skip on a release-train merge.
 on:
   push:
     branches:
       - develop
-    paths:
-      - 'web/**'
-      - '.github/workflows/deploy-ui-staging.yml'
   workflow_dispatch:
+
+# Run name surfaces the trigger SHA + short message so the Actions list reads
+# e.g. "UI staging · 85aa3a71 · merge PR #103" — makes it trivial to reconstruct
+# whether a run came from a push or a manual dispatch.
+run-name: "UI staging · ${{ github.sha }} · ${{ github.event_name }}"
 
 env:
   AZURE_CONTAINER_REGISTRY: lankaconnectstaging
@@ -24,6 +33,18 @@ jobs:
         working-directory: ./web
 
     steps:
+      - name: Annotate trigger source for observability
+        run: |
+          {
+            echo "### Trigger source"
+            echo ""
+            echo "- **Event:** \`${{ github.event_name }}\`"
+            echo "- **Actor:** \`${{ github.actor }}\`"
+            echo "- **SHA:** \`${{ github.sha }}\`"
+            echo "- **Ref:** \`${{ github.ref }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+        working-directory: .
+
       - name: Checkout code
         uses: actions/checkout@v4
 

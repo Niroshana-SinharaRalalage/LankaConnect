@@ -3573,3 +3573,18 @@ Backend & DB changes: 7F-E.3 only (5-template UPDATE migration, idempotent backu
 - Orphan migration cleanup (`20260214230204_Phase6A113_*`)
 - UI test red-suite triage (217 failures pre-existing)
 
+
+---
+
+## R-NEW Close-Out (2026-05-03)
+
+CI path-filter silent-skip fix shipped to staging via commit `2a8e75e5`. Both UI deploy workflows (`deploy-ui-staging.yml`, `deploy-ui-production.yml`) updated with:
+- `paths:` filter removed (architect-approved Option a)
+- `run-name:` template surfacing SHA + event_name
+- "Annotate trigger source for observability" first step writing event_name/actor/sha/ref into $GITHUB_STEP_SUMMARY
+
+Backend deploy workflows unchanged (already had no path filter).
+
+Staging verification: post-fix push fired UI staging deploy (run 25291529488, conclusion success); the new run-name "UI staging · 2a8e75e5... · push" visible in Actions list; annotation step output captured in run summary.
+
+Pending verification: this very commit (a docs-only push with zero web/** files) must re-fire deploy-ui-staging.yml — under the OLD config it would have skipped; under the NEW config it MUST run. Result will be recorded in PROGRESS_TRACKER once observed.

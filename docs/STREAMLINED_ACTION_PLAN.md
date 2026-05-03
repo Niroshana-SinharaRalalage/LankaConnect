@@ -8862,3 +8862,14 @@ Final deploy: UI run `25284684263` (duplicate-line fix). Master TODO: `docs/MAST
 2. UI test red-suite triage (217 failed tests across 25 files — pre-existing before 7F-E)
 3. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + `__EFMigrationsHistory` row
 
+
+---
+
+## R-NEW (CI path-filter silent-skip) — CLOSED 2026-05-03
+
+`deploy-ui-staging.yml` + `deploy-ui-production.yml` now run on every push (no `paths:` filter). Architect-approved Option a from `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`. Bundled observability adds: `run-name:` with SHA + event, and a first step that annotates trigger metadata into `$GITHUB_STEP_SUMMARY`. Commit `2a8e75e5`; staging verification run `25291529488` success.
+
+**Remaining deferred follow-ups** (still open):
+1. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + matching `__EFMigrationsHistory` row removal
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing; classification a/b/c per architect protocol)
+3. Phase 7F-E batch into prod (5 slices ready, awaiting operator browser verification on B3/B4 merged form)

@@ -6286,3 +6286,23 @@ return await _context.EventForms
 **Test counts**: Application 2560/6/0 + Infrastructure 317/0/0 + Web events feature 78/78 green.
 **Outstanding**: operator browser verification of merged form on B3+tiered / B4+tiered events. Master TODO: `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md`.
 
+
+## CI Reliability — Path-Filter Silent-Skip Fix (R-NEW from prod release 2026-04-25)
+
+**Date:** 2026-05-03  **Commit:** `2a8e75e5`  **Status:** ✅ SHIPPED + VERIFIED on staging.
+
+**Problem:** During the 2026-04-25 prod release, `deploy-ui-production.yml` silently skipped despite PR #103 shipping 27+ web/** files. Operator had to rescue with `gh workflow run`. Root cause: GitHub's `paths:` filter machinery hard-caps file enumeration at 300 files; the 161-commit / 300+ file merge pushed web/** paths past the truncation cutoff and the filter matched nothing.
+
+**Fix (architect-approved Option a, applied symmetrically):**
+- Removed `paths:` filter from `deploy-ui-staging.yml` and `deploy-ui-production.yml`. Both now run on every push to their respective branches.
+- Added `run-name:` showing SHA + event so the Actions list reads "UI staging · <sha> · push" — distinguishes auto pushes from manual dispatches at a glance.
+- Added a first step that echoes `event_name`/`actor`/`sha`/`ref` into `$GITHUB_STEP_SUMMARY` for run-history forensics.
+- Backend deploys (`deploy-staging.yml`, `deploy-production.yml`) already had no path filter — left unchanged.
+
+**Verification:**
+1. Commit-push on the workflow change itself: `deploy-ui-staging.yml` ran (run `25291529488`, conclusion success). New run-name visible. Annotation step echoed `Event: push / Actor: Niroshana-SinharaRalalage / SHA: 2a8e75e5...` into the summary.
+2. Doc-only push (this commit, zero web/** files) re-runs `deploy-ui-staging.yml` to confirm path filter is truly gone (verification recorded in next entry).
+
+**Trade-off:** ~3-5 min wasted CI per non-web push to develop/main. Accepted because the alternative — silent skip on a release-train merge — is far worse (forces manual rescue, easy to miss).
+
+**Files touched:** `.github/workflows/deploy-ui-staging.yml`, `.github/workflows/deploy-ui-production.yml`. Master TODO R-NEW closed in `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`.

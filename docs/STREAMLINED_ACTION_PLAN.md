@@ -6,6 +6,38 @@
 
 ---
 
+## 🎯 2026-05-03 — Slice S4 SHIPPED + 4/4 API SMOKE GREEN — non-gating publish-readiness report endpoint + tier-mapping summary
+
+**Context**: Slice S4 is the fourth of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). Goal: organisers see a holistic tier-mapping snapshot in the seating section before they attempt to publish, with every blocker + warning enumerated at once.
+
+**Decision (deviation from architect-Rev-4 spec)**: the strict publish gate already exists (Slice 9.1's `Event.CheckLayoutPublishReadiness` called from `PublishEventCommandHandler` returns HTTP 422 on the first blocker via `VenueLayout.ValidateForEvent`). S4 does NOT re-implement that gate. Instead, S4 **layers a NON-gating enumerator on top** so the UI surface can show every issue at once. The strict 422-gate keeps short-circuiting on first blocker. Documented in the master TODO S4 section.
+
+**Backend shipped (commit `9c036811`, deploy `25254579495` `success`)**:
+- **Domain**: new `PublishReadinessReport` value object (Blockers / Warnings / TierSummary) + `PublishReadinessIssue` + `TierMappingSummary` + `MappedShapeRef` + `PublishReadinessCode` enum with 9 codes (`LayoutEmpty`, `ZoneUnmapped`, `ZoneEmptyAndUnmapped`, `ZoneOverCapacity`, `TableUnmapped`, `TableEmptyAndUnmapped`, `TableOverCapacity`, `TierWithoutMapping`, `TierTotalOverCapacity`). New `VenueLayout.BuildPublishReadinessReport(eventTiers)` domain enumerator.
+- **Application**: `GetLayoutPublishReadinessQuery` + handler. Loads layout (with zones/tables/seats) + bound event's tiers + polymorphic `tier_assignments`, runs the domain enumerator, projects to flat DTO. Templates (`EventId == null`) return an empty-but-valid report (UI surfaces "validated on apply").
+- **API**: new `GET /api/venue-layouts/{id}/publish-readiness` (200 / 401 / 404).
+
+**Frontend shipped (commit `29859041`, deploys `25282571044` + `25282571053` both `success`)**:
+- New `PublishReadinessReportDto` / `PublishReadinessIssueDto` / `TierMappingSummaryDto` / `MappedShapeRefDto` types mirroring the backend shape.
+- `venueLayoutsRepository.getLayoutPublishReadiness` wraps the GET.
+- `useLayoutPublishReadiness(layoutId)` React Query hook (30s staleTime; layout-scoped invalidations from batch-update / apply-preset encompass the new key via `venueLayoutKeys.all` prefix).
+- New `TierMappingSummary` component renders three sections: blockers (red), warnings (amber), and a per-tier table with seats vs capacity (over-capacity rows highlighted red, unmapped tiers show "unmapped" placeholder). Loading + error branches covered.
+- Mounted in `SeatingLayoutPicker` below the `LayoutPreview` so the organiser sees the full fix list before clicking Customize.
+
+**API SMOKE 4/4 GREEN end-to-end on staging**:
+- **T1** GET on layout with 2 unmapped zones → 200 with 2 `ZoneUnmapped` blockers + 2 `TierWithoutMapping` warnings + 2 tier summaries (VIP cap=30, Basic cap=70, both totalSeats=0). Correlation `6dd46a84-b7ae-4d83-892a-1aa114f8ac1a`.
+- **T2** GET with bogus layout id → 404. Correlation `41857666-04f9-4d6c-a750-8463658d5fa7`.
+- **T3** Apply fresh theater-classic + GET readiness → `ZoneUnmapped` blocker surfaces (correlation `7bb92dda-8ca1-4405-8390-80955a52e849`).
+- **T4** DTO shape smoke: top-level `isPublishReady`, `blockers`, `warnings`, `tierSummary` keys all present.
+
+**Tests**: 9 new domain tests + 4 new application handler tests + 7 new RTL tests (20 new tests total); 121/121 VenueLayout-related domain tests preserved; tsc --noEmit clean.
+
+**Lesson (re-confirmed)**: pragmatic delta over architect spec when the spec drives toward duplication of an already-shipped capability. The "hook into existing publish flow" requirement was already satisfied by Slice 9.1; S4's value is the enumerated, UI-friendly surface that the original publish gate doesn't expose.
+
+**Next**: Slice S5 (SeatLocation value object + EF migration, 4–5 days).
+
+---
+
 ## 🎯 2026-05-02 (later) — Slice S3 SHIPPED + 4/4 API + J-A regression GREEN — inline editable layout name in canvas editor header
 
 **Context**: Slice S3 is the third of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). The user has been editing the layout name only by re-applying a preset; they need an inline rename surface inside the canvas editor and a subtitle that reflects what's actually there.

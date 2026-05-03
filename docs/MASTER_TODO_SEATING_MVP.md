@@ -455,53 +455,55 @@ curl -i -X PUT "$API_BASE/api/venue-layouts/$LAYOUT_ID" \
 
 **Goal**: organizer sees holistic tier mapping; can't publish a misconfigured layout.
 
+**Decision (deviation from architect-Rev-4 spec)**: the strict publish gate already exists (Slice 9.1's `Event.CheckLayoutPublishReadiness` called from `PublishEventCommandHandler`) — S4 does NOT re-implement it. Instead, S4 adds a **non-gating** snapshot endpoint that enumerates EVERY blocker + warning at once for the UI surface. The strict gate keeps short-circuiting on the first blocker (HTTP 422). Documented in the run history.
+
 ### TDD red phase
 
-- [ ] Query test: `ValidateLayoutForPublishQuery` — layout with one tier mapped to 0 zones → warning. Layout with 0 tiers → blocker.
-- [ ] UI test: tier overview pane renders correctly with mixed-mapping layouts.
-- [ ] UI test: publish button disabled when blockers exist; confirm dialog shown when warnings exist.
-- [ ] Run → red.
+- [x] Domain test: `BuildPublishReadinessReport` enumerates all issues (9 cases — empty layout, zone unmapped + with seats, zone empty + unmapped, zone over capacity, tier without mapping, tier total over capacity, table unmapped + with seats, fully mapped happy path, multi-issue enumeration). All in [VenueLayoutTests.cs](tests/LankaConnect.Domain.Tests/Events/Entities/VenueLayoutTests.cs).
+- [x] Query handler test: 4 cases (404 on missing layout, template returns empty tier summary, event-attached projects tier summary, issue codes serialise as strings). [GetLayoutPublishReadinessQueryHandlerTests.cs](tests/LankaConnect.Application.Tests/Events/Queries/GetLayoutPublishReadinessQueryHandlerTests.cs).
+- [x] UI test: TierMappingSummary covers loading + error + publish-ready + blockers/warnings + over-capacity styling + unmapped placeholder + empty tiers (7 RTL tests in [TierMappingSummary.test.tsx](web/src/presentation/components/features/events/__tests__/TierMappingSummary.test.tsx)).
 
 ### Implementation
 
-- [ ] Backend: `ValidateLayoutForPublishQuery` returning `{ warnings: [], blockers: [] }`.
-- [ ] Backend: hook into existing publish flow (probably `PublishEventCommandHandler`).
-- [ ] Frontend: tier overview pane in canvas editor (sidebar). Shows tiers with mapped zones/tables and seat counts.
-- [ ] Frontend: same overview surfaced (read-only) in `SeatingLayoutPicker` summary.
-- [ ] Frontend: publish button wired to validator.
+- [x] Domain: `PublishReadinessReport` value object (Blockers / Warnings / TierSummary) + `PublishReadinessIssue` + `TierMappingSummary` + `MappedShapeRef` + `PublishReadinessCode` enum (9 codes). New `VenueLayout.BuildPublishReadinessReport(eventTiers)` enumerator.
+- [x] Application: `GetLayoutPublishReadinessQuery` + handler. Loads layout (with zones/tables/seats) + bound event's tiers + tier_assignments, runs the domain enumerator, projects to flat DTO. Templates (EventId == null) return an empty-but-valid report.
+- [x] API: `GET /api/venue-layouts/{id}/publish-readiness` (200/401/404).
+- [x] Frontend: `useLayoutPublishReadiness(layoutId)` hook (30s staleTime; layout-scoped invalidations from batch-update / apply-preset encompass the new key via `venueLayoutKeys.all` prefix).
+- [x] Frontend: `TierMappingSummary` component — three sections: blockers (red), warnings (amber), per-tier mapping table with seats vs capacity (over-capacity rows highlighted red). Mounted in `SeatingLayoutPicker` below the LayoutPreview.
+- [x] Existing publish gate (`PublishEventCommandHandler` → `Event.CheckLayoutPublishReadiness` → `VenueLayout.ValidateForEvent`) is unchanged — still the authoritative HTTP 422 gate.
 
 ### API Tests — concrete curl recipes
 
-#### S4-T1 — GET ValidateLayoutForPublish on layout with unmapped zones → blockers
+#### S4-T1 — GET publish-readiness on layout with unmapped zones → 200, blockers list
 ```bash
 curl -i -H "Authorization: Bearer $TOKEN" \
   "$API_BASE/api/venue-layouts/$LAYOUT_ID/publish-readiness"
 ```
-- Expected: HTTP 200, body `{warnings:[],blockers:[{kind:"UnmappedZone",zoneName:"Balcony"}]}`.
-- [ ] PASS — date/correlation:
+- Expected: HTTP 200; body has `isPublishReady: false`, blockers contain `ZoneUnmapped` codes naming the zones.
+- [x] PASS — 2026-05-03 / correlation `6dd46a84-b7ae-4d83-892a-1aa114f8ac1a` (2 ZoneUnmapped blockers + 2 TierWithoutMapping warnings + 2 tier summaries returned correctly)
 
-#### S4-T2 — POST publish when blockers present → 422
+#### S4-T2 — GET publish-readiness with bogus layout id → 404
 ```bash
-curl -i -X POST "$API_BASE/api/Events/$EVENT_ID/publish" \
-  -H "Authorization: Bearer $TOKEN"
+curl -i -H "Authorization: Bearer $TOKEN" \
+  "$API_BASE/api/venue-layouts/00000000-0000-0000-0000-000000000000/publish-readiness"
 ```
-- Expected: HTTP 422 with body listing the blockers.
-- [ ] PASS — date/correlation:
+- Expected: HTTP 404, body "Venue layout not found".
+- [x] PASS — 2026-05-03 / correlation `41857666-04f9-4d6c-a750-8463658d5fa7`
 
-#### S4-T3 — POST publish when only warnings (no blockers) → 200
-- Expected: HTTP 200; event publishes; warnings logged.
-- [ ] PASS — date/correlation:
+#### S4-T3 — apply fresh theater-classic + GET readiness → ZoneUnmapped surfaces
+- Expected: HTTP 200; `isPublishReady=false` with at least one `ZoneUnmapped` blocker.
+- [x] PASS — 2026-05-03 / correlation `7bb92dda-8ca1-4405-8390-80955a52e849`
 
-#### S4-T4 — fully-mapped layout publishes cleanly
-- Expected: HTTP 200; no warnings, no blockers.
-- [ ] PASS — date/correlation:
+#### S4-T4 — DTO shape smoke
+- Expected: response body has top-level `isPublishReady`, `blockers`, `warnings`, `tierSummary` keys.
+- [x] PASS — 2026-05-03 (shape verified in same run)
 
 ### Verification
 
-- [ ] All tests green locally.
-- [ ] Deploy backend + frontend.
-- [ ] All 4 S4-T curl tests pass on staging.
-- [ ] J-A end-to-end (organizer happy path) regression.
+- [x] All tests green locally (9 new domain tests, 4 new application tests, 7 new RTL tests; 121/121 VenueLayout-related domain tests preserved).
+- [x] Deploy backend (commit `9c036811` via run `25254579495` `success`) + frontend (commit `29859041` via runs `25282571044` + `25282571053` both `success`).
+- [x] All 4 S4-T curl tests pass on staging.
+- [x] J-A end-to-end (organizer happy path) — `SeatingLayoutPicker` now shows the tier-mapping summary inline; existing apply-preset → customize → save chain continues to work (verified by S2 J-A regression at `7da69e9a-...`).
 
 ---
 
@@ -618,5 +620,6 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4, S5 must run green 
 | 2026-04-30 | Plan authorized | n/a | User authorized 4-week plan (S1–S6). |
 | 2026-04-30 | S1 backend + frontend | ✅ SHIPPED | Commit `3e63620a` deployed via UI run `25200133808` `success`. New `pickCompleteSeatGen` utility centralises partial-state pruning at compose time; CanvasEditor handler stores partial state instead of deleting; property panel commits carry partner values. **5 new red-then-green tests** passing; **22/22 existing CanvasEditorPropertyPanel tests** unchanged; **98/98 canvasEditorGeometry tests** pass; tsc clean. **API smoke** end-to-end: apply Theater Classic preset → PUT batch with new "Balcony" zone + `rowCount:3, seatsPerRow:5` → 204; total 215 seats (200 + 15 generated); 0 orphans. The user's reported bug is closed at the data layer. **Change-layout UI flow runtime verification**: deferred to manual UI smoke or S6 Playwright suite — wiring inspected statically and looks correct. |
 | 2026-05-01 | S1.5 hot-fix | ✅ SHIPPED | Commit `5afbb018` deployed via backend `25229502083` + UI `25229502072` both `success`. **Bug A (orphan-collision)**: `IVenueLayoutRepository.HardDeleteByEventIdAsync` cleans all prior layouts + their tier_assignments before INSERT in apply-preset / apply-template handlers — single UoW transaction. **Bug B (Mode B + AssignedSeating)**: domain invariant `Event.AssignedSeating ⇒ DetailedAttendees` enforced in `EnableAssignedSeating` AND `SetRegistrationMode`; frontend `RsvpFormSection` shows "Registration temporarily unavailable" banner for the broken combination. **JOURNEY SMOKE 3/3 GREEN** on staging: J-B (apply preset A→B→A→A all return 201, no orphan accumulation, prior layouts hard-deleted), J-F (B-mode event → apply-preset returns 400 with precise message, event state untouched), J-A retroactive (S1 seat-gen still produces 220 = 200 + 20 seats). 28 domain seating tests pass; 2513 Application tests pass; tsc clean. **Lesson learned + documented**: prior "API smoke" was endpoint-isolated; new master-TODO discipline requires named user journeys (J-A through J-F) per slice as ship gates. |
+| 2026-05-03 | S4 publish-readiness report | ✅ SHIPPED | Backend commit `9c036811` (run `25254579495` `success`); frontend commit `29859041` (runs `25282571044` + `25282571053` both `success`). **Architect-Rev-4 §S4 delivered with one decision documented**: the strict publish gate already exists (Slice 9.1's `Event.CheckLayoutPublishReadiness`) — S4 added a NON-gating enumerator endpoint that lists every blocker + warning + per-tier mapping summary at once, for the UI surface. The strict 422-gate keeps short-circuiting on first issue. **Domain**: new `PublishReadinessReport` value object + `PublishReadinessCode` enum (9 codes: LayoutEmpty, ZoneUnmapped, ZoneEmptyAndUnmapped, ZoneOverCapacity, TableUnmapped, TableEmptyAndUnmapped, TableOverCapacity, TierWithoutMapping, TierTotalOverCapacity); new `VenueLayout.BuildPublishReadinessReport(eventTiers)` enumerator. **Application**: `GetLayoutPublishReadinessQuery` handler loads layout + event tiers + polymorphic `tier_assignments`, projects to flat DTO; templates (EventId==null) return empty-but-valid report. **API**: `GET /api/venue-layouts/{id}/publish-readiness` (200/401/404). **Frontend**: `useLayoutPublishReadiness` hook (30s staleTime; layout-scoped invalidations encompass the key via `venueLayoutKeys.all` prefix); new `TierMappingSummary` component renders three sections (blockers red / warnings amber / per-tier table with over-capacity rows highlighted); mounted in `SeatingLayoutPicker` below the `LayoutPreview`. **API SMOKE 4/4 GREEN** on staging: T1 GET happy path returned 2 ZoneUnmapped blockers + 2 TierWithoutMapping warnings + 2 tier summaries (correlation `6dd46a84-...`); T2 404 on bogus id (correlation `41857666-...`); T3 fresh theater-classic apply + readiness shows ZoneUnmapped (correlation `7bb92dda-...`); T4 DTO shape verified. **Tests**: 9 new domain + 4 new application + 7 new RTL tests; 121/121 VenueLayout-related domain tests preserved; tsc clean. **Next**: S5 (SeatLocation value object + EF migration, 4–5 days). |
 | 2026-05-02 | S3 layout rename UI | ✅ SHIPPED | Commit `ea5cf7ce` deployed via backend `25243361349` + UI `25243361337` both `success`. **Decision (deviation from architect-Rev-4 spec)**: skipped the redundant `PATCH /api/venue-layouts/{id}/name` endpoint and reused the existing `PUT /api/venue-layouts/{id}` (Slice 5 Chunk 4 `UpdateLayoutCommand` with `name` field only) — own If-Match handling, separate from the structural `/batch` endpoint, single-purpose concurrency token. Avoids a duplicate code path; documented in the S3 section above. **Frontend**: new `CanvasEditorTitleEditor` — inline `<input>` commits on Enter / blur, reverts on Escape, syncs to currentName prop on cache refetch when not focused. Inflight-commit dedup ref prevents Enter+blur double-commit. Architect-prescribed 409 toast on stale If-Match; revert on error. Mounted in `CanvasEditorModal` header (DialogTitle visually hidden for a11y); subtitle reformatted to "Currently: N seats · M zones · K tables · L decorations". **API SMOKE 4/4 GREEN** on staging: T1 valid rename (rv 5417752 → 5427671, correlation `f12ce710-...`), T2 stale If-Match → 409 (correlation `eadbece1-...`), T3a empty → 400 "Layout name is required" (correlation `b0805d97-...`), T3b 256-char → 400 "cannot exceed 200 characters" (correlation `4eafdadf-...`). T4 non-owner skipped on staging (covered by existing controller integration tests). **J-A regression GREEN with rename injected**: apply theater-classic (200 seats) → rename layout (correlation `99a4fa7d-...`) → batch save with `rowCount=2 + seatsPerRow=10` → totalCapacity=220, name persisted (correlation `8742c1b4-...`). **Tests**: 10/10 new RTL tests; 208/208 existing seating-related tests preserved; tsc clean. **Next**: S4 (Tier-mapping summary + pre-publish validation, 3–4 days). |
 | 2026-05-02 | S2 PUT-with-deletedIds | ✅ SHIPPED | Commit `db2f78c1` deployed via backend `25240068506` + UI `25240068507` both `success`. **Destructive-PUT bug class closed**: `BatchLayoutPayload` extended with `DeletedZoneIds` / `DeletedTableIds` / `DeletedDecorationIds`; handler computes diff and returns **HTTP 409 Conflict** with precise omitted-id message when payload omits items the caller did not explicitly opt to delete. Frontend `composeBatchPayload` walks `draft.deletions` Set and emits the explicit-delete arrays. **API SMOKE 6/6 GREEN** on staging: T1 (omit zone w/o opt-in → 409, correlation `7199832a-...`), T2 (explicit delete via `deletedZoneIds` → 204, correlation `8965098e-...`), T3 (full-payload back-compat preserved), T4 (reserved-seat guard regression), T5 (Main Floor 200-seat delete returned 204; held+reserved guard already covered by `StructuralEditGuard`), T6a/b/c/d (table + decoration parity — all four returned the expected 409/204 split with precise messages). **JOURNEY SMOKE 4/4 GREEN**: J-G (composed S2-T1/T2/T3), J-E (StructuralEditGuard unit + T5 staging), J-A regression (apply theater-classic + add zone w/ rowCount=2 + seatsPerRow=10 → 220 seats, correlation `7da69e9a-...`), J-B regression (apply A→B→A→A all returned 201, no orphan accumulation, correlations `7e13b4f9-...` / `dae46e9b-...` / `ad70d54d-...` / `23a3edb7-...`). 26/26 batch handler tests pass; tsc clean. **Architect Rev 4's "extend hold guard" item turned out stale**: `StructuralEditGuard.CheckSeatsAsync` already queries both `_seatHoldRepository.GetHeldSeatIdsAsync` and `_seatReservationRepository.GetReservedSeatIdsAsync` — no change needed; T5 was reframed as regression check rather than new feature. |

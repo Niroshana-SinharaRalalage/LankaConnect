@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
@@ -151,6 +152,10 @@ public class TicketService : ITicketService
                 ticketType = @event.IsFree() ? "Free Entry" : "General Admission";
             }
 
+            // Phase 7F-E.4a: Build cross-surface registration breakdown for the PDF.
+            // Same projection used by email + event-detail card so all surfaces stay aligned.
+            var breakdown = TicketPdfRegistrationBreakdownAssembler.Build(registration);
+
             // Generate PDF
             var pdfData = new TicketPdfData
             {
@@ -168,7 +173,8 @@ public class TicketService : ITicketService
                 AmountPaid = registration.TotalPrice?.Amount ?? 0m,
                 PaymentDate = DateTime.UtcNow,
                 TimeZoneId = @event.TimeZoneId,
-                TicketType = ticketType
+                TicketType = ticketType,
+                RegistrationBreakdown = breakdown
             };
 
             var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);
@@ -329,6 +335,9 @@ public class TicketService : ITicketService
             ? registration.Attendees.First().Name
             : "Guest";
 
+        // Phase 7F-E.4a: Cross-surface registration breakdown.
+        var breakdown = TicketPdfRegistrationBreakdownAssembler.Build(registration);
+
         var pdfData = new TicketPdfData
         {
             TicketCode = ticket.TicketCode,
@@ -344,7 +353,8 @@ public class TicketService : ITicketService
             Attendees = attendees,
             AmountPaid = registration.TotalPrice?.Amount ?? 0m,
             PaymentDate = DateTime.UtcNow,
-            TimeZoneId = @event.TimeZoneId
+            TimeZoneId = @event.TimeZoneId,
+            RegistrationBreakdown = breakdown
         };
 
         var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);
@@ -437,6 +447,10 @@ public class TicketService : ITicketService
                 "[Phase 6A.X] Building PDF with updated attendees - AttendeeCount={AttendeeCount}, Names={Names}",
                 attendees.Count, string.Join(", ", attendees.Select(a => a.Name)));
 
+            // Phase 7F-E.4a: Cross-surface registration breakdown — recomputed from the
+            // CURRENT registration so post-add-attendee regeneration reflects new counts.
+            var breakdown = TicketPdfRegistrationBreakdownAssembler.Build(registration);
+
             // 6. Generate new PDF with updated attendee list
             var pdfData = new TicketPdfData
             {
@@ -453,7 +467,8 @@ public class TicketService : ITicketService
                 Attendees = attendees,
                 AmountPaid = registration.TotalPrice?.Amount ?? 0m,
                 PaymentDate = DateTime.UtcNow,
-                TimeZoneId = @event.TimeZoneId
+                TimeZoneId = @event.TimeZoneId,
+                RegistrationBreakdown = breakdown
             };
 
             var pdfResult = _pdfTicketService.GenerateTicketPdf(pdfData);

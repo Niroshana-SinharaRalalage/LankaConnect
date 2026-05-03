@@ -806,6 +806,14 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
    - Visually inspect: per-tier table renders with N/A placeholders where mode doesn't capture an axis
    - Mode A regression: existing PDF still shows the attendee-name list AND adds the breakdown summary block
 
+#### 7F-E.4a close-out (2026-05-03)
+- [x] **Assembler** — `TicketPdfRegistrationBreakdownAssembler.Build(Registration)` dispatches to `RegistrationBreakdownFormatter.FromAttendees` (Mode A) or `FromHeadCount(headCount, mode)` (Mode B); returns null on null/empty registration. 8 unit tests in `Phase7FE4aTicketPdfBreakdownAssemblerTests.cs` cover Mode A non-tiered + tiered, B1/B2/B3/B4 non-tiered, B2 tiered, and the null-registration defensive path.
+- [x] **DTO extension** — `TicketPdfData` (in `IPdfTicketService.cs`) gains `RegistrationBreakdown? RegistrationBreakdown { get; init; }`.
+- [x] **Producer wiring** — `TicketService.cs` populates the field at all 3 PDF-build sites (`GenerateTicketAsync`, `RegeneratePdfAsync`, `RegenerateTicketPdfForRegistrationAsync`). The assembler is recomputed from the CURRENT registration each time so post-add-attendee regenerations (slice 7F-D path) reflect new counts.
+- [x] **Renderer** — `PdfTicketService.ComposeRegistrationBreakdown` adds a "Registration Breakdown" section after the per-attendee list and before the Payment section. Architect "in addition to" rule preserved: Mode A keeps the existing attendee list AND ALSO surfaces the breakdown; Mode B (no per-attendee data) uses the breakdown as the primary attendee block. Per-row layout: `Tier:` line iff tiered, then `Adult/Child:` and `Male/Female:` with `X/Y` or `N/A` per `BreakdownPair.Captured`.
+- [x] **Tests + build** — Application 2560/6/0 + Infrastructure 317/0/0 all green; zero compile warnings introduced.
+- [ ] **Staging deploy + API smoke** — push, wait for `deploy-staging.yml`, then exercise `GET /api/Events/{id}/registrations/{registrationId}/ticket-pdf` for a paid Mode-A and a paid Mode-B registration; download both PDFs and visually verify the new section renders correctly with N/A placeholders where applicable.
+
 ### 7F-E.4b — RSVP form merge
 - **API smoke target**: register through the new merged form on B2 + tiered + ChildPrice event, confirm the `tierCounts[]` payload carries `adultCount`/`childCount` per tier (not separate from a top-level age section)
 - **What to verify**:

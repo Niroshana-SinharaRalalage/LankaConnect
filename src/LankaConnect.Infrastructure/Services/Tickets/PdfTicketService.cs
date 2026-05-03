@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 using LankaConnect.Shared.Email.Helpers;
 using Microsoft.Extensions.Logging;
@@ -164,6 +165,12 @@ public class PdfTicketService : IPdfTicketService
                     });
                 }
 
+                // Phase 7F-E.4a: Cross-surface registration breakdown.
+                // Architect "in addition to" rule: Mode A keeps the per-attendee list
+                // above AND ALSO surfaces this summary; Mode B has no per-attendee list
+                // (data.Attendees is empty), so this becomes the primary attendee block.
+                ComposeRegistrationBreakdown(column, data.RegistrationBreakdown);
+
                 column.Item().PaddingTop(10);
 
                 // Payment Section
@@ -223,6 +230,63 @@ public class PdfTicketService : IPdfTicketService
                     .FontColor(Colors.Grey.Darken2);
             });
         });
+    }
+
+    /// <summary>
+    /// Phase 7F-E.4a: Renders the cross-surface registration breakdown — same per-tier
+    /// × demographic table that the email and event-detail card now show. Skipped
+    /// silently when <paramref name="breakdown"/> is null (legacy registrations created
+    /// before 7F-E.4a) or has no rows. "N/A" placeholders surface for axes the
+    /// registration mode doesn't capture (e.g. B2 → Gender shows "N/A", B3 → Age shows
+    /// "N/A").
+    /// </summary>
+    private static void ComposeRegistrationBreakdown(
+        QuestPDF.Fluent.ColumnDescriptor column, RegistrationBreakdown? breakdown)
+    {
+        if (breakdown is null || breakdown.Rows.Count == 0)
+            return;
+
+        column.Item().PaddingTop(10);
+
+        column.Item().Text("Registration Breakdown")
+            .FontSize(11)
+            .Bold()
+            .FontColor(Colors.Grey.Darken2);
+
+        column.Item().Row(r =>
+        {
+            r.ConstantItem(80).Text("Total:").Bold();
+            r.RelativeItem().Text($"{breakdown.TotalAttendees} attendee(s)");
+        });
+
+        foreach (var row in breakdown.Rows)
+        {
+            // Tier header (only if multi-row / tiered)
+            if (!string.IsNullOrWhiteSpace(row.TierName))
+            {
+                column.Item().PaddingTop(2).Row(r =>
+                {
+                    r.ConstantItem(80).Text("Tier:").Bold();
+                    r.RelativeItem().Text($"{row.TierName} × {row.Count}").Bold();
+                });
+            }
+
+            // Adult/Child line — "X/Y" when captured, "N/A" otherwise
+            var ageValue = row.Age.Captured ? $"{row.Age.Left}/{row.Age.Right}" : "N/A";
+            column.Item().Row(r =>
+            {
+                r.ConstantItem(80).Text($"{row.Age.LeftLabel}/{row.Age.RightLabel}:");
+                r.RelativeItem().Text(ageValue);
+            });
+
+            // Male/Female line — "X/Y" when captured, "N/A" otherwise
+            var genderValue = row.Gender.Captured ? $"{row.Gender.Left}/{row.Gender.Right}" : "N/A";
+            column.Item().Row(r =>
+            {
+                r.ConstantItem(80).Text($"{row.Gender.LeftLabel}/{row.Gender.RightLabel}:");
+                r.RelativeItem().Text(genderValue);
+            });
+        }
     }
 
     private static void ComposeFooter(IContainer container, TicketPdfData data)

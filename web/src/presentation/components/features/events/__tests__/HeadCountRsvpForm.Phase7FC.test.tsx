@@ -9,14 +9,23 @@ import {
 } from '@/infrastructure/api/types/events.types';
 
 /**
- * Phase 7F-C.3 — per-tier-by-age opt-in toggle behaviour in `HeadCountRsvpForm`.
+ * Phase 7F-C.3 (updated for 7F-E.4b architect-approved 2026-05-01):
  *
- * Architect Q2 + Q6 calls being tested:
- *   - Default: age-unaware (no toggle visible until user picks at least one ticket).
- *   - Opt-in: clicking the toggle reveals Adults / Children spinners summing to the tier total.
- *   - Q6: tiers with `hasChildPricing === false` MUST NOT show the toggle; instead, a helper
- *     line explains "children billed at adult price."
- *   - Toggle is only meaningful in B2 / B4 modes — hidden in B1 / B3 even when child pricing is on.
+ * Phase 7F-C originally introduced an OPT-IN per-tier-by-age toggle in B2/B4 modes.
+ * Phase 7F-E.4b (this slice) shifts that to ALWAYS-ON for B2 + tiered + ChildPrice
+ * (the "merged-age" layout) and introduces analogous merges for B3 (gender) and B4
+ * (4-leaf). The opt-in toggle therefore disappears in the B2 merged-age path; it
+ * remains only as a no-op safety net in the B4 path (which uses the 4-leaf merge,
+ * not the age merge).
+ *
+ * Architect Q4 + Q6 calls being tested:
+ *   - Default: B1 + tiered never shows the toggle (no demographic axis at all).
+ *   - B2 + tiered + ChildPrice: per-tier Adults / Children spinners are ALWAYS visible
+ *     (no opt-in toggle).
+ *   - B2 + tiered without ChildPrice on a tier (Q6): no per-tier age spinners on that
+ *     tier; instead, a helper line explains "children billed at adult price."
+ *   - B2 + tiered without ChildPrice on ANY tier: top-level Adults / Children stay
+ *     visible (architect rule — pricing depends on those numbers).
  */
 
 vi.mock('@/presentation/store/useAuthStore', () => ({
@@ -50,7 +59,7 @@ function makeTier(overrides: Partial<TicketTierDto> = {}): TicketTierDto {
 
 const noopSubmit = async () => {};
 
-describe('HeadCountRsvpForm — Phase 7F-C per-tier-by-age toggle', () => {
+describe('HeadCountRsvpForm — Phase 7F-C / 7F-E.4b per-tier merged layouts', () => {
   it('hides the per-age toggle in B1 mode even when the tier has child pricing', () => {
     render(
       <HeadCountRsvpForm
@@ -66,12 +75,11 @@ describe('HeadCountRsvpForm — Phase 7F-C per-tier-by-age toggle', () => {
       />,
     );
 
-    // Bump the tier count so the toggle row would appear if it existed.
     fireEvent.click(screen.getByLabelText(/Increment/i));
     expect(screen.queryByText(/Add per-age split/i)).not.toBeInTheDocument();
   });
 
-  it('shows the per-age toggle in B2 mode after selecting a ticket on a tier with ChildPrice', () => {
+  it('B2 + tiered + ChildPrice: per-tier Adults/Children always visible (no opt-in toggle)', () => {
     render(
       <HeadCountRsvpForm
         eventId="evt"
@@ -86,15 +94,21 @@ describe('HeadCountRsvpForm — Phase 7F-C per-tier-by-age toggle', () => {
       />,
     );
 
-    expect(screen.queryByText(/Add per-age split/i)).not.toBeInTheDocument();
-    // B2 + tiered shows three Increment buttons (tier, demographic adults, demographic children).
-    // The tier increment is rendered first inside the tier-card section.
+    // Pick 2 tickets on the tier — the per-tier Adults / Children spinners should appear
+    // immediately (no opt-in toggle).
     const incrementButtons = screen.getAllByLabelText(/Increment/i);
-    fireEvent.click(incrementButtons[0]); // tier count: 0 → 1
-    expect(screen.getByText(/Add per-age split/i)).toBeInTheDocument();
+    fireEvent.click(incrementButtons[0]); // 0 → 1
+    fireEvent.click(incrementButtons[0]); // 1 → 2
+
+    // Toggle is REMOVED under the merged-age layout.
+    expect(screen.queryByText(/Add per-age split/i)).not.toBeInTheDocument();
+    // Per-tier Adults / Children spinners are visible (the only ones on the form —
+    // top-level demographic block is hidden under the merged layout).
+    expect(screen.getByLabelText(/^Adults$/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Children$/)).toBeInTheDocument();
   });
 
-  it('hides the toggle and shows the helper line when the tier has no ChildPrice (architect Q6)', () => {
+  it('B2 + tiered without ChildPrice on a tier: no per-tier spinners on that tier (architect Q6)', () => {
     const adultOnly = makeTier({
       id: 'tier-std',
       name: 'Standard',
@@ -119,12 +133,24 @@ describe('HeadCountRsvpForm — Phase 7F-C per-tier-by-age toggle', () => {
     );
 
     const incrementButtons = screen.getAllByLabelText(/Increment/i);
-    fireEvent.click(incrementButtons[0]); // tier count: 0 → 1
+    fireEvent.click(incrementButtons[0]);
     expect(screen.queryByText(/Add per-age split/i)).not.toBeInTheDocument();
     expect(screen.getByText(/children are billed at adult price/i)).toBeInTheDocument();
   });
 
-  it('reveals Adults / Children spinners when the toggle is checked', () => {
+  it('B2 + tiered with NO ChildPrice on ANY tier: top-level Adults / Children visible', () => {
+    // When no tier offers child pricing, the merged-age layout does NOT activate. The
+    // top-level Adults / Children block stays visible because pricing depends on the
+    // (registration-level) age split.
+    const adultOnly = makeTier({
+      id: 'tier-std',
+      name: 'Standard',
+      childPriceAmount: null,
+      childPriceCurrency: null,
+      childAgeLimit: null,
+      hasChildPricing: false,
+    });
+
     render(
       <HeadCountRsvpForm
         eventId="evt"
@@ -135,27 +161,11 @@ describe('HeadCountRsvpForm — Phase 7F-C per-tier-by-age toggle', () => {
         isProcessing={false}
         onSubmit={noopSubmit}
         ticketingMode={TicketingMode.Tiered}
-        ticketTiers={[makeTier()]}
+        ticketTiers={[adultOnly]}
       />,
     );
 
-    // Pick 3 tickets first (so the toggle row + age spinners are meaningful)
-    const incrementButtons = screen.getAllByLabelText(/Increment/i);
-    // first increment button is the tier count
-    fireEvent.click(incrementButtons[0]);
-    fireEvent.click(incrementButtons[0]);
-    fireEvent.click(incrementButtons[0]);
-
-    const toggle = screen.getByLabelText(/Add per-age split/i);
-    expect(screen.queryByLabelText(/^Adults$/)).toBeInTheDocument(); // demographic adults spinner already exists
-    // Toggle on — the per-tier age leaves should appear
-    fireEvent.click(toggle);
-    // After the toggle, additional Adults/Children spinners under the tier card render —
-    // they have the same label, so we expect the count to grow by 2 vs pre-toggle.
-    const allAdultSpinners = screen.getAllByLabelText(/^Adults$/);
-    const allChildrenSpinners = screen.getAllByLabelText(/^Children$/);
-    // Exactly two each: the demographic-axis spinner + the per-tier-age spinner.
-    expect(allAdultSpinners.length).toBe(2);
-    expect(allChildrenSpinners.length).toBe(2);
+    expect(screen.getByLabelText(/^Adults$/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Children$/)).toBeInTheDocument();
   });
 });

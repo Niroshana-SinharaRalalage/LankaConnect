@@ -704,7 +704,7 @@ After **phase complete (7E.9)**:
 
 # Phase 7F-E — Registration Display Consistency Across Surfaces
 
-**Status**: 🚧 IN FLIGHT (2026-05-03) — Slices 7F-E.1, 7F-E.2, 7F-E.3, **7F-E.4a** SHIPPED + STAGING-VERIFIED. 7F-E.4a close-out evidence: commit `505ed846` deployed via run `25282974985`; PDF smoke PASS (Mode A keeps the per-attendee list AND adds the new breakdown summary; Mode B2 tiered shows `Tier: VIP × 4` / `Adult/Child: 2/2` / `Male/Female: N/A` — N/A on the un-captured gender axis as specified). Pending: 4b (RSVP form merge — write-side, ships LAST per architect).
+**Status**: 🚧 IN FLIGHT (2026-05-03) — Slices 7F-E.1, 7F-E.2, 7F-E.3, 7F-E.4a, **7F-E.4b** code-complete and unit-test-green; final UI deploy + browser smoke pending. 7F-E.4b adds per-tier Males/Females (B3) + per-tier 4-leaf (B4) merged layouts, makes B2+tiered+ChildPrice age split always-on, hides top-level demographic block under merged layout, and aggregates per-tier values to registration-level on submit. 9/9 unit tests + 78/78 events feature suite green; backend untouched (UI-only change).
 
 **Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
 1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
@@ -823,6 +823,15 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
    - Network panel of the form submission shows the merged payload shape
    - Resulting `head_count` JSONB on the registration row has per-tier `AdultCount`/`ChildCount` fields populated
    - B1 / B3 paths still work (form falls back to non-merged for B1; B3 always merges per architect rule)
+
+#### 7F-E.4b close-out (2026-05-03)
+- [x] **Form** — `HeadCountRsvpForm.tsx`: added `mergeAge` / `mergeGender` / `mergeFourLeaf` / `mergedLayout` auto-detect derivations matching architect Q4 rules. Per-tier `tierGenderSplit` (B3) and `tierFourLeaf` (B4) state added with auto-rebalance effects + `updateGenderLeaf` / `updateFourLeaf` clamping helpers.
+- [x] **Render** — Per-tier Adults/Children spinners are now ALWAYS visible under each tier card when `mergeAge` is on (B2 + tiered + ChildPrice on at least one tier; opt-in toggle removed for that path). New B3 tiered → per-tier Males/Females. New B4 tiered → per-tier 4-leaf (AM / AF / CM / CF). Tiers without ChildPrice in B2 still surface the "billed at adult price" helper.
+- [x] **Top-level visibility** — Top-level demographic block is HIDDEN when `mergedLayout === true` (no double-entry). When the merged layout is OFF (non-tiered B-modes, B1+tiered, or B2+tiered with NO tier offering ChildPrice), the top-level block stays visible and the form behaves exactly as before.
+- [x] **Submit aggregation** — Under merged layout, registration-level `adults`/`children`/`males`/`females`/`adultMales`/etc. are derived by summing the per-tier values; under non-merged layout, the user-entered top-level values are sent as-is. Per-tier age uses the existing `TierCountDto.adultCount`/`childCount` wire fields (Phase 7F-C); per-tier gender / 4-leaf are UI-only (gender has no per-tier pricing dependency, so per-tier capture is purely a UX improvement).
+- [x] **Validation update** — The 7F-C cross-axis sum check (per-tier adults must equal demographic adults) is skipped when `mergedLayout` is on (the merged layout makes mismatch impossible by construction).
+- [x] **Tests** — `Phase7FC.test.tsx` rewritten for the new always-on B2 behavior + B2 no-ChildPrice fall-back; new `Phase7FE4b.test.tsx` covers B3 tiered, B4 tiered, B3 non-tiered, B4 non-tiered, B1 tiered. 9/9 green; full events feature suite 78/78 green.
+- [ ] **Staging deploy + browser test** — push, wait for `deploy-ui-staging.yml`, then open the staging UI and create test registrations on a B3+tiered and B4+tiered event; verify per-tier spinners are inline, top-level demographic section is hidden, submitted payload aggregates correctly. Backend is untouched (no API or database changes).
 
 ### Cross-slice operator testing checkpoints (UI-testable from user side)
 

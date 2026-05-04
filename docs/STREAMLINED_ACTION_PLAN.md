@@ -8949,3 +8949,14 @@ Final deploy: UI run `25284684263` (duplicate-line fix). Master TODO: `docs/MAST
 1. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + matching `__EFMigrationsHistory` row removal
 2. UI test red-suite triage (217 failed tests across 25 files — pre-existing; classification a/b/c per architect protocol)
 3. Phase 7F-E batch into prod (5 slices ready, awaiting operator browser verification on B3/B4 merged form)
+
+---
+
+## R-NEW-2 + B4 Test Event Setup — CLOSED 2026-05-03
+
+- Orphan migration `20260214230204_Phase6A113_*.cs` deleted (architect Outcome A: hand-authored, no Designer, never applied; subsequent Phase 7C.2/7F-A overwrites achieved the desired template end-state). Build green; full backend test suites 2567/6/0 + 317/0/0.
+- B4 + tiered staging event `616e59f3-df84-4662-a9e3-18f285c00ac5` created via `scripts/create_b4_tiered_test_event.py` to close the operator-flagged gap (zero published B4 events meant the merged 4-leaf path had no real-world coverage). Two tiers: VIP (with ChildPrice) and Standard (no ChildPrice). Status=Published, future-dated 2026-05-14.
+
+**Remaining deferred follow-ups** (still open):
+1. Phase 7F-E batch into prod (5 slices ready; awaiting operator browser verification on B3 + B4 events)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)

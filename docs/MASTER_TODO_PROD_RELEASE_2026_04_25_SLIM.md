@@ -170,9 +170,7 @@ Look for:
 
 - **Three-doc sync** (CLAUDE.md §7): `PROGRESS_TRACKER.md`, `STREAMLINED_ACTION_PLAN.md`,
   `TASK_SYNCHRONIZATION_STRATEGY.md`
-- **Delete orphan migration**
-  `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` +
-  matching `__EFMigrationsHistory` row removal (low-risk housekeeping; pair them)
+- **Delete orphan migration** — ✅ **CLOSED 2026-05-03.** Architect-reviewed audit (Outcome A from procedure): the orphan source file `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` was hand-authored without a `.Designer.cs`, never carried a `[Migration]` attribute, was therefore invisible to EF Core and never applied. Confirmed `__EFMigrationsHistory` has zero rows for the timestamp — the master TODO line about removing a history row was wrong; nothing to delete from any DB. Pre-delete audit (`scripts/verify_phase7fe3_migration.py` pattern, read-only psycopg2): all 13 affected templates already carry the "View Signup Forms" button thanks to subsequent Phase 7C.2 / 7F-A overwrites — desired end-state achieved. Source file removed via `git rm`; `dotnet build LankaConnect.sln` succeeded (0 errors); Application 2567/6/0 + Infrastructure 317/0/0 suites green. Zero references to timestamp `20260214230204` remain anywhere in the project.
 - **UI test red-suite triage** (full classification (a) test bug / (b) impl bug
   / (c) flake per prior session)
 

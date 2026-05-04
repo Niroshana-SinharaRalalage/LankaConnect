@@ -6310,3 +6310,19 @@ return await _context.EventForms
 **Trade-off:** ~3-5 min wasted CI per non-web push to develop/main. Accepted because the alternative — silent skip on a release-train merge — is far worse (forces manual rescue, easy to miss).
 
 **Files touched:** `.github/workflows/deploy-ui-staging.yml`, `.github/workflows/deploy-ui-production.yml`. Master TODO R-NEW closed in `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`.
+
+## Orphan Migration Cleanup + B4 Test Event (R-NEW-2 close-out, 2026-05-03)
+
+**Two pieces of housekeeping in one session:**
+
+### Orphan migration deletion
+- **File removed:** `src/LankaConnect.Infrastructure/Data/Migrations/20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` (13,612 bytes, hand-authored Feb 14, no `.Designer.cs`).
+- **Why orphan:** Per MEMORY.md "Critical: NEVER Hand-Create EF Core Migration Files" — without `.Designer.cs`, the `[Migration]` attribute is missing, EF silently ignores the file. `__EFMigrationsHistory` confirmed zero rows; the migration never ran.
+- **Pre-delete audit (read-only psycopg2):** All 13 templates the orphan would have touched already carry the "View Signup Forms" button (last updated 2026-03-07 to 2026-04-21 via Phase 7C.2 / 7F-A migrations) — desired end-state achieved through later work.
+- **Architect procedure followed:** Outcome A (pure source delete, no DB write, no replacement migration needed). `git rm` + `dotnet build LankaConnect.sln` (0 errors) + Application 2567/6/0 + Infrastructure 317/0/0 suites green.
+
+### B4 + Tiered staging event for browser verification
+- **Gap discovered:** Operator browser-tested 7F-E.4b on B3 events but flagged "I don't see any B4 events." DB query confirmed: zero published B4 events on staging. The merged 4-leaf code path had only unit-test coverage.
+- **Fix:** Created `7F-E.4b smoke B4 tiered (delete after test)` event id `616e59f3-df84-4662-a9e3-18f285c00ac5` via `scripts/create_b4_tiered_test_event.py`. Two tiers added: **VIP** ($50 adult + $25 child price → tests ChildPrice path) and **Standard** ($30 adult only → tests no-ChildPrice helper). Event is Published, future-dated (2026-05-14), capacity 50.
+- **DB verification:** event row registration_mode=4, ticketing_mode=Tiered, IsFreeEvent=False, Status=Published. Both tier rows confirmed in `public.ticket_tiers` with correct prices.
+- **Browser checklist** (operator action): visit `https://lankaconnect-ui-staging.../events/616e59f3-...` → click RSVP → bump VIP / Standard tier counts → expect per-tier 4-leaf spinners (Adult Males / Adult Females / Child Males / Child Females) to appear inline; no separate top-level demographic block; submit and verify network panel `headCount` aggregates the four leaves across tiers.

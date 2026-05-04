@@ -3588,3 +3588,18 @@ Backend deploy workflows unchanged (already had no path filter).
 Staging verification: post-fix push fired UI staging deploy (run 25291529488, conclusion success); the new run-name "UI staging · 2a8e75e5... · push" visible in Actions list; annotation step output captured in run summary.
 
 Pending verification: this very commit (a docs-only push with zero web/** files) must re-fire deploy-ui-staging.yml — under the OLD config it would have skipped; under the NEW config it MUST run. Result will be recorded in PROGRESS_TRACKER once observed.
+
+---
+
+## R-NEW-2 + B4 Coverage Close-Out (2026-05-03)
+
+R-NEW-2 (orphan migration cleanup) shipped in this session. Architect-approved audit confirmed:
+- File hand-created in Feb 2026 without Designer; never applied to any environment.
+- All 13 affected templates already updated with the "View Signup Forms" button via later Phase 7C.2/7F-A overwrites.
+- Pure source delete with no DB write; build + test suites green post-removal.
+
+B4 staging coverage gap closed via creation of event `616e59f3-df84-4662-a9e3-18f285c00ac5` (registration_mode=4, ticketing_mode=Tiered). Operator now has events for both B3 (existing `69d4c455-...`) and B4 to exercise the 7F-E.4b merged-form layouts before the prod batch.
+
+**Outstanding cross-cutting items:**
+- Phase 7F-E prod batch (gated on operator browser verification of B3 + B4 events)
+- UI test red-suite triage (217 failures pre-existing)

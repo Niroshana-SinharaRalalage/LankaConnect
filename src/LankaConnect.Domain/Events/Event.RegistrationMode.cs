@@ -736,10 +736,16 @@ public partial class Event
             return zero.IsSuccess ? Result<Money>.Success(zero.Value) : Result<Money>.Failure(zero.Errors);
         }
 
-        // Defensive: paid event must have pricing configured.
-        if (!IsFreeEvent && Pricing == null && TicketPrice == null)
+        // Pricing-Guard Fix 2026-05-04: a paid event is well-formed when ANY of three
+        // pricing shapes is configured (legacy Pricing, legacy TicketPrice, OR Tiered
+        // with active tiers). Pre-fix this checked only the legacy shapes and rejected
+        // paid+Tiered events created without a redundant SetDualPricing call (latent
+        // bug exposed by 7F-E.4b operator browser test on event 616e59f3-...).
+        // See HasPaidPricingConfigured() in Event.cs and EventPaidPricingGuardTests.
+        if (!IsFreeEvent && !HasPaidPricingConfigured())
             return Result<Money>.Failure(
-                "Paid event pricing is not configured. Use SetPricing(), SetDualPricing(), or SetGroupPricing().");
+                "This event is marked as paid but has no pricing configured. " +
+                "Add ticket tiers, set a ticket price, or mark the event as free before accepting registrations.");
 
         // Phase 7E.3c (2026-04-29): lifted the PaidHeadCountTiersDeferred gates. Tiered
         // ticketing now uses TierCounts pricing; standalone TierCounts (without tiered

@@ -196,8 +196,14 @@ public class EventIsFreeEventFlagTests
         var exception = Assert.Throws<InvalidOperationException>(() =>
             @event.CalculatePriceForAttendees(attendees));
 
-        Assert.Contains("pricing is not configured", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("paid event", exception.Message, StringComparison.OrdinalIgnoreCase);
+        // Pricing-Guard Fix 2026-05-04 — message sanitised, no longer leaks domain method
+        // names (SetPricing/SetDualPricing/SetGroupPricing). Spirit preserved: paid event +
+        // no pricing → throws with a clear user-facing explanation.
+        Assert.Contains("no pricing configured", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("paid", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("SetPricing(", exception.Message);
+        Assert.DoesNotContain("SetDualPricing(", exception.Message);
+        Assert.DoesNotContain("SetGroupPricing(", exception.Message);
     }
 
     [Fact]

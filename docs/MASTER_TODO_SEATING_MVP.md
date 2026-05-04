@@ -574,10 +574,10 @@ Migration verification: post-regenerate, run `SELECT count(*) FROM events.seats 
 
 ### Observability
 
-- [ ] Metrics: `canvas_editor.session_started`, `canvas_editor.save_succeeded`, `canvas_editor.save_failed{reason}`, `canvas_editor.session_abandoned`. Plus existing `layout.structural_edit_rejected`.
-- [ ] Hold lifecycle metrics: `seat_hold.created`, `seat_hold.expired`, `seat_hold.converted_to_reservation`.
-- [ ] Logs: every save with `{layoutId, eventId, organizerId, changesCount, durationMs}`.
-- [ ] Alerts: canvas-editor save error rate > 5% in 5 min → page on-call.
+- [x] Metrics: `canvas_editor.session_started` (≈ existing `layout.canvas_editor_opened`), `canvas_editor.save_succeeded` (≈ existing `layout.canvas_editor_saved`), **`canvas_editor.save_failed{reason}` shipped 2026-05-04 (commit `7b5ddcaa`)**, `canvas_editor.session_abandoned` deferred (needs session-id tracking). Plus existing `layout.structural_edit_rejected`.
+- [x] Hold lifecycle metrics: **`seat_hold.created` + `seat_hold.expired` shipped 2026-05-04 (commit `7b5ddcaa`)**. `seat_hold.converted_to_reservation` blocked on missing hold→reservation conversion code path (`SeatReservation` rows are never written in production today — this is a feature gap, not a metric gap; see PROGRESS_TRACKER.md 2026-05-04 latest entry).
+- [ ] Logs: every save with `{layoutId, eventId, organizerId, changesCount, durationMs}` — partial (layoutId + changesCount emitted; eventId/organizerId/durationMs not yet).
+- [ ] Alerts: canvas-editor save error rate > 5% in 5 min → page on-call (infrastructure config, not code).
 
 ### Perf
 

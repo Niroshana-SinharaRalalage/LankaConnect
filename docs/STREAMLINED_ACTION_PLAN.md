@@ -6,6 +6,58 @@
 
 ---
 
+## 🎯 2026-05-04 (latest) — Phase 7H observability follow-up SHIPPED + STAGING-VERIFIED — 3 missing metrics now emit
+
+**Goal**: close the observability gap documented yesterday. The architect §S6 dashboard spec required 9 metrics; 6 were already emitting; 5 were missing. Today's push closes 3 of the 5; the remaining 2 are blocked by separate concerns (documented below).
+
+**Search-before-write findings**:
+- ✅ Existing metric pattern (`Metric {MetricName} ...` Serilog template) is well-established in `LayoutMetrics`. Reused the convention rather than inventing a new emitter.
+- ⚠️ **Significant finding**: `SeatReservation` rows are **NEVER written** in production code. `SeatReservation.Create` is only called from tests. The read-side (`StructuralEditGuard.GetReservedSeatIdsAsync`, `GetSeatAvailability`) queries an empty table. This means `seat_hold.converted_to_reservation` is unimplementable until the conversion path itself is built — it's not a missing-metric, it's a missing-feature. Documented as a separate ticket scope; the metric will land alongside the conversion code.
+
+**Shipped (commit `7b5ddcaa`, deploy `25299584869` `success`)**:
+- New `ISeatHoldMetrics` interface + `SeatHoldMetrics` implementation. Two methods: `SeatHoldCreated(eventId, seatCount)`, `SeatHoldExpired(expiredCount)`. Mirrors the proven `LayoutMetrics` pattern (structured Serilog, `Metric {MetricName}` template, low-cardinality tags only).
+- `ILayoutMetrics.LayoutCanvasEditorSaveFailed(layoutId, reason)` added — `reason` is a fixed-set string tag (`validation_failed` / `auth_failed` / `not_found` / `concurrency_conflict` / `structural_edit_rejected`).
+- DI registration in `Application/DependencyInjection.cs`.
+- Wire-ups (try-catch'd so observability never blocks user paths):
+  - `HoldSeatsCommandHandler` → `SeatHoldCreated` after successful hold + commit.
+  - `SeatHoldCleanupService` → `SeatHoldExpired(count)` every cleanup pass, even at count=0 (alive-signal for the cleanup service).
+  - `BatchUpdateLayoutCommandHandler` → `LayoutCanvasEditorSaveFailed` at 6 explicit early-return Failure points, with reason tag mapped from the failure path. Helper method `EmitSaveFailed` keeps the call sites compact.
+
+**Tests**: 4 new (3 `SeatHoldMetricsTests` + 1 `LayoutMetricsTests` for save_failed). The existing 25-ish handler tests that mock `ILayoutMetrics`/`ISeatHoldMetrics` were unaffected — Moq tolerates the new dependencies via default setup. **2573/2573 Application tests pass** — no regressions.
+
+**Staging verification**:
+- Triggered hold-seats + structural-edit-failure scenario via curl on staging.
+- Container logs show all 3 new Metric lines with correct correlation IDs:
+  - `Metric seat_hold.created EventId=e4792b64-... SeatCount=3` (correlation `f37c7ac5-5eeb-42c4-b8fa-66b866fc5d7d`)
+  - `Metric seat_hold.expired ExpiredCount=0` (background cleanup pass — fired without a triggering event, proves the alive-signal works)
+  - `Metric canvas_editor.save_failed LayoutId=91a8615c-... Reason=structural_edit_rejected` (correlation `946ed62c-a314-4e07-b7cc-8dd6f191418e` — matches the user-facing 422 response cid, dashboard alerts can join on this)
+- Per-pass log line is one-shot, low-volume (~1/min for `seat_hold.expired`, on-demand for the others) — safe for production log retention.
+
+**Still missing from architect spec (deliberately)**:
+| Metric | Reason for non-emission |
+|---|---|
+| `canvas_editor.session_abandoned` | Needs session-id tracking on the open-vs-save lifecycle (frontend would need to send session-id via `recordCanvasEditorOpened` and the backend would track abandonment via no-save-after-N-min). Separate slice. |
+| `seat_hold.converted_to_reservation` | The conversion code path **does not exist** in production. `SeatReservation` rows are never written anywhere. This is a real feature gap that needs its own dedicated slice — the metric will land alongside the conversion code, not before. |
+
+**Architect §S6 metric coverage updated**:
+| Metric | Status |
+|---|---|
+| `layout.created` | ✅ shipped |
+| `layout.preset_selected` | ✅ shipped |
+| `layout.canvas_editor_opened` | ✅ shipped |
+| `layout.canvas_editor_saved` | ✅ shipped |
+| `layout.structural_edit_rejected` | ✅ shipped |
+| `seatpicker.selection_completed` | ✅ shipped |
+| `seat_hold.created` | ✅ shipped (this push) |
+| `seat_hold.expired` | ✅ shipped (this push) |
+| `canvas_editor.save_failed{reason}` | ✅ shipped (this push) |
+| `canvas_editor.session_abandoned` | ⏭ deferred |
+| `seat_hold.converted_to_reservation` | ⏭ blocked on missing conversion-path feature |
+
+**Next**: S6.C (Playwright e2e suite — separate larger effort). The hold→reservation conversion gap is a separate architect-level slice that should be ticketed and prioritised against MVP scope.
+
+---
+
 ## 🎯 2026-05-04 (later) — S6.B partial-shipped: race + 1000-seat perf both PASS, observability gap deferred
 
 **Goal**: per master TODO §S6, run the three new ship-gate API tests (S6-T1 race scenario, S6-T2 1000-seat perf, S6-T3 Stripe webhook replay) plus the observability audit.

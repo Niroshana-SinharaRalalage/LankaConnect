@@ -540,6 +540,103 @@ public class Registration : BaseEntity
     }
 
     /// <summary>
+    /// Phase 8 S8.1 — binds the persisted seat assignments to the corresponding
+    /// <see cref="AttendeeDetails"/> values and raises <see cref="SeatsReservedEvent"/>.
+    /// Called from the Stripe webhook's checkout-completed path AFTER
+    /// <see cref="CompletePayment"/> succeeds and BEFORE the unit-of-work commits.
+    ///
+    /// Invariants:
+    /// <list type="bullet">
+    ///   <item><see cref="Status"/> must be <see cref="RegistrationStatus.Confirmed"/>
+    ///   (this method is the seat-binding step that comes after payment confirms).</item>
+    ///   <item><paramref name="assignments"/> must have exactly one entry per attendee
+    ///   (Mode-A only; Mode-B/C don't enter this path).</item>
+    ///   <item>Each <c>AttendeeIndex</c> is unique and within range.</item>
+    ///   <item>Each <c>SeatId</c> is non-empty.</item>
+    /// </list>
+    /// Idempotent on retry: when every attendee already carries the same seat
+    /// assignment as the incoming list, returns Success without raising the
+    /// domain event. This protects against webhook redelivery + reconciliation
+    /// double-fire.
+    /// </summary>
+    public Result ConfirmSeatAssignments(
+        IReadOnlyList<(int AttendeeIndex, Guid SeatId, string SeatLabel)> assignments)
+    {
+        if (assignments == null)
+            return Result.Failure("Seat assignments are required");
+
+        if (Status != RegistrationStatus.Confirmed)
+            return Result.Failure(
+                $"Cannot confirm seat assignments while registration is {Status}. " +
+                $"Status must be Confirmed. RegistrationId={Id}");
+
+        if (assignments.Count != _attendees.Count)
+            return Result.Failure(
+                $"Seat-assignment count {assignments.Count} does not match attendee count " +
+                $"{_attendees.Count}. RegistrationId={Id}");
+
+        // Reject duplicate or out-of-range attendee indices up-front so we don't
+        // half-mutate the collection.
+        var seenIndices = new HashSet<int>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AttendeeIndex < 0 || assignment.AttendeeIndex >= _attendees.Count)
+                return Result.Failure(
+                    $"Attendee index {assignment.AttendeeIndex} is out of range " +
+                    $"[0, {_attendees.Count}). RegistrationId={Id}");
+
+            if (!seenIndices.Add(assignment.AttendeeIndex))
+                return Result.Failure(
+                    $"Duplicate attendee index {assignment.AttendeeIndex} in seat assignments. " +
+                    $"RegistrationId={Id}");
+
+            if (assignment.SeatId == Guid.Empty)
+                return Result.Failure(
+                    $"Seat ID is required for attendee index {assignment.AttendeeIndex}. " +
+                    $"RegistrationId={Id}");
+        }
+
+        // Idempotency guard: if every attendee already carries the same seat assignment,
+        // return Success without raising the event. Webhook retries / reconciliation
+        // re-runs hit this path.
+        var allAlreadyBound = assignments.All(a =>
+            _attendees[a.AttendeeIndex].SeatId == a.SeatId
+            && _attendees[a.AttendeeIndex].SeatLabel == a.SeatLabel.Trim());
+        if (allAlreadyBound)
+            return Result.Success();
+
+        // Apply assignments. Build the new list in one pass — if any WithSeat call
+        // fails, we abort BEFORE mutating the backing field (no half-state).
+        var rebound = new AttendeeDetails[_attendees.Count];
+        for (var i = 0; i < _attendees.Count; i++)
+            rebound[i] = _attendees[i];
+
+        foreach (var assignment in assignments)
+        {
+            var withSeatResult = _attendees[assignment.AttendeeIndex]
+                .WithSeat(assignment.SeatId, assignment.SeatLabel);
+            if (withSeatResult.IsFailure)
+                return Result.Failure(
+                    $"Cannot bind seat to attendee index {assignment.AttendeeIndex}: " +
+                    $"{withSeatResult.Error}");
+            rebound[assignment.AttendeeIndex] = withSeatResult.Value;
+        }
+
+        _attendees.Clear();
+        _attendees.AddRange(rebound);
+        MarkAsUpdated();
+
+        // Raise the domain event so downstream handlers (S8.4 metric emission;
+        // future ticket-PDF regeneration) get notified.
+        var seatTuples = assignments
+            .Select(a => (a.SeatId, a.AttendeeIndex, a.SeatLabel))
+            .ToList();
+        RaiseDomainEvent(new SeatsReservedEvent(EventId, Id, seatTuples));
+
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Marks payment as failed when Stripe reports payment failure
     /// </summary>
     public Result FailPayment()

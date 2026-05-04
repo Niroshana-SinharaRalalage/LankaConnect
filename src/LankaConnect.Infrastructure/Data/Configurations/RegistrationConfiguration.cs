@@ -135,6 +135,18 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .HasColumnName("ticket_tier_name")
                 .HasMaxLength(100)
                 .IsRequired(false);
+
+            // Phase 8 S8.1: per-attendee seat binding for AssignedSeating events.
+            // JSONB-schema-less so this addition needs no ALTER TABLE — existing
+            // rows deserialise with null defaults, matching the WhatsApp opt-in
+            // pattern at lines 152-153 of this file.
+            attendeesBuilder.Property(a => a.SeatId)
+                .HasColumnName("seat_id")
+                .IsRequired(false);
+            attendeesBuilder.Property(a => a.SeatLabel)
+                .HasColumnName("seat_label")
+                .HasMaxLength(50)
+                .IsRequired(false);
         });
 
         // Session 21: Configure Contact as JSONB for shared contact information

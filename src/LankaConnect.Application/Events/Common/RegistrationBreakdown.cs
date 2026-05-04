@@ -20,7 +20,15 @@ public sealed record RegistrationBreakdown(
     IReadOnlyList<RegistrationBreakdownRow> Rows,
     int TotalAttendees,
     RegistrationMode Mode,
-    bool IsTiered);
+    bool IsTiered,
+    // Phase 7F-E.6.A (architect-approved 2026-05-04): on multi-tier B-mode breakdowns
+    // the per-tier rows can't carry registration-level demographics (architect Phase
+    // 7F-C §2.2 #4 deferred per-tier gender storage). When the registration DID
+    // capture demographics at the registration level (e.g. operator's B4 RSVP storing
+    // {AM:2, AF:2, CM:2, CF:2} across two tiers), this Totals row surfaces them
+    // honestly without lying about per-tier precision. Null when not multi-tier OR
+    // when no axis is captured.
+    RegistrationBreakdownTotals? Totals = null);
 
 /// <summary>
 /// One row per tier (or one row total for non-tiered registrations). Contains the
@@ -31,6 +39,17 @@ public sealed record RegistrationBreakdownRow(
     int Count,
     BreakdownPair Age,            // Captured iff B2 / B4 / Mode A
     BreakdownPair Gender);        // Captured iff B3 / B4 / Mode A
+
+/// <summary>
+/// Phase 7F-E.6.A (architect-approved 2026-05-04): registration-level demographics
+/// surface for multi-tier B-mode breakdowns. Carries only the demographic axes — the
+/// tier list is in <see cref="RegistrationBreakdown.Rows"/>, the count is in
+/// <see cref="RegistrationBreakdown.TotalAttendees"/>. Renderers display this as a
+/// "Total" row at the bottom of the per-tier list.
+/// </summary>
+public sealed record RegistrationBreakdownTotals(
+    BreakdownPair Age,            // Captured iff registration mode collected age
+    BreakdownPair Gender);        // Captured iff registration mode collected gender
 
 /// <summary>
 /// A two-part demographic split (e.g. Adult/Child or Male/Female). The

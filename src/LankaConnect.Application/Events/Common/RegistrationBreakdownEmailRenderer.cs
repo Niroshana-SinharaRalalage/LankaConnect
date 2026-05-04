@@ -90,6 +90,25 @@ public static class RegistrationBreakdownEmailRenderer
             sb.Append("</td></tr></table>");
         }
 
+        // Phase 7F-E.6.A (architect-approved 2026-05-04): registration-level totals row
+        // for multi-tier B-mode breakdowns. Per-tier rows above can't carry registration-
+        // level demographics (architect §2.2 #4 deferred per-tier-gender storage), so
+        // when the registration DID capture top-level demographics this surfaces them
+        // honestly. Architect placement guidance: bottom of the per-tier list, with
+        // visual separation so the reader doesn't confuse it with another tier card.
+        if (breakdown.Totals is { } totals)
+        {
+            sb.Append(@"<table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" border=""0"" style=""margin: 4px 0 0""><tr><td style=""background: #fefaf7; border: 1px solid #f3e4d5; border-radius: 8px; padding: 10px 14px; font-size: 13px;"">");
+            sb.Append(@"<p style=""margin: 0 0 4px;""><strong style=""color: #8B1538;"">Total</strong> <span style=""color: #6b7280;"">(across all tiers)</span></p>");
+            sb.Append(@"<p style=""margin: 0 0 2px;""><span style=""color: #6b7280;"">Adult/Child:</span> <strong>");
+            sb.Append(FormatPair(totals.Age));
+            sb.Append("</strong></p>");
+            sb.Append(@"<p style=""margin: 0;""><span style=""color: #6b7280;"">Male/Female:</span> <strong>");
+            sb.Append(FormatPair(totals.Gender));
+            sb.Append("</strong></p>");
+            sb.Append("</td></tr></table>");
+        }
+
         sb.Append("</td></tr></table>");
         sb.Append("</td></tr></table>");
 

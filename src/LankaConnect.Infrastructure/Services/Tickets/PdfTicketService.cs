@@ -287,6 +287,32 @@ public class PdfTicketService : IPdfTicketService
                 r.RelativeItem().Text(genderValue);
             });
         }
+
+        // Phase 7F-E.6.A (architect-approved 2026-05-04): registration-level totals row
+        // for multi-tier B-mode breakdowns. Per-tier rows above show N/A for the deferred
+        // axes (architect §2.2 #4 — no per-tier-gender storage); this surfaces the
+        // captured registration-level demographics honestly.
+        if (breakdown.Totals is { } totals)
+        {
+            column.Item().PaddingTop(4).Text("Total (across all tiers)")
+                .Bold()
+                .FontColor(Colors.Grey.Darken1)
+                .FontSize(9);
+
+            var totalAge = totals.Age.Captured ? $"{totals.Age.Left}/{totals.Age.Right}" : "N/A";
+            column.Item().Row(r =>
+            {
+                r.ConstantItem(80).Text($"{totals.Age.LeftLabel}/{totals.Age.RightLabel}:");
+                r.RelativeItem().Text(totalAge);
+            });
+
+            var totalGender = totals.Gender.Captured ? $"{totals.Gender.Left}/{totals.Gender.Right}" : "N/A";
+            column.Item().Row(r =>
+            {
+                r.ConstantItem(80).Text($"{totals.Gender.LeftLabel}/{totals.Gender.RightLabel}:");
+                r.RelativeItem().Text(totalGender);
+            });
+        }
     }
 
     private static void ComposeFooter(IContainer container, TicketPdfData data)

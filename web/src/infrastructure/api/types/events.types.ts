@@ -1214,12 +1214,25 @@ export interface RegistrationBreakdownDto {
   totalAttendees: number;
   mode: RegistrationMode;
   isTiered: boolean;
+  /**
+   * Phase 7F-E.6.A: registration-level demographics surfaced for multi-tier B-mode
+   * breakdowns (per-tier rows can't carry them per architect Phase 7F-C §2.2 #4
+   * deferred per-tier-gender storage). Null when not multi-tier OR when no
+   * demographic axis was captured at registration level.
+   */
+  totals?: RegistrationBreakdownTotalsDto | null;
 }
 
 export interface RegistrationBreakdownRowDto {
   /** null = non-tiered */
   tierName: string | null;
   count: number;
+  age: BreakdownPairDto;
+  gender: BreakdownPairDto;
+}
+
+/** Phase 7F-E.6.A: paired demographic pairs only — count + tier list live on the parent. */
+export interface RegistrationBreakdownTotalsDto {
   age: BreakdownPairDto;
   gender: BreakdownPairDto;
 }

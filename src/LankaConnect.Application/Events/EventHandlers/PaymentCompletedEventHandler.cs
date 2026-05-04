@@ -293,6 +293,30 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
                 }
 
+                // Phase 7F-E.6.B (architect-approved 2026-05-04): render the cross-surface
+                // RegistrationBreakdown into HTML and store on TicketConfirmationEmailParams
+                // so the paid-event template's {{{RegistrationBreakdownHtml}}} triple-stache
+                // gets a real fragment instead of the literal token. Pre-fix the template
+                // showed the raw `{{{RegistrationBreakdownHtml}}}` text in the user's
+                // inbox because this handler missed wiring up the field in 7F-E.3.
+                try
+                {
+                    var breakdown = TicketPdfRegistrationBreakdownAssembler.Build(registration);
+                    var breakdownHtml = breakdown is null
+                        ? string.Empty
+                        : RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
+                    typedParams.WithRegistrationBreakdownHtml(breakdownHtml);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "[Phase 7F-E.6.B] Failed to render registration breakdown HTML for paid-event email. " +
+                        "CorrelationId={CorrelationId}, RegistrationId={RegistrationId}. " +
+                        "Falling back to empty string — email will send without the breakdown card.",
+                        correlationId, registration.Id);
+                    typedParams.WithRegistrationBreakdownHtml(string.Empty);
+                }
+
                 // Set event image
                 typedParams.WithEventImage(eventImageUrl);
 

@@ -125,11 +125,33 @@ public static class RegistrationBreakdownFormatter
             }
         }
 
+        // Phase 7F-E.6.A (architect-approved 2026-05-04): build a registration-level
+        // Totals row for multi-tier B-mode breakdowns when at least one demographic
+        // axis was captured at registration level. Per-tier rows above stay N/A
+        // (architect §2.2 #4 deferred per-tier gender), but operators registering
+        // through the 7F-E.4b merged form DID enter values that get aggregated into
+        // top-level demographics on submit — those need a read-side surface.
+        // Single-tier breakdowns already carry the demographics in Rows[0]; non-tiered
+        // breakdowns have a single row that's the whole registration. In both cases
+        // a Totals row would be a misleading duplicate, so we skip it.
+        RegistrationBreakdownTotals? totals = null;
+        if (isTiered && rows.Count > 1 && (captureAge || captureGender))
+        {
+            totals = new RegistrationBreakdownTotals(
+                Age: captureAge
+                    ? BreakdownPair.CapturedAge(aggregateAdults, aggregateChildren)
+                    : BreakdownPair.AgeNotCaptured(),
+                Gender: captureGender
+                    ? BreakdownPair.CapturedGender(aggregateMales, aggregateFemales)
+                    : BreakdownPair.GenderNotCaptured());
+        }
+
         return new RegistrationBreakdown(
             Rows: rows,
             TotalAttendees: headCount.Total,
             Mode: mode,
-            IsTiered: isTiered);
+            IsTiered: isTiered,
+            Totals: totals);
     }
 
     /// <summary>

@@ -76,6 +76,33 @@ export function RegistrationBreakdownCard({
             </div>
           </div>
         ))}
+
+        {/*
+         * Phase 7F-E.6.A (architect-approved 2026-05-04): registration-level totals row
+         * for multi-tier B-mode breakdowns. Per-tier rows above show N/A on the deferred
+         * axes (architect §2.2 #4 — no per-tier-gender storage); this surfaces the
+         * captured registration-level demographics honestly. Visually distinct (warmer
+         * background + Total label) so the reader doesn't confuse it with another tier.
+         */}
+        {breakdown.totals && (
+          <div
+            className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm space-y-1"
+            data-testid="breakdown-totals-row"
+          >
+            <div>
+              <span className="font-semibold text-neutral-800">Total</span>{' '}
+              <span className="text-neutral-500">(across all tiers)</span>
+            </div>
+            <div>
+              <span className="font-medium text-neutral-700">Adult/Child:</span>{' '}
+              <span className="text-neutral-900">{formatPair(breakdown.totals.age)}</span>
+            </div>
+            <div>
+              <span className="font-medium text-neutral-700">Male/Female:</span>{' '}
+              <span className="text-neutral-900">{formatPair(breakdown.totals.gender)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

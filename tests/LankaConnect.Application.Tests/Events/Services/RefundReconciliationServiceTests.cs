@@ -254,4 +254,45 @@ public class RefundReconciliationServiceTests
         _registrationRepo.Verify(r => r.GetStuckRefundsAsync(
             It.IsAny<DateTime>(), 7, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task ReconcileStuckRefundsAsync_AgeThresholdOverride_Should_RelaxRepoFilter()
+    {
+        // Default threshold is 10 min; explicit 0 should let a freshly-cancelled
+        // row be reconciled. The repo gets called with `requestedBefore` set to
+        // (approximately) "now" — verify the filter window expanded.
+        DateTime? captured = null;
+        _registrationRepo.Setup(r => r.GetStuckRefundsAsync(
+                It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, int, CancellationToken>((before, _, _) => captured = before)
+            .ReturnsAsync(Array.Empty<Registration>());
+
+        var beforeCall = DateTime.UtcNow;
+        var sut = Build();
+        var result = await sut.ReconcileStuckRefundsAsync(batchSize: 10, ageThresholdMinutes: 0);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        // requestedBefore should be ~now (within a few seconds), proving the
+        // 10-minute default was bypassed.
+        (DateTime.UtcNow - captured!.Value).Should().BeLessThan(TimeSpan.FromSeconds(5));
+        captured.Value.Should().BeOnOrAfter(beforeCall.AddSeconds(-1));
+    }
+
+    [Fact]
+    public async Task ReconcileStuckRefundsAsync_NegativeAgeThreshold_Should_ClampToZero()
+    {
+        DateTime? captured = null;
+        _registrationRepo.Setup(r => r.GetStuckRefundsAsync(
+                It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<DateTime, int, CancellationToken>((before, _, _) => captured = before)
+            .ReturnsAsync(Array.Empty<Registration>());
+
+        var sut = Build();
+        var result = await sut.ReconcileStuckRefundsAsync(batchSize: 10, ageThresholdMinutes: -100);
+
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        (DateTime.UtcNow - captured!.Value).Should().BeLessThan(TimeSpan.FromSeconds(5));
+    }
 }

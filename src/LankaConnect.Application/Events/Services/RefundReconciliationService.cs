@@ -45,19 +45,21 @@ public class RefundReconciliationService : IRefundReconciliationService
 
     public async Task<Result<RefundReconciliationResult>> ReconcileStuckRefundsAsync(
         int? batchSize = null,
+        int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default)
     {
         var correlationId = Guid.NewGuid();
         var stopwatch = Stopwatch.StartNew();
         var effectiveBatchSize = Math.Max(1, batchSize ?? DefaultBatchSize);
-        var requestedBefore = DateTime.UtcNow.AddMinutes(-DefaultAgeThresholdMinutes);
+        var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
+        var requestedBefore = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
 
         using (LogContext.PushProperty("Operation", "RefundReconciliation"))
         using (LogContext.PushProperty("CorrelationId", correlationId))
         {
             _logger.LogInformation(
-                "[Phase 7G] [Reconcile-1] START - CorrelationId={CorrelationId}, BatchSize={BatchSize}, RequestedBefore={RequestedBefore:o}",
-                correlationId, effectiveBatchSize, requestedBefore);
+                "[Phase 7G] [Reconcile-1] START - CorrelationId={CorrelationId}, BatchSize={BatchSize}, AgeThresholdMinutes={AgeThresholdMinutes}, RequestedBefore={RequestedBefore:o}",
+                correlationId, effectiveBatchSize, effectiveAgeMinutes, requestedBefore);
 
             int reconciled = 0;
             int stillPending = 0;

@@ -35,6 +35,15 @@ public interface IRefundReconciliationService
     /// Optional max number of stuck registrations to process this run.
     /// <c>null</c> uses the configured default (<c>RefundReconciliationSettings.BatchSize</c>).
     /// </param>
+    /// <param name="ageThresholdMinutes">
+    /// Optional override for the grace period before a row is considered stuck.
+    /// Production background passes use the default (10 min) so the primary
+    /// webhook gets a fair chance to arrive first. Operators triggering the
+    /// reconciler manually during incident response can pass <c>0</c> to
+    /// reconcile immediately — useful when staging deploy collisions create a
+    /// known-broken row that the operator wants healed before the next pass.
+    /// <c>null</c> uses the default. Negative values are clamped to <c>0</c>.
+    /// </param>
     /// <param name="cancellationToken">Cooperative cancellation token.</param>
     /// <returns>
     /// A summary of the reconciliation pass — number scanned, number fixed,
@@ -44,6 +53,7 @@ public interface IRefundReconciliationService
     /// </returns>
     Task<Result<RefundReconciliationResult>> ReconcileStuckRefundsAsync(
         int? batchSize = null,
+        int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default);
 }
 

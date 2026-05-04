@@ -94,6 +94,7 @@ public class RefundReconciliationBackgroundService : BackgroundService
 
         var result = await reconciler.ReconcileStuckRefundsAsync(
             batchSize: _settings.BatchSize,
+            ageThresholdMinutes: _settings.AgeThresholdMinutes,
             cancellationToken: cancellationToken);
 
         if (result.IsFailure)

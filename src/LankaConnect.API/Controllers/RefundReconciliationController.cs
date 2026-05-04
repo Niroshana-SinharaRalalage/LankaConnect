@@ -42,6 +42,12 @@ public class RefundReconciliationController : ControllerBase
     /// Optional max number of stuck registrations to process this run.
     /// If omitted, the configured default (50) applies.
     /// </param>
+    /// <param name="ageThresholdMinutes">
+    /// Optional grace-period override for this run. Production passes wait
+    /// 10 min so the primary webhook gets a fair chance first; operators
+    /// triggering manually during incident response can pass <c>0</c> to
+    /// reconcile freshly-stuck rows immediately. Negative values clamp to 0.
+    /// </param>
     /// <param name="cancellationToken">Cooperative cancellation token.</param>
     [HttpPost("run")]
     [Authorize(Roles = "Admin,AdminManager,EventOrganizer")]
@@ -51,14 +57,17 @@ public class RefundReconciliationController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> RunReconciliation(
         [FromQuery] int? batchSize = null,
+        [FromQuery] int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "[Phase 7G] Manual reconciliation trigger - User={User}, BatchSize={BatchSize}",
-            User?.Identity?.Name ?? "(anonymous)", batchSize?.ToString() ?? "default");
+            "[Phase 7G] Manual reconciliation trigger - User={User}, BatchSize={BatchSize}, AgeThresholdMinutes={AgeThresholdMinutes}",
+            User?.Identity?.Name ?? "(anonymous)",
+            batchSize?.ToString() ?? "default",
+            ageThresholdMinutes?.ToString() ?? "default");
 
         var result = await _reconciliationService.ReconcileStuckRefundsAsync(
-            batchSize, cancellationToken);
+            batchSize, ageThresholdMinutes, cancellationToken);
 
         if (result.IsFailure)
         {

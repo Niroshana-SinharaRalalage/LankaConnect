@@ -622,7 +622,11 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4 (S5 deferred) must 
 
 **Chunk progress**:
 - [x] **S8.1 — Domain shape + EF JSONB mapping (foundation)** — SHIPPED 2026-05-04 commit `f00b9e05` deploy `25340452726`. 18/18 new tests; 2583/2583 app tests; MVP regression bundle 10/10 GREEN post-deploy. No behaviour change.
-- [ ] **S8.2 — Application + API + Webhook conversion (the meat)** — PENDING. Adds `SeatIds`/`SeatSessionId` to RSVP commands; pre-checkout validation; pending-seat-assignments JSONB column; webhook converts holds → reservations and binds seat-ids to attendees. End-to-end bug fixed at end of this chunk.
+- [ ] **S8.2 — Application + API + Webhook conversion (the meat)** — IN FLIGHT. Split into 4 sub-chunks:
+  - [x] **S8.2.A — Pending-seat-assignment stash on Registration** — SHIPPED 2026-05-04 commit `635bc103` deploy `25342621429`. 9/9 domain tests; 2583/2583 app tests; staging migration applied; MVP regression bundle still 10/10 GREEN; S8.1 round-trip smoke still passes (correlation `c397eb25-...`). No behaviour change yet.
+  - [ ] **S8.2.B — Command DTOs + handler validation** — PENDING. Adds `SeatIds`/`SeatSessionId` to RSVP commands; pre-checkout validation; calls `SetPendingSeatAssignments`. Architect-estimated 4–6h.
+  - [ ] **S8.2.C — Webhook conversion + C5 guard + InitiateAddAttendees rejection** — PENDING. Webhook converts holds → reservations and binds seat-ids to attendees via `ConfirmSeatAssignments`. End-to-end user-facing bug fixed at end of this sub-chunk. Architect-estimated 6–8h.
+  - [ ] **S8.2.D — End-to-end staging smoke + observability metric** — PENDING. Architect-estimated 1–2h.
 - [ ] **S8.3 — Cancel/refund unlock semantics** — PENDING. New `SeatReservationsReleasedEvent` raised from `CompleteRefund` / `MarkAbandoned` / cancel paths; handler hard-deletes `seat_reservations` rows.
 - [ ] **S8.4 — Data fixup + observability close-out** — PENDING. Audit existing broken rows; refund + comp; close `seat_hold.converted_to_reservation` metric gap.
 

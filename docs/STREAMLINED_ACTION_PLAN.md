@@ -6,6 +6,49 @@
 
 ---
 
+## 🎯 2026-05-04 (S8.2.A) — Slice S8.2.A SHIPPED + STAGING-VERIFIED — pending seat-assignment stash on Registration
+
+**Goal**: sub-chunk A of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds the registration-scoped stash that the buyer-flow (S8.2.B) and webhook (S8.2.C) will use to remember the buyer's intended seat assignments + seat-hold session id across the RSVP → Stripe Checkout → webhook window. No behaviour change visible at the API yet (the stash is only ever set/read by chunks B and C); this PR is the persistence + invariant guard foundation.
+
+**S8.2.A shipped (commit `635bc103`, deploy `25342621429` `success`)**:
+
+**Domain changes**:
+- New `PendingSeatAssignment` value object — `(AttendeeIndex, SeatId, SeatLabel)` tuple with creation-time invariants (non-empty SeatId, non-empty SeatLabel, non-negative index, label trimmed).
+- `Registration._pendingSeatAssignments` owned collection + `PendingSeatAssignments` `IReadOnlyList` accessor.
+- `Registration.PendingSeatSessionId` nullable string property.
+- `Registration.SetPendingSeatAssignments(sessionId, assignments)` with invariants:
+  - Status must be `Preliminary` (stash is meaningful only pre-payment).
+  - `sessionId` non-empty.
+  - `assignments.Count == _attendees.Count`.
+  - `AttendeeIndex` unique and within range.
+  - **Replacement-not-append**: a second call with new seats fully replaces the first stash (handles re-RSVP with seat changes).
+- `Registration.ClearPendingSeatAssignments()` — idempotent. Called by `ConfirmSeatAssignments` on success path AND by the checkout-expired webhook on timeout path. No status guard (callers control state transitions separately).
+
+**Infrastructure changes**:
+- `RegistrationConfiguration` extended:
+  - `builder.OwnsMany(r => r.PendingSeatAssignments, ...).ToJson("pending_seat_assignments")` — JSONB-owned collection.
+  - `builder.Property(r => r.PendingSeatSessionId).HasColumnName("pending_seat_session_id")` varchar(100) nullable.
+- Real EF migration `Phase8S82A_AddPendingSeatAssignmentsToRegistration` — adds 2 nullable columns to `events.registrations`. Cleaned of seed-data drift noise (the auto-generated body included reference_data timestamp updates that we intentionally removed). Down() drops both columns (rollback-safe).
+
+**Tests**: 9 new domain unit tests covering happy path / status guard / empty session / count mismatch / duplicate index / out-of-range / replacement semantics / idempotent clear / clear when no stash. 2583/2583 Application tests still pass — no regressions despite touching the Registration aggregate again.
+
+**Staging verification**:
+- Backend deploy `25342621429` returned `conclusion=success` — confirming the EF migration applied cleanly.
+- Container logs reference `pending_seat_assignments` 3× (EF migration application + EF model snapshot loading at startup).
+- **MVP regression bundle 10/10 GREEN** post-deploy.
+- **S8.1 round-trip smoke still passes** (correlation `c397eb25-aff9-488a-ab19-10bf83cc759f`) — the new columns don't break existing reads. Pre-S8 rows continue to deserialise with `seatId: null, seatLabel: null` and the new `pendingSeatAssignments` collection is empty.
+
+**API smoke evidence (cumulative S8.1 + S8.2.A)**:
+- T1 round-trip via `GET /api/events/{id}/my-registration` for a paid Confirmed registration → 200 with attendees rehydrated cleanly. Correlations: `7185d1a4-24df-4eef-a4ae-aaede9187738` (S8.1 post-deploy), `8ea2ed42-d3a8-4e78-97e5-4abf47ddff48` (S8.2.A post-deploy).
+- T2 backwards compat verified: existing rows have `seatId: null, seatLabel: null`.
+- T3 second event's registration round-trips cleanly. Correlations: `6dafb220-36b7-4d8f-a16d-f9f3e980c93d` (S8.1), `c397eb25-aff9-488a-ab19-10bf83cc759f` (S8.2.A).
+
+**Still no buyer-facing behaviour change** — the user-facing bug (silent seat-assignment drop after payment) gets fixed in S8.2.B (RSVP handler validation that calls `SetPendingSeatAssignments`) + S8.2.C (webhook conversion that calls `ConfirmSeatAssignments`).
+
+**Next**: Slice S8.2.B — extend `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` with `SeatIds` + `SeatSessionId`, validate (when SeatingMode=AssignedSeating) that seat IDs match held seats, call `Registration.SetPendingSeatAssignments` before Stripe Checkout. Architect-estimated 4–6h; separate PR.
+
+---
+
 ## 🎯 2026-05-04 (latest) — Slice S8.1 SHIPPED + STAGING-VERIFIED — domain shape + EF JSONB mapping for attendee seat binding
 
 **Goal**: foundation chunk of Slice S8 (seating wire-up) per ADR-011. No behaviour change at runtime — the buyer/webhook flow that triggers seat binding ships in S8.2. This PR is foundation only.

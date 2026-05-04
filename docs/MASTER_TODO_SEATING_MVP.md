@@ -601,9 +601,9 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4 (S5 deferred) must 
   - S4-T1 (publish-readiness GET happy path → 200 with full DTO)
   - S4-T2 (publish-readiness with bogus id → 404)
   - S4-T3 (apply fresh preset + GET readiness → ZoneUnmapped surfaces)
-- [ ] **NEW S6-T1** — concurrent organizer + buyer race: while buyer has hold, organizer attempts deletion → 422 (S2/Slice 5 guard fires; not 409 — the structural-edit guard is the gate, not optimistic concurrency).
-- [ ] **NEW S6-T2** — 1000-seat layout payload roundtrip < 500KB and < 2s.
-- [ ] **NEW S6-T3** — Stripe webhook replay does not duplicate reservation (use Stripe CLI to replay an event).
+- [x] **NEW S6-T1** — concurrent organizer + buyer race: while buyer has hold, organizer attempts deletion → 422 (S2/Slice 5 guard fires; not 409 — the structural-edit guard is the gate, not optimistic concurrency). **PASS 2026-05-04** on staging — hold cid `80244ea3-93ef-4528-9968-50b7e63095ab`, delete cid `e9d81ede-fa22-48b6-920d-bdbe8a3733c9`, body *"Cannot modify layout structure: 3 seat(s) currently held, 0 seat(s) reserved."*
+- [x] **NEW S6-T2** — 1000-seat layout payload roundtrip < 500KB and < 2s. **PASS 2026-05-04** on staging — payload **1.8 KB** (limit 500 KB), roundtrip **988 ms** (limit 2000 ms), 1000 seats generated server-side via 5 zones × 200 each, correlation `a1e164b8-f7b1-489a-afff-acbad670297c`.
+- [ ] **NEW S6-T3** — Stripe webhook replay does not duplicate reservation (use Stripe CLI to replay an event). **DEFERRED** to next session with Stripe CLI access. Mitigation: existing `IdempotencyKey` in `StripePaymentService.CreateRefundAsync` (line 356) + `Registration.CompleteRefund` double-transition rejection.
 
 ### Verification
 

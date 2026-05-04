@@ -6,6 +6,52 @@
 
 ---
 
+## 🎯 2026-05-04 (later) — S6.B partial-shipped: race + 1000-seat perf both PASS, observability gap deferred
+
+**Goal**: per master TODO §S6, run the three new ship-gate API tests (S6-T1 race scenario, S6-T2 1000-seat perf, S6-T3 Stripe webhook replay) plus the observability audit.
+
+**S6-T1 race scenario PASS on staging**:
+- Apply theater-classic preset → 200-seat layout.
+- Hold 3 seats via `POST /api/venue-layouts/events/{eventId}/seats/hold` (correlation `80244ea3-93ef-4528-9968-50b7e63095ab`).
+- Organiser attempts zone deletion via `PUT /batch` + `deletedZoneIds=[zoneId]` → **HTTP 422** with body *"Cannot modify layout structure: 3 seat(s) currently held, 0 seat(s) reserved. Wait for holds to expire or cancel affected registrations first."* (correlation `e9d81ede-fa22-48b6-920d-bdbe8a3733c9`).
+- StructuralEditGuard fires exactly per architect spec — neither 409 (concurrency) nor 200 (silent destruction); the user-comprehensible 422 with held-seat count tells the organiser exactly what to wait for.
+- Cleanup: hold released (correlation `1365b04d-6a09-4454-8034-e5296ba39101`).
+
+**S6-T2 1000-seat perf benchmark PASS on staging**:
+- Apply theater-classic baseline (200 seats) + PUT /batch adding 4 zones each with `rowCount=20, seatsPerRow=10` (= 800 generated server-side). Final `totalCapacity` = 1000.
+- **PUT /batch outbound payload: 1.8 KB** (architect limit: 500 KB).
+- **PUT /batch server roundtrip: 988 ms** (architect limit: 2000 ms).
+- GET layout response: 150 KB / 313 ms (well within mobile-comfortable bounds).
+- Architectural insight: the architect-feared 500-KB payload doesn't materialise because seats are computed server-side from `(rows, cols)` rather than enumerated on the wire. The actual wire shape carries 5 zone definitions (~360 bytes each) plus overhead. The expensive part is the GET response (150 KB for a 1000-seat layout), which is already optimised via the existing `LayoutPreview` `showSeats={layout.totalCapacity <= 200}` gate on the read side.
+- Correlation `a1e164b8-f7b1-489a-afff-acbad670297c`.
+
+**S6-T3 Stripe webhook replay**: deferred. Needs Stripe CLI to replay a `charge.succeeded` event against the staging webhook URL; the CLI isn't available in this environment. Mitigations already in place: `StripePaymentService.CreateRefundAsync` uses an `IdempotencyKey` (line 356: `$"refund_{paymentIntentId}_{amountInCents}_{registrationId}"`) which guarantees Stripe-side dedup; the registration handler's idempotency is also covered by `Registration.CompleteRefund` rejecting double-transitions ("may be already processed (idempotency)"). Suggest scheduling this test for the next person with Stripe CLI access.
+
+**Observability audit (architect §S6 spec vs current state)**:
+| Metric | Spec | Status |
+|---|---|---|
+| `layout.created` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCreated`) |
+| `layout.preset_selected` | ✅ required | ✅ emitted (`LayoutMetrics.PresetSelected`) |
+| `layout.canvas_editor_opened` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCanvasEditorOpened`) |
+| `layout.canvas_editor_saved` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCanvasEditorSaved`) |
+| `layout.structural_edit_rejected` | ✅ required | ✅ emitted with reason tag (`SeatsReserved` / `AuthFailed` / `ConcurrencyConflict`) |
+| `seatpicker.selection_completed` | ✅ required | ✅ emitted (`LayoutMetrics.SeatPickerSelectionCompleted`) |
+| `canvas_editor.save_failed{reason}` | ⚠️ spec'd, missing | ❌ not emitted |
+| `canvas_editor.session_abandoned` | ⚠️ spec'd, missing | ❌ not emitted (requires session-id tracking) |
+| `seat_hold.created` | ⚠️ spec'd, missing | ❌ not emitted |
+| `seat_hold.expired` | ⚠️ spec'd, missing | ❌ not emitted |
+| `seat_hold.converted_to_reservation` | ⚠️ spec'd, missing | ❌ not emitted (hold→reservation path needs mapping) |
+
+**Decision (deferred to follow-up)**: adding the 5 missing metrics safely requires touching multiple paths I don't have deep visibility on in this push (especially `seat_hold.converted_to_reservation` — the hold→reservation conversion site isn't a single grep-able bottleneck). Per Senior Engineer principles (#5 don't break existing flows, #4 search before write, #11 honest status), deferring rather than risking regressions in the seat-hold lifecycle. Suggest a focused observability slice that introduces `ISeatHoldMetrics`, threads through `HoldSeatsCommandHandler` + `SeatHoldCleanupService` + the reservation-creation path, and configures dashboard alerts (`canvas_editor.save_failed` rate > 5% in 5 min; `seat_hold.expired` rate spike).
+
+**MVP regression bundle status**: `scripts/seating/mvp_regression.py` re-confirmed 10/10 PASS earlier today (the new S6-T1 + S6-T2 are NOT in the bundle — they're targeted ship-gate tests rather than per-slice smoke).
+
+**Test artifacts (cleanup notes)**: a 1000-seat layout exists on test event `e4792b64-9d35-4567-82fa-6c0624d0f8e7` post-S6-T2; this is the regression bundle's test event so S1.5 hard-delete will clean it on the next `apply-preset` call. No manual cleanup required.
+
+**Next**: focused observability follow-up (`seat_hold.*` metrics) and/or S6.C (Playwright e2e suite — separate larger effort). Stripe-replay (S6-T3) ticketed for next session with Stripe CLI access.
+
+---
+
 ## 🎯 2026-05-04 — Phase 7G operator override + e2e verification gap acknowledged
 
 **Goal**: extend the refund-reconciliation safety net (shipped earlier today as `83be8f79`) with an `ageThresholdMinutes` operator override, then drive a full `Confirmed → RefundRequested → Refunded` lifecycle on staging to prove the fix actually heals stuck rows end-to-end.

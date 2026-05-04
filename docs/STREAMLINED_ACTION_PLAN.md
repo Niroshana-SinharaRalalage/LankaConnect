@@ -6,6 +6,52 @@
 
 ---
 
+## 🎯 2026-05-04 (latest) — Slice S8.1 SHIPPED + STAGING-VERIFIED — domain shape + EF JSONB mapping for attendee seat binding
+
+**Goal**: foundation chunk of Slice S8 (seating wire-up) per ADR-011. No behaviour change at runtime — the buyer/webhook flow that triggers seat binding ships in S8.2. This PR is foundation only.
+
+**Architecture decision sign-off**:
+- ADR-011 captures the architect-approved 4-chunk plan: S8.1 domain → S8.2 application+webhook → S8.3 cancel/refund unlock → S8.4 data fixup + observability close-out.
+- User signed off Q1–Q5 with architect-recommended defaults (delete-on-refund, optimistic-fail at webhook, refund+comp for in-flight broken rows, defer add-attendees-with-seats to S9, hold TTL stays 10 min).
+- Doc + master TODO link: commit `1f20b4cd`.
+
+**S8.1 shipped (commit `f00b9e05`, deploy `25340452726` `success`)**:
+
+**Domain changes**:
+- `AttendeeDetails.WithSeat(seatId, seatLabel)` — value-object-style immutable rebind. Returns a new instance; original is unchanged. Trims label, rejects empty seatId / empty label. Idempotent rebinds allowed at this layer (the aggregate enforces stricter invariants).
+- `Registration.ConfirmSeatAssignments(IReadOnlyList<(int AttendeeIndex, Guid SeatId, string SeatLabel)>)` — new aggregate-level method to be called from the webhook's checkout-completed path AFTER `CompletePayment` succeeds. Invariants:
+  - Status must be `Confirmed`.
+  - Assignment count == attendee count (one seat per attendee, Mode-A only).
+  - Each `AttendeeIndex` is unique and within range.
+  - Each `SeatId` is non-empty.
+  - Half-mutation safe: validates everything up front; only mutates `_attendees` if every `WithSeat` call succeeds.
+  - **Idempotent on retry**: returns Success without raising the event when every attendee already carries the same seat assignment. Webhook redelivery + Phase 7G refund-reconciliation re-runs hit this path safely.
+  - Raises `SeatsReservedEvent` on first successful binding so S8.4 can hook the `seat_hold.converted_to_reservation` metric.
+
+**Infrastructure changes**:
+- `RegistrationConfiguration.OwnsMany(r => r.Attendees, ...)` extended to map `SeatId` (uuid) and `SeatLabel` (varchar(50)) to JSONB.
+- Migration `Phase8S81_AddSeatFieldsToAttendeeJsonb` is **snapshot-only** (Up/Down bodies intentionally empty). The `attendees` JSONB column is schema-less so adding new fields requires no `ALTER TABLE`; existing rows deserialise with null defaults — matches the WhatsApp opt-in pattern from Phase 7A.6D. The auto-generated body included drift updates on `reference_data.reference_values.created_at` timestamps; cleaned to a true no-op on the database.
+
+**Tests**: 18/18 new domain unit tests pass:
+- 7 `AttendeeDetailsSeatTests` (Create+seat / trim / WithSeat happy + immutability + trim + empty-id reject + empty-label reject Theory + rebind allowed).
+- 8 `RegistrationConfirmSeatAssignmentsTests` (happy path raises event / rejects Preliminary status / count mismatch fewer/more / duplicate index / out-of-range / empty SeatId / idempotent retry).
+- 3 idempotency edge cases.
+- **2583/2583 Application tests still pass** — no regressions despite touching the Registration aggregate.
+
+**Staging verification**:
+- Backend deploy `25340452726` returned `conclusion=success`.
+- Health check via `GET /api/events/my-rsvps` → 200.
+- **MVP regression bundle 10/10 GREEN** (`scripts/seating/mvp_regression.py`) — covers S1.5 J-B + S2-T1/T2 + S3-T1/T2/T3a/T3b + S4-T1/T2/T3 with correlation IDs recorded. Confirms (a) the migration record applied cleanly (`__EFMigrationsHistory` updated, deploy didn't fail), (b) no behaviour regressed despite the Registration aggregate change, (c) the JSONB column re-read works for existing rows (they deserialise with null SeatId/SeatLabel as designed).
+
+**What S8.1 explicitly does NOT do**:
+- The buyer-facing bug (silent seat-assignment drop after payment) is **NOT** fixed yet. That ships in S8.2.
+- Cancel/refund seat unlock is **NOT** wired yet. That ships in S8.3.
+- In-flight broken `Confirmed/PaymentCompleted/SeatId=null` rows on staging remain broken until S8.4 cleanup.
+
+**Next**: Slice S8.2 — RSVP command DTO + handler validation + pending-seat-assignments JSONB column + webhook hold→reservation conversion (architect-estimated 1.5–2 days; separate PR).
+
+---
+
 ## 🎯 2026-05-04 (research) — DISCOVERED: seat-assignment wire-up is a comprehensive feature gap (proposed Slice S8)
 
 **No code shipped this push** — the gap I uncovered is large enough that a partial fix would do more harm than good. Bringing scope back to the architect/user.

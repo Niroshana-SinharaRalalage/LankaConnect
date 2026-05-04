@@ -9102,3 +9102,14 @@ Final deploy: UI run `25284684263` (duplicate-line fix). Master TODO: `docs/MAST
 **Remaining deferred follow-ups** (still open):
 1. Phase 7F-E batch into prod (5 slices ready; awaiting operator browser verification on B3 + B4 events)
 2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+
+---
+
+## Domain Pricing-Guard Fix — CLOSED 2026-05-04 (commit `e30c37d6`)
+
+Latent domain bug rejecting paid+Tiered events with no legacy `Pricing` populated. Architect-approved fix: extracted `HasPaidPricingConfigured()` helper recognising three valid pricing shapes; replaced both guard sites; sanitised user-facing error message. End-to-end verified on staging event `616e59f3-...`: pre-fix HTTP 400, post-fix HTTP 200 + `total_price = 130.00 USD` in DB. 5 new TDD tests + 1 test updated. Process memory `feedback_smoke_user_flows.md` saved to prevent the framing error that masked it (treating "FE-only" slice as "no API smoke needed").
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (5 slices + this pricing-guard fix; ready to plan once operator green-lights browser verification on B3 + B4 events)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing (architect-flagged; separate slice)

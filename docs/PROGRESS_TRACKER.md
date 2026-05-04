@@ -6332,3 +6332,31 @@ return await _context.EventForms
 - **Fix:** Created `7F-E.4b smoke B4 tiered (delete after test)` event id `616e59f3-df84-4662-a9e3-18f285c00ac5` via `scripts/create_b4_tiered_test_event.py`. Two tiers added: **VIP** ($50 adult + $25 child price → tests ChildPrice path) and **Standard** ($30 adult only → tests no-ChildPrice helper). Event is Published, future-dated (2026-05-14), capacity 50.
 - **DB verification:** event row registration_mode=4, ticketing_mode=Tiered, IsFreeEvent=False, Status=Published. Both tier rows confirmed in `public.ticket_tiers` with correct prices.
 - **Browser checklist** (operator action): visit `https://lankaconnect-ui-staging.../events/616e59f3-...` → click RSVP → bump VIP / Standard tier counts → expect per-tier 4-leaf spinners (Adult Males / Adult Females / Child Males / Child Females) to appear inline; no separate top-level demographic block; submit and verify network panel `headCount` aggregates the four leaves across tiers.
+
+## Domain Pricing-Guard Fix (2026-05-04) — surfaced during 7F-E.4b verification
+
+**Date:** 2026-05-04  **Commit:** `e30c37d6`  **Status:** ✅ SHIPPED + END-TO-END VERIFIED on staging.
+
+### Bug
+Two pricing guards (`Event.RegistrationMode.cs:740`, `Event.cs:1130`) checked the legacy `Pricing == null && TicketPrice == null` invariant before falling through to the Tiered branch. A paid `TicketingMode = Tiered` event with active tiers IS pricing-configured (each tier carries its own AdultPrice/ChildPrice), but the guards rejected it.
+
+### Why it stayed latent until 2026-05-04
+Every other paid+tiered event on staging was created through the FE flow which redundantly calls `SetDualPricing` alongside `SetTicketingMode`. Operator's API-only event creation skipped that, exposing the bug on the new B4+tiered staging event `616e59f3-...`.
+
+### Fix
+Extracted private `HasPaidPricingConfigured()` helper on `Event` composing three valid pricing shapes (Pricing, TicketPrice, `HasTicketTiers`). Replaced both guard sites. Sanitised the user-facing error message — no longer leaks domain method names.
+
+### Verification
+- 5 new TDD tests in `EventPaidPricingGuardTests.cs` (1 success path matching the staging repro, 2 sanitised-message regression checks, 2 legacy-shape regression guards).
+- 1 existing test (`EventIsFreeEventFlagTests.CalculatePriceForAttendees_WhenPaidEventWithNullPricing_*`) updated to assert against the new sanitised text.
+- Pre-fix repro on staging: `scripts/smoke_pricing_guard_b4_tiered.py` returned HTTP 400 with the diagnostic error.
+- Post-fix re-test on the same event: HTTP 200, Stripe Checkout URL, `events.registrations` row with `total_price = 130.00 USD` (matching unit-test expectation).
+- Application 2573/6/0 + Infrastructure 317/0/0 green. Domain 589/0/2 — both fails (FormResponse + DonationConfiguration) confirmed pre-existing via git-stash bisect.
+
+### Process lesson
+I framed 7F-E.4b as "FE-only" and skipped the end-to-end staging-API smoke. The bug would have been caught at slice-close if I'd run an authenticated-RSVP smoke against a paid+tiered event. Memory `feedback_smoke_user_flows.md` saved to prevent recurrence.
+
+### Out of scope (deferred)
+- Defensive gap at `POST /api/Events` allowing paid events without any pricing (separate slice).
+- Mode A `throw InvalidOperationException` → `Result.Failure` conversion (orthogonal).
+

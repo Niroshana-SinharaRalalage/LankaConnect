@@ -3603,3 +3603,16 @@ B4 staging coverage gap closed via creation of event `616e59f3-df84-4662-a9e3-18
 **Outstanding cross-cutting items:**
 - Phase 7F-E prod batch (gated on operator browser verification of B3 + B4 events)
 - UI test red-suite triage (217 failures pre-existing)
+
+---
+
+## Pricing-Guard Fix Close-Out (2026-05-04)
+
+Domain pricing-guard bug shipped + end-to-end verified on staging via commit `e30c37d6`. The fix unblocks paid+Tiered events created through API-only paths (organiser tools, future automation) that don't redundantly populate legacy `Pricing`. Sanitised the user-facing error to remove leaked domain method names.
+
+Process gap noted: I should have run an authenticated-RSVP API smoke against a paid+tiered event during 7F-E.4b verification — would have caught this bug a day earlier. Memory `feedback_smoke_user_flows.md` codifies the rule for future slices.
+
+**Outstanding cross-cutting items unchanged from prior session:**
+- Phase 7F-E batch into prod (now includes the pricing-guard fix)
+- UI test red-suite triage (pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged, separate slice)

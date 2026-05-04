@@ -21,6 +21,17 @@ public class Registration : BaseEntity
     public RegistrationContact? Contact { get; private set; }  // Shared contact info for all attendees
     public Money? TotalPrice { get; private set; }  // Calculated total based on attendee ages
 
+    // Phase 8 S8.2 — pending seat-assignment stash. Set during the RSVP handler
+    // (status=Preliminary, before Stripe Checkout); read by the
+    // checkout-completed webhook to drive ConfirmSeatAssignments + write
+    // SeatReservation rows; cleared on either success or checkout-expired path.
+    // Mutually exclusive with the seated steady-state on Attendees[*].SeatId
+    // (which is populated AFTER ConfirmSeatAssignments succeeds in the same UoW).
+    private readonly List<PendingSeatAssignment> _pendingSeatAssignments = new();
+    public IReadOnlyList<PendingSeatAssignment> PendingSeatAssignments
+        => _pendingSeatAssignments.AsReadOnly();
+    public string? PendingSeatSessionId { get; private set; }
+
     // Phase 7E: Snapshot of the event's RegistrationMode at construction time.
     // Email re-renders for cancellation/reminder use this snapshot, NOT the live Event value,
     // so an organiser flipping the mode after the fact does not corrupt historical messaging.
@@ -537,6 +548,87 @@ public class Registration : BaseEntity
             DateTime.UtcNow));
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8 S8.2 — stashes the buyer's intended seat assignments + seat-hold
+    /// session id on the registration BEFORE Stripe Checkout. The webhook reads
+    /// this list when <c>checkout.session.completed</c> fires and feeds it into
+    /// <see cref="ConfirmSeatAssignments"/>.
+    ///
+    /// Invariants:
+    /// <list type="bullet">
+    ///   <item><see cref="Status"/> must be <see cref="RegistrationStatus.Preliminary"/>
+    ///   (seat stash is meaningful only before payment).</item>
+    ///   <item><paramref name="sessionId"/> non-empty.</item>
+    ///   <item><paramref name="assignments"/>.Count must equal attendee count.</item>
+    ///   <item>AttendeeIndex unique and within range; SeatId non-empty (already
+    ///   guaranteed by <see cref="PendingSeatAssignment.Create"/>).</item>
+    /// </list>
+    /// Replacement-not-append: if a buyer re-issues RSVP with different seats
+    /// (e.g., changes selection in another tab before redirect to Stripe), the
+    /// second call fully replaces the stash.
+    /// </summary>
+    public Result SetPendingSeatAssignments(
+        string sessionId,
+        IReadOnlyList<PendingSeatAssignment> assignments)
+    {
+        if (assignments == null)
+            return Result.Failure("Pending seat assignments are required");
+
+        if (Status != RegistrationStatus.Preliminary)
+            return Result.Failure(
+                $"Cannot stash pending seat assignments while registration is {Status}. " +
+                $"Status must be Preliminary (seat stash is for pre-payment registrations only). " +
+                $"RegistrationId={Id}");
+
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return Result.Failure(
+                $"Seat-hold session id is required. RegistrationId={Id}");
+
+        if (assignments.Count != _attendees.Count)
+            return Result.Failure(
+                $"Pending seat-assignment count {assignments.Count} does not match attendee " +
+                $"count {_attendees.Count}. RegistrationId={Id}");
+
+        var seenIndices = new HashSet<int>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AttendeeIndex < 0 || assignment.AttendeeIndex >= _attendees.Count)
+                return Result.Failure(
+                    $"Pending seat-assignment attendee index {assignment.AttendeeIndex} is out " +
+                    $"of range [0, {_attendees.Count}). RegistrationId={Id}");
+
+            if (!seenIndices.Add(assignment.AttendeeIndex))
+                return Result.Failure(
+                    $"Duplicate attendee index {assignment.AttendeeIndex} in pending seat " +
+                    $"assignments. RegistrationId={Id}");
+        }
+
+        _pendingSeatAssignments.Clear();
+        _pendingSeatAssignments.AddRange(assignments);
+        PendingSeatSessionId = sessionId;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8 S8.2 — clears the pending seat-assignment stash. Called by:
+    /// <list type="bullet">
+    ///   <item><see cref="ConfirmSeatAssignments"/> on the success path (after
+    ///   the seats are bound to attendees and reservations are written).</item>
+    ///   <item>The checkout-expired webhook (C5 guard) when Stripe reports the
+    ///   buyer abandoned the session.</item>
+    ///   <item><see cref="MarkAbandoned"/> on the abandoned-preliminary path.</item>
+    /// </list>
+    /// Idempotent: safe to call when no stash exists. Does NOT change
+    /// <see cref="Status"/> — callers control state transitions separately.
+    /// </summary>
+    public void ClearPendingSeatAssignments()
+    {
+        _pendingSeatAssignments.Clear();
+        PendingSeatSessionId = null;
+        MarkAsUpdated();
     }
 
     /// <summary>

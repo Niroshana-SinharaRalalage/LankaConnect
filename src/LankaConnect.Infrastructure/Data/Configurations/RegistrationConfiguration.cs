@@ -149,6 +149,28 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .IsRequired(false);
         });
 
+        // Phase 8 S8.2: pending seat-assignment stash for the RSVP-to-Stripe-checkout
+        // window. Set during the RSVP handler before redirect to Stripe; read by the
+        // checkout-completed webhook to drive ConfirmSeatAssignments. Cleared on
+        // success or expiry. Backed by a real JSONB column on `events.registrations`
+        // (NOT on the attendees JSONB — the stash is registration-scoped, not
+        // attendee-scoped, and lives separately so cleanup doesn't touch the
+        // attendee row).
+        builder.OwnsMany(r => r.PendingSeatAssignments, pendingBuilder =>
+        {
+            pendingBuilder.ToJson("pending_seat_assignments");
+            pendingBuilder.Property(p => p.AttendeeIndex).HasColumnName("attendee_index");
+            pendingBuilder.Property(p => p.SeatId).HasColumnName("seat_id");
+            pendingBuilder.Property(p => p.SeatLabel)
+                .HasColumnName("seat_label")
+                .HasMaxLength(50);
+        });
+
+        builder.Property(r => r.PendingSeatSessionId)
+            .HasColumnName("pending_seat_session_id")
+            .HasMaxLength(100)
+            .IsRequired(false);
+
         // Session 21: Configure Contact as JSONB for shared contact information
         builder.OwnsOne(r => r.Contact, contactBuilder =>
         {

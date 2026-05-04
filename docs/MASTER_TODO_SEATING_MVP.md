@@ -616,9 +616,9 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4 (S5 deferred) must 
 
 ---
 
-## Slice S8 — Seat-assignment wire-up — DISCOVERED 2026-05-04 (architect-level slice)
+## Slice S8 — Seat-assignment wire-up — APPROVED 2026-05-04, IMPLEMENTATION IN FLIGHT
 
-**Status**: SCOPE CONFIRMED, IMPLEMENTATION PENDING ARCHITECT SIGN-OFF.
+**Status**: APPROVED. Architect plan in [`docs/architecture/ADR-011-Seating-Wire-Up.md`](architecture/ADR-011-Seating-Wire-Up.md). User signed off Q1–Q5 with architect-recommended defaults (delete-on-refund, optimistic-fail at webhook, refund+comp for in-flight broken rows, defer add-attendees-with-seats to S9, hold TTL stays at 10 min). Implementation sequence: S8.1 → S8.2 → S8.3 → S8.4 across 4 PRs.
 
 **How surfaced**: while wiring `seat_hold.converted_to_reservation` for Phase 7H observability, I went looking for the conversion code path. There isn't one. `SeatReservation.Create` is only called from tests; no production code writes `seat_reservations` rows. Going further: `RsvpToEventCommand` doesn't even carry `seatIds` from the buyer's seat-picker selection; `RsvpToEventCommandHandler` calls `AttendeeDetails.Create(name, age, gender, tierId, tierName)` with no seat-id; `RegistrationConfiguration` doesn't map `SeatId` / `SeatLabel` to the JSONB column. **End-to-end consequence**: a buyer who selects seats, holds them, pays via Stripe, gets `Confirmed/PaymentCompleted` — and **their seat assignment is silently dropped**. Hold expires after 10 min; another buyer can claim the same seat.
 

@@ -6,6 +6,50 @@
 
 ---
 
+## 🎯 2026-05-04 (research) — DISCOVERED: seat-assignment wire-up is a comprehensive feature gap (proposed Slice S8)
+
+**No code shipped this push** — the gap I uncovered is large enough that a partial fix would do more harm than good. Bringing scope back to the architect/user.
+
+**How surfaced**: yesterday's Phase 7H observability work needed `seat_hold.converted_to_reservation`. Tracing the conversion code path, I found: `SeatReservation.Create` is only called from tests. No production code writes `seat_reservations` rows. Pulling that thread further, the buyer-side seat-binding flow is broken end-to-end:
+
+| Layer | Should do | Actually does |
+|---|---|---|
+| Frontend RSVP request | Send `seatIds: string[]` from SeatPicker | ✅ already sending |
+| `RsvpToEventCommand` | Carry `SeatIds` + `SeatSessionId` fields | ❌ no such fields |
+| `RsvpToEventCommandHandler` line 213 | Call `AttendeeDetails.Create(name, age, gender, tierId, tierName, seatId, seatLabel)` | ❌ never passes seatId |
+| `RegistrationConfiguration` line 116 | Map `SeatId` + `SeatLabel` columns to attendees JSONB | ❌ only maps Name/Age/Gender/TierId/TierName |
+| Webhook on payment-completed | Convert holds → SeatReservation rows + bind seat-ids to attendees | ❌ no such code path |
+| Email + ticket PDF handlers | Read `attendee.SeatLabel` and render | ✅ ready (always renders empty because SeatLabel is never persisted) |
+| `StructuralEditGuard.GetReservedSeatIdsAsync` | Return non-empty set after a paid AssignedSeating registration | ❌ always 0 (table empty) |
+
+**End-to-end consequence**: a buyer who selects seats, holds them, pays via Stripe, gets `Confirmed/PaymentCompleted` — and **the seat assignment is silently dropped**. Hold expires after 10 min; another buyer can claim the same seat. Confirmation email + ticket PDF show no seat label. Organiser can structurally delete the seat 10 min later because the guard sees 0 reservations.
+
+**Reproduction is trivial**: any paid AssignedSeating registration on staging today (`e4792b64-...` is configured this way: `seatingMode=AssignedSeating`, `ticketingMode=Tiered`, `registrationMode=DetailedAttendees`) — go through the buyer flow and inspect the resulting registration's attendee JSONB. `seat_id` and `seat_label` are absent.
+
+**Proposed Slice S8 — Seat-assignment wire-up** (full plan in `docs/MASTER_TODO_SEATING_MVP.md`):
+1. Extend RSVP commands with `SeatSessionId` + `SeatIds`.
+2. Domain: `AttendeeDetails.Create` accepts seat-id + seat-label; `Registration.AssignSeatsToAttendees(...)` aggregate method.
+3. EF: extend `attendees` JSONB shape (schema-less, no migration needed).
+4. Webhook: post-payment hold→reservation conversion + seat-id binding (single UoW).
+5. Free-event path: same conversion synchronously in handler.
+6. Tests: domain (8+), application (10+), webhook integration (4+), staging API smoke.
+7. Observability: emit `seat_hold.converted_to_reservation` from the conversion site (completes Phase 7H §S6 metric coverage).
+
+**Architect design questions before I implement**:
+- (Q1) On cancel-with-refund: do we delete the reservation row (unlock the seat) or keep it (forever-locked, ticket stays valid)?
+- (Q2) Hold/reservation race: 30-min Stripe Checkout vs 10-min hold TTL — auto-extend, accept-gap, or fail-at-webhook with "seat no longer available"?
+- (Q3) In-flight migration: existing `Confirmed/PaymentCompleted/SeatingMode=AssignedSeating` registrations on staging have `SeatId=null` already — leave broken, data-fix from holds, or refund?
+
+**Estimated scope**: 1–2 weeks focused work across Command + Domain + Infrastructure + Webhook + tests in 4 layers. **Not safe** for a one-day TDD push.
+
+**Effect on S6.C (Playwright e2e)**: **BLOCKED**. The architect-spec'd buyer happy-path test reads *"confirmation email + ticket PDF have seat numbers"* — that step always fails until S8 ships. Two options:
+- (a) Implement S8 first (architect input + multi-day work), then unblock S6.C.
+- (b) Ship S6.C with the seat-persistence step explicitly stubbed/skipped pending S8.
+
+**Senior Engineer guideline #3 invoked**: "Consult the architect whenever you're unsure about design, scope, or system-level impact." This qualifies. Stopping here, bringing decision back.
+
+---
+
 ## 🎯 2026-05-04 (latest) — Phase 7H observability follow-up SHIPPED + STAGING-VERIFIED — 3 missing metrics now emit
 
 **Goal**: close the observability gap documented yesterday. The architect §S6 dashboard spec required 9 metrics; 6 were already emitting; 5 were missing. Today's push closes 3 of the 5; the remaining 2 are blocked by separate concerns (documented below).

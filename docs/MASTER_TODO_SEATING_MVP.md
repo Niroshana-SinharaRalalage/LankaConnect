@@ -616,6 +616,41 @@ S6 is the MVP gate. All curl tests from S1, S1.5, S2, S3, S4 (S5 deferred) must 
 
 ---
 
+## Slice S8 — Seat-assignment wire-up — DISCOVERED 2026-05-04 (architect-level slice)
+
+**Status**: SCOPE CONFIRMED, IMPLEMENTATION PENDING ARCHITECT SIGN-OFF.
+
+**How surfaced**: while wiring `seat_hold.converted_to_reservation` for Phase 7H observability, I went looking for the conversion code path. There isn't one. `SeatReservation.Create` is only called from tests; no production code writes `seat_reservations` rows. Going further: `RsvpToEventCommand` doesn't even carry `seatIds` from the buyer's seat-picker selection; `RsvpToEventCommandHandler` calls `AttendeeDetails.Create(name, age, gender, tierId, tierName)` with no seat-id; `RegistrationConfiguration` doesn't map `SeatId` / `SeatLabel` to the JSONB column. **End-to-end consequence**: a buyer who selects seats, holds them, pays via Stripe, gets `Confirmed/PaymentCompleted` — and **their seat assignment is silently dropped**. Hold expires after 10 min; another buyer can claim the same seat.
+
+**Reproduction evidence**: [src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommand.cs](src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommand.cs) has no `SeatIds` field; [src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs:213](src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs#L213) calls `AttendeeDetails.Create` without seat-id; [src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs:116](src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs#L116) `OwnsMany(r => r.Attendees)` only maps Name/AgeCategory/Gender/TicketTierId/TicketTierName. Frontend already sends `seatIds: string[]` ([web/src/infrastructure/api/types/events.types.ts:1029](web/src/infrastructure/api/types/events.types.ts#L1029)) but the backend silently drops it.
+
+**Affected user-visible flows**:
+- Paid AssignedSeating registrations (Mode-A `DetailedAttendees` + `SeatingMode=AssignedSeating` + `TicketingMode=Tiered`) — buyer picks seats, pays, but no seat assignment is persisted on staging or in production.
+- Email confirmation reads `attendee.SeatLabel` ([AnonymousRegistrationConfirmedEventHandler.cs:125](src/LankaConnect.Application/Events/EventHandlers/AnonymousRegistrationConfirmedEventHandler.cs#L125), [AttendeesAddedEventHandler.cs:175](src/LankaConnect.Application/Events/EventHandlers/AttendeesAddedEventHandler.cs#L175), [ResendTicketEmailCommandHandler.cs:322](src/LankaConnect.Application/Events/Commands/ResendTicketEmail/ResendTicketEmailCommandHandler.cs#L322)) — always renders empty because `SeatLabel` is never persisted.
+- Ticket PDF — same, no seat label.
+- Re-deletion safety: the `StructuralEditGuard.GetReservedSeatIdsAsync` always returns 0 (because the table is empty), so post-payment edit guards rely solely on holds (10-min TTL) — after the hold expires, the organiser can structurally delete the seat without any guard firing, even though a buyer paid for it.
+
+**Proposed scope (architect input required)**:
+1. **Backend command shape**: extend `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` with `SeatSessionId: string?` + `SeatIds: List<Guid>?`. Validate (a) seat IDs match active holds for this session, (b) hold-owner matches caller, (c) seat count matches attendee count.
+2. **Domain**: extend `AttendeeDetails.Create` to accept seat-id + seat-label; add an aggregate-level method `Registration.AssignSeatsToAttendees(IList<(int attendeeIndex, Guid seatId, string seatLabel)>)`.
+3. **EF mapping**: add `seat_id` + `seat_label` columns to the `attendees` JSONB shape in `RegistrationConfiguration.OwnsMany(r => r.Attendees)`. JSONB schema-less so no migration needed for column addition (existing rows deserialise with null defaults).
+4. **Hold→reservation conversion**: in `RegistrationWebhookHandler.HandleCheckoutSessionCompletedAsync` post-payment path: load the registration's seats, write `SeatReservation` rows (one per seat), release the matching holds. Single UoW commit. Failure mode: if reservation insert fails, log + retry (this is the architect decision — at-least-once vs at-most-once semantics).
+5. **Free-event path**: in `RsvpToEventCommandHandler` for `IsFree` + `AssignedSeating`, do the same conversion synchronously (no Stripe round-trip).
+6. **Read-side update**: ticket PDF + email handlers continue reading `attendee.SeatLabel` — no change.
+7. **Tests**: domain (8+), application (10+), webhook integration (4+), end-to-end staging API smoke covering paid + free paths.
+8. **Observability**: emit `seat_hold.converted_to_reservation EventId=... SeatCount=N` from the conversion site, completing Phase 7H §S6 metric coverage.
+
+**Key design questions for architect**:
+- (Q1) **Reservation-row uniqueness**: today the `seat_reservations` table has a unique index on `seat_id` only. If a registration is later cancelled-with-refund, do we delete the reservation row (and unlock the seat) or keep it (forever-locked, ticket-PDF stays valid)? Today's `Refunded` registrations would imply seat returns to inventory, but no domain method exists.
+- (Q2) **Hold/reservation race during payment delay**: a buyer can be in Stripe Checkout for 30+ minutes. Our hold TTL is 10 min. If their hold expires before they pay, do we (a) auto-extend the hold while a Checkout Session is active, (b) accept the gap and lose the seat, or (c) try to reservation-insert at webhook time and fail with "seat no longer available"? The current behaviour is (b) silently — clearly wrong. Existing `Registration.RequestRefund` flow at [Registration.cs:600](src/LankaConnect.Domain/Events/Registration.cs#L600) doesn't reference seats, so the refund path doesn't unlock seats either.
+- (Q3) **Migration of in-flight registrations**: are there `Confirmed/PaymentCompleted/SeatingMode=AssignedSeating` registrations on staging today? Yes — `e4792b64` is configured this way. Once this slice ships, those rows have `SeatId=null` on every attendee. Do we (a) leave them broken (the user fix is "tell organiser to manually issue seats"), (b) data-fix migration matching the buyer's last-active-hold to seats, or (c) refund them?
+
+**Estimated scope**: 1–2 weeks focused work. Touches Application + Domain + Infrastructure + Webhook + tests across 4 layers. Not safe to ship in a one-day push.
+
+**Effect on Slice S6.C**: BLOCKED. The architect §S6 buyer happy-path Playwright test reads "*confirmation email + ticket PDF have seat numbers*" — that step would always FAIL until S8 ships. We can either (a) finish S8 first, or (b) ship a stubbed S6.C that asserts "seat-PDF check is skipped pending S8".
+
+---
+
 ## Slice S7 — Polish (post-MVP, ship at leisure)
 
 - [ ] **(reclassified from S5)** SeatLocation value object + EF migration: replace the nullable-XOR (`Seat.ZoneId XOR Seat.TableId`) with a `SeatLocation` value object. ~12 real call sites, 1 destructive migration. No user-visible benefit (orphans + cascades already correct). See deferred S5 section above for full plan.

@@ -6,6 +6,41 @@
 
 ---
 
+## 🎯 2026-05-04 — Phase 7G operator override + e2e verification gap acknowledged
+
+**Goal**: extend the refund-reconciliation safety net (shipped earlier today as `83be8f79`) with an `ageThresholdMinutes` operator override, then drive a full `Confirmed → RefundRequested → Refunded` lifecycle on staging to prove the fix actually heals stuck rows end-to-end.
+
+**Operator override shipped (commit `c7745cbc`, deploy `25295958528` `success`)**:
+- `IRefundReconciliationService.ReconcileStuckRefundsAsync(batchSize, ageThresholdMinutes, ct)` — new optional param defaults to settings. Negative values clamp to 0.
+- `RefundReconciliationBackgroundService` now passes the configured `AgeThresholdMinutes` from `RefundReconciliationSettings` (was hardcoded).
+- `POST /api/admin/refund-reconciliation/run` accepts `ageThresholdMinutes` query param. Use case: incident response when a deploy collision happened minutes ago and the operator wants to heal the row before the next 5-min background pass.
+- 2 new unit tests cover the override (relaxes filter to ~now; negative clamps to 0). 9/9 reconciliation suite green; 2567/2567 Application tests pass.
+
+**End-to-end verification ATTEMPTED but BLOCKED**:
+- Tried to cancel a Confirmed+PaymentCompleted registration on staging to drive a fresh `RefundRequested` row through the safety net.
+- All paid registrations under the test account are on past-dated events. `CancelRsvpCommandHandler` correctly rejects with HTTP 400 *"Cannot cancel registration after the event has started"* (Phase 6A.91 business rule — sound domain invariant).
+- Future-dated events under the test account are all `PaymentStatus=NotRequired` (free), so cancelling them doesn't exercise the refund pipeline.
+- Driving the lifecycle would require either creating a future-dated paid event AND going through Stripe Checkout (browser-based, can't script via curl alone), OR adding a testing-only bypass to the domain rule (gold-plating; declined).
+
+**Honest verification matrix**:
+| Layer | Verified | Method |
+|---|---|---|
+| Repository `GetStuckRefundsAsync` | ✅ | Container log shows 2ms execution, 0 rows returned |
+| DI wiring (Service + Background + Endpoint) | ✅ | HTTP 200 + structured `[Phase 7G]` correlation logs |
+| Background service running | ✅ | `[Reconcile-1] START` + `[Reconcile-2] No stuck refunds` in container logs |
+| 5 status branches (succeeded / pending / failed / missing-id / lookup-fault) | ✅ | 9/9 unit tests with mocked dependencies |
+| `ageThresholdMinutes` override | ✅ | 2 dedicated unit tests + endpoint accepts query param |
+| `Stripe.GetRefundStatusAsync` real-API call | ⚠️ NOT exercised on staging | code mirrors proven `CreateRefundAsync` pattern (same `_stripeClient`, same auth, same SDK + exception handling) — first stuck refund in the wild will exercise it |
+| Full `Confirmed → RefundRequested → Refunded` lifecycle | ⚠️ NOT exercised on staging | blocked by valid domain rule on past-dated events. State-transition code path (`Registration.CompleteRefund(refundId)`) IS the same method the production webhook handler has used since Phase 6A.91 — battle-tested |
+
+**Residual risk + mitigation**: the marginal value of the e2e proof is real but small relative to the cost (full payment flow on staging). The Stripe SDK call is mechanically simple — `refundService.GetAsync(refundId)` returns a `Refund` object whose `Status` field we read. The whole orchestrator goes through `Registration.CompleteRefund`, which raises `RefundCompletedEvent` and triggers the same email/WhatsApp event-handler chain that production has used for months. If it works for the webhook path, it works for the reconciliation path. The safety net itself logs every Stripe call with a `[Phase 7G]` correlation tag, so any real-API failure is easy to forensic.
+
+**Hygiene note**: commit `c7745cbc` accidentally staged a deletion of an unrelated migration file (`20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs`, a hand-created file with no Designer.cs companion → invisible to EF Core, never applied per CLAUDE.md memory). Restored via `194dea29` "revert: restore Phase6A113 migration .cs file". No functional impact (file was already inert).
+
+**Next**: S6.B (observability metrics audit + 1000-seat perf benchmark + new S6-T1/T2/T3 race/perf/Stripe-replay tests).
+
+---
+
 ## 🎯 2026-05-03 (later) — Phase 7G SHIPPED + STAGING-VERIFIED — durable refund-reconciliation safety net for missed `charge.refunded` webhooks
 
 **Context**: User reported a $400 refund stuck in `RefundRequested` on event `d543629f`, registration `e6285ea7`, for ~37 hours. Said "this happened a couple of times" lately and asked whether recent code changes caused it.

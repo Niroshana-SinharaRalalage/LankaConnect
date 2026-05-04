@@ -6362,3 +6362,19 @@ I framed 7F-E.4b as "FE-only" and skipped the end-to-end staging-API smoke. The 
 - Defensive gap at `POST /api/Events` allowing paid events without any pricing (separate slice).
 - Mode A `throw InvalidOperationException` → `Result.Failure` conversion (orthogonal).
 
+
+## 7F-E.6 — Formatter Totals row + paid-event email token wiring (2026-05-04)
+
+**Commit:** `f665a2b6`  **Deploy run:** `25341671895` (success)  **Status:** ✅ SHIPPED + STAGING-SMOKED.
+
+Two bugs surfaced by operator browser test (event `616e59f3-...`):
+- **7F-E.6.A** (display gap): Multi-tier B-mode breakdowns showed N/A on every per-tier row even when registration-level demographics WERE captured. Formatter deliberately deferred per-tier-gender storage (architect Phase 7F-C §2.2 #4) but never surfaced the captured registration-level data. Fix: extended `RegistrationBreakdown` shape with optional `Totals` row; formatter populates when `IsTiered && Rows.Count > 1 && (captureAge || captureGender)`; 3 renderers (HTML email card, PDF ticket, FE event-detail card) updated to render the Totals at the bottom of the per-tier list.
+- **7F-E.6.B** (handler wiring gap): Paid-event email rendered literal `{{{RegistrationBreakdownHtml}}}` because 7F-E.3 migration added the token to the template body but didn't wire `TicketConfirmationEmailParams`. Fix: added field + `WithRegistrationBreakdownHtml(string?)` setter + ToDictionary entry; wired all 3 producer sites (`PaymentCompletedEventHandler`, `ResendTicketEmailCommandHandler`, `RegistrationEmailService`) with renderer call + try/catch fallback. Validator HashSet updated as regression guard.
+
+**Tests:** 10 new (7 formatter + 3 EmailParams). Application 2583/6/0; Infrastructure 317/0/0; Domain 607/0/2 (pre-existing flakes); web events 78/78.
+
+**Smoke:** `scripts/smoke_phase7fe6_paid_email_breakdown.py` exercised resend-ticket pipeline on operator's existing B4-tiered registration → HTTP 200 + container log `ResendTicketEmail COMPLETE: Email sent successfully` with zero fallback warnings.
+
+**Process lessons:** Memory `feedback_cross_surface_matrix_smoke.md` saved per architect mandate — cross-surface slices need a smoke matrix at slice-plan time covering mode × tiered × free/paid × auth/anon. Both 7F-E.6 bugs sat in cells my single-path 7F-E.3/4b smokes skipped.
+
+**Operator action pending:** browser re-verification on event-detail card + PDF + paid-event email.

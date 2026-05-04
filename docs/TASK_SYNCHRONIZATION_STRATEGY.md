@@ -3616,3 +3616,17 @@ Process gap noted: I should have run an authenticated-RSVP API smoke against a p
 - Phase 7F-E batch into prod (now includes the pricing-guard fix)
 - UI test red-suite triage (pre-existing)
 - POST /api/Events defensive-gap follow-up (architect-flagged, separate slice)
+
+---
+
+## 7F-E.6 Close-Out (2026-05-04)
+
+Commit `f665a2b6` + deploy run `25341671895` (success): formatter Totals row + paid-event email RegistrationBreakdownHtml wiring both fixed. The bugs were surfaced by operator browser test on staging event `616e59f3-...`; root causes traced to architect Phase 7F-C §2.2 #4 deferred-decision interaction with the cross-surface display contract (Bug 1) and 7F-E.3 producer-side gap that the EmailTemplateValidator's per-template HashSet missed (Bug 2). All fixes are TDD-first; sweep grep confirmed all 3 production sites wired; validator HashSet updated as regression guard.
+
+Process discipline upgrade: memory `feedback_cross_surface_matrix_smoke.md` saved — cross-surface slices need a smoke matrix at slice-plan time covering mode × tiered × free/paid × auth/anon, with negative-evidence assertions ("no literal `{{{` in body") alongside positive ones. Both 7F-E.6 bugs sat in matrix cells my single-path smokes skipped.
+
+**Outstanding cross-cutting items:**
+- Phase 7F-E prod batch (now 7 slices ready; gated on operator browser re-verification)
+- UI test red-suite triage (217 failures pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged separate slice)
+- EmailTemplateValidator stronger automation (architect-flagged separate slice)

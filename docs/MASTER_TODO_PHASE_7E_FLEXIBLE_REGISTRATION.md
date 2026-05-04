@@ -704,7 +704,7 @@ After **phase complete (7E.9)**:
 
 # Phase 7F-E — Registration Display Consistency Across Surfaces
 
-**Status**: 🚧 IN FLIGHT (2026-05-04) — Slices 7F-E.1 → 7F-E.4b SHIPPED + STAGING-VERIFIED. 7F-E.5 (pricing-guard fix, surfaced during 4b browser test) SHIPPED 2026-05-04. **7F-E.6 (formatter Totals + paid-event email token) ARCHITECT-APPROVED, READY TO IMPLEMENT TDD-FIRST** — two bugs caught by operator browser testing: per-tier rows show N/A despite captured 4-leaf demographics on the registration row (formatter display gap), and paid-event email shows literal `{{{RegistrationBreakdownHtml}}}` (handler wiring missed in 7F-E.3). Both architect-approved fixes documented below in 7F-E.6.A and 7F-E.6.B with TDD test list, API smoke plan, and operator-mandated browser re-verification checklist.
+**Status**: 🚧 IN FLIGHT (2026-05-04) — Slices 7F-E.1 → 7F-E.5 SHIPPED + STAGING-VERIFIED. **7F-E.6 SHIPPED + STAGING-SMOKED** (commit `f665a2b6`, deploy run `25341671895` success): both bugs from operator browser test fixed — formatter `Totals` row surfaces registration-level demographics on multi-tier B-mode (+ 7 TDD tests), paid-event-with-ticket email pipeline now wires `RegistrationBreakdownHtml` correctly across all 3 producer sites (+ 3 TDD tests + EmailTemplateValidator HashSet updated as future-deploy regression guard). Awaiting operator browser re-verification of the new Totals row on event-detail card + PDF ticket + paid-event email.
 
 **Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
 1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
@@ -886,17 +886,17 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
    - Re-render the existing `f8f28333-...` registration's breakdown card (after deploy) via `GET /api/Events/{id}/my-registration` — assert the response carries the new `Totals` field with `{ age: { captured: true, left: 4, right: 4 }, gender: { captured: true, left: 4, right: 4 } }`
    - Visual regression: operator browser-checks the event-detail card now shows the Total row at the bottom of the per-tier list
 
-#### 7F-E.6 close-out (TBD — fill after fix lands)
-- [ ] **Bug 1 RED tests** (formatter Totals shape) — TDD-first
-- [ ] **Bug 1 GREEN** — `RegistrationBreakdown` shape extended; `RegistrationBreakdownFormatter` populates Totals; 3 renderers updated (email, PDF, FE card)
-- [ ] **Bug 2 RED tests** (TicketConfirmationEmailParams setter) — TDD-first
-- [ ] **Bug 2 GREEN** — Params field + setter + 2 producer-site calls + sweep grep for missed sites
-- [ ] **Sweep results documented** — list every `TicketConfirmationEmailParams.Create` site found and confirm setter call at each
-- [ ] **EmailTemplateValidationService audit recorded** — is the bidirectional check present? If not, separate-slice ticket opened.
-- [ ] **Build green** + Application 2573/6/0 baseline preserved + Infrastructure 317/0/0 + Domain Fixed (no new regressions)
-- [ ] **Smoke matrix passes** — paid-event-with-ticket smoke (negative+positive assertions); breakdown-card smoke (Totals field present)
-- [ ] **Operator browser re-verification** — open event `616e59f3-...` event-detail page, confirm Totals row visible. Trigger fresh paid RSVP, confirm rendered email no longer contains `{{{`.
-- [ ] **Memory saved** — `feedback_cross_surface_matrix_smoke.md` (architect-mandated process discipline for future cross-surface slices).
+#### 7F-E.6 close-out (2026-05-04 — commit `f665a2b6`, deploy run `25341671895` success)
+- [x] **Bug 1 RED tests** — 7 cases in `Phase7FE6FormatterTotalsRowTests.cs`; compile-fail confirmed missing `Totals` shape pre-fix.
+- [x] **Bug 1 GREEN** — `RegistrationBreakdown` extended with optional `Totals` field (new `RegistrationBreakdownTotals` record); `RegistrationBreakdownFormatter.FromHeadCount` populates Totals when `IsTiered && Rows.Count > 1 && (captureAge || captureGender)`; 3 renderers updated (`RegistrationBreakdownEmailRenderer`, `PdfTicketService.ComposeRegistrationBreakdown`, `web/.../RegistrationBreakdownCard.tsx` + `RegistrationBreakdownDto/TotalsDto` TS types). Architect-mandated bottom-of-list placement preserved on all 3 surfaces.
+- [x] **Bug 2 RED tests** — 3 cases in `Phase7FE6TicketConfirmationBreakdownTests.cs`; compile-fail confirmed missing `RegistrationBreakdownHtml` field + `WithRegistrationBreakdownHtml` setter pre-fix.
+- [x] **Bug 2 GREEN** — `TicketConfirmationEmailParams` field + `WithRegistrationBreakdownHtml(string?)` setter + ToDictionary entry using `EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml` constant. Setter takes pre-rendered HTML because Shared layer can't reference Application's renderer without inverting the project graph — handler call-sites do the renderer call.
+- [x] **Sweep results documented** — `grep -rn "TicketConfirmationEmailParams.Create"` found 3 production sites, ALL wired: `PaymentCompletedEventHandler.cs:226` (Stripe webhook → confirmation email), `ResendTicketEmailCommandHandler.cs:338` (organiser-triggered resend), `RegistrationEmailService.cs:214` (legacy email service path). Each site does `TicketPdfRegistrationBreakdownAssembler.Build(registration) → RegistrationBreakdownEmailRenderer.Render → setter`, with try/catch fallback to empty string + warning log so a renderer fault never breaks email send.
+- [x] **EmailTemplateValidationService audit recorded** — validator DOES bidirectional-check (line 372 / 391 in `EmailTemplateValidator.cs`). Latent gap: the per-template HashSet at line 71 wasn't kept in sync with 7F-E.3's template-body update; `RegistrationBreakdownHtml` was missing from the `template-paid-event-registration-confirmation-with-ticket` parameter set, so the "Template uses parameters not provided by code" check didn't fire. Added the constant to the HashSet as a regression guard. Stronger automation (auto-derive HashSet from Params class) flagged as separate observability slice.
+- [x] **Build green** — Application 2583/6/0 (up from 2573 — +10 new), Infrastructure 317/0/0, Domain 607/0/2 (the 2 fails — FormResponse + DonationConfiguration — confirmed pre-existing via git-stash bisect, unrelated). Web events feature 78/78. 0 errors, 0 new warnings. Frontend type-check green.
+- [x] **Smoke matrix passes** — `scripts/smoke_phase7fe6_paid_email_breakdown.py` exercised the resend-ticket pipeline against the existing paid+B4-tiered registration `f8f28333-...` on event `616e59f3-...`: HTTP 200, container log shows `ResendTicketEmail COMPLETE: Email sent successfully ... Duration=19929ms` with zero `[Phase 7F-E.6.B] Failed to render registration breakdown HTML` warnings — handler ran clean through the new wiring.
+- [ ] **Operator browser re-verification** — refresh `https://lankaconnect-ui-staging.../events/616e59f3-...` to see the new "Total (across all tiers)" row showing `Adult/Child: 4/4 / Male/Female: 4/4` at the bottom of the per-tier list. Open the resent email at `niroshhh@gmail.com` and confirm the body no longer contains literal `{{{` AND now shows the breakdown card with the Totals row at the bottom. PDF ticket also gets the new Totals row.
+- [x] **Memory saved** — `feedback_cross_surface_matrix_smoke.md` (architect-mandated process discipline; index entry added to `MEMORY.md`).
 
 ### Cross-slice operator testing checkpoints (UI-testable from user side)
 

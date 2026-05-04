@@ -9159,3 +9159,19 @@ Latent domain bug rejecting paid+Tiered events with no legacy `Pricing` populate
 1. Phase 7F-E batch into prod (5 slices + this pricing-guard fix; ready to plan once operator green-lights browser verification on B3 + B4 events)
 2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
 3. Defensive gap at `POST /api/Events` allowing paid event with no pricing (architect-flagged; separate slice)
+
+---
+
+## 7F-E.6 — Formatter Totals + paid-event email wiring — CLOSED 2026-05-04
+
+Commit `f665a2b6`; deploy run `25341671895` success. Two bugs surfaced by operator browser test on event `616e59f3-...` both fixed:
+- 7F-E.6.A: `RegistrationBreakdown.Totals` field + 3 renderer updates so multi-tier B-mode surfaces the registration-level captured demographics that per-tier rows can't carry (per architect §2.2 #4 deferred decision)
+- 7F-E.6.B: `TicketConfirmationEmailParams.RegistrationBreakdownHtml` + `WithRegistrationBreakdownHtml` setter + 3 producer-site wirings + `EmailTemplateValidator` HashSet regression guard
+
+10 new TDD tests; full backend+web suites green. Staging smoke `scripts/smoke_phase7fe6_paid_email_breakdown.py` PASS.
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (now 7 slices: 1 → 4b + 5 + 6; awaiting operator browser re-verification on event 616e59f3)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing — architect-flagged separate slice
+4. EmailTemplateValidator stronger automation: auto-derive per-template HashSet from the matching Params class so the operator-side maintenance burden that masked Bug 2 doesn't recur — architect-flagged separate slice

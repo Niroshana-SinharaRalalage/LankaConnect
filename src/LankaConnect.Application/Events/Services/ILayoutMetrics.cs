@@ -66,6 +66,17 @@ public interface ILayoutMetrics
     /// included in the atomic <c>PUT /batch</c> payload.
     /// </summary>
     void LayoutCanvasEditorSaved(Guid layoutId, int changesCount);
+
+    /// <summary>
+    /// Phase 7H: fires when a canvas-editor save fails before a successful
+    /// commit. <paramref name="reason"/> is one of a fixed set of low-
+    /// cardinality tags (<c>not_found</c>, <c>auth_failed</c>,
+    /// <c>concurrency_conflict</c>, <c>structural_edit_rejected</c>,
+    /// <c>validation_failed</c>, <c>unknown</c>) so the dashboard can split
+    /// "user-visible friction" from "system errors". Architect §S6 dashboard
+    /// alerts on save error rate > 5% in 5 min.
+    /// </summary>
+    void LayoutCanvasEditorSaveFailed(Guid layoutId, string reason);
 }
 
 /// <summary>

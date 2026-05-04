@@ -1,4 +1,5 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
@@ -13,6 +14,7 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
     private readonly ISeatReservationRepository _seatReservationRepository;
     private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISeatHoldMetrics _seatHoldMetrics;
     private readonly ILogger<HoldSeatsCommandHandler> _logger;
 
     public HoldSeatsCommandHandler(
@@ -20,12 +22,14 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         ISeatReservationRepository seatReservationRepository,
         IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
+        ISeatHoldMetrics seatHoldMetrics,
         ILogger<HoldSeatsCommandHandler> logger)
     {
         _seatHoldRepository = seatHoldRepository;
         _seatReservationRepository = seatReservationRepository;
         _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
+        _seatHoldMetrics = seatHoldMetrics;
         _logger = logger;
     }
 
@@ -96,6 +100,19 @@ public class HoldSeatsCommandHandler : ICommandHandler<HoldSeatsCommand, HoldSea
         _logger.LogInformation(
             "Seats held successfully: EventId={EventId}, UserId={UserId}, HeldCount={Count}, ExpiresAt={ExpiresAt}",
             request.EventId, request.UserId, holds.Count, expiresAt);
+
+        // Phase 7H: emit hold-creation metric for the architect §S6 dashboard.
+        // Wrapped in try-catch — observability must never block the user path.
+        try
+        {
+            _seatHoldMetrics.SeatHoldCreated(request.EventId, holds.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to emit seat_hold.created metric (non-fatal) - EventId={EventId}, Count={Count}",
+                request.EventId, holds.Count);
+        }
 
         return Result<HoldSeatsResult>.Success(new HoldSeatsResult(
             request.SeatIds,

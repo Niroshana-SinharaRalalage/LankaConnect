@@ -72,6 +72,19 @@ public class LayoutMetrics : ILayoutMetrics
             changesCount);
     }
 
+    public void LayoutCanvasEditorSaveFailed(Guid layoutId, string reason)
+    {
+        // Reason is a low-cardinality string fixed by the calling code (one
+        // of: not_found, auth_failed, concurrency_conflict,
+        // structural_edit_rejected, validation_failed, unknown). Dashboard
+        // uses this tag to split user-friction from system errors.
+        _logger.LogInformation(
+            "Metric {MetricName} LayoutId={LayoutId} Reason={Reason}",
+            "canvas_editor.save_failed",
+            layoutId,
+            reason ?? "unknown");
+    }
+
     private static string ToTag(StructuralEditRejectionReason reason) => reason switch
     {
         StructuralEditRejectionReason.SeatsReserved => "seats_reserved",

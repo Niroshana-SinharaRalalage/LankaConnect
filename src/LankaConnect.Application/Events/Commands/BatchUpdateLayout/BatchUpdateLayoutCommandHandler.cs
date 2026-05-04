@@ -79,6 +79,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
 
         if (request.Payload is null)
         {
+            EmitSaveFailed(request.LayoutId, "validation_failed");
             return Result.Failure("Batch payload is required");
         }
 
@@ -86,6 +87,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         if (authResult.IsFailure)
         {
             _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.AuthFailed);
+            EmitSaveFailed(request.LayoutId, "auth_failed");
             return Result.Failure(authResult.Error, authResult.ErrorKind);
         }
 
@@ -104,6 +106,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
 
         if (layout is null)
         {
+            EmitSaveFailed(request.LayoutId, "not_found");
             return Result.NotFound("Venue layout not found");
         }
 
@@ -113,6 +116,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 "BatchUpdateLayout: early concurrency conflict. LayoutId={LayoutId}, Expected={Expected}, Actual={Actual}",
                 request.LayoutId, request.ExpectedRowVersion, layout.RowVersion);
             _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
+            EmitSaveFailed(request.LayoutId, "concurrency_conflict");
             return Result.Conflict(
                 "Layout was modified by someone else. Reload the layout and retry with the current version.");
         }
@@ -182,6 +186,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 $"To delete them, list their IDs in deletedZoneIds / deletedTableIds / deletedDecorationIds.";
 
             _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
+            EmitSaveFailed(request.LayoutId, "structural_edit_rejected");
             return Result.Conflict(message);
         }
 
@@ -198,6 +203,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                     "BatchUpdateLayout: structural guard rejected removals. LayoutId={LayoutId}, SeatsAtRisk={Count}",
                     request.LayoutId, seatsAtRisk.Count);
                 _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.SeatsReserved);
+                EmitSaveFailed(request.LayoutId, "structural_edit_rejected");
                 return guardResult;
             }
         }
@@ -399,6 +405,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
 
             if (reconcileResult.IsFailure)
             {
+                EmitSaveFailed(request.LayoutId, "validation_failed");
                 return Result.Failure(reconcileResult.Error, reconcileResult.ErrorKind);
             }
             changesCount += reconcileResult.Value;
@@ -416,6 +423,7 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
                 "BatchUpdateLayout: db concurrency conflict on commit. LayoutId={LayoutId}",
                 request.LayoutId);
             _metrics.StructuralEditRejected(request.LayoutId, StructuralEditRejectionReason.ConcurrencyConflict);
+            EmitSaveFailed(request.LayoutId, "concurrency_conflict");
             return Result.Conflict(
                 "Layout was modified concurrently. Reload and retry.");
         }
@@ -446,6 +454,27 @@ public class BatchUpdateLayoutCommandHandler : ICommandHandler<BatchUpdateLayout
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7H: emits the <c>canvas_editor.save_failed</c> dashboard metric with
+    /// a low-cardinality reason tag (one of <c>not_found</c>, <c>auth_failed</c>,
+    /// <c>concurrency_conflict</c>, <c>structural_edit_rejected</c>,
+    /// <c>validation_failed</c>, <c>unknown</c>). Wrapped in try-catch so
+    /// observability never blocks the user-facing failure response.
+    /// </summary>
+    private void EmitSaveFailed(Guid layoutId, string reason)
+    {
+        try
+        {
+            _metrics.LayoutCanvasEditorSaveFailed(layoutId, reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "[Phase 7H] Failed to emit canvas_editor.save_failed metric (non-fatal) - LayoutId={LayoutId}, Reason={Reason}",
+                layoutId, reason);
+        }
     }
 
     /// <summary>

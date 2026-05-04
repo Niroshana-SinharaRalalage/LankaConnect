@@ -73,6 +73,9 @@ public static class DependencyInjection
         // Slice 5 Chunk 13: Named-metric emission (layout.created, layout.structural_edit_rejected).
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
 
+        // Phase 7H: Seat-hold lifecycle metrics (architect §S6 dashboard).
+        services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
+
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer
         // The actual implementations should be registered in the Infrastructure DependencyInjection

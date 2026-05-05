@@ -1367,7 +1367,20 @@ public class Registration : BaseEntity
                         adultSum = null;
                         childSum = null;
                     }
-                    var rebuilt = TierCount.Create(tc.TierId, tc.TierName, sum, adultSum, childSum);
+                    // Phase 7F-E.7: also merge the optional per-tier 4-leaf split.
+                    // Symmetric to age-split: sum leaf-by-leaf when at least one side has it,
+                    // null when neither did.
+                    int? amSum = null, afSum = null, cmSum = null, cfSum = null;
+                    if (prior.HasFourLeafSplit || tc.HasFourLeafSplit)
+                    {
+                        amSum = (prior.AdultMaleCount ?? 0) + (tc.AdultMaleCount ?? 0);
+                        afSum = (prior.AdultFemaleCount ?? 0) + (tc.AdultFemaleCount ?? 0);
+                        cmSum = (prior.ChildMaleCount ?? 0) + (tc.ChildMaleCount ?? 0);
+                        cfSum = (prior.ChildFemaleCount ?? 0) + (tc.ChildFemaleCount ?? 0);
+                    }
+                    var rebuilt = TierCount.Create(
+                        tc.TierId, tc.TierName, sum, adultSum, childSum,
+                        amSum, afSum, cmSum, cfSum);
                     if (rebuilt.IsFailure)
                         return Result<HeadCountBreakdown>.Failure(rebuilt.Errors);
                     byId[tc.TierId] = rebuilt.Value;

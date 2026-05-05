@@ -1068,6 +1068,16 @@ export interface HeadCountDto {
 export interface TierCountDto {
   tierId: string;
   count: number;
+  /**
+   * Phase 7F-E.7 (architect-approved 2026-05-04, re-opens §2.2 #4 deferred decision):
+   * optional per-tier 4-leaf demographic split. All-or-nothing per tier (any of 4 set
+   * → all 4 must be set; sum equals count). When set on a B4-mode + tiered registration,
+   * the per-tier rows of the breakdown card render captured 4-leaf instead of N/A.
+   */
+  adultMaleCount?: number;
+  adultFemaleCount?: number;
+  childMaleCount?: number;
+  childFemaleCount?: number;
   adultCount?: number;
   childCount?: number;
 }

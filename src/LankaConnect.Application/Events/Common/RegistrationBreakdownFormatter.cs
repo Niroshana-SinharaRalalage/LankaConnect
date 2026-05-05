@@ -98,11 +98,22 @@ public static class RegistrationBreakdownFormatter
                     rowAgeCaptured = false;
                 }
 
-                // Gender: B4 multi-tier doesn't store per-tier gender (architect Phase
-                // 7F-C §2.2 #4). For single-tier B3/B4, derive from registration-level.
+                // Gender: was deferred per architect Phase 7F-C §2.2 #4 (per-tier gender
+                // not stored in the multi-tier path). Phase 7F-E.7 (architect-approved
+                // 2026-05-04) re-opens that decision: TierCount now optionally carries a
+                // per-tier 4-leaf split (HasFourLeafSplit), so when set we render per-tier
+                // gender from the captured 4-leaf. For single-tier B3/B4, derive from
+                // registration-level (legacy single-tier path unchanged). Multi-tier
+                // without 4-leaf still falls through to NotCaptured + Totals row.
                 int rowMales = 0, rowFemales = 0;
                 bool rowGenderCaptured;
-                if (singleTier && captureGender)
+                if (tc.HasFourLeafSplit && captureGender)
+                {
+                    rowGenderCaptured = true;
+                    rowMales = (tc.AdultMaleCount ?? 0) + (tc.ChildMaleCount ?? 0);
+                    rowFemales = (tc.AdultFemaleCount ?? 0) + (tc.ChildFemaleCount ?? 0);
+                }
+                else if (singleTier && captureGender)
                 {
                     rowGenderCaptured = true;
                     rowMales = aggregateMales;
@@ -112,6 +123,12 @@ public static class RegistrationBreakdownFormatter
                 {
                     rowGenderCaptured = false;
                 }
+
+                // Phase 7F-E.7: when 4-leaf is set, also override the age-row capture
+                // to use the 4-leaf-derived adult/child counts so per-tier rows show the
+                // user-entered values consistently. The 7F-C `HasAgeSplit` branch already
+                // populates these from auto-derived AdultCount/ChildCount (set by the
+                // factory when 4-leaf lands), so this is implicit — no extra branch.
 
                 rows.Add(BuildRow(
                     tierName: tc.TierName,
@@ -127,23 +144,40 @@ public static class RegistrationBreakdownFormatter
 
         // Phase 7F-E.6.A (architect-approved 2026-05-04): build a registration-level
         // Totals row for multi-tier B-mode breakdowns when at least one demographic
-        // axis was captured at registration level. Per-tier rows above stay N/A
-        // (architect §2.2 #4 deferred per-tier gender), but operators registering
-        // through the 7F-E.4b merged form DID enter values that get aggregated into
-        // top-level demographics on submit — those need a read-side surface.
+        // axis was captured at registration level but the per-tier rows DON'T already
+        // carry the captured demographics.
+        //
+        // Phase 7F-E.7 update (architect-approved 2026-05-04): when ALL per-tier rows
+        // already show captured demographics on every captured axis (because the
+        // 4-leaf is set per-tier), the Totals row would just duplicate the per-tier
+        // sums — architect "Totals row optionally redundant" → skip it. This keeps the
+        // legacy/partial-coverage path working (where some tiers have 4-leaf and some
+        // don't, OR no tiers do) and avoids a duplicate row on the new fully-captured
+        // path.
+        //
         // Single-tier breakdowns already carry the demographics in Rows[0]; non-tiered
         // breakdowns have a single row that's the whole registration. In both cases
-        // a Totals row would be a misleading duplicate, so we skip it.
+        // the Totals row is a misleading duplicate, so we skip it.
         RegistrationBreakdownTotals? totals = null;
         if (isTiered && rows.Count > 1 && (captureAge || captureGender))
         {
-            totals = new RegistrationBreakdownTotals(
-                Age: captureAge
-                    ? BreakdownPair.CapturedAge(aggregateAdults, aggregateChildren)
-                    : BreakdownPair.AgeNotCaptured(),
-                Gender: captureGender
-                    ? BreakdownPair.CapturedGender(aggregateMales, aggregateFemales)
-                    : BreakdownPair.GenderNotCaptured());
+            // Phase 7F-E.7: skip Totals row when per-tier rows fully cover the captured
+            // axes. "Fully cover" = for each captured axis, every per-tier row shows
+            // Captured=true.
+            var ageFullyCovered = !captureAge || rows.All(r => r.Age.Captured);
+            var genderFullyCovered = !captureGender || rows.All(r => r.Gender.Captured);
+            var allCovered = ageFullyCovered && genderFullyCovered;
+
+            if (!allCovered)
+            {
+                totals = new RegistrationBreakdownTotals(
+                    Age: captureAge
+                        ? BreakdownPair.CapturedAge(aggregateAdults, aggregateChildren)
+                        : BreakdownPair.AgeNotCaptured(),
+                    Gender: captureGender
+                        ? BreakdownPair.CapturedGender(aggregateMales, aggregateFemales)
+                        : BreakdownPair.GenderNotCaptured());
+            }
         }
 
         return new RegistrationBreakdown(

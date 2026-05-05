@@ -898,6 +898,77 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
 - [ ] **Operator browser re-verification** — refresh `https://lankaconnect-ui-staging.../events/616e59f3-...` to see the new "Total (across all tiers)" row showing `Adult/Child: 4/4 / Male/Female: 4/4` at the bottom of the per-tier list. Open the resent email at `niroshhh@gmail.com` and confirm the body no longer contains literal `{{{` AND now shows the breakdown card with the Totals row at the bottom. PDF ticket also gets the new Totals row.
 - [x] **Memory saved** — `feedback_cross_surface_matrix_smoke.md` (architect-mandated process discipline; index entry added to `MEMORY.md`).
 
+### 7F-E.7 — Per-tier 4-leaf storage (re-opens Phase 7F-C §2.2 #4 deferred decision)
+
+**Status:** 📋 ARCHITECT-APPROVED 2026-05-04, READY TO IMPLEMENT TDD-FIRST.
+
+**Why this slice exists:** Operator browser-tested 7F-E.6 close-out (commit `f665a2b6`) and rejected the per-tier `N/A` rendering. Architect deep RCA (2026-05-04) classified it as **feature missing (storage gap)**: the 7F-E.4b form captures per-tier 4-leaf, but the submit-aggregation step throws it away on the wire. The Totals row that 7F-E.6.A added shows the captured data at the registration level, but the per-tier rows it sits under say N/A because per-tier storage was deferred per Phase 7F-C §2.2 #4. Operator's intuition is right: capture-without-storage is data loss. Architect rejected Option B (hide per-tier `N/A` lines) as "a 30-min lie — operators will ask the same question in 6 weeks". Architect recommendation: **Option A — re-open §2.2 #4 and store per-tier 4-leaf**.
+
+#### 7F-E.7.A — Domain: per-tier 4-leaf optional fields with all-or-nothing rule
+- **Files**: `src/LankaConnect.Domain/Events/ValueObjects/TierCount.cs`
+- **Add**: 4 optional fields on `TierCount` — `AdultMaleCount`, `AdultFemaleCount`, `ChildMaleCount`, `ChildFemaleCount`.
+- **Rule**: all-or-nothing per tier (any set → all 4 set). Sum equals `Count`.
+- **Architect note**: optional augmentation, not required. Legacy registrations with only top-level demographics keep current N/A render — back-compat preserved.
+
+#### 7F-E.7.B — Wire: TierCountDto + value mapper
+- **Files**: `src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommand.cs` (TierCountDto), command handler mapper.
+- **Add**: 4 optional ints. Map to `TierCount` factory.
+
+#### 7F-E.7.C — ValueComparer audit (memory 6A.129/6A.130)
+- **Files**: `src/LankaConnect.Infrastructure/Data/Configurations/RegistrationConfiguration.cs` or wherever `head_count` jsonb is mapped.
+- **Verify**: `List<int>?` with `private set` (NOT `IReadOnlyList`) inside any `OwnsOne().ToJson()` boundary. Audit existing `TierCount` ValueComparer for the new fields.
+- **No EF migration needed**: `head_count` is jsonb, schema-less.
+
+#### 7F-E.7.D — Form: feed per-tier 4-leaf into TierCountDto
+- **Files**: `web/src/presentation/components/features/events/HeadCountRsvpForm.tsx`, `web/src/infrastructure/api/types/events.types.ts`.
+- **Change**: form submit's `tierCounts[]` payload sends per-tier `adultMaleCount/adultFemaleCount/childMaleCount/childFemaleCount` from `tierFourLeaf` state. Top-level `headCount.adultMales/...` stays populated for back-compat.
+
+#### 7F-E.7.E — Formatter: render per-tier captured 4-leaf
+- **Files**: `src/LankaConnect.Application/Events/Common/RegistrationBreakdownFormatter.cs`.
+- **Change**: multi-tier B4 branch — when `tc.HasFourLeafSplit` (new helper), mark per-tier age + gender Captured with the per-tier values. Legacy path (no per-tier 4-leaf) renders N/A as today + Totals row at registration level.
+- **Totals row visibility**: skipped when ALL per-tier rows are captured (no need to duplicate). Totals row stays for legacy / partial coverage / mixed multi-tier.
+
+#### TDD test plan (RED first)
+- **Domain** (`TierCount` tests):
+   - `Create` with all 4 leaves → succeeds, sum equals Count
+   - `Create` with 1 leaf only → fails (all-or-nothing)
+   - `Create` with sum != Count → fails (sum invariant)
+   - `Create` with no leaves → succeeds, `HasFourLeafSplit = false` (back-compat)
+- **Formatter** (extends `Phase7FE6FormatterTotalsRowTests`):
+   - B4 multi-tier with per-tier 4-leaf set → per-tier rows Captured, Totals row null (or redundant; architect to confirm)
+   - B4 multi-tier with NO per-tier 4-leaf (legacy) → per-tier rows NotCaptured + Totals row populated (current 7F-E.6.A behaviour, regression guard)
+   - B4 multi-tier with PARTIAL per-tier (1 tier captured, 1 not) → architect call: keep both per-tier behaviours and surface Totals row, OR reject as invalid? My read: reject in domain (all-or-nothing across the basket); test asserts factory failure.
+- **Wire round-trip**:
+   - HeadCountDto with per-tier 4-leaf → registration row's `head_count.tierCounts[i]` carries the 4-leaf in JSONB.
+- **Form submit**:
+   - `tierFourLeaf` state with values → POST body's `tierCounts[].adultMaleCount` etc. populated.
+
+#### API smoke matrix (operator-mandated, per `feedback_cross_surface_matrix_smoke.md`)
+- **Pre-deploy**: capture pre-fix screenshots of operator's existing registration `f8f28333-...` (already shows per-tier N/A — that's the legacy state we're preserving).
+- **Post-deploy**:
+   - Create a FRESH paid+B4-tiered registration on a NEW test event (legacy `616e59f3` has stale data; we don't backfill it).
+   - Authenticated RSVP via API smoke: payload includes per-tier `adultMaleCount/adultFemaleCount/childMaleCount/childFemaleCount`.
+   - DB check: `head_count.tierCounts[i]` carries the 4-leaf in JSONB.
+   - Operator UAT (per memory `feedback_operator_uat_gate.md`):
+      1. Browse the NEW event's "You're Registered" card → per-tier rows show captured 4-leaf, NOT N/A
+      2. Open paid-event email → same
+      3. Download PDF ticket → same
+   - Legacy registration `f8f28333-...` continues to render N/A on per-tier rows + populated Totals row (back-compat regression guard).
+
+#### 7F-E.7 close-out
+- [ ] **Memory saved** — `feedback_operator_uat_gate.md` (architect-mandated process gate for render-surface slices).
+- [ ] **Master TODO entry written** — this section.
+- [ ] **Domain RED tests** — TierCount factory invariants.
+- [ ] **Domain GREEN** — 4 optional fields + all-or-nothing + sum-equals-Count rule.
+- [ ] **Wire/DTO** — TierCountDto extended; mapper + ValueComparer audit complete.
+- [ ] **Formatter RED + GREEN** — multi-tier B4 with per-tier 4-leaf renders captured; legacy path unchanged.
+- [ ] **Form submit aggregation** — `tierFourLeaf` flows through to `tierCounts[].4-leaf`.
+- [ ] **Build green** + Application baseline preserved + Infrastructure 317/0/0 + Domain (no new regressions).
+- [ ] **Staging deploy** — both API + UI workflows fired (R-NEW always-run).
+- [ ] **Smoke matrix** — fresh paid+B4-tiered RSVP via API; DB check; legacy regression check.
+- [ ] **Operator UAT** — browser-verification of all 3 surfaces on a fresh event; **status flips to Shipped only after operator confirms**.
+- [ ] **3-doc sync** per CLAUDE.md §7.
+
 ### Cross-slice operator testing checkpoints (UI-testable from user side)
 
 After **7F-E.2** ships → user can test: register on Mode-B event, see per-tier breakdown card on event detail page.

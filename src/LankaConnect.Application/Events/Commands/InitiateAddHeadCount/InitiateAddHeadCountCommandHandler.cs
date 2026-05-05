@@ -254,7 +254,12 @@ public class InitiateAddHeadCountCommandHandler
             // here — that's the caller's job upstream). For the delta we trust the DTO; the
             // domain factories validate the count/sum invariants.
             tiers = dto.TierCounts
-                .Select(tc => TierCount.Create(tc.TierId, "tier-snapshot", tc.Count, tc.AdultCount, tc.ChildCount))
+                .Select(tc => TierCount.Create(
+                    tc.TierId, "tier-snapshot", tc.Count,
+                    tc.AdultCount, tc.ChildCount,
+                    // Phase 7F-E.7: forward optional per-tier 4-leaf demographic split.
+                    tc.AdultMaleCount, tc.AdultFemaleCount,
+                    tc.ChildMaleCount, tc.ChildFemaleCount))
                 .Where(r => r.IsSuccess)
                 .Select(r => r.Value)
                 .ToList();

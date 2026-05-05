@@ -548,6 +548,22 @@ export function HeadCountRsvpForm({
           .filter(([, count]) => count > 0)
           .map(([tierId, count]) => {
             const split = tierAgeSplit[tierId];
+            const fourLeaf = tierFourLeaf[tierId];
+            // Phase 7F-E.7 (architect-approved 2026-05-04, re-opens §2.2 #4): forward
+            // the per-tier 4-leaf demographic split when the merged-4-leaf layout is on
+            // (B4 + tiered). Domain factory auto-derives age split from the 4-leaf for
+            // back-compat with the 7F-C pricing helper, so we don't also have to send
+            // adultCount/childCount on this path.
+            if (mergeFourLeaf && fourLeaf != null) {
+              return {
+                tierId,
+                count,
+                adultMaleCount: fourLeaf.adultMales,
+                adultFemaleCount: fourLeaf.adultFemales,
+                childMaleCount: fourLeaf.childMales,
+                childFemaleCount: fourLeaf.childFemales,
+              };
+            }
             // Phase 7F-C: forward the optional per-tier-by-age axis when present (always
             // present under 7F-E.4b mergeAge, opt-in under the legacy 7F-C B4 path).
             return split != null

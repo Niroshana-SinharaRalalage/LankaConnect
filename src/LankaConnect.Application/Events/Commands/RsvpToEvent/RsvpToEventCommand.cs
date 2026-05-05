@@ -110,5 +110,14 @@ public record TierCountDto(
     Guid TierId,
     int Count,
     int? AdultCount = null,
-    int? ChildCount = null
+    int? ChildCount = null,
+    // Phase 7F-E.7 (architect-approved 2026-05-04, re-opens §2.2 #4 deferred decision):
+    // optional per-tier 4-leaf demographic split for B4-mode + tiered registrations.
+    // All-or-nothing per tier; sum equals Count. Domain factory enforces both invariants.
+    // When set, age split (AdultCount/ChildCount) is auto-derived for back-compat with
+    // the 7F-C pricing helper.
+    int? AdultMaleCount = null,
+    int? AdultFemaleCount = null,
+    int? ChildMaleCount = null,
+    int? ChildFemaleCount = null
 );

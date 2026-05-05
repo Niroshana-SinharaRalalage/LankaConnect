@@ -1221,9 +1221,15 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 var tier = @event.TicketTiers.FirstOrDefault(t => t.Id == tcDto.TierId);
                 if (tier == null)
                     return Result<string?>.Failure($"Ticket tier {tcDto.TierId} not found on this event.");
-                // Phase 7F-C: forward optional per-tier-by-age axis. Domain factory enforces
-                // both-or-neither + sum-match invariants.
-                var tcResult = TierCount.Create(tier.Id, tier.Name, tcDto.Count, tcDto.AdultCount, tcDto.ChildCount);
+                // Phase 7F-C: forward optional per-tier-by-age axis. Phase 7F-E.7: forward
+                // optional per-tier 4-leaf demographic split. Domain factory enforces
+                // all-or-nothing + sum-match invariants on both axes; cross-axis agreement
+                // auto-fills for back-compat.
+                var tcResult = TierCount.Create(
+                    tier.Id, tier.Name, tcDto.Count,
+                    tcDto.AdultCount, tcDto.ChildCount,
+                    tcDto.AdultMaleCount, tcDto.AdultFemaleCount,
+                    tcDto.ChildMaleCount, tcDto.ChildFemaleCount);
                 if (tcResult.IsFailure)
                     return Result<string?>.Failure(tcResult.Errors);
                 resolvedTiers.Add(tcResult.Value);

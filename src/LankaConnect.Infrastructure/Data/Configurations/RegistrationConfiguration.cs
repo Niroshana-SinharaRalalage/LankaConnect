@@ -40,6 +40,14 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
     // fields, and TierCount.GetEqualityComponents already yields them so structural equality
     // detects per-tier-age changes. Verified by round-trip test in
     // Phase7FCTierAgeMatrixPricingTests.HeadCountBreakdown_JsonRoundTrip_PreservesAgeSplit.
+    //
+    // Phase 7F-E.7 (2026-05-04): TierCount additionally gained nullable
+    // AdultMaleCount/AdultFemaleCount/ChildMaleCount/ChildFemaleCount fields. Same pattern
+    // applies — the JsonConstructor takes them as nullable parameters with default null,
+    // so legacy JSONB rows deserialise cleanly with all 4 null. GetEqualityComponents was
+    // also extended (TierCount.cs) so structural equality detects per-tier 4-leaf changes.
+    // Verified by round-trip test in Phase7FE7TierCount4LeafJsonRoundTripTests (companion
+    // file under tests/LankaConnect.Application.Tests/Events/Domain).
     private static readonly ValueComparer<HeadCountBreakdown?> HeadCountComparer = new(
         (a, b) => HeadCountStructuralEquals(a, b),
         v => v == null ? 0 : v.GetHashCode(),

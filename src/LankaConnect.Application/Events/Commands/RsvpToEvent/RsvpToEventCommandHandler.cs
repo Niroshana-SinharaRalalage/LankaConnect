@@ -1097,10 +1097,15 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 var tier = @event.TicketTiers.FirstOrDefault(t => t.Id == tcDto.TierId);
                 if (tier == null)
                     return Result<string?>.Failure($"Ticket tier {tcDto.TierId} not found on this event.");
-                // Phase 7F-C: forward optional per-tier-by-age axis. Domain factory enforces
-                // both-or-neither + sum-match invariants.
+                // Phase 7F-C: forward optional per-tier-by-age axis. Phase 7F-E.7: forward
+                // optional per-tier 4-leaf demographic split. Domain factory enforces
+                // all-or-nothing + sum-match invariants on both axes; cross-axis agreement
+                // (age split derived from 4-leaf) auto-fills for back-compat.
                 var tcResult = LankaConnect.Domain.Events.ValueObjects.TierCount.Create(
-                    tier.Id, tier.Name, tcDto.Count, tcDto.AdultCount, tcDto.ChildCount);
+                    tier.Id, tier.Name, tcDto.Count,
+                    tcDto.AdultCount, tcDto.ChildCount,
+                    tcDto.AdultMaleCount, tcDto.AdultFemaleCount,
+                    tcDto.ChildMaleCount, tcDto.ChildFemaleCount);
                 if (tcResult.IsFailure)
                     return Result<string?>.Failure(tcResult.Errors);
                 resolvedTiers.Add(tcResult.Value);

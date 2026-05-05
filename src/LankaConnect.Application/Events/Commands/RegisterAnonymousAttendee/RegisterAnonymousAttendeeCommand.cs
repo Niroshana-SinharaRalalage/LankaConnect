@@ -50,7 +50,12 @@ public record RegisterAnonymousAttendeeCommand(
     // the handler dispatches by event.RegistrationMode. Reuses RsvpToEvent.HeadCountDto and
     // TierCountDto via the existing using statement.
     string? LeadAttendeeName = null,
-    HeadCountDto? HeadCount = null
+    HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Same semantics as
+    // RsvpToEventCommand.SeatIds/SeatSessionId — required when the event's
+    // SeatingMode == AssignedSeating, rejected on GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null
 ) : ICommand<string?>;
 
 /// <summary>

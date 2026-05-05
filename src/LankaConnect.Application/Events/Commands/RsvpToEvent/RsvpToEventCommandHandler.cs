@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects;
@@ -28,6 +29,9 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
     private readonly IRevenueCalculatorService _revenueCalculatorService;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared between auth + anon handlers.
     private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
+    // Phase 8 S8.2.B: Validates assigned-seating seat selections + builds the
+    // pending-seat-assignment list that gets stashed on the registration.
+    private readonly LankaConnect.Application.Events.Services.ISeatAssignmentValidator _seatAssignmentValidator;
     private readonly ILogger<RsvpToEventCommandHandler> _logger;
 
     public RsvpToEventCommandHandler(
@@ -41,6 +45,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         IStripePaymentService stripePaymentService,
         IRevenueCalculatorService revenueCalculatorService,
         LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
+        LankaConnect.Application.Events.Services.ISeatAssignmentValidator seatAssignmentValidator,
         ILogger<RsvpToEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -53,6 +58,7 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
         _stripePaymentService = stripePaymentService;
         _revenueCalculatorService = revenueCalculatorService;
         _checkoutService = checkoutService;
+        _seatAssignmentValidator = seatAssignmentValidator;
         _logger = logger;
     }
 
@@ -223,6 +229,53 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
             "RsvpToEvent: Attendees created - EventId={EventId}, TicketingMode={Mode}, Count={Count}",
             request.EventId, @event.TicketingMode, attendeeDetailsList.Count);
 
+        // Phase 8 S8.2.B: Assigned-seating validation. Performs the seat-state
+        // checks BEFORE we create the registration so a failure cleanly returns
+        // a 400 to the buyer without leaving an orphan Preliminary row behind.
+        // The pendingSeatAssignments list is null when the event uses general
+        // admission; the SetPendingSeatAssignments call later is conditioned
+        // on this being non-null.
+        IReadOnlyList<PendingSeatAssignment>? pendingSeatAssignments = null;
+        if (@event.SeatingMode == SeatingMode.AssignedSeating)
+        {
+            // Mode-A only — Mode-B (head-count) doesn't bind individual seats.
+            // The architect plan defers add-attendees-with-seats to S9.
+            if (request.SeatIds is null || request.SeatSessionId is null)
+            {
+                return Result<string?>.Failure(
+                    "This event uses assigned seating — please select your seats before registering. " +
+                    "(seatIds and seatSessionId are required.)");
+            }
+
+            var seatValidation = await _seatAssignmentValidator.ValidateAndBuildAssignmentsAsync(
+                request.EventId,
+                request.SeatSessionId,
+                request.SeatIds,
+                attendeeDetailsList.Count,
+                cancellationToken);
+            if (seatValidation.IsFailure)
+            {
+                _logger.LogWarning(
+                    "RsvpToEvent: assigned-seating validation failed — EventId={EventId}, Error={Error}",
+                    request.EventId, seatValidation.Error);
+                return Result<string?>.Failure(seatValidation.Error);
+            }
+            pendingSeatAssignments = seatValidation.Value;
+        }
+        else
+        {
+            // GeneralAdmission: reject stale assigned-seating fields to avoid
+            // silent client-state drift. If a frontend cache sends seat IDs for
+            // an event whose SeatingMode just flipped to GA, we want a clear 400
+            // rather than a confused-state success.
+            if (request.SeatIds is { Count: > 0 } || !string.IsNullOrWhiteSpace(request.SeatSessionId))
+            {
+                return Result<string?>.Failure(
+                    "This event uses general admission — seat selection is not supported. " +
+                    "Refresh the page and try again.");
+            }
+        }
+
         // Create RegistrationContact value object
         // Phase 7A.6D: Pass WhatsApp phone + opt-in flag
         var contactResult = RegistrationContact.Create(
@@ -291,6 +344,34 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
         // Session 23: Handle payment for paid events
         var registration = @event.Registrations.Last();  // Get the just-created registration
+
+        // Phase 8 S8.2.B: Stash the validated pending seat assignments on the
+        // freshly-created registration. Webhook-side ConfirmSeatAssignments
+        // (S8.2.C) reads this list to write SeatReservation rows and bind the
+        // SeatId/SeatLabel onto each attendee after payment completes. For
+        // free events the registration is already Confirmed at this point, so
+        // SetPendingSeatAssignments would refuse — S8.2.C handles the free
+        // event sync conversion path. We only stash for Preliminary (paid) here.
+        if (pendingSeatAssignments is not null
+            && registration.Status == Domain.Events.Enums.RegistrationStatus.Preliminary)
+        {
+            var stashResult = registration.SetPendingSeatAssignments(
+                request.SeatSessionId!,
+                pendingSeatAssignments);
+            if (stashResult.IsFailure)
+            {
+                // Should be unreachable — the validator already confirmed
+                // count match + invariants. Log loudly if reached.
+                _logger.LogError(
+                    "RsvpToEvent: SetPendingSeatAssignments failed unexpectedly after validation passed — " +
+                    "RegistrationId={RegistrationId}, Error={Error}",
+                    registration.Id, stashResult.Error);
+                return Result<string?>.Failure(stashResult.Error);
+            }
+            _logger.LogInformation(
+                "[Phase 8 S8.2.B] Pending seat assignments stashed — RegistrationId={RegistrationId}, SeatCount={Count}, SessionId={SessionId}",
+                registration.Id, pendingSeatAssignments.Count, request.SeatSessionId);
+        }
 
         // Phase 6A.81: Log registration state for observability
         _logger.LogInformation(

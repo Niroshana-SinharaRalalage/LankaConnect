@@ -36,6 +36,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly ISponsorRepository _sponsorRepository;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared with the auth handler.
     private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
+    // Phase 8 S8.2.B: Same validator the auth handler uses — guarantees identical
+    // semantics + error messages across both RSVP paths.
+    private readonly LankaConnect.Application.Events.Services.ISeatAssignmentValidator _seatAssignmentValidator;
     private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
@@ -51,6 +54,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
         LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
+        LankaConnect.Application.Events.Services.ISeatAssignmentValidator seatAssignmentValidator,
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -64,6 +68,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
         _checkoutService = checkoutService;
+        _seatAssignmentValidator = seatAssignmentValidator;
         _logger = logger;
     }
 
@@ -268,6 +273,44 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             "HandleMultiAttendeeRegistration: Attendee value objects created - EventId={EventId}, Count={Count}",
             @event.Id, attendeeDetailsList.Count);
 
+        // Phase 8 S8.2.B: assigned-seating validation. Mirrors the auth-path
+        // logic in RsvpToEventCommandHandler so anonymous + auth flows share
+        // identical semantics + error messages. See ADR-011.
+        IReadOnlyList<PendingSeatAssignment>? pendingSeatAssignments = null;
+        if (@event.SeatingMode == SeatingMode.AssignedSeating)
+        {
+            if (request.SeatIds is null || request.SeatSessionId is null)
+            {
+                return Result<string?>.Failure(
+                    "This event uses assigned seating — please select your seats before registering. " +
+                    "(seatIds and seatSessionId are required.)");
+            }
+
+            var seatValidation = await _seatAssignmentValidator.ValidateAndBuildAssignmentsAsync(
+                request.EventId,
+                request.SeatSessionId,
+                request.SeatIds,
+                attendeeDetailsList.Count,
+                cancellationToken);
+            if (seatValidation.IsFailure)
+            {
+                _logger.LogWarning(
+                    "HandleMultiAttendeeRegistration: assigned-seating validation failed — EventId={EventId}, Error={Error}",
+                    request.EventId, seatValidation.Error);
+                return Result<string?>.Failure(seatValidation.Error);
+            }
+            pendingSeatAssignments = seatValidation.Value;
+        }
+        else
+        {
+            if (request.SeatIds is { Count: > 0 } || !string.IsNullOrWhiteSpace(request.SeatSessionId))
+            {
+                return Result<string?>.Failure(
+                    "This event uses general admission — seat selection is not supported. " +
+                    "Refresh the page and try again.");
+            }
+        }
+
         // Create RegistrationContact value object
         // Phase 7A.6D: Pass WhatsApp phone + opt-in flag
         var contactResult = RegistrationContact.Create(
@@ -320,6 +363,28 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         // Get the just-created registration
         var registration = @event.Registrations.Last();
+
+        // Phase 8 S8.2.B: Stash pending seat assignments on the freshly-created
+        // registration. Same conditional pattern as the auth handler — only
+        // for Preliminary (paid) registrations; free events get the sync
+        // conversion in S8.2.C.
+        if (pendingSeatAssignments is not null
+            && registration.Status == Domain.Events.Enums.RegistrationStatus.Preliminary)
+        {
+            var stashResult = registration.SetPendingSeatAssignments(
+                request.SeatSessionId!,
+                pendingSeatAssignments);
+            if (stashResult.IsFailure)
+            {
+                _logger.LogError(
+                    "HandleMultiAttendeeRegistration: SetPendingSeatAssignments failed unexpectedly after validation passed — RegistrationId={RegistrationId}, Error={Error}",
+                    registration.Id, stashResult.Error);
+                return Result<string?>.Failure(stashResult.Error);
+            }
+            _logger.LogInformation(
+                "[Phase 8 S8.2.B] Pending seat assignments stashed (anon) — RegistrationId={RegistrationId}, SeatCount={Count}, SessionId={SessionId}",
+                registration.Id, pendingSeatAssignments.Count, request.SeatSessionId);
+        }
 
         // Phase 6A.81: Log registration state for observability
         _logger.LogInformation(

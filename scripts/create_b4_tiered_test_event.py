@@ -6,7 +6,7 @@ on 2026-05-03: zero published B4 + tiered events on staging meant the merged
 4-leaf path had only unit-test coverage.
 
 Event shape (architect-reviewed defaults):
-  - title: "7F-E.4b smoke B4 tiered (delete after test)"
+  - title: "7F-E.7 smoke B4 tiered (per-tier 4-leaf storage)"
   - registration_mode: HeadCountByAgeAndGender (B4 → mergeFourLeaf branch)
   - ticketing_mode: Tiered
   - 2 tiers:
@@ -90,7 +90,7 @@ def main() -> int:
 
     # 1. Create the B4 event
     create_payload = {
-        "Title": "7F-E.4b smoke B4 tiered (delete after test)",
+        "Title": "7F-E.7 smoke B4 tiered (per-tier 4-leaf storage)",
         "Description": "Phase 7F-E.4b operator browser verification — exercises the merged 4-leaf per-tier layout. Mode=HeadCountByAgeAndGender, ticketing=Tiered. Safe to delete after the merged-form test passes.",
         "StartDate": start.isoformat(),
         "EndDate": end.isoformat(),

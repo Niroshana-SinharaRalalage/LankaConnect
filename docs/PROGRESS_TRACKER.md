@@ -6380,3 +6380,27 @@ Two bugs surfaced by operator browser test (event `616e59f3-...`):
 **Process lessons:** Memory `feedback_cross_surface_matrix_smoke.md` saved per architect mandate — cross-surface slices need a smoke matrix at slice-plan time covering mode × tiered × free/paid × auth/anon. Both 7F-E.6 bugs sat in cells my single-path 7F-E.3/4b smokes skipped.
 
 **Operator action pending:** browser re-verification on event-detail card + PDF + paid-event email.
+
+## 7F-E.7 — Per-tier 4-leaf storage (re-opens §2.2 #4) (2026-05-05)
+
+**Commit:** `dfd67280`  **Deploy run:** `25358012928` (success)  **Status:** 🚧 SMOKE PASS, OPERATOR UAT PENDING.
+
+Closes the 7F-E.6 → 6.A → 6.B bug-find loop. Operator browser-tested 7F-E.6 close-out and rejected the per-tier `N/A` rendering. Architect deep RCA classified it as feature missing (storage gap): the 7F-E.4b form captures per-tier 4-leaf, but submit aggregation discarded it. Architect rejected "hide N/A" as a 30-min lie operators would re-discover. Architect-recommended fix: re-open §2.2 #4 and store per-tier 4-leaf.
+
+**Domain**: `TierCount` 4 new optional fields with all-or-nothing + sum-equals-Count + cross-axis-with-7F-C-age-split invariants. Auto-derives age split from 4-leaf for back-compat with the 7F-C pricing helper. 14 TDD tests cover happy/all-or-nothing/sum/cross-axis/back-compat.
+
+**Wire**: TierCountDto extended; 3 production handler sites + 1 internal merge site mapped.
+
+**Storage**: jsonb ValueComparer JSON-roundtrip pattern picks up new fields automatically; round-trip regression test verifies serialise/deserialise.
+
+**Formatter**: per-tier rows render captured 4-leaf when present; Totals row gating updated to skip when all per-tier rows are captured (architect: "redundant when covered"); legacy path preserved.
+
+**Form**: `tierFourLeaf` state now flows into `tierCounts[].adultMaleCount/...` on submit.
+
+**Tests**: Application 2588/6/0 (+5 new) · Infrastructure 317/0/0 · Domain 630/0/2 (pre-existing flakes; +21 new of which 14 are 7F-E.7 Theory cases). Web events 78/78. Build 0 errors.
+
+**Smoke**: `scripts/smoke_phase7fe7_per_tier_4leaf.py` PASS — authenticated RSVP on event `87607c7a-...` with per-tier 4-leaf payload → registration `27978d36-...` Preliminary, total_price $270, head_count.tierCounts[] carries all 4 fields per tier.
+
+**Process**: memory `feedback_operator_uat_gate.md` saved. Render-surface slices need explicit operator browser smoke before Status flips to Shipped — the 7F-E.6 → 6.A → 6.B chain cost three architect round-trips that this gate prevents.
+
+**Operator UAT pending**: visit https://lankaconnect-ui-staging.../events/87607c7a-9767-4208-8be3-dd0642016d79 to confirm per-tier rows show captured 4-leaf (VIP: 2/2 + 2/2 ; Standard: 4/0 + 4/0), NOT N/A. Legacy event `616e59f3-...` must keep N/A + Totals row (back-compat regression guard).

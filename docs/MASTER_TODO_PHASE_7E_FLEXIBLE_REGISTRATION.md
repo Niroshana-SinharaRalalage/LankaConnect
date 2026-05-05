@@ -704,7 +704,7 @@ After **phase complete (7E.9)**:
 
 # Phase 7F-E — Registration Display Consistency Across Surfaces
 
-**Status**: 🚧 IN FLIGHT (2026-05-04) — Slices 7F-E.1 → 7F-E.5 SHIPPED + STAGING-VERIFIED. **7F-E.6 SHIPPED + STAGING-SMOKED** (commit `f665a2b6`, deploy run `25341671895` success): both bugs from operator browser test fixed — formatter `Totals` row surfaces registration-level demographics on multi-tier B-mode (+ 7 TDD tests), paid-event-with-ticket email pipeline now wires `RegistrationBreakdownHtml` correctly across all 3 producer sites (+ 3 TDD tests + EmailTemplateValidator HashSet updated as future-deploy regression guard). Awaiting operator browser re-verification of the new Totals row on event-detail card + PDF ticket + paid-event email.
+**Status**: 🚧 IN FLIGHT (2026-05-05) — Slices 7F-E.1 → 7F-E.6 SHIPPED + STAGING-VERIFIED. **7F-E.7 deployed + smoke-verified** (commit `dfd67280`, deploy run `25358012928` success): closes the 7F-E.6 → 6.A → 6.B bug-find loop by re-opening Phase 7F-C §2.2 #4 deferred decision and storing per-tier 4-leaf demographics on `TicketCount`. Form aggregation now feeds `tierFourLeaf` state into per-tier `tierCounts[].adultMaleCount/...`; formatter renders captured per-tier 4-leaf instead of N/A; legacy registrations keep N/A + Totals row (back-compat). Smoke `27978d36-...` registration on event `87607c7a-...` confirms `head_count.tierCounts[]` JSONB carries all 4 fields. **Operator UAT pending** as final gate (memory `feedback_operator_uat_gate.md`).
 
 **Trigger**: User UI testing on 2026-05-01 surfaced 5 cross-surface display gaps for Mode-B head-count registrations on a paid B2-tiered event (`Christmas Dinner Dance 2025`):
 1. Ticket PDF: no tier separation (just `General Admission · $375 · 4 attendee(s)`)
@@ -955,19 +955,19 @@ Each slice ships with explicit API verification. No "endpoint registered" claims
       3. Download PDF ticket → same
    - Legacy registration `f8f28333-...` continues to render N/A on per-tier rows + populated Totals row (back-compat regression guard).
 
-#### 7F-E.7 close-out
-- [ ] **Memory saved** — `feedback_operator_uat_gate.md` (architect-mandated process gate for render-surface slices).
-- [ ] **Master TODO entry written** — this section.
-- [ ] **Domain RED tests** — TierCount factory invariants.
-- [ ] **Domain GREEN** — 4 optional fields + all-or-nothing + sum-equals-Count rule.
-- [ ] **Wire/DTO** — TierCountDto extended; mapper + ValueComparer audit complete.
-- [ ] **Formatter RED + GREEN** — multi-tier B4 with per-tier 4-leaf renders captured; legacy path unchanged.
-- [ ] **Form submit aggregation** — `tierFourLeaf` flows through to `tierCounts[].4-leaf`.
-- [ ] **Build green** + Application baseline preserved + Infrastructure 317/0/0 + Domain (no new regressions).
-- [ ] **Staging deploy** — both API + UI workflows fired (R-NEW always-run).
-- [ ] **Smoke matrix** — fresh paid+B4-tiered RSVP via API; DB check; legacy regression check.
-- [ ] **Operator UAT** — browser-verification of all 3 surfaces on a fresh event; **status flips to Shipped only after operator confirms**.
-- [ ] **3-doc sync** per CLAUDE.md §7.
+#### 7F-E.7 close-out (commit `dfd67280`, deploy run `25358012928` success)
+- [x] **Memory saved** — `feedback_operator_uat_gate.md` (architect-mandated process gate for render-surface slices) + index entry in `MEMORY.md`.
+- [x] **Master TODO entry written** — this section.
+- [x] **Domain RED tests** — `Phase7FE7TierCount4LeafTests` 14 cases covering happy path, all-or-nothing, sum invariant, cross-axis (agree/disagree), back-compat. RED before fix.
+- [x] **Domain GREEN** — `TierCount` 4 new optional fields (`AdultMaleCount/AdultFemaleCount/ChildMaleCount/ChildFemaleCount`) + all-or-nothing + sum-equals-Count + cross-axis-agreement-with-7F-C-age-split + auto-derive age split from 4-leaf for back-compat. `HasFourLeafSplit` derived helper. `GetEqualityComponents` extended.
+- [x] **Wire/DTO** — `TierCountDto` 4 optional ints + 3 production handler sites mapped (`RsvpToEventCommandHandler`, `RegisterAnonymousAttendeeCommandHandler`, `InitiateAddHeadCountCommandHandler`) + 1 internal merge site (`Registration.cs:1370`). ValueComparer audit complete (JSON-roundtrip pattern picks up new fields automatically; round-trip regression test in `Phase7FE7TierCount4LeafJsonRoundTripTests`).
+- [x] **Formatter RED + GREEN** — `RegistrationBreakdownFormatter` multi-tier B-mode renders captured per-tier gender from 4-leaf when `HasFourLeafSplit`; per-tier age covered by existing 7F-C `HasAgeSplit` branch (4-leaf auto-derives that). Totals row gating updated to skip when all per-tier rows are captured (architect "redundant when covered"). Legacy path preserved (regression guard test).
+- [x] **Form submit aggregation** — `HeadCountRsvpForm.tsx`: when `mergeFourLeaf` is on, each tier's `tierCounts[]` entry carries `adultMaleCount/adultFemaleCount/childMaleCount/childFemaleCount` from `tierFourLeaf` state. Top-level demographics still aggregated for back-compat.
+- [x] **Build green** — Application 2588/6/0 (+5 new) · Infrastructure 317/0/0 · Domain 630/0/2 (+21 new of which 14 are 7F-E.7 Theory cases; 2 fails confirmed pre-existing — FormResponse + DonationConfiguration) · web events feature 78/78. Frontend type-check clean. 0 build errors, 0 new warnings.
+- [x] **Staging deploy** — API run `25358012928` SUCCESS · UI run `25358012931` SUCCESS · API health `EF Core DbContext: Healthy`.
+- [x] **Smoke matrix** — `scripts/smoke_phase7fe7_per_tier_4leaf.py` PASS: authenticated RSVP on fresh paid+B4-tiered event `87607c7a-...` with per-tier 4-leaf payload (VIP × 4 with children + Standard × 4 adults-only) → HTTP 200 + Stripe Checkout URL · registration `27978d36-...` Preliminary · `total_price = $270.00` · `head_count.tierCounts[]` JSONB carries all 4 fields per tier (DB-verified). Domain pricing-guard correctly rejected the all-children-on-no-ChildPrice variant in initial test, validating cross-axis invariants from outside the unit-test boundary.
+- [ ] **Operator UAT** — pending. Visit `https://lankaconnect-ui-staging.../events/87607c7a-9767-4208-8be3-dd0642016d79` and confirm per-tier rows show captured 4-leaf (VIP: 2/2 + 2/2 ; Standard: 4/0 + 4/0), NOT N/A. Also confirm legacy event `616e59f3-...` still renders N/A + Totals row (back-compat regression guard). Status flips to Shipped only after operator confirms.
+- [ ] **3-doc sync** per CLAUDE.md §7 — pending after operator UAT pass.
 
 ### Cross-slice operator testing checkpoints (UI-testable from user side)
 

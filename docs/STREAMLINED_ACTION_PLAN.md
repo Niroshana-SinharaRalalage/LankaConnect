@@ -9218,3 +9218,17 @@ Commit `f665a2b6`; deploy run `25341671895` success. Two bugs surfaced by operat
 2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
 3. Defensive gap at `POST /api/Events` allowing paid event with no pricing — architect-flagged separate slice
 4. EmailTemplateValidator stronger automation: auto-derive per-template HashSet from the matching Params class so the operator-side maintenance burden that masked Bug 2 doesn't recur — architect-flagged separate slice
+
+---
+
+## 7F-E.7 — Per-tier 4-leaf storage — SMOKE PASS, OPERATOR UAT PENDING (2026-05-05)
+
+Commit `dfd67280`; deploy run `25358012928` success. Re-opened Phase 7F-C §2.2 #4 deferred decision per architect recommendation: `TierCount` 4 new optional fields + all-or-nothing + cross-axis invariants. Form submit feeds per-tier `tierFourLeaf` state into `tierCounts[].adultMaleCount/...`; formatter renders captured per-tier 4-leaf instead of N/A. Legacy back-compat preserved. Smoke `scripts/smoke_phase7fe7_per_tier_4leaf.py` PASS — head_count.tierCounts[] JSONB carries all 4 fields per tier.
+
+**Operator UAT gate** (memory `feedback_operator_uat_gate.md`): pending browser verification on event `87607c7a-...`. Status flips to Shipped only after operator confirms per-tier rows show captured demographics + legacy event back-compat.
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (7 slices ready; gated on operator UAT for 7F-E.7)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing — architect-flagged separate slice
+4. EmailTemplateValidator stronger automation — architect-flagged separate slice

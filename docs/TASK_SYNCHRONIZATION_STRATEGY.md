@@ -3630,3 +3630,17 @@ Process discipline upgrade: memory `feedback_cross_surface_matrix_smoke.md` save
 - UI test red-suite triage (217 failures pre-existing)
 - POST /api/Events defensive-gap follow-up (architect-flagged separate slice)
 - EmailTemplateValidator stronger automation (architect-flagged separate slice)
+
+---
+
+## 7F-E.7 Smoke-Pass Close-Out (2026-05-05)
+
+Commit `dfd67280` + deploy run `25358012928` (success): per-tier 4-leaf storage shipped + staging smoke verified end-to-end. Closes the 7F-E.6 → 6.A → 6.B bug-find loop by re-opening Phase 7F-C §2.2 #4 deferred decision per architect's deep RCA. Architect rejected "hide N/A" workaround as lying to users; chose Option A (real storage) at +2-3h cost over hiding-N/A's 30 min.
+
+Process discipline reinforced: memory `feedback_operator_uat_gate.md` saved. Render-surface slices now require operator UAT gate before Status flips to Shipped, on top of the existing matrix-smoke discipline (`feedback_cross_surface_matrix_smoke.md`). The 7F-E.6 → 6.A → 6.B chain demonstrated that automated smoke alone catches "pipeline ran" but doesn't catch "rendered output matches user mental model".
+
+**Outstanding cross-cutting items unchanged:**
+- Phase 7F-E prod batch (7 slices, gated on 7F-E.7 operator UAT)
+- UI test red-suite triage (pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged separate slice)
+- EmailTemplateValidator stronger automation (architect-flagged separate slice)

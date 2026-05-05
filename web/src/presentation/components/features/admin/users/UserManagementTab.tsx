@@ -18,6 +18,7 @@ import {
   useResendVerification,
   useForcePasswordReset,
   useDowngradeUser,
+  useUpgradeUser,
 } from '@/presentation/hooks/useAdminUsers';
 import type { AdminUserDto, GetAdminUsersRequest } from '@/infrastructure/api/types/admin-users.types';
 import { USER_ROLES } from '@/infrastructure/api/types/admin-users.types';
@@ -25,6 +26,7 @@ import { UsersTable } from './UsersTable';
 import { UserDetailsModal } from './UserDetailsModal';
 import { LockUserModal } from './LockUserModal';
 import { DowngradeUserModal } from './DowngradeUserModal';
+import { UpgradeUserModal } from './UpgradeUserModal';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 
 export function UserManagementTab() {
@@ -45,6 +47,9 @@ export function UserManagementTab() {
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [showDowngradeDialog, setShowDowngradeDialog] = useState(false);
   const [downgradeTargetUser, setDowngradeTargetUser] = useState<AdminUserDto | null>(null);
+  // Phase 6A.139: Admin-initiated upgrade modal state (mirrors downgrade)
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [upgradeTargetUser, setUpgradeTargetUser] = useState<AdminUserDto | null>(null);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
 
   // GitHub Issue #31: Replace native confirm()/alert() with styled components
@@ -75,6 +80,7 @@ export function UserManagementTab() {
   const resendVerificationMutation = useResendVerification();
   const forcePasswordResetMutation = useForcePasswordReset();
   const downgradeUserMutation = useDowngradeUser();
+  const upgradeUserMutation = useUpgradeUser();
 
   // Phase 6A.89: Cleanup search timeout on unmount
   useEffect(() => {
@@ -244,6 +250,32 @@ export function UserManagementTab() {
     }
   };
 
+  // Phase 6A.139: Admin-initiated upgrade handlers (mirror downgrade)
+  const handleOpenUpgradeModal = (user: AdminUserDto) => {
+    setUpgradeTargetUser(user);
+    setShowUpgradeDialog(true);
+  };
+
+  const confirmUpgrade = async (reason: string) => {
+    if (!upgradeTargetUser) return;
+
+    try {
+      await upgradeUserMutation.mutateAsync({
+        userId: upgradeTargetUser.userId,
+        reason,
+      });
+      showNotification(
+        'success',
+        'User upgraded to Event Organizer successfully. They will need to log out and back in for the new role to take effect.',
+      );
+      setShowUpgradeDialog(false);
+      setUpgradeTargetUser(null);
+    } catch (error: any) {
+      console.error('Failed to upgrade user:', error);
+      showNotification('error', error?.response?.data?.error || 'Failed to upgrade user');
+    }
+  };
+
   // Computed values
   const totalPages = usersData ? Math.ceil(usersData.totalCount / (filters.pageSize || 10)) : 0;
 
@@ -403,6 +435,7 @@ export function UserManagementTab() {
               onResendVerification={handleResendVerification}
               onForcePasswordReset={handleForcePasswordReset}
               onDowngrade={handleOpenDowngradeModal}
+              onUpgrade={handleOpenUpgradeModal}
               loadingUserId={loadingUserId}
               currentUserId={currentUser?.userId || ''}
               currentUserRole={currentUser?.role || ''}
@@ -473,6 +506,20 @@ export function UserManagementTab() {
           currentRole={downgradeTargetUser.role}
           onConfirm={confirmDowngrade}
           isLoading={downgradeUserMutation.isPending}
+        />
+      )}
+
+      {/* Phase 6A.139: Admin-initiated upgrade modal */}
+      {upgradeTargetUser && (
+        <UpgradeUserModal
+          isOpen={showUpgradeDialog}
+          onClose={() => {
+            setShowUpgradeDialog(false);
+            setUpgradeTargetUser(null);
+          }}
+          userName={upgradeTargetUser.fullName}
+          onConfirm={confirmUpgrade}
+          isLoading={upgradeUserMutation.isPending}
         />
       )}
 

@@ -56,6 +56,15 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(10);  // Backward compatibility: default 10 for existing events
 
+        // Phase 7E: Per-event RegistrationMode (DetailedAttendees / HeadCount* / NoRegistration).
+        // Stored as smallint with DB-level DEFAULT 0 so legacy events materialise as DetailedAttendees
+        // automatically — Phase 6A.123 lesson: NEVER rely on app-side defaults for NOT NULL columns.
+        builder.Property(e => e.RegistrationMode)
+            .HasColumnName("registration_mode")
+            .HasConversion<short>()
+            .IsRequired()
+            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+
         // Configure enum
         builder.Property(e => e.Status)
             .HasConversion<string>()

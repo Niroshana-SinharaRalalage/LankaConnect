@@ -1,3 +1,4 @@
+using LankaConnect.Application.Events.Common;
 using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Interfaces;
@@ -85,6 +86,19 @@ public record TicketPdfData
     /// Ticket type label for display on PDF (e.g., "General Admission", "VIP", "2x VIP, 3x Basic")
     /// </summary>
     public string? TicketType { get; init; }
+
+    /// <summary>
+    /// Phase 7F-E.4a: Cross-surface registration breakdown — populated for both Mode A
+    /// (DetailedAttendees) and Mode B (HeadCount*) registrations via
+    /// <see cref="LankaConnect.Application.Events.Common.TicketPdfRegistrationBreakdownAssembler"/>.
+    ///
+    /// When non-null, the PDF renderer surfaces a "Registration Breakdown" section with
+    /// per-tier rows showing Adult/Child + Male/Female counts (or "N/A" when the mode
+    /// doesn't capture that axis). Architect "in addition to" rule: Mode A keeps the
+    /// existing per-attendee list AND ALSO renders the breakdown summary; Mode B uses
+    /// the breakdown as the primary attendee section (the per-attendee list is empty).
+    /// </summary>
+    public RegistrationBreakdown? RegistrationBreakdown { get; init; }
 
     /// <summary>
     /// Attendee information for the ticket

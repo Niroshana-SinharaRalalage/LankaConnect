@@ -253,6 +253,29 @@ public class RegistrationEmailService : IRegistrationEmailService
                 emailParams.WithAttendees(attendeeDetailsHtml);
             }
 
+            // Phase 7F-E.6.B (architect-approved 2026-05-04): cross-surface registration
+            // breakdown HTML — same wiring pattern as PaymentCompletedEventHandler so the
+            // confirm-attendee resend path emits the breakdown card. Defensive: renderer
+            // faults fall through to empty string — email still sends without the card.
+            try
+            {
+                var breakdown = LankaConnect.Application.Events.Common
+                    .TicketPdfRegistrationBreakdownAssembler.Build(registration);
+                var breakdownHtml = breakdown is null
+                    ? string.Empty
+                    : LankaConnect.Application.Events.Common
+                        .RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
+                emailParams.WithRegistrationBreakdownHtml(breakdownHtml);
+            }
+            catch (Exception breakdownEx)
+            {
+                _logger.LogWarning(breakdownEx,
+                    "[Phase 7F-E.6.B] Failed to render registration breakdown HTML for confirm-attendee email. " +
+                    "RegistrationId={RegistrationId}. Falling back to empty string.",
+                    registration.Id);
+                emailParams.WithRegistrationBreakdownHtml(string.Empty);
+            }
+
             if (hasEventImage)
             {
                 emailParams.WithEventImage(eventImageUrl);

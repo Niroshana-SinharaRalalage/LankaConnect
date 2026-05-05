@@ -272,6 +272,32 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     emailParams.WithSignupForms($"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#signup-forms");
                 }
 
+                // Phase 7F-A: populate FlexibleRegistration params via the shared formatter so
+                // Mode-B add-attendees confirmations render the head-count breakdown alongside
+                // the per-attendee table that Mode A still relies on. (Today, AttendeesAdded
+                // is fired only on Mode A — but populating the params keeps the email contract
+                // consistent and ready for paid-B add-attendees in Phase 7F-D.)
+                try
+                {
+                    var flex = LankaConnect.Application.Events.Common.HeadCountEmailFormatter.Compute(registration);
+                    emailParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+                    emailParams.HasHeadCount = flex.hasHeadCount;
+                    emailParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+                    emailParams.HasTierBreakdown = flex.hasTierBreakdown;
+                    emailParams.HeadCountTotal = flex.headCountTotal;
+                    emailParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+                    emailParams.TierBreakdownLine = flex.tierBreakdownLine;
+                    emailParams.LeadAttendeeName = flex.leadAttendeeName;
+                    emailParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
+                }
+                catch (Exception flexEx)
+                {
+                    _logger.LogWarning(flexEx,
+                        "[Phase 7F-A] FlexibleRegistration params computation failed for AttendeesAdded email " +
+                        "RegistrationId={RegistrationId} — continuing with default Mode-A fields.",
+                        registration.Id);
+                }
+
                 _logger.LogInformation(
                     "[Phase 6A.100] AttendeesAdded: Sending via ITypedEmailService - CorrelationId={CorrelationId}, Template={Template}",
                     correlationId, emailParams.TemplateName);

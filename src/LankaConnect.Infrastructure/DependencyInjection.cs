@@ -382,6 +382,15 @@ public static class DependencyInjection
         // Phase 2: Seat Hold Cleanup Service (Background Service - releases expired holds every 60 seconds)
         services.AddHostedService<BackgroundServices.SeatHoldCleanupService>();
 
+        // Phase 7G: Refund Reconciliation Background Service - safety net for
+        // missed Stripe charge.refunded webhooks (deploy windows, transient
+        // failures). Polls every 5 minutes; queries Stripe directly for the
+        // canonical refund status; completes the DB transition for any refund
+        // Stripe reports as "succeeded".
+        services.Configure<BackgroundServices.RefundReconciliationSettings>(
+            configuration.GetSection(BackgroundServices.RefundReconciliationSettings.SectionName));
+        services.AddHostedService<BackgroundServices.RefundReconciliationBackgroundService>();
+
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
         services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, LankaConnect.Infrastructure.CulturalIntelligence.StubUserPreferences>();
@@ -470,6 +479,12 @@ public static class DependencyInjection
 
         // Session 23 (Phase 2B): Register Stripe payment service for event tickets
         services.AddScoped<IStripePaymentService, StripePaymentService>();
+
+        // Phase 7E.3b: Mode-B paid RSVP checkout-session creator (architect edit #2 — single
+        // test surface for the money path, used by both auth + anonymous head-count handlers).
+        services.AddScoped<
+            LankaConnect.Application.Events.Services.IRegistrationCheckoutService,
+            LankaConnect.Application.Events.Services.RegistrationCheckoutService>();
 
         // Phase 0: Register webhook handler services (extracted from PaymentsController)
         services.AddScoped<IRegistrationWebhookHandler, RegistrationWebhookHandler>();

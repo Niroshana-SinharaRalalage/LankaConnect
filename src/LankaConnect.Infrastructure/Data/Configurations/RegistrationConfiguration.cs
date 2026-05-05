@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL;  // Issue #56 FIX: For UseXminAsConcurrencyToken()
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
@@ -9,6 +13,59 @@ namespace LankaConnect.Infrastructure.Data.Configurations;
 
 public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 {
+    // Phase 7E: JSON serialisation options for the head_count JSONB column.
+    // CamelCase to match common JSONB conventions; ignore null props on write to keep stored
+    // documents compact (mode B1 has no Demographics; non-tier events have no TierCounts).
+    private static readonly JsonSerializerOptions HeadCountJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    // Phase 7E: Custom ValueConverter for HeadCountBreakdown <-> JSONB string.
+    // Architect decision: NOT OwnsOne(...).ToJson() — that path has the Phase 6A.130
+    // IReadOnlyList rehydration trap. Custom converter sidesteps it entirely.
+    private static readonly ValueConverter<HeadCountBreakdown?, string?> HeadCountConverter = new(
+        v => v == null ? null : JsonSerializer.Serialize(v, HeadCountJsonOptions),
+        v => string.IsNullOrEmpty(v) ? null : JsonSerializer.Deserialize<HeadCountBreakdown>(v, HeadCountJsonOptions));
+
+    // Phase 7E: Deep-copy ValueComparer.
+    // - Equality: ValueObject's structural equality via GetEqualityComponents (Total + Demographics + each TierCount).
+    // - Snapshot: deep clone via JSON round-trip — defends against any future mutable field
+    //   replicating the Phase 6A.129 mutate-in-place-defeats-snapshot trap.
+    // - Hash: ValueObject's hash combine.
+    //
+    // Phase 7F-C (2026-04-30): TierCount gained nullable AdultCount/ChildCount fields.
+    // No comparer change required — the JSON-roundtrip snapshot inherently picks up new
+    // fields, and TierCount.GetEqualityComponents already yields them so structural equality
+    // detects per-tier-age changes. Verified by round-trip test in
+    // Phase7FCTierAgeMatrixPricingTests.HeadCountBreakdown_JsonRoundTrip_PreservesAgeSplit.
+    //
+    // Phase 7F-E.7 (2026-05-04): TierCount additionally gained nullable
+    // AdultMaleCount/AdultFemaleCount/ChildMaleCount/ChildFemaleCount fields. Same pattern
+    // applies — the JsonConstructor takes them as nullable parameters with default null,
+    // so legacy JSONB rows deserialise cleanly with all 4 null. GetEqualityComponents was
+    // also extended (TierCount.cs) so structural equality detects per-tier 4-leaf changes.
+    // Verified by round-trip test in Phase7FE7TierCount4LeafJsonRoundTripTests (companion
+    // file under tests/LankaConnect.Application.Tests/Events/Domain).
+    private static readonly ValueComparer<HeadCountBreakdown?> HeadCountComparer = new(
+        (a, b) => HeadCountStructuralEquals(a, b),
+        v => v == null ? 0 : v.GetHashCode(),
+        v => v == null ? null : DeepCloneHeadCount(v));
+
+    private static bool HeadCountStructuralEquals(HeadCountBreakdown? a, HeadCountBreakdown? b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a is null || b is null) return false;
+        return a.Equals(b);
+    }
+
+    private static HeadCountBreakdown DeepCloneHeadCount(HeadCountBreakdown source)
+    {
+        var json = JsonSerializer.Serialize(source, HeadCountJsonOptions);
+        return JsonSerializer.Deserialize<HeadCountBreakdown>(json, HeadCountJsonOptions)!;
+    }
+
     public void Configure(EntityTypeBuilder<Registration> builder)
     {
         builder.ToTable("registrations", t =>
@@ -86,7 +143,41 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
                 .HasColumnName("ticket_tier_name")
                 .HasMaxLength(100)
                 .IsRequired(false);
+
+            // Phase 8 S8.1: per-attendee seat binding for AssignedSeating events.
+            // JSONB-schema-less so this addition needs no ALTER TABLE — existing
+            // rows deserialise with null defaults, matching the WhatsApp opt-in
+            // pattern at lines 152-153 of this file.
+            attendeesBuilder.Property(a => a.SeatId)
+                .HasColumnName("seat_id")
+                .IsRequired(false);
+            attendeesBuilder.Property(a => a.SeatLabel)
+                .HasColumnName("seat_label")
+                .HasMaxLength(50)
+                .IsRequired(false);
         });
+
+        // Phase 8 S8.2: pending seat-assignment stash for the RSVP-to-Stripe-checkout
+        // window. Set during the RSVP handler before redirect to Stripe; read by the
+        // checkout-completed webhook to drive ConfirmSeatAssignments. Cleared on
+        // success or expiry. Backed by a real JSONB column on `events.registrations`
+        // (NOT on the attendees JSONB — the stash is registration-scoped, not
+        // attendee-scoped, and lives separately so cleanup doesn't touch the
+        // attendee row).
+        builder.OwnsMany(r => r.PendingSeatAssignments, pendingBuilder =>
+        {
+            pendingBuilder.ToJson("pending_seat_assignments");
+            pendingBuilder.Property(p => p.AttendeeIndex).HasColumnName("attendee_index");
+            pendingBuilder.Property(p => p.SeatId).HasColumnName("seat_id");
+            pendingBuilder.Property(p => p.SeatLabel)
+                .HasColumnName("seat_label")
+                .HasMaxLength(50);
+        });
+
+        builder.Property(r => r.PendingSeatSessionId)
+            .HasColumnName("pending_seat_session_id")
+            .HasMaxLength(100)
+            .IsRequired(false);
 
         // Session 21: Configure Contact as JSONB for shared contact information
         builder.OwnsOne(r => r.Contact, contactBuilder =>
@@ -192,6 +283,31 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.Property(r => r.PaymentStatus)
             .HasConversion<int>()
             .IsRequired();
+
+        // Phase 7E: Snapshot of Event.RegistrationMode at construction time.
+        // Domain event handlers (cancellation, reminder) read this snapshot, not the live Event,
+        // so historical email re-renders survive an organiser flipping the mode after the fact.
+        // DB-level DEFAULT 0 ensures legacy rows materialise as DetailedAttendees (Phase 6A.123 lesson).
+        builder.Property(r => r.RegistrationMode)
+            .HasColumnName("registration_mode")
+            .HasConversion<short>()
+            .IsRequired()
+            .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
+
+        // Phase 7E: Lead attendee name. Populated only for head-count modes (B1-B4).
+        builder.Property(r => r.LeadAttendeeName)
+            .HasColumnName("lead_attendee_name")
+            .HasMaxLength(200)
+            .IsRequired(false);
+
+        // Phase 7E: Composite head-count breakdown (Total + Demographics? + TierCounts?).
+        // Stored as flat JSONB string via custom converter — NOT OwnsOne(...).ToJson() (Phase 6A.130 trap).
+        // Deep-copy ValueComparer protects against the Phase 6A.129 mutate-in-place snapshot trap.
+        builder.Property(r => r.HeadCount)
+            .HasColumnName("head_count")
+            .HasColumnType("jsonb")
+            .HasConversion(HeadCountConverter)
+            .Metadata.SetValueComparer(HeadCountComparer);
 
         // Configure audit fields
         builder.Property(r => r.CreatedAt)

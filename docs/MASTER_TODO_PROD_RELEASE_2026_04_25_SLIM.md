@@ -170,9 +170,7 @@ Look for:
 
 - **Three-doc sync** (CLAUDE.md §7): `PROGRESS_TRACKER.md`, `STREAMLINED_ACTION_PLAN.md`,
   `TASK_SYNCHRONIZATION_STRATEGY.md`
-- **Delete orphan migration**
-  `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` +
-  matching `__EFMigrationsHistory` row removal (low-risk housekeeping; pair them)
+- **Delete orphan migration** — ✅ **CLOSED 2026-05-03.** Architect-reviewed audit (Outcome A from procedure): the orphan source file `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` was hand-authored without a `.Designer.cs`, never carried a `[Migration]` attribute, was therefore invisible to EF Core and never applied. Confirmed `__EFMigrationsHistory` has zero rows for the timestamp — the master TODO line about removing a history row was wrong; nothing to delete from any DB. Pre-delete audit (`scripts/verify_phase7fe3_migration.py` pattern, read-only psycopg2): all 13 affected templates already carry the "View Signup Forms" button thanks to subsequent Phase 7C.2 / 7F-A overwrites — desired end-state achieved. Source file removed via `git rm`; `dotnet build LankaConnect.sln` succeeded (0 errors); Application 2567/6/0 + Infrastructure 317/0/0 suites green. Zero references to timestamp `20260214230204` remain anywhere in the project.
 - **UI test red-suite triage** (full classification (a) test bug / (b) impl bug
   / (c) flake per prior session)
 
@@ -180,4 +178,44 @@ Look for:
 
 ## Execution log
 
-(append timestamps + outcome per step as we go)
+### 2026-04-25
+
+- **Step 1** (10:30 UTC) — Edited `deploy-production.yml` lines 186–214: added 25 `TwilioContentSids__*` env vars. Diff vs `deploy-staging.yml:261-290` block confirmed empty. Both files now have 30 WhatsApp env-var lines. **PASS**.
+- **Step 2** (10:35 UTC) — Verified UI test history: 217 tests failed across 25 files on run `24931720287` (S8.7). Same pattern as runs `24913355081` (S8.6, 25 failed) and `24893444914` (S8.3, 26 failed). No new regressions. Failed files include the architect-flagged NewsletterMetroSelector + MetroAreaSelector + SignUpManagementSection (Phase 6A.118 enhancements) + FeedCard/FeedTabs. **PASS**.
+- **Step 3** (10:50 UTC) — Committed `5423c51f` (`chore(deploy): mirror staging Twilio WhatsApp env vars in prod workflow`). Pushed to develop. Triggered staging deploy run `24932581622`. Completed `success` ~10 min. **PASS**.
+- **Step 4** (11:50 UTC) — User confirmed: "Yes they are working fine" — recent staging confirmation emails on the rewritten Phase 7C templates render correctly with decomposed location block (LocationName + address), no `{{ }}` placeholders, no broken HTML. Note: multi-venue branch genuinely untested (zero events with `hasSecondaryLocation=true` on staging) but accepted because rollback is 30 sec. **PASS**.
+- **GO/NO-GO** (11:55 UTC) — All four GO criteria met. **GO.**
+- **Step 5** (12:00 UTC) — Rollback anchors captured:
+  - API: `lankaconnect-api-prod--0000034` (image `2ba7f1c0c3590f6a41a0b45443da23dd6ecb66fc`, Healthy since 2026-04-19 20:42 UTC)
+  - UI: `lankaconnect-ui-prod--0000033` (image `2194f0e1c34973616ff58500748a9a6e924dd8a9`, Healthy since 2026-04-19 21:17 UTC)
+- **Step 6a** (12:01 UTC) — PR #103 opened (develop → main, 159-commit gap).
+- **Step 6b** (12:06 UTC) — User merged PR #103 manually after resolving lucide-react import conflict in `web/src/presentation/components/features/events/SignUpManagementSection.tsx` (kept develop side: `ChevronDown, ChevronUp` — `ChevronUp` is required at line 827 for expand state). Merge commit `85aa3a71`.
+- **Step 6c — API deploy** (12:06 UTC) — Triggered automatically. Run `24934944049` (`Deploy to Azure Production`) succeeded in 11m36s. New active API revision `lankaconnect-api-prod--0000035` (image `85aa3a71`, Healthy).
+- **Step 6c — UI deploy** (12:33 UTC) — **GitHub Actions silently skipped `Deploy UI to Azure Production`** despite the merge commit modifying 27 web/** files. Known edge case with large merge commits + path-filter triggers. Verified via `gh api repos/.../actions/runs?head_sha=85aa3a71` — only 2 of 3 prod workflows registered. Manually dispatched via `gh workflow run deploy-ui-production.yml --ref main`. Run `24935464715` succeeded. New active UI revision `lankaconnect-ui-prod--0000034` (image `85aa3a71`, Healthy).
+- **Step 7 — Prod smoke**:
+  - ✅ `/health` 200, PostgreSQL Healthy, EF Core DbContext Healthy → all 18 release migrations applied
+  - ✅ `POST /api/Auth/login` returns structured JSON 400 for invalid creds → auth pipeline + DB query alive
+  - ✅ `GET /api/events?pageSize=5` 200 with new schema columns serialized (`hasSecondaryLocation`, `seatingMode`, `ticketingMode`, `ticketTiers`, `locationName` decomposed) → migrations + EF mapping intact
+  - ✅ UI home page 200 (`<title>LankaConnect - Sri Lankan Community Platform</title>`)
+  - ✅ UI events listing page 200
+  - ✅ Container env: 31 WhatsApp env vars on prod API (1 Enabled + 5 base + 25 ContentSids)
+  - ⚠️ Redis: Degraded (pre-existing parity gap, same on staging — not caused by this release)
+  - ✅ API logs (post-deploy): zero exceptions, zero ERR, zero Twilio rejections
+- **Step 8 — Soak begins** (12:40 UTC). Watch for 60 min. Declare green at 13:40 UTC if no 5xx spike, no uncaught exceptions, no Twilio rejection logs.
+
+## Domain pricing-guard fix (added during 7F-E.4b verification, 2026-05-04)
+
+**R-PRICING-GUARD** — ✅ **CLOSED 2026-05-04 (commit `e30c37d6`).** Latent domain bug surfaced during 7F-E.4b operator browser verification on staging event `616e59f3-...` (B4 + Tiered + tiers configured but no legacy `Pricing` populated). Pricing guards at `Event.RegistrationMode.cs:740` and `Event.cs:1130` checked the legacy `Pricing == null && TicketPrice == null` invariant before falling through to the Tiered branch — but `TicketingMode = Tiered + active TicketTiers` IS itself a complete pricing configuration. Architect-approved fix: extracted private `HasPaidPricingConfigured()` helper composing the three valid shapes (legacy Pricing, legacy TicketPrice, OR `HasTicketTiers`); replaced both guard sites; sanitised user-facing error message (no longer leaks `SetPricing()`/`SetDualPricing()`/`SetGroupPricing()` domain method names). Pre-fix repro confirmed via `scripts/smoke_pricing_guard_b4_tiered.py` (HTTP 400 + diagnostic error). Post-fix re-test on the same event: HTTP 200, Stripe Checkout URL returned, `events.registrations` row landed with `total_price = 130.00 USD` (matching unit-test expectation: VIP×2 + Standard×1 at the tier prices). Tests: 5 new in `EventPaidPricingGuardTests.cs` + 1 updated in `EventIsFreeEventFlagTests.cs`; Application 2573/6/0 + Infrastructure 317/0/0 green; 2 Domain.Tests failures (FormResponse + DonationConfiguration) confirmed pre-existing via git-stash bisect — unrelated.
+
+**Process lesson saved as memory `feedback_smoke_user_flows.md`**: I framed 7F-E.4b as "FE-only" and skipped the end-to-end staging-API smoke; the bug would have been caught immediately if I'd run an authenticated-RSVP smoke against a paid+tiered event. Going forward, ANY user-facing flow change gets an end-to-end staging smoke regardless of which layer technically changed.
+
+**Out of scope (deliberately deferred — separate slice):**
+- Defensive gap at `POST /api/Events` that allows creating a paid event with no pricing of any shape (architect-flagged; the domain fix is correct on its own merits, the API-create gap is orthogonal).
+- Mode A `throw InvalidOperationException` → `Result.Failure` conversion (orthogonal).
+
+## Deferred follow-ups (added during execution)
+
+- **R-NEW (path-filter fallback)** — ✅ **CLOSED 2026-05-03 (commit `2a8e75e5`).** Architect-approved Option (a): dropped the `paths:` filter on both `deploy-ui-staging.yml` AND `deploy-ui-production.yml` (symmetry: staging is where contract mismatches should be caught before prod). Root cause was GitHub's documented 300-file diff truncation — PR #103's 161-commit / 300+ file merge pushed `web/**` paths past the cutoff so the filter saw nothing and silently skipped. Bundled observability adds: `run-name:` showing SHA + event ("UI staging · 2a8e75e5... · push") and a first step that annotates `event_name`/`actor`/`sha`/`ref` into `$GITHUB_STEP_SUMMARY` so ops can reconstruct trigger context from any historical run. Verification on staging: the post-fix push (zero web/** files — pure CI yaml) successfully fired `deploy-ui-staging.yml` (run `25291529488`, conclusion success), proving the path filter is truly gone. Trade-off accepted: ~3-5 min wasted CI per non-web push to develop/main; reliability beats CI minutes. Rejected `workflow_run:` (couples failure domains, inverts bug); rejected `paths-ignore:` invert (same truncation).
+- **3-doc sync** (CLAUDE.md §7): PROGRESS_TRACKER.md, STREAMLINED_ACTION_PLAN.md, TASK_SYNCHRONIZATION_STRATEGY.md
+- **Delete orphan migration** `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + `__EFMigrationsHistory` row removal (low-risk housekeeping)
+- **UI test triage** (217 failed tests across 25 files — mostly NewsletterMetroSelector, MetroAreaSelector, SignUpManagementSection, FeedCard/FeedTabs)

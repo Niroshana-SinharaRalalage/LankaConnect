@@ -12,17 +12,19 @@ import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationD
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
-import { EventRegistrationForm } from '@/presentation/components/features/events/EventRegistrationForm';
+import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
+import { AddHeadCountModal } from '@/presentation/components/features/events/AddHeadCountModal';
+import { RegistrationBreakdownCard } from '@/presentation/components/features/events/RegistrationBreakdownCard';
 import { TicketSection } from '@/presentation/components/features/events/TicketSection';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { CheckoutCountdownTimer } from '@/presentation/components/features/events/CheckoutCountdownTimer';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -300,6 +302,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     form.status === ('Active' as any) || form.status === EventFormStatus.Active
   ) || [];
 
+  // Phase 7E (UX): Mode-aware labels for the registration nav button + section heading.
+  // - Mode A (DetailedAttendees) → "Register" (per-attendee form)
+  // - Mode B (HeadCount*)        → "RSVP"     (lightweight head-count form)
+  // - Mode C (NoRegistration)    → button hidden + section heading "About this event"
+  // Defensive read tolerates stale React Query cached payloads from before 7E shipped.
+  const registrationMode = event?.registrationMode ?? RegistrationMode.DetailedAttendees;
+  const isModeC = registrationMode === RegistrationMode.NoRegistration;
+  const isModeB =
+    registrationMode === RegistrationMode.HeadCountOnly ||
+    registrationMode === RegistrationMode.HeadCountByAge ||
+    registrationMode === RegistrationMode.HeadCountByGender ||
+    registrationMode === RegistrationMode.HeadCountByAgeAndGender;
+  const registrationCtaLabel = isModeB ? 'RSVP' : 'Register';
+  const registrationSectionTitle = isModeC
+    ? 'About this event'
+    : isModeB
+      ? 'RSVP for this Event'
+      : 'Register for this Event';
+
   // Phase 6A.128: Use React Query's useQueries for user form responses (single source of truth)
   // Replaces manual useEffect + useState — cache invalidation from mutations propagates automatically
   const formIds = activeForms.map(f => f.id);
@@ -423,6 +444,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           sponsorAmount: (data as any).sponsorAmount ?? undefined,
           sponsorOrganization: (data as any).sponsorOrganization ?? undefined,
           sponsorNotes: (data as any).sponsorNotes ?? undefined,
+          // Phase 7E (bug fix): thread Mode-B head-count payload through. The
+          // HeadCountRsvpForm sends these for B1-B4 events; without them the hook
+          // silently dropped the fields and the backend returned "Lead attendee
+          // name is required for HeadCountOnly events".
+          leadAttendeeName: (data as any).leadAttendeeName ?? undefined,
+          headCount: (data as any).headCount ?? undefined,
         });
 
         // If checkout URL is returned, redirect to Stripe for payment
@@ -752,7 +779,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {/* Quick Navigation Bar — anchor links to sections below */}
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
-                  { id: 'registration', label: 'Register', icon: <Users className="h-3.5 w-3.5" />, show: true },
+                  { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
                   { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
                   { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
                   { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
@@ -960,9 +987,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 ? "You're Registered!"
                 : registrationDetails?.status === 'Cancelled'
                 ? 'Registration Cancelled'
-                : 'Register for this Event'}
+                : registrationSectionTitle}
               description={isCancelled
                 ? 'This event has been cancelled. Registration is not available.'
+                : isModeC
+                ? "This is a drop-in event — no registration needed. Donations, sponsorships, and other contributions are still welcome."
                 : isUserRegistered
                 ? 'Click to view your registration details'
                 : registrationDetails?.status === 'Cancelled'
@@ -1044,25 +1073,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </p>
                       </div>
                     ) : !isFull ? (
-                      <EventRegistrationForm
-                        eventId={id}
+                      // Phase 7E.6: dispatcher routes to per-attendee form (Mode A), head-count
+                      // form (Mode B), or "no registration required" notice (Mode C).
+                      <RsvpFormSection
+                        event={event}
                         spotsLeft={spotsLeft}
-                        isFree={event.isFree}
-                        ticketPrice={event.ticketPriceAmount ?? undefined}
-                        hasDualPricing={event.hasDualPricing}
-                        adultPrice={event.adultPriceAmount ?? undefined}
-                        childPrice={event.childPriceAmount ?? undefined}
-                        childAgeLimit={event.childAgeLimit ?? undefined}
-                        hasGroupPricing={event.hasGroupPricing}
-                        groupPricingTiers={event.groupPricingTiers}
-                        seatingMode={event.seatingMode}
-                        ticketingMode={event.ticketingMode}
-                        ticketTiers={event.ticketTiers}
-                        maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                        donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                        collectionConfig={event.collectionConfig}
-                        sponsorConfig={event.sponsorConfig}
                         isProcessing={isProcessing}
                         onSubmit={handleRegistration}
                         error={error}
@@ -1136,7 +1151,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               </div>
                             )}
 
-                            {/* Attendees Section - Show if we have attendees array with items */}
+                            {/* Phase 7F-E.2: cross-surface RegistrationBreakdown card.
+                                Shows per-tier rows with N/A placeholders for un-captured
+                                axes (B1: both N/A; B2: gender N/A; B3: age N/A; B4: both
+                                captured). Renders for both Mode A AND Mode B per architect
+                                "in addition to" rule — Mode A still shows the per-attendee
+                                list below. */}
+                            {registrationDetails.breakdown && (
+                              <div className="mb-3">
+                                <RegistrationBreakdownCard
+                                  breakdown={registrationDetails.breakdown}
+                                  leadAttendeeName={registrationDetails.leadAttendeeName}
+                                />
+                              </div>
+                            )}
+
+                            {/* Attendees Section - Show if we have attendees array with items.
+                                Phase 7F-E.4b fix: under Mode B the attendees list is empty AND
+                                the breakdown card above already shows "Number of attendees" —
+                                so the legacy fallback line is suppressed when breakdown is set
+                                to avoid the duplicated count. */}
                             {registrationDetails.attendees && registrationDetails.attendees.length > 0 ? (
                               <div>
                                 <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
@@ -1160,11 +1194,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   ))}
                                 </div>
                               </div>
-                            ) : (
+                            ) : !registrationDetails.breakdown ? (
                               <div className="text-sm text-green-800 dark:text-green-200">
                                 <p>Number of attendees: {registrationDetails.quantity || userRsvp?.currentRegistrations || 1}</p>
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         ) : (
                           <div className="text-sm text-green-800 dark:text-green-200">
@@ -1499,24 +1533,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         </p>
                       </div>
                       {!isFull ? (
-                        <EventRegistrationForm
-                          eventId={id}
+                        // Phase 7E.6: mode-aware dispatch
+                        <RsvpFormSection
+                          event={event}
                           spotsLeft={spotsLeft}
-                          isFree={event.isFree}
-                          ticketPrice={event.ticketPriceAmount ?? undefined}
-                          hasDualPricing={event.hasDualPricing}
-                          adultPrice={event.adultPriceAmount ?? undefined}
-                          childPrice={event.childPriceAmount ?? undefined}
-                          childAgeLimit={event.childAgeLimit ?? undefined}
-                          hasGroupPricing={event.hasGroupPricing}
-                          groupPricingTiers={event.groupPricingTiers}
-                          ticketingMode={event.ticketingMode}
-                          ticketTiers={event.ticketTiers}
-                          maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                          donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                          collectionConfig={event.collectionConfig}
-                          sponsorConfig={event.sponsorConfig}
                           isProcessing={isProcessing}
                           onSubmit={handleRegistration}
                           error={error}
@@ -1763,24 +1783,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         Your previous checkout session expired. Complete the form below to get a new payment link.
                       </p>
                     </div>
-                    <EventRegistrationForm
-                      eventId={id}
+                    {/* Phase 7E.6: mode-aware dispatch */}
+                    <RsvpFormSection
+                      event={event}
                       spotsLeft={spotsLeft}
-                      isFree={event.isFree}
-                      ticketPrice={event.ticketPriceAmount ?? undefined}
-                      hasDualPricing={event.hasDualPricing}
-                      adultPrice={event.adultPriceAmount ?? undefined}
-                      childPrice={event.childPriceAmount ?? undefined}
-                      childAgeLimit={event.childAgeLimit ?? undefined}
-                      hasGroupPricing={event.hasGroupPricing}
-                      groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
-                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                      donationConfig={event.donationConfig}
-                      addOnConfig={event.addOnConfig}
-                      collectionConfig={event.collectionConfig}
-                      sponsorConfig={event.sponsorConfig}
                       isProcessing={isProcessing}
                       onSubmit={handleRegistration}
                       error={error}
@@ -1795,24 +1801,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         Your previous registration had incomplete payment. Complete the form below to get a new payment link.
                       </p>
                     </div>
-                    <EventRegistrationForm
-                      eventId={id}
+                    {/* Phase 7E.6: mode-aware dispatch */}
+                    <RsvpFormSection
+                      event={event}
                       spotsLeft={spotsLeft}
-                      isFree={event.isFree}
-                      ticketPrice={event.ticketPriceAmount ?? undefined}
-                      hasDualPricing={event.hasDualPricing}
-                      adultPrice={event.adultPriceAmount ?? undefined}
-                      childPrice={event.childPriceAmount ?? undefined}
-                      childAgeLimit={event.childAgeLimit ?? undefined}
-                      hasGroupPricing={event.hasGroupPricing}
-                      groupPricingTiers={event.groupPricingTiers}
-                      ticketingMode={event.ticketingMode}
-                      ticketTiers={event.ticketTiers}
-                      maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                      donationConfig={event.donationConfig}
-                      addOnConfig={event.addOnConfig}
-                      collectionConfig={event.collectionConfig}
-                      sponsorConfig={event.sponsorConfig}
                       isProcessing={isProcessing}
                       onSubmit={handleRegistration}
                       error={error}
@@ -1829,24 +1821,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </p>
                   </div>
                 ) : !isFull ? (
-                  <EventRegistrationForm
-                    eventId={id}
+                  // Phase 7E.6: mode-aware dispatch
+                  <RsvpFormSection
+                    event={event}
                     spotsLeft={spotsLeft}
-                    isFree={event.isFree}
-                    ticketPrice={event.ticketPriceAmount ?? undefined}
-                    hasDualPricing={event.hasDualPricing}
-                    adultPrice={event.adultPriceAmount ?? undefined}
-                    childPrice={event.childPriceAmount ?? undefined}
-                    childAgeLimit={event.childAgeLimit ?? undefined}
-                    hasGroupPricing={event.hasGroupPricing}
-                    groupPricingTiers={event.groupPricingTiers}
-                    ticketingMode={event.ticketingMode}
-                    ticketTiers={event.ticketTiers}
-                    maxAttendeesPerRegistration={event.maxAttendeesPerRegistration}
-                    donationConfig={event.donationConfig}
-                        addOnConfig={event.addOnConfig}
-                    collectionConfig={event.collectionConfig}
-                    sponsorConfig={event.sponsorConfig}
                     isProcessing={isProcessing}
                     onSubmit={handleRegistration}
                     error={error}
@@ -2380,8 +2358,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         onAddAttendeesClick={() => setShowAddAttendeesModal(true)}
       />
 
-      {/* Add-Only Attendees: Modal for adding attendees to paid registrations */}
-      {registrationDetails && (
+      {/* Add-Only Attendees: dispatches by registration mode (Phase 7F-D adds Mode-B path).
+          Mode A → existing per-attendee modal; Mode B (1/2/3/4) → head-count delta modal. */}
+      {registrationDetails && isModeB && (
+        <AddHeadCountModal
+          open={showAddAttendeesModal}
+          onOpenChange={setShowAddAttendeesModal}
+          registrationId={registrationDetails.id}
+          mode={registrationMode}
+          maxAttendeesPerRegistration={event?.maxAttendeesPerRegistration ?? 10}
+          currentAttendeeCount={registrationDetails.attendees?.length || registrationDetails.quantity}
+          onSuccess={() => {
+            window.location.reload();
+          }}
+        />
+      )}
+      {registrationDetails && !isModeB && (
         <AddAttendeesModal
           open={showAddAttendeesModal}
           onOpenChange={setShowAddAttendeesModal}

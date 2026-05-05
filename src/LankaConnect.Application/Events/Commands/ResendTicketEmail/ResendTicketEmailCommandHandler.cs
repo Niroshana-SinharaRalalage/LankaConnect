@@ -367,6 +367,31 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
                 }
 
+                // Phase 7F-E.6.B (architect-approved 2026-05-04): cross-surface registration
+                // breakdown HTML — fixes the literal {{{RegistrationBreakdownHtml}}} that
+                // showed in user inboxes pre-fix. Same wiring pattern as
+                // PaymentCompletedEventHandler so the resend flow surfaces identical
+                // content. Defensive: renderer faults fall through to empty string —
+                // email still sends without the breakdown card.
+                try
+                {
+                    var breakdown = LankaConnect.Application.Events.Common
+                        .TicketPdfRegistrationBreakdownAssembler.Build(registration);
+                    var breakdownHtml = breakdown is null
+                        ? string.Empty
+                        : LankaConnect.Application.Events.Common
+                            .RegistrationBreakdownEmailRenderer.Render(breakdown, registration.LeadAttendeeName);
+                    typedParams.WithRegistrationBreakdownHtml(breakdownHtml);
+                }
+                catch (Exception breakdownEx)
+                {
+                    _logger.LogWarning(breakdownEx,
+                        "[Phase 7F-E.6.B] Failed to render registration breakdown HTML for resend-ticket email. " +
+                        "RegistrationId={RegistrationId}. Falling back to empty string.",
+                        registration.Id);
+                    typedParams.WithRegistrationBreakdownHtml(string.Empty);
+                }
+
                 // Set event image
                 typedParams.WithEventImage(eventImageUrl);
 

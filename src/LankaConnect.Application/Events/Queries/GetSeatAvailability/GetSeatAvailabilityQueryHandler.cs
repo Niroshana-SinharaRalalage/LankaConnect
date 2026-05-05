@@ -30,7 +30,7 @@ public class GetSeatAvailabilityQueryHandler : IQueryHandler<GetSeatAvailability
         if (request.EventId == Guid.Empty)
             return Result<List<SeatAvailabilityDto>>.Failure("Event ID is required");
 
-        var layout = await _venueLayoutRepository.GetByEventIdAsync(request.EventId, cancellationToken);
+        var layout = await _venueLayoutRepository.GetAssignedLayoutForEventAsync(request.EventId, cancellationToken);
         if (layout == null)
             return Result<List<SeatAvailabilityDto>>.Failure("No venue layout found for this event");
 

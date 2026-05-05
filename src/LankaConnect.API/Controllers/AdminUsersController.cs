@@ -7,6 +7,7 @@ using LankaConnect.Application.Users.Commands.AdminDeactivateUser;
 using LankaConnect.Application.Users.Commands.AdminDowngradeUser;
 using LankaConnect.Application.Users.Commands.AdminLockUser;
 using LankaConnect.Application.Users.Commands.AdminUnlockUser;
+using LankaConnect.Application.Users.Commands.AdminUpgradeUser;
 using LankaConnect.Application.Users.DTOs;
 using LankaConnect.Application.Users.Queries.GetAdminUserDetails;
 using LankaConnect.Application.Users.Queries.GetAdminUsersPaged;
@@ -290,6 +291,31 @@ public class AdminUsersController : BaseController<AdminUsersController>
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Upgrade a GeneralUser to EventOrganizer (admin-initiated, no user request needed).
+    /// Phase 6A.139: Symmetric counterpart to the existing downgrade endpoint (Phase 6A.106).
+    /// </summary>
+    /// <param name="userId">User ID to upgrade</param>
+    /// <param name="request">Upgrade request with reason</param>
+    /// <returns>Success or failure result</returns>
+    [HttpPost("{userId:guid}/upgrade")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> UpgradeUser(Guid userId, [FromBody] UpgradeUserRequest request)
+    {
+        var (ipAddress, userAgent) = GetClientInfo();
+
+        Logger.LogInformation(
+            "Admin {AdminUserId} upgrading user to EventOrganizer - TargetUserId={TargetUserId}, IP={IpAddress}",
+            User.TryGetUserId(), userId, ipAddress);
+
+        var command = new AdminUpgradeUserCommand(userId, request.Reason, ipAddress, userAgent);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
     #region Private Helpers
 
     private (string? IpAddress, string? UserAgent) GetClientInfo()
@@ -339,6 +365,18 @@ public record DowngradeUserRequest
 {
     /// <summary>
     /// Required reason for the downgrade (for audit trail)
+    /// </summary>
+    public string Reason { get; init; } = string.Empty;
+}
+
+/// <summary>
+/// Request body for upgrading a user's role to EventOrganizer.
+/// Phase 6A.139: Admin-initiated upgrade (mirrors DowngradeUserRequest).
+/// </summary>
+public record UpgradeUserRequest
+{
+    /// <summary>
+    /// Required reason for the upgrade (for audit trail)
     /// </summary>
     public string Reason { get; init; } = string.Empty;
 }

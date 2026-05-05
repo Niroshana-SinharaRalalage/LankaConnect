@@ -1,7 +1,5 @@
 'use client';
 
-import { PackagePlus } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { AddOnDefinitionEditor, type PendingAddOnDefinition } from './AddOnDefinitionEditor';
 
 interface AddOnConfigFormProps {
@@ -44,17 +42,7 @@ export function AddOnConfigForm({
   const showAvailabilityWarning = isEnabled && !availableDuringRegistration && !availableStandalone;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <PackagePlus className="h-5 w-5" style={{ color: '#FF7900' }} />
-          <CardTitle style={{ color: '#8B1538' }}>Add-Ons (Optional)</CardTitle>
-        </div>
-        <CardDescription>
-          Offer additional items or services that attendees can purchase alongside their registration
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         {/* Enable Toggle */}
         <div className="flex items-start space-x-3">
           <input
@@ -143,9 +131,8 @@ export function AddOnConfigForm({
               pendingDefinitions={pendingDefinitions}
               onPendingDefinitionsChange={onPendingDefinitionsChange}
             />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

@@ -162,6 +162,29 @@ async function forwardRequest(
       headers['Authorization'] = authHeader;
     }
 
+    // Forward conditional-request headers. Without this, EVERY backend
+    // mutation that uses optimistic concurrency (If-Match) silently fails
+    // with "If-Match header is required" because the proxy was an explicit
+    // whitelist that didn't include the conditional family. Bug surfaced in
+    // Slice 8 S8.8 canvas-editor Save through the UI on staging — discovered
+    // 2026-04-28 via "Save failed: If-Match header is required" toast on a
+    // PUT /batch that the API expected to be conditional. Direct backend
+    // curls worked because they bypassed this proxy. The four headers below
+    // are the standard HTTP conditional-request set; forwarding all of them
+    // future-proofs the proxy for ETag-based caching too.
+    const conditionalHeaders: ReadonlyArray<string> = [
+      'If-Match',
+      'If-None-Match',
+      'If-Modified-Since',
+      'If-Unmodified-Since',
+    ];
+    for (const name of conditionalHeaders) {
+      const value = request.headers.get(name);
+      if (value !== null && value !== '') {
+        headers[name] = value;
+      }
+    }
+
     // Forward Content-Length for multipart uploads (critical for large video uploads)
     // When body is ArrayBuffer, fetch() doesn't auto-set Content-Length from the browser's original header
     // Backend needs Content-Length to properly parse multipart form data for large files

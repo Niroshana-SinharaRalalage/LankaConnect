@@ -52,8 +52,32 @@ public class UpdateRsvpCommandHandler : ICommandHandler<UpdateRsvpCommand>
                 }
 
                 _logger.LogInformation(
-                    "UpdateRsvp: Event loaded - EventId={EventId}, Title={Title}, CurrentRegistrations={Registrations}",
-                    @event.Id, @event.Title.Value, @event.CurrentRegistrations);
+                    "UpdateRsvp: Event loaded - EventId={EventId}, Title={Title}, CurrentRegistrations={Registrations}, Mode={Mode}",
+                    @event.Id, @event.Title.Value, @event.CurrentRegistrations, @event.RegistrationMode);
+
+                // Phase 7E.3a: UpdateRsvp currently only handles Quantity-based updates (Mode A's legacy
+                // path). Head-count updates (Mode B) need a different command shape (HeadCountDto delta)
+                // — deferred to a follow-up. For Mode C, there's no Registration to update at all.
+                if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "UpdateRsvp REJECTED: event uses NoRegistration mode - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure(
+                        "This event does not require registration. There is nothing to update.");
+                }
+
+                if (@event.RegistrationMode != LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "UpdateRsvp REJECTED: head-count update via this endpoint not yet supported - EventId={EventId}, Mode={Mode}, Duration={ElapsedMs}ms",
+                        request.EventId, @event.RegistrationMode, stopwatch.ElapsedMilliseconds);
+                    return Result.Failure(
+                        $"Head-count registration updates ({@event.RegistrationMode}) are not yet supported via this endpoint. " +
+                        "Cancel and re-register, or wait for the dedicated head-count update endpoint in a follow-up slice.");
+                }
 
                 // Use domain method to update registration quantity
                 var updateResult = @event.UpdateRegistration(request.UserId, request.NewQuantity);

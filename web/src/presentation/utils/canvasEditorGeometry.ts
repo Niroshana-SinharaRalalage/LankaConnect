@@ -8,12 +8,19 @@
  */
 
 import {
+  AssignableKind,
   DecorationKind,
   TableShape,
   ZoneShape,
-  type VenueZoneDto,
-  type VenueTableDto,
+  type BatchDecoration,
+  type BatchLayoutPayload,
+  type BatchTable,
+  type BatchTierAssignment,
+  type BatchZone,
   type VenueDecorationDto,
+  type VenueLayoutDto,
+  type VenueTableDto,
+  type VenueZoneDto,
 } from '@/infrastructure/api/types/events.types';
 import {
   parseRectGeom,
@@ -521,6 +528,328 @@ export function createDecorationDraft(
     properties: '{}',
     sortOrder: nextSortOrder,
   };
+}
+
+// ─────────────── S8.8b: draft → BatchLayoutPayload composer ───────────────
+
+/**
+ * Slice 8 S8.8b: shape of the canvas editor's draft state. Lifted out of
+ * CanvasEditor.tsx so the payload composer + change-counter can reason
+ * about it without React. The interface mirrors the `DraftState` used by
+ * the editor's `useEditorHistory` reducer.
+ */
+export interface CanvasEditorDraftAdditions {
+  zones: VenueZoneDto[];
+  tables: VenueTableDto[];
+  decorations: VenueDecorationDto[];
+}
+
+/**
+ * Slice S1 (Architect Rev 4): a seat-gen entry is "complete" only when BOTH
+ * dimensions are positive integers. Partial state (user typed one field but
+ * not the other) is held in draft state but never emitted to the backend
+ * payload — the user fills both fields before save triggers seat generation.
+ *
+ * Returns the entry if complete, otherwise <c>null</c>. Centralises the rule
+ * so <c>composeBatchPayload</c> + <c>countDraftChanges</c> + the property
+ * panel preview share one source of truth.
+ */
+export function pickCompleteSeatGen(
+  entry: { rowCount: number; seatsPerRow: number } | undefined,
+): { rowCount: number; seatsPerRow: number } | null {
+  if (!entry) return null;
+  if (!Number.isFinite(entry.rowCount) || entry.rowCount <= 0) return null;
+  if (!Number.isFinite(entry.seatsPerRow) || entry.seatsPerRow <= 0) return null;
+  return entry;
+}
+
+export interface CanvasEditorDraftState {
+  geometryByKey: Record<string, string>;
+  additions: CanvasEditorDraftAdditions;
+  deletions: ReadonlySet<string>;
+  /** S8.7 per-item tier overrides. NOT persisted by S8.8b — tier persistence
+   * lives behind the slice 4 single-tier endpoints and lands in S8.8c. */
+  tierAssignmentsByKey: Record<string, string[]>;
+  /**
+   * Slice 9.5: per-zone theater seat-generation overrides. Keyed by zoneId
+   * (works for both kept zones in `baseline.zones` and added zones in
+   * `additions.zones` — the keys are unique). Each entry triggers
+   * `VenueLayout.GenerateTheaterSeats` server-side on save (clears existing
+   * seats then creates rows × seatsPerRow grid). The Property panel only
+   * surfaces this when the selected zone is empty — destructive overwrite
+   * is gated by the UI even though the domain method allows it.
+   */
+  seatGenByZoneId: Record<string, { rowCount: number; seatsPerRow: number }>;
+}
+
+export interface ComposeBatchPayloadInput {
+  baseline: VenueLayoutDto;
+  draft: CanvasEditorDraftState;
+}
+
+/**
+ * Slice 8 S8.8b: convert the editor's draft state into a `BatchLayoutPayload`
+ * for `PUT /api/venue-layouts/{id}/batch`. The payload follows the backend's
+ * "full state replacement" contract:
+ *   - existing items NOT in `draft.deletions` → included with their `id`
+ *     (server treats as update; geometry override applied if present)
+ *   - existing items IN `draft.deletions` → omitted (server removes them)
+ *   - items in `draft.additions.*` → included with `id: null` (server creates)
+ *
+ * `name` and `canvas` are passed as `null` because the canvas editor has no
+ * UI for them in S8.8b — sending them would inflate the backend's
+ * `changesCount` metric without a real edit. Tier assignments are NOT
+ * included; the BatchLayoutPayload schema doesn't carry them and tier
+ * persistence is deferred to S8.8c via the slice-4 single-tier endpoints.
+ */
+export function composeBatchPayload(input: ComposeBatchPayloadInput): BatchLayoutPayload {
+  const { baseline, draft } = input;
+
+  const isDeleted = (kind: CanvasItemKind, id: string): boolean =>
+    draft.deletions.has(refKey({ kind, id }));
+
+  const keptZones: BatchZone[] = (baseline.zones ?? [])
+    .filter((z) => !isDeleted('zone', z.id))
+    .map((z) => {
+      const seatGen = pickCompleteSeatGen(draft.seatGenByZoneId[z.id]);
+      return {
+        id: z.id,
+        name: z.name,
+        color: z.color,
+        sortOrder: z.sortOrder,
+        shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+        geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? null,
+        // Slice S1 (Architect Rev 4): only emit seat-gen fields when BOTH are
+        // positive integers. Partial state (user mid-typing one field) stays
+        // client-side until both are filled.
+        rowCount: seatGen?.rowCount ?? null,
+        seatsPerRow: seatGen?.seatsPerRow ?? null,
+      };
+    });
+
+  // S8.8c: stamp the client-side draft Guid as `clientId` on newly-added zones
+  // so the backend can resolve any `BatchTierAssignment.assignableId` that
+  // references this zone before it has a server-side Guid.
+  const addedZones: BatchZone[] = draft.additions.zones.map((z) => {
+    const seatGen = pickCompleteSeatGen(draft.seatGenByZoneId[z.id]);
+    return {
+      id: null,
+      name: z.name,
+      color: z.color,
+      sortOrder: z.sortOrder,
+      shape: (z.shape as ZoneShape | undefined) ?? ZoneShape.Rect,
+      geometry: resolveGeometry('zone', z, draft.geometryByKey) ?? z.geometry ?? null,
+      clientId: z.id,
+      rowCount: seatGen?.rowCount ?? null,
+      seatsPerRow: seatGen?.seatsPerRow ?? null,
+    };
+  });
+
+  const keptTables: BatchTable[] = (baseline.tables ?? [])
+    .filter((t) => !isDeleted('table', t.id))
+    .map((t) => ({
+      id: t.id,
+      label: t.label,
+      shape: t.shape,
+      capacity: t.capacity,
+      sortOrder: t.sortOrder,
+      zoneId: t.venueZoneId ?? null,
+      geometry: resolveGeometry('table', t, draft.geometryByKey) ?? null,
+    }));
+
+  const addedTables: BatchTable[] = draft.additions.tables.map((t) => ({
+    id: null,
+    label: t.label,
+    shape: t.shape,
+    capacity: t.capacity,
+    sortOrder: t.sortOrder,
+    zoneId: t.venueZoneId ?? null,
+    geometry: resolveGeometry('table', t, draft.geometryByKey) ?? t.geometry ?? null,
+    clientId: t.id,
+  }));
+
+  const keptDecorations: BatchDecoration[] = (baseline.decorations ?? [])
+    .filter((d) => !isDeleted('decoration', d.id))
+    .map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      label: d.label ?? null,
+      sortOrder: d.sortOrder,
+      geometry: resolveGeometry('decoration', d, draft.geometryByKey) ?? null,
+      properties: d.properties ?? null,
+    }));
+
+  const addedDecorations: BatchDecoration[] = draft.additions.decorations.map((d) => ({
+    id: null,
+    kind: d.kind,
+    label: d.label ?? null,
+    sortOrder: d.sortOrder,
+    geometry: resolveGeometry('decoration', d, draft.geometryByKey) ?? d.geometry ?? null,
+    properties: d.properties ?? null,
+  }));
+
+  // S8.8c: tier-assignment desired-state composition.
+  //   - Template layouts (no eventId) cannot carry tier assignments because
+  //     TicketTier lives on the Event aggregate. Send `null` to signal
+  //     "skip reconciliation".
+  //   - Event-attached layouts always send the full desired state (one entry
+  //     per surviving zone/table — kept-existing or just-added). This keeps
+  //     the reconciler honest about orphan cleanup when the user deletes a
+  //     zone with prior assignments.
+  let tierAssignments: BatchTierAssignment[] | null = null;
+  if (baseline.eventId) {
+    tierAssignments = [];
+
+    for (const z of keptZones) {
+      const refKeyStr = refKey({ kind: 'zone', id: z.id! });
+      const baselineZone = (baseline.zones ?? []).find((bz) => bz.id === z.id);
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? baselineZone?.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Zone,
+        assignableId: z.id!,
+        tierIds: [...tierIds],
+      });
+    }
+    for (const z of draft.additions.zones) {
+      const refKeyStr = refKey({ kind: 'zone', id: z.id });
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? z.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Zone,
+        assignableId: z.id, // client-side draft Guid; backend resolves via clientId
+        tierIds: [...tierIds],
+      });
+    }
+    for (const t of keptTables) {
+      const refKeyStr = refKey({ kind: 'table', id: t.id! });
+      const baselineTable = (baseline.tables ?? []).find((bt) => bt.id === t.id);
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? baselineTable?.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Table,
+        assignableId: t.id!,
+        tierIds: [...tierIds],
+      });
+    }
+    for (const t of draft.additions.tables) {
+      const refKeyStr = refKey({ kind: 'table', id: t.id });
+      const tierIds = draft.tierAssignmentsByKey[refKeyStr] ?? t.ticketTierIds ?? [];
+      tierAssignments.push({
+        kind: AssignableKind.Table,
+        assignableId: t.id,
+        tierIds: [...tierIds],
+      });
+    }
+  }
+
+  // Slice S2: explicit deletion opt-in. The backend now requires every shape
+  // omitted from the payload to be listed in deletedXIds. Compute the deletes
+  // from the draft.deletions Set (the kind-prefixed ref keys). Without this,
+  // the backend returns 409 — closing the destructive-PUT bug class.
+  const deletedZoneIds: string[] = [];
+  const deletedTableIds: string[] = [];
+  const deletedDecorationIds: string[] = [];
+  for (const key of draft.deletions) {
+    // refKey shape is `${kind}:${id}` — split safely.
+    const sep = key.indexOf(':');
+    if (sep < 0) continue;
+    const kind = key.slice(0, sep);
+    const id = key.slice(sep + 1);
+    // Only baseline items that are explicitly deleted go here. Items that were
+    // ADDED then DELETED in the same draft session don't need server-side
+    // deletion (they were never persisted) — they're already excluded from
+    // keptZones/addedZones above by the deletions Set.
+    if (kind === 'zone' && (baseline.zones ?? []).some((z) => z.id === id)) {
+      deletedZoneIds.push(id);
+    } else if (kind === 'table' && (baseline.tables ?? []).some((t) => t.id === id)) {
+      deletedTableIds.push(id);
+    } else if (kind === 'decoration' && (baseline.decorations ?? []).some((d) => d.id === id)) {
+      deletedDecorationIds.push(id);
+    }
+  }
+
+  return {
+    name: null,
+    canvas: null,
+    zones: [...keptZones, ...addedZones],
+    tables: [...keptTables, ...addedTables],
+    decorations: [...keptDecorations, ...addedDecorations],
+    tierAssignments,
+    deletedZoneIds: deletedZoneIds.length > 0 ? deletedZoneIds : null,
+    deletedTableIds: deletedTableIds.length > 0 ? deletedTableIds : null,
+    deletedDecorationIds: deletedDecorationIds.length > 0 ? deletedDecorationIds : null,
+  };
+}
+
+/**
+ * Slice 8 S8.8b + S8.8c: count *user-perceived* draft changes — used to gate the
+ * Save button. Returns the sum of:
+ *   - distinct deletions of baseline items (added-then-deleted is a no-op)
+ *   - geometry overrides on baseline items that survive (deleted items'
+ *     overrides are wiped by the delete handler)
+ *   - new additions
+ *   - (S8.8c) tier-assignment overrides that *differ* from the baseline's
+ *     persisted `ticketTierIds`. Toggling a tier on then off doesn't count;
+ *     order is normalized so reorderings don't trip the gate either. Skipped
+ *     entirely for template layouts because tier assignments live on the
+ *     Event aggregate and aren't persistable for templates.
+ */
+export function countDraftChanges(input: ComposeBatchPayloadInput): number {
+  const { baseline, draft } = input;
+
+  const additions =
+    draft.additions.zones.length +
+    draft.additions.tables.length +
+    draft.additions.decorations.length;
+
+  const deletions = draft.deletions.size;
+
+  const baselineKeys = new Set<string>([
+    ...(baseline.zones ?? []).map((z) => refKey({ kind: 'zone', id: z.id })),
+    ...(baseline.tables ?? []).map((t) => refKey({ kind: 'table', id: t.id })),
+    ...(baseline.decorations ?? []).map((d) => refKey({ kind: 'decoration', id: d.id })),
+  ]);
+  const geometryOverrides = Object.keys(draft.geometryByKey).filter(
+    (k) => baselineKeys.has(k) && !draft.deletions.has(k),
+  ).length;
+
+  let tierOverrides = 0;
+  if (baseline.eventId) {
+    const baselineTierIds = new Map<string, string[]>();
+    for (const z of baseline.zones ?? []) {
+      baselineTierIds.set(refKey({ kind: 'zone', id: z.id }), z.ticketTierIds ?? []);
+    }
+    for (const t of baseline.tables ?? []) {
+      baselineTierIds.set(refKey({ kind: 'table', id: t.id }), t.ticketTierIds ?? []);
+    }
+    const isSameTierSet = (a: readonly string[], b: readonly string[]): boolean => {
+      if (a.length !== b.length) return false;
+      const sortedA = [...a].sort();
+      const sortedB = [...b].sort();
+      return sortedA.every((v, i) => v === sortedB[i]);
+    };
+    for (const [key, draftTierIds] of Object.entries(draft.tierAssignmentsByKey)) {
+      // Items deleted in this batch don't survive into the saved state, so
+      // their tier overrides are reconciled out automatically — don't count
+      // them as user-perceived changes here.
+      if (draft.deletions.has(key)) continue;
+      const persisted = baselineTierIds.get(key) ?? [];
+      if (!isSameTierSet(draftTierIds, persisted)) {
+        tierOverrides++;
+      }
+    }
+  }
+
+  // Slice 9.5 + S1 — only complete seat-gen entries (both fields positive)
+  // count as user changes. Partial state (user mid-typing) is held client-
+  // side and isn't a "real" pending change for the save-button gate.
+  // Skip entries whose zone is being deleted in this same batch (no-op).
+  let seatGenOverrides = 0;
+  for (const [zoneId, entry] of Object.entries(draft.seatGenByZoneId)) {
+    if (draft.deletions.has(refKey({ kind: 'zone', id: zoneId }))) continue;
+    if (pickCompleteSeatGen(entry) === null) continue;
+    seatGenOverrides++;
+  }
+
+  return additions + deletions + geometryOverrides + tierOverrides + seatGenOverrides;
 }
 
 /**

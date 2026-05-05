@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Events.Repositories;
 
 namespace LankaConnect.Infrastructure.BackgroundServices;
@@ -62,6 +63,7 @@ public class SeatHoldCleanupService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var seatHoldRepository = scope.ServiceProvider.GetRequiredService<ISeatHoldRepository>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<Domain.Common.IUnitOfWork>();
+        var metrics = scope.ServiceProvider.GetRequiredService<ISeatHoldMetrics>();
 
         try
         {
@@ -69,7 +71,12 @@ public class SeatHoldCleanupService : BackgroundService
             var expiredList = expiredHolds.ToList();
 
             if (expiredList.Count == 0)
+            {
+                // Phase 7H: emit zero-count metric every pass so the dashboard
+                // can prove the cleanup service is alive even on a quiet stage.
+                TryEmitExpired(metrics, 0);
                 return;
+            }
 
             foreach (var hold in expiredList)
             {
@@ -81,10 +88,28 @@ public class SeatHoldCleanupService : BackgroundService
             _logger.LogInformation(
                 "[Phase 2] Released {Count} expired seat holds",
                 expiredList.Count);
+
+            // Phase 7H: emit hold-expired metric AFTER the commit succeeds.
+            TryEmitExpired(metrics, expiredList.Count);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[Phase 2] Failed to cleanup expired seat holds");
+        }
+    }
+
+    private void TryEmitExpired(ISeatHoldMetrics metrics, int count)
+    {
+        try
+        {
+            metrics.SeatHoldExpired(count);
+        }
+        catch (Exception ex)
+        {
+            // Observability must never destabilise the cleanup pass.
+            _logger.LogWarning(ex,
+                "[Phase 7H] Failed to emit seat_hold.expired metric (non-fatal) - Count={Count}",
+                count);
         }
     }
 }

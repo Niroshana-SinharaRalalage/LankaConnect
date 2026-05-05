@@ -36,6 +36,10 @@ import type {
   BatchLayoutPayload,
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
+  CreateLayoutFromTemplateRequest,
+  ApplyPresetToEventRequest,
+  ApplyTemplateToEventRequest,
+  PublishReadinessReportDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -49,6 +53,12 @@ export const venueLayoutKeys = {
   byEvent: (eventId: string) => [...venueLayoutKeys.all, 'by-event', eventId] as const,
   seatAvailability: (eventId: string) => [...venueLayoutKeys.all, 'seats', eventId] as const,
   presets: [...['venue-layouts'] as const, 'presets'] as const,
+  /** Slice 8 S8.10: per-user template list. Stable across mounts so the
+   * "Mine" tab in PresetLibraryModal hits the cache on re-open. */
+  userTemplates: [...['venue-layouts'] as const, 'my-templates'] as const,
+  /** Slice S4 — non-gating publish-readiness snapshot. */
+  publishReadiness: (id: string) =>
+    [...venueLayoutKeys.all, 'publish-readiness', id] as const,
 };
 
 /**
@@ -63,6 +73,35 @@ export function useVenueLayout(
     queryFn: () => venueLayoutsRepository.getLayout(layoutId!),
     enabled: !!layoutId,
     staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Slice S4 — non-gating publish-readiness snapshot.
+ *
+ * Returns every blocker + warning + per-tier mapping summary at once. Used
+ * by the canvas-editor sidebar and seating-section summary so the organiser
+ * can see the full fix list before attempting to publish. The strict
+ * publish gate is still `POST /api/Events/{id}/publish` (returns 422 on
+ * the first blocker via `Event.CheckLayoutPublishReadiness`).
+ *
+ * The hook re-fetches whenever any layout-scoped invalidation fires (the
+ * batch-update and apply-preset paths invalidate `venueLayoutKeys.all`,
+ * which encompasses this query key).
+ */
+export function useLayoutPublishReadiness(
+  layoutId: string | undefined,
+  options?: Omit<
+    UseQueryOptions<PublishReadinessReportDto, ApiError>,
+    'queryKey' | 'queryFn'
+  >,
+) {
+  return useQuery({
+    queryKey: venueLayoutKeys.publishReadiness(layoutId!),
+    queryFn: () => venueLayoutsRepository.getLayoutPublishReadiness(layoutId!),
+    enabled: !!layoutId,
+    staleTime: 30 * 1000,
     ...options,
   });
 }
@@ -149,6 +188,119 @@ export function useCreateLayoutFromPreset() {
       if (data.eventId) {
         queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(data.eventId) });
       }
+    },
+  });
+}
+
+/**
+ * Slice 8 S8.10: lists the calling user's saved templates. Empty array when
+ * the user has none. Powers the "My Templates" tab in `PresetLibraryModal`.
+ * The list is invalidated on `useSaveLayoutAsTemplate` success (S8.9b) and on
+ * `useCreateLayoutFromTemplate` success (S8.10), so newly-saved templates
+ * appear without a manual refetch.
+ */
+export function useUserTemplates(
+  options?: Omit<UseQueryOptions<VenueLayoutDto[], ApiError>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: venueLayoutKeys.userTemplates,
+    queryFn: () => venueLayoutsRepository.listUserTemplates(),
+    ...options,
+  });
+}
+
+/**
+ * Slice 8 S8.10: applies a saved template to a target event. Mirror of
+ * `useCreateLayoutFromPreset` for user templates instead of built-in presets.
+ * Invalidates the target event's layout cache (so the picker refetches and
+ * the new layout shows up) and the shared layouts tree.
+ */
+export function useCreateLayoutFromTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, CreateLayoutFromTemplateRequest>({
+    mutationFn: (request) => venueLayoutsRepository.createFromTemplate(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      if (data.eventId) {
+        queryClient.invalidateQueries({ queryKey: venueLayoutKeys.byEvent(data.eventId) });
+      }
+    },
+  });
+}
+
+/**
+ * Slice 9.2: atomic preset apply. Single round-trip replacement for
+ * `useCreateLayoutFromPreset` + `useAssignLayoutToEvent` — eliminates the
+ * orphan-on-partial-failure problem when the assign step's tier validation
+ * rejected fresh presets. Invalidates byEvent + event detail caches so the
+ * SeatingLayoutPicker tile reflects the new layout immediately.
+ */
+export function useApplyPresetToEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, ApplyPresetToEventRequest>({
+    mutationFn: (request) => venueLayoutsRepository.applyPresetToEvent(request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.byEvent(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.seatAvailability(variables.eventId),
+      });
+      // Event aggregate also changed (seatingMode + venueLayoutId) — refetch.
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(variables.eventId),
+      });
+    },
+  });
+}
+
+/**
+ * Slice 9.2: atomic template apply. Mirror of {@link useApplyPresetToEvent}
+ * for user-saved templates.
+ */
+export function useApplyTemplateToEvent() {
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueLayoutDto, ApiError, ApplyTemplateToEventRequest>({
+    mutationFn: (request) => venueLayoutsRepository.applyTemplateToEvent(request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.byEvent(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: venueLayoutKeys.seatAvailability(variables.eventId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(variables.eventId),
+      });
+    },
+  });
+}
+
+/**
+ * Slice 8 S8.9b — POST /api/venue-layouts/{sourceLayoutId}/save-as-template.
+ * Clones an existing layout as a per-user template. Returns the newly-created
+ * template DTO; the source layout is unchanged. Invalidates the layout-list
+ * cache so the new template appears in the user's templates list when it's
+ * opened (Slice 8 still doesn't have a "My Templates" picker UI — the
+ * invalidation is futureproofing against the upcoming preset-modal "Mine" tab).
+ */
+export function useSaveLayoutAsTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    VenueLayoutDto,
+    ApiError,
+    { sourceLayoutId: string; templateName: string }
+  >({
+    mutationFn: ({ sourceLayoutId, templateName }) =>
+      venueLayoutsRepository.saveLayoutAsTemplate(sourceLayoutId, templateName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.all });
     },
   });
 }
@@ -266,6 +418,34 @@ export function useUpdateVenueLayout(layoutId: string, eventId?: string | null) 
     mutationFn: ({ rowVersion, request }) =>
       venueLayoutsRepository.updateLayout(layoutId, rowVersion, request),
     onSuccess: () => invalidateLayoutScopes(queryClient, layoutId, eventId),
+  });
+}
+
+/**
+ * Slice 8 S8.11: per-card delete for the Mine tab. Mirror of
+ * `useDeleteVenueLayout` but with the layoutId in the mutation variable
+ * instead of in the closure — that lets one hook instance handle every
+ * Mine card without violating React's rules of hooks. Templates have no
+ * `eventId` so we only need to invalidate the templates-list scope.
+ *
+ * Distinct from `useDeleteVenueLayout` because Mine-tab cards delete
+ * templates (eventId=null) and don't need the event-side invalidations the
+ * legacy hook does (seatAvailability, eventKeys.detail) — those scopes are
+ * only relevant when you delete an event-attached layout.
+ */
+export function useDeleteUserTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, { layoutId: string; rowVersion: number }>({
+    mutationFn: ({ layoutId, rowVersion }) =>
+      venueLayoutsRepository.deleteLayout(layoutId, rowVersion),
+    onSuccess: (_void, variables) => {
+      queryClient.removeQueries({
+        queryKey: venueLayoutKeys.detail(variables.layoutId),
+      });
+      // Refetch the user-templates list so the deleted card disappears.
+      queryClient.invalidateQueries({ queryKey: venueLayoutKeys.userTemplates });
+    },
   });
 }
 

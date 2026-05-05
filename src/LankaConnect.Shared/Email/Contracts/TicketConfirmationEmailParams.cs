@@ -343,6 +343,23 @@ public class TicketConfirmationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Phase 7F-E.6.B — Cross-surface registration breakdown
+
+    /// <summary>
+    /// Phase 7F-E.6.B (architect-approved 2026-05-04): rendered HTML fragment for the
+    /// per-tier × demographic registration breakdown. Phase 7F-E.3 added
+    /// <c>{{{RegistrationBreakdownHtml}}}</c> to the
+    /// <c>template-paid-event-registration-confirmation-with-ticket.html</c> body, but
+    /// the matching field on this Params class was missed — so the producer side
+    /// (PaymentCompletedEventHandler / ResendTicketEmailCommandHandler) never populated
+    /// it and the token rendered as a literal string in the user's inbox. Operator
+    /// caught this on staging 2026-05-04. Setter:
+    /// <see cref="WithRegistrationBreakdown"/>.
+    /// </summary>
+    public string RegistrationBreakdownHtml { get; set; } = string.Empty;
+
+    #endregion
+
     #region IEmailParameters Implementation
 
     /// <summary>
@@ -385,6 +402,10 @@ public class TicketConfirmationEmailParams : IEmailParameters
             // Attendee parameters
             { "HasAttendeeDetails", HasAttendeeDetails },
             { "Attendees", AttendeesHtml },
+
+            // Phase 7F-E.6.B: cross-surface registration breakdown HTML — paid-event
+            // template's {{{RegistrationBreakdownHtml}}} triple-stache reads this.
+            { EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml, RegistrationBreakdownHtml },
 
             // Ticket parameters
             { "HasTicket", HasTicket },
@@ -591,6 +612,22 @@ public class TicketConfirmationEmailParams : IEmailParameters
     {
         HasAttendeeDetails = true;
         AttendeesHtml = attendeesHtml ?? string.Empty;
+        return this;
+    }
+
+    /// <summary>
+    /// Phase 7F-E.6.B (architect-approved 2026-05-04): stores the pre-rendered
+    /// registration-breakdown HTML fragment that the paid-event-with-ticket template's
+    /// <c>{{{RegistrationBreakdownHtml}}}</c> triple-stache consumes. Defensive: a
+    /// <c>null</c> input becomes an empty string (Handlebars triple-stache emits empty,
+    /// not the literal string "null"). Caller (handler / command) renders via
+    /// <c>RegistrationBreakdownEmailRenderer.Render</c> in the Application layer; this
+    /// Shared params class can't reference Application types without inverting the
+    /// project graph, so the renderer call lives at the call site.
+    /// </summary>
+    public TicketConfirmationEmailParams WithRegistrationBreakdownHtml(string? breakdownHtml)
+    {
+        RegistrationBreakdownHtml = breakdownHtml ?? string.Empty;
         return this;
     }
 

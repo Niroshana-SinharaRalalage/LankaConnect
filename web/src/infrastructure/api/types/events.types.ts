@@ -176,6 +176,28 @@ export enum TicketingMode {
 }
 
 /**
+ * Phase 7E: Per-event registration capture mode chosen by the organiser.
+ * Matches backend `LankaConnect.Domain.Events.Enums.RegistrationMode`. String-valued
+ * to align with backend `JsonStringEnumConverter` (memory 6A.124 — numeric TS enums
+ * compared against backend's string output silently never match).
+ *
+ * - DetailedAttendees (default for all pre-7E events): per-attendee Name + Age + Gender.
+ * - HeadCountOnly (B1): lead name + total head count.
+ * - HeadCountByAge (B2): lead + Adults + Children (Total auto-derived).
+ * - HeadCountByGender (B3): lead + Males + Females (Total auto-derived).
+ * - HeadCountByAgeAndGender (B4): lead + 4 leaf counts (AM/AF/CM/CF; Total auto-derived).
+ * - NoRegistration (C): drop-in event; standalone donations/sponsors/add-ons/collections still work.
+ */
+export enum RegistrationMode {
+  DetailedAttendees = 'DetailedAttendees',
+  HeadCountOnly = 'HeadCountOnly',
+  HeadCountByAge = 'HeadCountByAge',
+  HeadCountByGender = 'HeadCountByGender',
+  HeadCountByAgeAndGender = 'HeadCountByAgeAndGender',
+  NoRegistration = 'NoRegistration',
+}
+
+/**
  * Phase 8: Ticket category for multi-tier ticket generation.
  * Matches backend LankaConnect.Domain.Events.Enums.TicketCategory
  */
@@ -363,6 +385,27 @@ export interface EventDto {
    * Configurable by event organizer (default: 10, max: 50)
    */
   maxAttendeesPerRegistration: number;
+
+  /**
+   * Phase 7E: Per-event registration capture mode chosen by the organiser.
+   * Defaults to `DetailedAttendees` for legacy events (DB-level DEFAULT 0). Consumers MUST
+   * use the nullish-coalesce default `event.registrationMode ?? RegistrationMode.DetailedAttendees`
+   * to tolerate stale React Query cached payloads from before deploy.
+   */
+  registrationMode?: RegistrationMode;
+
+  /**
+   * Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the UI whether the
+   * configured `registrationMode` is currently implementable.
+   * - `'active'` — configured mode passes the compatibility validator AND is shipped; render the proper RSVP form.
+   * - `'deferred'` — configured mode is fine per the target-state plan but the implementation
+   *   slice hasn't shipped yet (today: paid + B-mode, awaiting Phase 7E.3b). Render a read-only
+   *   "coming soon — contact organiser" panel instead of a fillable form.
+   * Optional + defaults to `'deferred'` (fail-safe) so any pre-fix cached payload doesn't
+   * accidentally render a form for a known-broken combination.
+   */
+  registrationModeStatus?: 'active' | 'deferred';
+
   status: EventStatus;
   category: EventCategory;
   createdAt: string;
@@ -832,6 +875,10 @@ export interface CreateEventRequest {
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
 
+  // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
+  // to DetailedAttendees when absent for back-compat with pre-7E API clients.
+  registrationMode?: RegistrationMode;
+
   // Donation Feature: Donation configuration
   donationsEnabled?: boolean;
   donationSuggestedAmounts?: number[];
@@ -914,6 +961,10 @@ export interface UpdateEventRequest {
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
 
+  // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
+  // to DetailedAttendees when absent for back-compat with pre-7E API clients.
+  registrationMode?: RegistrationMode;
+
   // Donation Feature: Donation configuration
   donationsEnabled?: boolean;
   donationSuggestedAmounts?: number[];
@@ -976,6 +1027,59 @@ export interface RsvpRequest {
   // Phase 2: Assigned seating — seat hold session
   seatSessionId?: string;
   seatIds?: string[];
+
+  // Phase 7E.3a: Head-count payload for Mode B events. Mutually exclusive with `attendees`.
+  // Backend dispatches by event.RegistrationMode and rejects mismatched shapes with 400.
+  leadAttendeeName?: string;
+  headCount?: HeadCountDto;
+}
+
+/**
+ * Phase 7E.3a — head-count payload for Mode B (B1-B4) RSVPs. The backend's mode-specific
+ * factory validates which fields are required:
+ * - HeadCountOnly (B1): `total` required.
+ * - HeadCountByAge (B2): `adults` + `children` required (Total auto-derived).
+ * - HeadCountByGender (B3): `males` + `females` required (Total auto-derived).
+ * - HeadCountByAgeAndGender (B4): all four leaf counts required.
+ * - `tierCounts` is required iff the event has ticket tiers configured (7E.3c).
+ */
+export interface HeadCountDto {
+  total?: number;
+  adults?: number;
+  children?: number;
+  males?: number;
+  females?: number;
+  adultMales?: number;
+  adultFemales?: number;
+  childMales?: number;
+  childFemales?: number;
+  tierCounts?: TierCountDto[];
+}
+
+/**
+ * Phase 7E.3c — per-tier count for a registration. `tierName` is resolved server-side from
+ * `tierId` and snapshotted onto the registration; client supplies `tierId` + `count` only.
+ *
+ * Phase 7F-C (architect-approved 2026-04-30): optional `adultCount` + `childCount` per-tier-
+ * by-age axis. Used in B2 / B4 modes with tiered pricing when the user opts into per-tier-by-
+ * age billing (adults pay `tier.AdultPrice`, children pay `tier.ChildPrice`). Domain invariant:
+ * both fields set or both null (half-set is rejected); when set, sum must equal `count`.
+ */
+export interface TierCountDto {
+  tierId: string;
+  count: number;
+  /**
+   * Phase 7F-E.7 (architect-approved 2026-05-04, re-opens §2.2 #4 deferred decision):
+   * optional per-tier 4-leaf demographic split. All-or-nothing per tier (any of 4 set
+   * → all 4 must be set; sum equals count). When set on a B4-mode + tiered registration,
+   * the per-tier rows of the breakdown card render captured 4-leaf instead of N/A.
+   */
+  adultMaleCount?: number;
+  adultFemaleCount?: number;
+  childMaleCount?: number;
+  childFemaleCount?: number;
+  adultCount?: number;
+  childCount?: number;
 }
 
 /**
@@ -1021,6 +1125,10 @@ export interface AnonymousRegistrationRequest {
   donorName?: string | null;
   donorPhone?: string | null;
   donorNotes?: string | null;
+
+  // Phase 7E.3a: Head-count payload for Mode B (anonymous flow). Mutually exclusive with `attendees`.
+  leadAttendeeName?: string;
+  headCount?: HeadCountDto;
 }
 
 /**
@@ -1092,6 +1200,59 @@ export interface RegistrationDetailsDto {
   sponsorTotal?: number | null;
   /** Grand total = totalPriceAmount (tickets) + donationAmount + addOnTotal + collectionTotal + sponsorTotal */
   grandTotal?: number | null;
+
+  /**
+   * Phase 7F-E.2 (architect-approved 2026-05-01): mode-aware fields so the FE event-
+   * detail card renders Mode A (DetailedAttendees) and Mode B (B1/B2/B3/B4)
+   * registrations through one consistent shape.
+   */
+  registrationMode?: RegistrationMode;
+  /** Mode B only — null on Mode A (Mode A uses the per-attendee `attendees` list). */
+  leadAttendeeName?: string | null;
+  /** Server-projected per-tier breakdown. Null only when registration has neither
+   * a HeadCount nor any Attendees (defensive). */
+  breakdown?: RegistrationBreakdownDto | null;
+}
+
+/**
+ * Phase 7F-E.1: shared cross-surface projection. Shape mirrors the backend
+ * `RegistrationBreakdown` record. Each row represents one tier (or the whole
+ * registration when non-tiered). `BreakdownPair.captured = false` → renderer shows "N/A".
+ */
+export interface RegistrationBreakdownDto {
+  rows: RegistrationBreakdownRowDto[];
+  totalAttendees: number;
+  mode: RegistrationMode;
+  isTiered: boolean;
+  /**
+   * Phase 7F-E.6.A: registration-level demographics surfaced for multi-tier B-mode
+   * breakdowns (per-tier rows can't carry them per architect Phase 7F-C §2.2 #4
+   * deferred per-tier-gender storage). Null when not multi-tier OR when no
+   * demographic axis was captured at registration level.
+   */
+  totals?: RegistrationBreakdownTotalsDto | null;
+}
+
+export interface RegistrationBreakdownRowDto {
+  /** null = non-tiered */
+  tierName: string | null;
+  count: number;
+  age: BreakdownPairDto;
+  gender: BreakdownPairDto;
+}
+
+/** Phase 7F-E.6.A: paired demographic pairs only — count + tier list live on the parent. */
+export interface RegistrationBreakdownTotalsDto {
+  age: BreakdownPairDto;
+  gender: BreakdownPairDto;
+}
+
+export interface BreakdownPairDto {
+  captured: boolean;
+  left: number;
+  right: number;
+  leftLabel: string;   // "Adult" / "Male"
+  rightLabel: string;  // "Child" / "Female"
 }
 
 /**
@@ -2873,6 +3034,31 @@ export interface BatchLayoutPayload {
   zones?: BatchZone[] | null;
   tables?: BatchTable[] | null;
   decorations?: BatchDecoration[] | null;
+  /**
+   * Slice 8 S8.8c: declarative reconciliation of the polymorphic
+   * `tier_assignments` junction. The list is the *complete desired state*
+   * per `(kind, assignableId)` tuple — server diffs against current and
+   * applies the minimum mutations inside the same transaction.
+   * `null` (or omitted) → skip reconciliation. `[]` → remove all
+   * assignments. For newly-added zones/tables, `assignableId` may be the
+   * client-side draft Guid; backend resolves via `clientId` on
+   * `BatchZone`/`BatchTable`.
+   */
+  tierAssignments?: BatchTierAssignment[] | null;
+  /**
+   * Slice S2 (Architect Rev 4 §A.3): explicit deletion opt-in. Any item
+   * present in the existing layout but missing from the corresponding
+   * `zones` / `tables` / `decorations` array MUST be listed here, otherwise
+   * the backend returns **HTTP 409 Conflict**. Closes the destructive-PUT
+   * bug class — pre-S2 a client bug that dropped a shape from state would
+   * silently delete it (only protected by the structural guard for held
+   * /reserved seats; empty zones got nuked silently).
+   * `null` / omitted = "no explicit deletions" — therefore any omission is
+   * unintentional → 409.
+   */
+  deletedZoneIds?: string[] | null;
+  deletedTableIds?: string[] | null;
+  deletedDecorationIds?: string[] | null;
 }
 
 export interface BatchCanvasConfig {
@@ -2891,6 +3077,22 @@ export interface BatchZone {
   /** `ZoneShape` enum value serialized as a string (matches backend converter). */
   shape: ZoneShape;
   geometry?: string | null;
+  /**
+   * Slice 8 S8.8c: client-side draft Guid for newly-added zones (`id` ==
+   * null). Lets `BatchTierAssignment.assignableId` reference the new zone
+   * before the server has assigned its real Guid. Ignored when `id` is set.
+   */
+  clientId?: string | null;
+  /**
+   * Slice 9.5: optional theater-style seat-generation parameters. When BOTH
+   * are provided (positive integers), the backend invokes
+   * `VenueLayout.GenerateTheaterSeats(rows × seatsPerRow)` after the zone is
+   * added/updated. The domain method clears existing seats first, so the
+   * frontend property panel only surfaces these inputs for empty zones (UX
+   * gate) — sending them for a zone with existing seats would wipe them.
+   */
+  rowCount?: number | null;
+  seatsPerRow?: number | null;
 }
 
 export interface BatchTable {
@@ -2901,6 +3103,8 @@ export interface BatchTable {
   sortOrder: number;
   zoneId?: string | null;
   geometry?: string | null;
+  /** Slice 8 S8.8c — see {@link BatchZone.clientId}. */
+  clientId?: string | null;
 }
 
 export interface BatchDecoration {
@@ -2910,6 +3114,19 @@ export interface BatchDecoration {
   sortOrder: number;
   geometry?: string | null;
   properties?: string | null;
+}
+
+/**
+ * Slice 8 S8.8c: desired tier-assignment state for a single zone or table
+ * in the canvas-editor batch save. `tierIds` is the complete set of tiers
+ * the organizer wants assigned to `(kind, assignableId)` after the save
+ * lands — backend reconciles via the minimum set of `AssignToZone` /
+ * `AssignToTable` / `RemoveAssignment` domain calls in the same UoW commit.
+ */
+export interface BatchTierAssignment {
+  kind: AssignableKind;
+  assignableId: string;
+  tierIds: string[];
 }
 
 // ============================================================================
@@ -2950,4 +3167,143 @@ export interface CreateLayoutFromPresetRequest {
   presetId: string;
   /** Omit to create a user-scoped template. Supply to attach to an event you own. */
   eventId?: string | null;
+}
+
+/**
+ * Slice 8 S8.10 — POST /api/venue-layouts/from-template body. Matches backend
+ * `CreateLayoutFromTemplateRequest`. Applies one of the caller's saved
+ * templates to a target event the caller organizes. `layoutName` is optional —
+ * server defaults to the source template's name.
+ */
+export interface CreateLayoutFromTemplateRequest {
+  sourceTemplateId: string;
+  eventId: string;
+  layoutName?: string | null;
+}
+
+/**
+ * Slice 9.2 — POST /api/venue-layouts/apply-preset body. Atomic preset apply:
+ * single transaction that creates the layout AND flips the event into
+ * assigned-seating mode pointing at the new layout. Replaces the broken
+ * from-preset+assign two-step flow. No auto-tier-mapping.
+ */
+export interface ApplyPresetToEventRequest {
+  presetId: string;
+  eventId: string;
+}
+
+/**
+ * Slice 9.2 — POST /api/venue-layouts/apply-template body. Mirror of
+ * {@link ApplyPresetToEventRequest} for user-saved templates.
+ * `layoutName` is optional — server defaults to the source template's name.
+ */
+export interface ApplyTemplateToEventRequest {
+  sourceTemplateId: string;
+  eventId: string;
+  layoutName?: string | null;
+}
+
+/**
+ * Slice S4 — DTOs for `GET /api/venue-layouts/{id}/publish-readiness`.
+ * Mirrors the backend `PublishReadinessReportDto` shape. Codes are strings
+ * (serialised from the `PublishReadinessCode` domain enum) so the FE doesn't
+ * have to keep a parallel TS enum in lockstep.
+ */
+export interface PublishReadinessReportDto {
+  isPublishReady: boolean;
+  blockers: PublishReadinessIssueDto[];
+  warnings: PublishReadinessIssueDto[];
+  tierSummary: TierMappingSummaryDto[];
+}
+
+export interface PublishReadinessIssueDto {
+  code: string;
+  message: string;
+  shapeId?: string | null;
+  shapeName?: string | null;
+  tierId?: string | null;
+  tierName?: string | null;
+}
+
+export interface TierMappingSummaryDto {
+  tierId: string;
+  tierName: string;
+  tierCapacity: number;
+  mappedZones: MappedShapeRefDto[];
+  mappedTables: MappedShapeRefDto[];
+  totalEnabledSeats: number;
+}
+
+export interface MappedShapeRefDto {
+  id: string;
+  name: string;
+  enabledSeatCount: number;
+}
+
+/**
+ * Phase 7E.5 — query parameters for `GET /api/Events/allowed-registration-modes`.
+ * Matches backend `GetAllowedRegistrationModesQuery` shape. All fields optional and default
+ * to `false` server-side; the frontend Mode picker passes the current draft form-state on
+ * every change so disabled options reflect server-side validation in real time
+ * (architect hot-spot #5).
+ */
+export interface AllowedRegistrationModesRequest {
+  isFreeAttendance?: boolean;
+  hasSeating?: boolean;
+  hasNamedSeating?: boolean;
+  requiresAttendeeNameOnTicket?: boolean;
+  hasDualPricing?: boolean;
+  hasGroupTiers?: boolean;
+  hasTicketTiers?: boolean;
+  hasIdentityBoundAddOn?: boolean;
+  hasMatrixPricing?: boolean;
+}
+
+/**
+ * Phase 7F-B (architect-approved 2026-04-30): request body for
+ * `POST /api/events/{id}/convert-registration-mode`.
+ *
+ * - `dryRun`: when true, the backend computes the conversion report but does NOT mutate
+ *   any registration. Drives the UI's diff-preview confirmation dialog.
+ * - `notifyAttendees`: default false. When true, the backend (Phase 7F-B.4) sends each
+ *   affected registrant an "your registration format changed" email via Hangfire fire-
+ *   and-forget. Default-off avoids surprise inbox traffic during operator testing.
+ */
+export interface ConvertRegistrationModeRequest {
+  targetMode: RegistrationMode;
+  dryRun?: boolean;
+  notifyAttendees?: boolean;
+}
+
+export interface ConvertedRegistrationRow {
+  registrationId: string;
+  beforeAttendeeCount: number;
+  afterAttendeeCount: number;
+}
+
+export interface SkippedRegistrationRow {
+  registrationId: string;
+  reasonCode: string;
+  reason: string;
+}
+
+export interface ConvertRegistrationModeResult {
+  aggregateConversionId: string | null;
+  totalProcessed: number;
+  migratedCount: number;
+  skippedCount: number;
+  migrated: ConvertedRegistrationRow[];
+  skipped: SkippedRegistrationRow[];
+  wasDryRun: boolean;
+}
+
+/**
+ * Phase 7F-D (architect-approved 2026-04-30): request body for
+ * `POST /api/events/registrations/{id}/add-headcount`. Reuses HeadCountDto so the FE
+ * can share the same form components used by RSVP (architect Q5).
+ */
+export interface InitiateAddHeadCountRequest {
+  headCountDelta: HeadCountDto;
+  successUrl: string;
+  cancelUrl: string;
 }

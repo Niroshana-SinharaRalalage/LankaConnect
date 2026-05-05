@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Wallet, Plus, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
+import { Plus, X } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';
 
 interface CollectionConfigFormProps {
@@ -74,17 +73,7 @@ export function CollectionConfigForm({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5" style={{ color: '#FF7900' }} />
-          <CardTitle style={{ color: '#8B1538' }}>Event Fund / Collections (Optional)</CardTitle>
-        </div>
-        <CardDescription>
-          Set up a fundraising collection to gather contributions for your event
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         {/* Enable Toggle */}
         <div className="flex items-start space-x-3">
           <input
@@ -289,9 +278,8 @@ export function CollectionConfigForm({
                 </p>
               </div>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

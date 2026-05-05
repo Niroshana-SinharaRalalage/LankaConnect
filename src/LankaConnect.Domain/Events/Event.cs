@@ -344,6 +344,22 @@ public partial class Event : BaseEntity
         if (StartDate <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
+        // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
+        // it on a B-mode event would create a Registration row that contradicts the event's
+        // RegistrationMode (Attendees populated AND Mode says HeadCount*). Reject early with
+        // a clear redirect to the head-count flow.
+        if (RegistrationMode != RegistrationMode.DetailedAttendees)
+        {
+            if (RegistrationMode == RegistrationMode.NoRegistration)
+                return Result.Failure(
+                    "Registration is not required for this event. Standalone donations / sponsors / " +
+                    "add-on purchases / collections are still accepted via their own endpoints.");
+
+            return Result.Failure(
+                $"This event uses {RegistrationMode} registration. " +
+                "Use the head-count RSVP path (LeadAttendeeName + HeadCount payload) instead of Attendees.");
+        }
+
         if (attendees == null || !attendees.Any())
             return Result.Failure("At least one attendee is required");
 
@@ -1110,12 +1126,16 @@ public partial class Event : BaseEntity
             return Result<Money>.Success(freePrice);
         }
 
-        // Phase 6A.86: Security validation - Paid events MUST have pricing configured
-        if (!IsFreeEvent && Pricing == null && TicketPrice == null)
+        // Phase 6A.86 + Pricing-Guard Fix 2026-05-04: Paid events MUST have pricing
+        // configured in one of three valid shapes (legacy Pricing, legacy TicketPrice,
+        // OR Tiered with at least one active tier). The pre-fix legacy-only check
+        // rejected paid+Tiered events created without redundant SetDualPricing
+        // (architect-reviewed root cause; see EventPaidPricingGuardTests).
+        if (!IsFreeEvent && !HasPaidPricingConfigured())
         {
             throw new InvalidOperationException(
-                "Paid event pricing is not configured. Events marked as paid must have explicit pricing set. " +
-                "Use SetPricing(), SetDualPricing(), or SetGroupPricing() to configure pricing.");
+                "This event is marked as paid but has no pricing configured. " +
+                "Add ticket tiers, set a ticket price, or mark the event as free before accepting registrations.");
         }
 
         // Calculate based on pricing configuration
@@ -2426,4 +2446,25 @@ public partial class Event : BaseEntity
     public bool AreAddOnsEnabled() => AddOnConfig?.IsEnabled == true;
 
     #endregion
+
+    /// <summary>
+    /// Pricing-guard helper (architect-approved 2026-05-04). A paid event is well-formed
+    /// when at least one of three pricing shapes is configured:
+    ///   1. Legacy single/dual pricing — <see cref="Pricing"/> populated via
+    ///      <c>SetDualPricing</c> / <c>SetGroupPricing</c>.
+    ///   2. Legacy fixed ticket price — <see cref="TicketPrice"/>.
+    ///   3. Tiered ticketing with at least one active tier — <see cref="HasTicketTiers"/>
+    ///      (each tier carries its own AdultPrice / ChildPrice, so the registration's
+    ///      tier-counts axis is the pricing source).
+    ///
+    /// Used by <see cref="CalculatePriceForAttendees"/> and
+    /// <c>CalculateHeadCountPrice</c> (Event.RegistrationMode.cs) so both Mode A and
+    /// Mode B treat the same event-shape as valid. Pre-fix: those guards checked only
+    /// the legacy shapes and rejected paid+Tiered events lacking redundant Pricing
+    /// (latent bug — see EventPaidPricingGuardTests).
+    /// </summary>
+    private bool HasPaidPricingConfigured() =>
+        Pricing != null
+        || TicketPrice != null
+        || HasTicketTiers;
 }

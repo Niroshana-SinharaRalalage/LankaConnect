@@ -391,11 +391,10 @@ public class ExcelExportService : IExcelExportService
             sheet.Cell(row, col++).Value = attendee.AdultCount;
             sheet.Cell(row, col++).Value = attendee.ChildCount;
 
-            // Calculate male and female counts from attendees
-            var maleCount = attendee.Attendees?.Count(a => a.Gender == Gender.Male) ?? 0;
-            var femaleCount = attendee.Attendees?.Count(a => a.Gender == Gender.Female) ?? 0;
-            sheet.Cell(row, col++).Value = maleCount;
-            sheet.Cell(row, col++).Value = femaleCount;
+            // Phase 7E.8: counts come from the DTO (Mode A: SQL projection of r.Attendees;
+            // Mode B: post-processing override from HeadCount.Demographics).
+            sheet.Cell(row, col++).Value = attendee.MaleCount;
+            sheet.Cell(row, col++).Value = attendee.FemaleCount;
 
             sheet.Cell(row, col++).Value = attendee.GenderDistribution;
             sheet.Cell(row, col++).Value = attendee.ContactEmail;

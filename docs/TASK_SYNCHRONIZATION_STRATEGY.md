@@ -3,7 +3,75 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🔄 CURRENT SESSION STATUS — SEATING REDESIGN SLICE 7 — REGISTRATION UX REWRITE (DEPLOYED + WIRE-VERIFIED)
+## 🚀 CURRENT SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
+**Date**: 2026-04-26
+**Session**: Phase 7E.3a sub-slice — free B-mode RSVP API (auth + anonymous) + UpdateRsvp Mode-aware guard. New `Event.RegisterWithHeadCount` domain method mirrors `RegisterWithAttendees` guards. Defensive Mode-A guard on `RegisterWithAttendees` rejects B/C-mode events. `UpdateRsvpCommandHandler` defensively rejects B/C events with clear deferred-message.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Commits `c364dba6` (auth + 14 tests) + `58c1f76e` (anonymous + UpdateRsvp guard) + `0f393b2c` (controller-DTO wire-up). Three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).
+**API smoke (staging)**: Mode B2 auth RSVP → 204 + registration Confirmed + email landed in inbox ✓; anonymous Mode-B register → 200 ✓; Mode C → 400 ✓; UpdateRsvp on B/C → 400 ✓.
+**In-flight catch (caught during smoke, not after)**: controller `RsvpRequest` / `AnonymousRegistrationRequest` DTOs were dropping `LeadAttendeeName` / `HeadCount` during mapping → fixed in `0f393b2c`. Same pattern as the 7E.1 `EventDto` gap.
+**Documented limitation handed to 7E.4**: Mode-B confirmation email currently renders without head-count info — existing template falls through silently when `Attendees` is empty. `EmailTemplateContract.FlexibleRegistration` constants populated in 7E.4.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.4 — Email templates v2. ~9 affected handlers populate `EmailTemplateContract.FlexibleRegistration` constants; v2 templates author mode-aware Handlebars blocks + anchor comments + tone-B subject line. Seeding via standard seeder (no inline `REGEXP_REPLACE` per memory).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-26 (later)
+**Session**: Phase 7E.2 — application + API surface for flexible registration modes. Single source of truth (`RegistrationModeCompatibility` static helper) shared across Create / Update / Query handlers; 14-row compatibility table from Phase 7E plan §2 lives in one place; architect-required `[Theory]`-driven test exercises every distinct row.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 [Theory]-driven compatibility tests over 2292 post-7E.1 baseline).
+**Scope**: New `Domain/Events/Services/RegistrationModeCompatibility.cs` (with `Check(mode, ctx)` + `AllowedModes(ctx)` — bidirectional contract verified by test); new `Domain/Events/Services/RegistrationModeContext.cs` (record capturing `IsFreeAttendance`, `HasSeating`, `HasNamedSeating`, `RequiresAttendeeNameOnTicket`, `HasDualPricing`, `HasGroupTiers`, `HasTicketTiers`, `HasIdentityBoundAddOn`, `HasMatrixPricing`); `RegistrationMode` field added to `CreateEventCommand` (default `DetailedAttendees`) and `UpdateEventCommand` (null = "don't modify"); `CreateEventCommandHandler` validates early via `Compatibility.Check` and calls `Event.SetRegistrationMode` after `Event.Create`; `UpdateEventCommandHandler` validates mode change against post-update event shape and surfaces `Event.SetRegistrationMode` registration-lock guard as 400; new `GetAllowedRegistrationModesQuery` (pure-function, no DB); new public `GET /api/Events/allowed-registration-modes` query-string endpoint; new `EmailTemplateContract.FlexibleRegistration` section with 7 constants (`HasDetailedAttendees`, `HasHeadCount`, `HasHeadCountBreakdown`, `HasTierBreakdown`, `HeadCountTotal`, `HeadCountBreakdownLine`, `TierBreakdownLine`) gating 7E.4 HTML release.
+**API smoke evidence (staging, post-deploy)**: 4 shape variants on the new endpoint return correct allowed sets (`isFreeAttendance=true` → all 6; `hasDualPricing=true` → A/B2/B4; `hasMatrixPricing=true` → A only; `hasNamedSeating=true` → A only). `POST /api/Events` Mode C + paid → 400 with clear validator message; Mode B1 + dual pricing → 400 with clear message; Mode B2 + free → 201, subsequent `GET` round-trips `registrationMode: "HeadCountByAge"`.
+**Why durable**: (1) Single helper — Create, Update, and Query all delegate to `RegistrationModeCompatibility`; coverage rot impossible because `[Theory]` data table iterates the full matrix. (2) `Check ↔ AllowedModes` bidirectional contract test — disagreement is a test failure, not a runtime surprise. (3) Forward-extensibility designed in: each `RegistrationModeContext` axis maps to one rule; new fields default to false at all callers; table picks up new constraints without case-by-case wiring. (4) Email contract constants land BEFORE the v2 templates that consume them — startup `EmailTemplateValidationService` proven green on staging.
+**In-flight catch (not a regression)**: original `CheckNoRegistration` rule didn't reject Mode C when `RequiresAttendeeNameOnTicket=true`. Mode C produces no tickets at all → contradictory. `[Theory]` row failed at local test pass, fixed with a clear rejection message before commit.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.3 — RSVP API for B modes (sub-slices 7E.3a free B / 7E.3b paid B + Stripe amount-calc tests / 7E.3c paid B with `TierCounts` axis).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-26
+**Session**: Phase 7E.1 — domain model + persistence + EF migration for flexible registration modes. TDD red→green→refactor. Architect-approved plan (review iteration 2).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` (domain+persistence+tests) + `038c92bc` (EventDto field). `deploy-staging.yml` runs `24945013711` + `24946516265` both `conclusion=success`. EF migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests over 2253 pre-7E baseline).
+**Scope**: New `RegistrationMode` enum (smallint-backed, DB-level DEFAULT 0); composite multi-axis `HeadCountBreakdown` VO (Total + `DemographicBreakdown?` + `IReadOnlyList<TierCount>?`) with strict factories; `Event.SetRegistrationMode` guard scope intentionally only `Registrations.Any()` (architect §6 finding: standalone `*Configuration` shapes are nullable VOs not collections); `Registration.RegistrationMode` snapshot at construction; `Registration.GetAttendeeCount()` honors `HeadCount.Total` as the single canonical mutation point; custom `JsonValueConverter` + deep-clone `ValueComparer` defending against Phase 6A.129/6A.130 traps simultaneously; `EventDto.RegistrationMode` with init default for stale-React-Query-cache tolerance.
+**API smoke evidence**: `curl GET /api/Events` on staging returned 51 events; all sampled legacy events serialised `"registrationMode": "DetailedAttendees"` as a string (via `JsonStringEnumConverter`). Capacity / `currentRegistrations` / `isFree` fields unchanged — zero regression on existing flows.
+**Why durable**: (1) DB-level DEFAULT 0 means legacy rows materialise correctly with no backfill; (2) single `GetAttendeeCount()` mutation point eliminates the risk of missing one of the 9 capacity-aggregation call-sites the 7E.0 sweep enumerated; (3) JSON round-trip + deep-clone snapshot covers both prior JSONB traps; the architect-required mutation test is green; (4) snapshotted mode on Registration protects historical email re-renders against organiser mode flips; (5) `EventDto` init default tolerates stale React Query payloads from before deploy.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.2 — `CreateEventCommand`/`UpdateEventCommand` accept `RegistrationMode` field; `[Theory]`-driven FluentValidation over the 14-row compatibility table; `GetAllowedRegistrationModesQuery`; `EmailTemplateContract` constants (gates 7E.4 HTML release).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 SWEEP COMPLETE
+**Date**: 2026-04-25 (later)
+**Session**: Phase 7E planning + Slice 7E.0 read-only audit. Architect-approved plan (review iteration 2). No code yet — planning + audit phase only.
+**Progress**: ✅ **PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**.
+- Architect-approved plan at `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md` (12 architect edits + 5 user-driven refinements; 14-row compatibility table; multi-axis `HeadCountBreakdown` VO with `Total + Demographics? + TierCounts?`; 10 vertical slices)
+- Phase reserved in [PHASE_6A_MASTER_INDEX.md § Phase 7E](PHASE_6A_MASTER_INDEX.md) — full 10-slice breakdown table + Phase 7F deferred items
+- Master TODO at [MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) — TDD checklists, curl payloads + expected responses per slice, deploy + DB verification + API smoke per slice, risk register tracing every architect-flagged risk to ≥1 mitigation
+- 7E.0 call-site checklist at [PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md) — **163 entries** across 12 categories: 149 `needs-mode-aware-update`, 4 `left-join-fix` (AddOnPurchase + Donation joins onto Registration must use LEFT JOIN under Mode C), 2 `defensive-read`, 0 `guard-scope-fix`, 8 `unchanged`
+**Scope**: Organiser-selectable per-event registration mode — A (DetailedAttendees, default for back-compat), B1 (HeadCountOnly), B2 (HeadCountByAge), B3 (HeadCountByGender), B4 (HeadCountByAgeAndGender), C (NoRegistration). Mode B captures `LeadAttendeeName + HeadCountBreakdown` instead of per-attendee rows. Mode C produces no `Registration` (drop-in event); standalone donations/sponsors/add-ons/collections still work in C (already decoupled from `Registration` — verified at the aggregate level: `Donation.RegistrationId` nullable, `AddOnPurchase.RegistrationId` nullable, `Sponsor`/`Collection` no FK at all). Mode C requires free attendance + no seating. Tier × age matrix pricing deferred to Phase 7F.
+**Architect §6 finding (resolved)**: read of [`Event.cs`](../src/LankaConnect.Domain/Events/Event.cs) confirms the aggregate's standalone-contribution shapes (`Donations`, `Sponsors`, `Collections`, `AddOns`) are nullable `*Configuration` value-objects, NOT collections. So `Event.SetRegistrationMode` only needs to inspect `Registrations.Any()` — no `guard-scope-fix` rows required (architect's concern automatically satisfied by current aggregate shape).
+**Risk-traceability**: 10 architect-flagged risks each map to ≥1 checklist row (matrix in §Risk-traceability of [PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md)). 7E.9 verifies every entry was addressed.
+**Master TODO**: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md)
+**Next**: Slice 7E.1 — domain model (`RegistrationMode` enum + `HeadCountBreakdown` composite VO with multi-axis Demographics + TierCounts) + `Phase7E1_AddRegistrationMode` EF migration (DB-level `DEFAULT 0`, generated via `dotnet ef migrations add`) + JSONB `ValueConverter` + deep-copy `ValueComparer` covering both `Demographics` record AND `TierCounts` list with element-level structural equality. Architect-required: round-trip mutation test on `TierCounts[0].Count` (catches Phase 6A.129 reference-snapshot trap).
+
+---
+
+## 🔄 PRIOR SESSION — PRODUCTION PERF RCA + FIX (DURABLE)
+**Date**: 2026-04-25
+**Session**: Production performance RCA after user reported 20-30s page loads + 503s on `/api/proxy/events/{id}` and `/signups`. Architect-consulted RCA traced symptom to cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in single non-split query → ~100K-row LEFT JOIN on prod's 85-registration event).
+**Progress**: ✅ **EMERGENCY MITIGATION + DURABLE FIX SHIPPED**.
+- Phase 2 emergency: `az containerapp update` to 1.0 CPU / 2 GiB / 2-5 replicas / http-scaler concurrency=10. Restored prod within 60s.
+- Phase 1 durable fix: `AsSplitQuery()` global default in `DependencyInjection.cs` + explicit at `EventRepository.cs:128` + `trackChanges:false` on `GetEventByIdQueryHandler` + `GetEventSignUpListsQueryHandler` read paths. PR #104 merged → main commit `42abd834`. Active revision `lankaconnect-api-prod--0000036`.
+- Post-fix: scale rule relaxed 10 → 30 concurrent (matching staging's headroom ratio after requests are now fast).
+- **Prod p95 dropped from 10-35s + 503s to 0.18-0.86s** (40-200x improvement).
+- dotnet build 0 errors. Application.Tests 2253 passed / 0 failed / 6 skipped.
+**Scope**: Cartesian-explosion class of bug, latent for months, became symptomatic at high data cardinality (staging busiest event = 8 regs → fast; prod busiest event = 85 regs → broken). Same code, same container, totally different behavior. **NOT** caused by today's release; pre-existing bug exposed by data growth.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md)
+**Open follow-up phases (deferred)**: Phase 0 alerting / Phase 3 repository decomposition / Phase 4 misc + IaC sync chore / perf integration test as regression guard.
+
+---
+
+## 🔄 PRIOR SESSION — SEATING REDESIGN SLICE 7 — REGISTRATION UX REWRITE (DEPLOYED + WIRE-VERIFIED)
 **Date**: 2026-04-23
 **Session**: Seating System Redesign — Slice 7 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 7 — end-to-end registration-UX rewrite across 8 chunks S7.1–S7.8: react-konva `SeatPicker` shell (S7.1) → structural shape + geometry renderers (S7.2) → seats + status colors + tier filter (S7.3) → `SeatPickerView` stateful container with session/hold/timer/confirm (S7.4) → mobile wheel/pan/pinch + zoom controls (S7.5) → swap `SeatSelector` → `SeatPickerView` in `EventRegistrationForm` (S7.6) → seat labels in PDF ticket + 7 email attendee-HTML builders (S7.7) → `seatpicker.selection_completed` architect metric (S7.8).
 **Progress**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Final commit `4bd076f9` on develop. `deploy-staging.yml` run `24859364401` + `deploy-ui-staging.yml` run `24859364416` both conclusion=success. API smoke on the new `POST /api/seating-metrics/selection-completed`: happy path `{eventId, attendeeCount:3, timeToCompleteMs:45200}` → HTTP 204; three validation guards fire → 400 with specific titles (`EventId is required`, `AttendeeCount must be positive`, `TimeToCompleteMs must be non-negative`). Wire-level confirmation via `az containerapp logs show --name lankaconnect-api-staging`: `21:33:25.926 +00:00 [INF] LankaConnect.Application.Events.Services.LayoutMetrics: Metric seatpicker.selection_completed EventId=11111111-2222-3333-4444-555555555555 AttendeeCount=3 TimeToCompleteMs=45200` — the 4th of the architect's 6 named metrics on the wire; `layout.canvas_editor_opened` + `canvas_editor_saved` remain for Slice 8. Tests: .NET Application 2253 + Infrastructure 317 passed; frontend SeatPicker 22 + venue-layouts repo 20 passed; `npx tsc --noEmit` clean.
@@ -3486,3 +3554,93 @@ Infrastructure Integration:
 
 **Architect Recommendation Status**: ✅ SUCCESSFULLY EXECUTED - Systematic approach achieved massive error reduction enabling CI/CD deployment capability.
 
+
+---
+
+## Phase 7F-E Close-Out (2026-05-03)
+
+All 5 slices of Phase 7F-E (cross-surface registration display consistency) shipped to staging:
+- 7F-E.1 shared formatter
+- 7F-E.2 event-detail card
+- 7F-E.3 email migration (5 templates, embedded resources, backed up to `email_template_backups` with tag `Phase7F_E_3`)
+- 7F-E.4a PDF ticket renderer
+- 7F-E.4b RSVP form merged tier+demographic layout
+
+Backend & DB changes: 7F-E.3 only (5-template UPDATE migration, idempotent backup). 7F-E.1 / 4a / 4b are pure code; 7F-E.2 added a DTO field. No production deploy yet — all staging-verified, awaiting batch into next prod release window.
+
+**Outstanding cross-cutting items** (per `MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`):
+- Path-filter fallback on `deploy-ui-production.yml`
+- Orphan migration cleanup (`20260214230204_Phase6A113_*`)
+- UI test red-suite triage (217 failures pre-existing)
+
+
+---
+
+## R-NEW Close-Out (2026-05-03)
+
+CI path-filter silent-skip fix shipped to staging via commit `2a8e75e5`. Both UI deploy workflows (`deploy-ui-staging.yml`, `deploy-ui-production.yml`) updated with:
+- `paths:` filter removed (architect-approved Option a)
+- `run-name:` template surfacing SHA + event_name
+- "Annotate trigger source for observability" first step writing event_name/actor/sha/ref into $GITHUB_STEP_SUMMARY
+
+Backend deploy workflows unchanged (already had no path filter).
+
+Staging verification: post-fix push fired UI staging deploy (run 25291529488, conclusion success); the new run-name "UI staging · 2a8e75e5... · push" visible in Actions list; annotation step output captured in run summary.
+
+Pending verification: this very commit (a docs-only push with zero web/** files) must re-fire deploy-ui-staging.yml — under the OLD config it would have skipped; under the NEW config it MUST run. Result will be recorded in PROGRESS_TRACKER once observed.
+
+---
+
+## R-NEW-2 + B4 Coverage Close-Out (2026-05-03)
+
+R-NEW-2 (orphan migration cleanup) shipped in this session. Architect-approved audit confirmed:
+- File hand-created in Feb 2026 without Designer; never applied to any environment.
+- All 13 affected templates already updated with the "View Signup Forms" button via later Phase 7C.2/7F-A overwrites.
+- Pure source delete with no DB write; build + test suites green post-removal.
+
+B4 staging coverage gap closed via creation of event `616e59f3-df84-4662-a9e3-18f285c00ac5` (registration_mode=4, ticketing_mode=Tiered). Operator now has events for both B3 (existing `69d4c455-...`) and B4 to exercise the 7F-E.4b merged-form layouts before the prod batch.
+
+**Outstanding cross-cutting items:**
+- Phase 7F-E prod batch (gated on operator browser verification of B3 + B4 events)
+- UI test red-suite triage (217 failures pre-existing)
+
+---
+
+## Pricing-Guard Fix Close-Out (2026-05-04)
+
+Domain pricing-guard bug shipped + end-to-end verified on staging via commit `e30c37d6`. The fix unblocks paid+Tiered events created through API-only paths (organiser tools, future automation) that don't redundantly populate legacy `Pricing`. Sanitised the user-facing error to remove leaked domain method names.
+
+Process gap noted: I should have run an authenticated-RSVP API smoke against a paid+tiered event during 7F-E.4b verification — would have caught this bug a day earlier. Memory `feedback_smoke_user_flows.md` codifies the rule for future slices.
+
+**Outstanding cross-cutting items unchanged from prior session:**
+- Phase 7F-E batch into prod (now includes the pricing-guard fix)
+- UI test red-suite triage (pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged, separate slice)
+
+---
+
+## 7F-E.6 Close-Out (2026-05-04)
+
+Commit `f665a2b6` + deploy run `25341671895` (success): formatter Totals row + paid-event email RegistrationBreakdownHtml wiring both fixed. The bugs were surfaced by operator browser test on staging event `616e59f3-...`; root causes traced to architect Phase 7F-C §2.2 #4 deferred-decision interaction with the cross-surface display contract (Bug 1) and 7F-E.3 producer-side gap that the EmailTemplateValidator's per-template HashSet missed (Bug 2). All fixes are TDD-first; sweep grep confirmed all 3 production sites wired; validator HashSet updated as regression guard.
+
+Process discipline upgrade: memory `feedback_cross_surface_matrix_smoke.md` saved — cross-surface slices need a smoke matrix at slice-plan time covering mode × tiered × free/paid × auth/anon, with negative-evidence assertions ("no literal `{{{` in body") alongside positive ones. Both 7F-E.6 bugs sat in matrix cells my single-path smokes skipped.
+
+**Outstanding cross-cutting items:**
+- Phase 7F-E prod batch (now 7 slices ready; gated on operator browser re-verification)
+- UI test red-suite triage (217 failures pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged separate slice)
+- EmailTemplateValidator stronger automation (architect-flagged separate slice)
+
+---
+
+## 7F-E.7 Smoke-Pass Close-Out (2026-05-05)
+
+Commit `dfd67280` + deploy run `25358012928` (success): per-tier 4-leaf storage shipped + staging smoke verified end-to-end. Closes the 7F-E.6 → 6.A → 6.B bug-find loop by re-opening Phase 7F-C §2.2 #4 deferred decision per architect's deep RCA. Architect rejected "hide N/A" workaround as lying to users; chose Option A (real storage) at +2-3h cost over hiding-N/A's 30 min.
+
+Process discipline reinforced: memory `feedback_operator_uat_gate.md` saved. Render-surface slices now require operator UAT gate before Status flips to Shipped, on top of the existing matrix-smoke discipline (`feedback_cross_surface_matrix_smoke.md`). The 7F-E.6 → 6.A → 6.B chain demonstrated that automated smoke alone catches "pipeline ran" but doesn't catch "rendered output matches user mental model".
+
+**Outstanding cross-cutting items unchanged:**
+- Phase 7F-E prod batch (7 slices, gated on 7F-E.7 operator UAT)
+- UI test red-suite triage (pre-existing)
+- POST /api/Events defensive-gap follow-up (architect-flagged separate slice)
+- EmailTemplateValidator stronger automation (architect-flagged separate slice)

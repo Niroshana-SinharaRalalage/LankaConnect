@@ -114,6 +114,34 @@ public class AttendeeDetails : ValueObject
         return Result<AttendeeDetails>.Success(new AttendeeDetails(trimmedName, ageCategory, gender));
     }
 
+    /// <summary>
+    /// Phase 8 S8.1 — value-object-style seat binding. Returns a new
+    /// <see cref="AttendeeDetails"/> with the seat fields populated; original
+    /// is unchanged. Used by the webhook seat-binding path so application
+    /// handlers don't have to repeat every other field on the 7-arg
+    /// <see cref="Create"/> factory just to add a seat. Idempotent rebinds
+    /// are allowed at this layer; the aggregate-level
+    /// <c>Registration.ConfirmSeatAssignments</c> enforces invariants like
+    /// "seat already bound" via its own checks.
+    /// </summary>
+    public Result<AttendeeDetails> WithSeat(Guid seatId, string? seatLabel)
+    {
+        if (seatId == Guid.Empty)
+            return Result<AttendeeDetails>.Failure("Seat ID is required");
+
+        if (string.IsNullOrWhiteSpace(seatLabel))
+            return Result<AttendeeDetails>.Failure("Seat label is required");
+
+        return Result<AttendeeDetails>.Success(new AttendeeDetails(
+            Name,
+            AgeCategory,
+            Gender,
+            TicketTierId,
+            TicketTierName,
+            seatId,
+            seatLabel.Trim()));
+    }
+
     public override IEnumerable<object> GetEqualityComponents()
     {
         yield return Name;

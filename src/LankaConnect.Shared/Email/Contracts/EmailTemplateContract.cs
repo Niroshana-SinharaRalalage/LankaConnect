@@ -1167,4 +1167,72 @@ public static class EmailTemplateContract
     }
 
     #endregion
+
+    #region Phase 7E — Flexible Registration Modes Parameters
+
+    /// <summary>
+    /// Phase 7E.2: Mode-aware Handlebars block parameters for the registration-lifecycle templates
+    /// (event-registration-confirmation, event-anonymous-registration-confirmation,
+    /// event-cancellation, event-organizer-cancelled-the-event, event-reminder,
+    /// event-registration-modified, event-add-attendees-confirmation,
+    /// organizer-new-registration-notification, event-waitlist-promoted).
+    ///
+    /// Population rule: every handler MUST set ALL booleans (true AND false) — never omit them.
+    /// Handlebars <c>{{#if undefined}}</c> evaluates to false silently, but the
+    /// <c>EmailTemplateValidationService</c> startup check warns on undefined parameters
+    /// and we want a hard signal, not a quiet fallthrough.
+    ///
+    /// HTML for the conditional blocks lands in 7E.4 — these constants are the API contract
+    /// that gates that release.
+    /// </summary>
+    public static class FlexibleRegistration
+    {
+        /// <summary>True for Mode A (DetailedAttendees) — toggles the per-attendee table block.</summary>
+        public const string HasDetailedAttendees = "HasDetailedAttendees";
+
+        /// <summary>True for any of the four Mode B variants — toggles the head-count summary block.</summary>
+        public const string HasHeadCount = "HasHeadCount";
+
+        /// <summary>
+        /// True for B2/B3/B4 (any demographic axis present); false for B1 (Total only).
+        /// Templates use this to decide whether to render the demographic line.
+        /// </summary>
+        public const string HasHeadCountBreakdown = "HasHeadCountBreakdown";
+
+        /// <summary>True when the registration carries TierCounts (event has tiers and Mode B captured per-tier counts).</summary>
+        public const string HasTierBreakdown = "HasTierBreakdown";
+
+        /// <summary>Pre-rendered total head count, e.g. "5".</summary>
+        public const string HeadCountTotal = "HeadCountTotal";
+
+        /// <summary>
+        /// Pre-rendered demographic line, e.g. "3 adults · 2 children", "2 males · 3 females",
+        /// "1 adult male · 2 adult females · 1 child male · 1 child female". Empty string when
+        /// <see cref="HasHeadCountBreakdown"/> is false.
+        /// </summary>
+        public const string HeadCountBreakdownLine = "HeadCountBreakdownLine";
+
+        /// <summary>
+        /// Pre-rendered tier line, e.g. "VIP × 2, General × 3". Empty string when
+        /// <see cref="HasTierBreakdown"/> is false. Tier names are SNAPSHOTS at registration
+        /// time — survive downstream tier rename/delete.
+        /// </summary>
+        public const string TierBreakdownLine = "TierBreakdownLine";
+
+        /// <summary>
+        /// Phase 7F-E.3 (architect-approved 2026-05-01): pre-rendered HTML fragment
+        /// produced by <c>RegistrationBreakdownEmailRenderer.Render</c>. Drops in at the
+        /// <c>&lt;!-- attendee-block-7e --&gt;</c> anchor of every email template. ONE
+        /// token replaces the legacy <see cref="HeadCountTotal"/> +
+        /// <see cref="HeadCountBreakdownLine"/> + <see cref="TierBreakdownLine"/> trio,
+        /// keeping rendering logic out of the templates (memory
+        /// <c>feedback_regex_on_email_html.md</c>).
+        ///
+        /// Empty string when the registration has no <c>RegistrationBreakdown</c> rows
+        /// (defensive — surrounding template renders nothing).
+        /// </summary>
+        public const string RegistrationBreakdownHtml = "RegistrationBreakdownHtml";
+    }
+
+    #endregion
 }

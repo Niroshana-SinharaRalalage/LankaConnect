@@ -184,6 +184,23 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 typedParams.WithAttendees(attendeeDetailsHtml.ToString().TrimEnd());
             }
 
+            // Phase 7E.4: Populate the mode-aware FlexibleRegistration params from the
+            // registration's snapshotted RegistrationMode + HeadCount. The shared formatter
+            // produces identical output across every email surface so users see the same
+            // wording in confirmation, cancellation, reminder, etc.
+            var flex = HeadCountEmailFormatter.Compute(registration);
+            typedParams.HasDetailedAttendees = flex.hasDetailedAttendees;
+            typedParams.HasHeadCount = flex.hasHeadCount;
+            typedParams.HasHeadCountBreakdown = flex.hasHeadCountBreakdown;
+            typedParams.HasTierBreakdown = flex.hasTierBreakdown;
+            typedParams.HeadCountTotal = flex.headCountTotal;
+            typedParams.HeadCountBreakdownLine = flex.headCountBreakdownLine;
+            typedParams.TierBreakdownLine = flex.tierBreakdownLine;
+            typedParams.LeadAttendeeName = flex.leadAttendeeName;
+            // Phase 7F-E.3: structured per-tier HTML fragment (drops in at the
+            // <!-- attendee-block-7e --> anchor in the migrated templates).
+            typedParams.RegistrationBreakdownHtml = flex.registrationBreakdownHtml;
+
             // Set event image
             typedParams.WithEventImage(eventImageUrl);
 

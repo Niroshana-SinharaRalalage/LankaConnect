@@ -21,6 +21,33 @@ public class Registration : BaseEntity
     public RegistrationContact? Contact { get; private set; }  // Shared contact info for all attendees
     public Money? TotalPrice { get; private set; }  // Calculated total based on attendee ages
 
+    // Phase 8 S8.2 — pending seat-assignment stash. Set during the RSVP handler
+    // (status=Preliminary, before Stripe Checkout); read by the
+    // checkout-completed webhook to drive ConfirmSeatAssignments + write
+    // SeatReservation rows; cleared on either success or checkout-expired path.
+    // Mutually exclusive with the seated steady-state on Attendees[*].SeatId
+    // (which is populated AFTER ConfirmSeatAssignments succeeds in the same UoW).
+    private readonly List<PendingSeatAssignment> _pendingSeatAssignments = new();
+    public IReadOnlyList<PendingSeatAssignment> PendingSeatAssignments
+        => _pendingSeatAssignments.AsReadOnly();
+    public string? PendingSeatSessionId { get; private set; }
+
+    // Phase 7E: Snapshot of the event's RegistrationMode at construction time.
+    // Email re-renders for cancellation/reminder use this snapshot, NOT the live Event value,
+    // so an organiser flipping the mode after the fact does not corrupt historical messaging.
+    // Default = DetailedAttendees so all legacy rows (column DEFAULT 0) materialise correctly.
+    public RegistrationMode RegistrationMode { get; private set; } = RegistrationMode.DetailedAttendees;
+
+    // Phase 7E: Lead attendee name. Populated only for head-count modes (B1-B4).
+    // Null for DetailedAttendees (use Attendees[0].Name) and NoRegistration (no Registration row at all).
+    public string? LeadAttendeeName { get; private set; }
+
+    // Phase 7E: Composite head-count breakdown (Total + Demographics? + TierCounts?).
+    // Populated only for head-count modes (B1-B4). Mutually exclusive with the Attendees collection.
+    // Persisted as a flat JSONB column via custom ValueConverter + deep-copy ValueComparer
+    // (NOT OwnsOne.ToJson — Phase 6A.130 IReadOnlyList rehydration trap).
+    public HeadCountBreakdown? HeadCount { get; private set; }
+
     public RegistrationStatus Status { get; private set; }
 
     // Session 23: Payment integration for paid events
@@ -194,6 +221,95 @@ public class Registration : BaseEntity
         return Result<Registration>.Success(registration);
     }
 
+    /// <summary>
+    /// Phase 7E: Factory for head-count-mode registrations (B1-B4).
+    ///
+    /// Used when the event's <see cref="Event.RegistrationMode"/> is one of HeadCountOnly,
+    /// HeadCountByAge, HeadCountByGender, or HeadCountByAgeAndGender. Captures a single
+    /// <paramref name="leadAttendeeName"/> + a composite <paramref name="headCount"/>
+    /// breakdown instead of per-attendee rows.
+    ///
+    /// The mode is snapshotted onto the registration so historical email re-renders survive
+    /// later organiser mode changes (architect requirement).
+    ///
+    /// Mutual exclusion with <see cref="CreateWithAttendees"/> is structural: this factory
+    /// does NOT populate the Attendees collection. The reverse factory does NOT populate
+    /// HeadCount. Domain invariant: at most one of (Attendees, HeadCount) is populated.
+    /// </summary>
+    /// <param name="eventId">Event being registered for.</param>
+    /// <param name="userId">Authenticated user ID, or null for anonymous registration.</param>
+    /// <param name="mode">The event's registration mode (must be one of B1-B4).</param>
+    /// <param name="leadAttendeeName">Name of the lead attendee — printed on emails.</param>
+    /// <param name="headCount">Composite head-count breakdown built via one of the static factories on <see cref="HeadCountBreakdown"/>.</param>
+    /// <param name="contact">Shared contact info (email, phone, etc.) — required for emails.</param>
+    /// <param name="totalPrice">Total price for the registration. Use Money.Zero for free events.</param>
+    /// <param name="isPaidEvent">True if Stripe checkout is required (sets Preliminary + Pending lifecycle).</param>
+    /// <returns>Result wrapping the new Registration or a failure with error messages.</returns>
+    public static Result<Registration> CreateWithHeadCount(
+        Guid eventId,
+        Guid? userId,
+        RegistrationMode mode,
+        string? leadAttendeeName,
+        HeadCountBreakdown headCount,
+        RegistrationContact contact,
+        Money totalPrice,
+        bool isPaidEvent = false)
+    {
+        if (eventId == Guid.Empty)
+            return Result<Registration>.Failure("Event ID is required");
+
+        // Mode must be a head-count variant. DetailedAttendees should use CreateWithAttendees;
+        // NoRegistration should never produce a Registration row at all.
+        if (mode != RegistrationMode.HeadCountOnly &&
+            mode != RegistrationMode.HeadCountByAge &&
+            mode != RegistrationMode.HeadCountByGender &&
+            mode != RegistrationMode.HeadCountByAgeAndGender)
+        {
+            return Result<Registration>.Failure(
+                $"CreateWithHeadCount is only valid for head-count modes (HeadCountOnly / HeadCountByAge / " +
+                $"HeadCountByGender / HeadCountByAgeAndGender). Received: {mode}. " +
+                $"Use CreateWithAttendees for DetailedAttendees mode; NoRegistration mode does not create Registration rows.");
+        }
+
+        if (string.IsNullOrWhiteSpace(leadAttendeeName))
+            return Result<Registration>.Failure("Lead attendee name is required for head-count modes");
+
+        if (headCount == null)
+            return Result<Registration>.Failure("HeadCountBreakdown is required for head-count modes");
+
+        if (contact == null)
+            return Result<Registration>.Failure("Contact information is required");
+
+        if (totalPrice == null)
+            return Result<Registration>.Failure("Total price is required (use Money.Zero for free events)");
+
+        // Phase 6A.81: Determine status based on payment requirement (mirrors CreateWithAttendees).
+        var status = isPaidEvent ? RegistrationStatus.Preliminary : RegistrationStatus.Confirmed;
+        var paymentStatus = isPaidEvent ? PaymentStatus.Pending : PaymentStatus.NotRequired;
+        var expiresAt = isPaidEvent ? DateTime.UtcNow.AddHours(24) : (DateTime?)null;
+
+        var registration = new Registration
+        {
+            EventId = eventId,
+            UserId = userId,
+            AttendeeInfo = null,
+            Quantity = headCount.Total,  // Maintain backward compatibility for legacy capacity readers
+            Contact = contact,
+            TotalPrice = totalPrice,
+            RegistrationMode = mode,           // Phase 7E: snapshot the mode
+            LeadAttendeeName = leadAttendeeName.Trim(),
+            HeadCount = headCount,
+            Status = status,
+            PaymentStatus = paymentStatus,
+            CheckoutSessionExpiresAt = expiresAt
+        };
+
+        // Note: _attendees is intentionally NOT populated for head-count registrations.
+        // Domain invariant: HeadCount != null XOR _attendees.Any().
+
+        return Result<Registration>.Success(registration);
+    }
+
     // Validation method to ensure XOR constraint (either UserId OR AttendeeInfo, not both)
     // Session 21: Updated to support new multi-attendee format
     public bool IsValid()
@@ -216,14 +332,25 @@ public class Registration : BaseEntity
     public bool HasDetailedAttendees() => _attendees.Any();
 
     /// <summary>
-    /// Session 21: Gets the number of attendees (works with both legacy and new format)
+    /// Session 21: Gets the number of attendees (works with both legacy and new format).
+    /// Phase 7E: Now also handles head-count modes (B1-B4) — when HeadCount is populated, its
+    /// Total is the canonical attendee count. This is the single mutation point that makes
+    /// every consumer (Event.CurrentRegistrations, Event.ReservedCapacity, Event.SpotsLeft,
+    /// every Sum(r.GetAttendeeCount()) aggregation) automatically Mode-B aware without
+    /// touching every call-site.
     /// </summary>
     public int GetAttendeeCount()
     {
+        // Phase 7E: Head-count modes (B1-B4) carry a HeadCountBreakdown.
+        if (HeadCount != null)
+            return HeadCount.Total;
+
+        // Mode A (DetailedAttendees) — Session 21 multi-attendee format.
         if (_attendees.Any())
             return _attendees.Count;
 
-        return Quantity;  // Fallback to legacy quantity field
+        // Legacy single-attendee fallback (pre-Session-21).
+        return Quantity;
     }
 
     public void Cancel()
@@ -233,6 +360,32 @@ public class Registration : BaseEntity
             Status = RegistrationStatus.Cancelled;
             MarkAsUpdated();
         }
+    }
+
+    /// <summary>
+    /// Force-cancels a registration that is stuck in <see cref="RegistrationStatus.RefundRequested"/>
+    /// because the Stripe webhook never completed (or the refund was processed off-platform).
+    ///
+    /// Why this exists: <c>RefundRequested</c> rows consume capacity until Stripe confirms the
+    /// refund. If Stripe never resolves them — common for very old events or when refunds were
+    /// processed manually outside the system — the rows are permanently stuck. They block
+    /// <see cref="Event.SetRegistrationMode"/> and clutter dashboards. Only an event organiser
+    /// (verified at the application layer) can invoke this. Marks the row <c>Cancelled</c> —
+    /// <c>Refunded</c> would be misleading because we're not actually issuing a refund here.
+    /// </summary>
+    /// <returns>Success if the row was force-cancelled, failure with a clear message otherwise.</returns>
+    public Result ForceCancelStuckRefund()
+    {
+        if (Status != RegistrationStatus.RefundRequested)
+        {
+            return Result.Failure(
+                $"Force-cancel is only valid for registrations in RefundRequested status. " +
+                $"Current status: {Status}. RegistrationId={Id}");
+        }
+
+        Status = RegistrationStatus.Cancelled;
+        MarkAsUpdated();
+        return Result.Success();
     }
 
     /// <summary>
@@ -393,6 +546,184 @@ public class Registration : BaseEntity
             amountPaid,
             attendeeCount,
             DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8 S8.2 — stashes the buyer's intended seat assignments + seat-hold
+    /// session id on the registration BEFORE Stripe Checkout. The webhook reads
+    /// this list when <c>checkout.session.completed</c> fires and feeds it into
+    /// <see cref="ConfirmSeatAssignments"/>.
+    ///
+    /// Invariants:
+    /// <list type="bullet">
+    ///   <item><see cref="Status"/> must be <see cref="RegistrationStatus.Preliminary"/>
+    ///   (seat stash is meaningful only before payment).</item>
+    ///   <item><paramref name="sessionId"/> non-empty.</item>
+    ///   <item><paramref name="assignments"/>.Count must equal attendee count.</item>
+    ///   <item>AttendeeIndex unique and within range; SeatId non-empty (already
+    ///   guaranteed by <see cref="PendingSeatAssignment.Create"/>).</item>
+    /// </list>
+    /// Replacement-not-append: if a buyer re-issues RSVP with different seats
+    /// (e.g., changes selection in another tab before redirect to Stripe), the
+    /// second call fully replaces the stash.
+    /// </summary>
+    public Result SetPendingSeatAssignments(
+        string sessionId,
+        IReadOnlyList<PendingSeatAssignment> assignments)
+    {
+        if (assignments == null)
+            return Result.Failure("Pending seat assignments are required");
+
+        if (Status != RegistrationStatus.Preliminary)
+            return Result.Failure(
+                $"Cannot stash pending seat assignments while registration is {Status}. " +
+                $"Status must be Preliminary (seat stash is for pre-payment registrations only). " +
+                $"RegistrationId={Id}");
+
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return Result.Failure(
+                $"Seat-hold session id is required. RegistrationId={Id}");
+
+        if (assignments.Count != _attendees.Count)
+            return Result.Failure(
+                $"Pending seat-assignment count {assignments.Count} does not match attendee " +
+                $"count {_attendees.Count}. RegistrationId={Id}");
+
+        var seenIndices = new HashSet<int>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AttendeeIndex < 0 || assignment.AttendeeIndex >= _attendees.Count)
+                return Result.Failure(
+                    $"Pending seat-assignment attendee index {assignment.AttendeeIndex} is out " +
+                    $"of range [0, {_attendees.Count}). RegistrationId={Id}");
+
+            if (!seenIndices.Add(assignment.AttendeeIndex))
+                return Result.Failure(
+                    $"Duplicate attendee index {assignment.AttendeeIndex} in pending seat " +
+                    $"assignments. RegistrationId={Id}");
+        }
+
+        _pendingSeatAssignments.Clear();
+        _pendingSeatAssignments.AddRange(assignments);
+        PendingSeatSessionId = sessionId;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8 S8.2 — clears the pending seat-assignment stash. Called by:
+    /// <list type="bullet">
+    ///   <item><see cref="ConfirmSeatAssignments"/> on the success path (after
+    ///   the seats are bound to attendees and reservations are written).</item>
+    ///   <item>The checkout-expired webhook (C5 guard) when Stripe reports the
+    ///   buyer abandoned the session.</item>
+    ///   <item><see cref="MarkAbandoned"/> on the abandoned-preliminary path.</item>
+    /// </list>
+    /// Idempotent: safe to call when no stash exists. Does NOT change
+    /// <see cref="Status"/> — callers control state transitions separately.
+    /// </summary>
+    public void ClearPendingSeatAssignments()
+    {
+        _pendingSeatAssignments.Clear();
+        PendingSeatSessionId = null;
+        MarkAsUpdated();
+    }
+
+    /// <summary>
+    /// Phase 8 S8.1 — binds the persisted seat assignments to the corresponding
+    /// <see cref="AttendeeDetails"/> values and raises <see cref="SeatsReservedEvent"/>.
+    /// Called from the Stripe webhook's checkout-completed path AFTER
+    /// <see cref="CompletePayment"/> succeeds and BEFORE the unit-of-work commits.
+    ///
+    /// Invariants:
+    /// <list type="bullet">
+    ///   <item><see cref="Status"/> must be <see cref="RegistrationStatus.Confirmed"/>
+    ///   (this method is the seat-binding step that comes after payment confirms).</item>
+    ///   <item><paramref name="assignments"/> must have exactly one entry per attendee
+    ///   (Mode-A only; Mode-B/C don't enter this path).</item>
+    ///   <item>Each <c>AttendeeIndex</c> is unique and within range.</item>
+    ///   <item>Each <c>SeatId</c> is non-empty.</item>
+    /// </list>
+    /// Idempotent on retry: when every attendee already carries the same seat
+    /// assignment as the incoming list, returns Success without raising the
+    /// domain event. This protects against webhook redelivery + reconciliation
+    /// double-fire.
+    /// </summary>
+    public Result ConfirmSeatAssignments(
+        IReadOnlyList<(int AttendeeIndex, Guid SeatId, string SeatLabel)> assignments)
+    {
+        if (assignments == null)
+            return Result.Failure("Seat assignments are required");
+
+        if (Status != RegistrationStatus.Confirmed)
+            return Result.Failure(
+                $"Cannot confirm seat assignments while registration is {Status}. " +
+                $"Status must be Confirmed. RegistrationId={Id}");
+
+        if (assignments.Count != _attendees.Count)
+            return Result.Failure(
+                $"Seat-assignment count {assignments.Count} does not match attendee count " +
+                $"{_attendees.Count}. RegistrationId={Id}");
+
+        // Reject duplicate or out-of-range attendee indices up-front so we don't
+        // half-mutate the collection.
+        var seenIndices = new HashSet<int>();
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AttendeeIndex < 0 || assignment.AttendeeIndex >= _attendees.Count)
+                return Result.Failure(
+                    $"Attendee index {assignment.AttendeeIndex} is out of range " +
+                    $"[0, {_attendees.Count}). RegistrationId={Id}");
+
+            if (!seenIndices.Add(assignment.AttendeeIndex))
+                return Result.Failure(
+                    $"Duplicate attendee index {assignment.AttendeeIndex} in seat assignments. " +
+                    $"RegistrationId={Id}");
+
+            if (assignment.SeatId == Guid.Empty)
+                return Result.Failure(
+                    $"Seat ID is required for attendee index {assignment.AttendeeIndex}. " +
+                    $"RegistrationId={Id}");
+        }
+
+        // Idempotency guard: if every attendee already carries the same seat assignment,
+        // return Success without raising the event. Webhook retries / reconciliation
+        // re-runs hit this path.
+        var allAlreadyBound = assignments.All(a =>
+            _attendees[a.AttendeeIndex].SeatId == a.SeatId
+            && _attendees[a.AttendeeIndex].SeatLabel == a.SeatLabel.Trim());
+        if (allAlreadyBound)
+            return Result.Success();
+
+        // Apply assignments. Build the new list in one pass — if any WithSeat call
+        // fails, we abort BEFORE mutating the backing field (no half-state).
+        var rebound = new AttendeeDetails[_attendees.Count];
+        for (var i = 0; i < _attendees.Count; i++)
+            rebound[i] = _attendees[i];
+
+        foreach (var assignment in assignments)
+        {
+            var withSeatResult = _attendees[assignment.AttendeeIndex]
+                .WithSeat(assignment.SeatId, assignment.SeatLabel);
+            if (withSeatResult.IsFailure)
+                return Result.Failure(
+                    $"Cannot bind seat to attendee index {assignment.AttendeeIndex}: " +
+                    $"{withSeatResult.Error}");
+            rebound[assignment.AttendeeIndex] = withSeatResult.Value;
+        }
+
+        _attendees.Clear();
+        _attendees.AddRange(rebound);
+        MarkAsUpdated();
+
+        // Raise the domain event so downstream handlers (S8.4 metric emission;
+        // future ticket-PDF regeneration) get notified.
+        var seatTuples = assignments
+            .Select(a => (a.SeatId, a.AttendeeIndex, a.SeatLabel))
+            .ToList();
+        RaiseDomainEvent(new SeatsReservedEvent(EventId, Id, seatTuples));
 
         return Result.Success();
     }
@@ -865,4 +1196,244 @@ public class Registration : BaseEntity
         };
     }
 #pragma warning restore CS0618
+
+    /// <summary>
+    /// Phase 7F-B internal: collapses a Mode-A registration into a Mode-B head-count shape.
+    /// Called only via <see cref="Event.ConvertRegistrationMode"/> after the aggregate has
+    /// validated and built the new shape. NOT a public API — this method is intentionally
+    /// internal so cross-aggregate code can't call it without going through Event.
+    ///
+    /// Snapshot semantics: the live row's <see cref="RegistrationMode"/> flips to the new
+    /// mode. Audit table preserves the pre-conversion <see cref="Attendees"/> shape via the
+    /// <c>BeforeShape</c> jsonb (recorded by the handler).
+    /// </summary>
+    internal Result ApplyConvertToHeadCountMode(
+        RegistrationMode targetMode,
+        HeadCountBreakdown headCount,
+        string? leadName)
+    {
+        if (!IsHeadCountTargetMode(targetMode))
+            return Result.Failure($"ApplyConvertToHeadCountMode: target mode {targetMode} is not a head-count mode");
+        if (headCount == null)
+            return Result.Failure("ApplyConvertToHeadCountMode: headCount is required");
+
+        _attendees.Clear();
+        HeadCount = headCount;
+        LeadAttendeeName = leadName;
+        RegistrationMode = targetMode;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 7F-B internal: explodes a Mode-B registration into Mode-A placeholder rows.
+    /// </summary>
+    internal Result ApplyConvertToDetailedAttendees(IReadOnlyList<AttendeeDetails> placeholders)
+    {
+        if (placeholders == null || placeholders.Count == 0)
+            return Result.Failure("ApplyConvertToDetailedAttendees: placeholders are required");
+
+        _attendees.Clear();
+        foreach (var p in placeholders)
+            _attendees.Add(p);
+        HeadCount = null;
+        LeadAttendeeName = null;
+        RegistrationMode = RegistrationMode.DetailedAttendees;
+        return Result.Success();
+    }
+
+    private static bool IsHeadCountTargetMode(RegistrationMode mode) =>
+        mode == RegistrationMode.HeadCountOnly
+        || mode == RegistrationMode.HeadCountByAge
+        || mode == RegistrationMode.HeadCountByGender
+        || mode == RegistrationMode.HeadCountByAgeAndGender;
+
+    /// <summary>
+    /// Phase 7F-D (architect-approved 2026-04-30): merges a Mode-B head-count addition
+    /// into this registration. Mirrors <see cref="AddAttendees"/> at the contract level
+    /// (Confirmed + PaymentCompleted required, max-attendees cap enforced) but operates
+    /// on the head-count axis instead of per-attendee rows.
+    ///
+    /// Mode-match invariant (architect §2.2): the addition's mode MUST equal the
+    /// registration's <see cref="RegistrationMode"/>. Cross-mode merges (Mode-A
+    /// registration + Mode-B addition, or B2 + B4) are rejected — defence in depth on top
+    /// of the application-layer validator.
+    ///
+    /// Tier-counts merge by <c>TierId</c> (sum of counts; tier-name from the addition,
+    /// architect "live name preferred over snapshot" pattern). Demographics accumulate
+    /// leaf-by-leaf within the same family (B2+B2, B4+B4); cross-family already rejected
+    /// by the mode-match check.
+    ///
+    /// LeadAttendeeName is intentionally preserved — additions don't change the lead.
+    ///
+    /// Atomic / replay-safe: this method only mutates state when all guards pass. The
+    /// Stripe webhook handler is responsible for idempotency at the addition-row level
+    /// (architect plan §3 7F-D.5).
+    /// </summary>
+    /// <param name="additionMode">Mode snapshot from the <c>RegistrationAddition</c> row.</param>
+    /// <param name="headCountDelta">The delta head-count to merge in.</param>
+    /// <param name="newTotalPrice">Post-merge total price (computed by the handler upstream).</param>
+    /// <param name="maxAttendeesPerRegistration">Event-level cap applied to the merged total.</param>
+    public Result MergeHeadCountAddition(
+        RegistrationMode additionMode,
+        HeadCountBreakdown headCountDelta,
+        Money newTotalPrice,
+        int maxAttendeesPerRegistration = 10)
+    {
+        if (Status != RegistrationStatus.Confirmed)
+            return Result.Failure(
+                $"MergeHeadCountAddition: registration must be Confirmed to merge an addition. " +
+                $"Current status: {Status}.");
+
+        if (PaymentStatus != PaymentStatus.Completed)
+            return Result.Failure(
+                $"MergeHeadCountAddition: payment must be completed before merging. " +
+                $"Current payment status: {PaymentStatus}.");
+
+        if (headCountDelta == null)
+            return Result.Failure("Head-count delta is required");
+
+        if (newTotalPrice == null)
+            return Result.Failure("New total price is required");
+
+        // Mode-match invariant (architect §2.2): addition mode == registration mode.
+        if (additionMode != RegistrationMode)
+            return Result.Failure(
+                $"Cannot merge a {additionMode} addition into a {RegistrationMode} registration. " +
+                "Addition mode must match the parent's RegistrationMode.");
+
+        // Defence in depth — Mode A and Mode C should never reach here, but be explicit.
+        if (RegistrationMode == RegistrationMode.DetailedAttendees
+            || RegistrationMode == RegistrationMode.NoRegistration)
+            return Result.Failure(
+                $"MergeHeadCountAddition is for head-count modes only. RegistrationMode={RegistrationMode}.");
+
+        if (HeadCount == null)
+            return Result.Failure(
+                "Registration has no HeadCount populated — cannot merge a head-count delta.");
+
+        // Compute the merged shape.
+        var mergeResult = MergeHeadCountBreakdowns(HeadCount, headCountDelta);
+        if (mergeResult.IsFailure)
+            return Result.Failure(mergeResult.Errors);
+        var merged = mergeResult.Value;
+
+        // Max-attendees cap.
+        var effectiveMax = Math.Min(maxAttendeesPerRegistration, Event.SYSTEM_MAX_ATTENDEES_PER_REGISTRATION);
+        if (merged.Total > effectiveMax)
+            return Result.Failure(
+                $"Maximum {effectiveMax} attendees per registration. " +
+                $"Current: {HeadCount.Total}, delta: {headCountDelta.Total}, post-merge: {merged.Total}.");
+
+        // All guards pass — apply.
+        HeadCount = merged;
+        TotalPrice = newTotalPrice;
+        Quantity = merged.Total;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Internal helper: builds a new <see cref="HeadCountBreakdown"/> by accumulating the
+    /// delta into the existing one. Same-family modes only (mode-match invariant already
+    /// enforced upstream).
+    /// </summary>
+    private static Result<HeadCountBreakdown> MergeHeadCountBreakdowns(
+        HeadCountBreakdown existing, HeadCountBreakdown delta)
+    {
+        // Tier-counts merge by TierId. Live name from the delta (latest), falling back to
+        // the existing snapshot if the delta doesn't carry that tier.
+        IReadOnlyList<TierCount>? mergedTiers = null;
+        if (existing.TierCounts != null || delta.TierCounts != null)
+        {
+            var byId = new Dictionary<Guid, TierCount>();
+            foreach (var tc in existing.TierCounts ?? Array.Empty<TierCount>())
+                byId[tc.TierId] = tc;
+            foreach (var tc in delta.TierCounts ?? Array.Empty<TierCount>())
+            {
+                if (byId.TryGetValue(tc.TierId, out var prior))
+                {
+                    var sum = prior.Count + tc.Count;
+                    int? adultSum = (prior.AdultCount.HasValue || tc.AdultCount.HasValue)
+                        ? (prior.AdultCount ?? prior.Count) + (tc.AdultCount ?? tc.Count) -
+                          // Subtract whichever side doesn't have age split (we're double-counting otherwise).
+                          ((!prior.AdultCount.HasValue ? prior.Count : 0) + (!tc.AdultCount.HasValue ? tc.Count : 0))
+                          + (!prior.AdultCount.HasValue && !tc.AdultCount.HasValue ? sum : 0)
+                        : null;
+                    int? childSum = (prior.ChildCount.HasValue || tc.ChildCount.HasValue)
+                        ? (prior.ChildCount ?? 0) + (tc.ChildCount ?? 0)
+                        : null;
+                    // If neither side had age split, leave both null.
+                    if (!prior.AdultCount.HasValue && !tc.AdultCount.HasValue)
+                    {
+                        adultSum = null;
+                        childSum = null;
+                    }
+                    // Phase 7F-E.7: also merge the optional per-tier 4-leaf split.
+                    // Symmetric to age-split: sum leaf-by-leaf when at least one side has it,
+                    // null when neither did.
+                    int? amSum = null, afSum = null, cmSum = null, cfSum = null;
+                    if (prior.HasFourLeafSplit || tc.HasFourLeafSplit)
+                    {
+                        amSum = (prior.AdultMaleCount ?? 0) + (tc.AdultMaleCount ?? 0);
+                        afSum = (prior.AdultFemaleCount ?? 0) + (tc.AdultFemaleCount ?? 0);
+                        cmSum = (prior.ChildMaleCount ?? 0) + (tc.ChildMaleCount ?? 0);
+                        cfSum = (prior.ChildFemaleCount ?? 0) + (tc.ChildFemaleCount ?? 0);
+                    }
+                    var rebuilt = TierCount.Create(
+                        tc.TierId, tc.TierName, sum, adultSum, childSum,
+                        amSum, afSum, cmSum, cfSum);
+                    if (rebuilt.IsFailure)
+                        return Result<HeadCountBreakdown>.Failure(rebuilt.Errors);
+                    byId[tc.TierId] = rebuilt.Value;
+                }
+                else
+                {
+                    byId[tc.TierId] = tc;
+                }
+            }
+            mergedTiers = byId.Values.ToList();
+        }
+
+        // Mode-specific demographic merge.
+        // Sums leaf-by-leaf within the same family.
+        Result<HeadCountBreakdown> rebuilt2;
+        if (existing.Demographics == null && delta.Demographics == null)
+        {
+            // B1 + B1 — TotalOnly
+            rebuilt2 = HeadCountBreakdown.ForTotalOnly(existing.Total + delta.Total, mergedTiers);
+        }
+        else if (existing.Demographics?.Adults != null
+                 || existing.Demographics?.Children != null
+                 || delta.Demographics?.Adults != null
+                 || delta.Demographics?.Children != null)
+        {
+            // B2 family
+            rebuilt2 = HeadCountBreakdown.ForByAge(
+                adults: (existing.Demographics?.Adults ?? 0) + (delta.Demographics?.Adults ?? 0),
+                children: (existing.Demographics?.Children ?? 0) + (delta.Demographics?.Children ?? 0),
+                mergedTiers);
+        }
+        else if (existing.Demographics?.Males != null
+                 || existing.Demographics?.Females != null
+                 || delta.Demographics?.Males != null
+                 || delta.Demographics?.Females != null)
+        {
+            // B3 family
+            rebuilt2 = HeadCountBreakdown.ForByGender(
+                males: (existing.Demographics?.Males ?? 0) + (delta.Demographics?.Males ?? 0),
+                females: (existing.Demographics?.Females ?? 0) + (delta.Demographics?.Females ?? 0),
+                mergedTiers);
+        }
+        else
+        {
+            // B4 — 4-leaf
+            rebuilt2 = HeadCountBreakdown.ForByAgeAndGender(
+                adultMales: (existing.Demographics?.AdultMales ?? 0) + (delta.Demographics?.AdultMales ?? 0),
+                adultFemales: (existing.Demographics?.AdultFemales ?? 0) + (delta.Demographics?.AdultFemales ?? 0),
+                childMales: (existing.Demographics?.ChildMales ?? 0) + (delta.Demographics?.ChildMales ?? 0),
+                childFemales: (existing.Demographics?.ChildFemales ?? 0) + (delta.Demographics?.ChildFemales ?? 0),
+                mergedTiers);
+        }
+
+        return rebuilt2;
+    }
 }

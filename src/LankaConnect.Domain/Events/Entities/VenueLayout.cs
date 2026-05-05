@@ -97,6 +97,177 @@ public class VenueLayout : BaseEntity
     }
 
     /// <summary>
+    /// Slice 8 S8.9b: produces a per-user template (<c>EventId == null</c>,
+    /// <c>IsTemplate == true</c>, <c>CreatedByUserId == newOwnerUserId</c>) that
+    /// mirrors <paramref name="source"/>'s structure with fresh server-side IDs.
+    /// Per architect Option B (faithful clone): zones/tables/decorations + canvas
+    /// are cloned; per-seat <c>IsEnabled</c> / <c>IsAccessible</c> flags round-trip;
+    /// tier mappings are deliberately dropped (they live on the <c>TicketTier</c>
+    /// aggregate, owned by the source's event — templates are tier-free by design).
+    ///
+    /// Holds and reservations are not cloned (they're on different aggregates and
+    /// belong to the source event, not the new template).
+    /// </summary>
+    public static Result<VenueLayout> CloneAsTemplate(
+        VenueLayout source,
+        string newName,
+        Guid newOwnerUserId)
+    {
+        if (source is null)
+            return Result<VenueLayout>.Failure("Source layout is required");
+
+        return CloneStructure(
+            source,
+            newName,
+            newOwnerUserId,
+            eventId: null,
+            isTemplate: true,
+            nameFieldLabel: "Template name");
+    }
+
+    /// <summary>
+    /// Slice 8 S8.10: applies a saved template to a target event. Mirror of
+    /// <see cref="CloneAsTemplate"/> in the opposite direction — clones a
+    /// per-user template (<c>IsTemplate == true</c>, <c>EventId == null</c>)
+    /// into a fresh event-attached layout (<c>IsTemplate == false</c>,
+    /// <c>EventId == targetEventId</c>) so the organizer can apply a saved
+    /// template to a new event without re-building the structure by hand.
+    ///
+    /// Source MUST be a template — applying an event-attached layout via this
+    /// path is intentionally rejected; the organizer should clone-as-template
+    /// first, then apply.
+    ///
+    /// Tier mappings are not copied (the target event's tiers are owned by
+    /// the <see cref="TicketTier"/> aggregate, and the template carries no
+    /// tier rows by S8.9b's design — assigning tiers happens after the layout
+    /// is applied, via the canvas editor's tier panel + S8.8c batch save).
+    /// </summary>
+    public static Result<VenueLayout> CloneFromTemplate(
+        VenueLayout template,
+        Guid targetEventId,
+        string newName,
+        Guid newOwnerUserId)
+    {
+        if (template is null)
+            return Result<VenueLayout>.Failure("Source template is required");
+
+        if (!template.IsTemplate)
+            return Result<VenueLayout>.Failure(
+                "Source must be a template — only templates can be applied via clone-from-template");
+
+        if (targetEventId == Guid.Empty)
+            return Result<VenueLayout>.Failure("Target event ID is required");
+
+        return CloneStructure(
+            template,
+            newName,
+            newOwnerUserId,
+            eventId: targetEventId,
+            isTemplate: false,
+            nameFieldLabel: "Layout name");
+    }
+
+    /// <summary>
+    /// Slice 8 S8.10: shared internal helper for both clone factories
+    /// (<see cref="CloneAsTemplate"/> and <see cref="CloneFromTemplate"/>).
+    /// Walks the source aggregate (canvas, decorations, zones, tables, seats)
+    /// and produces a new <see cref="VenueLayout"/> with fresh server-side IDs.
+    /// The two public factories differ only in their final
+    /// <c>(eventId, isTemplate)</c> tuple, so all aggregate-walk logic lives here.
+    /// </summary>
+    private static Result<VenueLayout> CloneStructure(
+        VenueLayout source,
+        string newName,
+        Guid newOwnerUserId,
+        Guid? eventId,
+        bool isTemplate,
+        string nameFieldLabel)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            return Result<VenueLayout>.Failure($"{nameFieldLabel} is required");
+
+        if (newName.Trim().Length > 200)
+            return Result<VenueLayout>.Failure($"{nameFieldLabel} cannot exceed 200 characters");
+
+        if (newOwnerUserId == Guid.Empty)
+            return Result<VenueLayout>.Failure("Owner user ID is required");
+
+        // CanvasConfig is an EF-owned entity keyed by VenueLayoutId, so reusing
+        // the source's instance would carry the source layout's FK and EF would
+        // refuse the save with "The property 'CanvasConfig.VenueLayoutId' is
+        // part of a key and so cannot be modified". Build a fresh value instead.
+        var canvasResult = CanvasConfig.Create(
+            source.Canvas.Width,
+            source.Canvas.Height,
+            source.Canvas.Scale,
+            source.Canvas.BackgroundColor);
+        if (canvasResult.IsFailure)
+            return Result<VenueLayout>.Failure(canvasResult.Error);
+
+        var layoutResult = Create(
+            newName,
+            source.LayoutType,
+            newOwnerUserId,
+            eventId: eventId,
+            isTemplate: isTemplate,
+            canvas: canvasResult.Value);
+        if (layoutResult.IsFailure)
+            return layoutResult;
+        var clone = layoutResult.Value;
+
+        // Decorations first — straight clone via existing public AddDecoration.
+        // Order matches source.Decorations so SortOrder is preserved.
+        foreach (var srcDec in source.Decorations.OrderBy(d => d.SortOrder))
+        {
+            var decResult = clone.AddDecoration(
+                srcDec.Kind, srcDec.Label, srcDec.SortOrder, srcDec.Geometry, srcDec.Properties);
+            if (decResult.IsFailure)
+                return Result<VenueLayout>.Failure(decResult.Error);
+        }
+
+        // Zones — clone via AddZone overload that accepts shape/geometry, then
+        // RebuildSeatsFrom(...) (S8.9b internal seat-rebuild path) to faithfully
+        // copy each seat's row/number/label/sort/x/y/angle + IsEnabled +
+        // IsAccessible flags. Track srcZoneId → cloneZoneId so tables can be
+        // re-linked to the cloned zones below.
+        var zoneIdMap = new Dictionary<Guid, Guid>();
+        foreach (var srcZone in source.Zones.OrderBy(z => z.SortOrder))
+        {
+            var zoneResult = clone.AddZone(
+                srcZone.Name, srcZone.Color, srcZone.SortOrder,
+                srcZone.Shape, srcZone.Geometry);
+            if (zoneResult.IsFailure)
+                return Result<VenueLayout>.Failure(zoneResult.Error);
+            var newZone = zoneResult.Value;
+            newZone.RebuildSeatsFrom(srcZone.Seats);
+            zoneIdMap[srcZone.Id] = newZone.Id;
+        }
+
+        // Tables — AddTable creates the table without auto-generating seats; then
+        // RebuildSeatsFrom(...) clones the full seat set (round-table radial
+        // angles + x/y included) with flag fidelity.
+        foreach (var srcTable in source.Tables.OrderBy(t => t.SortOrder))
+        {
+            Guid? cloneZoneId = null;
+            if (srcTable.VenueZoneId.HasValue
+                && zoneIdMap.TryGetValue(srcTable.VenueZoneId.Value, out var mappedZoneId))
+            {
+                cloneZoneId = mappedZoneId;
+            }
+
+            var tableResult = clone.AddTable(
+                srcTable.Label, srcTable.Shape, srcTable.Capacity,
+                srcTable.SortOrder, cloneZoneId, srcTable.Geometry);
+            if (tableResult.IsFailure)
+                return Result<VenueLayout>.Failure(tableResult.Error);
+            var newTable = tableResult.Value;
+            newTable.RebuildSeatsFrom(srcTable.Seats);
+        }
+
+        return Result<VenueLayout>.Success(clone);
+    }
+
+    /// <summary>
     /// Replaces the canvas configuration (dimensions, scale, background color).
     /// </summary>
     public Result UpdateCanvas(CanvasConfig canvas)
@@ -229,6 +400,18 @@ public class VenueLayout : BaseEntity
     /// <summary>
     /// Generates theater-style seats for a zone: rows × seats per row.
     /// Row labels: A, B, C, ... (or custom start). Seat labels: "A1", "A2", "B1", etc.
+    ///
+    /// <para>
+    /// <b>Slice 9.5 contract</b>: refuses to run if the zone already has seats.
+    /// Removing populated seats via the domain's <c>ClearSeats</c> orphans them
+    /// (sets <c>VenueZoneId = null</c>) because the EF Core relationship is
+    /// optional — required by the XOR with <c>VenueTableId</c>. Orphaned seats
+    /// then violate the <c>ck_seats_zone_xor_table</c> Postgres CHECK
+    /// constraint. To regenerate, callers must first delete the zone (which
+    /// cascades through to seats correctly via <c>OnDelete.Cascade</c>) and
+    /// add a new one. The canvas-editor UI already gates the seat-gen panel
+    /// on <c>totalSeatCount == 0</c>; this is defence in depth.
+    /// </para>
     /// </summary>
     public Result GenerateTheaterSeats(
         Guid zoneId,
@@ -239,6 +422,10 @@ public class VenueLayout : BaseEntity
         var zone = _zones.FirstOrDefault(z => z.Id == zoneId);
         if (zone == null)
             return Result.Failure("Zone not found in this layout");
+
+        if (zone.Seats.Any())
+            return Result.Failure(
+                $"Zone '{zone.Name}' already has {zone.Seats.Count} seats. Delete the zone and re-add it to change the seat layout.");
 
         if (rows <= 0)
             return Result.Failure("Number of rows must be greater than 0");
@@ -254,9 +441,6 @@ public class VenueLayout : BaseEntity
 
         if (string.IsNullOrWhiteSpace(startRowLabel))
             return Result.Failure("Start row label is required");
-
-        // Clear existing seats in this zone before regeneration
-        zone.ClearSeats();
 
         int startCharCode = char.ToUpper(startRowLabel.Trim()[0]);
         int sortIndex = 0;
@@ -433,15 +617,30 @@ public class VenueLayout : BaseEntity
 
     /// <summary>
     /// Validates that this layout is suitable for an event with the given tiers.
-    /// Every zone with seats must be mapped to an active tier via <see cref="TierAssignment"/>,
-    /// and zone seat count must not exceed the mapped tier's capacity.
+    /// <para>
+    /// <b>Slice 9.1</b>: <paramref name="requireTierMapping"/> gates the per-zone tier-mapping
+    /// invariant. Pass <c>false</c> at apply-preset / apply-template time when zones are
+    /// expected to arrive without tier assignments (organiser maps later in Customize).
+    /// Pass <c>true</c> at publish time to enforce the strict invariant. Capacity checks
+    /// (when a zone IS mapped) always run regardless of the flag — a zone wired to a tier
+    /// must not exceed that tier's capacity. Default is <c>true</c> (strict) so existing
+    /// callers keep current behaviour.
+    /// </para>
+    /// <para>
     /// (Slice 4 — the legacy <c>VenueZone.TicketTierId</c> read path was replaced by the
     /// polymorphic <c>tier_assignments</c> junction.)
+    /// </para>
     /// </summary>
-    public Result ValidateForEvent(IReadOnlyList<TicketTier> eventTiers)
+    public Result ValidateForEvent(
+        IReadOnlyList<TicketTier> eventTiers,
+        bool requireTierMapping = true)
     {
-        if (!_zones.Any())
-            return Result.Failure("Layout must have at least one zone");
+        // Slice 9.4 follow-up fix: a banquet layout has tables but no zones —
+        // its tables hold the seats directly. The original "must have ≥1 zone"
+        // check rejected every banquet preset at apply-time. Accept zones OR
+        // tables; reject only the empty-shell case (neither).
+        if (!_zones.Any() && !_tables.Any())
+            return Result.Failure("Layout must have at least one zone or table");
 
         var activeTiers = eventTiers.Where(t => t.IsActive).ToList();
 
@@ -458,7 +657,15 @@ public class VenueLayout : BaseEntity
         foreach (var zone in _zones)
         {
             if (!zoneToTier.TryGetValue(zone.Id, out var tier))
-                return Result.Failure($"Zone '{zone.Name}' must be mapped to a ticket tier");
+            {
+                // Slice 9.1: only enforce mapping when caller asks for strict validation.
+                // Apply-preset / apply-template paths pass requireTierMapping=false so an
+                // unmapped zone is acceptable (the organiser will map it in Customize and
+                // the publish gate enforces the invariant before anyone can buy tickets).
+                if (requireTierMapping)
+                    return Result.Failure($"Zone '{zone.Name}' must be mapped to a ticket tier");
+                continue;
+            }
 
             if (zone.EnabledSeatCount > tier.Capacity)
                 return Result.Failure(
@@ -466,6 +673,176 @@ public class VenueLayout : BaseEntity
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Slice S4 — non-gating publish-readiness snapshot used by the UI surface.
+    /// Distinct from <see cref="ValidateForEvent"/> which short-circuits on the first
+    /// issue. This method enumerates every blocker and warning at once + builds a
+    /// per-tier mapping summary, so the canvas editor + seating section can list
+    /// EVERY misconfiguration the organiser needs to fix before publishing.
+    /// </summary>
+    /// <remarks>
+    /// The strict publish gate is still <see cref="ValidateForEvent"/> with
+    /// <c>requireTierMapping=true</c> (called by
+    /// <see cref="LankaConnect.Domain.Events.Event.CheckLayoutPublishReadiness"/>).
+    /// This method must remain semantically *broader-or-equal* to that gate — every
+    /// failure ValidateForEvent would surface MUST appear here as a blocker, plus
+    /// the additional checks (table mapping, multi-zone tier-total capacity, empty
+    /// shapes) that the strict path does not cover today.
+    /// </remarks>
+    public PublishReadinessReport BuildPublishReadinessReport(IReadOnlyList<TicketTier> eventTiers)
+    {
+        var blockers = new List<PublishReadinessIssue>();
+        var warnings = new List<PublishReadinessIssue>();
+        var tierSummary = new List<TierMappingSummary>();
+
+        if (!_zones.Any() && !_tables.Any())
+        {
+            blockers.Add(new PublishReadinessIssue(
+                PublishReadinessCode.LayoutEmpty,
+                "Layout has no zones or tables. Apply a preset or add a zone before publishing."));
+        }
+
+        var activeTiers = eventTiers.Where(t => t.IsActive).ToList();
+
+        // Build polymorphic reverse lookups (zone → tier, table → tier).
+        var zoneToTier = new Dictionary<Guid, TicketTier>();
+        var tableToTier = new Dictionary<Guid, TicketTier>();
+        foreach (var tier in activeTiers)
+        {
+            foreach (var assignment in tier.Assignments)
+            {
+                if (assignment.AssignableKind == AssignableKind.Zone)
+                    zoneToTier.TryAdd(assignment.AssignableId, tier);
+                else if (assignment.AssignableKind == AssignableKind.Table)
+                    tableToTier.TryAdd(assignment.AssignableId, tier);
+            }
+        }
+
+        // Per-tier summary + total-capacity check.
+        foreach (var tier in activeTiers)
+        {
+            var mappedZones = _zones
+                .Where(z => zoneToTier.TryGetValue(z.Id, out var t) && t.Id == tier.Id)
+                .Select(z => new MappedShapeRef(z.Id, z.Name, z.EnabledSeatCount))
+                .ToList();
+            var mappedTables = _tables
+                .Where(tbl => tableToTier.TryGetValue(tbl.Id, out var t) && t.Id == tier.Id)
+                .Select(tbl => new MappedShapeRef(tbl.Id, tbl.Label, tbl.EnabledSeatCount))
+                .ToList();
+
+            var totalEnabledSeats =
+                mappedZones.Sum(s => s.EnabledSeatCount)
+                + mappedTables.Sum(s => s.EnabledSeatCount);
+
+            tierSummary.Add(new TierMappingSummary(
+                tier.Id,
+                tier.Name,
+                tier.Capacity,
+                mappedZones,
+                mappedTables,
+                totalEnabledSeats));
+
+            if (mappedZones.Count == 0 && mappedTables.Count == 0)
+            {
+                warnings.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TierWithoutMapping,
+                    $"Tier '{tier.Name}' is active but isn't mapped to any zone or table. Buyers in this tier won't be able to choose a seat.",
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+
+            if (totalEnabledSeats > tier.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TierTotalOverCapacity,
+                    $"Tier '{tier.Name}' is mapped to {totalEnabledSeats} seats across its zones/tables, exceeding its capacity of {tier.Capacity}. Reduce mappings or raise the tier capacity.",
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        // Per-zone validation.
+        foreach (var zone in _zones)
+        {
+            var hasMapping = zoneToTier.TryGetValue(zone.Id, out var tier);
+            if (!hasMapping)
+            {
+                if (zone.EnabledSeatCount > 0)
+                {
+                    blockers.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.ZoneUnmapped,
+                        $"Zone '{zone.Name}' has {zone.EnabledSeatCount} seats but no tier mapping.",
+                        ShapeId: zone.Id,
+                        ShapeName: zone.Name));
+                }
+                else
+                {
+                    warnings.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.ZoneEmptyAndUnmapped,
+                        $"Zone '{zone.Name}' has no seats and no tier mapping. Add seats or remove the zone.",
+                        ShapeId: zone.Id,
+                        ShapeName: zone.Name));
+                }
+                continue;
+            }
+
+            // tier is non-null here because hasMapping was true.
+            if (zone.EnabledSeatCount > tier!.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.ZoneOverCapacity,
+                    $"Zone '{zone.Name}' has {zone.EnabledSeatCount} enabled seats but the linked tier '{tier.Name}' only has capacity for {tier.Capacity}.",
+                    ShapeId: zone.Id,
+                    ShapeName: zone.Name,
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        // Per-table validation.
+        foreach (var table in _tables)
+        {
+            var enabled = table.EnabledSeatCount;
+            var hasMapping = tableToTier.TryGetValue(table.Id, out var tier);
+            if (!hasMapping)
+            {
+                if (enabled > 0)
+                {
+                    blockers.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.TableUnmapped,
+                        $"Table '{table.Label}' has {enabled} seats but no tier mapping.",
+                        ShapeId: table.Id,
+                        ShapeName: table.Label));
+                }
+                else
+                {
+                    warnings.Add(new PublishReadinessIssue(
+                        PublishReadinessCode.TableEmptyAndUnmapped,
+                        $"Table '{table.Label}' has no seats and no tier mapping.",
+                        ShapeId: table.Id,
+                        ShapeName: table.Label));
+                }
+                continue;
+            }
+
+            if (enabled > tier!.Capacity)
+            {
+                blockers.Add(new PublishReadinessIssue(
+                    PublishReadinessCode.TableOverCapacity,
+                    $"Table '{table.Label}' has {enabled} enabled seats but the linked tier '{tier.Name}' only has capacity for {tier.Capacity}.",
+                    ShapeId: table.Id,
+                    ShapeName: table.Label,
+                    TierId: tier.Id,
+                    TierName: tier.Name));
+            }
+        }
+
+        return new PublishReadinessReport(
+            blockers.AsReadOnly(),
+            warnings.AsReadOnly(),
+            tierSummary.AsReadOnly());
     }
 
     /// <summary>

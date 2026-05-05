@@ -292,6 +292,61 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
         }
     }
 
+    /// <summary>
+    /// Phase 7G — returns up to <paramref name="take"/> registrations stuck in
+    /// <see cref="RegistrationStatus.RefundRequested"/> whose <c>RefundRequestedAt</c>
+    /// is older than <paramref name="requestedBefore"/>. Tracked load — caller
+    /// (<c>RefundReconciliationService</c>) needs to mutate state via
+    /// <c>Registration.CompleteRefund</c> and persist via the existing
+    /// <c>IUnitOfWork</c>. Ordered oldest-first so the most painfully-stuck rows
+    /// are reconciled first when a backlog has accumulated.
+    /// </summary>
+    public async Task<IReadOnlyList<Registration>> GetStuckRefundsAsync(
+        DateTime requestedBefore,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetStuckRefunds"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetStuckRefundsAsync START: RequestedBefore={RequestedBefore:o}, Take={Take}",
+                requestedBefore, take);
+
+            try
+            {
+                var result = await _dbSet
+                    .Where(r => r.Status == RegistrationStatus.RefundRequested
+                                && r.RefundRequestedAt != null
+                                && r.RefundRequestedAt < requestedBefore)
+                    .OrderBy(r => r.RefundRequestedAt)
+                    .Take(take)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetStuckRefundsAsync COMPLETE: Count={Count}, RequestedBefore={RequestedBefore:o}, Take={Take}, Duration={ElapsedMs}ms",
+                    result.Count, requestedBefore, take, stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+
+                _repoLogger.LogError(ex,
+                    "GetStuckRefundsAsync FAILED: RequestedBefore={RequestedBefore:o}, Take={Take}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    requestedBefore, take, stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+
+                throw;
+            }
+        }
+    }
+
     public async Task<int> GetTotalQuantityForEventAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetTotalQuantity"))

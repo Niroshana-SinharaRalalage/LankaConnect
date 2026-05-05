@@ -160,3 +160,30 @@ After Phase 1 ships:
   - Rollback target `lankaconnect-api-prod--0000035` (image `85aa3a71`) confirmed available, Healthy state ✅
   - Old revision auto-deactivated by single-revision mode; remains in revision history for rollback via `az containerapp revision activate --revision lankaconnect-api-prod--0000035`
 - **Phase 2 status: PRODUCTION RESTORED** — 503s eliminated, latency reduced 5-10x. Cartesian-explosion bug still present but no longer saturating. Phase 1 durable fix in progress.
+
+**Phase 1 — Durable fix (commit `a86e2f4f` rebased onto develop, merged via PR #104 → `42abd834`)**
+
+- Three single-line code changes:
+  1. `DependencyInjection.cs`: `UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)` global default
+  2. `EventRepository.cs:128`: explicit `.AsSplitQuery()` at the call site
+  3. `GetEventByIdQueryHandler` + `GetEventSignUpListsQueryHandler`: pass `trackChanges:false`
+- Test fixture: `GetEventSignUpListsQueryHandlerKindFilterTests` mock setup updated for 3-arg `GetByIdAsync`
+- Build: 0 errors. Application.Tests: **2253 passed, 0 failed, 6 skipped**.
+- Staging deploy run `24937673372` green; staging smoke all <1s.
+- Prod deploy via PR #104 merge — `Deploy to Azure Production` workflow succeeded. New active revision `lankaconnect-api-prod--0000036` (image `42abd834`).
+- **Prod smoke results (the actual Phase 1 win):**
+
+| Endpoint | Pre-fix | Phase 2 only (scale) | **Phase 1 (split-query)** |
+|---|---|---|---|
+| `/health` | 0.4-1.6s | 0.63s | **0.52s** |
+| `/api/events/{busiest-id}` | **10-35s + 503s** | 1.5-3.9s | **0.18-0.86s** |
+| `/api/events/{id}/signups` | 10s+ | similar | **0.20-0.26s** |
+| `/events/{id}` ×3 parallel | all timed out at 35s | 3.2-3.5s each | **0.17-0.20s each** |
+| `/api/events?pageSize=20` | 1.5s | 0.36s | **0.36s** |
+
+The single-event-detail endpoint is now **faster than the list endpoint**. Cartesian explosion eliminated. **40-200x improvement** vs pre-fix.
+
+- **Post-deploy step**: relaxed http-scaler concurrency 10 → 30 via `az containerapp update --revision-suffix post-fix-2026-04-25` (architect-approved, since requests are now fast enough that 30 is appropriate, matching staging's headroom-per-replica ratio).
+- **UI prod deploy**: PR #104 had ZERO `web/**` files, so `deploy-ui-production.yml` correctly did NOT trigger. Current prod UI image `85aa3a71` (from PR #103 yesterday) is up-to-date.
+
+### Phase 1 status: PRODUCTION RESTORED + DURABLE FIX SHIPPED.

@@ -877,4 +877,20 @@ public class EventRepository : Repository<Event>, IEventRepository
             .Include(t => t.Assignments)
             .FirstOrDefaultAsync(t => t.Id == tierId, cancellationToken);
     }
+
+    /// <summary>
+    /// Slice 8 S8.8c: loads every <see cref="Domain.Events.Entities.TicketTier"/>
+    /// belonging to the given event with its polymorphic <c>Assignments</c>
+    /// collection eager-loaded. Tracked so batch tier-reconciliation domain
+    /// mutations persist through <c>SaveChanges</c>.
+    /// </summary>
+    public async Task<IReadOnlyList<Domain.Events.Entities.TicketTier>> GetTicketTiersWithAssignmentsForEventAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Set<Domain.Events.Entities.TicketTier>()
+            .Include(t => t.Assignments)
+            .Where(t => t.EventId == eventId)
+            .ToListAsync(cancellationToken);
+    }
 }

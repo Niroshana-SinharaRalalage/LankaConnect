@@ -169,6 +169,8 @@ public static class AdminAuditActions
     public const string RoleUpgradeRejected = "ROLE_UPGRADE_REJECTED";
     // Phase 6A.106: Role downgrade audit action
     public const string UserRoleDowngraded = "USER_ROLE_DOWNGRADED";
+    // Phase 6A.139: Admin-initiated upgrade audit action (symmetric to UserRoleDowngraded from 6A.106)
+    public const string UserRoleUpgraded = "USER_ROLE_UPGRADED";
 
     // Support ticket actions
     public const string TicketReplied = "TICKET_REPLIED";

@@ -145,6 +145,57 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
 
     #endregion
 
+    #region Phase 7E.4 — Flexible Registration Mode Properties
+
+    /// <summary>
+    /// Phase 7E.4: True for Mode A (DetailedAttendees) registrations. Toggles the
+    /// per-attendee table block in the v2 template. Mirrors <see cref="HasAttendeeDetails"/>
+    /// semantically (the older flag is retained for back-compat with templates that haven't
+    /// been migrated yet); both are emitted by <see cref="ToDictionary"/>.
+    /// </summary>
+    public bool HasDetailedAttendees { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True for any of the four Mode B variants (B1-B4).</summary>
+    public bool HasHeadCount { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True for B2/B3/B4 (any demographic axis present); false for B1.</summary>
+    public bool HasHeadCountBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7E.4: True when the registration carries TierCounts (event has tiers).</summary>
+    public bool HasTierBreakdown { get; set; } = false;
+
+    /// <summary>Phase 7E.4: Pre-rendered total head count, e.g. "3".</summary>
+    public string HeadCountTotal { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7E.4: Pre-rendered demographic line, e.g. "2 adults · 1 child", "1 male · 2 females".
+    /// Empty string when <see cref="HasHeadCountBreakdown"/> is false.
+    /// </summary>
+    public string HeadCountBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7E.4: Pre-rendered tier line, e.g. "VIP × 2, General × 3". Tier names are
+    /// snapshotted at registration time and survive downstream tier rename/delete.
+    /// </summary>
+    public string TierBreakdownLine { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7E.4: Lead attendee name for Mode B registrations (the named contact).
+    /// Empty string for Mode A — use <see cref="AttendeesHtml"/> instead.
+    /// </summary>
+    public string LeadAttendeeName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Phase 7F-E.3: pre-rendered HTML fragment from
+    /// <c>RegistrationBreakdownEmailRenderer.Render</c>. Replaces the legacy
+    /// HeadCountTotal + HeadCountBreakdownLine + TierBreakdownLine trio with one
+    /// structured per-tier table that includes "N/A" placeholders for un-captured axes.
+    /// Empty string when no breakdown rows (defensive).
+    /// </summary>
+    public string RegistrationBreakdownHtml { get; set; } = string.Empty;
+
+    #endregion
+
     #region Organizer Contact Properties
 
     /// <summary>
@@ -251,6 +302,20 @@ public class FreeEventRegistrationEmailParams : IEmailParameters
             // Attendee parameters
             { "HasAttendeeDetails", HasAttendeeDetails },
             { "Attendees", AttendeesHtml },
+
+            // Phase 7E.4: Mode-aware Handlebars block parameters. All booleans are emitted
+            // BOTH true and false (never omitted) so the template's {{#if HasHeadCount}}
+            // evaluates predictably and EmailTemplateValidationService startup check passes.
+            { EmailTemplateContract.FlexibleRegistration.HasDetailedAttendees, HasDetailedAttendees },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCount, HasHeadCount },
+            { EmailTemplateContract.FlexibleRegistration.HasHeadCountBreakdown, HasHeadCountBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HasTierBreakdown, HasTierBreakdown },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountTotal, HeadCountTotal },
+            { EmailTemplateContract.FlexibleRegistration.HeadCountBreakdownLine, HeadCountBreakdownLine },
+            { EmailTemplateContract.FlexibleRegistration.TierBreakdownLine, TierBreakdownLine },
+            // Phase 7F-E.3: structured per-tier HTML fragment.
+            { EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml, RegistrationBreakdownHtml },
+            { "LeadAttendeeName", LeadAttendeeName },
 
             // Organizer contact parameters
             { "HasOrganizerContact", HasOrganizerContact },

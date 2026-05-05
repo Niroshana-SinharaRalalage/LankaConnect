@@ -40,7 +40,14 @@ public record RsvpToEventCommand(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count RSVP fields for B-mode events. Mutually exclusive with Attendees.
+    // The handler chooses between Attendees (Mode A) and HeadCount (Mode B) based on the
+    // event's RegistrationMode — sending the wrong shape returns 400 with a clear message.
+    // LeadAttendeeName is the named "lead" attendee (printed in emails); HeadCount carries
+    // the multi-axis breakdown (Total + Demographics? + TierCounts?).
+    string? LeadAttendeeName = null,
+    HeadCountDto? HeadCount = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>
@@ -61,4 +68,56 @@ public record AttendeeDto(
 public record AddOnSelectionDto(
     Guid DefinitionId,
     int Quantity
+);
+
+/// <summary>
+/// Phase 7E.3a: Head-count payload for B-mode RSVPs. Mode-specific factories on
+/// <see cref="LankaConnect.Domain.Events.ValueObjects.HeadCountBreakdown"/> validate which fields
+/// are required; this DTO accepts everything optional so a single DTO can be sent regardless of mode.
+///
+/// Field requirements by event mode:
+/// - HeadCountOnly (B1): <see cref="Total"/> required.
+/// - HeadCountByAge (B2): <see cref="Adults"/> + <see cref="Children"/> required (Total auto-derived).
+/// - HeadCountByGender (B3): <see cref="Males"/> + <see cref="Females"/> required (Total auto-derived).
+/// - HeadCountByAgeAndGender (B4): four leaf counts required (Total auto-derived).
+/// - <see cref="TierCounts"/> required iff the event has ticket tiers configured (7E.3c).
+/// </summary>
+public record HeadCountDto(
+    int? Total = null,
+    int? Adults = null,
+    int? Children = null,
+    int? Males = null,
+    int? Females = null,
+    int? AdultMales = null,
+    int? AdultFemales = null,
+    int? ChildMales = null,
+    int? ChildFemales = null,
+    List<TierCountDto>? TierCounts = null
+);
+
+/// <summary>
+/// Phase 7E.3c: Per-tier count for a registration. <c>TierName</c> is resolved server-side
+/// from <c>EventId + TierId</c> at command-handle time and snapshotted onto the registration —
+/// the client supplies <c>TierId</c> + <c>Count</c> only.
+///
+/// Phase 7F-C (architect-approved 2026-04-30): optional <c>AdultCount</c> + <c>ChildCount</c>
+/// per-tier-by-age axis. Used in B2 / B4 modes with tiered pricing when the organiser opts
+/// into per-tier-by-age billing (adults pay <c>tier.AdultPrice</c>, children pay
+/// <c>tier.ChildPrice</c>). Domain invariant: both fields set or both null (half-set is
+/// rejected by <c>TierCount.Create</c>); when set, sum must equal <c>Count</c>.
+/// </summary>
+public record TierCountDto(
+    Guid TierId,
+    int Count,
+    int? AdultCount = null,
+    int? ChildCount = null,
+    // Phase 7F-E.7 (architect-approved 2026-05-04, re-opens §2.2 #4 deferred decision):
+    // optional per-tier 4-leaf demographic split for B4-mode + tiered registrations.
+    // All-or-nothing per tier; sum equals Count. Domain factory enforces both invariants.
+    // When set, age split (AdultCount/ChildCount) is auto-derived for back-compat with
+    // the 7F-C pricing helper.
+    int? AdultMaleCount = null,
+    int? AdultFemaleCount = null,
+    int? ChildMaleCount = null,
+    int? ChildFemaleCount = null
 );

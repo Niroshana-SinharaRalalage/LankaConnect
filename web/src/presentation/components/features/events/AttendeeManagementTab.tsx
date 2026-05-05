@@ -29,12 +29,16 @@ import {
   MapPin,
   RefreshCw,
   QrCode,
+  XCircle,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventAttendees, useExportEventAttendees } from '@/presentation/hooks/useEvents';
-import { RegistrationStatus, PaymentStatus, AgeCategory, Gender } from '@/infrastructure/api/types/events.types';
+import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
+import { useEventAttendees, useExportEventAttendees, useEventById } from '@/presentation/hooks/useEvents';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { useQueryClient } from '@tanstack/react-query';
+import { RegistrationStatus, PaymentStatus, AgeCategory, Gender, RegistrationMode } from '@/infrastructure/api/types/events.types';
 import type { EventAttendeeDto } from '@/infrastructure/api/types/events.types';
 import { ResendConfirmationDialog } from './ResendConfirmationDialog';
 import { QRCodeModal } from './QRCodeModal';
@@ -161,6 +165,57 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
     registrationId: string;
   } | null>(null);
 
+  // Phase 7E follow-up: Force-cancel-stuck-refund dialog state. Lets the organiser clear
+  // a row that's been sitting in RefundRequested forever because Stripe never confirmed.
+  const [forceCancelDialogOpen, setForceCancelDialogOpen] = useState(false);
+  const [forceCancelTarget, setForceCancelTarget] = useState<{
+    registrationId: string;
+    attendeeName: string;
+    contactEmail: string;
+  } | null>(null);
+  const [forceCancelInFlight, setForceCancelInFlight] = useState(false);
+  const [forceCancelError, setForceCancelError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const handleForceCancelClick = (attendee: EventAttendeeDto) => {
+    setForceCancelTarget({
+      registrationId: attendee.registrationId,
+      attendeeName: attendee.mainAttendeeName,
+      contactEmail: attendee.contactEmail,
+    });
+    setForceCancelError(null);
+    setForceCancelDialogOpen(true);
+  };
+
+  const handleForceCancelConfirm = async () => {
+    if (!forceCancelTarget) return;
+    setForceCancelInFlight(true);
+    setForceCancelError(null);
+    try {
+      await eventsRepository.forceCancelStuckRefund(eventId, forceCancelTarget.registrationId);
+      // Invalidate the attendees + event-detail queries so the row drops off and the
+      // dashboard's currentRegistrations / spots-left refresh.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['event-attendees', eventId] }),
+        queryClient.invalidateQueries({ queryKey: ['events', eventId] }),
+      ]);
+      // Success: ConfirmDialog auto-closes via onOpenChange(false). Just clear the target.
+      setForceCancelTarget(null);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.detail ||
+        err?.response?.data?.title ||
+        err?.message ||
+        'Failed to force-cancel the refund. Please try again.';
+      setForceCancelError(message);
+      // Re-throw so ConfirmDialog skips its onOpenChange(false) and the dialog stays open
+      // showing the inline error in the description.
+      throw err;
+    } finally {
+      setForceCancelInFlight(false);
+    }
+  };
+
   // Phase 6A.X: QR Code modal state
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<{
@@ -175,6 +230,13 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
   // Fetch attendees
   const { data: attendeesData, isLoading, error } = useEventAttendees(eventId);
   const exportMutation = useExportEventAttendees();
+
+  // Phase 7E.7: Fetch event to read its registration mode (so we can show the Mode C
+  // empty-state message instead of an empty table). Defensive read pattern handles stale
+  // React Query cached payloads from before the registrationMode field shipped on the wire.
+  const { data: eventForMode } = useEventById(eventId);
+  const eventRegistrationMode =
+    eventForMode?.registrationMode ?? RegistrationMode.DetailedAttendees;
 
   // Toggle row expansion
   const toggleRow = (registrationId: string) => {
@@ -420,8 +482,22 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
         </CardHeader>
 
         <CardContent>
-          {/* No Attendees State */}
-          {attendees.length === 0 ? (
+          {/* Phase 7E.7: Mode C events don't accept registrations — show a permanent
+              empty-state explaining why instead of "No Registrations Yet" (which implies
+              registrations are coming and would mislead organisers). */}
+          {eventRegistrationMode === RegistrationMode.NoRegistration ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
+              <p className="text-neutral-600 text-lg font-medium mb-2">
+                This event doesn&rsquo;t require registration
+              </p>
+              <p className="text-neutral-500 text-sm max-w-md mx-auto">
+                You picked <strong>No Registration</strong> as the mode for this event.
+                Standalone donations, sponsorships, add-ons, and collections are still recorded
+                under their own tabs.
+              </p>
+            </div>
+          ) : attendees.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
               <p className="text-neutral-600 text-lg font-medium mb-2">No Registrations Yet</p>
@@ -552,6 +628,21 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                               >
                                 <RefreshCw className="h-3 w-3" />
                                 Resend
+                              </Button>
+                            )}
+                            {/* Phase 7E follow-up: Force-cancel for stuck RefundRequested rows.
+                                Clears registrations that are blocked because the Stripe webhook
+                                never fired — frees the spot and unblocks mode change. */}
+                            {(getRegistrationStatusLabel(attendee.status) === 'RefundRequested') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleForceCancelClick(attendee)}
+                                className="flex items-center gap-1 text-xs text-red-700 hover:bg-red-50"
+                                title="This refund request is stuck. Click to mark the registration cancelled."
+                              >
+                                <XCircle className="h-3 w-3" />
+                                Force-cancel
                               </Button>
                             )}
                           </td>
@@ -692,6 +783,33 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
         eventDate={selectedTicket?.eventDate}
         attendeeName={selectedTicket?.attendeeName || ''}
         attendeeEmail={selectedTicket?.attendeeEmail || ''}
+      />
+
+      {/* Phase 7E follow-up: Force-cancel confirmation. The description spells out exactly
+          what changes so the organiser can audit (matches "explicit + auditable" intent). */}
+      <ConfirmDialog
+        open={forceCancelDialogOpen}
+        onOpenChange={(open) => {
+          setForceCancelDialogOpen(open);
+          if (!open) {
+            setForceCancelTarget(null);
+            setForceCancelError(null);
+          }
+        }}
+        title="Force-cancel stuck refund?"
+        description={
+          forceCancelTarget
+            ? `${forceCancelTarget.attendeeName} (${forceCancelTarget.contactEmail}) is in RefundRequested status — likely because Stripe never confirmed the refund. ` +
+              `This will mark the registration Cancelled, free up the spot, and let you change the event's registration mode. ` +
+              `It does NOT issue a refund (refunds are settled outside this app).` +
+              (forceCancelError ? `\n\nError: ${forceCancelError}` : '')
+            : ''
+        }
+        confirmLabel="Force-cancel"
+        cancelLabel="Keep as-is"
+        variant="danger"
+        onConfirm={handleForceCancelConfirm}
+        isLoading={forceCancelInFlight}
       />
     </div>
   );

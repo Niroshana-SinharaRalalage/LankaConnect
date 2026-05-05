@@ -56,6 +56,11 @@ public static class DependencyInjection
         // Phase 6A.92: Register shared refund service
         services.AddScoped<IRegistrationRefundService, RegistrationRefundService>();
 
+        // Phase 7G: Durable refund-reconciliation safety net for missed
+        // charge.refunded webhooks (deploy windows, network blips). Background
+        // hosted service registration lives in Infrastructure.DependencyInjection.
+        services.AddScoped<IRefundReconciliationService, RefundReconciliationService>();
+
         // Cancellation enhancement: Register add-on refund service
         services.AddScoped<IAddOnRefundService, AddOnRefundService>();
 
@@ -67,6 +72,9 @@ public static class DependencyInjection
 
         // Slice 5 Chunk 13: Named-metric emission (layout.created, layout.structural_edit_rejected).
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
+
+        // Phase 7H: Seat-hold lifecycle metrics (architect §S6 dashboard).
+        services.AddScoped<ISeatHoldMetrics, SeatHoldMetrics>();
 
         // Register email-related services (implementations will be provided by Infrastructure layer)
         // These are registered as transient since they will be injected by the Infrastructure layer

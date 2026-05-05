@@ -45,7 +45,12 @@ public record RegisterAnonymousAttendeeCommand(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count payload for B-mode events. Mutually exclusive with Attendees;
+    // the handler dispatches by event.RegistrationMode. Reuses RsvpToEvent.HeadCountDto and
+    // TierCountDto via the existing using statement.
+    string? LeadAttendeeName = null,
+    HeadCountDto? HeadCount = null
 ) : ICommand<string?>;
 
 /// <summary>

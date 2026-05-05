@@ -64,4 +64,26 @@
     <EmbeddedResource Include="Data\Migrations\Resources\Phase7C2_Recovery\*.html" />
   </ItemGroup>
 
+  <!-- Phase 7E.4: ship v2 registration-confirmation HTML (with mode-aware Mode-B card)
+       as an embedded resource so the seeding migration can UPDATE the email_templates
+       row without depending on disk layout. Mirrors the Phase 7C.2 pattern. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7E4\*.html" />
+  </ItemGroup>
+
+  <!-- Phase 7F-A: ship v2 lifecycle templates (cancellation broadcast, reminder,
+       attendees-added) with the Mode-B head-count card inserted at the
+       HasOrganizerContact anchor. Same embedded-resource pattern. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7F_A\*.html" />
+  </ItemGroup>
+
+  <!-- Phase 7F-E.3: ship v3 templates with the structured {{{RegistrationBreakdownHtml}}}
+       token replacing the legacy flat HeadCountTotal/HeadCountBreakdownLine/TierBreakdownLine
+       trio. 4 templates have the anchor inner replaced; the paid-with-ticket template
+       gets a NEW anchor block inserted (fills the user-reported gap). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Migrations\Resources\Phase7F_E\*.html" />
+  </ItemGroup>
+
 </Project>

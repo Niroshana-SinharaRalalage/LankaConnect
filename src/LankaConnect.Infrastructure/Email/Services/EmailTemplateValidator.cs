@@ -100,7 +100,14 @@ public partial class EmailTemplateValidator : IEmailTemplateValidator
             EmailTemplateContract.Registration.ContactEmail,
             EmailTemplateContract.Registration.ContactPhone,
             EmailTemplateContract.EventImage.HasEventImage,
-            EmailTemplateContract.EventImage.EventImageUrl
+            EmailTemplateContract.EventImage.EventImageUrl,
+            // Phase 7F-E.6.B (architect-approved 2026-05-04): cross-surface registration
+            // breakdown token added to this template body in 7F-E.3 but the entry here
+            // wasn't updated, so the bidirectional check didn't surface "Template uses
+            // parameters not provided by code" at startup — and TicketConfirmationEmailParams
+            // never gained the field, producing literal {{{RegistrationBreakdownHtml}}}
+            // in user inboxes. Adding it is the regression guard for this bug class.
+            EmailTemplateContract.FlexibleRegistration.RegistrationBreakdownHtml
         },
 
         // Refund templates

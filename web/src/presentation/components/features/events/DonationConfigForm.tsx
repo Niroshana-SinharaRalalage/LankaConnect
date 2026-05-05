@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Heart, Plus, X } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/presentation/components/ui/Card';
+import { Plus, X } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';
 
 interface DonationConfigFormProps {
@@ -64,17 +63,7 @@ export function DonationConfigForm({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Heart className="h-5 w-5" style={{ color: '#FF7900' }} />
-          <CardTitle style={{ color: '#8B1538' }}>Donations (Optional)</CardTitle>
-        </div>
-        <CardDescription>
-          Allow attendees and visitors to donate to support your event
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         {/* Enable Toggle */}
         <div className="flex items-start space-x-3">
           <input
@@ -89,9 +78,9 @@ export function DonationConfigForm({
           </label>
         </div>
 
-        {isEnabled && (
-          <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            {/* Donation Message */}
+      {isEnabled && (
+        <div className="ml-7 space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+          {/* Donation Message */}
             <div className="space-y-2">
               <label htmlFor="donationMessage" className="block text-sm font-medium text-gray-700">
                 Donation Message (optional)
@@ -236,9 +225,8 @@ export function DonationConfigForm({
                 </p>
               </div>
             </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

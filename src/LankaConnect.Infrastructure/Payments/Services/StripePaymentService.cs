@@ -460,6 +460,84 @@ public class StripePaymentService : IStripePaymentService
     }
 
     /// <summary>
+    /// Phase 7G — fetches the current status of a Stripe refund by id, used by the
+    /// refund-reconciliation safety net to detect missed <c>charge.refunded</c>
+    /// webhooks. Distinct from <see cref="CreateRefundAsync"/> in that this is a
+    /// pure read against Stripe's Refund API and never creates state. Failure
+    /// shape mirrors <see cref="CreateRefundAsync"/> so the caller can use a
+    /// single <see cref="StripeRefundResult"/> code path.
+    /// </summary>
+    public async Task<Result<StripeRefundResult>> GetRefundStatusAsync(
+        string refundId,
+        CancellationToken cancellationToken = default)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        if (string.IsNullOrWhiteSpace(refundId))
+        {
+            return Result<StripeRefundResult>.Failure("Refund ID is required");
+        }
+
+        _logger.LogInformation(
+            "[Phase 7G] GetRefundStatusAsync START - RefundId={RefundId}",
+            refundId);
+
+        try
+        {
+            var refundService = new RefundService(_stripeClient);
+            var refund = await refundService.GetAsync(refundId, cancellationToken: cancellationToken);
+
+            stopwatch.Stop();
+
+            if (refund == null)
+            {
+                _logger.LogWarning(
+                    "[Phase 7G] Stripe returned null refund - RefundId={RefundId}, Duration={ElapsedMs}ms",
+                    refundId, stopwatch.ElapsedMilliseconds);
+                return Result<StripeRefundResult>.Failure($"Refund {refundId} not found at Stripe");
+            }
+
+            _logger.LogInformation(
+                "[Phase 7G] Stripe refund lookup SUCCESS - RefundId={RefundId}, Status={Status}, " +
+                "AmountRefunded={Amount}, Currency={Currency}, Duration={ElapsedMs}ms",
+                refund.Id, refund.Status, refund.Amount, refund.Currency, stopwatch.ElapsedMilliseconds);
+
+            return Result<StripeRefundResult>.Success(new StripeRefundResult
+            {
+                RefundId = refund.Id,
+                Status = refund.Status,
+                AmountRefunded = refund.Amount,
+                Currency = refund.Currency,
+                CreatedAt = refund.Created,
+            });
+        }
+        catch (StripeException ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex,
+                "[Phase 7G] STRIPE API ERROR in GetRefundStatusAsync - RefundId={RefundId}, " +
+                "StripeErrorCode={Code}, HttpStatus={HttpStatus}, Message={Message}, Duration={ElapsedMs}ms",
+                refundId,
+                ex.StripeError?.Code ?? "NULL",
+                ex.HttpStatusCode,
+                ex.Message,
+                stopwatch.ElapsedMilliseconds);
+            return Result<StripeRefundResult>.Failure(
+                $"Stripe refund lookup failed: {ex.StripeError?.Code ?? "unknown"} - {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex,
+                "[Phase 7G] UNEXPECTED ERROR in GetRefundStatusAsync - RefundId={RefundId}, " +
+                "ExceptionType={ExceptionType}, Duration={ElapsedMs}ms",
+                refundId, ex.GetType().Name, stopwatch.ElapsedMilliseconds);
+            return Result<StripeRefundResult>.Failure(
+                $"Failed to look up refund: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Phase 6A.95: Maps internal refund reasons to valid Stripe refund reasons.
     /// Stripe only accepts: "duplicate", "fraudulent", or "requested_by_customer".
     /// </summary>

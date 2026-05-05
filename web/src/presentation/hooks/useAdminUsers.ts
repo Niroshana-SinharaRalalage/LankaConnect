@@ -152,3 +152,21 @@ export function useDowngradeUser() {
     },
   });
 }
+
+/**
+ * Phase 6A.139: Hook to upgrade a GeneralUser to EventOrganizer (admin-initiated).
+ * Mirrors useDowngradeUser. Invalidates the user list + stats so the role badge
+ * and counts refresh without a page reload.
+ */
+export function useUpgradeUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
+      adminUsersRepository.upgradeUser(userId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: adminUserKeys.statistics() });
+    },
+  });
+}

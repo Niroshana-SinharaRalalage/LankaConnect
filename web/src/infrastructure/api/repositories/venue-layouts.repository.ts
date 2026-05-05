@@ -21,6 +21,10 @@ import type {
   AssignableKind,
   LayoutPresetDto,
   CreateLayoutFromPresetRequest,
+  CreateLayoutFromTemplateRequest,
+  ApplyPresetToEventRequest,
+  ApplyTemplateToEventRequest,
+  PublishReadinessReportDto,
 } from '../types/events.types';
 
 /**
@@ -79,6 +83,33 @@ export class VenueLayoutsRepository {
   }
 
   /**
+   * Slice 8 S8.10: lists every venue layout the calling user has saved as a
+   * template (`isTemplate=true` AND `createdByUserId=caller`), most-recent-first.
+   * Powers the "My Templates" tab in `PresetLibraryModal`. Empty array when
+   * the user has no saved templates.
+   */
+  async listUserTemplates(): Promise<VenueLayoutDto[]> {
+    return await apiClient.get<VenueLayoutDto[]>(`${this.basePath}/templates`);
+  }
+
+  /**
+   * Slice 8 S8.10: applies one of the caller's saved templates to a target
+   * event. Mirror of {@link createFromPreset} for user templates instead of
+   * built-in presets. The new layout is event-attached
+   * (`isTemplate=false`, `eventId=request.eventId`); the source template is
+   * unchanged. Throws `ApiError` on 403 (caller doesn't own template OR
+   * isn't event organizer) / 404 (source or target missing).
+   */
+  async createFromTemplate(
+    request: CreateLayoutFromTemplateRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/from-template`,
+      request,
+    );
+  }
+
+  /**
    * Slice 6 S6.5: builds a new layout from the given preset ID. When
    * `eventId` is supplied the layout is attached to that event (caller
    * must own it); otherwise a per-user template is created.
@@ -89,6 +120,57 @@ export class VenueLayoutsRepository {
     return await apiClient.post<VenueLayoutDto>(
       `${this.basePath}/from-preset`,
       request,
+    );
+  }
+
+  /**
+   * Slice 9.2: atomic preset apply. Single round-trip replacement for the
+   * broken {@link createFromPreset} + {@link assignLayoutToEvent} two-step.
+   * The backend creates the layout AND flips the event into assigned-seating
+   * mode pointing at the new layout in a single transaction — no orphan on
+   * partial failure. No auto-tier-mapping (organiser maps later in Customize).
+   * 403 → caller does not own the event. 404 → event not found.
+   */
+  async applyPresetToEvent(
+    request: ApplyPresetToEventRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/apply-preset`,
+      request,
+    );
+  }
+
+  /**
+   * Slice 9.2: atomic template apply. Mirror of {@link applyPresetToEvent}
+   * for user-saved templates.
+   */
+  async applyTemplateToEvent(
+    request: ApplyTemplateToEventRequest,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/apply-template`,
+      request,
+    );
+  }
+
+  /**
+   * Slice 8 S8.9b: clones an existing layout as a per-user template
+   * (`isTemplate=true`, `eventId=null`, `createdByUserId` = current user).
+   * Backend's `VenueLayout.CloneAsTemplate` factory preserves zones, tables,
+   * decorations, canvas, and per-seat `IsEnabled`/`IsAccessible` flags.
+   * Tier mappings are deliberately dropped — templates are tier-free.
+   *
+   * Returns the newly-created template DTO. Throws an `ApiError` when the
+   * caller isn't authorized to read the source layout (403) or when the
+   * source can't be found (404).
+   */
+  async saveLayoutAsTemplate(
+    sourceLayoutId: string,
+    templateName: string,
+  ): Promise<VenueLayoutDto> {
+    return await apiClient.post<VenueLayoutDto>(
+      `${this.basePath}/${sourceLayoutId}/save-as-template`,
+      { templateName },
     );
   }
 
@@ -104,6 +186,20 @@ export class VenueLayoutsRepository {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Slice S4 — non-gating publish-readiness snapshot. Returns every blocker +
+   * warning + per-tier mapping summary at once. Distinct from the strict
+   * publish gate (`POST /api/Events/{id}/publish`) which short-circuits on
+   * the first issue.
+   */
+  async getLayoutPublishReadiness(
+    layoutId: string,
+  ): Promise<PublishReadinessReportDto> {
+    return await apiClient.get<PublishReadinessReportDto>(
+      `${this.basePath}/${layoutId}/publish-readiness`,
+    );
   }
 
   /** Slice 5 Chunk 4 — update layout name/canvas. Requires If-Match. */

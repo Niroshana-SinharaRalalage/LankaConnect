@@ -31,6 +31,11 @@ import type {
   RegistrationDetailsDto,
   AttendeeDto,
   EventAttendeesResponse, // Phase 6A.45
+  // Phase 7E.5: Mode picker reactivity
+  RegistrationMode,
+  AllowedRegistrationModesRequest,
+  // Phase 7E (bug fix): Mode-B head-count payload threading
+  HeadCountDto,
 } from '@/infrastructure/api/types/events.types';
 
 import { ApiError } from '@/infrastructure/api/client/api-errors';
@@ -47,6 +52,9 @@ export const eventKeys = {
   detail: (id: string) => [...eventKeys.details(), id] as const,
   search: (searchTerm: string) => [...eventKeys.all, 'search', searchTerm] as const,
   featured: (userId?: string, lat?: number, lng?: number) => [...eventKeys.all, 'featured', { userId, lat, lng }] as const,
+  // Phase 7E.5: Allowed registration modes for a draft event shape (Mode picker reactivity).
+  allowedRegistrationModes: (shape: AllowedRegistrationModesRequest) =>
+    [...eventKeys.all, 'allowed-registration-modes', shape] as const,
 };
 
 /**
@@ -248,6 +256,76 @@ export function useFeaturedEvents(
 }
 
 /**
+ * Phase 7E.5: useAllowedRegistrationModes
+ *
+ * React Query hook that fetches the set of registration modes compatible with the given
+ * event shape. Re-runs whenever any shape parameter changes — drives the Mode picker's
+ * disabled-options state and auto-clears invalid selections (architect hot-spot #5).
+ *
+ * Pattern: pass the *current* form-state values from `react-hook-form`'s `watch()` straight
+ * into the request shape. React Query memoises by `eventKeys.allowedRegistrationModes(shape)`,
+ * which is structurally compared, so identical shapes share the cached response and
+ * unnecessary refetches are skipped.
+ *
+ * @example
+ * ```tsx
+ * const isFree = watch('isFree');
+ * const { data: allowed = [RegistrationMode.DetailedAttendees] } = useAllowedRegistrationModes({
+ *   isFreeAttendance: isFree,
+ *   hasDualPricing: watch('enableDualPricing'),
+ *   hasGroupTiers: watch('enableGroupPricing'),
+ *   hasTicketTiers: watch('enableTieredTicketing'),
+ * });
+ * ```
+ *
+ * Defensive default: if the query is loading or errors, fall back to
+ * `[RegistrationMode.DetailedAttendees]` so the picker never shows zero options.
+ */
+export function useAllowedRegistrationModes(
+  shape: AllowedRegistrationModesRequest,
+  options?: Omit<UseQueryOptions<RegistrationMode[], ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: eventKeys.allowedRegistrationModes(shape),
+    queryFn: () => eventsRepository.getAllowedRegistrationModes(shape),
+    // Compatibility table is pure logic — long stale time is fine; will refetch only if
+    // shape changes (handled by queryKey).
+    staleTime: 60 * 60 * 1000, // 1 hour
+    refetchOnWindowFocus: false,
+    retry: 1,
+    ...options,
+  });
+}
+
+/**
+ * Phase 7F-B (architect-approved 2026-04-30): mutation hook for the registration-mode
+ * conversion endpoint. Used by both the dry-run preview AND the real commit — the dialog
+ * orchestrates two calls (one with `dryRun: true` then one with `dryRun: false`).
+ *
+ * On a non-dry-run success:
+ * - Invalidates the event detail cache so the caller sees the new `registrationMode`.
+ * - Invalidates the lists cache so dashboards reflect the change.
+ *
+ * Dry-run runs leave the cache untouched.
+ */
+export function useConvertRegistrationMode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ eventId, payload }: {
+      eventId: string;
+      payload: import('@/infrastructure/api/types/events.types').ConvertRegistrationModeRequest;
+    }) => eventsRepository.convertRegistrationMode(eventId, payload),
+    onSuccess: (result, vars) => {
+      if (!vars.payload.dryRun) {
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(vars.eventId) });
+        queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      }
+    },
+  });
+}
+
+/**
  * useCreateEvent Hook
  *
  * Mutation hook for creating a new event
@@ -427,7 +505,7 @@ export function useRsvpToEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string; addOnSelections?: { definitionId: string; quantity: number }[]; collectionAmount?: number; collectionNotes?: string; sponsorAmount?: number; sponsorOrganization?: string; sponsorNotes?: string }) => {
+    mutationFn: (data: { eventId: string; userId: string; quantity?: number; attendees?: any[]; email?: string; phoneNumber?: string; address?: string; successUrl?: string; cancelUrl?: string; donationAmount?: number; donorName?: string; donorPhone?: string; donorNotes?: string; addOnSelections?: { definitionId: string; quantity: number }[]; collectionAmount?: number; collectionNotes?: string; sponsorAmount?: number; sponsorOrganization?: string; sponsorNotes?: string; leadAttendeeName?: string; headCount?: HeadCountDto }) => {
       // Phase 6A.11: Construct full RsvpRequest with all fields (legacy and new format support)
       // Donation Feature: Include donation fields for combined checkout
       // Phase 6A.137D: Include add-on selections for bundled checkout
@@ -463,6 +541,11 @@ export function useRsvpToEvent() {
           sponsorOrganization: data.sponsorOrganization,
           sponsorNotes: data.sponsorNotes,
         }),
+        // Phase 7E (bug fix): thread Mode-B head-count payload through. Without these
+        // fields the auth-path RSVP for B1-B4 events fails with "Lead attendee name is
+        // required for HeadCountOnly events" because the hook silently dropped them.
+        ...(data.leadAttendeeName && { leadAttendeeName: data.leadAttendeeName }),
+        ...(data.headCount && { headCount: data.headCount }),
       };
       return eventsRepository.rsvpToEvent(data.eventId, rsvpRequest);
     },

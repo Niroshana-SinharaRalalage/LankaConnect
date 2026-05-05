@@ -10,8 +10,12 @@ interface CollapsibleSectionProps {
   description?: string;
   /** Optional icon component rendered before the title */
   icon?: React.ReactNode;
-  /** Whether the section is expanded by default */
+  /** Whether the section is expanded by default (uncontrolled mode only) */
   defaultOpen?: boolean;
+  /** Controlled open state. When provided alongside onOpenChange, the parent owns state. */
+  open?: boolean;
+  /** Controlled change handler. Required when `open` is provided. */
+  onOpenChange?: (open: boolean) => void;
   /** Section content */
   children: React.ReactNode;
   /** Optional className for the outer wrapper */
@@ -37,6 +41,8 @@ export function CollapsibleSection({
   description,
   icon,
   defaultOpen = true,
+  open,
+  onOpenChange,
   children,
   className = '',
   badge,
@@ -45,7 +51,19 @@ export function CollapsibleSection({
   expandLabel = 'Show details',
   collapseLabel = 'Hide details',
 }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const isControlled = open !== undefined;
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = isControlled ? open : internalOpen;
+
+  const handleToggle = () => {
+    const next = !isOpen;
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setInternalOpen(next);
+      onOpenChange?.(next);
+    }
+  };
 
   return (
     <div
@@ -55,7 +73,7 @@ export function CollapsibleSection({
       {/* Clickable Header */}
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={handleToggle}
         aria-expanded={isOpen}
         className={`group flex w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 text-left cursor-pointer transition-colors rounded-t-lg ${
           isOpen

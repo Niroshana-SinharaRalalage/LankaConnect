@@ -2,6 +2,7 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -10,15 +11,18 @@ namespace LankaConnect.Application.Events.Commands.PublishEvent;
 public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IVenueLayoutRepository _venueLayoutRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PublishEventCommandHandler> _logger;
 
     public PublishEventCommandHandler(
         IEventRepository eventRepository,
+        IVenueLayoutRepository venueLayoutRepository,
         IUnitOfWork unitOfWork,
         ILogger<PublishEventCommandHandler> logger)
     {
         _eventRepository = eventRepository;
+        _venueLayoutRepository = venueLayoutRepository;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -50,8 +54,41 @@ public class PublishEventCommandHandler : ICommandHandler<PublishEventCommand>
                 }
 
                 _logger.LogInformation(
-                    "PublishEvent: Event loaded - EventId={EventId}, CurrentStatus={Status}, DomainEventsCount={DomainEventCount}",
-                    @event.Id, @event.Status, @event.DomainEvents.Count);
+                    "PublishEvent: Event loaded - EventId={EventId}, CurrentStatus={Status}, DomainEventsCount={DomainEventCount}, VenueLayoutId={VenueLayoutId}",
+                    @event.Id, @event.Status, @event.DomainEvents.Count, @event.VenueLayoutId);
+
+                // Slice 9.1: publish-readiness gate. For seated events (VenueLayoutId set),
+                // load the assigned layout and ask the domain whether it's publish-ready —
+                // strict tier-mapping + capacity invariants. GA events skip this check.
+                if (@event.VenueLayoutId.HasValue)
+                {
+                    var layout = await _venueLayoutRepository.GetAssignedLayoutForEventAsync(
+                        @event.Id, cancellationToken);
+
+                    if (layout is null)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "PublishEvent FAILED: VenueLayoutId={VenueLayoutId} but layout could not be loaded — orphan or DB integrity issue. EventId={EventId}, Duration={ElapsedMs}ms",
+                            @event.VenueLayoutId.Value, request.EventId, stopwatch.ElapsedMilliseconds);
+                        return Result.Failure(
+                            "Event references a venue layout but the layout could not be loaded. Please reattach the layout in the seating section.");
+                    }
+
+                    var readinessResult = @event.CheckLayoutPublishReadiness(layout);
+                    if (readinessResult.IsFailure)
+                    {
+                        stopwatch.Stop();
+                        _logger.LogWarning(
+                            "PublishEvent FAILED: Layout publish-readiness check failed - EventId={EventId}, LayoutId={LayoutId}, Reason={Reason}, Duration={ElapsedMs}ms",
+                            request.EventId, layout.Id, readinessResult.Error, stopwatch.ElapsedMilliseconds);
+                        return readinessResult;
+                    }
+
+                    _logger.LogInformation(
+                        "PublishEvent: Layout publish-readiness check passed - EventId={EventId}, LayoutId={LayoutId}",
+                        request.EventId, layout.Id);
+                }
 
                 // Use domain method to publish
                 var publishResult = @event.Publish();

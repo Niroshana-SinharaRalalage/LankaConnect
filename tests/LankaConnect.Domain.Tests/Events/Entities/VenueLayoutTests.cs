@@ -1,5 +1,6 @@
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
 
@@ -233,6 +234,26 @@ public class VenueLayoutTests
     }
 
     [Fact]
+    public void GenerateTheaterSeats_OnPopulatedZone_Should_Fail()
+    {
+        // Slice 9.5 contract: refusing to regenerate seats on an already-populated
+        // zone is a defence-in-depth check (the canvas-editor UI also gates the
+        // seat-gen panel on totalSeatCount === 0). Removing existing seats via
+        // the domain orphans them due to the optional XOR-with-VenueTableId FK,
+        // which then violates the Postgres ck_seats_zone_xor_table CHECK at
+        // SaveChanges. Refusing fast keeps the error precise + clean.
+        var layout = CreateValidLayout();
+        var zone = layout.AddZone("Main Floor", "#FF0000", 1).Value;
+        layout.GenerateTheaterSeats(zone.Id, rows: 3, seatsPerRow: 4); // populate first
+
+        var result = layout.GenerateTheaterSeats(zone.Id, rows: 5, seatsPerRow: 5);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("already has");
+        zone.Seats.Should().HaveCount(12); // original seats preserved
+    }
+
+    [Fact]
     public void GenerateTheaterSeats_Should_Label_Correctly()
     {
         var layout = CreateValidLayout();
@@ -263,16 +284,24 @@ public class VenueLayoutTests
     }
 
     [Fact]
-    public void GenerateTheaterSeats_Should_Clear_Existing_Seats_First()
+    public void GenerateTheaterSeats_Should_Refuse_Regeneration_On_Populated_Zone()
     {
+        // Slice 9.5 contract update: regenerating seats on a populated zone is
+        // refused. Background: the optional XOR-with-VenueTableId FK means EF
+        // Core orphans removed seats by setting VenueZoneId=null, which violates
+        // the Postgres ck_seats_zone_xor_table CHECK at SaveChanges. Domain-level
+        // refusal is defence-in-depth; the canvas-editor UI also gates the seat-
+        // gen panel on totalSeatCount === 0.
         var layout = CreateValidLayout();
         var zone = layout.AddZone("Floor", "#FF0000", 1).Value;
         layout.GenerateTheaterSeats(zone.Id, rows: 5, seatsPerRow: 5); // 25 seats
         zone.Seats.Should().HaveCount(25);
 
-        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3); // Regenerate: 6 seats
+        var result = layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 3);
 
-        zone.Seats.Should().HaveCount(6);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("already has");
+        zone.Seats.Should().HaveCount(25); // original seats preserved (not 6, not 0)
     }
 
     [Fact]
@@ -593,6 +622,250 @@ public class VenueLayoutTests
 
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("enabled seats");
+    }
+
+    // ────── Slice 9.1: requireTierMapping flag ──────
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingFalse_UnmappedZone_Should_Succeed()
+    {
+        // Apply-preset / apply-template path: zones arrive without tier_assignments.
+        // The permissive flag must allow this.
+        var layout = CreateValidLayout();
+        layout.AddZone("Main Floor", "#3b82f6", 1);
+        var tiers = CreateTestTiers();
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingFalse_StillEnforcesCapacityForMappedZones()
+    {
+        // Even in permissive mode, a zone that IS mapped must respect the tier capacity.
+        // This guarantees apply-preset never accepts an inconsistent state.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 10, seatsPerRow: 10); // 100 seats vs cap 30
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("enabled seats");
+    }
+
+    [Fact]
+    public void ValidateForEvent_BanquetLayoutWithTablesOnlyNoZones_Should_Succeed()
+    {
+        // Slice 9.4 follow-up fix: banquet presets (round tables, square tables, etc.)
+        // legitimately have NO zones — seats live directly on the tables. The original
+        // "≥1 zone" check rejected every banquet apply-preset request. Validation must
+        // accept zones OR tables.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var addTableResult = layout.GenerateRoundTable("Table 1", capacity: 8, sortOrder: 1);
+        addTableResult.IsSuccess.Should().BeTrue();
+
+        var result = layout.ValidateForEvent(tiers, requireTierMapping: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateForEvent_EmptyLayout_NoZonesAndNoTables_Should_Fail()
+    {
+        // Regression guard for the truly-empty case — previously the only failure
+        // path. Now updated message to match new contract.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var result = layout.ValidateForEvent(tiers);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("at least one zone or table");
+    }
+
+    [Fact]
+    public void ValidateForEvent_RequireTierMappingTrue_IsDefault_PreservesExistingBehaviour()
+    {
+        // Default-true keeps every existing caller's strict behaviour. Regression guard.
+        var layout = CreateValidLayout();
+        layout.AddZone("VIP", "#FF0000", 1);
+        var tiers = CreateTestTiers();
+
+        // No flag passed — defaults to requireTierMapping=true.
+        var result = layout.ValidateForEvent(tiers);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("must be mapped");
+    }
+
+    #endregion
+
+    #region BuildPublishReadinessReport Tests (Slice S4)
+
+    [Fact]
+    public void BuildPublishReadinessReport_EmptyLayout_Should_Block_With_LayoutEmptyCode()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().ContainSingle(b => b.Code == PublishReadinessCode.LayoutEmpty);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_ZoneWithSeatsButNoTier_Should_Block_With_ZoneUnmapped()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("Main Floor", "#3b82f6", 1).Value;
+        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 5);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        var blocker = report.Blockers.Should().ContainSingle(b =>
+            b.Code == PublishReadinessCode.ZoneUnmapped).Subject;
+        blocker.ShapeId.Should().Be(zone.Id);
+        blocker.ShapeName.Should().Be("Main Floor");
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_EmptyZoneNoTier_Should_Warn_Not_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        layout.AddZone("Empty Zone", "#3b82f6", 1);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Blockers.Should().NotContain(b => b.Code == PublishReadinessCode.ZoneUnmapped);
+        report.Warnings.Should().Contain(w => w.Code == PublishReadinessCode.ZoneEmptyAndUnmapped);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_ZoneOverCapacity_Should_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers(); // first tier capacity = 30
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 10, seatsPerRow: 10); // 100 > 30
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().Contain(b =>
+            b.Code == PublishReadinessCode.ZoneOverCapacity);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TierWithoutMapping_Should_Warn_With_TierWithoutMapping()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        // Zone exists, mapped to tier 0; tier 1 has no mapping
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        tiers[0].AssignToZone(zone.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 1, seatsPerRow: 5);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Warnings.Should().Contain(w =>
+            w.Code == PublishReadinessCode.TierWithoutMapping
+            && w.TierId == tiers[1].Id);
+        // Layout itself is publish-ready — no blockers, only the tier-coverage warning.
+        report.IsPublishReady.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TierTotalOverCapacity_Should_Block()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers(); // tier 0 capacity = 30
+        // Two zones each at 20 seats, both mapped to tier 0 — 40 total > 30 capacity
+        var zoneA = layout.AddZone("VIP A", "#FF0000", 1).Value;
+        var zoneB = layout.AddZone("VIP B", "#FFAA00", 2).Value;
+        tiers[0].AssignToZone(zoneA.Id);
+        tiers[0].AssignToZone(zoneB.Id);
+        layout.GenerateTheaterSeats(zoneA.Id, rows: 2, seatsPerRow: 10); // 20
+        layout.GenerateTheaterSeats(zoneB.Id, rows: 2, seatsPerRow: 10); // 20
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeFalse();
+        report.Blockers.Should().Contain(b =>
+            b.Code == PublishReadinessCode.TierTotalOverCapacity
+            && b.TierId == tiers[0].Id);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_TableWithSeatsButNoTier_Should_Block_With_TableUnmapped()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var table = layout.GenerateRoundTable("Table 1", capacity: 8, sortOrder: 1).Value;
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        var blocker = report.Blockers.Should().ContainSingle(b =>
+            b.Code == PublishReadinessCode.TableUnmapped).Subject;
+        blocker.ShapeId.Should().Be(table.Id);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_FullyMappedHappyPath_Should_Be_PublishReady()
+    {
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+        var zone = layout.AddZone("VIP", "#FF0000", 1).Value;
+        var table = layout.GenerateRoundTable("Banquet 1", capacity: 8, sortOrder: 2).Value;
+        tiers[0].AssignToZone(zone.Id);
+        tiers[1].AssignToTable(table.Id);
+        layout.GenerateTheaterSeats(zone.Id, rows: 2, seatsPerRow: 10); // 20 ≤ 30
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.IsPublishReady.Should().BeTrue();
+        report.Blockers.Should().BeEmpty();
+        report.Warnings.Should().BeEmpty();
+        report.TierSummary.Should().HaveCount(2);
+        report.TierSummary.Should().ContainSingle(s =>
+            s.TierId == tiers[0].Id
+            && s.MappedZones.Count == 1
+            && s.TotalEnabledSeats == 20);
+        report.TierSummary.Should().ContainSingle(s =>
+            s.TierId == tiers[1].Id
+            && s.MappedTables.Count == 1
+            && s.TotalEnabledSeats == 8);
+    }
+
+    [Fact]
+    public void BuildPublishReadinessReport_EnumeratesAllIssues_NotShortCircuit()
+    {
+        // Architect requirement: report must list every issue at once, unlike
+        // ValidateForEvent which short-circuits on the first failure.
+        var layout = CreateValidLayout();
+        var tiers = CreateTestTiers();
+
+        var zoneA = layout.AddZone("Unmapped A", "#FF0000", 1).Value;
+        layout.GenerateTheaterSeats(zoneA.Id, rows: 1, seatsPerRow: 3);
+        var zoneB = layout.AddZone("Unmapped B", "#00FF00", 2).Value;
+        layout.GenerateTheaterSeats(zoneB.Id, rows: 1, seatsPerRow: 3);
+        layout.GenerateRoundTable("Unmapped Table", capacity: 4, sortOrder: 3);
+
+        var report = layout.BuildPublishReadinessReport(tiers);
+
+        report.Blockers.Count(b => b.Code == PublishReadinessCode.ZoneUnmapped).Should().Be(2);
+        report.Blockers.Should().Contain(b => b.Code == PublishReadinessCode.TableUnmapped);
+        // Both tiers have no mappings → 2 TierWithoutMapping warnings.
+        report.Warnings.Count(w => w.Code == PublishReadinessCode.TierWithoutMapping).Should().Be(2);
     }
 
     #endregion

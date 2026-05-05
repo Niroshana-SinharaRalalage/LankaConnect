@@ -288,9 +288,9 @@ type Phase =
   | 'zoom-out' | 'pause';
 
 const PHASE_MS: Record<Phase, number> = {
-  'world': 3000, 'zoom-sl': 2000, 'sl-cities': 5000, 'sl-lines': 6000,
-  'beam': 3500, 'zoom-us': 2000, 'us-hubs': 6000, 'us-lines': 8000,
-  'zoom-out': 2500, 'pause': 2000,
+  'world': 1000, 'zoom-sl': 1000, 'sl-cities': 2000, 'sl-lines': 2000,
+  'beam': 1500, 'zoom-us': 1000, 'us-hubs': 3000, 'us-lines': 3000,
+  'zoom-out': 1500, 'pause': 1000,
 };
 const PHASE_SEQ: Phase[] = [
   'world', 'zoom-sl', 'sl-cities', 'sl-lines',

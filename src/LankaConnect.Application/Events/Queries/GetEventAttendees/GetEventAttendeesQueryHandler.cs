@@ -104,7 +104,11 @@ public class GetEventAttendeesQueryHandler
                     where r.Status == RegistrationStatus.Confirmed ||
                           r.Status == RegistrationStatus.Waitlisted ||
                           r.Status == RegistrationStatus.CheckedIn ||
-                          r.Status == RegistrationStatus.Attended
+                          r.Status == RegistrationStatus.Attended ||
+                          // Phase 7E follow-up: RefundRequested rows still consume capacity until
+                          // Stripe confirms the refund (per RegistrationStatus enum doc). Surface
+                          // them so organisers can spot stuck rows and force-cancel them.
+                          r.Status == RegistrationStatus.RefundRequested
                     join t in _context.Tickets on r.Id equals t.RegistrationId into tickets
                     from ticket in tickets.DefaultIfEmpty()
                     orderby r.CreatedAt
@@ -136,6 +140,12 @@ public class GetEventAttendeesQueryHandler
                         AdultCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Adult),
                         ChildCount = r.Attendees.Count(a => a.AgeCategory == AgeCategory.Child),
 
+                        // Phase 7E.8: explicit male/female counters so CSV/Excel exports stay
+                        // accurate under Mode B (post-processing overrides these from the
+                        // demographic axis when r.Attendees is empty).
+                        MaleCount = r.Attendees.Count(a => a.Gender == Gender.Male),
+                        FemaleCount = r.Attendees.Count(a => a.Gender == Gender.Female),
+
                         // Gender distribution with full names (Phase 6A.45 fix - avoid Excel formula interpretation)
                         GenderDistribution = string.Join(", ",
                             r.Attendees
@@ -143,6 +153,14 @@ public class GetEventAttendeesQueryHandler
                                 .GroupBy(a => a.Gender!.Value)
                                 .Select(g => $"{g.Count()} {g.Key}")
                         ),
+
+                        // Phase 7E.7: RegistrationMode is a simple smallint column EF can translate.
+                        // LeadAttendeeName is a simple text column. HeadCount itself uses a custom
+                        // JSONB ValueConverter so its sub-fields can't be SQL-projected — Mode B
+                        // overrides for TotalAttendees/AdultCount/ChildCount happen in the
+                        // post-processing pass below where the entity is materialised.
+                        RegistrationMode = r.RegistrationMode,
+                        LeadAttendeeName = r.LeadAttendeeName,
 
                         TotalAmount = r.TotalPrice != null ? r.TotalPrice.Amount : null,
 
@@ -167,6 +185,69 @@ public class GetEventAttendeesQueryHandler
                         HasTicket = ticket != null
                     }
                 ).ToListAsync(cancellationToken);
+
+        // Phase 7E.7: Post-processing override for Mode B registrations. The custom JSONB
+        // ValueConverter on Registration.HeadCount prevents SQL-side sub-field access, so we
+        // do a second tiny query that materialises HeadCount via the converter, then map fields
+        // to the DTOs we already have. Mode A registrations are untouched (HeadCount is null).
+        var bModeRows = await _context.Registrations
+            .AsNoTracking()
+            .Where(r => r.EventId == request.EventId &&
+                        r.RegistrationMode != Domain.Events.Enums.RegistrationMode.DetailedAttendees &&
+                        (r.Status == RegistrationStatus.Confirmed ||
+                         r.Status == RegistrationStatus.Waitlisted ||
+                         r.Status == RegistrationStatus.CheckedIn ||
+                         r.Status == RegistrationStatus.Attended ||
+                         r.Status == RegistrationStatus.RefundRequested))
+            .Select(r => new { r.Id, r.HeadCount })
+            .ToListAsync(cancellationToken);
+
+        if (bModeRows.Count > 0)
+        {
+            var bModeMap = bModeRows.ToDictionary(x => x.Id, x => x.HeadCount);
+            foreach (var dto in attendeeDtos)
+            {
+                if (!bModeMap.TryGetValue(dto.RegistrationId, out var hc) || hc == null) continue;
+
+                // Override demographic counts from the snapshotted HeadCountBreakdown.
+                dto.TotalAttendees = hc.Total;
+                if (hc.Demographics != null)
+                {
+                    var demo = hc.Demographics;
+                    dto.AdultCount = (demo.Adults ?? 0)
+                                     + (demo.AdultMales ?? 0)
+                                     + (demo.AdultFemales ?? 0);
+                    dto.ChildCount = (demo.Children ?? 0)
+                                     + (demo.ChildMales ?? 0)
+                                     + (demo.ChildFemales ?? 0);
+
+                    // Reuse the shared formatter for consistent wording across emails + dashboard.
+                    dto.HeadCountBreakdownLine = LankaConnect.Application.Events.Common
+                        .HeadCountEmailFormatter.FormatDemographicLine(demo);
+
+                    // GenderDistribution column for Mode B mirrors the demographic line so the
+                    // existing column in the AttendeeManagementTab is informative without UI changes.
+                    var males = (demo.Males ?? 0) + (demo.AdultMales ?? 0) + (demo.ChildMales ?? 0);
+                    var females = (demo.Females ?? 0) + (demo.AdultFemales ?? 0) + (demo.ChildFemales ?? 0);
+                    dto.MaleCount = males;
+                    dto.FemaleCount = females;
+                    if (males > 0 || females > 0)
+                    {
+                        dto.GenderDistribution = $"{males} Male, {females} Female";
+                    }
+                }
+                else
+                {
+                    // B1: Total only, no demographic axis.
+                    dto.AdultCount = 0;
+                    dto.ChildCount = 0;
+                    dto.MaleCount = 0;
+                    dto.FemaleCount = 0;
+                    dto.GenderDistribution = string.Empty;
+                    dto.HeadCountBreakdownLine = string.Empty;
+                }
+            }
+        }
 
         // Phase 6A.X FIX: Calculate breakdown ON-THE-FLY for old registrations without breakdown data
         // This ensures ALL events show detailed breakdown (not just new ones created after fix deployment)

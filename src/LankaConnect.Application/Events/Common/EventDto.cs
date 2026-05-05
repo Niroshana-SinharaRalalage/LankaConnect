@@ -22,6 +22,34 @@ public record EventDto
     /// </summary>
     public int MaxAttendeesPerRegistration { get; init; } = 10;
 
+    /// <summary>
+    /// Phase 7E: Per-event registration capture mode chosen by the organiser.
+    /// - DetailedAttendees (default for all pre-7E events): per-attendee Name + Age + Gender.
+    /// - HeadCountOnly / HeadCountByAge / HeadCountByGender / HeadCountByAgeAndGender:
+    ///   lead name + composite head-count (with optional demographic + tier-count axes).
+    /// - NoRegistration: drop-in event; standalone donations/sponsors/add-ons/collections still work.
+    /// Defaults to <see cref="RegistrationMode.DetailedAttendees"/> so legacy clients with stale
+    /// React Query cache (no field present) tolerate the new shape without crashes.
+    /// </summary>
+    public RegistrationMode RegistrationMode { get; init; } = RegistrationMode.DetailedAttendees;
+
+    /// <summary>
+    /// Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the frontend whether
+    /// the event's <see cref="RegistrationMode"/> is currently implementable.
+    /// - <c>"active"</c>: the configured mode passes the compatibility validator AND the
+    ///   implementation is shipped — frontend renders the proper RSVP form.
+    /// - <c>"deferred"</c>: the configured mode is configured-OK per the target-state plan
+    ///   but the implementation slice hasn't shipped yet (today: paid + B-mode, awaiting 7E.3b).
+    ///   Frontend renders a read-only "coming soon — contact organiser" panel instead of a
+    ///   fillable form so users don't hit a dead-end submit.
+    ///
+    /// Architect-required default (edit #1): <c>"deferred"</c> is fail-safe. Any code path
+    /// that forgets to populate this field falls into the "coming soon" panel rather than
+    /// rendering a fillable dead-end form. The mapper (the only producer) explicitly sets it
+    /// to <c>"active"</c> when <see cref="RegistrationModeCompatibility.Check"/> passes.
+    /// </summary>
+    public string RegistrationModeStatus { get; init; } = "deferred";
+
     public EventStatus Status { get; init; }
     public EventCategory Category { get; init; }
     public DateTime CreatedAt { get; init; }

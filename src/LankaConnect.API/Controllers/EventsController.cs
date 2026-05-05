@@ -14,6 +14,7 @@ using LankaConnect.Application.Events.Commands.SubmitEventForApproval;
 using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
+using LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
@@ -26,6 +27,7 @@ using LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee;
 using LankaConnect.Application.Events.Commands.AdminApproval;
 using LankaConnect.Application.Events.Commands.SendEventNotification;
 using LankaConnect.Application.Events.Commands.SendEventReminder;
+using LankaConnect.Application.Events.Queries.GetAllowedRegistrationModes;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEvents;
 using LankaConnect.Application.Events.Queries.GetEventsByOrganizer;
@@ -315,6 +317,33 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
+    /// <summary>
+    /// Phase 7E.2: Returns the set of <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/>
+    /// values compatible with a given draft event shape. Drives the frontend mode picker so
+    /// disabled options match server-side validation. All shape parameters default to <c>false</c>.
+    /// Public endpoint — no auth needed (the response is shape-only metadata).
+    /// </summary>
+    [HttpGet("allowed-registration-modes")]
+    [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllowedRegistrationModes(
+        [FromQuery] bool isFreeAttendance = false,
+        [FromQuery] bool hasSeating = false,
+        [FromQuery] bool hasNamedSeating = false,
+        [FromQuery] bool requiresAttendeeNameOnTicket = false,
+        [FromQuery] bool hasDualPricing = false,
+        [FromQuery] bool hasGroupTiers = false,
+        [FromQuery] bool hasTicketTiers = false,
+        [FromQuery] bool hasIdentityBoundAddOn = false,
+        [FromQuery] bool hasMatrixPricing = false)
+    {
+        var query = new GetAllowedRegistrationModesQuery(
+            isFreeAttendance, hasSeating, hasNamedSeating, requiresAttendeeNameOnTicket,
+            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing);
+
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
     // ==================== AUTHENTICATED ENDPOINTS ====================
 
     /// <summary>
@@ -573,6 +602,35 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 7F-B: Convert all active registrations on an event from one
+    /// <see cref="LankaConnect.Domain.Events.Enums.RegistrationMode"/> to another.
+    /// Owner only. Pass <c>dryRun=true</c> to compute the conversion report without
+    /// applying — drives the UI's diff-preview confirmation dialog.
+    /// </summary>
+    [HttpPost("{id:guid}/convert-registration-mode")]
+    [Authorize]
+    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ConvertRegistrationMode(
+        Guid id, [FromBody] ConvertRegistrationModeRequest request)
+    {
+        Logger.LogInformation(
+            "[7F-B] ConvertRegistrationMode endpoint hit — EventId={EventId} TargetMode={TargetMode} DryRun={DryRun}",
+            id, request.TargetMode, request.DryRun);
+
+        var command = new LankaConnect.Application.Events.Commands.ConvertRegistrationMode.ConvertRegistrationModeCommand(
+            EventId: id,
+            TargetMode: request.TargetMode,
+            DryRun: request.DryRun,
+            NotifyAttendees: request.NotifyAttendees);
+        var result = await Mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Postpone an event with reason (Owner only)
     /// </summary>
     [HttpPost("{id:guid}/postpone")]
@@ -642,7 +700,10 @@ public class EventsController : BaseController<EventsController>
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
-            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
+            // Phase 7E.3a: Pass head-count payload for B-mode events
+            LeadAttendeeName: request.LeadAttendeeName,
+            HeadCount: request.HeadCount
         );
         var result = await Mediator.Send(command);
 
@@ -740,7 +801,10 @@ public class EventsController : BaseController<EventsController>
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
-            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber
+            WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
+            // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
+            LeadAttendeeName: request.LeadAttendeeName,
+            HeadCount: request.HeadCount
         );
 
         var result = await Mediator.Send(command);
@@ -832,6 +896,64 @@ public class EventsController : BaseController<EventsController>
         {
             Logger.LogInformation("[Phase 6A.91] Refund request withdrawn successfully - EventId: {EventId}, UserId: {UserId}",
                 id, userId);
+        }
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 7E follow-up: Organiser-initiated force-cancellation of a registration that
+    /// is stuck in <c>RefundRequested</c> status because the Stripe webhook never confirmed
+    /// the refund. Authorization mirrors <see cref="ExportEventAttendees"/>: caller must be
+    /// the event organiser (owner or co-organizer).
+    ///
+    /// Effect: the row's status is moved <c>RefundRequested → Cancelled</c>. We don't move
+    /// it to <c>Refunded</c> because no refund is being issued by us — this is a clean-up
+    /// for off-platform / abandoned refund flows.
+    /// </summary>
+    [HttpPost("{eventId:guid}/registrations/{registrationId:guid}/force-cancel-stuck-refund")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ForceCancelStuckRefund(Guid eventId, Guid registrationId)
+    {
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "User {UserId} requesting force-cancel of stuck refund - EventId={EventId}, RegistrationId={RegistrationId}",
+            userId, eventId, registrationId);
+
+        // Authorization: load event via the GetEventByIdQuery so we get the populated
+        // IsCurrentUserOrganizer flag (mirrors ExportEventAttendees pattern, Phase 6A.133).
+        var eventQuery = new GetEventByIdQuery(eventId);
+        var eventResult = await Mediator.Send(eventQuery);
+        if (eventResult.IsFailure)
+        {
+            if (eventResult.Errors.Any(e => e.Contains("not found")))
+            {
+                return NotFound();
+            }
+            return HandleResult(eventResult);
+        }
+
+        if (eventResult.Value!.IsCurrentUserOrganizer != true)
+        {
+            Logger.LogWarning(
+                "User {UserId} attempted to force-cancel a registration without organizer privileges - EventId={EventId}, RegistrationId={RegistrationId}",
+                userId, eventId, registrationId);
+            return Forbid();
+        }
+
+        var command = new ForceCancelStuckRefundCommand(eventId, registrationId);
+        var result = await Mediator.Send(command);
+
+        if (result.IsSuccess)
+        {
+            Logger.LogInformation(
+                "Force-cancel succeeded - Organizer={UserId}, EventId={EventId}, RegistrationId={RegistrationId}",
+                userId, eventId, registrationId);
         }
 
         return HandleResult(result);
@@ -3181,6 +3303,46 @@ public class EventsController : BaseController<EventsController>
     /// Creates a pending addition and returns a Stripe checkout URL.
     /// Part of the Add-Only Attendees with Delta Payment feature.
     /// </summary>
+    /// <summary>
+    /// Phase 7F-D (architect-approved 2026-04-30): initiate adding head-count attendees
+    /// to an existing paid Mode-B registration. Mirrors /add-attendees but operates on
+    /// the head-count axis. For free events the merge happens immediately + returns
+    /// success with no Stripe URL; for paid events returns a Stripe checkout URL.
+    /// </summary>
+    [HttpPost("registrations/{registrationId:guid}/add-headcount")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(LankaConnect.Application.Events.Commands.InitiateAddAttendees.InitiateAddAttendeesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> InitiateAddHeadCount(
+        Guid registrationId,
+        [FromBody] InitiateAddHeadCountRequest request)
+    {
+        var userId = User.Identity?.IsAuthenticated == true ? User.GetUserId() : (Guid?)null;
+        Logger.LogInformation(
+            "[7F-D] API: InitiateAddHeadCount RegId={RegId} UserId={UserId} Total={Total}",
+            registrationId, userId, request.HeadCountDelta?.Total);
+
+        if (request.HeadCountDelta == null)
+            return BadRequest(new ProblemDetails { Title = "Missing body", Detail = "headCountDelta is required", Status = 400 });
+
+        var command = new LankaConnect.Application.Events.Commands.InitiateAddHeadCount.InitiateAddHeadCountCommand(
+            RegistrationId: registrationId,
+            HeadCountDelta: request.HeadCountDelta,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
+        if (result.IsFailure)
+            return BadRequest(new ProblemDetails { Title = "Failed", Detail = result.Error, Status = 400 });
+
+        if (!result.Value.Success)
+            return BadRequest(new ProblemDetails { Title = "Validation", Detail = result.Value.ErrorMessage, Status = 400 });
+
+        return Ok(result.Value);
+    }
+
     [HttpPost("registrations/{registrationId:guid}/add-attendees")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(InitiateAddAttendeesResult), StatusCodes.Status200OK)]
@@ -3335,6 +3497,14 @@ public class EventsController : BaseController<EventsController>
 
 // Request DTOs
 public record CancelEventRequest(string Reason);
+
+/// <summary>
+/// Phase 7F-B: request body for <see cref="EventsController.ConvertRegistrationMode"/>.
+/// </summary>
+public record ConvertRegistrationModeRequest(
+    LankaConnect.Domain.Events.Enums.RegistrationMode TargetMode,
+    bool DryRun = false,
+    bool NotifyAttendees = false);
 public record PostponeEventRequest(string Reason);
 // Phase 6A.11: Updated to support multi-attendee registrations with detailed attendee information
 public record RsvpRequest(
@@ -3363,7 +3533,11 @@ public record RsvpRequest(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
+    // handler dispatches by event.RegistrationMode).
+    string? LeadAttendeeName = null,
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3403,7 +3577,10 @@ public record AnonymousRegistrationRequest(
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
-    string? WhatsAppPhoneNumber = null);
+    string? WhatsAppPhoneNumber = null,
+    // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
+    string? LeadAttendeeName = null,
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration
@@ -3630,6 +3807,15 @@ public record CalculateAdditionPriceRequest(
 /// Request to initiate adding attendees to a paid registration.
 /// Part of the Add-Only Attendees with Delta Payment feature.
 /// </summary>
+/// <summary>
+/// Phase 7F-D request body. <c>HeadCountDelta</c> uses the same shape as RSVP so the
+/// frontend's existing head-count form components can be reused.
+/// </summary>
+public record InitiateAddHeadCountRequest(
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto HeadCountDelta,
+    string SuccessUrl,
+    string CancelUrl);
+
 public record InitiateAddAttendeesRequest(
     List<AddAttendeeDto>? NewAttendees,
     string SuccessUrl,

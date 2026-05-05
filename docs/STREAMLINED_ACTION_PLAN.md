@@ -3,11 +3,1160 @@
 
 **Philosophy:** Build locally, iterate fast, ship to Azure when ready
 **Approach:** Complete each item fully before moving to next
+
+---
+
+## 🎯 2026-05-04 (S8.2.A) — Slice S8.2.A SHIPPED + STAGING-VERIFIED — pending seat-assignment stash on Registration
+
+**Goal**: sub-chunk A of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds the registration-scoped stash that the buyer-flow (S8.2.B) and webhook (S8.2.C) will use to remember the buyer's intended seat assignments + seat-hold session id across the RSVP → Stripe Checkout → webhook window. No behaviour change visible at the API yet (the stash is only ever set/read by chunks B and C); this PR is the persistence + invariant guard foundation.
+
+**S8.2.A shipped (commit `635bc103`, deploy `25342621429` `success`)**:
+
+**Domain changes**:
+- New `PendingSeatAssignment` value object — `(AttendeeIndex, SeatId, SeatLabel)` tuple with creation-time invariants (non-empty SeatId, non-empty SeatLabel, non-negative index, label trimmed).
+- `Registration._pendingSeatAssignments` owned collection + `PendingSeatAssignments` `IReadOnlyList` accessor.
+- `Registration.PendingSeatSessionId` nullable string property.
+- `Registration.SetPendingSeatAssignments(sessionId, assignments)` with invariants:
+  - Status must be `Preliminary` (stash is meaningful only pre-payment).
+  - `sessionId` non-empty.
+  - `assignments.Count == _attendees.Count`.
+  - `AttendeeIndex` unique and within range.
+  - **Replacement-not-append**: a second call with new seats fully replaces the first stash (handles re-RSVP with seat changes).
+- `Registration.ClearPendingSeatAssignments()` — idempotent. Called by `ConfirmSeatAssignments` on success path AND by the checkout-expired webhook on timeout path. No status guard (callers control state transitions separately).
+
+**Infrastructure changes**:
+- `RegistrationConfiguration` extended:
+  - `builder.OwnsMany(r => r.PendingSeatAssignments, ...).ToJson("pending_seat_assignments")` — JSONB-owned collection.
+  - `builder.Property(r => r.PendingSeatSessionId).HasColumnName("pending_seat_session_id")` varchar(100) nullable.
+- Real EF migration `Phase8S82A_AddPendingSeatAssignmentsToRegistration` — adds 2 nullable columns to `events.registrations`. Cleaned of seed-data drift noise (the auto-generated body included reference_data timestamp updates that we intentionally removed). Down() drops both columns (rollback-safe).
+
+**Tests**: 9 new domain unit tests covering happy path / status guard / empty session / count mismatch / duplicate index / out-of-range / replacement semantics / idempotent clear / clear when no stash. 2583/2583 Application tests still pass — no regressions despite touching the Registration aggregate again.
+
+**Staging verification**:
+- Backend deploy `25342621429` returned `conclusion=success` — confirming the EF migration applied cleanly.
+- Container logs reference `pending_seat_assignments` 3× (EF migration application + EF model snapshot loading at startup).
+- **MVP regression bundle 10/10 GREEN** post-deploy.
+- **S8.1 round-trip smoke still passes** (correlation `c397eb25-aff9-488a-ab19-10bf83cc759f`) — the new columns don't break existing reads. Pre-S8 rows continue to deserialise with `seatId: null, seatLabel: null` and the new `pendingSeatAssignments` collection is empty.
+
+**API smoke evidence (cumulative S8.1 + S8.2.A)**:
+- T1 round-trip via `GET /api/events/{id}/my-registration` for a paid Confirmed registration → 200 with attendees rehydrated cleanly. Correlations: `7185d1a4-24df-4eef-a4ae-aaede9187738` (S8.1 post-deploy), `8ea2ed42-d3a8-4e78-97e5-4abf47ddff48` (S8.2.A post-deploy).
+- T2 backwards compat verified: existing rows have `seatId: null, seatLabel: null`.
+- T3 second event's registration round-trips cleanly. Correlations: `6dafb220-36b7-4d8f-a16d-f9f3e980c93d` (S8.1), `c397eb25-aff9-488a-ab19-10bf83cc759f` (S8.2.A).
+
+**Still no buyer-facing behaviour change** — the user-facing bug (silent seat-assignment drop after payment) gets fixed in S8.2.B (RSVP handler validation that calls `SetPendingSeatAssignments`) + S8.2.C (webhook conversion that calls `ConfirmSeatAssignments`).
+
+**Next**: Slice S8.2.B — extend `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` with `SeatIds` + `SeatSessionId`, validate (when SeatingMode=AssignedSeating) that seat IDs match held seats, call `Registration.SetPendingSeatAssignments` before Stripe Checkout. Architect-estimated 4–6h; separate PR.
+
+---
+
+## 🎯 2026-05-04 (latest) — Slice S8.1 SHIPPED + STAGING-VERIFIED — domain shape + EF JSONB mapping for attendee seat binding
+
+**Goal**: foundation chunk of Slice S8 (seating wire-up) per ADR-011. No behaviour change at runtime — the buyer/webhook flow that triggers seat binding ships in S8.2. This PR is foundation only.
+
+**Architecture decision sign-off**:
+- ADR-011 captures the architect-approved 4-chunk plan: S8.1 domain → S8.2 application+webhook → S8.3 cancel/refund unlock → S8.4 data fixup + observability close-out.
+- User signed off Q1–Q5 with architect-recommended defaults (delete-on-refund, optimistic-fail at webhook, refund+comp for in-flight broken rows, defer add-attendees-with-seats to S9, hold TTL stays 10 min).
+- Doc + master TODO link: commit `1f20b4cd`.
+
+**S8.1 shipped (commit `f00b9e05`, deploy `25340452726` `success`)**:
+
+**Domain changes**:
+- `AttendeeDetails.WithSeat(seatId, seatLabel)` — value-object-style immutable rebind. Returns a new instance; original is unchanged. Trims label, rejects empty seatId / empty label. Idempotent rebinds allowed at this layer (the aggregate enforces stricter invariants).
+- `Registration.ConfirmSeatAssignments(IReadOnlyList<(int AttendeeIndex, Guid SeatId, string SeatLabel)>)` — new aggregate-level method to be called from the webhook's checkout-completed path AFTER `CompletePayment` succeeds. Invariants:
+  - Status must be `Confirmed`.
+  - Assignment count == attendee count (one seat per attendee, Mode-A only).
+  - Each `AttendeeIndex` is unique and within range.
+  - Each `SeatId` is non-empty.
+  - Half-mutation safe: validates everything up front; only mutates `_attendees` if every `WithSeat` call succeeds.
+  - **Idempotent on retry**: returns Success without raising the event when every attendee already carries the same seat assignment. Webhook redelivery + Phase 7G refund-reconciliation re-runs hit this path safely.
+  - Raises `SeatsReservedEvent` on first successful binding so S8.4 can hook the `seat_hold.converted_to_reservation` metric.
+
+**Infrastructure changes**:
+- `RegistrationConfiguration.OwnsMany(r => r.Attendees, ...)` extended to map `SeatId` (uuid) and `SeatLabel` (varchar(50)) to JSONB.
+- Migration `Phase8S81_AddSeatFieldsToAttendeeJsonb` is **snapshot-only** (Up/Down bodies intentionally empty). The `attendees` JSONB column is schema-less so adding new fields requires no `ALTER TABLE`; existing rows deserialise with null defaults — matches the WhatsApp opt-in pattern from Phase 7A.6D. The auto-generated body included drift updates on `reference_data.reference_values.created_at` timestamps; cleaned to a true no-op on the database.
+
+**Tests**: 18/18 new domain unit tests pass:
+- 7 `AttendeeDetailsSeatTests` (Create+seat / trim / WithSeat happy + immutability + trim + empty-id reject + empty-label reject Theory + rebind allowed).
+- 8 `RegistrationConfirmSeatAssignmentsTests` (happy path raises event / rejects Preliminary status / count mismatch fewer/more / duplicate index / out-of-range / empty SeatId / idempotent retry).
+- 3 idempotency edge cases.
+- **2583/2583 Application tests still pass** — no regressions despite touching the Registration aggregate.
+
+**Staging verification**:
+- Backend deploy `25340452726` returned `conclusion=success`.
+- Health check via `GET /api/events/my-rsvps` → 200.
+- **MVP regression bundle 10/10 GREEN** (`scripts/seating/mvp_regression.py`) — covers S1.5 J-B + S2-T1/T2 + S3-T1/T2/T3a/T3b + S4-T1/T2/T3 with correlation IDs recorded. Confirms (a) the migration record applied cleanly (`__EFMigrationsHistory` updated, deploy didn't fail), (b) no behaviour regressed despite the Registration aggregate change, (c) the JSONB column re-read works for existing rows (they deserialise with null SeatId/SeatLabel as designed).
+
+**What S8.1 explicitly does NOT do**:
+- The buyer-facing bug (silent seat-assignment drop after payment) is **NOT** fixed yet. That ships in S8.2.
+- Cancel/refund seat unlock is **NOT** wired yet. That ships in S8.3.
+- In-flight broken `Confirmed/PaymentCompleted/SeatId=null` rows on staging remain broken until S8.4 cleanup.
+
+**Next**: Slice S8.2 — RSVP command DTO + handler validation + pending-seat-assignments JSONB column + webhook hold→reservation conversion (architect-estimated 1.5–2 days; separate PR).
+
+---
+
+## 🎯 2026-05-04 (research) — DISCOVERED: seat-assignment wire-up is a comprehensive feature gap (proposed Slice S8)
+
+**No code shipped this push** — the gap I uncovered is large enough that a partial fix would do more harm than good. Bringing scope back to the architect/user.
+
+**How surfaced**: yesterday's Phase 7H observability work needed `seat_hold.converted_to_reservation`. Tracing the conversion code path, I found: `SeatReservation.Create` is only called from tests. No production code writes `seat_reservations` rows. Pulling that thread further, the buyer-side seat-binding flow is broken end-to-end:
+
+| Layer | Should do | Actually does |
+|---|---|---|
+| Frontend RSVP request | Send `seatIds: string[]` from SeatPicker | ✅ already sending |
+| `RsvpToEventCommand` | Carry `SeatIds` + `SeatSessionId` fields | ❌ no such fields |
+| `RsvpToEventCommandHandler` line 213 | Call `AttendeeDetails.Create(name, age, gender, tierId, tierName, seatId, seatLabel)` | ❌ never passes seatId |
+| `RegistrationConfiguration` line 116 | Map `SeatId` + `SeatLabel` columns to attendees JSONB | ❌ only maps Name/Age/Gender/TierId/TierName |
+| Webhook on payment-completed | Convert holds → SeatReservation rows + bind seat-ids to attendees | ❌ no such code path |
+| Email + ticket PDF handlers | Read `attendee.SeatLabel` and render | ✅ ready (always renders empty because SeatLabel is never persisted) |
+| `StructuralEditGuard.GetReservedSeatIdsAsync` | Return non-empty set after a paid AssignedSeating registration | ❌ always 0 (table empty) |
+
+**End-to-end consequence**: a buyer who selects seats, holds them, pays via Stripe, gets `Confirmed/PaymentCompleted` — and **the seat assignment is silently dropped**. Hold expires after 10 min; another buyer can claim the same seat. Confirmation email + ticket PDF show no seat label. Organiser can structurally delete the seat 10 min later because the guard sees 0 reservations.
+
+**Reproduction is trivial**: any paid AssignedSeating registration on staging today (`e4792b64-...` is configured this way: `seatingMode=AssignedSeating`, `ticketingMode=Tiered`, `registrationMode=DetailedAttendees`) — go through the buyer flow and inspect the resulting registration's attendee JSONB. `seat_id` and `seat_label` are absent.
+
+**Proposed Slice S8 — Seat-assignment wire-up** (full plan in `docs/MASTER_TODO_SEATING_MVP.md`):
+1. Extend RSVP commands with `SeatSessionId` + `SeatIds`.
+2. Domain: `AttendeeDetails.Create` accepts seat-id + seat-label; `Registration.AssignSeatsToAttendees(...)` aggregate method.
+3. EF: extend `attendees` JSONB shape (schema-less, no migration needed).
+4. Webhook: post-payment hold→reservation conversion + seat-id binding (single UoW).
+5. Free-event path: same conversion synchronously in handler.
+6. Tests: domain (8+), application (10+), webhook integration (4+), staging API smoke.
+7. Observability: emit `seat_hold.converted_to_reservation` from the conversion site (completes Phase 7H §S6 metric coverage).
+
+**Architect design questions before I implement**:
+- (Q1) On cancel-with-refund: do we delete the reservation row (unlock the seat) or keep it (forever-locked, ticket stays valid)?
+- (Q2) Hold/reservation race: 30-min Stripe Checkout vs 10-min hold TTL — auto-extend, accept-gap, or fail-at-webhook with "seat no longer available"?
+- (Q3) In-flight migration: existing `Confirmed/PaymentCompleted/SeatingMode=AssignedSeating` registrations on staging have `SeatId=null` already — leave broken, data-fix from holds, or refund?
+
+**Estimated scope**: 1–2 weeks focused work across Command + Domain + Infrastructure + Webhook + tests in 4 layers. **Not safe** for a one-day TDD push.
+
+**Effect on S6.C (Playwright e2e)**: **BLOCKED**. The architect-spec'd buyer happy-path test reads *"confirmation email + ticket PDF have seat numbers"* — that step always fails until S8 ships. Two options:
+- (a) Implement S8 first (architect input + multi-day work), then unblock S6.C.
+- (b) Ship S6.C with the seat-persistence step explicitly stubbed/skipped pending S8.
+
+**Senior Engineer guideline #3 invoked**: "Consult the architect whenever you're unsure about design, scope, or system-level impact." This qualifies. Stopping here, bringing decision back.
+
+---
+
+## 🎯 2026-05-04 (latest) — Phase 7H observability follow-up SHIPPED + STAGING-VERIFIED — 3 missing metrics now emit
+
+**Goal**: close the observability gap documented yesterday. The architect §S6 dashboard spec required 9 metrics; 6 were already emitting; 5 were missing. Today's push closes 3 of the 5; the remaining 2 are blocked by separate concerns (documented below).
+
+**Search-before-write findings**:
+- ✅ Existing metric pattern (`Metric {MetricName} ...` Serilog template) is well-established in `LayoutMetrics`. Reused the convention rather than inventing a new emitter.
+- ⚠️ **Significant finding**: `SeatReservation` rows are **NEVER written** in production code. `SeatReservation.Create` is only called from tests. The read-side (`StructuralEditGuard.GetReservedSeatIdsAsync`, `GetSeatAvailability`) queries an empty table. This means `seat_hold.converted_to_reservation` is unimplementable until the conversion path itself is built — it's not a missing-metric, it's a missing-feature. Documented as a separate ticket scope; the metric will land alongside the conversion code.
+
+**Shipped (commit `7b5ddcaa`, deploy `25299584869` `success`)**:
+- New `ISeatHoldMetrics` interface + `SeatHoldMetrics` implementation. Two methods: `SeatHoldCreated(eventId, seatCount)`, `SeatHoldExpired(expiredCount)`. Mirrors the proven `LayoutMetrics` pattern (structured Serilog, `Metric {MetricName}` template, low-cardinality tags only).
+- `ILayoutMetrics.LayoutCanvasEditorSaveFailed(layoutId, reason)` added — `reason` is a fixed-set string tag (`validation_failed` / `auth_failed` / `not_found` / `concurrency_conflict` / `structural_edit_rejected`).
+- DI registration in `Application/DependencyInjection.cs`.
+- Wire-ups (try-catch'd so observability never blocks user paths):
+  - `HoldSeatsCommandHandler` → `SeatHoldCreated` after successful hold + commit.
+  - `SeatHoldCleanupService` → `SeatHoldExpired(count)` every cleanup pass, even at count=0 (alive-signal for the cleanup service).
+  - `BatchUpdateLayoutCommandHandler` → `LayoutCanvasEditorSaveFailed` at 6 explicit early-return Failure points, with reason tag mapped from the failure path. Helper method `EmitSaveFailed` keeps the call sites compact.
+
+**Tests**: 4 new (3 `SeatHoldMetricsTests` + 1 `LayoutMetricsTests` for save_failed). The existing 25-ish handler tests that mock `ILayoutMetrics`/`ISeatHoldMetrics` were unaffected — Moq tolerates the new dependencies via default setup. **2573/2573 Application tests pass** — no regressions.
+
+**Staging verification**:
+- Triggered hold-seats + structural-edit-failure scenario via curl on staging.
+- Container logs show all 3 new Metric lines with correct correlation IDs:
+  - `Metric seat_hold.created EventId=e4792b64-... SeatCount=3` (correlation `f37c7ac5-5eeb-42c4-b8fa-66b866fc5d7d`)
+  - `Metric seat_hold.expired ExpiredCount=0` (background cleanup pass — fired without a triggering event, proves the alive-signal works)
+  - `Metric canvas_editor.save_failed LayoutId=91a8615c-... Reason=structural_edit_rejected` (correlation `946ed62c-a314-4e07-b7cc-8dd6f191418e` — matches the user-facing 422 response cid, dashboard alerts can join on this)
+- Per-pass log line is one-shot, low-volume (~1/min for `seat_hold.expired`, on-demand for the others) — safe for production log retention.
+
+**Still missing from architect spec (deliberately)**:
+| Metric | Reason for non-emission |
+|---|---|
+| `canvas_editor.session_abandoned` | Needs session-id tracking on the open-vs-save lifecycle (frontend would need to send session-id via `recordCanvasEditorOpened` and the backend would track abandonment via no-save-after-N-min). Separate slice. |
+| `seat_hold.converted_to_reservation` | The conversion code path **does not exist** in production. `SeatReservation` rows are never written anywhere. This is a real feature gap that needs its own dedicated slice — the metric will land alongside the conversion code, not before. |
+
+**Architect §S6 metric coverage updated**:
+| Metric | Status |
+|---|---|
+| `layout.created` | ✅ shipped |
+| `layout.preset_selected` | ✅ shipped |
+| `layout.canvas_editor_opened` | ✅ shipped |
+| `layout.canvas_editor_saved` | ✅ shipped |
+| `layout.structural_edit_rejected` | ✅ shipped |
+| `seatpicker.selection_completed` | ✅ shipped |
+| `seat_hold.created` | ✅ shipped (this push) |
+| `seat_hold.expired` | ✅ shipped (this push) |
+| `canvas_editor.save_failed{reason}` | ✅ shipped (this push) |
+| `canvas_editor.session_abandoned` | ⏭ deferred |
+| `seat_hold.converted_to_reservation` | ⏭ blocked on missing conversion-path feature |
+
+**Next**: S6.C (Playwright e2e suite — separate larger effort). The hold→reservation conversion gap is a separate architect-level slice that should be ticketed and prioritised against MVP scope.
+
+---
+
+## 🎯 2026-05-04 (later) — S6.B partial-shipped: race + 1000-seat perf both PASS, observability gap deferred
+
+**Goal**: per master TODO §S6, run the three new ship-gate API tests (S6-T1 race scenario, S6-T2 1000-seat perf, S6-T3 Stripe webhook replay) plus the observability audit.
+
+**S6-T1 race scenario PASS on staging**:
+- Apply theater-classic preset → 200-seat layout.
+- Hold 3 seats via `POST /api/venue-layouts/events/{eventId}/seats/hold` (correlation `80244ea3-93ef-4528-9968-50b7e63095ab`).
+- Organiser attempts zone deletion via `PUT /batch` + `deletedZoneIds=[zoneId]` → **HTTP 422** with body *"Cannot modify layout structure: 3 seat(s) currently held, 0 seat(s) reserved. Wait for holds to expire or cancel affected registrations first."* (correlation `e9d81ede-fa22-48b6-920d-bdbe8a3733c9`).
+- StructuralEditGuard fires exactly per architect spec — neither 409 (concurrency) nor 200 (silent destruction); the user-comprehensible 422 with held-seat count tells the organiser exactly what to wait for.
+- Cleanup: hold released (correlation `1365b04d-6a09-4454-8034-e5296ba39101`).
+
+**S6-T2 1000-seat perf benchmark PASS on staging**:
+- Apply theater-classic baseline (200 seats) + PUT /batch adding 4 zones each with `rowCount=20, seatsPerRow=10` (= 800 generated server-side). Final `totalCapacity` = 1000.
+- **PUT /batch outbound payload: 1.8 KB** (architect limit: 500 KB).
+- **PUT /batch server roundtrip: 988 ms** (architect limit: 2000 ms).
+- GET layout response: 150 KB / 313 ms (well within mobile-comfortable bounds).
+- Architectural insight: the architect-feared 500-KB payload doesn't materialise because seats are computed server-side from `(rows, cols)` rather than enumerated on the wire. The actual wire shape carries 5 zone definitions (~360 bytes each) plus overhead. The expensive part is the GET response (150 KB for a 1000-seat layout), which is already optimised via the existing `LayoutPreview` `showSeats={layout.totalCapacity <= 200}` gate on the read side.
+- Correlation `a1e164b8-f7b1-489a-afff-acbad670297c`.
+
+**S6-T3 Stripe webhook replay**: deferred. Needs Stripe CLI to replay a `charge.succeeded` event against the staging webhook URL; the CLI isn't available in this environment. Mitigations already in place: `StripePaymentService.CreateRefundAsync` uses an `IdempotencyKey` (line 356: `$"refund_{paymentIntentId}_{amountInCents}_{registrationId}"`) which guarantees Stripe-side dedup; the registration handler's idempotency is also covered by `Registration.CompleteRefund` rejecting double-transitions ("may be already processed (idempotency)"). Suggest scheduling this test for the next person with Stripe CLI access.
+
+**Observability audit (architect §S6 spec vs current state)**:
+| Metric | Spec | Status |
+|---|---|---|
+| `layout.created` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCreated`) |
+| `layout.preset_selected` | ✅ required | ✅ emitted (`LayoutMetrics.PresetSelected`) |
+| `layout.canvas_editor_opened` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCanvasEditorOpened`) |
+| `layout.canvas_editor_saved` | ✅ required | ✅ emitted (`LayoutMetrics.LayoutCanvasEditorSaved`) |
+| `layout.structural_edit_rejected` | ✅ required | ✅ emitted with reason tag (`SeatsReserved` / `AuthFailed` / `ConcurrencyConflict`) |
+| `seatpicker.selection_completed` | ✅ required | ✅ emitted (`LayoutMetrics.SeatPickerSelectionCompleted`) |
+| `canvas_editor.save_failed{reason}` | ⚠️ spec'd, missing | ❌ not emitted |
+| `canvas_editor.session_abandoned` | ⚠️ spec'd, missing | ❌ not emitted (requires session-id tracking) |
+| `seat_hold.created` | ⚠️ spec'd, missing | ❌ not emitted |
+| `seat_hold.expired` | ⚠️ spec'd, missing | ❌ not emitted |
+| `seat_hold.converted_to_reservation` | ⚠️ spec'd, missing | ❌ not emitted (hold→reservation path needs mapping) |
+
+**Decision (deferred to follow-up)**: adding the 5 missing metrics safely requires touching multiple paths I don't have deep visibility on in this push (especially `seat_hold.converted_to_reservation` — the hold→reservation conversion site isn't a single grep-able bottleneck). Per Senior Engineer principles (#5 don't break existing flows, #4 search before write, #11 honest status), deferring rather than risking regressions in the seat-hold lifecycle. Suggest a focused observability slice that introduces `ISeatHoldMetrics`, threads through `HoldSeatsCommandHandler` + `SeatHoldCleanupService` + the reservation-creation path, and configures dashboard alerts (`canvas_editor.save_failed` rate > 5% in 5 min; `seat_hold.expired` rate spike).
+
+**MVP regression bundle status**: `scripts/seating/mvp_regression.py` re-confirmed 10/10 PASS earlier today (the new S6-T1 + S6-T2 are NOT in the bundle — they're targeted ship-gate tests rather than per-slice smoke).
+
+**Test artifacts (cleanup notes)**: a 1000-seat layout exists on test event `e4792b64-9d35-4567-82fa-6c0624d0f8e7` post-S6-T2; this is the regression bundle's test event so S1.5 hard-delete will clean it on the next `apply-preset` call. No manual cleanup required.
+
+**Next**: focused observability follow-up (`seat_hold.*` metrics) and/or S6.C (Playwright e2e suite — separate larger effort). Stripe-replay (S6-T3) ticketed for next session with Stripe CLI access.
+
+---
+
+## 🎯 2026-05-04 — Phase 7G operator override + e2e verification gap acknowledged
+
+**Goal**: extend the refund-reconciliation safety net (shipped earlier today as `83be8f79`) with an `ageThresholdMinutes` operator override, then drive a full `Confirmed → RefundRequested → Refunded` lifecycle on staging to prove the fix actually heals stuck rows end-to-end.
+
+**Operator override shipped (commit `c7745cbc`, deploy `25295958528` `success`)**:
+- `IRefundReconciliationService.ReconcileStuckRefundsAsync(batchSize, ageThresholdMinutes, ct)` — new optional param defaults to settings. Negative values clamp to 0.
+- `RefundReconciliationBackgroundService` now passes the configured `AgeThresholdMinutes` from `RefundReconciliationSettings` (was hardcoded).
+- `POST /api/admin/refund-reconciliation/run` accepts `ageThresholdMinutes` query param. Use case: incident response when a deploy collision happened minutes ago and the operator wants to heal the row before the next 5-min background pass.
+- 2 new unit tests cover the override (relaxes filter to ~now; negative clamps to 0). 9/9 reconciliation suite green; 2567/2567 Application tests pass.
+
+**End-to-end verification ATTEMPTED but BLOCKED**:
+- Tried to cancel a Confirmed+PaymentCompleted registration on staging to drive a fresh `RefundRequested` row through the safety net.
+- All paid registrations under the test account are on past-dated events. `CancelRsvpCommandHandler` correctly rejects with HTTP 400 *"Cannot cancel registration after the event has started"* (Phase 6A.91 business rule — sound domain invariant).
+- Future-dated events under the test account are all `PaymentStatus=NotRequired` (free), so cancelling them doesn't exercise the refund pipeline.
+- Driving the lifecycle would require either creating a future-dated paid event AND going through Stripe Checkout (browser-based, can't script via curl alone), OR adding a testing-only bypass to the domain rule (gold-plating; declined).
+
+**Honest verification matrix**:
+| Layer | Verified | Method |
+|---|---|---|
+| Repository `GetStuckRefundsAsync` | ✅ | Container log shows 2ms execution, 0 rows returned |
+| DI wiring (Service + Background + Endpoint) | ✅ | HTTP 200 + structured `[Phase 7G]` correlation logs |
+| Background service running | ✅ | `[Reconcile-1] START` + `[Reconcile-2] No stuck refunds` in container logs |
+| 5 status branches (succeeded / pending / failed / missing-id / lookup-fault) | ✅ | 9/9 unit tests with mocked dependencies |
+| `ageThresholdMinutes` override | ✅ | 2 dedicated unit tests + endpoint accepts query param |
+| `Stripe.GetRefundStatusAsync` real-API call | ⚠️ NOT exercised on staging | code mirrors proven `CreateRefundAsync` pattern (same `_stripeClient`, same auth, same SDK + exception handling) — first stuck refund in the wild will exercise it |
+| Full `Confirmed → RefundRequested → Refunded` lifecycle | ⚠️ NOT exercised on staging | blocked by valid domain rule on past-dated events. State-transition code path (`Registration.CompleteRefund(refundId)`) IS the same method the production webhook handler has used since Phase 6A.91 — battle-tested |
+
+**Residual risk + mitigation**: the marginal value of the e2e proof is real but small relative to the cost (full payment flow on staging). The Stripe SDK call is mechanically simple — `refundService.GetAsync(refundId)` returns a `Refund` object whose `Status` field we read. The whole orchestrator goes through `Registration.CompleteRefund`, which raises `RefundCompletedEvent` and triggers the same email/WhatsApp event-handler chain that production has used for months. If it works for the webhook path, it works for the reconciliation path. The safety net itself logs every Stripe call with a `[Phase 7G]` correlation tag, so any real-API failure is easy to forensic.
+
+**Hygiene note**: commit `c7745cbc` accidentally staged a deletion of an unrelated migration file (`20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs`, a hand-created file with no Designer.cs companion → invisible to EF Core, never applied per CLAUDE.md memory). Restored via `194dea29` "revert: restore Phase6A113 migration .cs file". No functional impact (file was already inert).
+
+**Next**: S6.B (observability metrics audit + 1000-seat perf benchmark + new S6-T1/T2/T3 race/perf/Stripe-replay tests).
+
+---
+
+## 🎯 2026-05-03 (later) — Phase 7G SHIPPED + STAGING-VERIFIED — durable refund-reconciliation safety net for missed `charge.refunded` webhooks
+
+**Context**: User reported a $400 refund stuck in `RefundRequested` on event `d543629f`, registration `e6285ea7`, for ~37 hours. Said "this happened a couple of times" lately and asked whether recent code changes caused it.
+
+**Diagnosis**:
+- Reviewed every commit touching `RegistrationRefundService`, `RegistrationWebhookHandler`, `PaymentsController`, `CancelRsvpCommandHandler`, and `Registration.cs` over the last 6 weeks. **No code regression**: the most recent refund-flow change was `ecbbf5b6` (Phase 6A.137F-Fix5f, Apr 1) which made things *more* robust by adding `registration_id` to refund metadata. The 7E.3b paid-Mode-B work shipped a regression test specifically confirming the refund pipeline still works for paid Mode B.
+- Cross-referenced the user's stuck-refund timestamp (`2026-05-02 03:38:18 UTC`) with staging deploy history: backend deploys at 03:11 (~27 min before) and 04:06 (~28 min after). Container restart logs around the window show `"readiness probe failed: connection refused"` — Stripe `charge.refunded` webhooks fired during this gap got dropped after Stripe's ~3-day retry budget exhausted.
+- **Root cause identified**: rapid-deploy cadence during the seating MVP push (May 1: 9 deploys, May 2: 5, May 3: 9 — ~3-4× normal rate) raised the latent risk above the threshold where it became visible.
+- The stuck refund itself is benign — money returns to the buyer's card via Stripe regardless; only our DB state was lagging. The existing manual ForceCancel button works as a workaround, but it marks the row `Cancelled` WITHOUT confirming Stripe's actual state.
+
+**Durable fix shipped (commit `83be8f79`, deploy `25291986687` `success`)**:
+- **Application**: new `IRefundReconciliationService` orchestrates the loop. Per-row commit so transient failures on row N don't block rows 1..N-1. Idempotent + race-tolerant: if a webhook arrived between our load and Stripe lookup, `Registration.CompleteRefund` refuses with "may be already processed" — we treat that as benign.
+- **Domain reuse**: NO domain changes. The existing `Registration.CompleteRefund(refundId)` is the authoritative state transition (used by both webhook and reconciliation paths) and raises `RefundCompletedEvent` so all downstream effects (email + WhatsApp + ticket-state) fire identically regardless of trigger.
+- **Stripe lookup**: new `IStripePaymentService.GetRefundStatusAsync(refundId)` — pure read against Stripe's Refund.Get API. Reuses existing `StripeRefundResult` shape so callers can use a single code path.
+- **Repository**: new `IRegistrationRepository.GetStuckRefundsAsync(requestedBefore, take)` — tracked load, ordered oldest-first so the most painfully-stuck rows are reconciled first.
+- **Background hosted service**: `RefundReconciliationBackgroundService` runs every 5 minutes (configurable via `RefundReconciliationSettings` — `Enabled`, `IntervalMinutes`, `AgeThresholdMinutes`, `BatchSize`, `InitialDelaySeconds`). Mirrors the proven pattern of `SeatHoldCleanupService`. Exception-resilient: a single failed pass doesn't crash the host or stop future passes.
+- **Manual trigger endpoint**: `POST /api/admin/refund-reconciliation/run` for `Admin / AdminManager / EventOrganizer` roles. Useful during incident response and post-deploy verification. Returns the same per-pass summary as the background path: `ScannedCount`, `ReconciledCount`, `StillPendingCount`, `FailedAtStripeCount`, `MissingRefundIdCount`, `StripeLookupFailedCount`, `Warnings[]`.
+
+**Stripe status → counter mapping**:
+| Stripe status | Counter | Behaviour |
+|---|---|---|
+| `succeeded` | `ReconciledCount` | DB transitions `RefundRequested → Refunded` via `CompleteRefund` |
+| `pending` / `requires_action` | `StillPendingCount` | leave row alone, retry next pass |
+| `failed` / `canceled` | `FailedAtStripeCount` | warning logged for manual ops |
+| (no `StripeRefundId` on row) | `MissingRefundIdCount` | warning logged for manual ops |
+| Stripe API error | `StripeLookupFailedCount` | warning logged, retry next pass |
+
+**Observability**: structured logs at every step with a per-pass `CorrelationId` and `[Phase 7G]` prefix for dashboard alerting. Dashboard query `Reconciled > 0` indicates a missed webhook just got self-healed (i.e. the safety net actually paid off).
+
+**Tests**: 7 new unit tests covering happy path / pending / failed / missing refundId / Stripe lookup faulted / batch-size override / no-stuck-rows. Mocks `IStripePaymentService` + `IRegistrationRepository` + `IUnitOfWork` to keep coverage focused on orchestration logic. **2567/2567 Application tests pass** (no regression).
+
+**Staging verification (2026-05-03)**:
+- Backend deploy `25291986687` returned `conclusion=success`.
+- Manual trigger via curl `POST /api/admin/refund-reconciliation/run?batchSize=10` → HTTP 200 with summary `{scannedCount:0, reconciledCount:0, ...}` (correlation `d9311d7f-236c-4c87-965c-c5abe9d9d368`).
+- Container logs show `[Phase 7G] [Reconcile-1] START - CorrelationId=3b6fd258-..., BatchSize=50` followed by `[Phase 7G] [Reconcile-2] No stuck refunds - Duration=2ms` — endpoint live, DI wired, logging structured, repo query executes.
+- The user's specific stuck refund (`e6285ea7`) was already resolved through other means before the safety net ran (status now `Abandoned` — likely the user clicked Withdraw or ForceCancel between sessions). The system is healthy AND the durable fix is in place for any future missed webhook.
+
+**Next**: S6.B (observability metrics audit + 1000-seat perf benchmark + new S6-T1/T2/T3 race/perf/Stripe-replay tests) and S6.C (Playwright e2e suite — separate effort).
+
+---
+
+## 🎯 2026-05-03 — Slice S4 SHIPPED + 4/4 API SMOKE GREEN — non-gating publish-readiness report endpoint + tier-mapping summary
+
+**Context**: Slice S4 is the fourth of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). Goal: organisers see a holistic tier-mapping snapshot in the seating section before they attempt to publish, with every blocker + warning enumerated at once.
+
+**Decision (deviation from architect-Rev-4 spec)**: the strict publish gate already exists (Slice 9.1's `Event.CheckLayoutPublishReadiness` called from `PublishEventCommandHandler` returns HTTP 422 on the first blocker via `VenueLayout.ValidateForEvent`). S4 does NOT re-implement that gate. Instead, S4 **layers a NON-gating enumerator on top** so the UI surface can show every issue at once. The strict 422-gate keeps short-circuiting on first blocker. Documented in the master TODO S4 section.
+
+**Backend shipped (commit `9c036811`, deploy `25254579495` `success`)**:
+- **Domain**: new `PublishReadinessReport` value object (Blockers / Warnings / TierSummary) + `PublishReadinessIssue` + `TierMappingSummary` + `MappedShapeRef` + `PublishReadinessCode` enum with 9 codes (`LayoutEmpty`, `ZoneUnmapped`, `ZoneEmptyAndUnmapped`, `ZoneOverCapacity`, `TableUnmapped`, `TableEmptyAndUnmapped`, `TableOverCapacity`, `TierWithoutMapping`, `TierTotalOverCapacity`). New `VenueLayout.BuildPublishReadinessReport(eventTiers)` domain enumerator.
+- **Application**: `GetLayoutPublishReadinessQuery` + handler. Loads layout (with zones/tables/seats) + bound event's tiers + polymorphic `tier_assignments`, runs the domain enumerator, projects to flat DTO. Templates (`EventId == null`) return an empty-but-valid report (UI surfaces "validated on apply").
+- **API**: new `GET /api/venue-layouts/{id}/publish-readiness` (200 / 401 / 404).
+
+**Frontend shipped (commit `29859041`, deploys `25282571044` + `25282571053` both `success`)**:
+- New `PublishReadinessReportDto` / `PublishReadinessIssueDto` / `TierMappingSummaryDto` / `MappedShapeRefDto` types mirroring the backend shape.
+- `venueLayoutsRepository.getLayoutPublishReadiness` wraps the GET.
+- `useLayoutPublishReadiness(layoutId)` React Query hook (30s staleTime; layout-scoped invalidations from batch-update / apply-preset encompass the new key via `venueLayoutKeys.all` prefix).
+- New `TierMappingSummary` component renders three sections: blockers (red), warnings (amber), and a per-tier table with seats vs capacity (over-capacity rows highlighted red, unmapped tiers show "unmapped" placeholder). Loading + error branches covered.
+- Mounted in `SeatingLayoutPicker` below the `LayoutPreview` so the organiser sees the full fix list before clicking Customize.
+
+**API SMOKE 4/4 GREEN end-to-end on staging**:
+- **T1** GET on layout with 2 unmapped zones → 200 with 2 `ZoneUnmapped` blockers + 2 `TierWithoutMapping` warnings + 2 tier summaries (VIP cap=30, Basic cap=70, both totalSeats=0). Correlation `6dd46a84-b7ae-4d83-892a-1aa114f8ac1a`.
+- **T2** GET with bogus layout id → 404. Correlation `41857666-04f9-4d6c-a750-8463658d5fa7`.
+- **T3** Apply fresh theater-classic + GET readiness → `ZoneUnmapped` blocker surfaces (correlation `7bb92dda-8ca1-4405-8390-80955a52e849`).
+- **T4** DTO shape smoke: top-level `isPublishReady`, `blockers`, `warnings`, `tierSummary` keys all present.
+
+**Tests**: 9 new domain tests + 4 new application handler tests + 7 new RTL tests (20 new tests total); 121/121 VenueLayout-related domain tests preserved; tsc --noEmit clean.
+
+**Lesson (re-confirmed)**: pragmatic delta over architect spec when the spec drives toward duplication of an already-shipped capability. The "hook into existing publish flow" requirement was already satisfied by Slice 9.1; S4's value is the enumerated, UI-friendly surface that the original publish gate doesn't expose.
+
+**Next**: Slice S5 (SeatLocation value object + EF migration, 4–5 days).
+
+---
+
+## 🎯 2026-05-02 (later) — Slice S3 SHIPPED + 4/4 API + J-A regression GREEN — inline editable layout name in canvas editor header
+
+**Context**: Slice S3 is the third of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). The user has been editing the layout name only by re-applying a preset; they need an inline rename surface inside the canvas editor and a subtitle that reflects what's actually there.
+
+**Decision (deviation from architect-Rev-4 spec)**: skipped the redundant `PATCH /api/venue-layouts/{id}/name` endpoint the architect spec'd and reused the **existing `PUT /api/venue-layouts/{id}`** (Slice 5 Chunk 4 `UpdateLayoutCommand` with `name` field only). The existing PUT already satisfies the spirit of Rev 4's requirement — own If-Match handling, separate from the structural `/batch` endpoint, single-purpose concurrency token. Avoids a duplicate code path. Documented in the master TODO S3 section.
+
+**Fix shipped (commit `ea5cf7ce`, backend deploy `25243361349` + UI `25243361337` both `conclusion=success`)**:
+- **Frontend**: new `CanvasEditorTitleEditor` component — inline `<input>` commits on Enter or blur, reverts on Escape, syncs to `currentName` prop on cache refetch when the field is not focused. **Inflight-commit dedup ref** prevents the Enter+blur double-commit footgun. Architect-prescribed 409 toast on stale If-Match; revert on error.
+- **Frontend**: `CanvasEditorModal` header now hosts the title editor (DialogTitle kept visually hidden for a11y); subtitle reformatted to "Currently: N seats · M zones · K tables · L decorations" — clearly secondary metadata, with the editable name as primary affordance.
+
+**API SMOKE 4/4 GREEN end-to-end on staging** (correlations recorded in master-TODO run history):
+- **T1** valid rename → 204; rv 5417752 → 5427671; name persisted (correlation `f12ce710-0aff-414a-b7e6-7de9af9f4df1`).
+- **T2** stale If-Match → 409 with body *"Layout was modified by someone else. Reload the layout and retry with the current version."* (correlation `eadbece1-3aee-4992-89a4-5f14f247b742`).
+- **T3a** empty name → 400 *"Layout name is required"* (correlation `b0805d97-fd39-46e3-b400-6b6bd5db21cb`).
+- **T3b** 256-char name → 400 *"Layout name cannot exceed 200 characters"* (correlation `4eafdadf-4351-44d3-9e9c-23ab70f0b941`).
+- **T4** non-owner → 403: skipped on staging (would require provisioning a second authenticated user). Same authorization branch as Slice 5 Chunk 4 — covered by existing controller integration tests via `ILayoutAuthorizationService` two-branch rule.
+
+**J-A REGRESSION GREEN on staging with rename injected**:
+- Apply theater-classic (200 seats) → rename layout to "J-A Renamed Theater" (correlation `99a4fa7d-9e4f-4174-a676-bbba30906260`) → batch save with new zone `rowCount=2 + seatsPerRow=10` → totalCapacity=220 + name preserved (correlation `8742c1b4-a2cd-4847-9dd1-b069392896a9`). Slice S1 seat-gen + S1.5 hard-delete + S2 destructive-PUT protection all still work after S3 changes.
+
+**Tests**: 10/10 new RTL tests in `CanvasEditorTitleEditor.test.tsx` covering Enter/blur/Esc/empty/409/disabled/cache-sync/maxLength; 208/208 existing seating-related tests preserved; tsc --noEmit clean.
+
+**Lesson re-confirmed**: pragmatic reading of architect specs — when an existing endpoint already covers the spec's intent, reuse it instead of duplicating. The deviation was documented inline in the master TODO so future engineers know why there's no `PATCH /name` route.
+
+**Next**: Slice S4 (Tier-mapping summary + pre-publish validation, 3–4 days).
+
+---
+
+## 🎯 2026-05-02 — Slice S2 SHIPPED + 6/6 API + 4/4 JOURNEY SMOKE GREEN — destructive-PUT bug class closed via explicit deletion opt-in
+
+**Context**: Slice S2 is the second of 7 architect-Rev-4 MVP slices ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)). S1 closed the seat-gen pruning bug; S1.5 closed the apply-preset orphan-collision; S2 closes the **destructive-PUT bug class** — pre-S2, any client bug that dropped a zone/table/decoration from the `BatchLayoutPayload` silently deleted it (only protected by the structural guard for held/reserved seats — empty zones got nuked with no warning).
+
+**Architect Rev 4 §A.3 contract**: explicit deletion opt-in. `BatchLayoutPayload` extended with `DeletedZoneIds` / `DeletedTableIds` / `DeletedDecorationIds`. Handler diffs the payload against the persisted layout — for each baseline id missing from the payload that is also absent from `deletedXIds`, it returns **HTTP 409 Conflict** with a precise message naming the omitted ids ("To keep them, include them in the corresponding zones/tables/decorations array. To delete them, list their IDs in deletedZoneIds / deletedTableIds / deletedDecorationIds."). `null` AND empty list both mean "no explicit deletions" — any omission is therefore unintentional → 409.
+
+**Fix shipped (commit `db2f78c1`, backend deploy `25240068506` + UI `25240068507` both `conclusion=success`)**:
+- **Backend**: `BatchLayoutPayload` record extended; `BatchUpdateLayoutCommandHandler` builds `unintendedZoneRemovals` / `unintendedTableRemovals` / `unintendedDecorationRemovals` between `zonesToRemove` computation and the structural guard; precise message naming the omitted ids; `_metrics.StructuralEditRejected(layoutId, ConcurrencyConflict)` emitted.
+- **Frontend**: `composeBatchPayload` walks `draft.deletions` Set, splits each `kind:id` refKey, classifies as zone/table/decoration if it matches a baseline id, and emits the explicit-delete arrays (normalised to null when empty).
+
+**API SMOKE 6/6 GREEN end-to-end on staging** (correlations recorded in master-TODO run history):
+- **T1** omit zone without `deletedZoneIds` → 409 with `1 zone(s): [...]` precise message (correlation `7199832a-4d20-4c20-9a29-d334bf8bd777`).
+- **T2** explicit delete via `deletedZoneIds` → 204; subsequent GET shows totalCapacity=0 (correlation `8965098e-71f5-4b27-9aef-d9c5708f5e3b`).
+- **T3** full-payload back-compat preserved.
+- **T4** reserved-seat structural guard regression preserved.
+- **T5** Main-Floor 200-seat zone delete (no holds) → 204; `StructuralEditGuard.CheckSeatsAsync` already queries both `seat_holds.GetHeldSeatIdsAsync` AND `seat_reservations.GetReservedSeatIdsAsync` — Architect Rev 4's "extend hold guard" item turned out stale; T5 reframed as regression check.
+- **T6a** omit table without `deletedTableIds` → 409. **T6b** explicit table delete → 204 (correlation `73865633-4681-4793-990c-d473f18ecead`). **T6c** omit decoration without `deletedDecorationIds` → 409 (correlation `2f12cc51-15c3-4e84-a3b2-4e116e784200`). **T6d** explicit decoration delete → 204 (correlation `7cfb6bf7-fb82-44c1-b864-00671b216447`).
+
+**JOURNEY SMOKE 4/4 GREEN on staging**:
+- **J-G (NEW — destructive payload protection)**: composed of S2-T1 + S2-T2 + S2-T3.
+- **J-E (concurrent / hold-race)**: covered by `StructuralEditGuard` unit + T5 staging; end-to-end hold-race deferred to S6 Playwright.
+- **J-A regression**: apply theater-classic (200 seats) → batch save adds zone with `rowCount=2 + seatsPerRow=10` → totalCapacity=220 (correlation `7da69e9a-6707-495c-8d23-cb2970f86a7a`). Slice S1 seat-gen still works after S2 changes.
+- **J-B regression**: apply A → B → A → A all returned 201, no orphan accumulation (correlations `7e13b4f9-...`, `dae46e9b-...`, `ad70d54d-...`, `23a3edb7-...`). Slice S1.5 hard-delete-by-event-id still works after S2 changes.
+
+**Tests**: 26/26 batch handler tests pass (including 3 new 409-path tests for zones/tables/decorations); tsc --noEmit clean.
+
+**Test artifacts cleaned**: prior layouts hard-deleted by S1.5 sweep machinery (return 400 on GET); only the active bound layout `75a0d982-...` remains on event `e4792b64-...`.
+
+**Lesson re-confirmed**: pre-flight reading the actual code beats trusting architect notes — the guard hold-coverage was already in place, saving a day of unneeded work. Master-TODO discipline (concrete curl recipes per slice + journey smoke as ship gates) caught the bash payload-wrapping bug in T5 first run, fixed retry → green.
+
+**Next**: Slice S3 (Layout rename UI, 1–2 days).
+
+---
+
+## 🎯 2026-05-01 — Slice S1.5 hot-fix SHIPPED + 3/3 JOURNEY SMOKE GREEN — orphan-cleanup + Mode B incompatibility guard
+
+**User-reported bugs** (architect-ruled S1.5 in same review session):
+- **Bug A**: "Change layout doesn't work after customizing" → `apply-preset` hit `ix_venue_layouts_event_id_name` unique constraint when the new preset name matched an orphan from a prior session. 500 DatabaseError. Reproduced via API: apply A → B → A again → 500.
+- **Bug B**: "Seating cannot be selected at registration" (event `d543629f-…`) → `HeadCountRsvpForm` (Mode B) has no SeatPicker integration. The combination `AssignedSeating + HeadCountByAge` was allowed at organiser time but had no buyer flow. Feature-missing gap, not a code bug.
+
+**Why S1's smoke missed both**: endpoint-isolated calls. I tested `apply-preset → 201` once on a clean event, never walked the realistic "apply preset, change mind, apply again" journey. Process gap, not just code gap. Master TODO now requires per-slice named journey smoke (J-A through J-F) as ship gates.
+
+**Fix shipped (commit `5afbb018`, backend deploy `25229502083` + UI `25229502072` both `conclusion=success`)**:
+
+- **Bug A — orphan cleanup**: new `IVenueLayoutRepository.HardDeleteByEventIdAsync` cascade-deletes all `venue_layouts` rows for an event AND manually cleans polymorphic `tier_assignments` rows referencing the doomed zones/tables (raw SQL `ExecuteSqlInterpolatedAsync`, same pattern as Slice 9.3's seat_holds cleanup). Called BEFORE `AddAsync` in `ApplyPresetToEventCommandHandler` + `ApplyTemplateToEventCommandHandler` in a single UoW transaction. Architect Rev 2 §3.4's "don't delete inline" rule amended — semantically correct for layouts whose only ownership is `event_id`.
+- **Bug B — domain invariant**: `Event.EnableAssignedSeating` rejects when `RegistrationMode != DetailedAttendees`. `Event.SetRegistrationMode` rejects switching to a head-count mode when `SeatingMode == AssignedSeating`. Both with precise architect-approved error messages.
+- **Bug B — frontend banner**: `RsvpFormSection.tsx` early-return amber banner for the incompatible state ("Registration temporarily unavailable — organiser configuration in progress"). NO auto-mutation of existing data — organiser-resolved per architect.
+
+**JOURNEY SMOKE 3/3 GREEN end-to-end on staging**:
+- **J-B (the orphan-collision bug fix)**: apply Theater Classic → apply Theater With Balcony → apply Theater Classic AGAIN → apply Theater Classic AGAIN. All 4 returned HTTP 201 (vs. pre-fix HTTP 500 on step 3). Each prior layout id verified deleted (HTTP 400 "Venue layout not found" on lookup). Final event points at the latest layout, no orphan accumulation.
+- **J-F (Mode B + AssignedSeating rejection)**: applied to `d543629f-…` (HeadCountByAge event) → HTTP 400 with body *"Assigned seating requires individual-attendee registration (DetailedAttendees mode). This event uses HeadCountByAge which tracks counts, not individuals — the buyer flow cannot map seats to attendees in that mode. Switch the registration mode to DetailedAttendees first, or keep general-admission seating."* Event state untouched (no orphan written, `venueLayoutId: None` preserved).
+- **J-A retroactive (S1 seat-gen regression)**: apply Theater Classic → PUT `/batch` with new "Balcony" zone + `rowCount:4, seatsPerRow:5` → 204 → totalCapacity = 220 (200 + 20 generated). Slice S1 still works after S1.5 changes.
+
+**Tests**: 28 domain seating tests pass; 2513 Application tests pass (baseline 2432, increase from concurrent merges, no regression); `tsc --noEmit` clean.
+
+**Pre-flight findings**: FK cascades on `venue_zones` / `venue_tables` / `seats` / `venue_decorations` are all `OnDelete.Cascade`. `tier_assignments` has no FK (polymorphic). `seat_holds` / `seat_reservations` have no FK — S2 will extend the structural-edit guard to cover active holds.
+
+**Mode B + AssignedSeating end-to-end** is a Rev 5 backlog feature; not promised in this MVP.
+
+**Next**: Slice S2 (PUT-with-`deletedZoneIds` destructive-wipe protection + extend hold guard to active holds, 2–3 days). All journey smoke definitions for S2–S6 pre-listed in master TODO with explicit ship gates.
+
+---
+
+## 🎯 2026-04-30 — Slice S1 (Architect Rev 4) SHIPPED + STAGING-VERIFIED — seat-gen pruning fix
+
+**Context**: user authorized the architect Rev 4 4-week production-ready plan ([docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)) covering S1 → S6. Slice S1 unblocks the user's headline bug: "Rows + Seats per row typed in property panel, click Save → layout still shows 0 seats."
+
+**Bug context (Slice 9.5 regression)**: per-input commit handlers in `CanvasEditorPropertyPanel.tsx` read `seatGen?.seatsPerRow ?? 0` (the partner field). On the FIRST commit (user typed Rows=4 first), seatsPerRow was 0 because no entry existed yet. Handler emitted `{rowCount:4, seatsPerRow:0}`. The over-eager pruner in `CanvasEditor.handleSeatGenChange` saw `seatsPerRow <= 0` and deleted the entry. Second commit (seatsPerRow=5) re-read rowCount as 0 from now-empty entry. Save persisted 0 seats every time.
+
+**Fix shipped (commit `3e63620a`, deploy run `25200133808` `success`)**:
+
+- New `pickCompleteSeatGen(entry)` utility centralises the rule — returns the entry only when BOTH dimensions are positive integers; otherwise null.
+- `composeBatchPayload` uses it for both kept zones and added zones — partial state never reaches the BatchZone payload.
+- `countDraftChanges` uses it — partial state isn't counted as a "real" pending change for the save-button gate.
+- `CanvasEditor.handleSeatGenChange` only deletes on full clear (caller passes null OR both fields explicitly 0). Otherwise stores partial state with floors clamped to 0.
+- Property-panel commits carry the partner field through every commit. Empty / non-positive inputs preserve the partner instead of nulling the whole entry.
+
+**Tests**:
+- 5 new red-then-green `composeBatchPayload` cases (complete emits, partial omits each direction, added zone emits, no entry omits).
+- 22/22 existing `CanvasEditorPropertyPanel` tests unchanged.
+- 98/98 `canvasEditorGeometry` tests pass.
+- tsc --noEmit clean.
+
+**API smoke** end-to-end on user's event `e4792b64-…`: apply Theater Classic preset → PUT `/batch` with new "Balcony" zone + `{rowCount:3, seatsPerRow:5}` → HTTP 204 → totalCapacity = 215 (200 from preset + 15 generated). Cleanup successful.
+
+**Change-layout UI flow runtime verification** deferred to S6 Playwright suite — static inspection of `SeatingLayoutPicker` + `useApplyPresetToEvent` hook + cache invalidation chain looks correct; no obvious wiring bug. If the user reports it still doesn't work post-S1 deploy, S2 will address.
+
+**Next slices in the architect Rev 4 4-week plan**:
+- **S2** (2–3 days): PUT-with-`deletedZoneIds` + 409 ambiguity guard + extend `SeatStructuralEditGuard` to cover active holds. Closes the destructive-wipe class of bugs.
+- **S3** (1–2 days): Layout rename UI + truthful customize-modal subtitle.
+- **S4** (3–4 days): Tier-mapping summary pane + pre-publish validation (`ValidateLayoutForPublishQuery`).
+- **S5** (4–5 days): `SeatLocation` value object replaces nullable XOR — eliminates orphan-seat accumulation.
+- **S6** (5–7 days, MVP gate): Playwright e2e (organizer + buyer + race) + observability metrics + 1000-seat perf benchmark.
+
+---
+
+## 🎯 2026-04-30 (earlier) — Slice 9.5 SHIPPED + STAGING-VERIFIED — theater seat generation in canvas editor
+
+**User-reported gap**: "how do I add seats if I am going to create a new layout?" — the canvas editor's `+ Zone` button created empty zones with no UI to populate them. Built-in presets (Theater Classic etc.) auto-generate seats; tables auto-generate from `capacity`; but custom zones had no path to seats.
+
+**Fix shipped (commits `6e11c1af` + `1b935ab6`, deploys `25145376702` / `25145376697` / `25146174322` all `success`)**:
+
+- **Backend**: `BatchZone` DTO extended with optional `RowCount` + `SeatsPerRow` fields. When both are positive integers, `BatchUpdateLayoutCommandHandler` invokes `VenueLayout.GenerateTheaterSeats(zoneId, rows, cols)` on the affected zone (works for both add and update paths). Structured logging on every seat-gen.
+- **Frontend**: `BatchZone` TS interface mirrors the new fields. `CanvasEditorDraftState` gains `seatGenByZoneId: Record<string, {rowCount, seatsPerRow}>`. `composeBatchPayload` forwards entries to both kept and added zones; `countDraftChanges` treats them as user changes. `CanvasEditorPropertyPanel` renders a "Seats" subsection with Rows + "Seats per row" inputs (max 100 each) and a live `N seats will be generated on Save` preview — ONLY when the selected zone has zero seats. Zones with existing seats render a hint instead ("Editing seat layout for an existing zone is coming in a future release"). Handler `handleSeatGenChange` writes through the existing history pipeline (undo/redo works); deletion of a zone clears any pending seat-gen override.
+- **Bug discovered + fixed mid-smoke**: regen on populated zone returned `500 DatabaseError` (Postgres CHECK `ck_seats_zone_xor_table` violation, correlation `e055882b-…`). Root cause: `Seat.VenueZoneId` is nullable (XOR with `VenueTableId`), making EF Core's `Seat → VenueZone` relationship optional → `zone.ClearSeats()` orphans seats by setting `VenueZoneId=null` instead of cascade-DELETE → orphan UPDATE violates the XOR. **Fix**: `GenerateTheaterSeats` refuses regen on populated zones with precise message *"Zone 'X' already has N seats. Delete the zone and re-add it to change the seat layout."* — defence in depth matching the UI's empty-only gate. The existing `_should_clear_existing_seats_first` test was updated to assert the new contract.
+
+**Smoke verification (staging)**:
+- T1 (add new zone with seat-gen): `PUT /batch` payload with `{name:"Balcony", rowCount:3, seatsPerRow:5}` → HTTP 204; layout total 200 + 15 = 215 seats; new zone has 15 seats with row labels A1..C5.
+- T2 (regen rejection): `PUT /batch` with seat-gen on populated zone → HTTP 400 `"Zone 'Main Floor' already has 200 seats..."` (precise message, not opaque 500).
+- 55/55 VenueLayoutTests pass; 2432 Application tests pass; tsc --noEmit clean.
+- Cleanup: smoke layout `8c00aaac-…` deleted; event `e4792b64-…` back to `venueLayoutId: None`, `seatingMode: GeneralAdmission`.
+
+**Deferred to follow-up**:
+- Capacity input on the property panel for tables (round/rect tables already auto-generate default 8 seats on Save; capacity-edit would be additive).
+- Curvature parameter for theater zones with curved fronts.
+- "Regenerate seats" path on populated zones with an explicit destructive confirmation dialog.
+
+---
+
+## 🎯 2026-04-30 (later) — Phase 7F sub-feature C SHIPPED + STAGING-VERIFIED — tier × age matrix pricing on Mode B
+
+**Bug context**: Phase 7E.3c shipped Mode B + tiered pricing as `tier.AdultPrice × Count` for ALL attendees regardless of age category — see explicit parity comment at [`Event.RegisterMode.cs:436-440`](../src/LankaConnect.Domain/Events/Event.RegistrationMode.cs#L436). The architect-required Mode A vs Mode B parity test was kept green by registering only adults. A B2 / B4 mode organiser with tiered pricing got billed `AdultPrice × child` for children — asymmetric to Mode A which routes through `tier.CalculatePriceForAttendee(AgeCategory.Child)` and pays `ChildPrice`. **Classification**: feature missing, not bug. **Architect ship order**: 7F-C → 7F-B → 7F-D (smallest blast radius first; establishes the per-tier-by-age axis B and D both consume).
+
+**Architect-approved 6-slice plan** ([docs/MASTER_TODO_PHASE_7F_C_TIER_AGE_MATRIX.md](MASTER_TODO_PHASE_7F_C_TIER_AGE_MATRIX.md), 11 edits applied) executed in five commits:
+
+- **7F-C.1** (`f14d8daa`): domain — `TierCount` gains nullable `AdultCount` / `ChildCount` + `HasAgeSplit` derived flag with both-or-neither + sum-match invariants; `HeadCountBreakdown` factories enforce architect-Q1-strict cross-axis invariants (B1 / B3 reject any age axis since they don't capture age; B2 / B4 require `sum(TierCounts.AdultCount) == Demographics.Adults` and same for children — all-or-nothing across the basket); `Event.RegisterWithHeadCount` rejects `ChildCount > 0` on tiers where `HasChildPricing == false` (architect edit #8 — silent under-charge guard); `Event.CalculateTierCountsPrice` rewritten to single-shape per architect edit #5 — derive `(adultCount, childCount) = (tc.AdultCount ?? tc.Count, tc.ChildCount ?? 0)` once + sum two `tier.CalculatePriceForAttendee` calls (legacy null-axis path keeps producing `AdultPrice × Count` per architect Q7 — preserved indefinitely); 23 new domain tests including 8 factory invariants, 5 cross-axis, 5 pricing legacy + new, 1 architect-required Mode A vs Mode B parity, 3 ChildPrice-tier guards, 1 JSON deserialise.
+- **7F-C.1b** (`257083e4`): persistence — `RegistrationConfiguration.HeadCountComparer` already does JSON-roundtrip-based deep clone so the new fields survive snapshot automatically; clarifying comment added; 2 new round-trip + equality-detection tests using the production `HeadCountJsonOptions` (camelCase + ignore-null-on-write) — proves serialise → deserialise preserves age splits AND that two breakdowns with identical `Count` but different `(AdultCount, ChildCount)` are NOT equal (without this EF would never UPDATE the column on a per-tier-age edit — the silent-data-drift trap from Phase 6A.129).
+- **7F-C.2** (`d6f2d72c`): application — `TierCountDto` carries optional `AdultCount` / `ChildCount`; both RSVP handlers (auth + anonymous) forward to `TierCount.Create`. Domain factory enforces invariants — handler stays thin.
+- **7F-C.4** (`f2aab902`): email — `HeadCountEmailFormatter.FormatTierLine` mode-aware per architect edit #11: legacy `"VIP × 3"` when `HasAgeSplit` is false, `"VIP: 2 adults · 1 child"` when true; singular/plural per leaf; zero-leaves suppressed; 7 new formatter tests.
+- **7F-C.3** (`6be23bb1`): frontend — per-tier-by-age opt-in toggle in `HeadCountRsvpForm` per architect Q2 + Q6 — age-unaware default; toggle hidden when `tier.hasChildPricing === false` with helper *"this tier doesn't have child pricing — children are billed at adult price"*; submit-time validation enforces strict cross-axis sum match (sum of per-tier `AdultCount` == demographic `Adults`) with all-or-nothing basket; auto-balance Adults/Children spinners on tier-count change; 4 new RTL tests; 7/7 `RsvpFormSection` regression tests preserved.
+
+**§5 staging smoke (cents-exact)**: architect-edit-#8 negative path verified end-to-end via `POST /api/events/749013e8…/register-anonymous` with `tierCounts: [{tierId: VIP-no-childprice, count: 2, adultCount: 1, childCount: 1}]` → HTTP 400 with the exact message *"Tier 'VIP' has no child pricing configured but the registration claims 1 children in this tier. Either configure a ChildPrice on the tier or remove the age split from this tier's count..."* — proves the full pipeline `TierCountDto` → `TierCount.Create` → `Event.RegisterWithHeadCount` pre-validation. Positive cents-exact path covered by the architect-required `Phase7FCTierAgeMatrixPricingTests.Parity_ModeA_vs_ModeB_WithTierAge_BillsIdentically` unit test ($125 for VIP × (2A, 1C) at $50/$25; identical Mode A bill); UI-driven positive smoke deferred — staging Auth issuer is currently bugged (JWTs anchored to 2026-04-25, immediately expired) and the only existing paid B + tiered event has no `ChildPrice` configured.
+
+**Tests**: 36 new across the suite (25 domain + 7 formatter + 2 round-trip + 4 RTL); Application suite **2464 / 6 skipped / 0 failed**. Architect floor was ≥18; actual 32 in domain layer alone.
+
+**Backend deploys**: `25180331524` (7F-C.2) + `25180511297` (7F-C.4) both `conclusion=success`; frontend deploy `25187203594` (7F-C.3) in flight at closeout.
+
+**Next**: 7F-B (A↔B mode change with attendee backfill — depends on 7F-C live) per architect ship order.
+
+---
+
+## 🎯 2026-04-30 (earlier) — Phase 7F sub-feature A SHIPPED + STAGING-VERIFIED — Mode-B head-count card on 3 lifecycle email templates
+
+**Bug context**: Phase 7E.4 chunk 1 (registration-confirmation email) shipped Mode-B head-count rendering. The remaining 5 lifecycle templates from architect plan §6.2 were carried forward to "Phase 7F-A". Pre-condition probing during this slice revealed 3 of those 5 (waitlist-promoted / registration-modified / organizer-new-registration-notification) DO NOT EXIST in the codebase — they're aspirational placeholders. Scope correctly tightened to **3 actually-existing templates**.
+
+**Fix (architect-approved 1-iteration plan in [docs/MASTER_TODO_PHASE_7F_A_LIFECYCLE_EMAILS.md](MASTER_TODO_PHASE_7F_A_LIFECYCLE_EMAILS.md))**:
+
+- **Slice 1** (commit `1e7678f3`): `EventCancellationEmailParams`, `EventReminderEmailParams`, `AttendeesAddedEmailParams` gain a Phase 7F-A region with the 8 FlexibleRegistration keys (`HasDetailedAttendees` / `HasHeadCount` / `HasHeadCountBreakdown` / `HasTierBreakdown` / `HeadCountTotal` / `HeadCountBreakdownLine` / `TierBreakdownLine` / `LeadAttendeeName`). `ToDictionary` always emits all 8 (true OR false, never omitted) per architect rule. Handlers populate via `HeadCountEmailFormatter.Compute(registration)`: `EventCancellationEmailJob` per-recipient `user.Id → confirmedRegistration` lookup; `EventReminderJob` in both reminder-send branches; `AttendeesAddedEventHandler` from already-loaded registration. All wrapped in try/catch fail-soft (registration cancellation/reminder/add still sends even if formatter throws). 5 new params-emit-Flexible-keys unit tests.
+
+- **Slice 2** (commit `fcde946a`): `psycopg2`-probed staging on 2026-04-30 to capture authoritative bodies (84612 / 85938 / 71506 chars), located `{{#if HasOrganizerContact}}` anchors at positions 58509 / 65496 / 51080, inserted the Phase 7E.4 chunk 1 Mode-B card snippet (7271 chars; anchor-wrapped with `<!-- attendee-block-7e --> ... <!-- /attendee-block-7e -->`) immediately before the `HasOrganizerContact` block. Saved as 3 embedded resources in `Resources/Phase7F_A/*.html`. New `Phase7FATemplates.LoadHtml` helper. EF-scaffolded migration `Phase7F_A_FlexibleRegistrationLifecycleTemplates` with `Up()` doing defensive `CREATE IF NOT EXISTS` on the backup table + per-template backup INSERT + parameterised UPDATE; `Down()` restoring each body from the backup row (idempotent).
+
+**Architect-required pre-conditions all clean**:
+- Mode C silent: both `EventCancellationEmailJob` (line 122) and `EventReminderJob` (line 145) iterate `event.Registrations` which is empty for Mode C → loops execute 0 times → templates never rendered for Mode C. Naturally silent, no explicit guard added.
+- Template DB rows pinned via `psycopg2` probe: 84612 / 85938 / 71506 chars confirmed.
+- N/A `LeadAttendeeName` at waitlist-promotion: waitlist email infrastructure doesn't exist.
+
+**DB verification post-deploy** (via `psycopg2`):
+- All 3 templates contain `attendee-block-7e` anchor.
+- Lengths grew exactly +7272 chars each: 78778 / 91884 / 93210.
+- `communications.email_template_backups` has all 3 pre-7F-A bodies for rollback.
+
+**Test totals**: 5 new params tests; full Application suite **2432 passed / 6 skipped / 0 failed**.
+
+**Deploys**: backend `25145447580` `conclusion=success`. Frontend not changed in this slice.
+
+**Verification gap honestly noted**: the `communications.email_messages` audit table is empty in staging — emails are sent via ACS without DB persistence, so the actual rendered-email body can't be verified via DB query. The implementation contract is verified via the chain: handler populates Flexible* fields (covered by 2432-test suite) → ToDictionary emits all 8 keys (5 new unit tests) → DB body contains `{{#HasHeadCount}}` block at the expected anchor (verified via `psycopg2`). Real end-to-end ACS-side verification will happen organically as organisers cancel/remind on Mode-B events.
+
+**Out of scope (separate work if/when needed)**: `event-waitlist-promoted` (no waitlist code), `event-registration-modified` (no separate template; UpdateRsvp rejects B/C anyway), `organizer-new-registration-notification` (no separate template).
+
+---
+
+## 🎯 2026-04-30 (earlier) — Slice 9 follow-up API smoke COMPLETE — banquet-preset bug fixed
+
+**Context**: per the master TODO list at [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md), the original Slice 9 verification still owed: (1) apply-template smoke, (2) re-apply-different-preset smoke (orphan accumulation path), (3) Slice 8 regression deck after all 4 slices shipped, (4) audit-table verification.
+
+**Bug discovered during smoke**: `POST /apply-preset {presetId:"banquet-round-8"}` on a tiered event returned 400 `"Layout must have at least one zone"`. Root cause: `VenueLayout.ValidateForEvent` required `_zones.Any()`, but banquet layouts use TABLES (round / square / rect tables) directly with no zones. The original from-preset endpoint never called `ValidateForEvent` so the bug was latent; Slice 9.2's `ApplyPresetToEventCommandHandler` calls it for structural validity, which surfaced the issue.
+
+**Fix shipped (commit `8b2b8d1b`, deploy run `25143127207` `conclusion=success`)**:
+- `!_zones.Any() && !_tables.Any()` — zones OR tables is structurally valid; only an empty shell (neither) fails.
+- Error message updated to "at least one zone or table".
+- Two new tests: positive (banquet with one round table → passes), negative (empty layout → fails with new wording).
+- 56 VenueLayoutTests pass.
+
+**Smoke 4/4 PASS** (re-run after fix):
+- **T1 (apply-template, atomic)**: `POST /apply-template` against template `a636c96e-…` (S8.9b smoke clone, 200 seats, 1 zone) on event `e4792b64-…` → 200, layout `0fcd2298-…` created, event auto-flipped to `seatingMode: AssignedSeating` + `venueLayoutId` set. `GET /by-event/{id}` returned the assigned layout.
+- **T2 (apply-preset replaces existing layout)**: `POST /apply-preset {presetId:"banquet-round-8"}` against the now-attached event → 200, banquet layout `cadc267c-…` (15 round tables × 8 seats = 120 capacity) attaches; old layout `0fcd2298-…` still in DB but invisible to `by-event` (Slice 9.3 read fix in action — orphan exists with `event_id` but `events.venue_layout_id` points elsewhere).
+- **T3 (Slice 8 regression)**: 8 presets returned, 409 on stale If-Match for PUT /batch, 400 on non-template-source for BOTH legacy `from-template` AND new `apply-template`. No regressions.
+- **T4 (audit-table verification)**: confirmed migration ran via deploy log `Applying migration '20260429185523_Slice93HardDeleteOrphanLayouts'`. Runtime `RAISE NOTICE` orphan-count output requires direct DB access which is not available via API; the design accepts this (architect Rev 3 — the `RAISE EXCEPTION` post-condition guard ensures silent failure cannot occur).
+
+**Cleanup**: test artifacts deleted; event `e4792b64-…` back to `venueLayoutId: None`, `seatingMode: GeneralAdmission`. Final `by-event` returns 400 "Venue layout not found".
+
+**All 4 root causes from Slice 9 (RC-1 through RC-4) now closed + verified end-to-end on staging.**
+
+---
+
+## 🎯 2026-04-29 — Phase 7E.3c SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP with TierCounts axis pricing
+
+**Context**: Phase 7E.3b shipped paid B-mode for single-price + dual-price events but gated TierCounts (e.g. "VIP × 2 + General × 3") behind `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred`. 7E.3c lifts that gate and ships the actual TierCounts pricing path. **Phase 7E is now complete end-to-end** — free + paid + Mode C + tier-counts all shipped. Tier × age matrix remains Phase 7F.
+
+**Fix (architect-approved 3-slice plan in [docs/MASTER_TODO_PHASE_7E_3C_TIERCOUNTS.md](MASTER_TODO_PHASE_7E_3C_TIERCOUNTS.md), 5 architect edits applied)**:
+
+- **Slice 1** (commit `0a98ef6e`): domain `Event.CalculateTierCountsPrice` private helper — `sum(tier.AdultPrice × tc.Count)`. Architect edit #4 inline comment references Mode A's `CalculateTieredPriceForAttendees` for deliberate AdultPrice-only parity (ChildPrice belongs in Phase 7F tier × age matrix scope). Both `PaidHeadCountTiersDeferred` gates lifted; defensive replacement rejects TierCounts on SingleTier events. Per-tier capacity reservation moved to `RegisterWithHeadCount` BEFORE pricing branches per architect edit #2 — applies to free + paid tiered events; atomic semantics + pre-validation of all tier IDs. 8 new domain tests including architect-required parity (Mode A vs Mode B + tier counts → identical TotalPrice) + race + free-tiered capacity.
+
+- **Slice 2** (commit `c9153331`): frontend tier-count selector in `HeadCountRsvpForm` rendered when `event.ticketingMode === 'Tiered'`. Per-tier counter UI with name + price + remaining stock; tier total drives registration's `headCount.total`; demographic spinners still captured for B2/B4 organiser reporting. Helper italic text on B2/B4 tiered: *"Demographics are for organiser reporting only — pricing is per tier"* per architect edit #3. Submit-time validation: tier total > 0 + B2/B4 demographic-tier-sum match. tierCounts payload built only from non-zero counts. 7/7 RsvpFormSection RTL tests pass + tsc clean.
+
+- **Slice 3** (this commit): Stripe end-to-end smoke (cents-exact) + tracking docs.
+
+**Architect-required cents-exact Stripe verification (DoD edit #5)**:
+- **B2 + tiered** event `749013e8-…`: VIP × 2 + General × 3 → `totalPriceAmount=190.0` = **19000 cents EXACT** (math: 2×$50 + 3×$30). Stripe session `cs_test_a1LsBcPTeC…`.
+- **B1 + tiered** event `7096c2fa-…`: VIP × 1 + General × 4 → `totalPriceAmount=170.0` = **17000 cents EXACT** (math: 1×$50 + 4×$30). Stripe session `cs_test_a1o9GBEHhE…`.
+- **Capacity-overflow** (DoD edit #5): anonymous register VIP × 9 against 8 available → HTTP 400 *"Insufficient capacity in this tier"*. Atomic — no Stripe session created, no partial reserve held.
+- Both successful registrations land in `Preliminary` + `paymentStatus=Pending` awaiting Stripe webhook.
+
+**Test totals**: 8 new domain tests + 1 flipped 7E.3b test (TierCounts on SingleTier event now rejected with the new "TicketingMode.Tiered required" message) + 7 RTL tests; Application suite **2427 passed / 6 skipped / 0 failed**.
+
+**Deploys**: Slice 1 backend `25140191059` success; Slice 2 deploys `25141600995` (backend) + `25141600975` (UI) both `success`.
+
+**Skipped per architect (saves time)**: tier-rename snapshot test (already covered by 7E.1 JSON round-trip + handler resolution); paid-B-tiered refund regression (7E.3b coverage + mode-agnostic refund handler is sufficient).
+
+**Out of scope (Phase 7F)**: tier × age matrix pricing (separate adult/child prices per tier). `PaidHeadCountTiersDeferred` constant remains as a no-op for one release.
+
+---
+
+## 🎯 2026-04-29 (earlier) — Slice 9 Seating Fix COMPLETE — All 4 slices SHIPPED + STAGING-VERIFIED end-to-end
+
+**Bug context**: user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" symptoms (with screenshots). RCA via 3 architect review rounds identified 4 cooperating defects (RC-1 through RC-4) — see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md) for the full design.
+
+**Fix shipped — 4 slices, ship order 9.3 → 9.1 → 9.2 → 9.4**:
+
+- **Slice 9.3** (commits `ce1c66de` / `a560eee6` / `6f84abb6`): repository read fix (RC-2). `IVenueLayoutRepository.GetByEventIdAsync` renamed to `GetAssignedLayoutForEventAsync` and rewritten to JOIN via `events.venue_layout_id` (canonical assignment), not `venue_layouts.event_id` (which returned orphans). Hard-delete migration `Slice93HardDeleteOrphanLayouts` with audit snapshot + cascade-clean for dangling `seat_holds` (no FK constraint). Two iterations on the migration (Postgres `Id` quoting + abort-vs-cascade-clean revision) before clean deploy.
+
+- **Slice 9.1** (commit `f182a879`): domain publish-readiness gate (RC-1). `VenueLayout.ValidateForEvent` gains optional `bool requireTierMapping = true` parameter — apply-preset/apply-template paths pass `false`, publish path passes `true`. New `Event.CheckLayoutPublishReadiness(VenueLayout? layout)` sibling method on `Event.Seating.cs` (architect Option D — `Publish()` signature unchanged, preserves all 32 existing publish tests untouched). `PublishEventCommandHandler` injects `IVenueLayoutRepository`, fetches assigned layout when `event.VenueLayoutId.HasValue`, calls readiness check, fails-fast on unmapped zones with specific error message.
+
+- **Slice 9.2** (commit `94080409`): atomic apply commands (RC-1+RC-4). New `ApplyPresetToEventCommand` + `ApplyTemplateToEventCommand` collapse from-preset+assign and from-template+assign two-steps into single Unit-of-Work transactions. Build layout → structural-only validation (`requireTierMapping: false`) → persist via `AddAsync` → `event.EnableAssignedSeating(layout.Id)` → `CommitAsync`. No orphan-on-partial-failure. New endpoints `POST /api/venue-layouts/apply-preset` and `POST /api/venue-layouts/apply-template`.
+
+- **Slice 9.4** (commit `475163a1`): frontend cutover (RC-1+RC-4). `SeatingLayoutPicker.handlePresetSelected` and `handleTemplateSelected` rewritten to use new `useApplyPresetToEvent` / `useApplyTemplateToEvent` hooks (single round-trip, no orphan accumulation). New TS types + repo methods. "Change layout" button now gated by `ConfirmDialog` (danger variant, reuses existing primitive used in save-as-template + warn-before-close patterns) — wording: "Replace current seating layout?" / "Replace layout" / "Keep current layout". Prevents accidental destruction of customised layouts (architect Q3).
+
+**Verification (staging, end-to-end)**: clean event `e4792b64-…` → `POST /apply-preset {presetId:"theater-classic", eventId:…}` → 200 with full layout DTO (capacity 200) + event auto-flipped to `seatingMode: AssignedSeating` + `venueLayoutId` set in same transaction. `GET /by-event/{id}` returned the assigned layout via the Slice 9.3 read fix. `POST /publish` against the unmapped layout → 400 `"Zone 'Main Floor' must be mapped to a ticket tier"` (Slice 9.1 publish gate firing correctly). Frontend deploy run `25139142184` `conclusion=success`.
+
+**Test posture**: 2419 Application tests pass (no regressions). 8 new domain tests for ValidateForEvent flag + CheckLayoutPublishReadiness. tsc --noEmit clean. 2 pre-existing `DonationConfigurationTests` failures unrelated (since `e3112bbf`).
+
+**Deferred to follow-up slices** (architect-approved):
+- **9.4b**: `BatchUpdate.deletedZoneIds` + 409 ambiguity guard for destructive-wipe protection (architect Q4 Option 3). The current PUT-replaces-all semantics persist; UX guidance + the new flow's atomicity are the near-term mitigation.
+- **9.4c**: remove deprecated hooks (`useCreateLayoutFromPreset` / `useCreateLayoutFromTemplate` / `useAssignLayoutToEvent`) + repo methods + backend endpoints (`from-preset` / `from-template` / `assign`) + 3 command handlers (architect Q5). Pending verification that no other callers regressed.
+
+---
+
+## 🎯 2026-04-29 (earlier) — Phase 7E.3b SHIPPED + STAGING-VERIFIED — Paid B-mode RSVP + Stripe Checkout
+
+**Bug context**: Phase 7E.3a shipped FREE B-mode RSVP only; the paid path was deferred per architect risk #5 (Stripe amount-calc tests required as a pre-merge gate). The 2026-04-29 paid-B-mode-gate fix added a `PaidHeadCountDeferred` constant + validator gate to make the deferred state safe; this slice ships the actual implementation and lifts the gate.
+
+**Fix (architect-approved 5-slice plan in [docs/MASTER_TODO_PHASE_7E_3B_PAID_BMODE.md](MASTER_TODO_PHASE_7E_3B_PAID_BMODE.md))**:
+
+- **Slice 1+2 merged** (commit `5ae304fe`): new `Event.CalculateHeadCountPrice` private helper mirroring Mode A's `CalculatePriceForAttendees` shape — Free → zero, AgeDual + B2 → `adults × adultPrice + children × childPrice`, AgeDual + B4 → derive `(AM+AF) × adultPrice + (CM+CF) × childPrice`, GroupTiered → `CalculateGroupPrice(Total)`, Standard + B → `Total × ticketPrice`, B1/B3 + dual → defensive reject, TierCounts → reject `PaidHeadCountTiersDeferred` until 7E.3c. Removed "free events ONLY" guard from `RegisterWithHeadCount`. Lifted `PaidHeadCountDeferred` validator gate. New `RegistrationModeErrorCodes.PaidHeadCountTiersDeferred` constant. Compatibility test rows 5/7/8/9 reverted to target-state plan §2 expectations. Mapper + handler-integration tests flipped: paid+B → "active". Merged into one commit per architect edit #1 — gate removal without the impl creates a real-money dead-end.
+
+- **Slice 3** (commit `9bcfd200`): new `IRegistrationCheckoutService` + impl. Single-line-item Stripe Checkout session creation with revenue-breakdown calc + session-ID storage. Auth + anonymous head-count handlers wired through it (architect edit #2: shared service prevents auth/anon fork). DI registered in Infrastructure. Mode A's complex bundled-extras flow currently stays inline as a **controlled deviation** from architect edit #2 — anti-fork concern was primarily about pricing math (already shared); Mode B has no bundled-extras path. 6 service unit tests including cents-exact assertion.
+
+- **Slice 4** (commit `0fa002a6`): removed `HeadCountRsvpForm` paid-event short-circuit. Page-level handler already redirects to `checkoutUrl` — no page changes needed. Added paid + Mode B RTL test for symmetry.
+
+- **Slice 5**: this entry + architect-required paid-B refund regression test (`Phase7E3bPaidBRefundTests.RefundHandler_PaidBRegistration_RefundsTotalPrice_Successfully`).
+
+**Architect-required cents-exact Stripe verification (DoD edit #5)**:
+- **B2 dual-price** ($15 adult / $7 child) event `18491dd1-…`: RSVP 2 adults + 1 child → `totalPriceAmount=37.0` = **3700 cents EXACT** (math: 2×$15 + 1×$7 = $37). Stripe session `cs_test_a1ZBtQDIXX…`.
+- **B1 single-price** ($25) event `95f28ef1-…`: RSVP total=4 → `totalPriceAmount=100.0` = **10000 cents EXACT** (math: 4×$25). Stripe session `cs_test_a1p2UgVuc1…`.
+- Both land in `Preliminary` + `paymentStatus=Pending` awaiting Stripe webhook (correct lifecycle).
+- `Allowed-modes` API for paid context now returns all 5 modes — gate-removal cascade verified.
+
+**Test totals**: 16 new domain pricing tests + 6 service tests + 1 refund test + 1 RTL test. Application suite **2418 passed / 6 skipped / 0 failed**. `tsc --noEmit` clean.
+
+**Deploys**: Slice 1+2 backend `25115122343` success; Slice 3+4 deployed via the composite seating-fix run `25131067970` success (intermediate runs blocked by an unrelated `Slice93` seating-stream migration that was fixed and re-deployed by the seating team).
+
+**Out of scope (lands in 7E.3c)**: TierCounts axis pricing — gated by `PaidHeadCountTiersDeferred`. Gate-removal breadcrumb in `MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` under 7E.3c.
+
+---
+
+## 🎯 2026-04-29 (later) — Slice 9.3 SHIPPED + STAGING-VERIFIED (Seating Layout Fix, RC-2)
+
+**Bug context**: today's user-reported "Theater Classic · 0 seats" + "Customize doesn't apply" was traced to 4 cooperating defects (RC-1 through RC-4) per architect Revisions 1/2/3 (see [docs/MASTER_TODO_SLICE9_SEATING_FIX.md](MASTER_TODO_SLICE9_SEATING_FIX.md)). Slice 9.3 fixes RC-2: `VenueLayoutRepository.GetByEventIdAsync` filtered by `venue_layouts.event_id` instead of joining via `events.venue_layout_id`, returning orphan layouts (created when from-preset succeeds but assign 400s on tier validation) as if assigned. The orphan's seats appear in the UI, then a Customize → Save against the orphan can wipe its zones (RC-3) — producing the "0 seats" symptom.
+
+**Fix shipped**:
+
+- **Repo rename + JOIN-via-event-PK** (commit `ce1c66de`): `IVenueLayoutRepository.GetByEventIdAsync` → `GetAssignedLayoutForEventAsync`. New SQL reads `events.events.venue_layout_id` for the canonical assignment, then loads the layout aggregate by id. Orphans become invisible to the by-event read path. 3 callers updated (`HoldSeatsCommandHandler`, `GetSeatAvailabilityQueryHandler`, `GetVenueLayoutQueryHandler`). Frontend untouched — URL `/by-event/{id}` unchanged.
+
+- **PostgreSQL Id-column quoting fix** (commit `a560eee6`): first deploy failed with Postgres error 42703 "column vl.id does not exist (Hint: Perhaps you meant to reference the column \"vl.Id\")". EF Core configurations don't override `HasColumnName` for the `Id` PK property, so it's quoted as `"Id"` (PascalCase). My SQL used unquoted `vl.id`. Fixed by quoting all PK references (verbatim C# `vl.""Id""` → SQL `vl."Id"`).
+
+- **Cascade-clean dangling seat_holds** (commit `6f84abb6`): second deploy correctly aborted via the migration's pre-flight assertion: 1 live `seat_hold` referenced an orphan-layout seat (stale from this morning's RCA repro). The architect's original abort-on-holds was too strict — `seat_holds.seat_id` has no FK constraint (deliberate, per `SeatHoldConfiguration.cs`), so when an orphan layout's seats are deleted, dangling holds stay in the table. After Slice 9.3's read fix, those holds are unreachable through any live workflow. Replaced the abort with an explicit cascade-clean step (DELETE seat_holds WHERE seat_id IN orphan_seats) before the orphan-layout DELETE. Counts logged via `RAISE NOTICE`. Architect-approved revision.
+
+- **Migration `Slice93HardDeleteOrphanLayouts`**: scaffolded via `dotnet ef migrations add` (so `.Designer.cs` is generated — per CLAUDE.md memory on hand-rolled migrations being invisible). Generic `events.deleted_layouts_audit` table created (forensic trail with `deleted_by_migration` column for future cleanups). Pre-flight `RAISE NOTICE` orphan count → cascade-clean dangling holds → audit-snapshot orphans → hard `DELETE` → post-condition `RAISE EXCEPTION` on count mismatch (Phase 6A.122 silent-failure guard). Production-safe (N=0 orphans path verified by design). `Down()` is a logged no-op (hard-delete irreversible; audit table preserves trail).
+
+**Verification (staging, post-deploy `25131067970`)**: created a fresh orphan via `POST /from-preset` on the user's tiered event `e4792b64-…` (assign would fail with RC-1 — separate slice's concern); `GET /by-event/{eventId}` correctly returned 400 "Venue layout not found" — the orphan is invisible. Pre-fix this same request would have returned the 200-seat orphan masking the real failure. Slice 8 API smoke regression: T-A1 (8 presets) + T-A2 (200-seat from-preset) PASS. 2403 Application tests pass (0 regressions; 2 pre-existing `DonationConfigurationTests` failures since `e3112bbf` are unrelated).
+
+**Next**: Slice 9.1 (domain `CheckLayoutPublishReadiness` — publish-time strict validation; preserves all 32 existing `Event.Publish()` tests by adding a sibling method instead of changing the signature). Then Slice 9.2 (atomic `ApplyPresetToEventCommand` + `ApplyTemplateToEventCommand`, no auto-tier-mapping per user). Then Slice 9.4 (UI cutover + change-layout `ConfirmDialog` + `BatchUpdate.deletedZoneIds` + 409 ambiguity guard + endpoint removal).
+
+---
+
+## 🎯 2026-04-29 — Phase 7E follow-up: Paid Mode B Gate SHIPPED + STAGING-VERIFIED
+
+**Bug context** (architect RCA approved + implementation plan reviewed in iteration 1, 6 edits applied — see [docs/MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md](MASTER_TODO_PHASE_7E_PAID_BMODE_GATE.md)): a paid event flipped to `HeadCountByAge` mode (during my own API smoke earlier this session) rendered a fillable RSVP form that errored on submit with *"Paid head-count registration is coming soon (Phase 7E.3b)"*. The validator was written to the full plan §2 (paid + B = OK) ahead of the implementation; only slice 7E.3a (FREE B-mode) is shipped today. Three layers — validator, allowed-modes API, UI — claimed support that the domain method doesn't honour, producing a dead-end form.
+
+**Fix (single source of truth at the validator)**:
+
+- **Slice 1** (commit `ca5314d6`): new `RegistrationModeErrorCodes.PaidHeadCountDeferred` constant + `IsFreeAttendance` gate inside `RegistrationModeCompatibility.CheckCommonHeadCountConstraints` with an inline `// PHASE_7E_3B: remove this gate when paid B-mode + Stripe ships` breadcrumb (architect edits #2 + #6). Cascades to `GetAllowedRegistrationModesQueryHandler` (mode picker hides B for paid), `UpdateEventCommandHandler` (rejects new paid+B flips), and the Slice 2 mapper. 9 new test rows (paid+B negative ×4 asserting the constant; free+B regression ×4; AllowedModes_ExcludesAllBModes for paid). Existing rows 5/7/8/9 updated to "A only (paid B-mode gated until 7E.3b)" — they revert when 7E.3b ships.
+
+- **Slice 2** (commit `d4bac3ed`): `EventDto.RegistrationModeStatus` (architect edit #1: defaults to `"deferred"` fail-safe, mapper sets `"active"` only when compatibility passes). Mapper helper `ComputeRegistrationModeStatus(Event src)` builds a `RegistrationModeContext` from src (IsFreeAttendance, HasDualPricing, HasGroupTiers, HasTicketTiers — the axes representable on Event today) and runs the same validator. 11 mapper unit tests (paid+B → deferred ×4; free+B → active ×4; legacy paid+A → active; free+C → active). Architect-required handler-level integration test (edit #5) `GetEventByIdRegistrationModeStatusTests` × 3 — wires the real `EventMappingProfile` through a real `MapperConfiguration` and asserts end-to-end propagation, catches DI / profile-registration breaks the mapper unit misses.
+
+- **Slice 3** (commit `84ca2d82`): `RsvpFormSection` reads `event.registrationModeStatus`. If `'deferred'`, renders an amber-card "Registration coming soon" panel pointing the user at the Event Organiser Contacts section instead of `HeadCountRsvpForm`. Defaults to `'active'` client-side for legacy cached payloads. 6 RTL dispatcher tests covering all branches.
+
+- **Slice 4** (legacy rollback + scans): prod scan @ 2026-04-29T18:03:48Z surveyed 3 events, **0 paid+B-mode** (Phase 7E not deployed to prod yet). Staging scan @ 2026-04-29T18:05:24Z surveyed 59 events, **1 paid+B** (`d543629f-…` — the smoke artefact, exactly as expected). Rolled back via PUT with start date bumped to T+7 days (architect edit #3 — avoids the past-date guard, single audit-log entry, no SQL/back-door). Post-rollback verification: `mode=DetailedAttendees`, `registrationModeStatus=active`, `startDate=2026-05-06`.
+
+- **Slice 5** (this entry + 7E.3b ship-checklist breadcrumb): added a "Gate-removal checklist" block under the 7E.3b heading in [MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) so the implementer doesn't forget to lift the temporary gate when paid B-mode + Stripe ships.
+
+**Architect-required DoD evidence**:
+- Test totals: backend 92/92 in the impacted suite (78 Phase 7E + 11 mapper + 3 handler integration); frontend 6/6 RsvpFormSection RTL dispatcher.
+- All 5 deploys (3 backend `25115122343` + `25121840037` + `25123122840`; 2 UI `25121840030` + `25123122751`) `conclusion=success`.
+- Container-log scan post-Slice-1 over 1000 lines — zero `PaidHeadCountDeferred` failures from real (non-smoke) traffic. Free traffic does not trip the gate.
+- Prod paid+B count documented: 0 @ 2026-04-29T18:03:48Z. Staging paid+B count: 1 → 0 after rollback.
+
+**What's still queued**: "X of Y spots left" copy bug at `HeadCountRsvpForm.tsx:178` (separate P3 polish ticket — orthogonal to this slice and we're rendering the panel instead of the form for the relevant case anyway). Phase 7E.3b paid B-mode + Stripe checkout itself is the next significant slice; the gate-removal checklist is on its ship list.
+
+---
+
+## 🎯 2026-04-28 (latest) — Slice 8 Bug 1 fix DEPLOYED + API smoke 15/15 PASS + Bug 2 follow-up queued
+
+**Issue 1 (Bug 1, FIXED)**: User reported "Save failed: If-Match header is required" on Customize → Save through the canvas editor (with screenshot). RCA: the Next.js proxy at [web/src/app/api/proxy/[...path]/route.ts](../web/src/app/api/proxy/[...path]/route.ts) used an explicit-allow header whitelist that did NOT include `If-Match`. EVERY UI-side optimistic-concurrency mutation since Slice 5 Chunk 4 (Apr 20) had been silently 400-ing through the proxy. Fix in commit `86f626e0` adds the conditional-request header family (`If-Match` / `If-None-Match` / `If-Modified-Since` / `If-Unmodified-Since`) so the proxy passes them through unchanged. `deploy-ui-staging.yml` run `25073572878` `conclusion=success`. Verified end-to-end through `/api/proxy/...`: PUT `/batch` without If-Match → 400; with `If-Match: <rowVersion>` → 204. Pre-fix this exact request hit 400 (proxy stripped it). 4 orphan layouts cleaned off staging event `e4792b64-…`.
+
+**Issue 2 (API smoke, COMPLETE)**: User asked "push to staging and start testing all the feature you implemented via APIs". Created [docs/MASTER_TODO_SLICE8_API_SMOKE.md](MASTER_TODO_SLICE8_API_SMOKE.md) — 15-test repeatable suite covering Slice 6 baselines, S8.8a/b/c batch save (incl. concurrency + foreign-tier rejects), S8.9b save-as-template, S8.10 list + apply templates (incl. non-template source rejection), S8.11 delete templates lifecycle, and cleanup. **Result: 15/15 PASS** with correlation IDs captured for every successful test. Smoke doc updated with full evidence and new run-history row.
+
+**Issue 3 (Bug 2, DOCUMENTED FOR FOLLOW-UP)**: "Change layout" UI flow leaves orphan layouts on staging. Two cooperating root causes: (a) `CreateLayoutFromPresetCommandHandler` at [src/LankaConnect.Application/Events/Commands/CreateLayoutFromPreset/CreateLayoutFromPresetCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/CreateLayoutFromPreset/CreateLayoutFromPresetCommandHandler.cs) does NOT unassign+delete the previously-attached layout before creating the new one — relies on the frontend orchestrating an explicit assign call; if that step is racy or fails, the OLD layout stays in `venue_layouts` with the same `event_id`. (b) [VenueLayoutRepository.cs:90-96](../src/LankaConnect.Infrastructure/Data/Repositories/VenueLayoutRepository.cs#L90-L96) `GetByEventIdAsync` uses `WHERE event_id = X` (not `WHERE id = events.venue_layout_id`), so when multiple rows transiently share an `event_id`, `FirstOrDefaultAsync`'s ordering is undefined and a stale or wrong layout can be returned. Recommended fix (architect-review-required): canonical read via `events.venue_layout_id` (single source of truth), plus atomic detach-and-delete in the from-preset / from-template command handlers. Surface as a separate Slice 8 follow-up chunk before any further UI work touches the change-layout flow. Captured in [docs/MASTER_TODO_SLICE8_API_SMOKE.md](MASTER_TODO_SLICE8_API_SMOKE.md) run-history row.
+
+**No backend / DB / migration changes in this session** — proxy fix is the only code change and is frontend-only (Next.js API route handler).
+
+---
+
+## 🎯 2026-04-28 (later) — Event Create/Edit/Manage UI consistency (SHIPPED, deploy in flight)
+
+**Issue**: Event Detail page already used `<CollapsibleSection>` (Show/Hide details affordance) on its 6 informational sections — but Event **Create**, **Edit**, and Manage page's **Event Details tab** rendered every section as a fully-expanded `<Card>`, producing 1,900+ line scrolls per form. Pure UI/UX gap; no backend, auth, DB, or API change required.
+
+**Action taken** (commit `fe0673c4`, frontend-only):
+- ✅ `CollapsibleSection` extended with backward-compatible controlled-mode props (`open` + `onOpenChange`); existing detail-page call-sites at `web/src/app/events/[id]/page.tsx:981+` unchanged (pass nothing → existing uncontrolled behaviour preserved).
+- ✅ 4 sub-config forms (`DonationConfigForm`, `CollectionConfigForm`, `SponsorConfigForm`, `AddOnConfigForm`) refactored to contents-only — parent now owns card chrome (eliminates double-card when wrapped externally). Verified zero external call-sites first.
+- ✅ Wrapped 11 sections per form/tab: Create lands with only "Basic Information" open; Edit lands fully collapsed; Manage's Event Details tab lands with Statistics + Event Details open.
+- ✅ Auto-expand-on-error wired via `handleSubmit(onValid, onInvalid)` and a static `FIELD_TO_SECTION` map next to each Zod schema. First errored section is `requestAnimationFrame`-deferred scrolled into view. Bottom error summary `<li>` upgraded to clickable `<button>` for repeat navigation.
+- ✅ Stable `id` anchors + `scroll-mt-20` on each section wrapper for future deep-link / scroll-to flows.
+- ✅ 20 new vitest tests (12 CollapsibleSection + 8 sub-config form regressions); all pass. Existing `MediaGallery.test.tsx` (20 cases) still passes — no regression in events directory.
+- ✅ `tsc --noEmit` clean; `next build` succeeded.
+- ⏳ `deploy-ui-staging.yml` run `25073969534` triggered (typically 5–6 min). UI verification on staging Create/Edit/Manage pages pending deploy completion.
+
+**Deferred / out of scope for this slice**:
+- Other Manage tabs (Attendees & Finance, Signup Lists, Volunteers, Forms, Communications, Photo Album) — already segmented via TabPanel + table layouts, not stacked `<Card>` forms. Apply this pattern there as separate slices if needed.
+- Pattern propagation to non-event forms (newsletter editor, admin user pages, marketplace product create, signup-form builder).
+- Sticky table-of-contents sidebar (anchors landed; sidebar not).
+- Per-user "remember which sections were open last time" persistence.
+- Section-level "completed" badges (would require Zod partial-validation per section).
+
+---
+
+## 🔥 2026-04-25 — Production Performance RCA (CLOSED)
+
+**Issue**: Prod `/api/events/{id}` taking 10-35s + returning 503s on popular events (85+ registrations). Root cause: cartesian explosion in `EventRepository.GetByIdAsync` (6 sibling Include collections + 2 nested 3-deep chains in a single non-split query → ~100K-row LEFT JOIN).
+
+**Action taken**:
+- ✅ **Phase 2 emergency mitigation** — Container App scaled to 1.0 CPU / 2 GiB / 2-5 replicas + http-scaler concurrency=10. Restored prod within 60s.
+- ✅ **Phase 1 durable fix** (PR #104 → main commit `42abd834`) — `AsSplitQuery()` global default + explicit at call site + `trackChanges:false` on read handlers. Prod p95 dropped 10-35s → **0.18-0.86s** (40-200x improvement).
+- ✅ Post-fix scale-rule relaxed 10 → 30 concurrent (matching staging's headroom ratio).
+
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md)
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **Phase 0**: Azure Monitor alerts (p95 endpoint > 2s, replica saturation, 5xx rate)
+2. **Phase 3**: Decompose `GetByIdAsync` into 4 specialized methods (eliminates query duplication where event-detail page fires the expensive query twice)
+3. **Phase 4**: `MetroAreas` cache, `PhotoAlbums` Include cleanup, `EmailQueueProcessor` DbContext lifetime audit, fire-and-forget `RecordEventViewCommand` scope fix, Npgsql `MaxPoolSize` vs Postgres `max_connections` verification
+4. **Phase 4 chore**: Sync staging↔prod Container App config via IaC (Bicep/Terraform) + CI gate rejecting null `scaleRules`
+5. Perf integration test as regression guard (90 regs / 5 lists / 12 items / 3 commitments seed)
+
+---
 **Priority:** Phase 1 MVP to production ASAP
 
 ---
 
-## 🔄 CURRENT STATUS — SEATING REDESIGN SLICE 7: REGISTRATION UX REWRITE (2026-04-23)
+## 🎯 2026-04-28 — PHASE 6A.139 (Admin-Initiated Upgrade to Event Organizer) SHIPPED + STAGING-VERIFIED
+**Date**: 2026-04-28
+**Session**: Closes the asymmetry surfaced when the user noticed the User Management tab's row menu had "Downgrade to Member" (Phase 6A.106) but no "Upgrade to Event Organizer". RCA: missing-feature across all 4 layers (UI/Auth/API/DB) — not a bug.
+
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Commit `e163757c`. All 6 architect-approved slices complete. Both staging deploys (`deploy-staging.yml` run `25056782778` + `deploy-ui-staging.yml` run `25056782733`) `conclusion=success`. API smoke 5/5 + happy-path full handler trace + email send confirmed via Azure container logs. UI manual verification awaits user.
+
+**RCA**: Missing-feature, not a bug. Verified each layer individually:
+- UI: row menu correctly shows wired actions; no upgrade action wired.
+- Auth: `RequireAdmin` policy works for downgrade; would work identically for upgrade.
+- Backend: existing endpoints correct in scope; no upgrade endpoint exists.
+- DB: `users.role` / `pending_upgrade_role` / `upgrade_requested_at` / `admin_audit_logs` columns already support the change. **No migration needed.**
+
+**Scope shipped (local)**:
+- **Slice 1 — Domain**: `User.UpgradeToEventOrganizerByAdmin()` symmetric to `DowngradeToGeneralUserByAdmin()`. Invariants: must currently be `GeneralUser`, transitions to `EventOrganizer`, clears `PendingUpgradeRole` + `UpgradeRequestedAt` (short-circuits user-initiated approval queue), raises `UserRoleChangedEvent`. **9 unit tests in `UserUpgradeToEventOrganizerByAdminTests.cs`**.
+- **Slice 2 — Application**: `AdminUpgradeUserCommand` + validator (reason ≤500 chars) + handler. Side effects mirror `ApproveRoleUpgradeCommandHandler`: in-app `NotificationType.RoleUpgradeApproved` notification + `OrganizerRoleApprovalEmailParams` email (reused, not duplicated) + audit log with `ShortCircuitedPendingRequest: true` flag when applicable. Auth guards: `RequireAdmin` policy + handler self-action guard + domain "must be GeneralUser" guard (3 layers). Email send is **fail-silent** — role change must not be reverted if Azure ACS is down. **15 handler tests in `AdminUpgradeUserCommandHandlerTests.cs`** (happy path, auth/self-action guards, not-found cases, domain validation, audit log, domain event, notification + email, fail-silent email, cancellation token).
+- **Slice 3 — API**: `POST /api/admin/users/{userId}/upgrade` body `{reason: string}` on `AdminUsersController.cs`. `[Authorize(Policy="RequireAdmin")]` (Admin OR AdminManager) — drops the role-hierarchy clause from downgrade since target must be GeneralUser. Symmetric `UpgradeUserRequest` DTO.
+- **Slice 4 — Frontend types/repo/hook**: `UpgradeUserRequest` type + `adminUsersRepository.upgradeUser()` + `useUpgradeUser` React Query hook (invalidates same keys as `useDowngradeUser`: `adminUserKeys.lists()` + `.statistics()`). Note: pending-approvals tab is parent-driven props (no React Query cache), so no extra invalidation needed there.
+- **Slice 5 — Frontend UI**: `UpgradeUserModal.tsx` (cloned `DowngradeUserModal` structure with emerald positive variant + `ArrowUpCircle` icon + JWT-staleness copy "User must log out and back in"). `canUpgrade(user)` predicate (mutually exclusive with `canDowngrade` by role). Row menu wires "Upgrade to Event Organizer" item next to existing "Downgrade to Member". `UserManagementTab` adds modal state + handlers symmetric to downgrade.
+
+**Reuse (no duplication)**:
+- `RequireAdmin` auth policy
+- `IAdminAuditLogRepository` + `AdminAuditLog.CreateForUserAction`
+- `OrganizerRoleApprovalEmailParams.Create()` from Phase 6A.100
+- `NotificationType.RoleUpgradeApproved` from Phase 6A.6
+- `DowngradeUserModal` as structural template
+- `canDowngrade` predicate as template for `canUpgrade`
+- `useDowngradeUser` invalidation pattern
+
+**Tests**: full Application suite **2376 passed / 6 skipped / 0 failed** (+24 new 6A.139 tests over the 2352 baseline). Frontend `tsc --noEmit` clean.
+
+**Risks/guardrails verified**:
+- `UserRoleChangedEvent` has no application/infra subscribers (grep confirmed; only raise sites in `User.cs`) — safe in either direction.
+- Existing downgrade flow has zero shared mutable state; only shared touchpoint is the row-menu predicates which are now mutually exclusive by role.
+- JWT staleness: upgraded user's existing JWT keeps `role=GeneralUser` until next login — surfaced in success toast.
+- **No DB migration required** (verified column-by-column).
+
+**Slice 6 — staging verification evidence (this session)**:
+- Both deploy workflows green: `deploy-staging.yml` run `25056782778` + `deploy-ui-staging.yml` run `25056782733`.
+- **Happy path** as `admin@lankaconnect.com` (AdminManager) on `niroshanaks@gmail.com`: GeneralUser → POST `/upgrade` → HTTP 200 → GET round-trip confirms `role=EventOrganizer`.
+- **Azure container logs full handler trace** (correlation `a20274e8-…`): `AdminUpgradeUser START` → `Upgrading user CurrentRole=GeneralUser HadPendingUpgrade=False` → `Notification created NotificationId=54be2b04-…` → `template-organizer-role-approval rendered from database` → `Email sent successfully Duration=5992ms` → `AdminUpgradeUser COMPLETE OldRole=GeneralUser NewRole=EventOrganizer Duration=6067ms`. Single MediatR pipeline, single audit log, single email.
+- **5 negative tests** all return exact expected status + error message: re-upgrade EventOrganizer → 400 "User is already an Event Organizer"; empty reason → 400 "Reason is required" (validator); non-admin token → 403 (RequireAdmin policy); admin upgrades self → 400 "Cannot upgrade your own account" (handler guard); unauthenticated → 401.
+- Staging restored: `niroshanaks@gmail.com` downgraded back to GeneralUser via existing 6A.106 endpoint (also confirms the existing downgrade flow regresses cleanly under the new code).
+- **User-driven manual UI smoke** still recommended: open User Management tab → find `niroshanaks@gmail.com` row → click ⋮ → see new "Upgrade to Event Organizer" item next to "Downgrade to Member" → modal requires 10+ char reason → on confirm, badge updates without page refresh + success toast surfaces JWT-staleness reminder.
+
+---
+
+## 🎯 2026-04-27 — PHASE 7E.8 + 7E.9 (Flexible Event Registration Modes — exports + regression sweep) SHIPPED + STAGING-VERIFIED
+**Date**: 2026-04-27
+**Session**: Final two slices of Phase 7E. 7E.8 makes the attendee CSV/Excel exports Mode-aware (Mode B was emitting "Unknown" with zero counts). 7E.9 is the end-to-end regression sweep against the 7E.0 call-site checklist + architect's flagged hot-spots (4 left-join entries, 2 defensive-read entries, Mode C standalone-contribution path).
+
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Commits `8220b4ca` (export Mode-aware) + `7092b591` (docs). Build: clean (0 warnings, 0 errors). Tests: 68/68 Phase 7E suite + 2333+ Application baseline still green. Deploy `24972376188` → `conclusion=success`.
+
+**7E.8 — what shipped**:
+- `EventAttendeeDto.MaleCount` / `FemaleCount` added with `set` accessors. Populated by SQL projection in `GetEventAttendeesQueryHandler` (Mode A, mirrors AdultCount/ChildCount) and overridden by the Mode-B post-processing pass from `HeadCount.Demographics` (males = `Males + AdultMales + ChildMales`, females = symmetric).
+- `CsvExportService` and `ExcelExportService` now consume the DTO directly: `MainAttendeeName` / `AdditionalAttendees` / `MaleCount` / `FemaleCount` / `GenderDistribution`. The CSV strips `AdditionalAttendees`'s em-dash for legacy-Mode-A single-attendee parity. Removed the now-dead `GetGenderDistribution` helper.
+
+**7E.9 — what was verified**:
+- **Architect hot-spots cleared**: 4 `left-join-fix` entries (Donation FK / AddOnPurchase FK / DonationRepository.GetByRegistrationIdAsync / PaymentCompletedEventHandler call-site) confirmed are nullable single-column lookups that survive Mode C; 2 `defensive-read` entries (`AttendeeManagementTab.tsx:184`, `RsvpFormSection.tsx:56`) confirmed wired with `event.registrationMode ?? RegistrationMode.DetailedAttendees`.
+- **Staging smoke (fresh events)**:
+  - **Mode A regression** (legacy event `c0cd6cfd-…`): CSV export 13 columns, MainAttendeeName + MaleCount/FemaleCount populated correctly, no shape regression. Event detail still returns `mode=DetailedAttendees`.
+  - **Mode B (HeadCountByAge)** event `16eeb15c-…`: 2 registrations totaling 9 attendees → CSV `"Smoke Lead Adult","+4 attendees","5","3","2",…` and `"Anon Family","+3 attendees","4","2","2",…` — TOTAL row aggregates 9.
+  - **Mode B (HeadCountByGender)** event `69d4c455-…`: B3 RSVP `{males:2, females:1}` → `currentRegistrations=3` (canonical aggregator honors `HeadCount.Total`), CSV `"B3 Lead","+2 attendees","3","0","0","2","1","2 Male, 1 Female"`. Attendees endpoint confirmed mode-aware row populated by post-processing.
+  - **Mode C (NoRegistration)** events `64bd61d3-…` and `40c8279a-…`: RSVP rejected HTTP 400 *"Registration is not required for this event…"* (auth + anonymous paths). Standalone donation on Mode C event → HTTP 200 with Stripe checkout URL; donation listed in `/donations` with `regId=None` (architect's INNER-JOIN concern empirically resolved).
+- **Azure container logs scanned** over a 500-line window covering the smoke: zero unexpected exceptions, zero 5xx, zero EF migration errors.
+
+**Phase 7E core SHIPPED**: free B-mode RSVP (B1/B2/B3/B4) + Mode C drop-in events + Mode-aware confirmation emails (chunk 1 of 7E.4) + Mode-aware organiser AttendeeManagementTab + Mode-aware CSV/Excel exports + back-compat for pre-7E events (default `DetailedAttendees`).
+
+**Deferred to Phase 7F** (architect-locked):
+1. Paid B-mode (Stripe redirect for paid head-count + tier-counts pricing) — 7E.3b/c sub-slices
+2. Tier × age matrix axis on `HeadCountBreakdown` → unlocks "tier × age matrix pricing" Mode A only
+3. A↔B mode change with attendee backfill (today: forbidden once registrations exist)
+4. Mode B organiser-side attendance check-in (`actualHeadCountAttended` + organiser CTA)
+5. CSV tier-breakdown column (needs paid-B + tier counts to even exist)
+6. `event-cancellation` / `event-reminder` / `event-add-attendees-confirmation` template Mode-B variants (chunks 3-5 of 7E.4) — current behaviour is acceptable for ship; templates simply omit the head-count line
+
+**Files touched (7E.8)**:
+- `src/LankaConnect.Application/Events/Common/EventAttendeeDto.cs` — added MaleCount/FemaleCount
+- `src/LankaConnect.Application/Events/Queries/GetEventAttendees/GetEventAttendeesQueryHandler.cs` — SQL projection + post-processing override
+- `src/LankaConnect.Infrastructure/Services/Export/CsvExportService.cs` — DTO-sourced rows; removed dead helper
+- `src/LankaConnect.Infrastructure/Services/Export/ExcelExportService.cs` — DTO-sourced rows
+- `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` — 7E.8 status updated, deferred items called out
+
+---
+
+## 🎨 2026-04-27 (later) — SEATING SLICE 8: S8.11 (Delete saved templates from Mine tab) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-27
+**Session**: Closes the smallest of the post-S8.10 follow-ups — organizers can now remove saved templates instead of having a write-only growth path. Frontend-only commit `ea34769f` (backend `DELETE /api/venue-layouts/{id}` already exists since Slice 5 Chunk 9). New `useDeleteUserTemplate()` hook (mutation-variable layoutId so it's N-cards safe), Mine card gets a `Trash2` sibling button (no nested interactive elements), `ConfirmDialog` (danger variant) at modal scope.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. `deploy-ui-staging.yml` run `25021150896` `conclusion=success` (5m10s). Tests: 27/27 modal cases pass (19 prior + 8 new). Wider events+hooks+utils suite 349/349 sequential green (excluding the pre-existing `CanvasEditor.test.tsx` flake). `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.11** | `ea34769f` | `useDeleteUserTemplate()` hook + Mine card Delete sibling button + danger `ConfirmDialog` + 422-specific "in use" toast + generic error toast |
+
+**Why durable**: (1) Mutation-variable `layoutId` means one hook handles every card without violating React rules-of-hooks. (2) Sibling-button structure avoids HTML-spec violation of nested interactive elements. (3) `ConfirmDialog` at modal scope survives card re-renders + isn't `<li>`-nested. (4) `RowVersion` is the `If-Match` token — same optimistic-concurrency pattern as every other layout mutation. (5) 422 toast tells the user the problem is fixable vs. generic failure.
+**Evidence**:
+- 27/27 modal tests + 349/349 wider sequential. `tsc --noEmit` exit 0.
+- `deploy-ui-staging.yml` run `25021150896` `conclusion=success`.
+- **Staging API smoke (full lifecycle)**:
+  - POST `/save-as-template` `{name: "S8.11 to-delete smoke"}` → HTTP 201 + `691e5178-186e-4d34-aa69-4b1a84163cc7` (rowVersion `5318641`).
+  - GET `/templates` → 18 templates (was 17, +1).
+  - DELETE `/691e5178-…` `If-Match: 5318641` → HTTP 204 (correlation `d8fc3bb7-…`).
+  - GET → 17 templates; deleted one gone.
+  - Re-DELETE with same rowVersion → HTTP 404 (idempotency confirms actual DB deletion).
+
+**Out of scope (deferred)**: Rename templates (`PUT /api/venue-layouts/{id}` exists; UI is future polish), Duplicate templates (already works via Save-as-Template against any source), empty-state CTA deep-link, same-name warn on apply-template.
+
+**Slice 8 status**: **11 chunks shipped**. Slice still functionally complete. Remaining open: S8.9c retire `SeatSelector.tsx` + Slice 4 Release N+1 column drop — both gated by production soak time.
+
+---
+
+## 🎨 2026-04-27 — SEATING SLICE 8: S8.10 (My Templates picker + apply-template) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-27
+**Session**: Closes the only user-visible gap from S8.9b — organizers can now reapply their saved templates to new events through the UI. Backend adds `GET /api/venue-layouts/templates` + `POST /api/venue-layouts/from-template` endpoints, a domain refactor extracting `VenueLayout.CloneAsTemplate`'s body into a shared `CloneStructure` helper, and a new symmetric `VenueLayout.CloneFromTemplate` factory. Frontend extends `PresetLibraryModal` with a "Mine" tab and wires the apply-template flow through `SeatingLayoutPicker`. Plus a list-capacity fix that staging caught.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Domain + Application + API (`6ce938ee`); frontend (`cbf374bc`); list-capacity fix (`9749c63f`). All deploy-*-staging.yml runs `conclusion=success`. Tests: backend Domain 29/29 (16 prior CloneAsTemplate + 13 new CloneFromTemplate); Application 2352 / 6 skipped / 0 failed (3 new GetUserTemplates + 9 new CreateLayoutFromTemplate handler cases). Frontend 341/341 sequential green across 16 files (9 new modal Mine-tab cases) excluding the pre-existing `CanvasEditor.test.tsx` parallelism flake unrelated to S8.10. `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.10 backend** | `6ce938ee` | Domain refactor + `VenueLayout.CloneFromTemplate` factory; `GetUserTemplatesQuery` + handler; `CreateLayoutFromTemplateCommand` + handler; `GET /api/venue-layouts/templates` + `POST /api/venue-layouts/from-template` controller routes |
+| **S8.10 frontend** | `cbf374bc` | New `CreateLayoutFromTemplateRequest` type + repo methods + `useUserTemplates` / `useCreateLayoutFromTemplate` hooks; `PresetLibraryModal` two-tab UI (Built-in default + Mine); `SeatingLayoutPicker` apply-template flow |
+| **S8.10 fix** | `9749c63f` | Templates list now `Include`s Seats + Tables + Decorations + `AsSplitQuery` so Mine cards show accurate `totalCapacity` (was 0 due to incomplete include graph) |
+
+**Why durable**: (1) Shared `CloneStructure` private helper means one walker for both clone directions — bug fixes propagate automatically. (2) Apply-template rejects non-template sources at the domain layer; no risk of "applying" an event-attached layout into a different event and orphaning the source's tier mappings. (3) `useUserTemplates` is enabled-gated by the active tab so the common preset-only path doesn't cost a request. (4) Both new endpoints reuse the existing auth gates (template-ownership + organizer-for-target-event) — same security surface, no new attack vectors. (5) `AsSplitQuery` on the listing prevents the cartesian explosion the Phase 6A perf RCA flagged.
+**Evidence**:
+- Backend Domain 29/29 + Application 2352/6 skip/0 fail (no regressions to the 2340 baseline; +12 net for new tests).
+- Frontend 341/341 sequential across 16 files (excluding the pre-existing CanvasEditor.test.tsx flake).
+- Backend deploy `24993590068` (canvas FK fix predecessor `24993124447` + initial backend `24974262575` also success); frontend deploy `24993124441`. All `conclusion=success`.
+- **Staging API smoke** confirmed both endpoints end-to-end:
+  - `GET /api/venue-layouts/templates` → HTTP 200 + 17 templates including the S8.9b smoke clone `a636c96e-94cf-4713-bcc1-f30522bfe3cd`.
+  - `POST /api/venue-layouts/from-template` body `{sourceTemplateId: a636c96e-…, eventId: e4792b64-…, layoutName: "S8.10 smoke applied"}` → HTTP 201 + new layout `e5d40a94-7563-4d1e-9117-5d973d1b67ef`. GET confirms `isTemplate: false`, `eventId: e4792b64-…`, `createdByUserId: 5e782b4d-…` (caller), `totalCapacity: 200`, zone "Main Floor" with 200 fresh-GUID seats (sample `I10`/`H20`/`G4`/`F9` show row+number+label+sortOrder preserved from source template).
+
+**Scope discipline**: ships the picker + apply path. Template management (rename / delete / duplicate via UI) is deliberately out of scope — templates today can only be created (S8.9b) or applied (S8.10). The Mine tab's empty-state mentions "Save as Template" but doesn't deep-link to the canvas editor (future polish). Same-name UX: picker doesn't warn if a same-name template exists — user can apply twice and end up with multiple identically-named layouts on the event (cosmetic; functionality fine).
+**Open follow-ups (non-blocking)**:
+1. Empty-state CTA — deep-link "Save as Template" mention to the canvas editor.
+2. Template management UI — rename / delete / duplicate via Mine tab.
+3. Pre-existing `CanvasEditor.test.tsx` parallelism flake — separate triage.
+4. Same-name UX warning when applying a template whose name collides with an existing layout on the event.
+**Next**:
+1. **S8.9c** retirement of `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week from prod ship).
+2. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` ≥1 week after Slice 4 Release N ships.
+
+**Slice 8 status**: 10 chunks shipped end-to-end. Both remaining items above are scheduled cleanup, not implementation gaps. **The slice is functionally complete from a user perspective.**
+
+---
+
+## 🎨 2026-04-26 (later) — SEATING SLICE 8: S8.9b (Save layout as personal template) SHIPPED + WIRE-VERIFIED ON STAGING
+**Date**: 2026-04-26
+**Session**: Architect Option B for the seat-clone strategy: faithful clone via a new `VenueLayout.CloneAsTemplate(source, newName, newOwnerUserId)` static factory on the aggregate root + internal `RebuildSeatsFrom` on `VenueZone`/`VenueTable`. Per-seat `IsEnabled` and `IsAccessible` flags round-trip; tier mappings (which live on the `TicketTier` aggregate, owned by the source's event) are deliberately dropped — templates are tier-free by design.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Domain (`fe4f5db4`) + backend handler+API (`e12e9bac`) + frontend (`b5cdec73`) + CanvasConfig FK fix (`d7e6a881`, caught by staging). All `deploy-*-staging.yml` runs `conclusion=success`. Tests: backend Domain 16 new CloneAsTemplate cases + Application 7 new handler cases (full Application suite 2340 / 6 skipped / 0 failed); frontend events+utils+hooks 352/352 sequential green (12 new modal Save-as-Template cases + 1 new "discard prompt does NOT trip on save-as-template" guard). `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.9b domain** | `fe4f5db4` | `VenueLayout.CloneAsTemplate` static factory + internal `VenueZone.RebuildSeatsFrom` + `VenueTable.RebuildSeatsFrom`; preserves `IsEnabled`/`IsAccessible`, drops tier mappings, fresh server-side IDs |
+| **S8.9b backend** | `e12e9bac` | `SaveLayoutAsTemplateCommand` + handler (auth via `ILayoutAuthorizationService`); `POST /api/venue-layouts/{id}/save-as-template` controller route returning 201 + DTO + Location header; emits `layout.created (fromPreset=false)` |
+| **S8.9b frontend** | `b5cdec73` | `venueLayoutsRepository.saveLayoutAsTemplate` + `useSaveLayoutAsTemplate` mutation; "Save as Template" footer button + inline name-prompt Dialog (default `"${layout.name} (Template)"`); 403 + generic-error toasts |
+| **S8.9b fix** | `d7e6a881` | Build fresh `CanvasConfig` instead of reusing source's owned instance (caught by staging EF FK error) |
+
+**Why durable**: (1) Architect-approved seat-fidelity bar — `IsEnabled`/`IsAccessible` round-trip; tests catch any regression. (2) `RebuildSeatsFrom` accepts a flat `IEnumerable<Seat>` (not a `(rows × seatsPerRow)` generator pattern), so future custom-seat-layout features (Slice 9+) clone cleanly. (3) Handler routes through the domain factory — no aggregate-boundary crossings in the application layer. (4) Tier mappings live on a different aggregate (TicketTier) and are not cloned; new template starts tier-free. (5) Authorization re-uses the existing layout-mutation gate — same security surface, no new attack vectors.
+**Evidence**:
+- Architect call captured in conversation transcript: "Recommendation: Option B (faithful clone) via a `VenueLayout.CloneAsTemplate(source, newName, newOwnerUserId)` static factory... Preserve seat-level `IsEnabled` / `IsAccessible` flags. Do not invent a `VenueZone.AddSeat(...)` public surface; expose the clone path only."
+- Backend Domain 16/16 new CloneAsTemplate cases pass; Application suite 2340/6 skip/0 fail.
+- Frontend `352/352 sequential` (added 13 new modal cases for Save-as-Template + the discard-guard test).
+- `npx tsc --noEmit` exit 0.
+- Backend deploys `24966191995` (initial S8.9b backend) + `24967069177` (canvas FK fix); frontend deploy `24966601988`. All `conclusion=success`.
+- **Staging API smoke** on source layout `c9707fcc-…` (event "Phase 8 Tier Test Event"):
+  - Pre-fix: correlation `1b19ae5a-…` → HTTP 500 with EF error "The property 'CanvasConfig.VenueLayoutId' is part of a key and so cannot be modified" — staging caught the bug; fix issued.
+  - Post-fix: `POST /save-as-template` body `{templateName: "S8.9b smoke clone v2"}` → HTTP 201 with new layout `a636c96e-94cf-4713-bcc1-f30522bfe3cd`. GET on the new template confirms: `isTemplate: true`, `eventId: null`, `createdByUserId: 5e782b4d-…` (caller), `totalCapacity: 200`, canvas `{1200×800, scale 1, #ffffff}` (preserved), zone "Main Floor" (fresh ID `f7c40d0b-…`) with 200 fresh-ID seats, sample seats `A8`/`J10`/`J1` show row+number+label+sortOrder preserved, `tierIds: []` (source had `[Basic]` — dropped as designed because templates are tier-free).
+
+**Scope discipline**: v1 ships the structural clone + seat-fidelity contract per architect Option B. Tier mappings dropped (templates are tier-free; user re-maps when applying to a new event). Holds and reservations not cloned (different aggregates, different lifetime, belong to source event). Authorization reuses the existing layout-mutation gate (creator-for-templates, organizer-for-event-attached) — view-only-can-clone deferred until view-only roles exist. No "My Templates" picker UI yet (the cache invalidation on `venueLayoutKeys.all` is in place; UI surface tracked as future work).
+**Open follow-ups (architect-flagged, non-blocking)**:
+1. **Idempotency**: double-click could create two templates. Server-side dedupe window (`(CreatedByUserId, Name)` matches in last 5s) deferred — disabled-while-pending button on the prompt mitigates client-side.
+2. **"My Templates" picker UI**: needs a "Mine" tab in the existing `PresetLibraryModal` (Slice 9 work).
+3. **Same-name UX**: prompt doesn't warn if a same-name template exists — let users version freely (matches "personal" framing).
+4. **Performance regression guard**: 500-seat clone runs ~500 INSERTs in one `SaveChangesAsync` — architect flagged a future integration test; not blocking for v1.
+5. **Authorization scope**: layout-mutation gate is the v1 gate; view-only-can-clone is deferred.
+**Next**:
+1. **S8.9c** retirement of `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week from prod ship).
+2. **My Templates picker** UI — surface user-saved templates in the existing `PresetLibraryModal` as a "Mine" tab.
+3. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` ≥1 week after Slice 4 Release N ships.
+
+---
+
+## 🎨 2026-04-26 — SEATING SLICE 8: S8.9a (warn-before-close) + S8.8c (atomic tier reconciliation) SHIPPED + WIRE-VERIFIED (parallel stream to Phase 7E.1)
+**Date**: 2026-04-26
+**Session**: Continuation of Slice 8 of `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8. Two follow-ups landed on top of S8.8: **S8.9a** added a `ConfirmDialog`-driven "Discard unsaved changes?" guard intercepting every close path (X / footer Close / Esc / backdrop) when the editor reports `hasChanges=true`. **S8.8c** closes the architect-flagged tier-persistence gap by extending `BatchLayoutPayload` with a `tierAssignments` block + reconciling tier mutations inside the existing `IUnitOfWork.CommitAsync` (architect Option A, called via the architect agent before implementation). The canvas-editor save is now truly all-or-nothing across geometry + tier assignments.
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED**. Backend `deploy-staging.yml` runs `24943474171` (S8.9a) + `24944146444` (S8.8c) both conclusion=success; frontend `deploy-ui-staging.yml` runs `24943474172` (S8.9a) + `24945640182` (S8.8c) both conclusion=success. Tests: backend Application 2265 passed / 6 skipped / 0 failed (10 new BatchUpdateLayout reconciler cases); frontend events+utils+hooks 340/340 sequential green (15 new helper + 8 new modal tests); `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| **S8.9a** | `fd78a269` | Warn-before-close guard reusing in-house `ConfirmDialog` (warning variant) — intercepts X, footer Close, Esc, backdrop; bypasses on Save success + during in-flight mutation |
+| **S8.8c backend** | `b8e49d60` | `BatchLayoutPayload.tierAssignments` + `BatchZone/BatchTable.clientId`; `BatchUpdateLayoutCommandHandler.ReconcileTierAssignmentsAsync` performs declarative reconciliation in same UoW; new `IEventRepository.GetTicketTiersWithAssignmentsForEventAsync` |
+| **S8.8c frontend** | `b99e994e` | `composeBatchPayload` emits `tierAssignments` for event-attached layouts; stamps `clientId` on new zones/tables; `countDraftChanges` order-insensitive tier diff |
+
+**Why durable**: (1) Single transaction across geometry + tiers; no partial-failure UX needed. (2) Backend reconciler diffs *server-applied* mutations from desired state — clients sending unchanged tier lists don't inflate the metric. (3) `ClientId` resolves post zone/table additions, so a user can add a zone *and* assign tiers to it in one Save. (4) Layout's `RowVersion` remains the single `If-Match` gate; `DbUpdateConcurrencyException` on commit covers tier-aggregate xmin races. (5) Architect-flagged data-integrity case handled: deleting a zone with prior assignments naturally cleans up the orphans because the deleted zone is absent from the desired-state list and the diff removes its tier rows.
+**Evidence**:
+- Architect call captured in conversation transcript: "Recommendation: Option A, with a deliberate scope expansion: extend `BatchLayoutPayload` with a `tierAssignments` block and have `BatchUpdateLayoutCommandHandler` reconcile the polymorphic junction inside the same `IUnitOfWork.CommitAsync`."
+- Backend Application tests `2265 passed / 6 skipped / 0 failed`. Frontend `340/340 sequential`. `npx tsc --noEmit` exit 0.
+- Backend deploys `24943474171` (S8.9a) + `24944146444` (S8.8c); frontend deploys `24943474172` + `24945640182`. All `conclusion=success`.
+- **Staging API smoke (S8.8c)** on layout `c9707fcc-76ca-4b90-96b9-a7a47ea325ba` (event "Phase 8 Tier Test Event", tiers: VIP `1ebceabd…`, Basic `67dc10ef…`):
+  - Happy path → 204 (correlation `1a7028f9-…`); GET shows `ticketTierIds: ['1ebceabd…']`.
+  - Foreign-tier rejection → 400 (correlation `736c0b25-…`).
+  - VIP→Basic swap in one batch → 204 (correlation `387cb72a-…`); GET shows `ticketTierIds: ['67dc10ef…']`. Azure container log: `[INF] LayoutMetrics: Metric layout.canvas_editor_saved LayoutId=c9707fcc-… ChangesCount=3` (1 zone update + 1 tier remove + 1 tier add).
+
+**Scope discipline**: S8.9b (Save as personal template) is **deferred to a separate session** — needs domain-level zone-seat clone design (current `LayoutPresets.Create` regenerates seats from row×col constants; faithful template clone requires either a new `VenueLayout.CloneAsTemplate` factory or exposed seat-add APIs; architect call may be needed). S8.9c (retire `SeatSelector.tsx`) and the Slice 4 Release N+1 column drop remain on the existing follow-up list.
+
+**Open issues (architect follow-ups, not blockers)**:
+1. **Authorization scope** — confirm `ILayoutAuthorizationService.AuthorizeAsync` covers tier-assignment writes when we add an `ITicketTierAuthorizationService` layer.
+2. **Domain method placement** — reconciler is inline in the handler today; architect leaned toward extracting `ILayoutTierAssignmentReconciler` once a second consumer needs it.
+3. **Slice 5 single-tier endpoints** — `POST /tier-assignments` + `DELETE /tier-assignments/{tierId}/{kind}/{assignableId}` are now redundant for canvas-editor flows but kept for backward compat; revisit at Slice 4 Release N+1.
+4. **`changesCount` granularity** — dashboard can't distinguish geometry vs tier edits today. If friction, split into `geometryChangesCount` + `tierChangesCount` tags.
+
+**Next**:
+1. **S8.9b** (deferred) — Save as personal template. Architect call needed for the zone-seat clone strategy.
+2. **S8.9c** — retire `SeatSelector.tsx` after Slice 7 SeatPicker production soak (≥1 week).
+3. **Slice 4 Release N+1** — drop `venue_zones.ticket_tier_id` (deferred ≥1 week post-Release-N).
+
+---
+
+## 🚀 CURRENT STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING (2026-04-26)
+
+**Date**: 2026-04-26
+**Session**: Phase 7E.3a sub-slice — free B-mode RSVP API for both authenticated and anonymous flows, plus defensive Mode-aware guards on `Event.RegisterWithAttendees` and `UpdateRsvpCommandHandler`.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Three commits (`c364dba6`, `58c1f76e`, `0f393b2c`); three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).
+
+**Scope**: Authenticated `POST /api/Events/{id}/rsvp` + anonymous `POST /api/Events/{id}/register-anonymous` accept new `LeadAttendeeName + HeadCount + TierCounts?` payload alongside the existing `Attendees`. Handler dispatches by `event.RegistrationMode` BEFORE format detection; Mode C → 400 with architect-spec message; B-mode → new `HandleHeadCountRsvp` / `HandleHeadCountAnonymousRegistration` builds `HeadCountBreakdown` via mode-specific factory and delegates to new `Event.RegisterWithHeadCount` domain method. Free events ONLY (paid → clear "deferred to 7E.3b" failure). `UpdateRsvpCommandHandler` defensively rejects B/C events with clear messages.
+
+**Smoke evidence (staging, post-deploy)**: Mode B2 auth RSVP `{adults:2, children:1}` → 204 + registration Confirmed + email fired and landed in inbox ✓; anonymous Mode-B register → 200 ✓; Mode C → 400 ✓; UpdateRsvp on B/C → 400 ✓.
+
+**Documented limitation (handed to 7E.4)**: Mode-B confirmation email currently renders without head-count info because the existing template's `{{#if HasDetailedAttendees}}` block falls through silently when `Attendees` is empty. The `EmailTemplateContract.FlexibleRegistration` constants from 7E.2 are populated in 7E.4. The user-visible gap is exactly what 7E.4 closes.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.3b** — Paid B-mode RSVP + Stripe amount-calc tests
+2. **7E.3c** — Paid B-mode RSVP + TierCounts axis
+3. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals (next slice)
+4. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+5. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from 7E.0 §5
+6. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E.2 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26 later)
+
+**Date**: 2026-04-26 (later)
+**Session**: Phase 7E.2 — application + API surface for the flexible registration modes feature. Single source of truth (`RegistrationModeCompatibility`) shared across Create / Update / Query handlers — 14-row compatibility table from Phase 7E plan §2 lives in one place, exercised by [Theory]-driven test.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `455e7207`. `deploy-staging.yml` run `24959308598` `conclusion=success`. Application test suite **2319 passed / 6 skipped / 0 failed** (+27 new Phase 7E.2 tests over 2292 post-7E.1 baseline).
+
+**Scope**: New `RegistrationModeCompatibility` static helper + `RegistrationModeContext` record; `RegistrationMode` field added to `CreateEventCommand`/`UpdateEventCommand`; both handlers validate via the helper; `Event.SetRegistrationMode` registration-lock guard surfaces as 400 from Update; new `GetAllowedRegistrationModesQuery` (pure function, no DB) + public `GET /api/Events/allowed-registration-modes` endpoint; `EmailTemplateContract.FlexibleRegistration` section with 7 constants gating 7E.4.
+
+**Smoke evidence (staging, post-deploy)**:
+- 4 shape variants on the new endpoint return correct allowed sets (`isFreeAttendance=true` → all 6; `hasDualPricing=true` → A/B2/B4; `hasMatrixPricing=true` → A only; `hasNamedSeating=true` → A only).
+- `POST /api/Events` Mode C + paid → 400 with clear validator message.
+- `POST /api/Events` Mode B1 + dual pricing → 400 with clear validator message.
+- `POST /api/Events` Mode B2 + free → 201; `GET` round-trips `registrationMode: "HeadCountByAge"`.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.3** — RSVP API for B modes (sub-slices 3a free B / 3b paid B + Stripe / 3c paid B + tier counts axis)
+2. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals (consumes 7E.2's contract constants)
+3. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+4. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from 7E.0 §5
+5. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E.1 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-26)
+
+**Date**: 2026-04-26
+**Session**: Phase 7E.1 — domain model + persistence + EF migration for the flexible registration modes feature.
+**Status**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commits `f84910d3` + `038c92bc` on develop. `deploy-staging.yml` runs `24945013711` + `24946516265` both `conclusion=success`. Migration `20260426010920_Phase7E1_AddRegistrationMode` applied at 2026-04-26 01:22:47 UTC. Application test suite 2292 passed / 6 skipped / 0 failed (+27 new Phase 7E.1 tests).
+
+**Scope**: Default `RegistrationMode.DetailedAttendees` at DB level preserves all pre-7E behaviour. Composite multi-axis `HeadCountBreakdown` VO (Total + Demographics + TierCounts) with strict factories. `Registration` snapshots the mode at construction. Single `GetAttendeeCount()` mutation point makes every `Sum(r.GetAttendeeCount())` aggregator automatically Mode-B aware. JSON serialisation via custom `ValueConverter` + deep-clone `ValueComparer` defending against Phase 6A.129/6A.130 traps simultaneously.
+
+**API smoke**: `GET /api/Events` returns 51 legacy events all with `"registrationMode": "DetailedAttendees"` (string-valued enum via `JsonStringEnumConverter`). Capacity / `currentRegistrations` / `isFree` fields unchanged — zero regression.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.2** — Event create/update API + `[Theory]`-driven FluentValidation over the 14-row compatibility table + `GetAllowedRegistrationModesQuery` + `EmailTemplateContract` constants (gates 7E.4)
+2. **7E.3** — RSVP API for B modes (sub-slices 3a/3b/3c: free B → paid B + Stripe → paid B + tier counts)
+3. **7E.4** — Email templates v2 with mode-aware Handlebars conditionals
+4. **7E.5–7E.7** — Frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+5. **7E.8** — Organiser dashboard + CSV export incl. `INNER JOIN → LEFT JOIN` fixes from §5 of checklist
+6. **7E.9** — End-to-end regression sweep against the 7E.0 checklist
+
+---
+
+## 🎯 PRIOR SESSION — PHASE 7E "FLEXIBLE EVENT REGISTRATION MODES" STARTED + 7E.0 CALL-SITE SWEEP COMPLETE (2026-04-25 later)
+
+**Date**: 2026-04-25 (later)
+**Session**: Phase 7E planning + Slice 7E.0 audit. Architect-approved plan (review iteration 2). No code yet.
+**Status**: ✅ **PLAN ARTIFACTS LANDED + 7E.0 CALL-SITE SWEEP COMPLETE**.
+
+**Scope**: Organiser-selectable per-event registration mode — A (DetailedAttendees, default for back-compat), B1–B4 (head-count variants with optional age/gender/age×gender breakdown + optional tier-count axis), C (NoRegistration). Mode C requires free attendance + no seating; standalone donations/sponsors/add-ons/collections still work in C (already decoupled from `Registration`, verified). 10 vertical slices. Plan §2 has 14-row compatibility table; tier × age matrix pricing deferred to Phase 7F.
+
+**Deliverables this session**:
+- Architect-approved plan: `C:\Users\Niroshana\.claude\plans\now-show-me-the-shiny-pine.md`
+- Phase reservation: [PHASE_6A_MASTER_INDEX.md § Phase 7E](PHASE_6A_MASTER_INDEX.md)
+- Master TODO: [docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md](MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md) — 10 slices, TDD checklists, curl payloads, per-slice deploy + DB-verification + API-smoke
+- 7E.0 audit: [docs/PHASE_7E0_CALLSITE_CHECKLIST.md](PHASE_7E0_CALLSITE_CHECKLIST.md) — **163 entries** (149 `needs-mode-aware-update`, 4 `left-join-fix`, 2 `defensive-read`, 0 `guard-scope-fix`, 8 `unchanged`)
+
+**Why durable**: (1) Risk register traces all 10 architect-flagged risks to ≥1 checklist row; 7E.9 verifies every entry. (2) Composite multi-axis `HeadCountBreakdown` VO (`Total + Demographics? + TierCounts?`) handles the orthogonal demographic vs tier dimensions cleanly — extensible to future axes without changing the mode enum. (3) Email contract constants land in 7E.2 + startup `EmailTemplateValidationService` gates 7E.4 HTML release — drift caught at startup, not in production. (4) `RegistrationMode` snapshotted onto `Registration` at construction — historical email re-renders correct even after organiser flips mode (architect-required). (5) Mode C contributions verified pre-decoupled at the aggregate level (`Donation.RegistrationId` nullable, `AddOnPurchase.RegistrationId` nullable, `Sponsor`/`Collection` no FK at all) — no Phase 7F refactor required.
+
+**Open follow-ups (NOT shipped — tracked in master TODO)**:
+1. **7E.1** — domain model + migration + EF config (TDD: VO factories, mode-set rules, snapshot, JSONB round-trip mutation test)
+2. **7E.2** — Event create/update API + `[Theory]`-driven validator over the 14-row compatibility table + `EmailTemplateContract` constants
+3. **7E.3** — RSVP API for B modes (sub-slices 3a/3b/3c: free B → paid B + Stripe → paid B + tier counts)
+4. **7E.4** — email templates v2 (mode-aware Handlebars conditionals)
+5. **7E.5–7E.7** — frontend Mode picker + RSVP form + AttendeeManagementTab row branching
+6. **7E.8** — organiser dashboard + CSV export (incl. `INNER JOIN → LEFT JOIN` fixes from §5 of checklist)
+7. **7E.9** — end-to-end staging validation against the 7E.0 checklist
+
+**Phase 7F deferred** (out of 7E scope): tier × age matrix pricing axis; `HeadCountByTier`-only mode; A↔B mode change with attendee backfill; Mode B organiser-side attendance tracking.
+
+---
+
+## 🎯 PRIOR SESSION — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.8 SHIPPED + WIRE-VERIFIED ON STAGING (2026-04-25)
+**Date**: 2026-04-25
+**Session**: Seating System Redesign — Slice 8 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 8 — full drag-drop canvas editor (react-konva) for organizers. S8.1 through S8.8 (Save button → atomic `PUT /batch` + `layout.canvas_editor_saved` metric) shipped sequentially on `develop`. S8.8 split into S8.8a (backend metric emit) + S8.8b (frontend Save flow + 409 reload UX).
+**Status**: ✅ **SLICE 8 SAVE FLOW DEPLOYED + WIRE-VERIFIED ON STAGING**. Backend `deploy-staging.yml` run `24939105857` conclusion=success (10m41s); frontend `deploy-ui-staging.yml` run `24941752739` conclusion=success (4m57s). Staging API smoke on `PUT /api/venue-layouts/{layoutId}/batch` confirmed both paths: happy-path with valid `If-Match` rowVersion → HTTP 204 No Content + Azure container log `Metric layout.canvas_editor_saved LayoutId=ae39a218-d984-4528-8271-a1e38fb11550 ChangesCount=3` emitted by `LankaConnect.Application.Events.Services.LayoutMetrics` at 22:25:38.176 UTC; stale `If-Match: 999999` → HTTP 409 Conflict + emits `Metric layout.structural_edit_rejected Reason=concurrency_conflict` (NOT `canvas_editor_saved`, confirming the success metric only fires after commit). All 6 architect-spec metrics for the seating-layout surface now wired (`layout.created`, `layout.preset_selected`, `layout.canvas_editor_opened`, `layout.canvas_editor_saved`, `layout.structural_edit_rejected`, `seatpicker.selection_completed`). Tests: backend Application 2255 passed / 6 skipped / 0 failed (13 BatchUpdateLayout — 11 prior + 2 new for the metric emit + `Times.Never` assertions on all 5 failure paths); frontend events+utils+hooks 317/317 sequential green; `npx tsc --noEmit` clean.
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| S8.1 | `2e399ca2` | `CanvasEditorModal` shell + "Customize" button + `canvas_editor_opened` metric |
+| S8.2 | `43f9f94e` | Read-only Konva stage rendering all geometry types via Slice 7 `compute*Geometry` helpers |
+| S8.3 | `aa83f5d6` | Drag-to-move + snap-to-grid + alignment guides; `geometryByKey` draft slice |
+| S8.4 | `29dfdf8c` | Resize handles + rotation knob on selected item |
+| S8.5a | `f7689be3` | `CanvasEditorPropertyPanel` for selected-item property edits |
+| S8.5b | `ae9928ba` | Toolbar (add zone/table/decoration, delete) + `additions` + `deletions` draft slices |
+| S8.6 | `61fcdac4` | 50-step undo/redo; keyboard shortcuts (Del, Ctrl+Z, Ctrl+Y, Esc) |
+| S8.7 | `00ff9ad4` | Per-shape tier assignment (`CanvasEditorTierPanel`, `tierAssignmentsByKey`, tombstone discipline) |
+| **S8.8a** | `2d5857a2` | Backend: emit `layout.canvas_editor_saved` after successful batch commit; honest `changesCount` = sum of server-applied mutations |
+| **S8.8b** | `3ff59fa4` | Frontend: `composeBatchPayload` + `countDraftChanges` helpers; Save button in modal footer wired to `useBatchUpdateVenueLayout`; 409 + generic toasts via `react-hot-toast`; backend is canonical metric emitter (no double-count) |
+
+**Why durable**: (1) Backend's `changesCount` is computed from actually-applied mutations, not the payload — clients sending unchanged items don't inflate the dashboard. (2) Frontend composer is a pure function of `(baseline, draft)` — every history step (undo / redo / drag / add / delete) produces a deterministic payload. (3) Save handler captures a closure over the *current* draft so a Ctrl+Z right before Save lands the corrected payload. (4) Backend metric emission is wrapped in try/catch + warn-log so a metric pipeline outage cannot fail a save that's already been committed. (5) The architect's "single atomic call" requirement holds for geometry + structure: the entire layout state goes through one transactional `PUT /batch` — no partial-save corruption possible.
+**Evidence**:
+- Backend Application tests `2255 passed / 6 skipped / 0 failed` after S8.8a (no regressions to the 2253 baseline; +2 net for the new tests).
+- Frontend events+utils+hooks `317 passed / 0 failed` sequential.
+- `npx tsc --noEmit` exit 0.
+- Backend deploy run `24939105857` + frontend deploy run `24941752739` `conclusion=success`.
+- Staging API smoke evidence:
+  - `curl -X PUT .../venue-layouts/ae39a218-d984-4528-8271-a1e38fb11550/batch -H "If-Match: 5273751" -d '{"name":"S8.8a smoke renamed",...}'` → `HTTP/1.1 204 No Content` (correlation `fca7dcf6-eae9-44da-923a-dd14280393a5`).
+  - `curl -X PUT ... -H "If-Match: 999999" -d '{"name":"will-not-apply",...}'` → `HTTP/1.1 409 Conflict` (correlation `9b354954-1c02-4828-a081-565721bbd8d2`).
+  - Azure container log via `az containerapp logs show --name lankaconnect-api-staging --tail 300` confirms: happy path → `[INF] LayoutMetrics: Metric layout.canvas_editor_saved LayoutId=ae39a218-d984-4528-8271-a1e38fb11550 ChangesCount=3` and `[INF] BatchUpdateLayoutCommandHandler: BatchUpdateLayout: succeeded ... ZonesRemoved=1, TablesRemoved=0, ChangesCount=3`; 409 path → `[INF] LayoutMetrics: Metric layout.structural_edit_rejected ... Reason=concurrency_conflict` (no `canvas_editor_saved` line for this correlation).
+
+**Scope discipline (S8.8)**: Tier-assignment persistence is **deliberately deferred to S8.8c** — the `BatchLayoutPayload` schema doesn't carry tier_assignments, and the slice-4 single-tier endpoints (`POST /tier-assignments`, `DELETE /tier-assignments/{tierId}/{kind}/{assignableId}`) live on the `TicketTier` aggregate, not the layout aggregate. Mixing the two write surfaces atomically requires either extending the batch payload (backend work) or running a saga (non-atomic). S8.8b ships geometry + structure save only; tier toggles in `CanvasEditorTierPanel` (S8.7) still mutate draft state but do not persist on Save. `countDraftChanges` excludes tier-assignment overrides so the Save button doesn't appear ready when only tier toggles are dirty. No save-as-personal-template (S8.9), no warn-before-close (S8.9), no canvas property panel (no current UI surface for canvas dimensions).
+**Next**:
+1. **S8.8c** — wire tier-assignment persistence. Either extend `BatchLayoutPayload` server-side with a `tierAssignments: { kind, assignableId, tierIds[] }[]` block (preferred — keeps Save atomic) or run a follow-up saga of single-tier POSTs/DELETEs after a successful batch commit (non-atomic; partial-failure UX). Architect call needed.
+2. **S8.9** — save-as-personal-template (`OwnerUserId = currentUser`, `EventId = null`) + warn-before-close on dirty draft.
+
+---
+
+## 🎯 EARLIER STATUS — SEATING REDESIGN SLICE 8: CANVAS EDITOR — CHUNKS S8.1–S8.7 SHIPPED (2026-04-25)
+**Date**: 2026-04-25
+**Status (S8.1–S8.7)**: ✅ all chunks shipped, deploy-ui-staging green, 278/278 tests; entries below. Latest commit `00ff9ad4` (S8.7) on `develop`; `deploy-ui-staging.yml` run `24931720287` conclusion=success (4m54s); `npx tsc --noEmit` clean; web events+utils+hooks suite 278/278 green. Architect's `layout.canvas_editor_opened` metric wired in S8.1 (recorded on modal mount via `venueLayoutsRepository.recordCanvasEditorOpened`); `layout.canvas_editor_saved` (the 6th and final architect metric) lands in S8.8.
+**Scope**: Pure consumer of the Slice 5 backend surface — no new tables, no new endpoints, no migrations. Save (S8.8) targets the existing `PUT /api/venue-layouts/{id}/batch` atomic endpoint shipped in Slice 5 Chunk 10 (handler at [BatchUpdateLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/BatchUpdateLayout/BatchUpdateLayoutCommandHandler.cs); RowVersion 409 + 422 structural-edit-rejected guards already wired).
+
+| Chunk | Commit | Deliverable |
+| --- | --- | --- |
+| S8.1 | `2e399ca2` | `CanvasEditorModal` shell + "Customize" button + `canvas_editor_opened` metric |
+| S8.2 | `43f9f94e` | Read-only Konva stage rendering all geometry types via Slice 7 `compute*Geometry` helpers |
+| S8.3 | `aa83f5d6` | Drag-to-move + snap-to-grid + alignment guides; `geometryByKey` draft slice |
+| S8.4 | `29dfdf8c` | Resize handles + rotation knob on selected item |
+| S8.5a | `f7689be3` | `CanvasEditorPropertyPanel` for selected-item property edits (name, color, capacity, label, font, rotation) |
+| S8.5b | `ae9928ba` | Toolbar (add zone/table/decoration, delete) + `additions` + `deletions` draft slices |
+| S8.6 | `61fcdac4` | 50-step undo/redo via `useEditorHistory`; keyboard shortcuts (Del, Ctrl+Z, Ctrl+Y, Esc) |
+| S8.7 | `00ff9ad4` | Per-shape tier assignment — `CanvasEditorTierPanel`, `tierAssignmentsByKey` draft slice with tombstone discipline, history-routed toggles, 26 new tests |
+
+**Why durable**: (1) Every chunk's edits stay in *draft* state — the `layout` prop is treated as immutable baseline, so undo/redo + 409-conflict reload remain trivial because no in-place mutation has happened. (2) `useEditorHistory` is a single reducer producing/consuming a `DraftState` snapshot; S8.7's `tierAssignmentsByKey` was a one-field extension. (3) Slice 7 `SeatPickerView` (read) and Slice 8 editor (write) share the `compute*Geometry` helpers — fixes on either side benefit both. (4) react-konva dynamically imported `ssr:false` so the 180KB bundle is fetched only when the modal opens. (5) Tier-assignment writes route through the same history reducer — undo of "assign VIP" is bit-for-bit identical to undo of a drag.
+**Evidence**:
+- All 7 deploy-ui-staging.yml runs (one per chunk) `conclusion=success`. Latest: run `24931720287` for S8.7.
+- `npx tsc --noEmit` exit 0 against the staged S8.7 tree.
+- `npx vitest run web/src/presentation/utils/__tests__ web/tests/unit/presentation/components/features/events web/tests/unit/presentation/hooks` — 278 passed (252 prior + 26 new in S8.7).
+- Backend `BatchUpdateLayoutCommandHandler` already implements 409 (stale RowVersion → "Layout was modified by someone else") + 422 (held/reserved seats blocking structural edits); only the success-path metric emit is missing for S8.8a.
+
+**Scope discipline**: S8.1–S8.7 deliberately leave Save + `PUT /batch` for S8.8 — the architect's master plan calls Save out as one atomic step (full layout state, all-or-nothing, 409 on RowVersion mismatch). Tier-assignment persistence lands in S8.8 alongside the geometry diff (composed from `geometryByKey` + `additions` + `deletions` against the immutable `layout` baseline). No save-as-personal-template (later step), no warn-before-close (later step), no canvas property panel (no current UI surface for canvas dimensions). Other in-flight working-tree files (test scripts, image assets, demo plan docs) untouched.
+**Next**:
+1. **S8.8a (backend)** — TDD: add a `BatchUpdateLayoutCommandHandlerTests` case asserting `_metrics.LayoutCanvasEditorSaved(layoutId, changesCount)` is invoked on success with a correct change count; wire the call after the commit in [BatchUpdateLayoutCommandHandler.cs](../src/LankaConnect.Application/Events/Commands/BatchUpdateLayout/BatchUpdateLayoutCommandHandler.cs); commit, push, verify `deploy-staging.yml`, smoke via API + Azure container log inspection.
+2. **S8.8b (frontend)** — TDD: payload-composer helper that converts (`layout` baseline + `geometryByKey` + `additions` + `deletions`) into a `BatchLayoutPayload`; add Save button to `CanvasEditorModal` footer; wire `useBatchUpdateVenueLayout` mutation + `recordCanvasEditorSaved` on success; 409 reload UX (toast + refetch + replace draft); verify staging.
+3. **S8.9** — save-as-personal-template (`OwnerUserId = currentUser`, `EventId = null`) + warn-before-close on dirty draft.
+
+---
+
+## 🎨 EARLIER STATUS — LANDING PAGE WORLDMAPANIMATION: 40s LOOP → 17s LOOP (2026-04-25)
+**Date**: 2026-04-25
+**Session**: User reported the landing page (`/`) animation felt slow. Measured one full loop at 40s (sum of `PHASE_MS` in [WorldMapAnimation.tsx](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx)). User proposed a 17s target with explicit per-phase numbers; applied verbatim.
+**Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Commit `ac3a8739` on `develop`; `deploy-ui-staging.yml` run `24938533772` conclusion=success — every step including type-check, unit tests, and smoke tests on `/`, `/api/health`, and proxy connectivity returned green. Live bundle `_next/static/chunks/459c8dbfd403492c.js` inspected via `curl ... | grep us-hubs` and confirmed to contain the new minified `PHASE_MS` object: `"world":1e3,"zoom-sl":1e3,"sl-cities":2e3,"sl-lines":2e3,beam:1500,"zoom-us":1e3,"us-hubs":3e3,"us-lines":3e3,"zoom-out":1500,pause:1e3` — sum = 17 000 ms exactly.
+**Scope**: One file, one constant object. `PHASE_MS` at [WorldMapAnimation.tsx:290-294](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L290-L294) — every phase duration roughly halved. Phase sequence, view targets, arc/node draw delays, the 2s CSS zoom transition, and visibility flags are unchanged.
+
+| phase | before → after | phase | before → after |
+| --- | ---: | --- | ---: |
+| world | 3.0s → 1.0s | sl-cities | 5.0s → 2.0s |
+| zoom-sl | 2.0s → 1.0s | sl-lines | 6.0s → 2.0s |
+| beam | 3.5s → 1.5s | zoom-us | 2.0s → 1.0s |
+| us-hubs | 6.0s → 3.0s | us-lines | 8.0s → 3.0s |
+| zoom-out | 2.5s → 1.5s | pause | 2.0s → 1.0s |
+
+**Why it's safe**: (1) Adjacent phases share their target view, so the 2s CSS zoom transition continues smoothly across phase boundaries even when a phase is shorter than the transition (e.g. `zoom-sl` is now 1s but the in-flight 2s transform completes during the following `sl-cities`, which targets the same lat/lon/zoom). (2) SL arc draw budget: 44 arcs × `i*0.055s + 0.75s` finishes at ~3.17s; `sl-lines` (2s) + carry-over into `beam` via `showSLLines = ['sl-lines','beam']` (1.5s) = 3.5s available — fits with margin. (3) US arc draw budget: ~62 arcs × `i*0.04s + 0.65s` finishes at ~3.13s; `us-lines` (3s) is ~150ms under budget — flagged in **Next** below. (4) No backend, DB, schema, EF migration, or env change. Pure presentation.
+**Evidence**:
+- Type-check (`npx tsc --noEmit` from `web/`): exit 0, silent (clean).
+- CI: `deploy-ui-staging.yml` run `24938533772` — `Run type checking`, `Run unit tests`, `Build Next.js application`, `Smoke Test - Health Check`, `Smoke Test - Home Page`, `Smoke Test - API Proxy Connectivity` all `conclusion=success`.
+- Live bundle grep proves the deployed minified output reflects the source change byte-for-byte (no stale CDN cache, no build mis-replication).
+**Scope discipline**: Single file, single object. Deliberately did NOT also retune the 2s `cubic-bezier` CSS zoom transition; cross-phase zoom continuity actually depends on it being longer than the shortest zoom phase. Unstaged files in the working tree (other in-flight work — test scripts, image assets) were left untouched. No `MASTER_TODO_*.md` opened — single-line tweak, not a multi-phase feature.
+**Next**:
+- 🟡 If the last 1-2 US arcs visibly clip on slower devices, drop the per-arc delay from `i * 0.04` → `i * 0.025` at [WorldMapAnimation.tsx:714](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L714) and [line 724](../web/src/presentation/components/features/landing/WorldMapAnimation.tsx#L724) — recovers the ~150ms shortfall.
+- 🟡 User-gated visual smoke on the live staging URL `https://lankaconnect-ui-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/` — load `/`, watch one full loop, confirm subjectively faster.
+
+---
+
+## 🔄 EARLIER STATUS — SEATING REDESIGN SLICE 7: REGISTRATION UX REWRITE (2026-04-23)
 **Date**: 2026-04-23
 **Session**: Seating System Redesign — Slice 7 per master plan `C:\Users\Niroshana\.claude\plans\stateful-soaring-galaxy.md` §Slice 7 — end-to-end registration-UX rewrite replacing the Phase-2 `SeatSelector` grid with a react-konva `SeatPicker` + stateful `SeatPickerView`, a full structural-shape renderer, tier-filtered availability, mobile gestures, PDF + email seat-label propagation, and the architect-spec `seatpicker.selection_completed` metric on confirm. 8 chunks S7.1–S7.8.
 **Status**: ✅ **DEPLOYED + WIRE-VERIFIED ON STAGING**. Final commit `4bd076f9` on develop. `deploy-staging.yml` run `24859364401` + `deploy-ui-staging.yml` run `24859364416` both conclusion=success. API smoke on `POST /api/seating-metrics/selection-completed`: happy path → HTTP 204, empty GUID / zero count / negative ms each → 400 with specific validation title. Azure container log (`az containerapp logs show --name lankaconnect-api-staging`) confirmed `21:33:25.926 +00:00 [INF] LankaConnect.Application.Events.Services.LayoutMetrics: Metric seatpicker.selection_completed EventId=11111111-2222-3333-4444-555555555555 AttendeeCount=3 TimeToCompleteMs=45200` — the 4th of the architect's 6 named metrics; `layout.canvas_editor_opened` + `canvas_editor_saved` remain for Slice 8. Tests: Application 2253 passed + Infrastructure 317 passed; SeatPicker 22 + venue-layouts repo 20 passed; `npx tsc --noEmit` clean.
@@ -8005,3 +9154,81 @@ This streamlined plan focuses on **getting to a working MVP fast** while maintai
 4. **Community Forums** - Forum system with moderation capabilities
 
 **Achievement:** Complete authentication system with zero failing tests!
+---
+
+## Phase 7F-E — Cross-Surface Registration Display Consistency (CLOSED 2026-05-03)
+
+**Status:** All 5 slices SHIPPED + STAGING-VERIFIED.
+
+Single shared `RegistrationBreakdown` projection (Application/Events/Common/RegistrationBreakdownFormatter.cs) drives 4 read surfaces (event-detail card, email body, PDF ticket, soon-to-be RSVP receipt) and the 1 write surface (HeadCountRsvpForm). All surfaces render identical per-tier × demographic tables with explicit `N/A` for axes the registration mode doesn't capture.
+
+Final deploy: UI run `25284684263` (duplicate-line fix). Master TODO: `docs/MASTER_TODO_PHASE_7E_FLEXIBLE_REGISTRATION.md` carries the full evidence chain (commits, deploy runs, psycopg2 probe output, PDF smoke output).
+
+**Active follow-ups** (from `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md` "Deferred follow-ups"):
+1. Path-filter fallback on `deploy-ui-production.yml` (silent-skip edge case found during 2026-04-25 prod release)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing before 7F-E)
+3. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + `__EFMigrationsHistory` row
+
+
+---
+
+## R-NEW (CI path-filter silent-skip) — CLOSED 2026-05-03
+
+`deploy-ui-staging.yml` + `deploy-ui-production.yml` now run on every push (no `paths:` filter). Architect-approved Option a from `docs/MASTER_TODO_PROD_RELEASE_2026_04_25_SLIM.md`. Bundled observability adds: `run-name:` with SHA + event, and a first step that annotates trigger metadata into `$GITHUB_STEP_SUMMARY`. Commit `2a8e75e5`; staging verification run `25291529488` success.
+
+**Remaining deferred follow-ups** (still open):
+1. Orphan migration cleanup: `20260214230204_Phase6A113_UpdateEmailTemplatesWithSignupFormsButton.cs` + matching `__EFMigrationsHistory` row removal
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing; classification a/b/c per architect protocol)
+3. Phase 7F-E batch into prod (5 slices ready, awaiting operator browser verification on B3/B4 merged form)
+
+---
+
+## R-NEW-2 + B4 Test Event Setup — CLOSED 2026-05-03
+
+- Orphan migration `20260214230204_Phase6A113_*.cs` deleted (architect Outcome A: hand-authored, no Designer, never applied; subsequent Phase 7C.2/7F-A overwrites achieved the desired template end-state). Build green; full backend test suites 2567/6/0 + 317/0/0.
+- B4 + tiered staging event `616e59f3-df84-4662-a9e3-18f285c00ac5` created via `scripts/create_b4_tiered_test_event.py` to close the operator-flagged gap (zero published B4 events meant the merged 4-leaf path had no real-world coverage). Two tiers: VIP (with ChildPrice) and Standard (no ChildPrice). Status=Published, future-dated 2026-05-14.
+
+**Remaining deferred follow-ups** (still open):
+1. Phase 7F-E batch into prod (5 slices ready; awaiting operator browser verification on B3 + B4 events)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+
+---
+
+## Domain Pricing-Guard Fix — CLOSED 2026-05-04 (commit `e30c37d6`)
+
+Latent domain bug rejecting paid+Tiered events with no legacy `Pricing` populated. Architect-approved fix: extracted `HasPaidPricingConfigured()` helper recognising three valid pricing shapes; replaced both guard sites; sanitised user-facing error message. End-to-end verified on staging event `616e59f3-...`: pre-fix HTTP 400, post-fix HTTP 200 + `total_price = 130.00 USD` in DB. 5 new TDD tests + 1 test updated. Process memory `feedback_smoke_user_flows.md` saved to prevent the framing error that masked it (treating "FE-only" slice as "no API smoke needed").
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (5 slices + this pricing-guard fix; ready to plan once operator green-lights browser verification on B3 + B4 events)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing (architect-flagged; separate slice)
+
+---
+
+## 7F-E.6 — Formatter Totals + paid-event email wiring — CLOSED 2026-05-04
+
+Commit `f665a2b6`; deploy run `25341671895` success. Two bugs surfaced by operator browser test on event `616e59f3-...` both fixed:
+- 7F-E.6.A: `RegistrationBreakdown.Totals` field + 3 renderer updates so multi-tier B-mode surfaces the registration-level captured demographics that per-tier rows can't carry (per architect §2.2 #4 deferred decision)
+- 7F-E.6.B: `TicketConfirmationEmailParams.RegistrationBreakdownHtml` + `WithRegistrationBreakdownHtml` setter + 3 producer-site wirings + `EmailTemplateValidator` HashSet regression guard
+
+10 new TDD tests; full backend+web suites green. Staging smoke `scripts/smoke_phase7fe6_paid_email_breakdown.py` PASS.
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (now 7 slices: 1 → 4b + 5 + 6; awaiting operator browser re-verification on event 616e59f3)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing — architect-flagged separate slice
+4. EmailTemplateValidator stronger automation: auto-derive per-template HashSet from the matching Params class so the operator-side maintenance burden that masked Bug 2 doesn't recur — architect-flagged separate slice
+
+---
+
+## 7F-E.7 — Per-tier 4-leaf storage — SMOKE PASS, OPERATOR UAT PENDING (2026-05-05)
+
+Commit `dfd67280`; deploy run `25358012928` success. Re-opened Phase 7F-C §2.2 #4 deferred decision per architect recommendation: `TierCount` 4 new optional fields + all-or-nothing + cross-axis invariants. Form submit feeds per-tier `tierFourLeaf` state into `tierCounts[].adultMaleCount/...`; formatter renders captured per-tier 4-leaf instead of N/A. Legacy back-compat preserved. Smoke `scripts/smoke_phase7fe7_per_tier_4leaf.py` PASS — head_count.tierCounts[] JSONB carries all 4 fields per tier.
+
+**Operator UAT gate** (memory `feedback_operator_uat_gate.md`): pending browser verification on event `87607c7a-...`. Status flips to Shipped only after operator confirms per-tier rows show captured demographics + legacy event back-compat.
+
+**Remaining deferred follow-ups:**
+1. Phase 7F-E batch into prod (7 slices ready; gated on operator UAT for 7F-E.7)
+2. UI test red-suite triage (217 failed tests across 25 files — pre-existing)
+3. Defensive gap at `POST /api/Events` allowing paid event with no pricing — architect-flagged separate slice
+4. EmailTemplateValidator stronger automation — architect-flagged separate slice

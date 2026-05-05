@@ -1,4 +1,5 @@
 using LankaConnect.Domain.Common;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 
 namespace LankaConnect.Domain.Events;
@@ -116,6 +117,54 @@ public partial class Event
 
     #endregion
 
+    #region Publish Readiness (Slice 9.1)
+
+    /// <summary>
+    /// Slice 9.1: returns success when the supplied <paramref name="layout"/> is ready to
+    /// be published with this event — every zone with seats must be mapped to an active
+    /// ticket tier, capacity invariants hold, and the layout's id matches this event's
+    /// <see cref="VenueLayoutId"/>.
+    ///
+    /// <para>
+    /// This is the strict counterpart to the permissive validation in
+    /// <see cref="VenueLayout.ValidateForEvent"/> with <c>requireTierMapping=false</c>
+    /// used at apply-preset / apply-template time. The split lets organisers attach a
+    /// preset and customise it incrementally before committing to publish — but blocks
+    /// publication until the layout is fully wired up.
+    /// </para>
+    ///
+    /// <para>
+    /// Returns <see cref="Result.Success"/> when layout is null + this event has
+    /// no <see cref="VenueLayoutId"/> assigned (general-admission events are publish-
+    /// ready without a layout). Returns failure if the caller hands a layout whose id
+    /// does not match this event's assignment (defence in depth — protects against a
+    /// mis-wired application layer fetching the wrong aggregate).
+    /// </para>
+    /// </summary>
+    public Result CheckLayoutPublishReadiness(VenueLayout? layout)
+    {
+        // GA event with no layout — nothing to validate.
+        if (!VenueLayoutId.HasValue)
+            return layout is null
+                ? Result.Success()
+                : Result.Failure("Event has no venue layout assigned but a layout was supplied");
+
+        // Seated event MUST have a layout supplied.
+        if (layout is null)
+            return Result.Failure("Event references a venue layout but none was supplied for the readiness check");
+
+        // Cross-aggregate id sanity — the caller (handler) is responsible for fetching
+        // the correct layout. If they hand the wrong one, fail fast and loud.
+        if (layout.Id != VenueLayoutId.Value)
+            return Result.Failure(
+                $"Layout id mismatch: event references {VenueLayoutId.Value} but supplied layout is {layout.Id}");
+
+        // Strict tier-mapping + capacity invariants.
+        return layout.ValidateForEvent(_ticketTiers, requireTierMapping: true);
+    }
+
+    #endregion
+
     #region Orchestrated Seating Helpers (Slice 2+3A)
 
     /// <summary>
@@ -141,6 +190,19 @@ public partial class Event
             return Result.Failure(
                 "Assigned seating requires tiered ticketing mode. " +
                 "Enable tiered ticketing first, then enable assigned seating.");
+
+        // Slice S1.5 invariant: AssignedSeating requires DetailedAttendees registration.
+        // Mode B (head-count*) tracks aggregated counts only — there is no individual
+        // attendee to bind a seat to. The buyer flow's HeadCountRsvpForm has no seat
+        // picker. Allowing the combination here would let the organiser publish an event
+        // with AssignedSeating that buyers literally cannot register for.
+        // Mode C (NoRegistration) has no buyer flow at all.
+        if (RegistrationMode != RegistrationMode.DetailedAttendees)
+            return Result.Failure(
+                $"Assigned seating requires individual-attendee registration (DetailedAttendees mode). " +
+                $"This event uses {RegistrationMode} which tracks counts, not individuals — " +
+                $"the buyer flow cannot map seats to attendees in that mode. " +
+                $"Switch the registration mode to DetailedAttendees first, or keep general-admission seating.");
 
         if (_registrations.Any(r =>
             r.Status == RegistrationStatus.Confirmed ||

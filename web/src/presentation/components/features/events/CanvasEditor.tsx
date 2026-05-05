@@ -42,6 +42,8 @@ import { CanvasEditorPropertyPanel } from './CanvasEditorPropertyPanel';
 import { CanvasEditorToolbar } from './CanvasEditorToolbar';
 import {
   applyDragToGeometry,
+  composeBatchPayload,
+  countDraftChanges,
   createDecorationDraft,
   createRectTableDraft,
   createRoundTableDraft,
@@ -51,8 +53,10 @@ import {
   resolveGeometry,
   resolveTierAssignments,
   toggleTierAssignment,
+  type CanvasEditorDraftState,
   type CanvasItemRef,
 } from '@/presentation/utils/canvasEditorGeometry';
+import type { BatchLayoutPayload } from '@/infrastructure/api/types/events.types';
 import { useEditorHistory } from '@/presentation/hooks/useEditorHistory';
 import { useTicketTiers } from '@/presentation/hooks/useTicketTiers';
 
@@ -71,32 +75,47 @@ const CanvasEditorStage = dynamic<CanvasEditorStageProps>(
   },
 );
 
+/**
+ * Slice 8 S8.8b: summary the editor pushes to its parent (Modal) after
+ * every draft mutation so the parent can gate the Save button + invoke
+ * the batch save without owning the history reducer.
+ *
+ *   `hasChanges`        — false when the draft is identical to the baseline
+ *                         layout (Save button stays disabled).
+ *   `changesCount`      — user-perceived change count for the Save label /
+ *                         confirmation copy. See `countDraftChanges`.
+ *   `composeSavePayload`— closure capturing the *current* draft. Calling it
+ *                         later returns a fresh `BatchLayoutPayload`. The
+ *                         parent should call this on Save click, not store
+ *                         the payload upfront, so undo/redo right before
+ *                         Save reflects in the request body.
+ */
+export interface CanvasEditorDraftSummary {
+  hasChanges: boolean;
+  changesCount: number;
+  composeSavePayload: () => BatchLayoutPayload;
+}
+
 export interface CanvasEditorProps {
   layout: VenueLayoutDto;
   className?: string;
+  /**
+   * Slice 8 S8.8b: invoked whenever the editor's draft changes (including
+   * undo/redo, add/delete, drag, resize, rotate, property-panel edit, and
+   * tier-assignment toggle). Idempotent on identical drafts. The parent
+   * uses this to gate the Save button in the modal footer.
+   */
+  onDraftChange?: (summary: CanvasEditorDraftSummary) => void;
 }
 
-interface DraftAdditions {
-  zones: VenueZoneDto[];
-  tables: VenueTableDto[];
-  decorations: VenueDecorationDto[];
-}
-
-interface DraftState {
-  geometryByKey: Record<string, string>;
-  additions: DraftAdditions;
-  deletions: Set<string>;
-  /** Slice 8 S8.7: per-item tier-assignment overrides. Key = refKey,
-   * value = the complete effective tier-id list. S8.8 diffs this against
-   * each item's persisted ticketTierIds at save time. */
-  tierAssignmentsByKey: Record<string, string[]>;
-}
+type DraftState = CanvasEditorDraftState;
 
 const INITIAL_DRAFT: DraftState = {
   geometryByKey: {},
   additions: { zones: [], tables: [], decorations: [] },
   deletions: new Set<string>(),
   tierAssignmentsByKey: {},
+  seatGenByZoneId: {},
 };
 
 const DEFAULT_CANVAS_WIDTH = 1000;
@@ -134,10 +153,23 @@ function isTypingTarget(el: Element | null): boolean {
   return false;
 }
 
-export function CanvasEditor({ layout, className }: CanvasEditorProps) {
+export function CanvasEditor({ layout, className, onDraftChange }: CanvasEditorProps) {
   const [selected, setSelected] = useState<CanvasItemRef | null>(null);
   const history = useEditorHistory<DraftState>(INITIAL_DRAFT);
   const draft = history.present;
+
+  // S8.8b: surface the draft summary up to the modal so it can gate Save.
+  // Recomputed on every draft / layout change. The composer closure captures
+  // the current draft so the parent gets a fresh payload at click time.
+  useEffect(() => {
+    if (!onDraftChange) return;
+    const changesCount = countDraftChanges({ baseline: layout, draft });
+    onDraftChange({
+      hasChanges: changesCount > 0,
+      changesCount,
+      composeSavePayload: () => composeBatchPayload({ baseline: layout, draft }),
+    });
+  }, [layout, draft, onDraftChange]);
 
   const effectiveLayout = useMemo<VenueLayoutDto>(() => {
     const isDeleted = (kind: CanvasItemRef['kind'], id: string) =>
@@ -207,6 +239,60 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
       });
     },
     [history, effectiveLayout],
+  );
+
+  /**
+   * Slice S1 (Architect Rev 4) — seat-gen handler. Stores partial state.
+   *
+   * <para>
+   * Old behaviour (Slice 9.5, BUGGY): pruned the entry whenever either field
+   * was 0, which made per-input commits stomp each other. User typed Rows=4
+   * → handler stored {rowCount:4, seatsPerRow:0} → pruner saw 0 →
+   * deleted the entry. Then user typed seatsPerRow=5 → handler read
+   * rowCount from now-empty entry as 0 → emitted {rowCount:0, seatsPerRow:5}
+   * → pruned again. Save persisted 0 seats every time.
+   * </para>
+   *
+   * <para>
+   * New behaviour: store whatever the user types. Only delete the entry when
+   * both fields are 0 (full clear) OR when caller explicitly passes null.
+   * Pruning of incomplete state moves to <c>composeBatchPayload</c> via
+   * <c>pickCompleteSeatGen</c> — the payload only emits seat-gen fields when
+   * both are positive integers.
+   * </para>
+   */
+  const handleSeatGenChange = useCallback(
+    (
+      zoneId: string,
+      next: { rowCount: number; seatsPerRow: number } | null,
+    ) => {
+      history.commit((prev) => {
+        const without = { ...prev.seatGenByZoneId };
+        // Full clear: caller passed null, or user zeroed both fields.
+        const isFullClear =
+          next === null || (next.rowCount <= 0 && next.seatsPerRow <= 0);
+        if (isFullClear) {
+          delete without[zoneId];
+          return { ...prev, seatGenByZoneId: without };
+        }
+        // Otherwise store partial or complete state. Negative inputs
+        // are clamped to 0 to keep the stored shape predictable.
+        const safeRow = Number.isFinite(next.rowCount) && next.rowCount > 0
+          ? Math.floor(next.rowCount)
+          : 0;
+        const safeCol = Number.isFinite(next.seatsPerRow) && next.seatsPerRow > 0
+          ? Math.floor(next.seatsPerRow)
+          : 0;
+        return {
+          ...prev,
+          seatGenByZoneId: {
+            ...prev.seatGenByZoneId,
+            [zoneId]: { rowCount: safeRow, seatsPerRow: safeCol },
+          },
+        };
+      });
+    },
+    [history],
   );
 
   const factoryCenter = useMemo(
@@ -314,11 +400,15 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
       // S8.8's save diff doesn't resurrect assignments for a tombstoned id.
       const nextTierAssignments = { ...prev.tierAssignmentsByKey };
       delete nextTierAssignments[key];
+      // Slice 9.5 — drop pending seat-gen override too (only zones can have one).
+      const nextSeatGen = { ...prev.seatGenByZoneId };
+      if (selected.kind === 'zone') delete nextSeatGen[selected.id];
       return {
         geometryByKey: nextGeometry,
         additions: nextAdditions,
         deletions: nextDeletions,
         tierAssignmentsByKey: nextTierAssignments,
+        seatGenByZoneId: nextSeatGen,
       };
     });
     setSelected(null);
@@ -449,6 +539,8 @@ export function CanvasEditor({ layout, className }: CanvasEditorProps) {
           tiersLoading={tiersQuery.isLoading}
           draftTierAssignmentsByKey={draft.tierAssignmentsByKey}
           onToggleTierAssignment={handleToggleTierAssignment}
+          seatGenByZoneId={draft.seatGenByZoneId}
+          onSeatGenChange={handleSeatGenChange}
         />
       </div>
     </div>

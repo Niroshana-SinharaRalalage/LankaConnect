@@ -76,6 +76,14 @@ import type {
   // Seating Redesign Slice 1
   SetSeatingModeRequest,
   SeatingMode,
+  // Phase 7E.5: Flexible Registration Modes
+  RegistrationMode,
+  AllowedRegistrationModesRequest,
+  // Phase 7F-B: A↔B mode conversion with attendee backfill
+  ConvertRegistrationModeRequest,
+  ConvertRegistrationModeResult,
+  // Phase 7F-D: paid Mode-B add-attendees with delta payment
+  InitiateAddHeadCountRequest,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -285,6 +293,37 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 7E.5: Returns the set of registration modes compatible with a given draft event shape.
+   * Drives the frontend Mode picker so disabled options match server-side validation. Public
+   * endpoint — no auth needed (the response is shape-only metadata).
+   *
+   * Architect hot-spot #5: callers should re-invoke this on every form-state change
+   * (`isFree`, `hasSeating`, `hasTicketTiers`, etc.) so toggling pricing after Mode C
+   * is selected auto-clears the invalid selection. Use a React Query hook or `useEffect`
+   * dependency array — never call once-on-mount.
+   */
+  async getAllowedRegistrationModes(shape: AllowedRegistrationModesRequest): Promise<RegistrationMode[]> {
+    const params = new URLSearchParams();
+    if (shape.isFreeAttendance != null) params.set('isFreeAttendance', String(shape.isFreeAttendance));
+    if (shape.hasSeating != null) params.set('hasSeating', String(shape.hasSeating));
+    if (shape.hasNamedSeating != null) params.set('hasNamedSeating', String(shape.hasNamedSeating));
+    if (shape.requiresAttendeeNameOnTicket != null)
+      params.set('requiresAttendeeNameOnTicket', String(shape.requiresAttendeeNameOnTicket));
+    if (shape.hasDualPricing != null) params.set('hasDualPricing', String(shape.hasDualPricing));
+    if (shape.hasGroupTiers != null) params.set('hasGroupTiers', String(shape.hasGroupTiers));
+    if (shape.hasTicketTiers != null) params.set('hasTicketTiers', String(shape.hasTicketTiers));
+    if (shape.hasIdentityBoundAddOn != null)
+      params.set('hasIdentityBoundAddOn', String(shape.hasIdentityBoundAddOn));
+    if (shape.hasMatrixPricing != null) params.set('hasMatrixPricing', String(shape.hasMatrixPricing));
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.basePath}/allowed-registration-modes?${queryString}`
+      : `${this.basePath}/allowed-registration-modes`;
+    return apiClient.get<RegistrationMode[]>(url);
+  }
+
+  /**
    * Delete an event
    * Requires authentication and ownership
    * Only allowed for Draft/Cancelled events
@@ -351,6 +390,39 @@ export class EventsRepository {
     await apiClient.post<void>(`${this.basePath}/${id}/postpone`, request);
   }
 
+  /**
+   * Phase 7F-B: Convert all active registrations on an event from one RegistrationMode
+   * to another, performing per-registration backfill (A→B collapses attendee rows into
+   * a head-count + lead name; B→A explodes head-count into placeholder attendee rows).
+   *
+   * @param dryRun  true = compute the report without applying (drives the UI's diff preview).
+   *                false = commit the conversion + write audit rows.
+   */
+  async convertRegistrationMode(
+    eventId: string,
+    payload: ConvertRegistrationModeRequest,
+  ): Promise<ConvertRegistrationModeResult> {
+    return apiClient.post<ConvertRegistrationModeResult>(
+      `${this.basePath}/${eventId}/convert-registration-mode`,
+      payload,
+    );
+  }
+
+  /**
+   * Phase 7F-D (architect-approved 2026-04-30): initiate adding head-count attendees
+   * to an existing paid Mode-B registration. Returns the same envelope shape as
+   * `initiateAddAttendees` so the FE can reuse the success / pending / error handling.
+   */
+  async initiateAddHeadCount(
+    registrationId: string,
+    payload: InitiateAddHeadCountRequest,
+  ): Promise<InitiateAddAttendeesResult> {
+    return apiClient.post<InitiateAddAttendeesResult>(
+      `${this.basePath}/registrations/${registrationId}/add-headcount`,
+      payload,
+    );
+  }
+
   // ==================== RSVP OPERATIONS ====================
 
   /**
@@ -403,6 +475,23 @@ export class EventsRepository {
    */
   async withdrawRefundRequest(eventId: string): Promise<void> {
     await apiClient.post<void>(`${this.basePath}/${eventId}/rsvp/withdraw-refund`);
+  }
+
+  /**
+   * Phase 7E follow-up: Organiser-only force-cancellation of a registration that is
+   * stuck in `RefundRequested` because Stripe never confirmed the refund. Marks the
+   * row `Cancelled` (not `Refunded` — no refund is being issued by us). Used to free
+   * up events that won't allow registration-mode changes because of stuck refunds.
+   *
+   * Authorization: backend rejects with 403 if the caller is not the event organiser.
+   *
+   * @param eventId - Event the registration belongs to.
+   * @param registrationId - Registration row to force-cancel.
+   */
+  async forceCancelStuckRefund(eventId: string, registrationId: string): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/registrations/${registrationId}/force-cancel-stuck-refund`,
+    );
   }
 
   /**

@@ -34,6 +34,8 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
+    // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared with the auth handler.
+    private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
     private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
@@ -48,6 +50,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         IAddOnPurchaseRepository addOnPurchaseRepository,
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
+        LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -60,6 +63,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _addOnPurchaseRepository = addOnPurchaseRepository;
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
+        _checkoutService = checkoutService;
         _logger = logger;
     }
 
@@ -161,6 +165,27 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 _logger.LogInformation(
                     "RegisterAnonymousAttendee: Email not found in event registrations - proceeding - EventId={EventId}, Email={Email}",
                     request.EventId, request.Email);
+
+                // Phase 7E.3a: Dispatch by event.RegistrationMode BEFORE format detection.
+                // Mode C → 400; B-mode → head-count flow; DetailedAttendees → existing logic.
+                if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee REJECTED: event uses NoRegistration mode - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure(
+                        "Registration is not required for this event. Standalone donations / sponsors / " +
+                        "add-on purchases / collections are still accepted via their own endpoints.");
+                }
+
+                if (@event.RegistrationMode != LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees)
+                {
+                    _logger.LogInformation(
+                        "RegisterAnonymousAttendee: Using head-count format - EventId={EventId}, Mode={Mode}",
+                        request.EventId, @event.RegistrationMode);
+                    return await HandleHeadCountAnonymousRegistration(@event, request, cancellationToken);
+                }
 
                 // Session 21: Determine if using new multi-attendee format or legacy format
                 if (request.Attendees != null && request.Attendees.Any())
@@ -1151,6 +1176,135 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             "HandleLegacyRegistration COMPLETE (FREE): EventId={EventId}, RegistrationId={RegistrationId}, Quantity={Quantity}, Duration={ElapsedMs}ms",
             @event.Id, registration.Id, request.Quantity, stopwatch.ElapsedMilliseconds);
 
+        return Result<string?>.Success(null);
+    }
+
+    /// <summary>
+    /// Phase 7E.3a: Handles anonymous RSVP for head-count modes (B1-B4). Free events only —
+    /// paid path lands in 7E.3b alongside Stripe amount-calc tests.
+    ///
+    /// Mirrors <see cref="RsvpToEvent.RsvpToEventCommandHandler"/>'s head-count branch but
+    /// passes <c>userId: null</c> to <see cref="Event.RegisterWithHeadCount"/>. The domain
+    /// method's email-duplicate check covers both anonymous and authenticated registrations
+    /// (cross-path detection per Phase 6A.XXX).
+    /// </summary>
+    private async Task<Result<string?>> HandleHeadCountAnonymousRegistration(
+        Event @event,
+        RegisterAnonymousAttendeeCommand request,
+        CancellationToken cancellationToken)
+    {
+        // 1. Lead name + HeadCount payload required.
+        if (string.IsNullOrWhiteSpace(request.LeadAttendeeName))
+            return Result<string?>.Failure(
+                $"Lead attendee name is required for {@event.RegistrationMode} events.");
+
+        if (request.HeadCount == null)
+            return Result<string?>.Failure(
+                $"Head-count breakdown is required for {@event.RegistrationMode} events.");
+
+        // 2. Build the contact value object (same shape as multi-attendee anonymous).
+        var contactResult = RegistrationContact.Create(
+            request.Email,
+            request.PhoneNumber,
+            request.Address);
+        if (contactResult.IsFailure)
+            return Result<string?>.Failure(contactResult.Errors);
+
+        // 3. Resolve tier counts (snapshot tier names from event.TicketTiers).
+        var hc = request.HeadCount;
+        IReadOnlyList<TierCount>? tierCounts = null;
+        if (hc.TierCounts != null && hc.TierCounts.Count > 0)
+        {
+            var resolvedTiers = new List<TierCount>();
+            foreach (var tcDto in hc.TierCounts)
+            {
+                var tier = @event.TicketTiers.FirstOrDefault(t => t.Id == tcDto.TierId);
+                if (tier == null)
+                    return Result<string?>.Failure($"Ticket tier {tcDto.TierId} not found on this event.");
+                // Phase 7F-C: forward optional per-tier-by-age axis. Phase 7F-E.7: forward
+                // optional per-tier 4-leaf demographic split. Domain factory enforces
+                // all-or-nothing + sum-match invariants on both axes; cross-axis agreement
+                // auto-fills for back-compat.
+                var tcResult = TierCount.Create(
+                    tier.Id, tier.Name, tcDto.Count,
+                    tcDto.AdultCount, tcDto.ChildCount,
+                    tcDto.AdultMaleCount, tcDto.AdultFemaleCount,
+                    tcDto.ChildMaleCount, tcDto.ChildFemaleCount);
+                if (tcResult.IsFailure)
+                    return Result<string?>.Failure(tcResult.Errors);
+                resolvedTiers.Add(tcResult.Value);
+            }
+            tierCounts = resolvedTiers;
+        }
+
+        // 4. Build HeadCountBreakdown via the mode-specific factory.
+        Result<HeadCountBreakdown> hcResult;
+        switch (@event.RegistrationMode)
+        {
+            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountOnly:
+                if (!hc.Total.HasValue)
+                    return Result<string?>.Failure("Total head-count is required for HeadCountOnly mode.");
+                hcResult = HeadCountBreakdown.ForTotalOnly(hc.Total.Value, tierCounts);
+                break;
+            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAge:
+                if (!hc.Adults.HasValue || !hc.Children.HasValue)
+                    return Result<string?>.Failure("Adults and Children counts are required for HeadCountByAge mode.");
+                hcResult = HeadCountBreakdown.ForByAge(hc.Adults.Value, hc.Children.Value, tierCounts);
+                break;
+            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByGender:
+                if (!hc.Males.HasValue || !hc.Females.HasValue)
+                    return Result<string?>.Failure("Males and Females counts are required for HeadCountByGender mode.");
+                hcResult = HeadCountBreakdown.ForByGender(hc.Males.Value, hc.Females.Value, tierCounts);
+                break;
+            case LankaConnect.Domain.Events.Enums.RegistrationMode.HeadCountByAgeAndGender:
+                if (!hc.AdultMales.HasValue || !hc.AdultFemales.HasValue ||
+                    !hc.ChildMales.HasValue || !hc.ChildFemales.HasValue)
+                    return Result<string?>.Failure(
+                        "AdultMales, AdultFemales, ChildMales, and ChildFemales counts are required for HeadCountByAgeAndGender mode.");
+                hcResult = HeadCountBreakdown.ForByAgeAndGender(
+                    hc.AdultMales.Value, hc.AdultFemales.Value, hc.ChildMales.Value, hc.ChildFemales.Value,
+                    tierCounts);
+                break;
+            default:
+                return Result<string?>.Failure(
+                    $"Unexpected registration mode in head-count anonymous handler: {@event.RegistrationMode}");
+        }
+
+        if (hcResult.IsFailure)
+            return Result<string?>.Failure(hcResult.Errors);
+
+        // 5. Delegate to Event.RegisterWithHeadCount (anonymous: userId = null).
+        // The domain method enforces status / date / mode / duplicate / capacity / paid-event guards.
+        var registerResult = @event.RegisterWithHeadCount(
+            userId: null,
+            request.LeadAttendeeName!,
+            hcResult.Value,
+            contactResult.Value);
+
+        if (registerResult.IsFailure)
+            return Result<string?>.Failure(registerResult.Errors);
+
+        _eventRepository.Update(@event);
+
+        // Phase 7E.3b: paid B-mode → create Stripe Checkout session via the shared service.
+        var registration = @event.Registrations.Last();
+        if (!@event.IsFree() && registration.TotalPrice != null && registration.TotalPrice.Amount > 0)
+        {
+            if (string.IsNullOrWhiteSpace(request.SuccessUrl) || string.IsNullOrWhiteSpace(request.CancelUrl))
+                return Result<string?>.Failure("Success and Cancel URLs are required for paid events");
+
+            var checkoutResult = await _checkoutService.CreateSessionForRegistrationAsync(
+                @event, registration,
+                request.SuccessUrl!, request.CancelUrl!,
+                cancellationToken);
+            if (checkoutResult.IsFailure)
+                return Result<string?>.Failure(checkoutResult.Error);
+
+            await _unitOfWork.CommitAsync(cancellationToken);
+            return Result<string?>.Success(checkoutResult.Value);
+        }
+
+        await _unitOfWork.CommitAsync(cancellationToken);
         return Result<string?>.Success(null);
     }
 }

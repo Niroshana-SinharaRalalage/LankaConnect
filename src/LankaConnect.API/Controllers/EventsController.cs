@@ -703,7 +703,10 @@ public class EventsController : BaseController<EventsController>
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode events
             LeadAttendeeName: request.LeadAttendeeName,
-            HeadCount: request.HeadCount
+            HeadCount: request.HeadCount,
+            // Phase 8 S8.2.B: Pass assigned-seating fields through to handler.
+            SeatIds: request.SeatIds,
+            SeatSessionId: request.SeatSessionId
         );
         var result = await Mediator.Send(command);
 
@@ -804,7 +807,10 @@ public class EventsController : BaseController<EventsController>
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
             LeadAttendeeName: request.LeadAttendeeName,
-            HeadCount: request.HeadCount
+            HeadCount: request.HeadCount,
+            // Phase 8 S8.2.B: Pass assigned-seating fields through to handler
+            SeatIds: request.SeatIds,
+            SeatSessionId: request.SeatSessionId
         );
 
         var result = await Mediator.Send(command);
@@ -3537,7 +3543,11 @@ public record RsvpRequest(
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
     // handler dispatches by event.RegistrationMode).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
+    // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3580,7 +3590,11 @@ public record AnonymousRegistrationRequest(
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null);
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
+    // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null);
 
 /// <summary>
 /// Attendee DTO for anonymous registration

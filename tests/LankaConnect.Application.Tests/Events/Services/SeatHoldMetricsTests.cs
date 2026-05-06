@@ -77,4 +77,54 @@ public class SeatHoldMetricsTests
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
+
+    [Fact]
+    public void SeatHoldConvertedToReservation_EmitsStructuredLog_WithExpectedMetricName()
+    {
+        // S8.2.C — closes the Phase 7H deferred metric. Fires once per
+        // successful webhook conversion of pending seats → reservation rows.
+        var eventId = Guid.NewGuid();
+        var registrationId = Guid.NewGuid();
+
+        _sut.SeatHoldConvertedToReservation(eventId, registrationId, seatCount: 4);
+
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) =>
+                    state.ToString()!.Contains("seat_hold.converted_to_reservation")
+                    && state.ToString()!.Contains(eventId.ToString())
+                    && state.ToString()!.Contains(registrationId.ToString())
+                    && state.ToString()!.Contains("4")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public void SeatConversionRaceLost_EmitsStructuredWarning_PerSeat()
+    {
+        // S8.2.C — emitted once per seat lost to a concurrent buyer.
+        // Logged at Warning level (not Information) because it represents
+        // a confirmed-but-unseated registration that ops needs to handle.
+        var eventId = Guid.NewGuid();
+        var registrationId = Guid.NewGuid();
+        var seatId = Guid.NewGuid();
+
+        _sut.SeatConversionRaceLost(eventId, registrationId, seatId);
+
+        _logger.Verify(
+            l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) =>
+                    state.ToString()!.Contains("seat_conversion.race_lost")
+                    && state.ToString()!.Contains(eventId.ToString())
+                    && state.ToString()!.Contains(registrationId.ToString())
+                    && state.ToString()!.Contains(seatId.ToString())),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
 }

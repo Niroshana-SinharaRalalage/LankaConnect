@@ -1,6 +1,7 @@
 using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,10 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
     private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly ICollectionRepository _collectionRepository;
     private readonly ISponsorRepository _sponsorRepository;
+    // Phase 8 S8.2.C: dependencies for hold→reservation conversion on payment completion
+    private readonly ISeatHoldRepository _seatHoldRepository;
+    private readonly ISeatReservationRepository _seatReservationRepository;
+    private readonly ISeatHoldMetrics _seatHoldMetrics;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RegistrationWebhookHandler> _logger;
 
@@ -33,6 +38,9 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
         IAddOnDefinitionRepository addOnDefinitionRepository,
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
+        ISeatHoldRepository seatHoldRepository,
+        ISeatReservationRepository seatReservationRepository,
+        ISeatHoldMetrics seatHoldMetrics,
         IUnitOfWork unitOfWork,
         ILogger<RegistrationWebhookHandler> logger)
     {
@@ -43,6 +51,9 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
         _addOnDefinitionRepository = addOnDefinitionRepository;
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
+        _seatHoldRepository = seatHoldRepository;
+        _seatReservationRepository = seatReservationRepository;
+        _seatHoldMetrics = seatHoldMetrics;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -341,6 +352,56 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
             "[Phase 6A.52] [Webhook-6] After CompletePayment - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, DomainEvents.Count: {Count}, EventTypes: [{EventTypes}]",
             correlationId, registrationId, registration.DomainEvents.Count, string.Join(", ", registration.DomainEvents.Select(e => e.GetType().Name)));
 
+        // ============================================================
+        // Phase 8 S8.2.C: Convert pending seat assignments → reservations
+        // ============================================================
+        // Architect ADR-011: read PendingSeatAssignments, pre-flight check
+        // for race-loss against the seat_reservations unique index, insert
+        // SeatReservation rows for the all-clear case, confirm matching
+        // SeatHolds, bind seat-ids to attendees via ConfirmSeatAssignments,
+        // clear pending state. All-or-nothing on race-loss: registration
+        // ends "confirmed-but-unseated"; ops handles via S8.4 audit script.
+        //
+        // R2 (rare TOCTOU between pre-flight and CommitAsync): the
+        // postgres unique index on seat_reservations.seat_id throws 23505
+        // at CommitAsync, the whole transaction including CompletePayment
+        // rolls back, Stripe retries the webhook, and the retry's
+        // pre-flight will detect the racing reservation and take the
+        // confirmed-but-unseated path. Self-healing without bespoke retry.
+        //
+        // Outer try-catch: payment confirms regardless. Architect Q2/R4.
+        // ============================================================
+        if (registration.PendingSeatAssignments.Count > 0)
+        {
+            try
+            {
+                await ConvertPendingSeatAssignmentsAsync(registration, correlationId, ct);
+            }
+            catch (Exception seatEx)
+            {
+                // Defence-in-depth: any unexpected error in seat conversion is
+                // logged + swallowed. Payment must confirm. Operator handles via
+                // S8.4 audit (registrations with PaymentCompleted but no seat
+                // labels) plus the new seat_conversion.race_lost metric.
+                _logger.LogError(seatEx,
+                    "[Phase 8 S8.2.C] [Webhook-SeatConversion-ERROR] Unexpected error converting pending seats — payment WILL still complete. CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+
+                // Always clear the pending stash even on error so the next
+                // event handler / retry doesn't re-attempt this conversion.
+                try
+                {
+                    registration.ClearPendingSeatAssignments();
+                }
+                catch (Exception clearEx)
+                {
+                    _logger.LogWarning(clearEx,
+                        "[Phase 8 S8.2.C] [Webhook-SeatConversion-WARN] Failed to ClearPendingSeatAssignments after error. CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                        correlationId, registrationId);
+                }
+            }
+        }
+
         // Phase 6A.51 FIX: Restore Update() call (critical for domain event dispatch)
         _registrationRepository.Update(registration);
 
@@ -432,6 +493,59 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
         _logger.LogInformation(
             "[Phase 6A.81] [Webhook-Expired-4] After MarkAbandoned - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, NewStatus: {Status}, NewPaymentStatus: {PaymentStatus}, Transition: Preliminary→Abandoned",
             correlationId, registrationId, registration.Status, registration.PaymentStatus);
+
+        // ============================================================
+        // Phase 8 S8.2.C: Release pending seat holds eagerly on checkout-expired
+        // ============================================================
+        // Symmetric counterpart to the checkout-completed conversion block:
+        // when a buyer abandons, release their seat holds immediately so other
+        // buyers can claim those seats without waiting for the 10-min TTL.
+        // Best-effort — wrapped in try-catch so any failure here doesn't block
+        // the abandonment commit. The cleanup background service is a backstop.
+        // ============================================================
+        if (registration.PendingSeatAssignments.Count > 0)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(registration.PendingSeatSessionId))
+                {
+                    var holds = await _seatHoldRepository.GetActiveHoldsBySessionAsync(
+                        registration.PendingSeatSessionId, ct);
+                    var releasedCount = 0;
+                    foreach (var hold in holds)
+                    {
+                        var releaseResult = hold.Release();
+                        if (releaseResult.IsFailure)
+                        {
+                            _logger.LogInformation(
+                                "[Phase 8 S8.2.C] [Webhook-Expired-HoldRelease] Skipping hold {HoldId} (status={Status}) - CorrelationId: {CorrelationId}",
+                                hold.Id, hold.Status, correlationId);
+                            continue;
+                        }
+                        _seatHoldRepository.Update(hold);
+                        releasedCount++;
+                    }
+                    _logger.LogInformation(
+                        "[Phase 8 S8.2.C] [Webhook-Expired-HoldRelease-SUCCESS] Released {ReleasedCount}/{HoldCount} pending holds early - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, SessionId: {SessionId}",
+                        releasedCount, holds.Count, correlationId, registrationId, registration.PendingSeatSessionId);
+                }
+                registration.ClearPendingSeatAssignments();
+            }
+            catch (Exception holdEx)
+            {
+                _logger.LogWarning(holdEx,
+                    "[Phase 8 S8.2.C] [Webhook-Expired-HoldRelease-WARN] Failed to release seat holds (non-fatal — cleanup service will handle). CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                    correlationId, registrationId);
+                // Even if hold release failed, clear the stash so we don't loop on retry
+                try { registration.ClearPendingSeatAssignments(); }
+                catch (Exception clearEx)
+                {
+                    _logger.LogWarning(clearEx,
+                        "[Phase 8 S8.2.C] [Webhook-Expired-HoldRelease-WARN] Failed to ClearPendingSeatAssignments after error. CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}",
+                        correlationId, registrationId);
+                }
+            }
+        }
 
         // Save changes
         _registrationRepository.Update(registration);
@@ -680,5 +794,141 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
         _logger.LogInformation(
             "[Phase 6A.91] [Webhook-Refund-SUCCESS] Refund completed successfully - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, StripeRefundId: {RefundId}, RefundCompletedAt: {RefundCompletedAt}",
             correlationId, registration.Id, refundId, registration.RefundCompletedAt?.ToString("o") ?? "null");
+    }
+
+    /// <summary>
+    /// Phase 8 S8.2.C — converts a registration's <c>PendingSeatAssignments</c> stash into
+    /// permanent <c>SeatReservation</c> rows + bound <c>AttendeeDetails.SeatId</c> values.
+    /// Called only when the buyer just transitioned Preliminary → Confirmed.
+    ///
+    /// Strategy: pre-flight check via <c>GetReservedSeatIdsAsync</c> picks up the common
+    /// race-loss case (a concurrent buyer's webhook beat us). On race-loss, we log + emit
+    /// the <c>seat_conversion.race_lost</c> metric per losing seat, do NOT insert any
+    /// reservations, do NOT call <c>ConfirmSeatAssignments</c>, and clear the pending
+    /// stash so a webhook retry doesn't loop. Registration ends "confirmed-but-unseated";
+    /// the S8.4 audit script + ops dashboard alert on this state for manual reseat.
+    ///
+    /// All-or-nothing semantics: <c>Registration.ConfirmSeatAssignments</c> requires
+    /// count match (per S8.1 invariants), so a partial-survivor list isn't safe to bind.
+    /// Either every seat survives the pre-flight, or every seat is treated as race-lost.
+    /// </summary>
+    private async Task ConvertPendingSeatAssignmentsAsync(
+        Registration registration,
+        Guid correlationId,
+        CancellationToken ct)
+    {
+        var pending = registration.PendingSeatAssignments;
+        var seatIds = pending.Select(p => p.SeatId).ToList();
+
+        _logger.LogInformation(
+            "[Phase 8 S8.2.C] [Webhook-SeatConversion-1] Converting pending seats - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, EventId: {EventId}, SessionId: {SessionId}, SeatCount: {SeatCount}",
+            correlationId, registration.Id, registration.EventId, registration.PendingSeatSessionId ?? "(null)", pending.Count);
+
+        // Pre-flight: any of these seats already reserved by a concurrent buyer?
+        var alreadyReservedIds = await _seatReservationRepository.GetReservedSeatIdsAsync(seatIds, ct);
+
+        if (alreadyReservedIds.Count > 0)
+        {
+            // Race-lost path. Emit metric per losing seat, do NOT insert anything.
+            // Registration ends confirmed-but-unseated; S8.4 audit handles cleanup.
+            foreach (var lostSeatId in alreadyReservedIds)
+            {
+                _seatHoldMetrics.SeatConversionRaceLost(registration.EventId, registration.Id, lostSeatId);
+            }
+
+            _logger.LogWarning(
+                "[Phase 8 S8.2.C] [Webhook-SeatConversion-RaceLost] {LostCount}/{TotalCount} seat(s) lost to concurrent buyers — registration ends confirmed-but-unseated. CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
+                alreadyReservedIds.Count, pending.Count, correlationId, registration.Id, registration.EventId);
+
+            registration.ClearPendingSeatAssignments();
+            return;
+        }
+
+        // All-clear path: insert reservations, confirm holds, bind attendees.
+        var reservationsToInsert = new List<SeatReservation>(pending.Count);
+        foreach (var p in pending)
+        {
+            var reservationResult = SeatReservation.Create(
+                seatId: p.SeatId,
+                registrationId: registration.Id,
+                eventId: registration.EventId,
+                attendeeIndex: p.AttendeeIndex);
+
+            if (reservationResult.IsFailure)
+            {
+                // Should not happen — invariants on PendingSeatAssignment guarantee
+                // valid input here. If it does, treat as fatal-to-conversion + clear stash.
+                _logger.LogError(
+                    "[Phase 8 S8.2.C] [Webhook-SeatConversion-ERROR] SeatReservation.Create failed (should be impossible) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, SeatId: {SeatId}, Error: {Error}",
+                    correlationId, registration.Id, p.SeatId, reservationResult.Error);
+                registration.ClearPendingSeatAssignments();
+                return;
+            }
+            reservationsToInsert.Add(reservationResult.Value);
+        }
+
+        await _seatReservationRepository.AddRangeAsync(reservationsToInsert, ct);
+
+        // Confirm matching SeatHolds. Best-effort — hold may have expired by the
+        // time the webhook fires (Stripe checkout window > 10-min hold TTL). Failure
+        // here is non-fatal: the reservation row is the source of truth.
+        if (!string.IsNullOrEmpty(registration.PendingSeatSessionId))
+        {
+            try
+            {
+                var holds = await _seatHoldRepository.GetActiveHoldsBySessionAsync(
+                    registration.PendingSeatSessionId, ct);
+                var heldSeatIdSet = pending.Select(p => p.SeatId).ToHashSet();
+
+                foreach (var hold in holds)
+                {
+                    if (!heldSeatIdSet.Contains(hold.SeatId))
+                        continue;
+
+                    var confirmResult = hold.Confirm();
+                    if (confirmResult.IsFailure)
+                    {
+                        _logger.LogInformation(
+                            "[Phase 8 S8.2.C] [Webhook-SeatConversion-HoldConfirm] Skipping hold {HoldId} (status={Status}) - CorrelationId: {CorrelationId}",
+                            hold.Id, hold.Status, correlationId);
+                        continue;
+                    }
+                    _seatHoldRepository.Update(hold);
+                }
+            }
+            catch (Exception holdEx)
+            {
+                // Hold confirmation is observability-only; the reservation row is
+                // authoritative. Log and continue.
+                _logger.LogWarning(holdEx,
+                    "[Phase 8 S8.2.C] [Webhook-SeatConversion-WARN] Failed to confirm seat holds (non-fatal). CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, SessionId: {SessionId}",
+                    correlationId, registration.Id, registration.PendingSeatSessionId);
+            }
+        }
+
+        // Bind seat-ids + labels onto each AttendeeDetails (raises SeatsReservedEvent
+        // on first successful binding; idempotent on retry).
+        var assignments = pending
+            .Select(p => (p.AttendeeIndex, p.SeatId, p.SeatLabel))
+            .ToList();
+        IReadOnlyList<(int, Guid, string)> assignmentsRO = assignments;
+        var bindResult = registration.ConfirmSeatAssignments(assignmentsRO);
+        if (bindResult.IsFailure)
+        {
+            // Architect risk register R4: webhook treats failure as logged warning, not fatal.
+            _logger.LogWarning(
+                "[Phase 8 S8.2.C] [Webhook-SeatConversion-WARN] ConfirmSeatAssignments failed (NOT fatal). CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, Error: {Error}",
+                correlationId, registration.Id, bindResult.Error);
+        }
+
+        // Always clear the pending stash on success — defence against replay loops.
+        registration.ClearPendingSeatAssignments();
+
+        _seatHoldMetrics.SeatHoldConvertedToReservation(
+            registration.EventId, registration.Id, pending.Count);
+
+        _logger.LogInformation(
+            "[Phase 8 S8.2.C] [Webhook-SeatConversion-SUCCESS] Converted {SeatCount} pending seats to reservations + bound to attendees. CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, EventId: {EventId}",
+            pending.Count, correlationId, registration.Id, registration.EventId);
     }
 }

@@ -31,4 +31,24 @@ public class SeatHoldMetrics : ISeatHoldMetrics
             "seat_hold.expired",
             expiredCount);
     }
+
+    public void SeatHoldConvertedToReservation(Guid eventId, Guid registrationId, int seatCount)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} EventId={EventId} RegistrationId={RegistrationId} SeatCount={SeatCount}",
+            "seat_hold.converted_to_reservation",
+            eventId,
+            registrationId,
+            seatCount);
+    }
+
+    public void SeatConversionRaceLost(Guid eventId, Guid registrationId, Guid seatId)
+    {
+        _logger.LogWarning(
+            "Metric {MetricName} EventId={EventId} RegistrationId={RegistrationId} SeatId={SeatId}",
+            "seat_conversion.race_lost",
+            eventId,
+            registrationId,
+            seatId);
+    }
 }

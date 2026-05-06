@@ -24,6 +24,7 @@ public class InitiateAddAttendeesCommandHandler
 {
     private readonly IApplicationDbContext _context;
     private readonly IRegistrationAdditionRepository _additionRepository;
+    private readonly IEventRepository _eventRepository;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IMediator _mediator;
     private readonly ILogger<InitiateAddAttendeesCommandHandler> _logger;
@@ -31,12 +32,14 @@ public class InitiateAddAttendeesCommandHandler
     public InitiateAddAttendeesCommandHandler(
         IApplicationDbContext context,
         IRegistrationAdditionRepository additionRepository,
+        IEventRepository eventRepository,
         IStripePaymentService stripePaymentService,
         IMediator mediator,
         ILogger<InitiateAddAttendeesCommandHandler> logger)
     {
         _context = context;
         _additionRepository = additionRepository;
+        _eventRepository = eventRepository;
         _stripePaymentService = stripePaymentService;
         _mediator = mediator;
         _logger = logger;
@@ -109,6 +112,28 @@ public class InitiateAddAttendeesCommandHandler
                         request.RegistrationId, stopwatch.ElapsedMilliseconds);
                     return Result<InitiateAddAttendeesResult>.Success(
                         InitiateAddAttendeesResult.Failed("Registration not found"));
+                }
+
+                // Phase 8 S8.2.C: Reject add-attendees on AssignedSeating events.
+                // The buyer's existing seat assignments are bound on payment completion via
+                // RegistrationWebhookHandler.HandleCheckoutCompletedAsync; adding new attendees
+                // would require new seat selections + holds + reservations — that lifecycle
+                // is delivered in Slice S9 per ADR-011. Reject upfront so the buyer doesn't
+                // start a checkout flow that can't complete.
+                var eventForSeatingCheck = await _eventRepository.GetByIdAsync(
+                    registration.EventId,
+                    trackChanges: false,
+                    cancellationToken);
+
+                if (eventForSeatingCheck != null && eventForSeatingCheck.SeatingMode == SeatingMode.AssignedSeating)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "[AddOnlyAttendees] [S8.2.C] Rejected - AssignedSeating events cannot add attendees yet (Slice S9). RegistrationId={RegistrationId}, EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.RegistrationId, registration.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result<InitiateAddAttendeesResult>.Success(
+                        InitiateAddAttendeesResult.Failed(
+                            "Add-attendees not yet supported for seated events — coming in Slice S9."));
                 }
 
                 // Step 3: Create AttendeeDetails from NewAttendeeDto

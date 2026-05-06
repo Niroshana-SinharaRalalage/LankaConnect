@@ -48,4 +48,16 @@ public interface ISeatHoldMetrics
     /// Used for ops dashboards / alerting on manual-reseat workload.
     /// </summary>
     void SeatConversionRaceLost(Guid eventId, Guid registrationId, Guid seatId);
+
+    /// <summary>
+    /// Phase 8 S8.3 — fires once per registration whose seat reservations
+    /// were released (hard-deleted) due to refund / abandonment / cancel /
+    /// payment-failure / force-cancel (architect tag
+    /// <c>seat_reservation.released</c>). The reason tag is one of
+    /// "refund_completed", "checkout_abandoned", "registration_cancelled",
+    /// "payment_failed", or "force_cancelled_stuck_refund".
+    /// Released count is reported so dashboards can distinguish meaningful
+    /// releases (count &gt; 0) from idempotent no-ops (count = 0).
+    /// </summary>
+    void SeatReservationReleased(Guid eventId, Guid registrationId, string reason, int count);
 }

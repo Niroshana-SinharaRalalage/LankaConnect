@@ -51,4 +51,15 @@ public class SeatHoldMetrics : ISeatHoldMetrics
             registrationId,
             seatId);
     }
+
+    public void SeatReservationReleased(Guid eventId, Guid registrationId, string reason, int count)
+    {
+        _logger.LogInformation(
+            "Metric {MetricName} EventId={EventId} RegistrationId={RegistrationId} Reason={Reason} Count={Count}",
+            "seat_reservation.released",
+            eventId,
+            registrationId,
+            reason,
+            count);
+    }
 }

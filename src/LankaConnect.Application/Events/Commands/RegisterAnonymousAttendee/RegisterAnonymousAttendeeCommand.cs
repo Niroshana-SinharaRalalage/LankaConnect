@@ -59,10 +59,13 @@ public record RegisterAnonymousAttendeeCommand(
 ) : ICommand<string?>;
 
 /// <summary>
-/// Individual attendee information with age category and optional gender
+/// Individual attendee information with age category and optional gender.
+/// Phase 8 S8.2.D: Optional ticket tier assignment so anonymous buyers can
+/// register for tiered events (mirrors RsvpToEvent.AttendeeDto).
 /// </summary>
 public record AttendeeDto(
     string Name,
     AgeCategory AgeCategory,
-    Gender? Gender = null
+    Gender? Gender = null,
+    Guid? TicketTierId = null
 );

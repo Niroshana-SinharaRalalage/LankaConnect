@@ -250,11 +250,47 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             "HandleMultiAttendeeRegistration: Creating attendee value objects - EventId={EventId}, AttendeeCount={AttendeeCount}",
             @event.Id, request.Attendees!.Count);
 
-        // Create AttendeeDetails value objects from DTOs
+        // Create AttendeeDetails value objects from DTOs.
+        // Phase 8 S8.2.D: Pass TicketTierId for tiered events; resolve tier name for
+        // denormalization. Mirrors the auth-side RsvpToEventCommandHandler logic so
+        // anonymous + auth flows produce identical AttendeeDetails on tiered events.
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
-            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
+            string? tierName = null;
+            if (attendeeDto.TicketTierId.HasValue && @event.TicketingMode == TicketingMode.Tiered)
+            {
+                var tier = @event.GetTicketTier(attendeeDto.TicketTierId.Value);
+                if (tier == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration FAILED: Ticket tier not found - EventId={EventId}, TierId={TierId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                        @event.Id, attendeeDto.TicketTierId.Value, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure($"Ticket tier not found for attendee '{attendeeDto.Name}'");
+                }
+                if (!tier.IsActive)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration FAILED: Ticket tier inactive - EventId={EventId}, TierId={TierId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                        @event.Id, attendeeDto.TicketTierId.Value, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure($"Ticket tier '{tier.Name}' is not active");
+                }
+                tierName = tier.Name;
+            }
+            else if (@event.TicketingMode == TicketingMode.Tiered && !attendeeDto.TicketTierId.HasValue)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "HandleMultiAttendeeRegistration FAILED: Tiered event requires TicketTierId per attendee - EventId={EventId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                    @event.Id, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                return Result<string?>.Failure($"Ticket tier is required for attendee '{attendeeDto.Name}' (event uses tiered ticketing)");
+            }
+
+            var attendeeResult = AttendeeDetails.Create(
+                attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender,
+                attendeeDto.TicketTierId, tierName);
             if (attendeeResult.IsFailure)
             {
                 stopwatch.Stop();

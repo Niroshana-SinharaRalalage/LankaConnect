@@ -775,7 +775,8 @@ public class EventsController : BaseController<EventsController>
                 new LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto(
                     a.Name,
                     a.AgeCategory,
-                    a.Gender
+                    a.Gender,
+                    a.TicketTierId  // Phase 8 S8.2.D: propagate optional tier id to handler
                 )).ToList();
         }
 
@@ -3597,12 +3598,15 @@ public record AnonymousRegistrationRequest(
     string? SeatSessionId = null);
 
 /// <summary>
-/// Attendee DTO for anonymous registration
+/// Attendee DTO for anonymous registration.
+/// Phase 8 S8.2.D: Optional TicketTierId so anonymous buyers can register for
+/// tiered events (mirrors auth-side RsvpRequest.AttendeeDto.TicketTierId).
 /// </summary>
 public record AnonymousAttendeeDto(
     string Name,
     LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
-    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null,
+    Guid? TicketTierId = null);
 
 /// <summary>
 /// Phase 6A.44: Response from anonymous registration

@@ -6,6 +6,45 @@
 
 ---
 
+## 🎯 2026-05-06 (S8.2.C) — Slice S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
+
+**Goal**: sub-chunk C of Slice S8.2 (seating wire-up) per ADR-011. Ships the webhook converter that turns `Registration.PendingSeatAssignments` (set by S8.2.B) into permanent `SeatReservation` rows + bound `AttendeeDetails.SeatId/SeatLabel` values immediately after `CompletePayment` succeeds, plus a guard on `InitiateAddAttendees` that rejects `AssignedSeating` events with the architect-spec'd S9-deferral message. End-to-end code path is now complete: Domain (S8.1) + persistence (S8.2.A) + RSVP validator (S8.2.B) + webhook conversion (S8.2.C).
+
+**S8.2.C shipped — two commits**:
+- `7e5921a7` (webhook converter + S9-deferral guard + 2 new metrics on `ISeatHoldMetrics`), deploy `25439379751` `success`
+- `cb78acfc` (guard reorder so the AssignedSeating rejection fires BEFORE the pricing query — discovered via staging smoke when the original placement was unreachable on Abandoned registrations), deploy `25442385449` `success`
+
+**Webhook changes** (`RegistrationWebhookHandler` in Infrastructure):
+- New deps: `ISeatHoldRepository`, `ISeatReservationRepository`, `ISeatHoldMetrics`.
+- `HandleCheckoutCompletedAsync` — new private helper `ConvertPendingSeatAssignmentsAsync` runs after `CompletePayment` succeeds:
+  1. **Pre-flight race check**: `GetReservedSeatIdsAsync(pendingSeatIds)` — picks up the common race-loss case where a concurrent buyer beat us. On race-loss: emit `seat_conversion.race_lost` per losing seat, leave registration confirmed-but-unseated, clear pending stash, return. (Architect Q2/R2 — payment confirms regardless; ops handles via S8.4.)
+  2. **All-clear path**: insert `SeatReservation` rows via `AddRangeAsync`; call `SeatHold.Confirm()` on every matching hold in the buyer's session (best-effort — hold may have expired by webhook time); call `Registration.ConfirmSeatAssignments` (S8.1) to bind seat-id and label onto each `AttendeeDetails`; clear pending stash; emit `seat_hold.converted_to_reservation` metric.
+  3. **Outer try-catch**: any unexpected error becomes a logged warning — payment WILL still complete. R4 explicit.
+- `HandleCheckoutExpiredAsync` — symmetric eager release of pending seat holds via `SeatHold.Release()` so other buyers don't wait for the 10-min TTL when a buyer abandons.
+
+**Application changes**:
+- `InitiateAddAttendeesCommandHandler` gains an early-exit branch: load `(RegistrationId, EventId)` projection + Event by Id; if `event.SeatingMode == AssignedSeating`, return failed Result with the architect-spec'd S9-deferral message. Runs BEFORE `CalculateAdditionPriceQuery` so it fires for ANY status of registration (Preliminary/Confirmed/Abandoned). New constructor dep: `IEventRepository`.
+
+**Metrics** (`ISeatHoldMetrics` extended):
+- `SeatHoldConvertedToReservation(eventId, registrationId, seatCount)` — Information level, fires once per successful webhook conversion. Closes the Phase 7H deferred dashboard metric.
+- `SeatConversionRaceLost(eventId, registrationId, seatId)` — Warning level, fires once per seat lost to a concurrent buyer.
+- Same DI binding (`ISeatHoldMetrics → SeatHoldMetrics`); same structured-log template (`Metric {MetricName} ...`).
+
+**Tests**: 2 new `SeatHoldMetricsTests` pin the wire format. 2598/2598 Application tests pass (no regressions). Build clean across Domain → Application → Infrastructure → API.
+
+**Staging API smoke 3/3 PASS** via the public `POST /api/events/registrations/{id}/add-attendees` endpoint:
+- **T1** (AssignedSeating reg `f78eda0d-…` on event `e4792b64-…` "Phase 8 Tier Test Event") → 400 *"Add-attendees not yet supported for seated events — coming in Slice S9."* — correlation `d00cbe09-4eee-4c31-b058-59ec794b1138`.
+- **T2** (GA reg `275c8c48-…` on event `4378a7d9-…` "Monthly Dana December 2025") → 400 *"Only paid registrations can add attendees"* — the S9 message correctly does NOT appear, confirming the guard doesn't misfire on GeneralAdmission events. Correlation `1d246224-fb49-41eb-859d-d1bb772a3337`.
+- **T3** (random UUID, DI/route smoke) → 400 *"Registration not found"* — proves the new `IEventRepository` DI is wired correctly. Correlation `2eb4aa09-1b41-4b21-bd33-6ad65870ca04`.
+
+**Webhook happy-path verification deferred to S8.2.D**: zero Confirmed AssignedSeating registrations exist in staging today (by definition — S8.2 just shipped), so exercising the conversion path needs a full RSVP→hold-seats→pay→webhook lifecycle which the S8.2.D plan covers via Stripe CLI.
+
+**Why durable**: (1) Pre-flight race check covers the common case; the postgres unique index on `seat_reservations.seat_id` is defense-in-depth for vanishingly rare TOCTOU + Stripe webhook retry self-heals. (2) All-or-nothing semantics on race-loss avoid the partial-binding inconsistency (`Registration.ConfirmSeatAssignments` requires count match per S8.1 invariants). (3) Outer try-catch on the whole conversion block ensures payment confirms regardless. (4) Hold-confirm is best-effort because the reservation row is the source of truth — guards like `StructuralEditGuard.GetReservedSeatIdsAsync` query `seat_reservations` not `seat_holds`. (5) S9-deferral guard fires before any expensive query (cheap projection + Event load) so no Stripe sessions burn on unsupported feature combinations.
+
+**Next**: Slice S8.2.D — Stripe-CLI driven end-to-end staging smoke (hold seats → RSVP → fire `checkout.session.completed` → assert `attendees[0].seatLabel` non-null → assert `seat_reservations` row exists → wait 11 min → POST structural-edit attempt → assert 422 reservation-blocking) + verify `seat_hold.converted_to_reservation` metric appears in container logs. Architect-estimated 1–2h. Then S8.3 cancel/refund unlock semantics, S8.4 in-flight data fixup + observability close-out.
+
+---
+
 ## 🎯 2026-05-05 (S8.2.B) — Slice S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash on Preliminary registration
 
 **Goal**: sub-chunk B of Slice S8.2 (seating wire-up) per ADR-011. Both auth-side `RsvpToEventCommand` and anonymous-side `RegisterAnonymousAttendeeCommand` now carry `SeatIds: List<Guid>?` + `SeatSessionId: string?` from JSON body through controller to handler. New shared `ISeatAssignmentValidator` service in Application layer validates seat selections against the layout + session. Handler dispatches by `event.SeatingMode` and (on success) calls `Registration.SetPendingSeatAssignments` to persist the buyer's intended seats while the registration is Preliminary. The controller mapping had to be patched in a follow-up commit because the `RsvpRequest` and `AnonymousRegistrationRequest` records didn't include the new fields and the actions manually project request → command, so the JSON binder silently dropped them.

@@ -3,7 +3,27 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — SLICE S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash
+## 🚀 CURRENT SESSION STATUS — SLICE S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
+**Date**: 2026-05-06
+**Session**: Sub-chunk C of Slice S8.2 (seating wire-up) per ADR-011. Ships the webhook converter that turns the S8.2.B-set `Registration.PendingSeatAssignments` into permanent `SeatReservation` rows + bound `AttendeeDetails.SeatId`/`SeatLabel` immediately after `CompletePayment`, plus a guard on `InitiateAddAttendees` that rejects `AssignedSeating` events with the S9-deferral message. End-to-end code path is now COMPLETE: Domain (S8.1) + persistence (S8.2.A) + RSVP validator (S8.2.B) + webhook conversion (S8.2.C). End-to-end staging proof comes in S8.2.D via Stripe CLI.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `7e5921a7` (webhook converter + S9-deferral guard + 2 new metrics) deploy `25439379751` `success`; `cb78acfc` (guard reorder so the AssignedSeating rejection fires BEFORE the pricing query — discovered via staging smoke when the original placement was unreachable on Abandoned regs) deploy `25442385449` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+2 new SeatHoldMetricsTests).
+**Scope**:
+- `RegistrationWebhookHandler.HandleCheckoutCompletedAsync` runs new `ConvertPendingSeatAssignmentsAsync` after `CompletePayment`. Pre-flight `GetReservedSeatIdsAsync` race check; all-clear → insert `SeatReservation` rows + confirm matching `SeatHold`s + `Registration.ConfirmSeatAssignments` + clear stash + emit `seat_hold.converted_to_reservation`. Race-loss → emit `seat_conversion.race_lost` per seat, leave confirmed-but-unseated. Outer try-catch ensures payment confirms regardless (architect Q2/R2/R4).
+- `HandleCheckoutExpiredAsync` symmetric early `SeatHold.Release()` on pending session holds.
+- `InitiateAddAttendeesCommandHandler` rejects `AssignedSeating` events upfront (BEFORE pricing query) with the architect-spec'd S9-deferral message. New `IEventRepository` dep.
+- `ISeatHoldMetrics` extended with `SeatHoldConvertedToReservation` (Info) + `SeatConversionRaceLost` (Warning). Same DI binding, same structured-log template.
+**Staging API smoke 3/3 PASS** via the public `POST /api/events/registrations/{id}/add-attendees` endpoint:
+- T1 AssignedSeating reg `f78eda0d-…` on event `e4792b64-…` → 400 *"Add-attendees not yet supported for seated events — coming in Slice S9."* (cid `d00cbe09-4eee-4c31-b058-59ec794b1138`)
+- T2 GA reg `275c8c48-…` on event `4378a7d9-…` → 400 *"Only paid registrations can add attendees"* — S9 message correctly does NOT appear; guard doesn't misfire on GA events (cid `1d246224-fb49-41eb-859d-d1bb772a3337`)
+- T3 random UUID → 400 *"Registration not found"* — proves new `IEventRepository` DI is wired correctly (cid `2eb4aa09-1b41-4b21-bd33-6ad65870ca04`)
+**Webhook happy-path verification deferred to S8.2.D**: zero Confirmed AssignedSeating registrations exist in staging today (by definition — S8.2 just shipped); exercising the conversion path needs a full RSVP→hold-seats→pay→webhook lifecycle which the S8.2.D plan covers via Stripe CLI.
+**Why durable**: pre-flight race check covers the common case + postgres unique index is defense-in-depth + Stripe webhook retry self-heals TOCTOU; all-or-nothing semantics on race-loss avoid partial-binding inconsistency; outer try-catch ensures payment must complete; hold-confirm is best-effort because reservation row is source of truth; S9-deferral guard fires before any expensive query so no Stripe sessions burn on unsupported feature combinations.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.2.D — Stripe-CLI driven end-to-end staging smoke + verify `seat_hold.converted_to_reservation` metric appears in container logs. Architect-estimated 1–2h.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash
 **Date**: 2026-05-05
 **Session**: Sub-chunk B of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds `SeatIds` + `SeatSessionId` to both auth-side and anonymous-side RSVP commands and pre-checkout validation that calls `Registration.SetPendingSeatAssignments` (delivered in S8.2.A) before Stripe Checkout creates the session.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `bb17387d` (handler-side validator + DTO additions) deploy `25384055669` `success`; `c11e8262` (controller-side `RsvpRequest`/`AnonymousRegistrationRequest` DTO mapping fix) deploy `25389166071` `success` (initial run cancelled mid-flight; recovered via `gh run rerun --failed` per the same recovery path used for `25384055669` cancellation earlier the same day). The controller fix was discovered after the first smoke pass when T1 returned the wrong message — root cause was the controller actions manually projecting request → command, so a missing DTO field silently dropped incoming `seatIds`/`seatSessionId`. Application test suite **2596 passed / 6 skipped / 0 failed** (+8 new validator tests).

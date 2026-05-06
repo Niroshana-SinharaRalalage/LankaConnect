@@ -3,7 +3,27 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
+## 🚀 CURRENT SESSION STATUS — SLICE S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash
+**Date**: 2026-05-05
+**Session**: Sub-chunk B of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds `SeatIds` + `SeatSessionId` to both auth-side and anonymous-side RSVP commands and pre-checkout validation that calls `Registration.SetPendingSeatAssignments` (delivered in S8.2.A) before Stripe Checkout creates the session.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `bb17387d` (handler-side validator + DTO additions) deploy `25384055669` `success`; `c11e8262` (controller-side `RsvpRequest`/`AnonymousRegistrationRequest` DTO mapping fix) deploy `25389166071` `success` (initial run cancelled mid-flight; recovered via `gh run rerun --failed` per the same recovery path used for `25384055669` cancellation earlier the same day). The controller fix was discovered after the first smoke pass when T1 returned the wrong message — root cause was the controller actions manually projecting request → command, so a missing DTO field silently dropped incoming `seatIds`/`seatSessionId`. Application test suite **2596 passed / 6 skipped / 0 failed** (+8 new validator tests).
+**Scope**:
+- New `ISeatAssignmentValidator` Application service with 5-step pipeline: layout exists for event, every seat belongs to layout, every seat held in session by caller, no seat already reserved, seat count == attendee count. Returns `IReadOnlyList<PendingSeatAssignment>` with seat labels denormalised from layout.
+- `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` records gain `List<Guid>? SeatIds = null, string? SeatSessionId = null`.
+- `RsvpToEventCommandHandler` + `RegisterAnonymousAttendeeCommandHandler` inject the validator and branch by `event.SeatingMode`. AssignedSeating without seatIds → 400; GeneralAdmission with stale seatIds → 400; AssignedSeating + valid session → call validator, then on registration creation call `Registration.SetPendingSeatAssignments(sessionId, assignments)` while Status is Preliminary.
+- `EventsController.RsvpRequest` + `AnonymousRegistrationRequest` records carry the new fields and propagate them in the manual command projection inside the `RsvpToEvent` and `RegisterAnonymousAttendee` actions.
+**API smoke (staging) — 3/3 PASS via public anonymous endpoint** (auth `/rsvp` blocked by known stale-JWT staging Auth issuer bug — same root cause noted in 7F-A §5 / 7F-B §6 / 7F-C §5; both code paths share the validator + same controller pattern, anonymous coverage is sufficient for the validator wiring):
+- T1 GA event `4378a7d9-…` + stale `seatIds` → 400 *"This event uses general admission … seat selection is not supported. Refresh the page and try again."* (cid `b73b1e5c-f19c-4b15-b13e-318e88eeb56f`)
+- T2 AssignedSeating event `e4792b64-…` + missing `seatIds` → 400 *"This event uses assigned seating … seatIds and seatSessionId are required."* (cid `6e1ae7fa-0cc1-47e0-92ae-e8cbe4124b47`)
+- T3 AssignedSeating + bogus seatIds → 400 *"Seat … is not part of this event's layout"* (cid `8f391f00-af33-4b85-a050-bc98c0166d60`)
+**Why durable**: (1) Validator is a single Application service shared by both auth + anonymous handlers — no chance of one path drifting from the other. (2) Branching by `SeatingMode` enforces the contract symmetrically — both forbidden-when-GA and required-when-AS produce explicit 400s with operator-friendly messages. (3) Pre-validation runs BEFORE Stripe Checkout creation so a wrong selection never burns a Stripe session. (4) `SetPendingSeatAssignments` only runs when registration is Preliminary so retries on existing Confirmed registrations don't corrupt state.
+**Still no buyer-facing happy-path change** — happy path "buyer pays → seats persist → ticket PDF / email show seat labels" needs S8.2.C (webhook converts holds → reservations and binds the pending stash to attendees via `Registration.ConfirmSeatAssignments`).
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.2.C — webhook hold→reservation conversion + C5 guard + `InitiateAddAttendees` rejection while pending stash is non-empty. Architect-estimated 6–8h; separate session per ADR-011.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
 **Date**: 2026-04-26
 **Session**: Phase 7E.3a sub-slice — free B-mode RSVP API (auth + anonymous) + UpdateRsvp Mode-aware guard. New `Event.RegisterWithHeadCount` domain method mirrors `RegisterWithAttendees` guards. Defensive Mode-A guard on `RegisterWithAttendees` rejects B/C-mode events. `UpdateRsvpCommandHandler` defensively rejects B/C events with clear deferred-message.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Commits `c364dba6` (auth + 14 tests) + `58c1f76e` (anonymous + UpdateRsvp guard) + `0f393b2c` (controller-DTO wire-up). Three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).

@@ -6,6 +6,44 @@
 
 ---
 
+## 🎯 2026-05-05 (S8.2.B) — Slice S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash on Preliminary registration
+
+**Goal**: sub-chunk B of Slice S8.2 (seating wire-up) per ADR-011. Both auth-side `RsvpToEventCommand` and anonymous-side `RegisterAnonymousAttendeeCommand` now carry `SeatIds: List<Guid>?` + `SeatSessionId: string?` from JSON body through controller to handler. New shared `ISeatAssignmentValidator` service in Application layer validates seat selections against the layout + session. Handler dispatches by `event.SeatingMode` and (on success) calls `Registration.SetPendingSeatAssignments` to persist the buyer's intended seats while the registration is Preliminary. The controller mapping had to be patched in a follow-up commit because the `RsvpRequest` and `AnonymousRegistrationRequest` records didn't include the new fields and the actions manually project request → command, so the JSON binder silently dropped them.
+
+**S8.2.B shipped — two commits**:
+- `bb17387d` (handler-side validator + DTO additions to commands), deploy `25384055669` `success`
+- `c11e8262` (controller DTO mapping fix on `RsvpRequest` + `AnonymousRegistrationRequest`), deploy `25389166071` `success` (initial run cancelled mid-flight, recovered via `gh run rerun --failed`)
+
+**Application changes**:
+- New `ISeatAssignmentValidator` interface + `SeatAssignmentValidator` implementation. 5-step validation: layout exists for event, every seat belongs to that layout, every seat is held in the supplied session by this caller, no seat already reserved, seat count == attendee count. Returns `IReadOnlyList<PendingSeatAssignment>` with seat labels denormalised from layout.
+- `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` records gain `List<Guid>? SeatIds = null, string? SeatSessionId = null`.
+- Both handlers (`RsvpToEventCommandHandler` + `RegisterAnonymousAttendeeCommandHandler`) inject `ISeatAssignmentValidator` and branch by `event.SeatingMode`:
+  - `AssignedSeating` without `SeatIds`/`SeatSessionId` → 400 *"This event uses assigned seating … seatIds and seatSessionId are required."*
+  - `GeneralAdmission` with stale `SeatIds` → 400 *"This event uses general admission … seat selection is not supported. Refresh the page and try again."* (catches buggy frontends from leaking selections into wrong-mode events)
+  - `AssignedSeating` with valid seat session → call validator, on success build `PendingSeatAssignment[]` with denormalised labels, then after registration is created in Preliminary call `Registration.SetPendingSeatAssignments(sessionId, assignments)`.
+- `DependencyInjection.cs` registers `services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();`.
+
+**API surface changes** (`EventsController.cs`):
+- `RsvpRequest` record gains `List<Guid>? SeatIds = null, string? SeatSessionId = null` and the `RsvpToEvent` action propagates them in the manual `RsvpToEventCommand` projection.
+- `AnonymousRegistrationRequest` record + `RegisterAnonymousAttendee` action mirror the same shape.
+
+**Tests**:
+- 8 new validator unit tests pass (happy path / layout missing / count mismatch / seat not in layout / seat not held in session / seat already reserved / empty seatIds / empty session id).
+- 2596/2596 Application tests pass — no regressions.
+- Build clean across Domain → Application → Infrastructure → API.
+
+**Staging API smoke 3/3 PASS** via the public `/api/events/{id}/register-anonymous` endpoint:
+The auth `/rsvp` path is currently blocked by a known stale-JWT staging Auth issuer bug (login mints tokens with iat/exp anchored to 2026-04-25 — same root cause noted in Phase 7F-A §5 / 7F-B §6 / 7F-C §5). Both auth and anonymous code paths share the same validator + same controller-level DTO mapping pattern, so anonymous-flow coverage is sufficient evidence for the validator pipeline being correctly wired end-to-end.
+- **T1** (GA event `4378a7d9-…` "Monthly Dana December 2025" + stale `seatIds`) → 400 *"This event uses general admission … seat selection is not supported. Refresh the page and try again."* — correlation `b73b1e5c-f19c-4b15-b13e-318e88eeb56f`.
+- **T2** (AssignedSeating event `e4792b64-…` "Phase 8 Tier Test Event" + missing `seatIds`) → 400 *"This event uses assigned seating … please select your seats before registering. (seatIds and seatSessionId are required.)"* — correlation `6e1ae7fa-0cc1-47e0-92ae-e8cbe4124b47`.
+- **T3** (AssignedSeating + bogus random-UUID `seatIds`) → 400 *"Seat … is not part of this event's layout"* — correlation `8f391f00-af33-4b85-a050-bc98c0166d60`.
+
+**Still no buyer-facing happy-path change** — the happy path "buyer pays → seats persist on attendees → ticket PDF + email show seat labels" needs S8.2.C: webhook converts holds → reservations and binds the stashed pending assignments to attendees via `Registration.ConfirmSeatAssignments`. End-to-end user-facing bug fixed at end of S8.2.C.
+
+**Next**: Slice S8.2.C — webhook hold→reservation conversion + C5 guard + `InitiateAddAttendees` rejection while `PendingSeatAssignments` is non-empty. Architect-estimated 6–8h; separate session per ADR-011.
+
+---
+
 ## 🎯 2026-05-04 (S8.2.A) — Slice S8.2.A SHIPPED + STAGING-VERIFIED — pending seat-assignment stash on Registration
 
 **Goal**: sub-chunk A of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds the registration-scoped stash that the buyer-flow (S8.2.B) and webhook (S8.2.C) will use to remember the buyer's intended seat assignments + seat-hold session id across the RSVP → Stripe Checkout → webhook window. No behaviour change visible at the API yet (the stash is only ever set/read by chunks B and C); this PR is the persistence + invariant guard foundation.

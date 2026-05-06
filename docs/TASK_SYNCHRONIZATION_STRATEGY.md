@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — SLICE S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
+## 🚀 CURRENT SESSION STATUS — SLICE S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke 3/3 PASS + anonymous-side tier feature gap fixed
+**Date**: 2026-05-06
+**Session**: Final sub-chunk of Slice S8.2 per ADR-011. End-to-end smoke + close-out for the seating wire-up. Anonymous-side `TicketTierId` feature gap surfaced during smoke and fixed surgically (long-standing gap unrelated to S8 — anonymous buyers couldn't register for any tiered event).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `fcf2b692` (anonymous TicketTierId wiring) deploy `25447213361` `success`. Application test suite **2598 passed / 6 skipped / 0 failed**.
+**Scope**: 3 files (controller `AnonymousAttendeeDto` record + Application-layer `AttendeeDto` record + handler tier-resolution + name-denormalization mirroring auth-side). No new tests — auth-side wiring already covers the domain-level invariants; this fix is mechanical DTO+mapping symmetry.
+**Staging API smoke 3/3 PASS** via `POST /api/events/{id}/register-anonymous` on AssignedSeating tiered event `e4792b64-…`:
+- T1 (hold seats → RSVP with seatIds + sessionId + per-attendee tier ids) → 200 + Stripe checkout URL; DB confirms Preliminary status + correct `pending_seat_session_id` + `pending_seat_assignments` JSONB (cid `1b0ffe23-48c5-452c-abd8-1e1456257de8`)
+- T2 (bogus session id) → 400 validator rejection (cid `15850c20-…`)
+- T3 (insert seat_reservations row) → row count 1; table is no longer always-empty
+**Webhook conversion happy-path** deferred to S8.4 (needs Stripe-side completion to fire `checkout.session.completed`). The S8.2.C conversion code is unit-tested + container-log-verifiable.
+**Slice S8.2 is CODE-COMPLETE** (Domain S8.1 + persistence S8.2.A + validator S8.2.B + webhook S8.2.C + smoke S8.2.D). Webhook end-to-end staging proof closes in S8.4.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.3 — Cancel/refund unlock semantics + `SeatReservationsReleasedEvent` handler. Architect-estimated 4–5h.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
 **Date**: 2026-05-06
 **Session**: Sub-chunk C of Slice S8.2 (seating wire-up) per ADR-011. Ships the webhook converter that turns the S8.2.B-set `Registration.PendingSeatAssignments` into permanent `SeatReservation` rows + bound `AttendeeDetails.SeatId`/`SeatLabel` immediately after `CompletePayment`, plus a guard on `InitiateAddAttendees` that rejects `AssignedSeating` events with the S9-deferral message. End-to-end code path is now COMPLETE: Domain (S8.1) + persistence (S8.2.A) + RSVP validator (S8.2.B) + webhook conversion (S8.2.C). End-to-end staging proof comes in S8.2.D via Stripe CLI.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `7e5921a7` (webhook converter + S9-deferral guard + 2 new metrics) deploy `25439379751` `success`; `cb78acfc` (guard reorder so the AssignedSeating rejection fires BEFORE the pricing query — discovered via staging smoke when the original placement was unreachable on Abandoned regs) deploy `25442385449` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+2 new SeatHoldMetricsTests).

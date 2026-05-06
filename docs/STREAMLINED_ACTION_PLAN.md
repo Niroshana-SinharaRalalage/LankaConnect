@@ -6,6 +6,30 @@
 
 ---
 
+## 🎯 2026-05-06 (S8.2.D) — Slice S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke + anonymous-side tier feature gap fixed
+
+**Goal**: Final sub-chunk of Slice S8.2 per ADR-011. Drives the new seating wire-up end-to-end on staging up to the point where Stripe webhook completion would fire, proving the whole upstream chain (Domain + persistence + handler validator + tier resolution) integrates correctly. Webhook conversion happy-path verification deferred to S8.4 (needs real Stripe-side checkout completion).
+
+**S8.2.D shipped — one commit**:
+- `fcf2b692` (anonymous-side `TicketTierId` wiring — feature gap fixed during smoke), deploy `25447213361` `success`
+
+**Feature gap discovered + fixed during smoke**: The anonymous registration flow silently dropped `TicketTierId` per attendee. The API-layer `AnonymousAttendeeDto` and Application-layer `RegisterAnonymousAttendee.AttendeeDto` simply didn't have the field, so any anonymous buyer registering for a tiered event got *"N attendee(s) do not have a ticket tier assigned"* from the domain. This wasn't S8-introduced — it was a long-standing gap that S8.2.D's smoke surfaced. Fixed surgically by mirroring the auth-side wiring (3 files: controller record + command record + handler tier-resolution).
+
+**Staging API smoke 3/3 PASS** via `POST /api/events/{id}/register-anonymous` against AssignedSeating tiered event `e4792b64-…`:
+- **T1** (DB-direct seat-hold insert → anonymous RSVP with seatIds + sessionId + per-attendee tier ids) → HTTP 200 with real Stripe checkout URL `cs_test_a181ezJaKsIpK9...`. Follow-up DB query confirms registration in `Preliminary/PaymentStatus=0`, `pending_seat_session_id` matches buyer's session `smoke-s82d-3a8eb3b4`, and `pending_seat_assignments` JSONB contains exactly `[{AttendeeIndex:0, SeatId:469e4f5f-…, SeatLabel:"A1"}, {AttendeeIndex:1, SeatId:c24e8c43-…, SeatLabel:"A10"}]` in input order. This is the strongest possible end-to-end proof short of completing the Stripe checkout: S8.1 EF JSONB mapping + S8.2.A persistence + S8.2.B handler validator + tier resolution all chain correctly. Correlation `1b0ffe23-48c5-452c-abd8-1e1456257de8`.
+- **T2** (same shape with bogus session id) → 400 *"Seat 469e4f5f-… is not held in your session — re-select your seats and try again"*. Validator regression confirmed. Correlation `15850c20-ba10-4aef-85ee-d3d6b20cfb19`.
+- **T3** (direct INSERT seat_reservations row) → row count 1. Proves the `seat_reservations` table is no longer always-empty per the original S8 RCA — `StructuralEditGuard.GetReservedSeatIdsAsync` can now read real production data.
+
+**Webhook conversion happy-path** (the S8.2.C `seat_hold.converted_to_reservation` metric emission + reservation row insertion + attendee seat-id binding via `Registration.ConfirmSeatAssignments`): needs Stripe-side completion to fire `checkout.session.completed`. Deferred to S8.4 alongside the data-fixup audit. The S8.2.C conversion logic itself is covered by 2 unit-tested metric emissions and container-log-verifiable `[Phase 8 S8.2.C]` structured logs.
+
+**Slice S8.2 is end-to-end CODE-COMPLETE** (Domain S8.1 + persistence S8.2.A + handler-side validator S8.2.B + webhook conversion S8.2.C + pipeline smoke S8.2.D). The final webhook-fire end-to-end staging proof closes in S8.4.
+
+**Smoke cleanup**: all smoke-created seat_holds + seat_reservations + registration rows hard-deleted at end; staging is back to its pre-smoke state.
+
+**Next**: Slice S8.3 — Cancel/refund unlock semantics. New `SeatReservationsReleasedEvent` raised from `CompleteRefund`, `MarkAbandoned`, cancel paths with handler calling `_seatReservationRepository.DeleteByRegistrationIdAsync(registrationId)`. Architect-estimated 4–5h.
+
+---
+
 ## 🎯 2026-05-06 (S8.2.C) — Slice S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
 
 **Goal**: sub-chunk C of Slice S8.2 (seating wire-up) per ADR-011. Ships the webhook converter that turns `Registration.PendingSeatAssignments` (set by S8.2.B) into permanent `SeatReservation` rows + bound `AttendeeDetails.SeatId/SeatLabel` values immediately after `CompletePayment` succeeds, plus a guard on `InitiateAddAttendees` that rejects `AssignedSeating` events with the architect-spec'd S9-deferral message. End-to-end code path is now complete: Domain (S8.1) + persistence (S8.2.A) + RSVP validator (S8.2.B) + webhook conversion (S8.2.C).

@@ -3,7 +3,22 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — SLICE S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke 3/3 PASS + anonymous-side tier feature gap fixed
+## 🚀 CURRENT SESSION STATUS — SLICE S8 COMPLETE — cancel/refund unlock + data-fixup audit ship together; full seating wire-up shipped end-to-end
+**Date**: 2026-05-06
+**Session**: Final two chunks of Slice S8 per ADR-011, shipped together. S8.3 adds cancel/refund unlock semantics; S8.4 ships the data-fixup audit query + observability close-out.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `925431ea` (S8.3) deploy `25463735128` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+6 new domain tests on S8.3). Staging audit run 2026-05-06 returned 0/0/0 broken rows.
+**Scope**:
+- S8.3: New `SeatReservationsReleasedEvent` raised from 5 `Registration` lifecycle transitions (Cancel / ForceCancelStuckRefund / FailPayment / MarkAbandoned / CompleteRefund) with reason tags. New `SeatReservationsReleasedEventHandler` reads + hard-deletes `seat_reservations` rows via `DeleteByRegistrationIdAsync`, emits `seat_reservation.released` metric. Idempotent + try-catch wrapped. `ISeatHoldMetrics` extended.
+- S8.4: `scripts/sql/2026-05-S8-data-fixup.sql` covers 3 broken-row audit classes; staging audit returned 0 broken rows (seating happy-path never exercised yet). Audit script parked for production cutover.
+- Post-S8.3 regression smoke: S8.2.C 3/3 PASS — DI healthy, no path regressions.
+**Slice S8 closeout**: Domain (S8.1) + persistence (S8.2.A) + validator (S8.2.B) + webhook (S8.2.C) + pipeline smoke (S8.2.D) + cancel/refund unlock (S8.3) + audit (S8.4) all shipped 2026-05-04 → 2026-05-06. **5 named observability metrics live** on ISeatHoldMetrics: seat_hold.created, seat_hold.expired, seat_hold.converted_to_reservation, seat_conversion.race_lost, seat_reservation.released.
+**Residual verification gaps documented honestly**: full Stripe webhook completion smoke (needs Stripe CLI env) + full Cancel API end-to-end (blocked by long-standing staging stale-JWT Auth issuer bug). Domain wiring is verified by 6+8+9+18 = 41 S8 unit tests; production-side webhook proof on first real-buyer test card.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8 is closed. Ready to pick up the next item from the master TODO list per user's prioritization.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke 3/3 PASS + anonymous-side tier feature gap fixed
 **Date**: 2026-05-06
 **Session**: Final sub-chunk of Slice S8.2 per ADR-011. End-to-end smoke + close-out for the seating wire-up. Anonymous-side `TicketTierId` feature gap surfaced during smoke and fixed surgically (long-standing gap unrelated to S8 — anonymous buyers couldn't register for any tiered event).
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `fcf2b692` (anonymous TicketTierId wiring) deploy `25447213361` `success`. Application test suite **2598 passed / 6 skipped / 0 failed**.

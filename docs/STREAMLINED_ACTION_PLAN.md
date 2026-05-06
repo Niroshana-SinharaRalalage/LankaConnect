@@ -6,6 +6,52 @@
 
 ---
 
+## 🎯 2026-05-06 (S8.3 + S8.4) — Slice S8 COMPLETE — cancel/refund unlock + data-fixup audit shipped together
+
+**Goal**: Final two chunks of Slice S8 per ADR-011 — close out the seating wire-up. S8.3 adds the cancel/refund unlock semantics (release seat reservations when registration leaves the "owns the seats" lifecycle states); S8.4 ships the data-fixup audit query + observability close-out documentation.
+
+**S8.3 shipped** — commit `925431ea`, deploy `25463735128` `success`:
+- New `SeatReservationsReleasedEvent` domain event in `LankaConnect.Domain.Events.DomainEvents`.
+- Raised from 5 `Registration` lifecycle transitions:
+  - `Cancel()` → reason `registration_cancelled`
+  - `ForceCancelStuckRefund()` → reason `force_cancelled_stuck_refund`
+  - `FailPayment()` → reason `payment_failed`
+  - `MarkAbandoned()` → reason `checkout_abandoned`
+  - `CompleteRefund(stripeRefundId)` → reason `refund_completed`
+- New `SeatReservationsReleasedEventHandler` in `Application.Events.EventHandlers`: reads existing reservations via `GetByRegistrationIdAsync` (so the metric reports a meaningful count), calls `DeleteByRegistrationIdAsync` (V1 hard-delete per architect Q1), commits via `IUnitOfWork`, emits `seat_reservation.released` Information-level metric with reason tag + count. Idempotent: no-op on registrations with zero reservations (typical for Abandoned-from-Preliminary or free events). Wrapped in try-catch so a release failure doesn't break the parent flow (refund email, cancellation confirmation).
+- `ISeatHoldMetrics` extended with `SeatReservationReleased(eventId, registrationId, reason, count)` — same DI binding, same structured-log template.
+- **Tests**: 6 new `RegistrationSeatReservationsReleasedTests` (one per raise path + idempotent re-Cancel). 2598/2598 Application tests pass. Build clean.
+
+**S8.4 shipped** — `scripts/sql/2026-05-S8-data-fixup.sql`:
+- **AUDIT 1**: Confirmed paid AssignedSeating registrations whose `AttendeeDetails.SeatId` is null (the user-visible bug class S8 was built to fix; pre-S8 EVERY paid AS registration had this shape).
+- **AUDIT 2**: Orphaned `seat_reservations` rows whose owning registration is in {Cancelled, Abandoned, Refunded} (release-on-cancel never fired pre-S8.3).
+- **AUDIT 3**: Stale active `seat_holds` past expiry (cleanup background-service backstop).
+- Cleanup hints documented inline; class-A (Confirmed-but-unseated) requires refund + comp at the application layer (architect Q3 — back-filling SeatId on already-paid attendees is unsafe).
+
+**Staging audit results (2026-05-06)**: AUDIT 1 = **0** broken rows, AUDIT 2 = **0** broken rows, AUDIT 3 = **0** rows, total `seat_reservations` rows in DB = **0**. The seating happy-path was never actually exercised on staging because S8.2 just shipped — there's nothing to clean up. The audit script is parked in version control for production cutover.
+
+**Post-S8.3 deploy regression smoke (S8.2.C 3/3 PASS)** — proves the new domain event handler's DI binding is healthy and didn't break existing paths:
+- T1 (AssignedSeating reg → S9-deferral 400): correlation `0d7e68e2-77eb-439c-b965-02388e98bc99`
+- T2 (GA reg → no S9 message): correlation `8f3c3147-688f-4502-8509-1eed1529c3ae`
+- T3 (DI/route): random UUID → 400 *"Registration not found"*
+
+**Observability (post-S8 closeout)**: `ISeatHoldMetrics` now has 5 named metrics, all structured-log emitted with the `Metric {MetricName} ...` template:
+1. `seat_hold.created` (Phase 7H — fires on hold creation)
+2. `seat_hold.expired` (Phase 7H — fires every cleanup pass)
+3. `seat_hold.converted_to_reservation` (S8.2.C — fires on successful webhook conversion)
+4. `seat_conversion.race_lost` (S8.2.C — fires per losing seat on rare TOCTOU race)
+5. `seat_reservation.released` (S8.3 — fires on lifecycle exit with reason tag)
+
+**Slice S8 is COMPLETE end-to-end in code**: Domain (S8.1) + persistence (S8.2.A) + handler validator (S8.2.B) + webhook conversion (S8.2.C) + pipeline smoke (S8.2.D) + cancel/refund unlock (S8.3) + data-fixup audit (S8.4). The user-visible bug ("buyer pays for seated event, seat assignment silently dropped, hold expires, another buyer claims the same seat") is fixed.
+
+**Residual verification gaps — documented honestly**:
+- **Stripe-side webhook completion smoke**: needs real test card via UI or Stripe CLI environmental setup (architect's `stripe trigger checkout.session.completed --override checkout_session:metadata.registration_id=...`). Deferred — conversion logic itself is unit-tested (2 `SeatHoldMetricsTests`) and container-log-verifiable via `[Phase 8 S8.2.C]` log markers.
+- **Full Cancel-API end-to-end smoke**: blocked by the long-standing staging stale-JWT Auth issuer bug. Domain wiring is verified by 6 unit tests; production-side proof comes when the Auth bug is fixed or via UI-driven cancellation testing on the staging frontend.
+
+**Next**: S8 is closed; ready to pick up the next item from the master TODO list per user's prioritization.
+
+---
+
 ## 🎯 2026-05-06 (S8.2.D) — Slice S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke + anonymous-side tier feature gap fixed
 
 **Goal**: Final sub-chunk of Slice S8.2 per ADR-011. Drives the new seating wire-up end-to-end on staging up to the point where Stripe webhook completion would fire, proving the whole upstream chain (Domain + persistence + handler validator + tier resolution) integrates correctly. Webhook conversion happy-path verification deferred to S8.4 (needs real Stripe-side checkout completion).

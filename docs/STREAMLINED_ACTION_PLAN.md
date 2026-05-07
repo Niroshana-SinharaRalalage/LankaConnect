@@ -6,6 +6,23 @@
 
 ---
 
+## 🎯 2026-05-07 (Phase 8X — External Payment Events) — kickoff: master TODO + Slice 8X.1 (domain enum + ExternalRegistration VO)
+
+**Goal**: Add a third event payment mode `ExternalPaid` (paid event whose payment + registration happens off-platform; pricing displayed; in-page CTA links to external URL with vendor name + instructions). Architect-approved RCA + 11-slice plan + 310-checkbox master TODO captured in [docs/MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md](./MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md). Phase 8X registered in [docs/PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md).
+
+**Classification**: feature missing, cross-stack (Domain + EF + Application + API + FE + email/iCal rendering). Not a bug.
+
+**Architect-locked decisions (key ones)**:
+- New `EventPaymentMode` enum (`Free=0, OnPlatformPaid=1, ExternalPaid=2`) — replaces `IsFreeEvent` boolean as source of truth (Phase 6A.86 discipline preserved); `IsFreeEvent` becomes a real entity property kept in lockstep via private `SyncLegacyIsFree()` (Option B — no `builder.Ignore`, no shadow property, per Phase 6A.123 lesson).
+- New `ExternalRegistration` value object: HTTPS-only URL ≤2048 chars + RFC1918/loopback/link-local host rejection + optional instructions (≤4000) + optional vendor name (≤100).
+- Compatibility matrix locked: ExternalPaid forces `RegistrationMode=NoRegistration` (Mode C); blocks AssignedSeating, add-ons, waitlist, check-in QR; allows signup lists / donations / sponsors; ticket tiers display-only.
+- Validator inference table corrected for security: missing `paymentMode` + non-true `isFree` → `OnPlatformPaid`, never `Free` (Phase 6A.81 lesson).
+- All commits direct to `develop` (project policy — no feature branches).
+
+**Slice 8X.1 in progress** (this session): pure domain — add `EventPaymentMode` enum + `ExternalRegistration` VO + 14 unit tests covering RFC1918 / loopback / link-local rejection + length / scheme / equality validation. No DB, no API, no consumers. Pre-flight baseline domain test count snapshotted at 642.
+
+---
+
 ## 🎯 2026-05-07 (WhatsApp RCA Fix #4) — close the silent-drop-off remediation, master TODO, staging-evidence audit
 
 **Goal**: Verify Phase 7D Fix #4 (`ExpireUnverifiedWhatsAppPreferencesJob`) is genuinely live on staging, not just merged. The implementation commit (`895e9a48`) shipped 2026-04-21 but the master TODO `docs/MASTER_TODO_WHATSAPP_RCA.md` still listed Fix #4 as "pending" with four unchecked planning items — a documentation gap, not a code gap, but the kind of stale tracking that makes the next contributor uncertain whether the silent-drop-off cohort is actually being closed.

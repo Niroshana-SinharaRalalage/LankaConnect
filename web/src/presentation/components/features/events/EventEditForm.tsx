@@ -13,7 +13,7 @@ import { Input } from '@/presentation/components/ui/Input';
 import { MultiSelect } from '@/presentation/components/ui/MultiSelect';
 import { editEventSchema, type EditEventFormData } from '@/presentation/lib/validators/event.schemas';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, Currency, RegistrationMode, type EventDto } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, RegistrationMode, EventPaymentMode, type EventDto } from '@/infrastructure/api/types/events.types';
 import { RegistrationModePicker } from './RegistrationModePicker';
 import { ConvertRegistrationModeDialog } from './ConvertRegistrationModeDialog';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -238,6 +238,14 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
       isFree: event.isFree ?? true,
+      // Phase 8X: paymentMode (Free / OnPlatformPaid / ExternalPaid). Defaults derive
+      // from event.paymentMode if present, else from the legacy isFree boolean for
+      // back-compat with stale React Query cache from before Phase 8X.5 shipped.
+      paymentMode: event.paymentMode
+        ?? (event.isFree ? EventPaymentMode.Free : EventPaymentMode.OnPlatformPaid),
+      externalRegistrationUrl: event.externalRegistrationUrl ?? '',
+      externalRegistrationInstructions: event.externalRegistrationInstructions ?? '',
+      externalRegistrationVendorName: event.externalRegistrationVendorName ?? '',
       // Phase 7E.5: Per-event registration capture mode (defensive default per architect §6 —
       // tolerate stale React Query payloads that pre-date the registrationMode field).
       registrationMode: event.registrationMode ?? RegistrationMode.DetailedAttendees,
@@ -559,6 +567,16 @@ export function EventEditForm({ event }: EventEditFormProps) {
         emailGroupIds: data.emailGroupIds || [],
         // IsFreeEvent fix: Send explicit free event flag to backend
         isFree: data.isFree ?? false,
+        // Phase 8X: Payment mode + external registration fields. Backend's validator
+        // enforces the inference table; sending paymentMode lets the backend skip
+        // ambiguous inference. Empty strings are normalised to undefined so optional
+        // VO fields don't fail length checks.
+        ...(data.paymentMode && { paymentMode: data.paymentMode }),
+        ...(data.paymentMode === EventPaymentMode.ExternalPaid && {
+          externalRegistrationUrl: data.externalRegistrationUrl || undefined,
+          externalRegistrationInstructions: data.externalRegistrationInstructions || undefined,
+          externalRegistrationVendorName: data.externalRegistrationVendorName || undefined,
+        }),
         // Phase 7E.5: Send registration mode if changed. Backend rejects mode change once
         // registrations exist (Event.SetRegistrationMode guard) — surfaces as 400.
         ...(data.registrationMode &&
@@ -1187,18 +1205,112 @@ export function EventEditForm({ event }: EventEditFormProps) {
             </p>
           </div>
 
-          {/* Free Event Toggle */}
-          <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-            <input
-              id="isFree"
-              type="checkbox"
-              className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
-              {...register('isFree')}
-            />
-            <label htmlFor="isFree" className="text-sm font-medium text-neutral-700">
-              This is a free event (no ticket purchase required)
-            </label>
-          </div>
+          {/* Phase 8X: Payment Mode (3-way radio replaces the legacy free/paid checkbox).
+              Selecting "Paid (external)" reveals the ExternalRegistration card below.
+              isFree is kept in lockstep with paymentMode === Free for back-compat with
+              the existing pricing-block visibility logic (still keyed on !isFree). */}
+          <Controller
+            control={control}
+            name="paymentMode"
+            render={({ field }) => (
+              <div className="p-4 bg-neutral-50 rounded-lg space-y-3">
+                <div className="text-sm font-medium text-neutral-700 mb-1">Payment</div>
+                {[
+                  { value: EventPaymentMode.Free, label: 'Free event', helper: 'No ticket purchase required.' },
+                  { value: EventPaymentMode.OnPlatformPaid, label: 'Paid — collected on LankaConnect', helper: 'Buyers pay via Stripe checkout.' },
+                  { value: EventPaymentMode.ExternalPaid, label: 'Paid — external registration link', helper: 'Pricing displayed; buyers register and pay off-platform via your link.' },
+                ].map(opt => (
+                  <label key={opt.value} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1 h-4 w-4 border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                      value={opt.value}
+                      checked={field.value === opt.value}
+                      onChange={() => {
+                        field.onChange(opt.value);
+                        // Keep legacy isFree boolean in sync so the existing pricing-block
+                        // visibility (line ~1252 below) continues to work without churn.
+                        setValue('isFree', opt.value === EventPaymentMode.Free, { shouldValidate: false });
+                      }}
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-neutral-800">{opt.label}</div>
+                      <div className="text-xs text-neutral-500">{opt.helper}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          />
+
+          {/* Phase 8X: External Registration card — URL (required), optional vendor + instructions.
+              Only visible for ExternalPaid; URL must be https + parse-OK; backend additionally
+              rejects loopback / RFC1918 / link-local hosts and enforces length caps. */}
+          {watch('paymentMode') === EventPaymentMode.ExternalPaid && (
+            <div className="space-y-3 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+              <div className="flex items-center gap-2 mb-1">
+                <Link2 className="h-5 w-5 text-blue-600" />
+                <h4 className="text-sm font-semibold text-neutral-900">External registration details</h4>
+              </div>
+              <p className="text-xs text-neutral-600">
+                Buyers will see a "Buy Ticket / Register Externally" button on the event page that opens this link in a new tab.
+                LankaConnect will display the pricing you configure below for reference but won't collect payment.
+              </p>
+
+              <div>
+                <label htmlFor="externalRegistrationUrl" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Registration / ticket URL <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  id="externalRegistrationUrl"
+                  type="url"
+                  placeholder="https://eventbrite.com/e/your-event-12345"
+                  {...register('externalRegistrationUrl')}
+                />
+                {errors.externalRegistrationUrl && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationUrl.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">Must use https. Maximum 2,048 characters.</p>
+              </div>
+
+              <div>
+                <label htmlFor="externalRegistrationVendorName" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Vendor name <span className="text-neutral-400">(optional)</span>
+                </label>
+                <Input
+                  id="externalRegistrationVendorName"
+                  type="text"
+                  placeholder="Eventbrite, Humanitix, etc."
+                  maxLength={100}
+                  {...register('externalRegistrationVendorName')}
+                />
+                {errors.externalRegistrationVendorName && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationVendorName.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">Used in CTA label e.g. "Buy on Eventbrite". Maximum 100 characters.</p>
+              </div>
+
+              <div>
+                <label htmlFor="externalRegistrationInstructions" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Instructions <span className="text-neutral-400">(optional)</span>
+                </label>
+                <textarea
+                  id="externalRegistrationInstructions"
+                  rows={4}
+                  maxLength={4000}
+                  placeholder="e.g. Pay $25 at the door. Bring a copy of this email."
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  {...register('externalRegistrationInstructions')}
+                />
+                {errors.externalRegistrationInstructions && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationInstructions.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">
+                  Plain text only — rendered as text on the event page (no HTML, no formatting). Maximum 4,000 characters.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Phase 7E.5: Registration Mode Picker (edit flow). Mirrors the create form;
               auto-clears the selection when the shape change makes the current mode invalid. */}

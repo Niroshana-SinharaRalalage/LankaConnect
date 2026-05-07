@@ -198,6 +198,24 @@ export enum RegistrationMode {
 }
 
 /**
+ * Phase 8X: Event payment mode (Free / OnPlatformPaid / ExternalPaid).
+ * Matches backend `LankaConnect.Domain.Events.Enums.EventPaymentMode`. String-valued
+ * to align with backend `JsonStringEnumConverter` (memory 6A.124 — numeric TS enums
+ * compared against backend's string output silently never match).
+ *
+ * - Free: free event (no pricing).
+ * - OnPlatformPaid: paid event with payment collected on LankaConnect via Stripe.
+ * - ExternalPaid: paid event whose payment + registration happens off-platform.
+ *   Pricing is displayed; in-page CTA links to organiser-supplied URL with optional
+ *   vendor name and instructions. No internal Registration row is created.
+ */
+export enum EventPaymentMode {
+  Free = 'Free',
+  OnPlatformPaid = 'OnPlatformPaid',
+  ExternalPaid = 'ExternalPaid',
+}
+
+/**
  * Phase 8: Ticket category for multi-tier ticket generation.
  * Matches backend LankaConnect.Domain.Events.Enums.TicketCategory
  */
@@ -460,6 +478,18 @@ export interface EventDto {
   ticketPriceAmount?: number | null;
   ticketPriceCurrency?: Currency | null;
   isFree: boolean;
+
+  /**
+   * Phase 8X: Source of truth for payment mode. Defaults to Free for stale-cache
+   * back-compat with FE bundles cached before Phase 8X.5 shipped — those will
+   * fall back to "paid event" rendering for ExternalPaid (acceptable degradation).
+   * Use this instead of `isFree` to decide between Register/RSVP CTA and the
+   * external "Buy Ticket" link.
+   */
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string | null;
+  externalRegistrationInstructions?: string | null;
+  externalRegistrationVendorName?: string | null;
 
   // Session 21: Dual ticket pricing (adult/child)
   adultPriceAmount?: number | null;
@@ -875,6 +905,14 @@ export interface CreateEventRequest {
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
 
+  // Phase 8X: Payment mode (Free / OnPlatformPaid / ExternalPaid). Optional on the wire
+  // — backend infers from isFree per the architect-locked inference table when absent.
+  // Required when ExternalPaid; the validator returns 400 if URL is missing or insecure.
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string;
+  externalRegistrationInstructions?: string;
+  externalRegistrationVendorName?: string;
+
   // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
   // to DetailedAttendees when absent for back-compat with pre-7E API clients.
   registrationMode?: RegistrationMode;
@@ -960,6 +998,14 @@ export interface UpdateEventRequest {
 
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
+
+  // Phase 8X: Payment mode (Free / OnPlatformPaid / ExternalPaid). Optional on the wire
+  // — backend infers from isFree per the architect-locked inference table when absent.
+  // Required when ExternalPaid; the validator returns 400 if URL is missing or insecure.
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string;
+  externalRegistrationInstructions?: string;
+  externalRegistrationVendorName?: string;
 
   // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
   // to DetailedAttendees when absent for back-compat with pre-7E API clients.

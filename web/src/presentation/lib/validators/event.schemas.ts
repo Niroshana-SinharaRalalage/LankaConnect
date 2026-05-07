@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType, RegistrationMode, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, RegistrationMode, EventPaymentMode, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -181,6 +181,31 @@ export const createEventSchema = z.object({
 
   // Pricing (Required)
   isFree: z.boolean(),
+
+  // Phase 8X: Event payment mode. Optional on the wire — backend infers from isFree per
+  // the architect-locked inference table when absent. Required as 'ExternalPaid' for
+  // external-payment events; in that case ExternalRegistrationUrl is also required.
+  paymentMode: z.nativeEnum(EventPaymentMode).optional(),
+
+  externalRegistrationUrl: z
+    .string()
+    .max(2048, 'URL cannot exceed 2048 characters')
+    .url('Must be a valid URL')
+    .refine(u => u.toLowerCase().startsWith('https://'), 'URL must use https')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationInstructions: z
+    .string()
+    .max(4000, 'Instructions cannot exceed 4000 characters')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationVendorName: z
+    .string()
+    .max(100, 'Vendor name cannot exceed 100 characters')
+    .optional()
+    .or(z.literal('')),
 
   // Phase 7E.5: Per-event registration capture mode. Optional — defaults to
   // DetailedAttendees server-side when absent. Picker UI sets this; legacy create-event
@@ -665,6 +690,29 @@ const baseEditEventSchema = z.object({
 
   // Pricing
   isFree: z.boolean(),
+
+  // Phase 8X: Event payment mode (mirrored on the edit schema). Same rules as create.
+  paymentMode: z.nativeEnum(EventPaymentMode).optional(),
+
+  externalRegistrationUrl: z
+    .string()
+    .max(2048, 'URL cannot exceed 2048 characters')
+    .url('Must be a valid URL')
+    .refine(u => u.toLowerCase().startsWith('https://'), 'URL must use https')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationInstructions: z
+    .string()
+    .max(4000, 'Instructions cannot exceed 4000 characters')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationVendorName: z
+    .string()
+    .max(100, 'Vendor name cannot exceed 100 characters')
+    .optional()
+    .or(z.literal('')),
 
   // Phase 7E.5: Per-event registration capture mode (mirrored on the edit schema).
   registrationMode: z.nativeEnum(RegistrationMode).optional(),

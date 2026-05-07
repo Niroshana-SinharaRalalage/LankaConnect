@@ -233,28 +233,47 @@ public class EventsController : BaseController<EventsController>
             return NotFound();
         }
 
-        // Fire-and-forget: Record event view for analytics (non-blocking)
-        // This runs asynchronously and doesn't affect the response time
+        // Fire-and-forget: Record event view for analytics (non-blocking).
+        //
+        // Phase 8 (post-prod-perf-RCA hygiene): the previous version of this
+        // block read User.Identity, HttpContext.Connection, HttpContext.Request.Headers,
+        // and Mediator INSIDE the Task.Run lambda — all scoped per request.
+        // When the controller method returns, the request scope disposes; if
+        // the analytics task hadn't finished yet, those reads raised
+        // ObjectDisposedException, which surfaced as orphaned background
+        // exceptions (architect flagged this in MASTER_TODO_PROD_PERF_RCA).
+        //
+        // Fix: capture all scope-bound values BEFORE the Task.Run, create a
+        // fresh DI scope inside, and resolve a fresh IMediator from that
+        // scope. Logger from BaseController is ILogger<T> which is registered
+        // as singleton — safe to close over.
         if (result.IsSuccess && result.Value != null)
         {
+            var capturedUserId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
+            var capturedIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+            var capturedUserAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+            var scopeFactory = HttpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
+            var loggerRef = Logger;
+            var capturedEventId = id;
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var userId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
-                    var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
-                    var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+                    using var scope = scopeFactory.CreateScope();
+                    var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
-                    var recordViewCommand = new RecordEventViewCommand(id, userId, ipAddress, userAgent);
-                    await Mediator.Send(recordViewCommand);
+                    var recordViewCommand = new RecordEventViewCommand(
+                        capturedEventId, capturedUserId, capturedIpAddress, capturedUserAgent);
+                    await scopedMediator.Send(recordViewCommand);
 
-                    Logger.LogDebug("Event view recorded for: {EventId}, User: {UserId}, IP: {IpAddress}",
-                        id, userId, ipAddress);
+                    loggerRef.LogDebug("Event view recorded for: {EventId}, User: {UserId}, IP: {IpAddress}",
+                        capturedEventId, capturedUserId, capturedIpAddress);
                 }
                 catch (Exception ex)
                 {
-                    // Fail-silent: Don't let analytics errors affect the main request
-                    Logger.LogWarning(ex, "Failed to record event view for: {EventId}", id);
+                    // Fail-silent: don't let analytics errors affect the main request.
+                    loggerRef.LogWarning(ex, "Failed to record event view for: {EventId}", capturedEventId);
                 }
             });
         }

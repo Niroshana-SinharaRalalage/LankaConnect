@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums; // Phase 8X: EventPaymentMode
 using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -388,8 +389,66 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 request.EventId, location?.Address?.State);
         }
 
+        // Phase 8X.4b — Resolve effective payment mode using the same inference helper as Create.
+        var effectivePaymentMode = LankaConnect.Application.Events.Commands.CreateEvent.CreateEventCommandValidator
+            .InferPaymentMode(request.IsFree, request.PaymentMode).Mode;
+
+        // Phase 8X.4b — ExternalPaid branch: bundles pricing + VO + RegistrationMode coercion.
+        // When transitioning INTO ExternalPaid, SetExternalPayment internally calls
+        // ApplyPricingForExternalPayment which dispatches to SetDualPricing / SetGroupPricing.
+        // For an existing ExternalPaid event whose URL/instructions are being updated, we still
+        // call SetExternalPayment — the active-regs guard is naturally satisfied (ExternalPaid
+        // events have no registrations by definition).
+        if (request.PaymentMode == EventPaymentMode.ExternalPaid)
+        {
+            if (pricing == null && @event.Pricing == null)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: ExternalPaid requested but no pricing supplied or existing - EventId={EventId}",
+                    request.EventId);
+                return Result.Failure("Pricing is required for ExternalPaid events");
+            }
+
+            ExternalRegistration externalReg;
+            try
+            {
+                var voResult = ExternalRegistration.Create(
+                    request.ExternalRegistrationUrl,
+                    request.ExternalRegistrationInstructions,
+                    request.ExternalRegistrationVendorName);
+                if (voResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "UpdateEvent: ExternalRegistration VO rejected - EventId={EventId}, Reason={Reason}",
+                        request.EventId, voResult.Error);
+                    return Result.Failure(voResult.Error);
+                }
+                externalReg = voResult.Value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "UpdateEvent: ExternalRegistration VO creation faulted - EventId={EventId}",
+                    request.EventId);
+                return Result.Failure("Failed to validate external registration details");
+            }
+
+            var pricingForExternal = pricing ?? @event.Pricing!;
+            var setExternalResult = @event.SetExternalPayment(externalReg, pricingForExternal);
+            if (setExternalResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetExternalPayment domain rejection - EventId={EventId}, Error={Error}",
+                    request.EventId, setExternalResult.Error);
+                return setExternalResult;
+            }
+
+            _logger.LogInformation(
+                "UpdateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}",
+                request.EventId, externalReg.Url);
+        }
         // Session 33 + Session 21: Update pricing if provided
-        if (pricing != null)
+        else if (pricing != null)
         {
             Result setPricingResult;
             if (isGroupPricing)
@@ -473,7 +532,8 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         ticketPriceProperty?.SetValue(@event, ticketPrice);
 
         // IsFreeEvent fix: Explicitly mark as free event when frontend sends IsFree=true
-        if (request.IsFree == true && pricing == null)
+        if (request.PaymentMode != EventPaymentMode.ExternalPaid
+            && request.IsFree == true && pricing == null)
         {
             var setFreeResult = @event.SetAsFreeEvent();
             if (setFreeResult.IsFailure)
@@ -487,6 +547,22 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         {
             // Paid event with pricing - IsFreeEvent is already set by SetDualPricing/SetGroupPricing
             // via the domain methods that manage the flag
+        }
+
+        // Phase 8X.4b — Sync PaymentMode for explicit transitions (Free / OnPlatformPaid).
+        // ExternalPaid handled in the dedicated branch above. SetPaymentMode is idempotent
+        // on same-mode set, and surfaces the active-registration guard from the domain
+        // when a paid → free / paid → paid transition would orphan internal regs.
+        if (request.PaymentMode.HasValue && request.PaymentMode.Value != EventPaymentMode.ExternalPaid)
+        {
+            var setPaymentModeResult = @event.SetPaymentMode(request.PaymentMode.Value);
+            if (setPaymentModeResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetPaymentMode rejected - EventId={EventId}, RequestedMode={Mode}, Reason={Reason}",
+                    request.EventId, request.PaymentMode.Value, setPaymentModeResult.Error);
+                return setPaymentModeResult;
+            }
         }
 
         // Phase 7E.2: Handle optional registration mode change. Null = caller didn't request a

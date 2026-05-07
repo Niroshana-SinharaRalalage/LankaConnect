@@ -365,8 +365,63 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 eventResult.Value.Id, secondaryLocation.Type);
         }
 
+        // Phase 8X.4b — Resolve effective payment mode (validator already enforced consistency).
+        // Security default per Phase 6A.81: missing PaymentMode + non-true IsFree → OnPlatformPaid.
+        var effectivePaymentMode = CreateEventCommandValidator
+            .InferPaymentMode(request.IsFree, request.PaymentMode).Mode;
+
+        // Phase 8X.4b — ExternalPaid branch: bundles pricing + VO + RegistrationMode coercion in one call.
+        // SetExternalPayment internally dispatches to SetDualPricing / SetGroupPricing, so the
+        // legacy pricing block below is skipped for this branch.
+        if (effectivePaymentMode == EventPaymentMode.ExternalPaid)
+        {
+            if (pricing == null)
+            {
+                _logger.LogWarning(
+                    "CreateEvent: ExternalPaid requested but no pricing supplied — OrganizerId={OrganizerId}",
+                    request.OrganizerId);
+                return Result<Guid>.Failure("Pricing is required for ExternalPaid events");
+            }
+
+            ExternalRegistration externalReg;
+            try
+            {
+                var voResult = ExternalRegistration.Create(
+                    request.ExternalRegistrationUrl,
+                    request.ExternalRegistrationInstructions,
+                    request.ExternalRegistrationVendorName);
+                if (voResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "CreateEvent: ExternalRegistration VO rejected - OrganizerId={OrganizerId}, Reason={Reason}",
+                        request.OrganizerId, voResult.Error);
+                    return Result<Guid>.Failure(voResult.Error);
+                }
+                externalReg = voResult.Value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "CreateEvent: ExternalRegistration VO creation faulted - OrganizerId={OrganizerId}",
+                    request.OrganizerId);
+                return Result<Guid>.Failure("Failed to validate external registration details");
+            }
+
+            var setExternalResult = eventResult.Value.SetExternalPayment(externalReg, pricing);
+            if (setExternalResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CreateEvent: SetExternalPayment domain rejection - OrganizerId={OrganizerId}, Error={Error}",
+                    request.OrganizerId, setExternalResult.Error);
+                return Result<Guid>.Failure(setExternalResult.Error);
+            }
+
+            _logger.LogInformation(
+                "CreateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}, Vendor={Vendor}",
+                eventResult.Value.Id, externalReg.Url, externalReg.VendorName ?? "(none)");
+        }
         // Phase 6D + Session 21: Set pricing if provided
-        if (pricing != null)
+        else if (pricing != null)
         {
             Result setPricingResult;
             if (isGroupPricing)
@@ -427,6 +482,22 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             _logger.LogInformation(
                 "CreateEvent: Event marked as free - EventId={EventId}",
                 eventResult.Value.Id);
+        }
+
+        // Phase 8X.4b — Sync PaymentMode to keep Option B (PaymentMode source-of-truth)
+        // in lockstep with IsFreeEvent. ExternalPaid already handled in the dedicated
+        // branch above; Free is the default; only OnPlatformPaid needs an explicit flip.
+        // SetPaymentMode is idempotent on same-mode set, so calling it for Free is a no-op.
+        if (effectivePaymentMode == EventPaymentMode.OnPlatformPaid)
+        {
+            var setPaymentModeResult = eventResult.Value.SetPaymentMode(EventPaymentMode.OnPlatformPaid);
+            if (setPaymentModeResult.IsFailure)
+            {
+                _logger.LogError(
+                    "CreateEvent: SetPaymentMode(OnPlatformPaid) failed - EventId={EventId}, Error={Error}",
+                    eventResult.Value.Id, setPaymentModeResult.Error);
+                return Result<Guid>.Failure(setPaymentModeResult.Error);
+            }
         }
 
         // Phase 7E.2: Apply the validated registration mode (skip for DetailedAttendees — that's

@@ -86,6 +86,34 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
             return;
         }
 
+        // Phase 8X.4b — Defence-in-depth: ExternalPaid events should never enter the
+        // Stripe pipeline (no internal Registration → no Stripe Checkout Session created).
+        // A webhook arriving for an ExternalPaid event is either (a) attacker-crafted
+        // payload, or (b) state corruption (registration row exists for ExternalPaid event).
+        // Either way: log warning + return 200 (no exception) so Stripe doesn't retry.
+        try
+        {
+            var defensiveEvent = await _eventRepository.GetByIdAsync(eventId, ct);
+            if (defensiveEvent != null && defensiveEvent.PaymentMode == EventPaymentMode.ExternalPaid)
+            {
+                _logger.LogWarning(
+                    "[Phase 8X.4b] Stripe webhook received for ExternalPaid event — ignoring to prevent Stripe pipeline invocation. " +
+                    "CorrelationId: {CorrelationId}, EventId: {EventId}, SessionId: {SessionId}, RegistrationId: {RegistrationId}",
+                    correlationId, eventId, sessionId, registrationId);
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Lookup failure must not block the legitimate happy path. Log and proceed —
+            // the existing webhook flow will surface its own errors if the event truly
+            // doesn't exist or registration mismatches.
+            _logger.LogError(ex,
+                "[Phase 8X.4b] Defensive event lookup faulted — proceeding with webhook flow. " +
+                "CorrelationId: {CorrelationId}, EventId: {EventId}",
+                correlationId, eventId);
+        }
+
         _logger.LogInformation(
             "[Phase 6A.52] [Webhook-2] Metadata extracted - CorrelationId: {CorrelationId}, EventId: {EventId}, RegistrationId: {RegistrationId}",
             correlationId, eventId, registrationId);

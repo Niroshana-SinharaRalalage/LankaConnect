@@ -97,6 +97,23 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
 
                 Result<string?> result;
 
+                // Phase 8X.4b — ExternalPaid events have no internal registration path. The
+                // architect-locked guard message points the buyer at the organiser-supplied URL
+                // (matches LankaConnect.Domain.Events.Event.ExternalRegistrationGuardMessage).
+                // This check fires BEFORE the NoRegistration mode check below so the more-specific
+                // ExternalPaid message wins (ExternalPaid events are forced to NoRegistration mode
+                // by SetExternalPayment, which would otherwise return the generic NoRegistration
+                // message).
+                if (@event.PaymentMode == LankaConnect.Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RsvpToEvent REJECTED: ExternalPaid event - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure(
+                        "This event uses external registration. Users must register via the link provided by the organiser.");
+                }
+
                 // Phase 7E.3a: Dispatch by event.RegistrationMode BEFORE the legacy / multi-attendee
                 // detection. NoRegistration → 400 (no Registration row to anchor RSVP against).
                 // Head-count modes (B1-B4) → dedicated head-count flow. DetailedAttendees → existing

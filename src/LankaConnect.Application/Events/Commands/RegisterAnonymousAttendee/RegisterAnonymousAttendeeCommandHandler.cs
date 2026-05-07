@@ -171,6 +171,18 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     "RegisterAnonymousAttendee: Email not found in event registrations - proceeding - EventId={EventId}, Email={Email}",
                     request.EventId, request.Email);
 
+                // Phase 8X.4b — ExternalPaid events have no internal registration path.
+                // Architect-locked guard message wins over the generic NoRegistration message.
+                if (@event.PaymentMode == LankaConnect.Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee REJECTED: ExternalPaid event - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure(
+                        "This event uses external registration. Users must register via the link provided by the organiser.");
+                }
+
                 // Phase 7E.3a: Dispatch by event.RegistrationMode BEFORE format detection.
                 // Mode C → 400; B-mode → head-count flow; DetailedAttendees → existing logic.
                 if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)

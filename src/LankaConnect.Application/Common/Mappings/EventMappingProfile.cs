@@ -34,6 +34,11 @@ public class EventMappingProfile : Profile
             // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
             .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
+            // Phase 8X — payment mode + external registration projection.
+            .ForMember(dest => dest.PaymentMode, opt => opt.MapFrom(src => src.PaymentMode))
+            .ForMember(dest => dest.ExternalRegistrationUrl, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.Url : null))
+            .ForMember(dest => dest.ExternalRegistrationInstructions, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.Instructions : null))
+            .ForMember(dest => dest.ExternalRegistrationVendorName, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.VendorName : null))
             // Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the frontend
             // whether the configured RegistrationMode is currently implementable. "deferred" is
             // the fail-safe default in EventDto; the mapper explicitly sets "active" when the

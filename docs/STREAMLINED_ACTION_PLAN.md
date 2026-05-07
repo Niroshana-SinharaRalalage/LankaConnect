@@ -6,7 +6,47 @@
 
 ---
 
-## 🎯 2026-05-06 (Prod-perf-RCA hygiene) — 4 architect-spec'd followups closed
+## 🎯 2026-05-06 (Prod-perf-RCA hygiene round 2) — ConnectionPoolValidator + INFRASTRUCTURE.md
+
+**Goal**: Close the architect-spec'd item *"Verify Npgsql `MaxPoolSize` vs Postgres flexible-server `max_connections`. Document in `docs/INFRASTRUCTURE.md`."*
+
+**Shipped**: commit `a3e21ddb`, deploy `25470084812` `success`.
+
+**Real finding from staging audit**: Postgres `max_connections=50` (Burstable SKU default). The dev appsettings has `MaxPoolSize=50` which would overflow at 2+ replicas — but the validator boot log on staging revealed the **actual KV-supplied connection string uses `MaxPoolSize=20`**, so staging is sized correctly today (peak 40 ≤ 80% threshold of 40). The architect's TODO line was right that the math needed checking; the KV value already had the right answer.
+
+**Two-part durability fix**:
+1. **`ConnectionPoolValidator`** (`Infrastructure/Services/Validation/`, registered as `IHostedService`):
+   - Runs once at boot via `StartAsync`
+   - Reads `MaxPoolSize` from connection string via `NpgsqlConnectionStringBuilder`
+   - Queries server-side `SHOW max_connections` via the existing `AppDbContext`
+   - Computes `peak = MaxPoolSize × assumedReplicas` and compares vs `max_connections × 0.8`
+   - Emits `[OK]` Information log on healthy or `[POOL-OVERFLOW-RISK]` Warning on overflow
+   - **Never throws or blocks startup** — pure observability
+   - `assumedReplicas` configurable via `ConnectionPool:AssumedMaxReplicas` (default 2)
+
+2. **`docs/INFRASTRUCTURE.md`** (new file):
+   - Formula: `MaxPoolSize × peak_replicas ≤ max_connections × 0.8`
+   - Current staging+prod sizing table (verified for staging via boot log)
+   - Action items for ops when scaling up replicas (lower MaxPoolSize first OR raise server `max_connections` OR upgrade SKU)
+   - History entry tying back to the 2026-04-25 prod incident
+
+**Staging boot log confirmation** (Log Analytics):
+```
+[INF] [ConnectionPoolValidator] client_MaxPoolSize=20, assumed_max_replicas=2,
+      peak_clients=40, server_max_connections=50, 80%_threshold=40
+[INF] [ConnectionPoolValidator] [OK] Pool size has headroom:
+      peak 40 <= threshold 40 (server max_connections=50)
+```
+
+The validator will surface any prod misconfig on the next prod deploy via the same log path.
+
+**Tests**: 2598/2598 Application tests pass. Build clean.
+
+**Why durable**: (1) Self-checking on every boot — no human audit required after the next replica-count change. (2) Documentation in version control means future devs/ops don't repeat the architect's investigation. (3) Logged at Warning level for the dangerous case so the existing log-alerting will surface it; logged at Information for the healthy case so it's quietly visible.
+
+---
+
+## 🎯 2026-05-06 (Prod-perf-RCA hygiene round 1) — 4 architect-spec'd followups closed
 
 **Goal**: close the durability followup items from `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md`. Phase 1+2 (urgent prod restoration via split-query EF fix + Container App scaling) already shipped 2026-04-25; this cycle closes the post-incident hygiene so the same perf class can't recur on these specific surfaces.
 

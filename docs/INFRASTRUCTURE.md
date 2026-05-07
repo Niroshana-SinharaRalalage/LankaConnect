@@ -24,8 +24,19 @@ the app side as `NpgsqlException: connection lifetime exceeded`/`pool exhausted`
 
 | Environment | Server SKU | `max_connections` | Connection-string `MaxPoolSize` | Container App `min/max replicas` | Peak client conns | 80% threshold | Headroom |
 |---|---|---|---|---|---|---|---|
-| **staging** | Postgres 15.16 (Burstable) | **50** | 50 (dev appsettings; KV-overridden in staging) | 1 / N | 50 (1 replica) | 40 | **TIGHT** — 1 replica max under current sizing |
-| **prod** | Postgres 15.16 (Burstable) | 50 (assumed; verify when next on-call) | 50 (KV) | 2 / 5 | 100 (2 replicas) – 250 (5 replicas) | 40 | **OVERFLOW** if 2+ replicas |
+| **staging** | Postgres 15.16 (Burstable) | **50** | **20** (verified 2026-05-06 via `ConnectionPoolValidator` boot log) | 1–2 | 40 (2 replicas) | 40 | **OK** — exactly at threshold |
+| **prod** | Postgres 15.16 (Burstable; assumed same as staging) | 50 (verify on next prod deploy via the same validator boot log) | TBD (verify on next prod deploy) | 2 / 5 | (TBD × 5) at peak burst | 40 | **VERIFY** — needs lower `MaxPoolSize` or raised `max_connections` if peak > 40 |
+
+> **2026-05-06 staging validator boot log** (Log Analytics):
+> ```
+> [INF] [ConnectionPoolValidator] client_MaxPoolSize=20, assumed_max_replicas=2,
+>       peak_clients=40, server_max_connections=50, 80%_threshold=40
+> [INF] [ConnectionPoolValidator] [OK] Pool size has headroom:
+>       peak 40 <= threshold 40 (server max_connections=50)
+> ```
+> Confirms staging is currently sized correctly. Watch the same log on the next
+> prod deploy — if it shows `[POOL-OVERFLOW-RISK]`, lower `MaxPoolSize` in KV
+> before scaling replicas.
 
 > **Action needed when scaling up replicas**: lower `MaxPoolSize` on the connection
 > string in KeyVault (or raise Postgres `max_connections` via the Azure portal /

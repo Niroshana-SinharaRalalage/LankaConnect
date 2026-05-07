@@ -3,7 +3,21 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene cycle closed (4/4 followups done)
+## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
+**Date**: 2026-05-06
+**Session**: Closes architect-spec'd item *"Verify Npgsql MaxPoolSize vs Postgres max_connections; document in `docs/INFRASTRUCTURE.md`."* Two-part durability fix: new `ConnectionPoolValidator` startup `IHostedService` + new `docs/INFRASTRUCTURE.md` formula reference.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED via Log Analytics boot log**.
+- Commit `a3e21ddb` deploy `25470084812` `success`
+- Validator boot log on staging: `client_MaxPoolSize=20, assumed_max_replicas=2, peak_clients=40, server_max_connections=50, 80%_threshold=40` → `[OK] Pool size has headroom`
+- Real finding: actual KV-supplied connection string uses `MaxPoolSize=20` (not 50 like dev appsettings); staging sized correctly today
+- Validator will surface any prod misconfig on the next prod deploy via the same log path
+**Tests**: 2598/2598 Application tests pass. Build clean.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md) — checkbox flipped to [x].
+**Next**: continue with remaining perf-RCA items (alerting, IaC) OR pick a different active master TODO.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Prod-perf-RCA hygiene round 1 (4/4 followups closed)
 **Date**: 2026-05-06
 **Session**: Closed 4 architect-spec'd post-incident durability items from `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md` (Phase 1+2 already shipped 2026-04-25 to restore prod).
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**.

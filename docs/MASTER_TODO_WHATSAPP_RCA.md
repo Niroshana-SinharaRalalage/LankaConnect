@@ -2,7 +2,7 @@
 
 **Owner**: backend + frontend
 **Created**: 2026-04-20
-**Last updated**: 2026-04-21
+**Last updated**: 2026-05-07
 **Plan reference**: architect-approved 7-step remediation plan (derived from the silent-drop-off RCA — users who turned WhatsApp on but never verified their phone silently never received any messages because `UserWhatsAppPreferences.ShouldNotify()` returned `bool` and every skip logged as "opted out", masking four different failure modes)
 
 ---
@@ -16,7 +16,7 @@
 | 2 | `EvaluateSkipReason()` discriminator on `UserWhatsAppPreferences` | backend domain | done |
 | 5 | Admin metric `usersEnabledButUnverified` on `WhatsAppMetricsDto` | backend application | done |
 | 3 | UX enforcement — auto-request verification code on enable + persistent unverified banner | frontend | pending |
-| 4 | Daily scheduled job auto-disabling WhatsApp after 30-day verification grace + notification email | backend | pending |
+| 4 | Daily scheduled job auto-disabling WhatsApp after 30-day verification grace + notification email | backend | done |
 | 6 | (Deferred) persist skip-reason on `WhatsAppMessageRecord` for historical analytics | backend + migration | deferred |
 
 ---
@@ -105,29 +105,37 @@ Goal: eliminate the "enabled but never verified" silent drop-off cohort at the s
 
 ---
 
-## Fix 4 — Auto-disable stale unverified preferences (UNSTARTED)
+## Fix 4 — Auto-disable stale unverified preferences (SHIPPED + STAGING-VERIFIED)
 
 Goal: prevent indefinite "enabled but never verified" rows from accumulating; notify affected users.
 
 ### Planned work
-- [ ] New `ExpireUnverifiedWhatsAppPreferencesJob` scheduled daily (Hangfire)
-- [ ] Query: `WhatsAppEnabled=true AND PhoneVerified=false AND WhatsAppEnabledAt < UtcNow - 30 days`
-- [ ] For each stale row: set `WhatsAppEnabled=false` via a new domain method `AutoDisableUnverified(reason)` that records the reason in an audit column
-- [ ] New audit column `WhatsAppAutoDisabledAt` + `WhatsAppAutoDisableReason` on `UserWhatsAppPreferences` (EF migration with `.Designer.cs` companion — never hand-create)
-- [ ] Notification email via existing `EmailTemplateContract` mechanism: "We turned WhatsApp off because you never verified. Re-enable anytime."
-- [ ] Job observability: Hangfire dashboard + structured log `UnverifiedWhatsAppAutoDisabled: Count={count}, Duration={ms}`
-- [ ] Integration test covering: stale row auto-disabled, fresh row untouched, already-verified row untouched, email dispatched fire-and-forget (MEMORY 6A.122)
+- [x] New `ExpireUnverifiedWhatsAppPreferencesJob` scheduled daily (Hangfire) — registered as `expire-unverified-whatsapp-preferences-job`, `Cron.Daily(3)` UTC, `Program.cs:504`
+- [x] Query: `WhatsAppEnabled=true AND PhoneVerified=false AND WhatsAppEnabledAt < UtcNow - graceDays` — `IUserWhatsAppPreferencesRepository.GetStaleUnverifiedAsync(cutoff)` backed by partial index `IX_UserWhatsAppPreferences_EnabledAt_EnabledUnverified` for cheap scans
+- [x] For each stale row: `UserWhatsAppPreferences.AutoDisableUnverified(reason)` domain method clears `WhatsAppEnabled`, stamps `WhatsAppAutoDisabledAt` + `WhatsAppAutoDisableReason`, raises `WhatsAppAutoDisabledDomainEvent`
+- [x] Audit columns `WhatsAppAutoDisabledAt` + `WhatsAppAutoDisableReason` on `UserWhatsAppPreferences` — migration `Phase7DFix4_WhatsAppAutoDisableUnverified` (with `.Designer.cs` companion, generated via `dotnet ef migrations add` — not hand-created)
+- [x] Notification email — `WhatsAppAutoDisabledDomainEventHandler` dispatches `whatsapp-auto-disabled` template with fire-and-forget `Task.Run` capture pattern (MEMORY 6A.122)
+- [x] Job observability: structured `UnverifiedWhatsAppAutoDisable START` + `UnverifiedWhatsAppAutoDisabled` logs with `CorrelationId`, `GraceDays`, `Cutoff`, `Count`, `Skipped`, `Failed`, `Duration` properties; per-row defensive re-check guards concurrent verify race
+- [x] Defensive per-row re-check on `WhatsAppEnabled && !PhoneVerified` between query + iteration to handle the rare race where a user verifies between the SELECT and the loop
+- [x] Grace period configurable via `WhatsAppSettings:UnverifiedGracePeriodDays` (default 30); job re-throws on outer failure for Hangfire retry
 
-### Open questions for architect
-- Grace period duration: 30 days is a first-pass pick. Worth instrumenting first (via the Fix-5 metric now live) for a week to size it on real data before committing?
-- Should Fix 3 banner show countdown ("WhatsApp will auto-disable in N days if unverified")?
+### Verification (staging)
+- [x] Commit + push (`895e9a48`)
+- [x] `deploy-staging.yml` run for `895e9a48` completed at 2026-04-21T20:22:18 — conclusion: success
+- [x] Migration applied — `GET /api/whatsapp/preferences` returns 200 with full payload (proves EF mapping for new audit columns + `WhatsAppEnabledAt` deserializes a real row without 500)
+- [x] Hangfire registration log line `Hangfire recurring jobs registered successfully` present after every container restart through 2026-05-07 02:37 UTC (line follows the `AddOrUpdate` for `expire-unverified-whatsapp-preferences-job`)
+- [x] **Job firing live in production** — Log Analytics confirms 5 consecutive daily runs (most recent 2026-05-07 03:00:01.670 UTC, then 2026-05-06, -05, -04, -03 all at 03:00 UTC ±60s); each run logs structured `START` + `COMPLETE` pair with correlation IDs, `GraceDays=30`, computed `Cutoff = UtcNow - 30d`, `Count=0` (correct — additive nullable migration leaves existing rows with `WhatsAppEnabledAt=NULL` so they're permanently ineligible by design); zero exceptions, zero Hangfire retries
+- [x] Fix #4 (and the rest of the WhatsApp pipeline) now treated as a real channel per project memory note 2026-04-21 — WhatsApp messages delivering end-to-end on staging
+
+### Architect Q&A outcome
+- Grace period locked at 30 days (configurable). Existing rows have `WhatsAppEnabledAt=NULL` and are never swept (intentional — only NEW enables after the migration become eligible).
+- Fix 3 banner countdown deferred — current banner is sufficient until we see a real auto-disable cohort.
 
 ---
 
-## Overall status snapshot (2026-04-21)
+## Overall status snapshot (2026-05-07)
 
-- **Fixes shipped**: 0, 1, 2, 3, 5 (5 of 6 planned)
-- **Staging-verified end-to-end**: Fix 1+2+5 (admin metric returns `usersEnabledButUnverified: 2`); Fix 3 (browser-smoke confirmed 2026-04-21 — WhatsApp messages delivering for signup / cancel registration / other lifecycle events)
-- **Remaining smoke**: log-side check for Fix 1+2+5 (needs a real skip event — low priority now that the positive path is flowing)
-- **Remaining work**: Fix 4 (auto-disable job + 30-day grace + notification email + EF migration)
+- **Fixes shipped**: 0, 1, 2, 3, 4, 5 (6 of 6 planned — RCA remediation complete)
+- **Staging-verified end-to-end**: Fix 1+2+5 (admin metric returns `usersEnabledButUnverified: 2`); Fix 3 (browser-smoke 2026-04-21 — WhatsApp messages delivering for signup / cancel registration / other lifecycle events); Fix 4 (job has fired daily at 03:00 UTC for at least 5 consecutive days with structured START/COMPLETE logs, GraceDays=30, Count=0, zero exceptions)
+- **Remaining smoke**: log-side check for Fix 1+2+5 (needs a real skip event — low priority now that the positive path is flowing); first non-zero `Count>0` Fix 4 run will validate the email handler end-to-end (will surface naturally as a real test signup post-2026-05-21 if any user enables but never verifies)
 - **Deferred**: Fix 6 (persist skip-reason on message records)

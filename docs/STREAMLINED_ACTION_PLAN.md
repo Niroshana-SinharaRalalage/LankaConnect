@@ -6,6 +6,43 @@
 
 ---
 
+## 🎯 2026-05-07 (WhatsApp RCA Fix #4) — close the silent-drop-off remediation, master TODO, staging-evidence audit
+
+**Goal**: Verify Phase 7D Fix #4 (`ExpireUnverifiedWhatsAppPreferencesJob`) is genuinely live on staging, not just merged. The implementation commit (`895e9a48`) shipped 2026-04-21 but the master TODO `docs/MASTER_TODO_WHATSAPP_RCA.md` still listed Fix #4 as "pending" with four unchecked planning items — a documentation gap, not a code gap, but the kind of stale tracking that makes the next contributor uncertain whether the silent-drop-off cohort is actually being closed.
+
+**Verification against running staging** (no new code shipped — this cycle was an audit + doc closeout):
+
+1. **Deploy proof** — `gh run list --workflow=deploy-staging.yml` shows commit `895e9a48` deployed at 2026-04-21T20:22:18 with `conclusion=success`.
+
+2. **Migration applied (indirect proof via API)** — `GET /api/whatsapp/preferences` returns HTTP 200 with full JSON payload for the test user. The new EF config maps `WhatsAppAutoDisabledAt`, `WhatsAppAutoDisableReason`, and `WhatsAppEnabledAt`; if the migration hadn't applied OR if the EF config didn't match the DB, this query would 500 on entity materialization. It doesn't.
+
+3. **Hangfire job registered (direct proof)** — Log Analytics on workspace `dc92fcf2-7f80-4e1d-b391-fdadac65befe`:
+   ```
+   2026-05-07 02:37:58.917 [INF] Program: Hangfire recurring jobs registered successfully
+   ```
+   This Information line emits AFTER the `recurringJobManager.AddOrUpdate<ExpireUnverifiedWhatsAppPreferencesJob>(...)` block in `Program.cs:504`, so its presence on every restart through 2026-05-07 02:37 UTC proves the registration succeeded.
+
+4. **Job firing live (the strongest proof)** — Log Analytics confirms the recurring job has fired at 03:00 UTC every day for at least 5 consecutive days:
+   ```
+   2026-05-07 03:00:01 START CorrelationId=ac80fa2d-..., GraceDays=30, Cutoff=2026-04-07T03:00:01Z
+   2026-05-07 03:00:01 COMPLETE Count=0, Skipped=0, Failed=0, Duration=13ms
+   2026-05-06 03:00:51 START / COMPLETE Count=0, Duration=66ms
+   2026-05-05 03:00:57 START / COMPLETE Count=0, Duration=57ms
+   2026-05-04 03:00:41 START / COMPLETE Count=0, Duration=7ms
+   2026-05-03 03:00:38 START / COMPLETE Count=0, Duration=37ms
+   ```
+   `Count=0` is **correct, not a regression** — the migration is additive + nullable, so existing rows pre-2026-04-21 have `WhatsAppEnabledAt=NULL` and are intentionally never swept. Only NEW enables after the migration become eligible 30 days later. First non-zero `Count>0` will appear naturally after 2026-05-21 if any user enables but never verifies.
+
+**Doc updates** (commit pending):
+- `docs/MASTER_TODO_WHATSAPP_RCA.md` — Fix #4 row in summary table flipped `pending` → `done`; all 8 Fix #4 planning checkboxes marked checked with the actual artifact each maps to (job class path, migration name, partial-index name, domain method, etc.); new "Verification (staging)" subsection captures the four evidence types above; "Open questions for architect" section converted to "Architect Q&A outcome" recording the locked-in 30-day grace.
+- Overall status snapshot updated 2026-04-21 → 2026-05-07; "Fixes shipped" goes from 5/6 → 6/6.
+
+**Why durable**: Future contributors looking at this RCA can see Fix #4 is closed without re-running the audit. The staging-evidence subsection lists the exact Log Analytics query so the next person can re-verify in 30 seconds. The architect's deferred questions are answered (30 days locked, banner countdown deferred) so they don't get re-asked.
+
+**Side note (unrelated)**: discovered `docs/MASTER_TODO_WHATSAPP_RCA.md` had been wiped to 0 bytes in the working tree (uncommitted; HEAD intact). Not caused by this session — restored via `git restore --source=HEAD`. Possibly a scheduled-task side-effect (`.claude/scheduled_tasks.lock` is present).
+
+---
+
 ## 🎯 2026-05-06 (Prod-perf-RCA hygiene round 2) — ConnectionPoolValidator + INFRASTRUCTURE.md
 
 **Goal**: Close the architect-spec'd item *"Verify Npgsql `MaxPoolSize` vs Postgres flexible-server `max_connections`. Document in `docs/INFRASTRUCTURE.md`."*

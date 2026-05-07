@@ -487,8 +487,16 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // Phase 8X.4b — Sync PaymentMode to keep Option B (PaymentMode source-of-truth)
         // in lockstep with IsFreeEvent. ExternalPaid already handled in the dedicated
         // branch above; Free is the default; only OnPlatformPaid needs an explicit flip.
-        // SetPaymentMode is idempotent on same-mode set, so calling it for Free is a no-op.
-        if (effectivePaymentMode == EventPaymentMode.OnPlatformPaid)
+        //
+        // Gate on pricing != null: SetPaymentMode(OnPlatformPaid) requires pricing to be
+        // configured (the domain enforces this invariant). Legacy callers / tests that
+        // omit pricing AND omit IsFree get effectivePaymentMode=OnPlatformPaid via the
+        // security default but have no pricing — calling SetPaymentMode would fail. They
+        // legitimately end up with PaymentMode=Free + IsFreeEvent=false (today's
+        // legacy mid-state) until they configure pricing or set IsFree explicitly.
+        // The API-boundary validator (Slice 8X.4a) catches the FE-supplied case where
+        // ExternalPaid is explicit but pricing is missing.
+        if (effectivePaymentMode == EventPaymentMode.OnPlatformPaid && pricing != null)
         {
             var setPaymentModeResult = eventResult.Value.SetPaymentMode(EventPaymentMode.OnPlatformPaid);
             if (setPaymentModeResult.IsFailure)

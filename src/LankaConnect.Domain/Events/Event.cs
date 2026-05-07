@@ -1575,6 +1575,15 @@ public partial class Event : BaseEntity
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
+        // Phase 8X.3.5 — Waitlist requires an internal registration path to promote
+        // entries off the list. ExternalPaid events have no such path; the buyer
+        // joins the external vendor's waitlist (if any). Reject explicitly so the
+        // failure message guides the organiser to the right surface.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Waitlist is not supported for ExternalPaid events. " +
+                "Buyers should use the external registration link directly.");
+
         // Business Rule 1: Event must be at capacity
         if (!IsAtCapacity())
             return Result.Failure("Event still has available capacity");
@@ -2457,6 +2466,14 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Add-on configuration is required");
 
+        // Phase 8X.3.5 — Add-ons require an internal Registration row to attach to.
+        // ExternalPaid events have no internal registration path, so allowing add-ons
+        // would create a half-internal-half-external order surface. Reject upfront.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Add-ons cannot be enabled for ExternalPaid events. " +
+                "Disable add-ons or switch to Free / OnPlatformPaid first.");
+
         AddOnConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2534,6 +2551,16 @@ public partial class Event : BaseEntity
 
         if (SeatingMode == SeatingMode.AssignedSeating)
             return Result.Failure("ExternalPaid events cannot use assigned seating; switch to GeneralAdmission first");
+
+        if (AddOnConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have add-ons enabled. " +
+                "Disable add-ons before switching to external payment.");
+
+        if (_waitingList.Count > 0)
+            return Result.Failure(
+                "Cannot enable external payment while users are on the waiting list. " +
+                "Clear the waiting list first.");
 
         if (HasActiveRegistrations())
             return Result.Failure("Cannot enable external payment while active registrations exist");

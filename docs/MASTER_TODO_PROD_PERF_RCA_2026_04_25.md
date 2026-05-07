@@ -41,11 +41,11 @@ az containerapp update \
 ```
 
 **Verification gates (all must pass before declaring restored):**
-- [ ] `az containerapp revision list` shows new revision Active; prior revision available for rollback
-- [ ] Replica count climbs to ≥ 2 within 60s
-- [ ] `curl /api/MetroAreas` returns < 1s (proves replica-level resource exhaustion is gone)
-- [ ] `curl /api/events/{busiest-id}` returns < 35s without 503 (still slow until Phase 1, but completes)
-- [ ] Browser console no longer shows `ECONNABORTED` or 503 in 5-min window
+- [x] `az containerapp revision list` shows new revision Active; prior revision available for rollback — VERIFIED 2026-04-25 18:00 UTC. Rollback target `lankaconnect-api-prod--0000035` (image `85aa3a71`) confirmed available, Healthy. Recorded in execution log below.
+- [x] Replica count climbs to ≥ 2 within 60s — VERIFIED 2026-04-25 18:00:56 UTC ("Both replicas Running"). Recorded in execution log.
+- [x] `curl /api/MetroAreas` returns < 1s (proves replica-level resource exhaustion is gone) — VERIFIED 2026-04-25 18:01 UTC — 0.32-0.37s (200) (was 30s timeout pre-fix). Recorded in execution log.
+- [x] `curl /api/events/{busiest-id}` returns < 35s without 503 — VERIFIED 2026-04-25 Phase 2 (1.5-3.9s); after Phase 1 split-query fix shipped, **0.18-0.86s** (was 10-35s + 503s pre-fix). Recorded in execution log.
+- [x] Browser console no longer shows `ECONNABORTED` or 503 in 5-min window — VERIFIED 2026-04-25 post-Phase-2.
 
 If `az containerapp update` rejects combined resource + scale-rule flags on this CLI version (older `az containerapp` extensions have been finicky), fall back to two commands but in this order: **scale rule first, resources second**. Never leave bigger box without rule.
 
@@ -105,7 +105,7 @@ The whole reason this surprised us is no signal fired. Cheap; do this week.
 - [ ] Azure Monitor alert: `GET /api/events/{id}` p95 > 2s over 5-min window → page on-call
 - [ ] Azure Monitor alert: Container App replica count == max-replicas for > 5 min → warn
 - [ ] Azure Monitor alert: Container App HTTP 5xx rate > 1% over 5-min → page
-- [ ] Document alert routing in `docs/ON_CALL_RUNBOOK.md`
+- [x] Document alert routing in `docs/ON_CALL_RUNBOOK.md` — DONE 2026-05-06. New `docs/ON_CALL_RUNBOOK.md` documents target alert routing (the 3 architect-spec'd alerts above with severity / window / action), standard incident response checklist (5 steps from `/health` smoke through Postgres connection check to revision rollback), known operational ceilings (max_connections=50, http-scaler thresholds, Stripe webhook retry semantics), key Log Analytics queries (named-metric filter), and the 2026-04-25 history entry. The 3 Azure Monitor alerts themselves still need portal setup (or `az monitor metrics alert create` automation, separate item) — runbook is ready for them.
 
 ### Phase 3 — Decompose `GetByIdAsync` into specialized methods
 
@@ -141,9 +141,9 @@ Drift caused the outage amplification. Lives under infra-as-code.
 ## Tracking doc updates (per CLAUDE.md §7)
 
 After Phase 1 ships:
-- [ ] `docs/PROGRESS_TRACKER.md` — entry dated 2026-04-25, RCA + fix
-- [ ] `docs/STREAMLINED_ACTION_PLAN.md` — close perf RCA item
-- [ ] `docs/TASK_SYNCHRONIZATION_STRATEGY.md` — phase status update
+- [x] `docs/PROGRESS_TRACKER.md` — entry dated 2026-04-25, RCA + fix — DONE post-incident (Phase 1+2 entries) + 2026-05-06 hygiene-cycle entries.
+- [x] `docs/STREAMLINED_ACTION_PLAN.md` — close perf RCA item — DONE post-incident + 2026-05-06 hygiene-cycle entries.
+- [x] `docs/TASK_SYNCHRONIZATION_STRATEGY.md` — phase status update — DONE post-incident + 2026-05-06 hygiene-cycle entries.
 
 ---
 

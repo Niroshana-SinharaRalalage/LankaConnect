@@ -525,6 +525,11 @@ public static class DependencyInjection
         // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
         services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();
 
+        // Phase 8 (post-prod-perf-RCA hygiene): warn at boot if the Npgsql client-side
+        // MaxPoolSize × deployed replicas could exceed Postgres max_connections × 0.8.
+        // Observability only; never blocks startup.
+        services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.ConnectionPoolValidator>();
+
         return services;
     }
 }

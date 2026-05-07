@@ -65,6 +65,32 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .IsRequired()
             .HasDefaultValue(LankaConnect.Domain.Events.Enums.RegistrationMode.DetailedAttendees);
 
+        // Phase 8X — Per-event EventPaymentMode (Free / OnPlatformPaid / ExternalPaid).
+        // Stored as smallint with DB-level DEFAULT 0 so legacy rows materialise as Free;
+        // Phase 8X.2 migration runs a backfill UPDATE that flips paid rows to OnPlatformPaid
+        // (with embedded RAISE EXCEPTION post-assertion per Phase 6A.122 lesson).
+        builder.Property(e => e.PaymentMode)
+            .HasColumnName("payment_mode")
+            .HasConversion<short>()
+            .IsRequired()
+            .HasDefaultValue(EventPaymentMode.Free);
+
+        // Phase 8X — ExternalRegistration value object: URL + optional instructions + optional vendor name,
+        // mapped as 3 nullable scalar columns (no JSONB — no collection backing fields, so the Phase 6A.129
+        // ValueComparer / Phase 6A.130 ToJson() IReadOnlyList concerns do not apply).
+        builder.OwnsOne(e => e.ExternalRegistration, ext =>
+        {
+            ext.Property(x => x.Url)
+                .HasColumnName("external_registration_url")
+                .HasMaxLength(2048);
+            ext.Property(x => x.Instructions)
+                .HasColumnName("external_registration_instructions")
+                .HasColumnType("text");
+            ext.Property(x => x.VendorName)
+                .HasColumnName("external_registration_vendor_name")
+                .HasMaxLength(100);
+        });
+
         // Configure enum
         builder.Property(e => e.Status)
             .HasConversion<string>()

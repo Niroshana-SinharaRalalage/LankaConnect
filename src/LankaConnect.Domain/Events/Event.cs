@@ -57,8 +57,35 @@ public partial class Event : BaseEntity
     /// - Unambiguous intent (NULL pricing no longer means "free")
     /// - Security: Prevents payment bypass vulnerabilities
     /// - Simplicity: Single boolean instead of complex price checking
+    ///
+    /// Phase 8X note: superseded as the source of truth by <see cref="PaymentMode"/>
+    /// but kept as a real entity property (Option B per architect verdict — no
+    /// builder.Ignore, no shadow property, Phase 6A.123 lesson). The two are kept
+    /// in lockstep by <c>SyncLegacyIsFree()</c> called from every PaymentMode
+    /// mutation (Slice 8X.3). To be dropped in Phase 8Y once all reports / exports
+    /// migrate to read <c>PaymentMode == Free</c> directly.
     /// </summary>
     public bool IsFreeEvent { get; private set; }
+
+    /// <summary>
+    /// Phase 8X — Source of truth for free / paid / external-payment determination.
+    /// Default <see cref="EventPaymentMode.Free"/> matches the DB-level smallint
+    /// DEFAULT 0 added by the Phase 8X.2 migration so legacy rows materialise
+    /// correctly (Phase 6A.123 lesson — never rely on app-side defaults for NOT
+    /// NULL columns). Mutations go through <c>SetExternalPayment</c> /
+    /// <c>SetPaymentMode</c> domain methods (Slice 8X.3).
+    /// </summary>
+    public EventPaymentMode PaymentMode { get; private set; } = EventPaymentMode.Free;
+
+    /// <summary>
+    /// Phase 8X — External registration details (URL + optional vendor name +
+    /// optional instructions) for <see cref="EventPaymentMode.ExternalPaid"/>
+    /// events. Always null for <see cref="EventPaymentMode.Free"/> /
+    /// <see cref="EventPaymentMode.OnPlatformPaid"/>. Set via
+    /// <c>SetExternalPayment</c>; cleared automatically when payment mode
+    /// transitions away from ExternalPaid.
+    /// </summary>
+    public ExternalRegistration? ExternalRegistration { get; private set; }
 
     /// <summary>
     /// Issue #51: Maximum number of attendees allowed per single registration

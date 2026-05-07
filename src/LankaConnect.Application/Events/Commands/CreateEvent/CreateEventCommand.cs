@@ -64,7 +64,17 @@ public record CreateEventCommand(
     // Phase 7E.2: Per-event registration capture mode chosen by the organiser.
     // Defaults to DetailedAttendees (the pre-7E behaviour) so existing API clients that
     // do not yet send this field continue to work unchanged.
-    RegistrationMode? RegistrationMode = null
+    RegistrationMode? RegistrationMode = null,
+    // Phase 8X — Event payment mode (Free / OnPlatformPaid / ExternalPaid).
+    // Optional — when null the validator infers per the inference table (security default
+    // = OnPlatformPaid when IsFree != true, never silently Free per Phase 6A.81).
+    EventPaymentMode? PaymentMode = null,
+    // Phase 8X — External registration URL (required when PaymentMode = ExternalPaid).
+    string? ExternalRegistrationUrl = null,
+    // Phase 8X — Optional plain-text instructions rendered on the event detail page.
+    string? ExternalRegistrationInstructions = null,
+    // Phase 8X — Optional vendor name (e.g. "Eventbrite") used in CTA label.
+    string? ExternalRegistrationVendorName = null
 ) : ICommand<Guid>;
 
 /// <summary>

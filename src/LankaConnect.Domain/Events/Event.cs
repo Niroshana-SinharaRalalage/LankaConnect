@@ -371,6 +371,11 @@ public partial class Event : BaseEntity
         if (StartDate <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
+        // Phase 8X.3 — ExternalPaid events have no internal registration path.
+        // The buyer registers + pays off-platform via the organiser-supplied URL.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(ExternalRegistrationGuardMessage);
+
         // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
         // it on a B-mode event would create a Registration row that contradicts the event's
         // RegistrationMode (Attendees populated AND Mode says HeadCount*). Reject early with
@@ -2494,4 +2499,145 @@ public partial class Event : BaseEntity
         Pricing != null
         || TicketPrice != null
         || HasTicketTiers;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Phase 8X.3 — External Payment Mode (architect-locked transitions)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Phase 8X.3 — Documented user-facing message when an internal registration
+    /// path is invoked on an ExternalPaid event.
+    /// </summary>
+    internal const string ExternalRegistrationGuardMessage =
+        "This event uses external registration. Users must register via the link provided by the organiser.";
+
+    /// <summary>
+    /// Phase 8X.3 — Configures the event for off-platform payment + registration.
+    /// Convenience method: sets pricing + ExternalRegistration VO + flips PaymentMode
+    /// + forces RegistrationMode = NoRegistration in one call.
+    ///
+    /// Architect-locked transition rule (see master TODO 8X table):
+    ///   Free / OnPlatformPaid → ExternalPaid
+    ///   - requires no active (Confirmed / Preliminary) registrations
+    ///   - requires SeatingMode != AssignedSeating
+    ///   - requires non-null pricing for display
+    ///   - requires non-null ExternalRegistration VO
+    ///   - sets RegistrationMode = NoRegistration
+    /// </summary>
+    public Result SetExternalPayment(ExternalRegistration externalReg, TicketPricing pricing)
+    {
+        if (externalReg == null)
+            return Result.Failure("ExternalRegistration is required for ExternalPaid events");
+
+        if (pricing == null)
+            return Result.Failure("Pricing is required for ExternalPaid events (display-only is fine, but pricing must be configured)");
+
+        if (SeatingMode == SeatingMode.AssignedSeating)
+            return Result.Failure("ExternalPaid events cannot use assigned seating; switch to GeneralAdmission first");
+
+        if (HasActiveRegistrations())
+            return Result.Failure("Cannot enable external payment while active registrations exist");
+
+        var pricingResult = ApplyPricingForExternalPayment(pricing);
+        if (pricingResult.IsFailure)
+            return pricingResult;
+
+        ExternalRegistration = externalReg;
+        PaymentMode = EventPaymentMode.ExternalPaid;
+        RegistrationMode = RegistrationMode.NoRegistration;
+        SyncLegacyIsFree();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Transitions the event between payment modes.
+    /// Architect-locked transition table (master TODO 8X):
+    /// <list type="bullet">
+    ///   <item>Free → OnPlatformPaid: requires pricing already configured; RegistrationMode unchanged.</item>
+    ///   <item>OnPlatformPaid → Free: requires no active regs; pricing cleared; RegistrationMode unchanged.</item>
+    ///   <item>ExternalPaid → OnPlatformPaid: requires no active regs; ExternalRegistration cleared;
+    ///       RegistrationMode auto-resets to DetailedAttendees.</item>
+    ///   <item>ExternalPaid → Free: requires no active regs; ExternalRegistration cleared; pricing cleared;
+    ///       RegistrationMode auto-resets to DetailedAttendees.</item>
+    ///   <item>* → ExternalPaid: NOT supported via this method — use <see cref="SetExternalPayment"/>
+    ///       which bundles the required ExternalRegistration VO + pricing.</item>
+    /// </list>
+    /// Idempotent on same-mode set.
+    /// </summary>
+    public Result SetPaymentMode(EventPaymentMode mode)
+    {
+        if (PaymentMode == mode)
+            return Result.Success();
+
+        if (mode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Use SetExternalPayment(externalReg, pricing) to enable ExternalPaid mode " +
+                "(it requires an ExternalRegistration value object that this overload cannot accept).");
+
+        if (HasActiveRegistrations())
+            return Result.Failure(
+                $"Cannot change payment mode from {PaymentMode} to {mode} while active registrations exist");
+
+        if (mode == EventPaymentMode.OnPlatformPaid && !HasPaidPricingConfigured())
+            return Result.Failure(
+                "Cannot enable OnPlatformPaid: configure pricing first via SetPricing / SetDualPricing / SetGroupPricing");
+
+        var fromExternal = PaymentMode == EventPaymentMode.ExternalPaid;
+
+        PaymentMode = mode;
+
+        if (fromExternal)
+        {
+            ExternalRegistration = null;
+            RegistrationMode = RegistrationMode.DetailedAttendees;
+        }
+
+        if (mode == EventPaymentMode.Free)
+        {
+            // Clear pricing — Free events don't carry a non-zero ticket price.
+            Pricing = null;
+            var zeroResult = Money.Create(0m, Shared.Enums.Currency.USD);
+            TicketPrice = zeroResult.IsSuccess ? zeroResult.Value : null;
+        }
+
+        SyncLegacyIsFree();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Keeps the legacy <see cref="IsFreeEvent"/> column in lockstep with
+    /// <see cref="PaymentMode"/>. Called from every PaymentMode mutation (Option B per
+    /// architect verdict — no <c>builder.Ignore</c>, no shadow property, Phase 6A.123
+    /// lesson). To be removed in Phase 8Y when the legacy column is dropped.
+    /// </summary>
+    private void SyncLegacyIsFree()
+    {
+        IsFreeEvent = PaymentMode == EventPaymentMode.Free;
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Returns true when the event has at least one Confirmed or
+    /// Preliminary registration. Used to gate any PaymentMode transition that would
+    /// otherwise orphan internal registration state. Mirrors <c>ReservedCapacity</c>
+    /// (line 137-143) — if those statuses are reserving capacity, they're "active".
+    /// </summary>
+    private bool HasActiveRegistrations() =>
+        _registrations.Any(r =>
+            r.Status == Enums.RegistrationStatus.Confirmed ||
+            r.Status == Enums.RegistrationStatus.Preliminary);
+
+    /// <summary>
+    /// Phase 8X.3 — Dispatches the supplied <see cref="TicketPricing"/> to the
+    /// appropriate existing setter (<c>SetGroupPricing</c> for tiered, <c>SetDualPricing</c>
+    /// otherwise). Keeps <c>SetExternalPayment</c> agnostic to the pricing shape.
+    /// </summary>
+    private Result ApplyPricingForExternalPayment(TicketPricing pricing)
+    {
+        if (pricing.Type == Enums.PricingType.GroupTiered)
+            return SetGroupPricing(pricing);
+        return SetDualPricing(pricing);
+    }
 }

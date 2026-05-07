@@ -531,6 +531,11 @@ public partial class Event
         if (StartDate <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
+        // Phase 8X.3 — ExternalPaid events have no internal registration path.
+        // Same guard as RegisterWithAttendees (Event.cs).
+        if (PaymentMode == Enums.EventPaymentMode.ExternalPaid)
+            return Result.Failure(ExternalRegistrationGuardMessage);
+
         // 2. Mode guard (defensive — the handler also dispatches by mode, but we enforce here too).
         if (RegistrationMode == RegistrationMode.DetailedAttendees)
             return Result.Failure(

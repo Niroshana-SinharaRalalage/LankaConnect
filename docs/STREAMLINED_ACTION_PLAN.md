@@ -6,6 +6,28 @@
 
 ---
 
+## 🎯 2026-05-06 (Prod-perf-RCA hygiene) — 4 architect-spec'd followups closed
+
+**Goal**: close the durability followup items from `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md`. Phase 1+2 (urgent prod restoration via split-query EF fix + Container App scaling) already shipped 2026-04-25; this cycle closes the post-incident hygiene so the same perf class can't recur on these specific surfaces.
+
+**4 items closed**:
+
+1. **Cache MetroAreas** — commit `f4bacbea`, deploy `25466994443` `success`. Server-side `IMemoryCache` fronting `GetMetroAreasQueryHandler`. 1-hour TTL, key `MetroAreas:state={UPPER|*}:active={bool}`, mirrors `ReferenceDataService` pattern. Also added `.AsNoTracking()` for the cache-miss DB path. Staging smoke **4/4 PASS**: T1 first call 930ms → T2 cache HIT 235ms (**4× faster**, identical 134 items); T3 NY filter (4 items) → T4 cache HIT.
+
+2. **RecordEventViewCommand fire-and-forget scope-disposed fix** — commit `cf3c9407`, deploy `25467998248`. Previous code read `User.Identity`, `HttpContext.Connection`, `HttpContext.Request.Headers`, and `Mediator` INSIDE the Task.Run lambda — all scoped per request. When the controller method returned, the scope disposed; if the analytics task hadn't finished yet, those reads raised `ObjectDisposedException`. Fix: capture all scope-bound values BEFORE Task.Run (userId, ipAddress, userAgent, eventId, scopeFactory, loggerRef); inside the task create a fresh DI scope via `IServiceScopeFactory` + resolve a fresh `IMediator`. `Logger` is `ILogger<T>` (singleton), safe to close over. Behaviour unchanged on happy path; eliminates disposal race on slow background paths.
+
+3. **PhotoAlbums Include duplication audit** — AUDITED CLEAN. `PhotoAlbumRepository` only chains a single `.Include(a => a.Photos)` per query path; no cartesian product possible. The architect's TODO line was precautionary; the actual code doesn't replicate the 6+ Includes pattern that caused the original Event prod incident. Closed without code change.
+
+4. **EmailQueueProcessor DbContext lifetime audit** — AUDITED CLEAN. `EmailQueueProcessor.ProcessQueuedEmailsAsync` opens a fresh `using var scope = _serviceProvider.CreateScope()` per iteration and resolves `IEmailMessageRepository` + `IUnitOfWork` from the scope. Correct pattern; no leak. Closed without code change.
+
+**Tests**: 2598/2598 Application tests pass across all changes. Build clean.
+
+**Why durable**: (1) Server-side cache means even when proxies/CDNs strip `[ResponseCache]`, the DB is still skipped on warm requests. (2) Fresh-scope-per-task pattern eliminates the disposal race that prod-perf-RCA flagged as "scope-disposed exceptions on slow paths". (3) Audit-clean items are documented in version control so the next time someone sees them in the master TODO they don't repeat the audit.
+
+**Remaining open in `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md`**: alerting (Phase 0 — Azure Monitor portal config, user-driven), IaC (Phase 4 — Bicep/Terraform for containerapp scaleRules, larger refactor), and a few documentation items. None blocking.
+
+---
+
 ## 🎯 2026-05-06 (S8.3 + S8.4) — Slice S8 COMPLETE — cancel/refund unlock + data-fixup audit shipped together
 
 **Goal**: Final two chunks of Slice S8 per ADR-011 — close out the seating wire-up. S8.3 adds the cancel/refund unlock semantics (release seat reservations when registration leaves the "owns the seats" lifecycle states); S8.4 ships the data-fixup audit query + observability close-out documentation.

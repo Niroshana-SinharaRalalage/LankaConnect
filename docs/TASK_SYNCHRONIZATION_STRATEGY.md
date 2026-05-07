@@ -3,7 +3,22 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — SLICE S8 COMPLETE — cancel/refund unlock + data-fixup audit ship together; full seating wire-up shipped end-to-end
+## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene cycle closed (4/4 followups done)
+**Date**: 2026-05-06
+**Session**: Closed 4 architect-spec'd post-incident durability items from `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md` (Phase 1+2 already shipped 2026-04-25 to restore prod).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**.
+- (1) MetroAreas server-side IMemoryCache — commit `f4bacbea`, deploy `25466994443` `success`. Smoke 4/4 PASS: cache HIT 4× faster (235ms vs 930ms). Mirrors ReferenceDataService pattern.
+- (2) RecordEventViewCommand fire-and-forget scope-disposed fix — commit `cf3c9407`, deploy `25467998248`. Captures scoped values BEFORE Task.Run + creates fresh DI scope inside via IServiceScopeFactory. Eliminates the disposal race that surfaced as orphaned background exceptions.
+- (3) PhotoAlbums Include duplication audit — clean (single `.Include(a => a.Photos)`, no cartesian).
+- (4) EmailQueueProcessor DbContext lifetime audit — clean (correct `CreateScope` per iteration pattern).
+**Tests**: 2598/2598 Application tests pass; build clean.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md) — 4 hygiene checkboxes flipped to [x].
+**Remaining open in that file**: Phase 0 alerting (Azure Monitor portal config, user-driven), Phase 4 IaC (Bicep/Terraform), some doc updates. None blocking.
+**Next**: ready for next master TODO prioritization from user.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8 COMPLETE — cancel/refund unlock + data-fixup audit ship together; full seating wire-up shipped end-to-end
 **Date**: 2026-05-06
 **Session**: Final two chunks of Slice S8 per ADR-011, shipped together. S8.3 adds cancel/refund unlock semantics; S8.4 ships the data-fixup audit query + observability close-out.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `925431ea` (S8.3) deploy `25463735128` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+6 new domain tests on S8.3). Staging audit run 2026-05-06 returned 0/0/0 broken rows.

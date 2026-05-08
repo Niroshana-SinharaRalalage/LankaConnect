@@ -42,6 +42,22 @@ public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
     {
         _logger = logger;
 
+        // Phase 8YA.2: TBD-dates pair invariant — both null (Planning) or both set
+        // (Draft). Mixed (one null, one set) is invalid; the domain rejects too as
+        // defence-in-depth, but surfacing this here gives the user a 400 with a
+        // clear message instead of a generic domain "Failure" error.
+        RuleFor(x => x).Custom((cmd, ctx) =>
+        {
+            var bothNull = !cmd.StartDate.HasValue && !cmd.EndDate.HasValue;
+            var bothSet = cmd.StartDate.HasValue && cmd.EndDate.HasValue;
+            if (!bothNull && !bothSet)
+            {
+                ctx.AddFailure(
+                    cmd.StartDate.HasValue ? nameof(cmd.EndDate) : nameof(cmd.StartDate),
+                    "Both StartDate and EndDate must be provided together, or both must be empty (TBD event)");
+            }
+        });
+
         // Inference / inconsistency check.
         RuleFor(x => x).Custom((cmd, ctx) =>
         {

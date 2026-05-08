@@ -10,8 +10,12 @@ public record UpdateEventCommand(
     Guid EventId,
     string Title,
     string Description,
-    DateTime StartDate,
-    DateTime EndDate,
+    // Phase 8YA.2: TBD-dates support. Both null is allowed and is interpreted as
+    // "do not change the existing dates" (organiser is updating other fields).
+    // Both set → SetDates path (validates + may transition Planning → Draft).
+    // Mixed → validator rejects.
+    DateTime? StartDate,
+    DateTime? EndDate,
     int Capacity,
     // Issue #51: Max attendees per registration (optional)
     int? MaxAttendeesPerRegistration = null,

@@ -89,12 +89,19 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         if (descriptionResult.IsFailure)
             return Result.Failure(descriptionResult.Error);
 
-        // Validate dates
-        if (request.StartDate <= DateTime.UtcNow)
-            return Result.Failure("Start date cannot be in the past");
+        // Phase 8YA.2: TBD-dates handling. Validator already rejected the mixed case;
+        // here we branch on the both-null vs both-set paths.
+        // - Both null: leave existing dates unchanged (organiser is updating other fields).
+        // - Both set: validate now-vs-start + end-vs-start, then SetDates() below.
+        var bothDatesProvided = request.StartDate.HasValue && request.EndDate.HasValue;
+        if (bothDatesProvided)
+        {
+            if (request.StartDate!.Value <= DateTime.UtcNow)
+                return Result.Failure("Start date cannot be in the past");
 
-        if (request.EndDate <= request.StartDate)
-            return Result.Failure("End date must be after start date");
+            if (request.EndDate!.Value <= request.StartDate.Value)
+                return Result.Failure("End date must be after start date");
+        }
 
         if (request.Capacity <= 0)
             return Result.Failure("Capacity must be greater than 0");
@@ -295,11 +302,16 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         var descriptionProperty = typeof(Event).GetProperty(nameof(Event.Description));
         descriptionProperty?.SetValue(@event, descriptionResult.Value);
 
-        var startDateProperty = typeof(Event).GetProperty(nameof(Event.StartDate));
-        startDateProperty?.SetValue(@event, request.StartDate);
-
-        var endDateProperty = typeof(Event).GetProperty(nameof(Event.EndDate));
-        endDateProperty?.SetValue(@event, request.EndDate);
+        // Phase 8YA.2: route through Event.SetDates when both dates supplied so the
+        // domain enforces UTC coercion + Planning → Draft transition. When dates are
+        // omitted (both null), leave the event's existing dates unchanged — the
+        // organiser is updating other fields and we never silently clear dates.
+        if (bothDatesProvided)
+        {
+            var setDatesResult = @event.SetDates(request.StartDate!.Value, request.EndDate!.Value);
+            if (setDatesResult.IsFailure)
+                return Result.Failure(setDatesResult.Error);
+        }
 
         var capacityResult = @event.UpdateCapacity(request.Capacity);
         if (capacityResult.IsFailure)

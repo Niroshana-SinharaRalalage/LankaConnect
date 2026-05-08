@@ -69,6 +69,20 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     return;
                 }
 
+                // Phase 8YA.2 (Q1=A): TBD events can technically be approved while still
+                // having no confirmed dates. Skip the approval email — the organiser can
+                // submit-for-review again after SetDates fills in the date pair, at which
+                // point approval will fire normally with real dates in the email.
+                if (!@event.StartDate.HasValue || !@event.EndDate.HasValue)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "EventApproved SKIPPED: TBD event has no confirmed dates - " +
+                        "EventId={EventId}, Duration={ElapsedMs}ms.",
+                        @event.Id, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
                 // Retrieve organizer's user details
                 var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
                 if (organizer == null)
@@ -97,7 +111,8 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     organizerEmail: organizer.Email.Value,
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime? (Q1=A allows TBD-Approved events)
+                    // Phase 8YA.2: early-returned above when StartDate was null.
+                    eventStartDate: @event.StartDate.Value,
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: GetEventLocationString(@event),
                     approvedAt: domainEvent.ApprovedAt,

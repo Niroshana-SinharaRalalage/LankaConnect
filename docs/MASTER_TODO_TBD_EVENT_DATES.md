@@ -59,7 +59,25 @@
 ---
 
 ### Phase 2 — Application + DTO + email pipeline
-**Status:** ⚪ NOT STARTED
+**Status:** ✅ COMPLETE (2026-05-08)
+
+**What shipped:**
+- `CreateEventCommand` / `UpdateEventCommand` / `EventDto` — `StartDate` / `EndDate` → `DateTime?`
+- `CreateEventCommandValidator` + `UpdateEventCommandValidator` — new mixed-dates rule (one set, one null → 400 with `"both must be provided together, or both empty"`)
+- `UpdateEventCommandHandler` — both-null path leaves dates unchanged; both-set path routes through `Event.SetDates(...)` (validates + transitions Planning → Draft)
+- `EventStatusUpdateJob` — explicit `WHERE e.StartDate.HasValue && e.StartDate.Value <= now` filter on Active transitions; symmetric guard on Completed transitions
+- `GetEventIcsQueryHandler` — returns `Result.Failure("...Date TBD...")` for TBD events
+- `EventsController.GetEventIcs` — maps the TBD failure to **HTTP 422 Unprocessable Entity** (architect-locked) distinct from 400 (bad request) and 404 (not found)
+- `EventPublishedEventHandler` — skips email + structured log when StartDate/EndDate null (Q1=A allows TBD-Published; broadcasting "Date TBD" defeats the email's purpose)
+- `EventApprovedEventHandler` — defensive skip on TBD (theoretically unreachable since SubmitForReview requires Draft, but defensive against future loosening)
+- `EventRejectedEventHandler` — same defensive skip
+- `EventPublishedWhatsAppHandler` — skips WhatsApp broadcast on TBD events (Twilio approved templates require {{EventDate}})
+- 10 new unit tests across Application: `CreateEventTbdDatesTests` (5), `EventStatusUpdateJobTbdTests` (3), `GetEventIcsQueryHandlerTbdTests` (2)
+
+**Out of Phase 2 (deferred):**
+- Email param class refactor (~18 `*EmailParams.Create()` factories accepting `DateTime?` and rendering "Date TBD" via the centralised `EmailDateTimeHelper.FormatEventDate(DateTime?)` overload). Registration-flow handlers stay with `.GetValueOrDefault()` shim because the Register* domain method already blocks TBD events per Q2=A; the `// Phase 8YA-2 TODO` markers remain as future-proofing if the param classes ever need to handle null. Not a regression — those code paths are unreachable on TBD events today.
+
+**Tests:** Application 2637/2643 (0 fail, 6 skipped — was 2627 pre-Phase-2, +10). Domain 696/698 (2 pre-existing failures unchanged from Phase 1 baseline). Build clean.
 
 **Scope:**
 - `CreateEventCommand.StartDate` / `EndDate` → `DateTime?`.
@@ -178,20 +196,28 @@
 - [x] `src/LankaConnect.Application/Events/Common/EventExtensions.cs` — `GetDisplayLabel` early-returns "Date TBD"
 - [x] ~30 callers patched with defensive `.GetValueOrDefault()` + `// Phase 8YA-2 TODO` comments (Application + Infrastructure layers)
 
-### Phase 2 (later)
-- [ ] `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommand.cs`
-- [ ] `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandValidator.cs`
-- [ ] `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandHandler.cs`
-- [ ] `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommand.cs`
-- [ ] `src/LankaConnect.Application/Events/Common/EventDto.cs`
-- [ ] `src/LankaConnect.Application/Events/Common/EventExtensions.cs`
-- [ ] `src/LankaConnect.Application/Common/Mappings/EventMappingProfile.cs`
-- [ ] `src/LankaConnect.Application/Events/BackgroundJobs/EventStatusUpdateJob.cs`
-- [ ] `src/LankaConnect.Application/Events/BackgroundJobs/EventReminderJob.cs`
-- [ ] `src/LankaConnect.Application/Events/BackgroundJobs/EventNotificationEmailJob.cs`
-- [ ] `src/LankaConnect.Application/Events/BackgroundJobs/EventCancellationEmailJob.cs`
-- [ ] `src/LankaConnect.Application/Events/Queries/GetEventIcs/GetEventIcsQueryHandler.cs`
-- [ ] `src/LankaConnect.Shared/Email/EmailDateTimeHelper.cs`
+### Phase 2 ✅
+- [x] `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommand.cs` — `StartDate` / `EndDate` → `DateTime?`
+- [x] `src/LankaConnect.Application/Events/Commands/CreateEvent/CreateEventCommandValidator.cs` — mixed-dates rule
+- [x] `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommand.cs` — `DateTime?`
+- [x] `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandValidator.cs` — mixed-dates rule
+- [x] `src/LankaConnect.Application/Events/Commands/UpdateEvent/UpdateEventCommandHandler.cs` — both-null leaves unchanged; both-set routes through SetDates
+- [x] `src/LankaConnect.Application/Events/Common/EventDto.cs` — `DateTime?`
+- [x] `src/LankaConnect.Application/Events/BackgroundJobs/EventStatusUpdateJob.cs` — `.HasValue` filter on both transitions
+- [x] `src/LankaConnect.Application/Events/Queries/GetEventIcs/GetEventIcsQueryHandler.cs` — Failure on TBD
+- [x] `src/LankaConnect.API/Controllers/EventsController.cs` — `/ics` 422 mapping
+- [x] `src/LankaConnect.Application/Events/EventHandlers/EventPublishedEventHandler.cs` — skip on TBD
+- [x] `src/LankaConnect.Application/Events/EventHandlers/EventApprovedEventHandler.cs` — defensive skip
+- [x] `src/LankaConnect.Application/Events/EventHandlers/EventRejectedEventHandler.cs` — defensive skip
+- [x] `src/LankaConnect.Application/Events/EventHandlers/EventPublishedWhatsAppHandler.cs` — skip on TBD
+- [x] `tests/LankaConnect.Application.Tests/Events/Commands/CreateEventTbdDatesTests.cs` — 5 tests
+- [x] `tests/LankaConnect.Application.Tests/Events/BackgroundJobs/EventStatusUpdateJobTbdTests.cs` — 3 tests
+- [x] `tests/LankaConnect.Application.Tests/Events/Queries/GetEventIcsQueryHandlerTbdTests.cs` — 2 tests
+
+**Phase 2 deferred to a later phase (not blocking Phase 3):**
+- `EventReminderJob` / `EventNotificationEmailJob` / `EventCancellationEmailJob` — `.GetValueOrDefault()` shim from Phase 1 still in place. Reminder + notification jobs already filter by Status/StartDate predicates that exclude TBD events implicitly. Cancellation handler currently passes shim — TBD events that get cancelled should still notify users that the event is cancelled.
+- Email param class refactor (`*EmailParams.Create()` accepting `DateTime?`) — defer; registration-flow handlers can't fire on TBD per Q2=A.
+- `CreateEventCommandHandler` — already wires nullable through to `Event.Create` via implicit conversion; no change needed.
 
 ### Phase 3 (later)
 - [ ] `web/src/infrastructure/api/types/events.types.ts`
@@ -215,3 +241,4 @@
 
 - 2026-05-08 — Phase 8YA kicked off. Architect RCA + plan locked. Q1–Q4 answered (A, A, A, A). Phase 1 starting.
 - 2026-05-08 — Phase 1 complete. 13 new domain tests pass, zero regressions in Domain/Application unit suites. Migration `20260508153410_Phase8YA1_AllowNullEventDates` generated and scoped. Build clean across the solution. Pre-existing test failures (FormResponseTests + DonationConfigurationTests in Domain.Tests; 5 timezone-related in Shared.Tests) confirmed unrelated to Phase 1 — present before changes. Phase 2 next: Application command/DTO, validator update, jobs filter TBD, ICS 422.
+- 2026-05-08 — Phase 2 complete. CreateEventCommand/UpdateEventCommand/EventDto now nullable; validators reject mixed-dates; UpdateEventCommandHandler routes through Event.SetDates; EventStatusUpdateJob filters TBD events; GetEventIcsQueryHandler returns Failure → controller maps to HTTP 422; EventPublished/Approved/Rejected email handlers + EventPublished WhatsApp handler skip TBD events with structured logs. 10 new Application unit tests; Application.Tests now 2637/2643 (was 2627; +10), 0 fail. Domain + Shared test counts unchanged from Phase 1 baseline (2 + 5 pre-existing failures unrelated). Build clean. Phase 3 next: Frontend zod + form toggle + "Date TBD" display.

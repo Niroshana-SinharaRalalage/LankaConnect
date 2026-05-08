@@ -69,6 +69,24 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
                     "GetEventIcs: Event loaded - EventId={EventId}, Title={Title}, Status={Status}, HasLocation={HasLocation}",
                     @event.Id, @event.Title.Value, @event.Status, @event.Location != null);
 
+                // Phase 8YA.2: TBD events have no DTSTART/DTEND. The .ics format has no
+                // "Date TBD" representation, so the only correct response is failure.
+                // Controller surfaces this as 422 Unprocessable Entity (architect-locked).
+                if (!@event.StartDate.HasValue || !@event.EndDate.HasValue)
+                {
+                    stopwatch.Stop();
+
+                    _logger.LogWarning(
+                        "GetEventIcs FAILED: Event has TBD dates - EventId={EventId}, " +
+                        "StartDateNull={StartNull}, EndDateNull={EndNull}, Duration={ElapsedMs}ms",
+                        request.EventId, !@event.StartDate.HasValue, !@event.EndDate.HasValue,
+                        stopwatch.ElapsedMilliseconds);
+
+                    return Result<string>.Failure(
+                        "Calendar export is not available for events with unconfirmed dates (Date TBD). " +
+                        "The organiser must set start and end dates before this event can be added to a calendar.");
+                }
+
                 // Build ICS content
                 var icsContent = BuildIcsContent(@event);
 
@@ -94,7 +112,9 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
     }
 
     /// <summary>
-    /// Builds ICS (iCalendar) format content from event data
+    /// Builds ICS (iCalendar) format content from event data.
+    /// Caller (Handle) MUST ensure StartDate.HasValue AND EndDate.HasValue before
+    /// invoking — Phase 8YA.2 returns Failure for TBD events upstream.
     /// </summary>
     private string BuildIcsContent(Event @event)
     {
@@ -111,8 +131,9 @@ public class GetEventIcsQueryHandler : IQueryHandler<GetEventIcsQuery, string>
         ics.AppendLine("BEGIN:VEVENT");
         ics.AppendLine($"UID:event-{@event.Id}@lankaconnect.com");
         ics.AppendLine($"DTSTAMP:{DateTime.UtcNow:yyyyMMddTHHmmssZ}");
-        ics.AppendLine($"DTSTART:{@event.StartDate:yyyyMMddTHHmmssZ}");
-        ics.AppendLine($"DTEND:{@event.EndDate:yyyyMMddTHHmmssZ}");
+        // Caller-checked: dates are guaranteed non-null at this point.
+        ics.AppendLine($"DTSTART:{@event.StartDate!.Value:yyyyMMddTHHmmssZ}");
+        ics.AppendLine($"DTEND:{@event.EndDate!.Value:yyyyMMddTHHmmssZ}");
         ics.AppendLine($"SUMMARY:{EscapeIcsText(@event.Title.Value)}");
         ics.AppendLine($"DESCRIPTION:{EscapeIcsText(@event.Description.Value)}");
 

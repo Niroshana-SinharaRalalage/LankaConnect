@@ -26,6 +26,21 @@ public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
 
         RuleFor(x => x.EventId).NotEmpty().WithMessage("EventId is required");
 
+        // Phase 8YA.2: TBD-dates pair invariant — same rule as CreateEventCommandValidator.
+        // Both null = "leave dates unchanged" (organiser updating other fields). Both set
+        // = SetDates path. Mixed = invalid.
+        RuleFor(x => x).Custom((cmd, ctx) =>
+        {
+            var bothNull = !cmd.StartDate.HasValue && !cmd.EndDate.HasValue;
+            var bothSet = cmd.StartDate.HasValue && cmd.EndDate.HasValue;
+            if (!bothNull && !bothSet)
+            {
+                ctx.AddFailure(
+                    cmd.StartDate.HasValue ? nameof(cmd.EndDate) : nameof(cmd.StartDate),
+                    "Both StartDate and EndDate must be provided together, or both must be empty (TBD event)");
+            }
+        });
+
         // Inference / inconsistency check — same table as CreateEventCommandValidator.
         RuleFor(x => x).Custom((cmd, ctx) =>
         {

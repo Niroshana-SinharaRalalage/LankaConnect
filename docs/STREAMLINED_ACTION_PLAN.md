@@ -6,6 +6,32 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2 of 5 ✅ COMPLETE on develop
+
+**Phase 2 deliverables (this commit):**
+- `CreateEventCommand` / `UpdateEventCommand` / `EventDto` — `StartDate` / `EndDate` → `DateTime?`
+- Validators (Create + Update) — mixed-dates rule (one set, one null → 400 with explicit message)
+- `UpdateEventCommandHandler` — both-null leaves dates unchanged; both-set routes through `Event.SetDates(...)` (the new domain method from Phase 1) so the Planning → Draft transition fires automatically
+- `EventStatusUpdateJob` — explicit `.HasValue` filter on both Active and Completed transition queries (Q1=A allows TBD-Published events; the job must skip them rather than auto-transition with garbage dates)
+- `GetEventIcsQueryHandler` — returns `Result.Failure` for TBD events (architect-locked: iCalendar has no "Date TBD" representation)
+- `EventsController.GetEventIcs` — maps the TBD failure to **HTTP 422 Unprocessable Entity** (architect-locked, distinct from 400/404)
+- `EventPublishedEventHandler` — skips email + structured log when dates are null (Q1=A allows TBD-Published, but broadcasting "Date TBD" defeats the email's purpose; recipients can't add a TBD event to their calendar anyway)
+- `EventApprovedEventHandler` + `EventRejectedEventHandler` — defensive TBD-skip (theoretically unreachable since SubmitForReview requires Draft, but defensive against future loosening)
+- `EventPublishedWhatsAppHandler` — skips WhatsApp broadcast on TBD events (Twilio approved templates require {{EventDate}} param)
+- 10 new Application unit tests (CreateEventTbdDatesTests + EventStatusUpdateJobTbdTests + GetEventIcsQueryHandlerTbdTests)
+
+**Phase 2 verification:**
+- Build clean across the solution
+- Domain.Tests: 696 pass + 2 pre-existing failures (unchanged from Phase 1 baseline)
+- Application.Tests: **2637 / 2643 (0 fail, 6 skipped) — was 2627, +10 new Phase 2 tests**
+- Shared.Tests: 5 pre-existing timezone failures (unchanged)
+
+**Out of Phase 2 (deferred):**
+- Email param class refactor (`*EmailParams.Create()` accepting `DateTime?`) — registration-flow handlers can't fire on TBD per Q2=A, so the `// Phase 8YA-2 TODO` `.GetValueOrDefault()` shims from Phase 1 stay in place. Not a regression.
+- `EventReminderJob` / `EventNotificationEmailJob` filter — Phase 1 already added `.GetValueOrDefault()` shims; the existing reminder query uses StartDate <= cutoff comparisons that return false for null in nullable arithmetic, so TBD events fall out implicitly. Will be tightened explicitly when the email param classes get the DateTime? refactor.
+
+**Phase 1 deliverables (earlier 2026-05-08 commit `303e4648`)** — see status below.
+
 ## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phase 1 of 5 ✅ COMPLETE on develop
 
 **Status**: Phase 1 (Domain + DB foundation) complete, committed to `develop`. Phases 2–5 pending.

@@ -8,8 +8,11 @@ namespace LankaConnect.Application.Events.Commands.CreateEvent;
 public record CreateEventCommand(
     string Title,
     string Description,
-    DateTime StartDate,
-    DateTime EndDate,
+    // Phase 8YA.2: TBD-dates support. Both null → Planning; both set → Draft;
+    // mixed → validator rejects. Domain Event.Create enforces the same invariant
+    // as a defence-in-depth.
+    DateTime? StartDate,
+    DateTime? EndDate,
     Guid OrganizerId,
     int Capacity,
     // Issue #51: Max attendees per registration (optional, defaults to 10)

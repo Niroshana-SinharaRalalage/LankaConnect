@@ -10,8 +10,11 @@ public record EventDto
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
-    public DateTime StartDate { get; init; }
-    public DateTime EndDate { get; init; }
+    // Phase 8YA.2: Null on TBD events (Status == Planning, or rare Status == Published
+    // when the organiser publicly listed without confirming dates per Q1=A). Frontend
+    // renders "Date TBD" badge when null.
+    public DateTime? StartDate { get; init; }
+    public DateTime? EndDate { get; init; }
     public Guid OrganizerId { get; init; }
     public int Capacity { get; init; }
     public int CurrentRegistrations { get; init; }

@@ -70,10 +70,14 @@ public class EventStatusUpdateJob
         var count = 0;
         try
         {
-            // Get Published events that have started (start date <= now)
+            // Get Published events that have started (start date <= now).
+            // Phase 8YA.2 (Q1=A): TBD events can be Published with no StartDate.
+            // Filter them out explicitly — null comparisons return false but the
+            // filter makes intent obvious AND avoids a later WARN log when
+            // ActivateEvent's "no confirmed start date" guard fires.
             var publishedEvents = await _eventRepository.GetEventsByStatusAsync(EventStatus.Published);
             var eventsToActivate = publishedEvents
-                .Where(e => e.StartDate <= now)
+                .Where(e => e.StartDate.HasValue && e.StartDate.Value <= now)
                 .ToList();
 
             _logger.LogInformation("EventStatusUpdateJob: Found {Count} Published events to mark as Active", eventsToActivate.Count);
@@ -120,10 +124,13 @@ public class EventStatusUpdateJob
         var count = 0;
         try
         {
-            // Get Active events that have ended (end date < now)
+            // Get Active events that have ended (end date < now).
+            // Phase 8YA.2: TBD events can never reach Active (ActivateEvent rejects
+            // when StartDate is null), but filter defensively here in case of any
+            // direct DB manipulation that bypasses the domain.
             var activeEvents = await _eventRepository.GetEventsByStatusAsync(EventStatus.Active);
             var eventsToComplete = activeEvents
-                .Where(e => e.EndDate < now)
+                .Where(e => e.EndDate.HasValue && e.EndDate.Value < now)
                 .ToList();
 
             _logger.LogInformation("EventStatusUpdateJob: Found {Count} Active events to mark as Completed", eventsToComplete.Count);

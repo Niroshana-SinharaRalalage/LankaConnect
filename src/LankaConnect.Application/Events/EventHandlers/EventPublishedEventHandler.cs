@@ -114,6 +114,23 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                     return;
                 }
 
+                // Phase 8YA.2 (Q1=A): TBD events can be Published. Skip the published-
+                // notification email until SetDates fills in the date pair — sending
+                // an announcement with "Date TBD" defeats the point of the email
+                // (recipients can't add the event to their calendar). Q4=A keeps the
+                // SetDates → Draft transition silent, so the announcement only ever
+                // goes out when an organiser explicitly publishes a dated event.
+                if (!@event.StartDate.HasValue || !@event.EndDate.HasValue)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "EventPublished SKIPPED: TBD event has no confirmed dates - " +
+                        "EventId={EventId}, Duration={ElapsedMs}ms. Announcement email will " +
+                        "fire on the next Publish call after SetDates is invoked.",
+                        @event.Id, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
                 // Prepare common template data
                 var isFree = @event.IsFree();
                 // Use en-US culture to ensure $ symbol instead of generic ¤
@@ -147,7 +164,9 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         eventId: @event.Id,
                         eventTitle: @event.Title.Value,
                         eventDescription: @event.Description.Value,
-                        eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: Q1=A allows TBD-Published; param class must accept DateTime? and render "Date TBD"
+                        // Phase 8YA.2 (Q1=A): we early-returned above when StartDate was null,
+                        // so .Value is safe here without a sentinel.
+                        eventStartDate: @event.StartDate.Value,
                         timeZoneId: @event.TimeZoneId,
                         eventLocation: eventLocation,
                         eventCity: eventCity,

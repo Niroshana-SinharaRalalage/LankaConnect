@@ -1675,6 +1675,7 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetEventIcs(Guid id)
     {
         Logger.LogInformation("Generating ICS file for event {EventId}", id);
@@ -1685,6 +1686,21 @@ public class EventsController : BaseController<EventsController>
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
         {
             return NotFound();
+        }
+
+        // Phase 8YA.2: TBD events have no DTSTART/DTEND; the iCalendar spec has no
+        // "Date TBD" representation. Return 422 Unprocessable Entity (architect-locked)
+        // so callers (mobile apps, calendar UIs) know the event exists but can't be
+        // exported until the organiser sets dates — distinct from 404 (not found) and
+        // from a 400 BadRequest on a malformed request.
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("Date TBD", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Title = "Event has no confirmed dates",
+                Detail = result.Errors.First(),
+                Status = StatusCodes.Status422UnprocessableEntity,
+            });
         }
 
         if (result.IsFailure)

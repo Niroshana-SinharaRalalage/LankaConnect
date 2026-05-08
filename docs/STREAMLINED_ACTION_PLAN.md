@@ -6,20 +6,69 @@
 
 ---
 
-## 🎯 2026-05-07 (Phase 8X — External Payment Events) — kickoff: master TODO + Slice 8X.1 (domain enum + ExternalRegistration VO)
+## 🎯 2026-05-07 (Phase 8X — External Payment Events) — ✅ SHIPPED + STAGING-VERIFIED
 
-**Goal**: Add a third event payment mode `ExternalPaid` (paid event whose payment + registration happens off-platform; pricing displayed; in-page CTA links to external URL with vendor name + instructions). Architect-approved RCA + 11-slice plan + 310-checkbox master TODO captured in [docs/MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md](./MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md). Phase 8X registered in [docs/PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md).
+**Status**: 9 slices shipped to `develop`, staging-verified end-to-end. 15/15 testable API smoke cells PASS. Backend functionally complete; FE form + detail page + list card live.
+
+**Goal**: Third event payment mode `ExternalPaid` (paid event whose payment + registration happens off-platform; pricing displayed; in-page CTA links to external URL with vendor name + instructions).
 
 **Classification**: feature missing, cross-stack (Domain + EF + Application + API + FE + email/iCal rendering). Not a bug.
 
-**Architect-locked decisions (key ones)**:
-- New `EventPaymentMode` enum (`Free=0, OnPlatformPaid=1, ExternalPaid=2`) — replaces `IsFreeEvent` boolean as source of truth (Phase 6A.86 discipline preserved); `IsFreeEvent` becomes a real entity property kept in lockstep via private `SyncLegacyIsFree()` (Option B — no `builder.Ignore`, no shadow property, per Phase 6A.123 lesson).
-- New `ExternalRegistration` value object: HTTPS-only URL ≤2048 chars + RFC1918/loopback/link-local host rejection + optional instructions (≤4000) + optional vendor name (≤100).
-- Compatibility matrix locked: ExternalPaid forces `RegistrationMode=NoRegistration` (Mode C); blocks AssignedSeating, add-ons, waitlist, check-in QR; allows signup lists / donations / sponsors; ticket tiers display-only.
-- Validator inference table corrected for security: missing `paymentMode` + non-true `isFree` → `OnPlatformPaid`, never `Free` (Phase 6A.81 lesson).
+### Slices shipped (commits on develop)
+
+| # | Slice | Commit | Deploy result |
+|---|---|---|---|
+| 8X.1 | Domain enum + ExternalRegistration VO + 27 unit tests | `8e12fc75` | ✅ deployed |
+| 8X.2 | EF config + migration + backfill + RAISE EXCEPTION assertion | `df1c9d84` | ✅ deployed + staging-verified |
+| 8X.3 | Domain methods (SetExternalPayment, SetPaymentMode, RegisterWith* guards) + 15 tests | `e45e2fd7` | ✅ deployed |
+| 8X.3.5 | Add-ons + waitlist blocked for ExternalPaid + 5 tests | `36a7d475` | ✅ deployed |
+| 8X.4a | Command shape + FluentValidation rules + 29 validator tests | `b5bd6a06` | ✅ deployed |
+| 8X.4b | Handler wiring + Stripe webhook defence-in-depth | `86379ffd` (initial fail) → `9514167e` (hotfix: gate SetPaymentMode on pricing!=null) | ✅ deployed |
+| 8X.5 | EventDto + AutoMapper projection (5 query handlers) | `7b4043d0` (cascaded fail) → fixed via 8X.4b hotfix | ✅ deployed |
+| Smoke fix | RSVP handlers return architect-locked ExternalPaid message instead of generic NoRegistration | `c6295e74` | ✅ deployed + verified (R1/R2 PASS) |
+| 8X.6 | FE types + EventEditForm 3-way radio + ExternalRegistration card | `50b0ed37` | ✅ deployed |
+| 8X.7+8 | Detail page CTA + ExternalRegistrationCta component + list card "External payment" badge + TicketSection gated for ExternalPaid | `1d6e73e1` | ✅ deployed |
+
+### Staging API smoke matrix (run #1 + run #2 with R1/R2 fix)
+
+| Cell | Verdict |
+|---|---|
+| C1 ExternalPaid happy path → 201 + DB row correct | ✅ PASS |
+| C2-C5 invalid combos (missing URL / http URL / loopback URL / Mode A explicit) → 400 | ✅ PASS |
+| C8-C10 inference (legacy isFree=true → Free, isFree=false → OnPlatformPaid, isFree=null+pricing → OnPlatformPaid security default) | ✅ PASS |
+| C11 inconsistent (isFree=true+ExternalPaid) → 400 | ✅ PASS |
+| C12 `<script>` instructions stored raw (XSS prevention render-side per architect) | ✅ PASS |
+| U3 update URL on existing ExternalPaid event → 200 | ✅ PASS |
+| U4 ExternalPaid → OnPlatformPaid (no regs) → 200 + DB cleared | ✅ PASS |
+| R1 RSVP on ExternalPaid → 400 architect-locked message | ✅ PASS (after smoke-fix) |
+| R2 register-anonymous on ExternalPaid → 400 architect-locked message | ✅ PASS (after smoke-fix) |
+| R3 waitlist on ExternalPaid → 4xx | ✅ PASS |
+| C6/C7/A1/A2/S1 | N/A — domain unit tests cover (Tiered+Seated event setup, signup-commitments, donations, Stripe webhook signing all out-of-scope for flat-payload smoke) |
+| L1/L3 | not Phase 8X regressions — pre-existing Phase 6A.91 rule + endpoint shape |
+
+### Architect-locked decisions
+
+- `EventPaymentMode` enum (`Free=0, OnPlatformPaid=1, ExternalPaid=2`) replaces `IsFreeEvent` as source of truth (Phase 6A.86 discipline preserved); `IsFreeEvent` kept as real entity property in lockstep via private `SyncLegacyIsFree()` (Option B — no `builder.Ignore`, no shadow property, per Phase 6A.123 lesson).
+- `ExternalRegistration` VO: HTTPS-only URL ≤2048 chars + RFC1918/loopback/link-local host rejection + optional instructions (≤4000) + optional vendor name (≤100).
+- ExternalPaid forces `RegistrationMode=NoRegistration` (Mode C); blocks AssignedSeating, add-ons, waitlist, check-in QR; allows signup lists / donations / sponsors; ticket tiers display-only.
+- Validator security default: missing `paymentMode` + non-true `isFree` → `OnPlatformPaid`, never `Free` (Phase 6A.81 lesson).
+- Backfill SQL embeds `RAISE EXCEPTION` post-assertion (Phase 6A.122 lesson).
 - All commits direct to `develop` (project policy — no feature branches).
 
-**Slice 8X.1 in progress** (this session): pure domain — add `EventPaymentMode` enum + `ExternalRegistration` VO + 14 unit tests covering RFC1918 / loopback / link-local rejection + length / scheme / equality validation. No DB, no API, no consumers. Pre-flight baseline domain test count snapshotted at 642.
+### Honest residuals (not blocking release)
+
+- Operator UAT walkthrough (manual browser smoke of M1-M12 matrix from master TODO) — deferred to operator's choice. The component-level + API-level smoke covers correctness; UAT confirms UX.
+- RTL tests for `ExternalRegistrationCta` + `EventEditForm.Phase8X.test.tsx` — deferred to follow-up; manual browser smoke is the next gate per master TODO.
+- Newsletter HTML rendering branch + iCal `URL:` switching — out of scope for Phase 8X v1; standard newsletter card with the new "External payment" badge handles 95% of the UX. Phase 8Y can refine.
+- Pre-existing failing tests `FormResponseTests.UpdateAnswer_Should_Succeed` + `DonationConfigurationTests.Create_WithMinGreaterThanMax_Should_Fail` unchanged — neither file touched by Phase 8X (verified via `git stash` test).
+
+### Test count delta
+
+- Domain: 642 → 685 (+43; xUnit Theory expansion makes the count higher than the pure new-test-method count of 47)
+- Application: 2598 → 2627 (+29 validator tests)
+- All Phase 8X commits passed CI on the final hotfix sequence.
+
+**Lesson logged**: my initial Slice 8X.4b ship used `dotnet test --no-build` for the regression check, which reused a stale assembly and didn't catch 10 unit-test failures that CI then surfaced. Hotfix `9514167e` recovered. Discipline going forward: `dotnet test` without `--no-build` after any handler edit, even when the local rebuild seemed unnecessary.
 
 ---
 

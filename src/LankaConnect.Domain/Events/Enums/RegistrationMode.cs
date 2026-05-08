@@ -34,4 +34,16 @@ public enum RegistrationMode : short
 
     /// <summary>No registration UI. Drop-in event. Standalone donations/sponsors/add-ons/collections still work.</summary>
     NoRegistration = 5,
+
+    /// <summary>
+    /// Phase 8X.11 — Registration is captured externally (e.g. Eventbrite, Humanitix,
+    /// organiser's own page, cash-at-door). LankaConnect renders the link / instructions
+    /// in the registration section; no internal Registration row is ever created.
+    /// Required when <see cref="EventPaymentMode.ExternalPaid"/>; rejected for
+    /// <see cref="EventPaymentMode.Free"/> and <see cref="EventPaymentMode.OnPlatformPaid"/>.
+    /// Ticket prices can still be defined and shown for reference; AssignedSeating /
+    /// add-ons / waitlist / donations / sponsors / signup-lists are blocked because they
+    /// require an internal Registration row.
+    /// </summary>
+    External = 6,
 }

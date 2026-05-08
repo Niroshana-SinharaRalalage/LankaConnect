@@ -66,22 +66,31 @@ public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
                 ctx.AddFailure(nameof(cmd.PaymentMode), inferred.Error!);
         });
 
-        // ExternalPaid-only rules.
+        // ExternalPaid-only rules. Phase 8X.11 — URL is OPTIONAL; the registration mode
+        // is "External" (not NoRegistration); donations/sponsors/collections/signup-lists
+        // are blocked at the validator (with mirroring domain guards as defence-in-depth).
         When(x => ResolvePaymentMode(x) == EventPaymentMode.ExternalPaid, () =>
         {
+            // URL length cap still applies when supplied. The .NotEmpty() rule was dropped
+            // in Phase 8X.11 — cash-at-door / bank-deposit / phone-only registration patterns
+            // legitimately have no URL.
             RuleFor(x => x.ExternalRegistrationUrl)
-                .NotEmpty()
-                .WithMessage("ExternalRegistrationUrl is required when PaymentMode is ExternalPaid")
                 .MaximumLength(ExternalRegistration.MaxUrlLength)
                 .WithMessage($"ExternalRegistrationUrl cannot exceed {ExternalRegistration.MaxUrlLength} characters");
 
-            // VO already validates https + host security + length.
-            // Re-running Create() inside the validator gives a single source of truth and
-            // consistent error messages with the domain layer.
+            // VO already validates https + host security + length when URL is non-empty.
+            // Re-running Create() here gives single source of truth + consistent error messages.
             RuleFor(x => x).Custom((cmd, ctx) =>
             {
-                if (string.IsNullOrWhiteSpace(cmd.ExternalRegistrationUrl))
-                    return; // earlier NotEmpty rule will have failed already
+                // Only run VO factory when at least one of URL/instructions/vendor is non-empty.
+                // The all-empty case is intentionally allowed at the API level — the handler
+                // will store ExternalRegistration = null on the event (architect-approved
+                // "Contact organiser for registration details" path).
+                var allEmpty = string.IsNullOrWhiteSpace(cmd.ExternalRegistrationUrl)
+                    && string.IsNullOrWhiteSpace(cmd.ExternalRegistrationInstructions)
+                    && string.IsNullOrWhiteSpace(cmd.ExternalRegistrationVendorName);
+                if (allEmpty)
+                    return;
 
                 var voResult = ExternalRegistration.Create(
                     cmd.ExternalRegistrationUrl,
@@ -91,8 +100,7 @@ public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
                 if (voResult.IsFailure)
                 {
                     // Loopback / private / link-local rejection: log at warning so security
-                    // observability captures repeated probing attempts (master TODO 8X
-                    // architect-required security observability).
+                    // observability captures repeated probing attempts.
                     if (voResult.Error.Contains("private", StringComparison.OrdinalIgnoreCase)
                         || voResult.Error.Contains("loopback", StringComparison.OrdinalIgnoreCase)
                         || voResult.Error.Contains("link-local", StringComparison.OrdinalIgnoreCase))
@@ -108,9 +116,18 @@ public class CreateEventCommandValidator : AbstractValidator<CreateEventCommand>
                 }
             });
 
+            // Phase 8X.11 — RegistrationMode must be null or External (was: null or NoRegistration).
             RuleFor(x => x.RegistrationMode)
-                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.NoRegistration)
-                .WithMessage("ExternalPaid events must use RegistrationMode = NoRegistration (or null — handler will coerce)");
+                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.External)
+                .WithMessage("ExternalPaid events must use RegistrationMode = External (or null — handler will coerce). " +
+                    "Other registration modes capture internal attendee data which doesn't apply to external-paid events.");
+
+            // Phase 8X.11 — block donations / sponsors / collections / signup-lists at request time.
+            // Domain methods enforce these too as defence-in-depth.
+            RuleFor(x => x.DonationsEnabled)
+                .Must(enabled => enabled != true)
+                .WithMessage("Donations cannot be enabled on external-paid events. " +
+                    "ExternalPaid is a 'pure external' mode — donations require an on-platform contribution surface.");
         });
 
         // Length caps for optional fields (apply regardless of mode for defence-in-depth).

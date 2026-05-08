@@ -58,7 +58,8 @@ public class Event_SetExternalPayment_Tests
 
         result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
-        ev.RegistrationMode.Should().Be(RegistrationMode.NoRegistration);
+        // Phase 8X.11 — registration mode flips to External (was: NoRegistration).
+        ev.RegistrationMode.Should().Be(RegistrationMode.External);
         ev.IsFreeEvent.Should().BeFalse();
         ev.ExternalRegistration.Should().NotBeNull();
         ev.ExternalRegistration!.Url.Should().Be("https://eventbrite.com/e/test-12345");
@@ -97,13 +98,18 @@ public class Event_SetExternalPayment_Tests
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void SetExternalPayment_WithNullExternalRegistration_Fails()
+    public void SetExternalPayment_WithNullExternalRegistration_Succeeds_StoresNullVo()
     {
+        // Phase 8X.11 — externalReg may be null when the organiser supplied no URL +
+        // no instructions + no vendor. Domain stores it as null; public detail page
+        // renders the friendly "Contact organiser for registration details" card.
         var ev = CreateFreshEvent();
-        var result = ev.SetExternalPayment(externalReg: null!, DualPricing());
+        var result = ev.SetExternalPayment(externalReg: null, DualPricing());
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("ExternalRegistration");
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
+        ev.RegistrationMode.Should().Be(RegistrationMode.External);
+        ev.ExternalRegistration.Should().BeNull();
     }
 
     [Fact]

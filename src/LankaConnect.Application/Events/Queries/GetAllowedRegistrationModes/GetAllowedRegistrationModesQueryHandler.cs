@@ -36,15 +36,17 @@ public class GetAllowedRegistrationModesQueryHandler
                 HasTicketTiers = request.HasTicketTiers,
                 HasIdentityBoundAddOn = request.HasIdentityBoundAddOn,
                 HasMatrixPricing = request.HasMatrixPricing,
+                // Phase 8X.11 — payment-mode axis (default Free for back-compat).
+                PaymentMode = request.PaymentMode,
             };
 
             var allowed = RegistrationModeCompatibility.AllowedModes(context);
 
             _logger.LogInformation(
                 "GetAllowedRegistrationModes: shape (Free={Free}, Seating={Seating}, DualPricing={Dual}, " +
-                "Tiers={Tiers}, GroupTiers={Group}) → {Count} allowed modes: [{Modes}]",
+                "Tiers={Tiers}, GroupTiers={Group}, PaymentMode={Pay}) → {Count} allowed modes: [{Modes}]",
                 request.IsFreeAttendance, request.HasSeating, request.HasDualPricing,
-                request.HasTicketTiers, request.HasGroupTiers,
+                request.HasTicketTiers, request.HasGroupTiers, request.PaymentMode,
                 allowed.Count, string.Join(",", allowed));
 
             return Task.FromResult(Result<IReadOnlyList<RegistrationMode>>.Success(allowed));

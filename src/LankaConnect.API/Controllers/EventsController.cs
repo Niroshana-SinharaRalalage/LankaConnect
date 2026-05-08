@@ -353,11 +353,16 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] bool hasGroupTiers = false,
         [FromQuery] bool hasTicketTiers = false,
         [FromQuery] bool hasIdentityBoundAddOn = false,
-        [FromQuery] bool hasMatrixPricing = false)
+        [FromQuery] bool hasMatrixPricing = false,
+        // Phase 8X.11 — payment-mode axis. Defaults to Free; FE picker passes the
+        // current paymentMode so External shows up exactly when ExternalPaid.
+        [FromQuery] LankaConnect.Domain.Events.Enums.EventPaymentMode paymentMode =
+            LankaConnect.Domain.Events.Enums.EventPaymentMode.Free)
     {
         var query = new GetAllowedRegistrationModesQuery(
             isFreeAttendance, hasSeating, hasNamedSeating, requiresAttendeeNameOnTicket,
-            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing);
+            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing,
+            paymentMode);
 
         var result = await Mediator.Send(query);
         return HandleResult(result);

@@ -454,6 +454,11 @@ public partial class Event : BaseEntity
         if (PaymentMode == EventPaymentMode.ExternalPaid)
             return Result.Failure(ExternalRegistrationGuardMessage);
 
+        // Phase 8X.11 — defence-in-depth: even if PaymentMode + RegistrationMode somehow
+        // drift (impossible by construction, but not by hostile API client), reject.
+        if (RegistrationMode == RegistrationMode.External)
+            return Result.Failure(ExternalRegistrationGuardMessage);
+
         // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
         // it on a B-mode event would create a Registration row that contradicts the event's
         // RegistrationMode (Attendees populated AND Mode says HeadCount*). Reject early with
@@ -1862,6 +1867,14 @@ public partial class Event : BaseEntity
         if (signUpList == null)
             return Result.Failure("Sign-up list cannot be null");
 
+        // Phase 8X.11 — ExternalPaid events route the buyer entirely off-platform.
+        // Sign-up lists are an on-platform contribution surface; mixing them with
+        // external ticket flow creates a confusing half-internal/half-external UX.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Sign-up lists cannot be added to external-paid events. " +
+                "Switch to Free or OnPlatformPaid first if you want to capture volunteer / item commitments.");
+
         // Phase 7D.1: Uniqueness keys on (Kind, Category) so organizers can run an
         // Items list and a Volunteers list that happen to share a category label.
         if (_signUpLists.Any(s => s.Kind == signUpList.Kind
@@ -2441,6 +2454,16 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Donation configuration is required");
 
+        // Phase 8X.11 — ExternalPaid events route the buyer entirely off-platform.
+        // On-platform donations would create a half-internal/half-external surface
+        // (buyer pays the vendor for a ticket, then comes back here to also donate?)
+        // — confusing UX. Block when ExternalPaid AND the new config is enabled.
+        // Disabled config is fine (it's a no-op surface).
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Donations cannot be enabled on external-paid events. " +
+                "Disable donations or switch to Free / OnPlatformPaid first.");
+
         DonationConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2485,6 +2508,12 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Collection configuration is required");
 
+        // Phase 8X.11 — collections are a sibling of donations; same reasoning.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Collections cannot be enabled on external-paid events. " +
+                "Disable collections or switch to Free / OnPlatformPaid first.");
+
         CollectionConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2527,6 +2556,12 @@ public partial class Event : BaseEntity
     {
         if (config == null)
             return Result.Failure("Sponsor configuration is required");
+
+        // Phase 8X.11 — same reasoning as donations: ExternalPaid is a "pure external" mode.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Sponsors cannot be enabled on external-paid events. " +
+                "Disable sponsors or switch to Free / OnPlatformPaid first.");
 
         SponsorConfig = config;
         MarkAsUpdated();
@@ -2635,11 +2670,12 @@ public partial class Event : BaseEntity
     ///   - requires non-null ExternalRegistration VO
     ///   - sets RegistrationMode = NoRegistration
     /// </summary>
-    public Result SetExternalPayment(ExternalRegistration externalReg, TicketPricing pricing)
+    public Result SetExternalPayment(ExternalRegistration? externalReg, TicketPricing pricing)
     {
-        if (externalReg == null)
-            return Result.Failure("ExternalRegistration is required for ExternalPaid events");
-
+        // Phase 8X.11 — externalReg is now nullable. The application layer constructs the
+        // VO when at least one of URL/instructions/vendor is non-empty, and passes null
+        // when ALL three are empty (organiser deferred filling them in). Persisting the
+        // null VO is the architect-approved "Contact organiser for details" path.
         if (pricing == null)
             return Result.Failure("Pricing is required for ExternalPaid events (display-only is fine, but pricing must be configured)");
 
@@ -2650,6 +2686,30 @@ public partial class Event : BaseEntity
             return Result.Failure(
                 "ExternalPaid events cannot have add-ons enabled. " +
                 "Disable add-ons before switching to external payment.");
+
+        // Phase 8X.11 — donations / sponsors / collections / signup-lists are blocked
+        // for ExternalPaid (architect-locked + product-owner-locked Q5=B). These are
+        // on-platform contribution surfaces; mixing with off-platform ticket flow creates
+        // confusing half-internal/half-external UX.
+        if (DonationConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have donations enabled. " +
+                "Disable donations before switching to external payment.");
+
+        if (SponsorConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have sponsors enabled. " +
+                "Disable sponsors before switching to external payment.");
+
+        if (CollectionConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have collections enabled. " +
+                "Disable collections before switching to external payment.");
+
+        if (_signUpLists.Count > 0)
+            return Result.Failure(
+                "ExternalPaid events cannot have sign-up lists. " +
+                "Remove existing sign-up lists before switching to external payment.");
 
         if (_waitingList.Count > 0)
             return Result.Failure(
@@ -2665,7 +2725,9 @@ public partial class Event : BaseEntity
 
         ExternalRegistration = externalReg;
         PaymentMode = EventPaymentMode.ExternalPaid;
-        RegistrationMode = RegistrationMode.NoRegistration;
+        // Phase 8X.11 — RegistrationMode = External (was: NoRegistration) so the picker
+        // shows a semantically-correct option for ExternalPaid events.
+        RegistrationMode = RegistrationMode.External;
         SyncLegacyIsFree();
         MarkAsUpdated();
 

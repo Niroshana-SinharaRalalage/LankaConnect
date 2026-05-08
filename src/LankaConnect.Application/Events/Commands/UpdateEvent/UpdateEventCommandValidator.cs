@@ -49,18 +49,20 @@ public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
                 ctx.AddFailure(nameof(cmd.PaymentMode), inferred.Error!);
         });
 
-        // ExternalPaid-only rules.
+        // ExternalPaid-only rules — Phase 8X.11 mirrors CreateEventCommandValidator.
         When(x => ResolvePaymentMode(x) == EventPaymentMode.ExternalPaid, () =>
         {
+            // URL optional (Phase 8X.11) — length cap only.
             RuleFor(x => x.ExternalRegistrationUrl)
-                .NotEmpty()
-                .WithMessage("ExternalRegistrationUrl is required when PaymentMode is ExternalPaid")
                 .MaximumLength(ExternalRegistration.MaxUrlLength)
                 .WithMessage($"ExternalRegistrationUrl cannot exceed {ExternalRegistration.MaxUrlLength} characters");
 
             RuleFor(x => x).Custom((cmd, ctx) =>
             {
-                if (string.IsNullOrWhiteSpace(cmd.ExternalRegistrationUrl))
+                var allEmpty = string.IsNullOrWhiteSpace(cmd.ExternalRegistrationUrl)
+                    && string.IsNullOrWhiteSpace(cmd.ExternalRegistrationInstructions)
+                    && string.IsNullOrWhiteSpace(cmd.ExternalRegistrationVendorName);
+                if (allEmpty)
                     return;
 
                 var voResult = ExternalRegistration.Create(
@@ -85,9 +87,19 @@ public class UpdateEventCommandValidator : AbstractValidator<UpdateEventCommand>
                 }
             });
 
+            // Phase 8X.11 — RegistrationMode must be null or External.
             RuleFor(x => x.RegistrationMode)
-                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.NoRegistration)
-                .WithMessage("ExternalPaid events must use RegistrationMode = NoRegistration (or null — handler will coerce)");
+                .Must(mode => mode == null || mode == Domain.Events.Enums.RegistrationMode.External)
+                .WithMessage("ExternalPaid events must use RegistrationMode = External (or null — handler will coerce). " +
+                    "Other registration modes capture internal attendee data which doesn't apply to external-paid events.");
+
+            // Phase 8X.11 — donations enabled-bit blocked. Sponsors / collections / signup-lists
+            // are not represented at the UpdateEvent command surface (organiser updates them via
+            // dedicated endpoints), so the domain guards added in Phase 8X.11 are the gate.
+            RuleFor(x => x.DonationsEnabled)
+                .Must(enabled => enabled != true)
+                .WithMessage("Donations cannot be enabled on external-paid events. " +
+                    "ExternalPaid is a 'pure external' mode — donations require an on-platform contribution surface.");
         });
 
         RuleFor(x => x.ExternalRegistrationInstructions)

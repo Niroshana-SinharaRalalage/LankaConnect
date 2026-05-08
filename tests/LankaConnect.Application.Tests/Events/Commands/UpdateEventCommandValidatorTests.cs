@@ -40,14 +40,15 @@ public class UpdateEventCommandValidatorTests
     }
 
     [Fact]
-    public void ExternalPaid_MissingUrl_Fails()
+    public void ExternalPaid_MissingUrl_Succeeds_PerPhase8X11()
     {
+        // Phase 8X.11 — URL optional; missing URL no longer rejected at the validator.
         var cmd = BaseCommand(
             isFree: false,
             paymentMode: EventPaymentMode.ExternalPaid,
             externalUrl: null);
         var result = _validator.TestValidate(cmd);
-        result.ShouldHaveValidationErrorFor(c => c.ExternalRegistrationUrl);
+        result.ShouldNotHaveValidationErrorFor(c => c.ExternalRegistrationUrl);
     }
 
     [Fact]

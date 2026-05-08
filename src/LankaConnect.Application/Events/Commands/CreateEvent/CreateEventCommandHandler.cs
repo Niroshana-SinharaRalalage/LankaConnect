@@ -305,16 +305,29 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // Determine category (use provided or default to Community)
         var category = request.Category ?? EventCategory.Community;
 
+        // Phase 8X.11 — resolve effective payment mode here (was: just inside the ExternalPaid
+        // branch). Lifting it up so the registration-mode default below can branch on it.
+        var effectivePaymentMode = CreateEventCommandValidator
+            .InferPaymentMode(request.IsFree, request.PaymentMode).Mode;
+
         // Phase 7E.2: Validate the requested registration mode against the event shape BEFORE
         // we create the aggregate — fail fast on incompatible combinations (the 14-row
         // compatibility table from the Phase 7E plan §2). The compatibility helper is the
         // single source of truth, also used by UpdateEventCommandHandler and
         // GetAllowedRegistrationModesQueryHandler.
-        var requestedRegistrationMode = request.RegistrationMode ?? RegistrationMode.DetailedAttendees;
+        // Phase 8X.11 — null coerces to External for ExternalPaid events; DetailedAttendees otherwise.
+        // The validator already enforced RegistrationMode is null OR External for ExternalPaid;
+        // this defaulting matches that contract.
+        var requestedRegistrationMode = request.RegistrationMode
+            ?? (effectivePaymentMode == EventPaymentMode.ExternalPaid
+                ? RegistrationMode.External
+                : RegistrationMode.DetailedAttendees);
         var registrationModeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
         {
             // Free attendance iff: caller said IsFree=true, OR no pricing/ticket price was provided.
             IsFreeAttendance = request.IsFree == true || (pricing == null && ticketPrice == null),
+            // Phase 8X.11 — pass payment-mode axis so the compatibility helper can switch on it.
+            PaymentMode = effectivePaymentMode,
             HasDualPricing = pricing != null && pricing.HasChildPricing,
             HasGroupTiers = isGroupPricing,
             // The remaining axes (seating, named-seating, per-ticket name, identity-bound add-on,
@@ -365,11 +378,6 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 eventResult.Value.Id, secondaryLocation.Type);
         }
 
-        // Phase 8X.4b — Resolve effective payment mode (validator already enforced consistency).
-        // Security default per Phase 6A.81: missing PaymentMode + non-true IsFree → OnPlatformPaid.
-        var effectivePaymentMode = CreateEventCommandValidator
-            .InferPaymentMode(request.IsFree, request.PaymentMode).Mode;
-
         // Phase 8X.4b — ExternalPaid branch: bundles pricing + VO + RegistrationMode coercion in one call.
         // SetExternalPayment internally dispatches to SetDualPricing / SetGroupPricing, so the
         // legacy pricing block below is skipped for this branch.
@@ -383,28 +391,38 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 return Result<Guid>.Failure("Pricing is required for ExternalPaid events");
             }
 
-            ExternalRegistration externalReg;
-            try
+            // Phase 8X.11 — externalReg may be null when organiser supplied no URL +
+            // no instructions + no vendor. Domain stores ExternalRegistration = null;
+            // public detail page renders the friendly "Contact organiser for details" card.
+            ExternalRegistration? externalReg = null;
+            var allEmpty = string.IsNullOrWhiteSpace(request.ExternalRegistrationUrl)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationInstructions)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationVendorName);
+
+            if (!allEmpty)
             {
-                var voResult = ExternalRegistration.Create(
-                    request.ExternalRegistrationUrl,
-                    request.ExternalRegistrationInstructions,
-                    request.ExternalRegistrationVendorName);
-                if (voResult.IsFailure)
+                try
                 {
-                    _logger.LogWarning(
-                        "CreateEvent: ExternalRegistration VO rejected - OrganizerId={OrganizerId}, Reason={Reason}",
-                        request.OrganizerId, voResult.Error);
-                    return Result<Guid>.Failure(voResult.Error);
+                    var voResult = ExternalRegistration.Create(
+                        request.ExternalRegistrationUrl,
+                        request.ExternalRegistrationInstructions,
+                        request.ExternalRegistrationVendorName);
+                    if (voResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "CreateEvent: ExternalRegistration VO rejected - OrganizerId={OrganizerId}, Reason={Reason}",
+                            request.OrganizerId, voResult.Error);
+                        return Result<Guid>.Failure(voResult.Error);
+                    }
+                    externalReg = voResult.Value;
                 }
-                externalReg = voResult.Value;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "CreateEvent: ExternalRegistration VO creation faulted - OrganizerId={OrganizerId}",
-                    request.OrganizerId);
-                return Result<Guid>.Failure("Failed to validate external registration details");
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "CreateEvent: ExternalRegistration VO creation faulted - OrganizerId={OrganizerId}",
+                        request.OrganizerId);
+                    return Result<Guid>.Failure("Failed to validate external registration details");
+                }
             }
 
             var setExternalResult = eventResult.Value.SetExternalPayment(externalReg, pricing);
@@ -417,8 +435,8 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
             }
 
             _logger.LogInformation(
-                "CreateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}, Vendor={Vendor}",
-                eventResult.Value.Id, externalReg.Url, externalReg.VendorName ?? "(none)");
+                "CreateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}, Vendor={Vendor}, AllEmpty={AllEmpty}",
+                eventResult.Value.Id, externalReg?.Url ?? "(none)", externalReg?.VendorName ?? "(none)", allEmpty);
         }
         // Phase 6D + Session 21: Set pricing if provided
         else if (pricing != null)
@@ -510,7 +528,11 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
 
         // Phase 7E.2: Apply the validated registration mode (skip for DetailedAttendees — that's
         // the default and the property's no-op idempotent path; saves a domain-event roundtrip).
-        if (requestedRegistrationMode != RegistrationMode.DetailedAttendees)
+        // Phase 8X.11 — for ExternalPaid the registration mode (External) was already set
+        // by SetExternalPayment above; calling SetRegistrationMode again would no-op (idempotent
+        // path) but spend a domain event roundtrip. Skip for that branch.
+        if (requestedRegistrationMode != RegistrationMode.DetailedAttendees
+            && effectivePaymentMode != EventPaymentMode.ExternalPaid)
         {
             var setModeResult = eventResult.Value.SetRegistrationMode(requestedRegistrationMode);
             if (setModeResult.IsFailure)

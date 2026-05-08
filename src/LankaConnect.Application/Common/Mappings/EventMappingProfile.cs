@@ -205,6 +205,9 @@ public class EventMappingProfile : Profile
             var ctx = new RegistrationModeContext
             {
                 IsFreeAttendance = src.IsFree(),
+                // Phase 8X.11 — pass payment-mode axis so ExternalPaid events render the
+                // External mode as "active" (compatibility helper now switches on PaymentMode).
+                PaymentMode = src.PaymentMode,
                 HasDualPricing = src.Pricing != null && src.Pricing.HasChildPricing,
                 HasGroupTiers = src.Pricing != null && src.Pricing.HasGroupTiers,
                 HasTicketTiers = src.HasTicketTiers,

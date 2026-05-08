@@ -52,31 +52,47 @@ public class ExternalRegistrationTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    //  URL — required + scheme
+    //  URL — Phase 8X.11: optional. The factory accepts null/empty URL when at least
+    //  one of (instructions, vendor) is supplied. All-three-empty returns Failure
+    //  (the application layer treats that as "store ExternalRegistration = null").
+    //  Scheme + host validation still fires when URL is non-empty.
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Create_WithEmptyUrl_Fails()
+    public void Create_WithEmptyUrl_AndInstructionsOnly_Succeeds_StoresNullUrl()
     {
-        var result = ExternalRegistration.Create("");
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("required");
+        var result = ExternalRegistration.Create(url: "", instructions: "Pay $25 cash at door");
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        result.Value.Url.Should().BeNull();
+        result.Value.Instructions.Should().Be("Pay $25 cash at door");
     }
 
     [Fact]
-    public void Create_WithNullUrl_Fails()
+    public void Create_WithNullUrl_AndVendorOnly_Succeeds_StoresNullUrl()
     {
-        var result = ExternalRegistration.Create(null);
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("required");
+        var result = ExternalRegistration.Create(url: null, instructions: null, vendorName: "Eventbrite");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Url.Should().BeNull();
+        result.Value.VendorName.Should().Be("Eventbrite");
     }
 
     [Fact]
-    public void Create_WithWhitespaceUrl_Fails()
+    public void Create_WithAllNullOrEmpty_Fails_SignalsCallerToStoreNullVo()
     {
-        var result = ExternalRegistration.Create("   ");
+        // Phase 8X.11 — all-null factory call signals the application layer to set
+        // Event.ExternalRegistration = null (rather than persist an empty VO).
+        var result = ExternalRegistration.Create(url: null, instructions: null, vendorName: null);
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("required");
+        // Error message guides the caller — should mention at-least-one + null-VO.
+        result.Error.Should().Contain("at least one");
+    }
+
+    [Fact]
+    public void Create_WithWhitespaceUrl_AndInstructions_Succeeds_TreatsWhitespaceAsNull()
+    {
+        var result = ExternalRegistration.Create(url: "   ", instructions: "Call 555-0100");
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Url.Should().BeNull();
     }
 
     [Fact]

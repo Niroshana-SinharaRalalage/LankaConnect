@@ -115,7 +115,8 @@ public class Event_SetPaymentMode_TransitionTests
         var ev = CreateFreshEvent();
         ev.SetExternalPayment(ExternalReg(), DualPricing()).IsSuccess.Should().BeTrue();
         ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
-        ev.RegistrationMode.Should().Be(RegistrationMode.NoRegistration);
+        // Phase 8X.11 — SetExternalPayment now sets RegistrationMode = External (was NoRegistration).
+        ev.RegistrationMode.Should().Be(RegistrationMode.External);
         ev.ExternalRegistration.Should().NotBeNull();
 
         var result = ev.SetPaymentMode(EventPaymentMode.OnPlatformPaid);

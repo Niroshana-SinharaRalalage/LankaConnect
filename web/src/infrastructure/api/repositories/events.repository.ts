@@ -315,6 +315,10 @@ export class EventsRepository {
     if (shape.hasIdentityBoundAddOn != null)
       params.set('hasIdentityBoundAddOn', String(shape.hasIdentityBoundAddOn));
     if (shape.hasMatrixPricing != null) params.set('hasMatrixPricing', String(shape.hasMatrixPricing));
+    // Phase 8X.11 — payment-mode axis. Backend defaults to Free when omitted (back-compat
+    // with pre-8X.11 callers). FE picker passes the form's current paymentMode so External
+    // shows up exactly when ExternalPaid.
+    if (shape.paymentMode != null) params.set('paymentMode', String(shape.paymentMode));
 
     const queryString = params.toString();
     const url = queryString

@@ -421,28 +421,36 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return Result.Failure("Pricing is required for ExternalPaid events");
             }
 
-            ExternalRegistration externalReg;
-            try
+            // Phase 8X.11 — externalReg may be null when organiser cleared all 3 fields.
+            ExternalRegistration? externalReg = null;
+            var allEmpty = string.IsNullOrWhiteSpace(request.ExternalRegistrationUrl)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationInstructions)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationVendorName);
+
+            if (!allEmpty)
             {
-                var voResult = ExternalRegistration.Create(
-                    request.ExternalRegistrationUrl,
-                    request.ExternalRegistrationInstructions,
-                    request.ExternalRegistrationVendorName);
-                if (voResult.IsFailure)
+                try
                 {
-                    _logger.LogWarning(
-                        "UpdateEvent: ExternalRegistration VO rejected - EventId={EventId}, Reason={Reason}",
-                        request.EventId, voResult.Error);
-                    return Result.Failure(voResult.Error);
+                    var voResult = ExternalRegistration.Create(
+                        request.ExternalRegistrationUrl,
+                        request.ExternalRegistrationInstructions,
+                        request.ExternalRegistrationVendorName);
+                    if (voResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "UpdateEvent: ExternalRegistration VO rejected - EventId={EventId}, Reason={Reason}",
+                            request.EventId, voResult.Error);
+                        return Result.Failure(voResult.Error);
+                    }
+                    externalReg = voResult.Value;
                 }
-                externalReg = voResult.Value;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "UpdateEvent: ExternalRegistration VO creation faulted - EventId={EventId}",
-                    request.EventId);
-                return Result.Failure("Failed to validate external registration details");
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "UpdateEvent: ExternalRegistration VO creation faulted - EventId={EventId}",
+                        request.EventId);
+                    return Result.Failure("Failed to validate external registration details");
+                }
             }
 
             var pricingForExternal = pricing ?? @event.Pricing!;
@@ -456,8 +464,8 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             }
 
             _logger.LogInformation(
-                "UpdateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}",
-                request.EventId, externalReg.Url);
+                "UpdateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}, AllEmpty={AllEmpty}",
+                request.EventId, externalReg?.Url ?? "(none)", allEmpty);
         }
         // Session 33 + Session 21: Update pricing if provided
         else if (pricing != null)
@@ -586,6 +594,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             var modeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
             {
                 IsFreeAttendance = @event.IsFreeEvent,
+                // Phase 8X.11 — pass payment-mode axis so the compatibility helper rejects
+                // External for non-ExternalPaid events and the other modes for ExternalPaid.
+                PaymentMode = @event.PaymentMode,
                 HasDualPricing = @event.Pricing != null && @event.Pricing.HasChildPricing,
                 HasGroupTiers = @event.Pricing != null && @event.Pricing.HasGroupTiers,
                 HasTicketTiers = @event.HasTicketTiers,

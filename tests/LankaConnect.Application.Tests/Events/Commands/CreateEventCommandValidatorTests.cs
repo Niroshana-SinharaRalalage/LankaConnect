@@ -90,8 +90,11 @@ public class CreateEventCommandValidatorTests
     }
 
     [Fact]
-    public void ExternalPaid_MissingUrl_Fails()
+    public void ExternalPaid_MissingUrl_AndAllOtherFieldsEmpty_Succeeds_StoresNullVo()
     {
+        // Phase 8X.11 — URL is optional. All-three-empty also passes (architect-approved
+        // per product owner Q2 = B). Backend handler stores ExternalRegistration = null
+        // and the public detail page shows "Contact organiser for registration details".
         var cmd = BaseCommand(
             isFree: false,
             paymentMode: EventPaymentMode.ExternalPaid,
@@ -99,7 +102,22 @@ public class CreateEventCommandValidatorTests
 
         var result = _validator.TestValidate(cmd);
 
-        result.ShouldHaveValidationErrorFor(c => c.ExternalRegistrationUrl);
+        result.ShouldNotHaveValidationErrorFor(c => c.ExternalRegistrationUrl);
+    }
+
+    [Fact]
+    public void ExternalPaid_MissingUrl_WithInstructions_Succeeds()
+    {
+        // Phase 8X.11 — cash-at-door / bank-deposit / phone-only patterns.
+        var cmd = BaseCommand(
+            isFree: false,
+            paymentMode: EventPaymentMode.ExternalPaid,
+            externalUrl: null,
+            externalInstructions: "Pay $25 cash at door, bring this email");
+
+        var result = _validator.TestValidate(cmd);
+
+        result.ShouldNotHaveValidationErrorFor(c => c.ExternalRegistrationUrl);
     }
 
     [Fact]
@@ -148,8 +166,26 @@ public class CreateEventCommandValidatorTests
     }
 
     [Fact]
-    public void ExternalPaid_RegMode_NoRegistration_Succeeds()
+    public void ExternalPaid_RegMode_External_Succeeds()
     {
+        // Phase 8X.11 — RegistrationMode for ExternalPaid events is now `External` (was
+        // `NoRegistration`). The validator accepts null + External; everything else fails.
+        var cmd = BaseCommand(
+            isFree: false,
+            paymentMode: EventPaymentMode.ExternalPaid,
+            externalUrl: "https://eventbrite.com/e/test",
+            registrationMode: RegistrationMode.External);
+
+        var result = _validator.TestValidate(cmd);
+
+        result.ShouldNotHaveValidationErrorFor(c => c.RegistrationMode);
+    }
+
+    [Fact]
+    public void ExternalPaid_RegMode_NoRegistration_Fails()
+    {
+        // Phase 8X.11 — NoRegistration is no longer the valid mode for ExternalPaid;
+        // External is. This test pins the strict 400 (architect Q1 + product owner Q1).
         var cmd = BaseCommand(
             isFree: false,
             paymentMode: EventPaymentMode.ExternalPaid,
@@ -158,7 +194,7 @@ public class CreateEventCommandValidatorTests
 
         var result = _validator.TestValidate(cmd);
 
-        result.ShouldNotHaveValidationErrorFor(c => c.RegistrationMode);
+        result.ShouldHaveValidationErrorFor(c => c.RegistrationMode);
     }
 
     [Fact]

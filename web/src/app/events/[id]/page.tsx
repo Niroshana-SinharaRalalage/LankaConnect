@@ -54,6 +54,8 @@ import { AlbumPhotoCarousel } from '@/presentation/components/features/events/Al
 import { AlbumStatus } from '@/infrastructure/api/types/events.types';
 // Phase 7A.4: WhatsApp share button
 import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp/WhatsAppShareButton';
+// Phase 8YB.1: Hero image component shared by [id]/page.tsx (contained) and [id]/v2/page.tsx (fullWidth)
+import { EventHeroImage, type EventHeroVariant } from '@/presentation/components/features/events/EventHeroImage';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -86,10 +88,32 @@ function getStatusBadgeColor(label: string): string {
 }
 
 /**
- * Event Detail Page
- * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management
+ * Event Detail Page (default export)
+ *
+ * Phase 8YB.1: Defaults to the existing constrained-column hero (`heroVariant="contained"`).
+ * The internal component is exported for the v2 test route to render the same page logic
+ * with `heroVariant="fullWidth"` so the user can A/B compare hero layouts on staging.
  */
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return <EventDetailPageInternal params={params} heroVariant="contained" />;
+}
+
+/**
+ * Event Detail Page — internal implementation.
+ * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management.
+ *
+ * @param heroVariant
+ *   - "contained" → hero rendered inside the existing max-w-7xl Card column (Option C).
+ *   - "fullWidth" → hero rendered above the constrained column, spanning the full viewport
+ *                   (Option E). Used by the /v2 comparison route only.
+ */
+export function EventDetailPageInternal({
+  params,
+  heroVariant = 'contained',
+}: {
+  params: Promise<{ id: string }>;
+  heroVariant?: EventHeroVariant;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -712,6 +736,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <LankaEventsHeader />
 
+      {/* Phase 8YB.1 — Option E: full-bleed hero rendered above the constrained column.
+          Only active on the /v2 test route (heroVariant="fullWidth"). The default route
+          renders the hero inside the Card below (Option C). */}
+      {heroVariant === 'fullWidth' && (
+        <EventHeroImage
+          images={event.images}
+          title={event.title}
+          categoryLabel={categoryLabels[event.category] ?? ''}
+          variant="fullWidth"
+        />
+      )}
+
       {/* Back Button and Organizer Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between gap-4">
@@ -746,24 +782,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       {/* Event Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <Card className="overflow-hidden">
-          {/* Event Image */}
-          {event.images && event.images.length > 0 && (
-            <div className="relative h-96 bg-gradient-to-br from-orange-500 to-rose-500">
-              <img
-                src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
-                alt={event.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 right-4">
-                <Badge
-                  variant="default"
-                  className="text-white shadow-lg text-base px-4 py-2"
-                  style={{ background: '#8B1538' }}
-                >
-                  {categoryLabels[event.category]}
-                </Badge>
-              </div>
-            </div>
+          {/* Phase 8YB.1 — Option C: contained hero (responsive aspect-ratio + object-contain).
+              Only renders on the default route. The /v2 route uses fullWidth above instead. */}
+          {heroVariant === 'contained' && (
+            <EventHeroImage
+              images={event.images}
+              title={event.title}
+              categoryLabel={categoryLabels[event.category] ?? ''}
+              variant="contained"
+            />
           )}
 
           <CardContent className="p-8">

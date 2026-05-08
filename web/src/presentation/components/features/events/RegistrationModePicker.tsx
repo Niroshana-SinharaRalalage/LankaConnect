@@ -73,6 +73,12 @@ const MODE_OPTIONS: readonly ModeOption[] = [
     description:
       'Drop-in event. No registration form. Standalone donations / sponsors / add-ons / collections still work. Free attendance only.',
   },
+  {
+    value: RegistrationMode.External,
+    label: 'External Registration',
+    description:
+      'Registration handled by an external provider (e.g. Eventbrite, Humanitix, cash-at-door). LankaConnect renders your link / instructions in the registration section. Ticket prices can still be defined and shown for reference. Used with Paid — external registration link.',
+  },
 ];
 
 export function RegistrationModePicker({

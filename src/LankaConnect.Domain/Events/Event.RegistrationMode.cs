@@ -89,6 +89,28 @@ public partial class Event
             return Result.Success(); // Idempotent — no change to make.
         }
 
+        // Phase 8X.11 — RegistrationMode.External is a paired axis with EventPaymentMode.ExternalPaid.
+        // Switching INTO External requires the event to already be ExternalPaid (the proper
+        // path to flip TO ExternalPaid is SetExternalPayment, which sets the mode atomically).
+        // Switching OUT OF External is fine here — the picker change is the user's intent.
+        if (mode == RegistrationMode.External && PaymentMode != EventPaymentMode.ExternalPaid)
+        {
+            return Result.Failure(
+                "External registration mode requires PaymentMode = ExternalPaid. " +
+                "Set the event to 'Paid — external registration link' first, then choose External mode.");
+        }
+
+        // Phase 8X.11 — ExternalPaid events are pinned to External mode. The organiser must
+        // first switch payment mode (to Free or OnPlatformPaid) before picking a different
+        // registration mode. Reject mode change here so the form's intent is unambiguous.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && mode != RegistrationMode.External)
+        {
+            return Result.Failure(
+                "External-paid events use the External registration mode. " +
+                "Change the payment mode to Free or 'Paid — collected on LankaConnect' first " +
+                "if you want to capture internal attendee details.");
+        }
+
         // Slice S1.5 invariant: AssignedSeating requires DetailedAttendees. Block any
         // mode change that would orphan an existing assigned-seating layout (Mode B/C
         // can't bind seats to attendees). Organiser must revert seating mode to GA
@@ -534,6 +556,11 @@ public partial class Event
         // Phase 8X.3 — ExternalPaid events have no internal registration path.
         // Same guard as RegisterWithAttendees (Event.cs).
         if (PaymentMode == Enums.EventPaymentMode.ExternalPaid)
+            return Result.Failure(ExternalRegistrationGuardMessage);
+
+        // Phase 8X.11 — defence-in-depth: RegistrationMode.External is a paired axis
+        // with PaymentMode.ExternalPaid; reject if drifted.
+        if (RegistrationMode == Enums.RegistrationMode.External)
             return Result.Failure(ExternalRegistrationGuardMessage);
 
         // 2. Mode guard (defensive — the handler also dispatches by mode, but we enforce here too).

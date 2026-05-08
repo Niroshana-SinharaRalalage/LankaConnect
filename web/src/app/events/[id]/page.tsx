@@ -13,6 +13,7 @@ import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/pr
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
 import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
+import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
@@ -24,7 +25,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, EventPaymentMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -314,12 +315,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     registrationMode === RegistrationMode.HeadCountByAge ||
     registrationMode === RegistrationMode.HeadCountByGender ||
     registrationMode === RegistrationMode.HeadCountByAgeAndGender;
-  const registrationCtaLabel = isModeB ? 'RSVP' : 'Register';
-  const registrationSectionTitle = isModeC
-    ? 'About this event'
-    : isModeB
-      ? 'RSVP for this Event'
-      : 'Register for this Event';
+  // Phase 8X: ExternalPaid takes priority over Mode A/B/C labels — the CTA on the
+  // event page becomes "Buy Ticket / Register Externally" (or vendor-specific if set).
+  const isExternalPaid = event?.paymentMode === EventPaymentMode.ExternalPaid;
+  const registrationCtaLabel = isExternalPaid
+    ? (event?.externalRegistrationVendorName
+        ? `Buy on ${event.externalRegistrationVendorName}`
+        : 'Buy Ticket / Register Externally')
+    : isModeB ? 'RSVP' : 'Register';
+  const registrationSectionTitle = isExternalPaid
+    ? 'Register / Buy Ticket'
+    : isModeC
+      ? 'About this event'
+      : isModeB
+        ? 'RSVP for this Event'
+        : 'Register for this Event';
 
   // Phase 6A.128: Use React Query's useQueries for user form responses (single source of truth)
   // Replaces manual useEffect + useState — cache invalidation from mutations propagates automatically
@@ -1072,6 +1082,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           This event has already started. Registration is no longer available.
                         </p>
                       </div>
+                    ) : isExternalPaid ? (
+                      // Phase 8X.7+8: ExternalPaid events render the outbound CTA + optional
+                      // vendor + instructions instead of an internal registration form. No
+                      // capacity / "full" check applies — capacity is informational only for
+                      // ExternalPaid since registrations happen off-platform.
+                      <ExternalRegistrationCta event={event} />
                     ) : !isFull ? (
                       // Phase 7E.6: dispatcher routes to per-attendee form (Mode A), head-count
                       // form (Mode B), or "no registration required" notice (Mode C).
@@ -1870,7 +1886,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
         {/* Wait for auth hydration before rendering to ensure token is available for API calls */}
-        {_hasHydrated && isUserRegistered && event && !event.isFree && (
+        {/* Phase 8X.7+8: TicketSection only renders for OnPlatformPaid (paid + Stripe-issued
+            tickets). ExternalPaid events have no internal Registration row and no internal
+            ticket — ticketing happens off-platform. */}
+        {_hasHydrated && isUserRegistered && event && !event.isFree && !isExternalPaid && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
           </div>

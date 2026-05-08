@@ -6,6 +6,35 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8YB.1 — Hero image cropping fix on `/events/[id]` + comparison route + dompurify SSR-guard hotfix) — ✅ SHIPPED + STAGING-VERIFIED
+
+**Status**: User reported their Vesak flyer's title and bottom contact strip were being cropped on the public event hero. RCA with system-architect identified the cause (`h-96` fixed-height hero with `object-cover`) plus a latent gap (no aspect-ratio guidance at upload time). Implemented Option C on the existing route + Option E on a temporary `/events/{id}/v2` test route so the user can A/B compare on staging before picking a winner. Commits `b3f5afcd` (5 hero files, recovered by a prior wakeup) and `3e00b975` (this session's dompurify SSR-guard hotfix). Deploy `25584438669` ✅ success.
+
+### What's in this slice
+
+| Area | Change |
+|---|---|
+| Hero component | New `EventHeroImage` (77 lines, 14 tests) with `variant: 'contained' \| 'fullWidth'` prop. Responsive `aspect-[16/9] md:aspect-[3/1]` + `object-contain` + branded gradient letterbox bg. Replaces inline hero JSX previously hard-coded inside `events/[id]/page.tsx`. |
+| Default route (`/events/{id}`) | Option C — contained hero stays inside the existing `max-w-7xl` Card column; only the fixed `h-96` + `object-cover` swap to responsive aspect-ratio + `object-contain`. The user's full flyer is now visible without cropping at any breakpoint. |
+| New route (`/events/{id}/v2`) | Option E — full-bleed hero rendered above the constrained column, spanning the full viewport width on desktop. 22-line wrapper file that delegates to the same `EventDetailPageInternal`. **Temporary** — gets deleted after the user picks a winner. |
+| Upload guidance | `ImageUploader.tsx` dropzone copy now reads "Recommended for the banner image: 3:1 landscape (e.g. 2400×800 or larger). Other shapes will be letterboxed so your full image stays visible." |
+| **SSR HOTFIX** | After the hero work was deployed, both routes returned HTTP 500 with `TypeError: _.addHook is not a function` — pre-existing dompurify SSR break from commit `450974f2` (Phase 8X RTE work). Wrapped `DOMPurify.addHook` in `typeof window !== 'undefined'` guard and short-circuited `sanitizeHtml()` on SSR (returns `''`; client re-renders with full sanitization during hydration). |
+
+### Verification
+- 17/17 new tests pass (14 EventHeroImage + 3 ImageUploader.guidance)
+- 32/32 existing `html-utils.test.ts` still green after SSR guard
+- `tsc --noEmit` clean
+- HTTP 200 on staging `/events/0d876309-…` (Option C) AND `/events/0d876309-…/v2` (Option E)
+- Container logs no longer show the `addHook` SSR error
+
+### Honest correction
+The PRIOR action-plan entry below claimed "Deploy `25584021284` ✅ success" with HTTP smoke 200/200/200. That deploy DID build/deploy successfully, but the smoke step only hit `/`, `/events`, `/api/health` — it did NOT actually load any `/events/{id}` URL, so the dompurify SSR regression had been silent on staging since `8d2182d0` (Phase 8X.11) until I caught it via `curl` + container logs after pushing `b3f5afcd`. Production unaffected — last UI prod deploy was 2026-05-05 from `main`, which predates `450974f2`.
+
+### User decision pending
+User to browse both URLs on their Vesak event, pick Option C or Option E. Follow-up: delete `/v2`, drop `heroVariant` prop, inline the chosen variant into `EventDetailPage`. Architect-recommended winner is Option E (full-bleed) — better use of screen real estate and matches modern event-page conventions (Eventbrite / Luma / Meetup).
+
+---
+
 ## 🎯 2026-05-08 (RTE Email-Body Upgrade — `RichTextEditor` extensions + DOMPurify CSS XSS fix + 8YB.1 deploy recovery) — ✅ SHIPPED + STAGING-VERIFIED
 
 **Status**: User feedback on event creation flow ("very difficult to format the description with the rich text box; can we change it to something like email body?"). Wired up TipTap extensions on the shared `RichTextEditor` so `EventCreationForm` + `EventEditForm` + `NewsletterForm` all gain the same upgrade. Commits `450974f2` (the slice itself) and `b3f5afcd` (recovery for orphaned Phase 8YB.1 files left in the index by `8d2182d0`). Deploy `25584021284` ✅ success.

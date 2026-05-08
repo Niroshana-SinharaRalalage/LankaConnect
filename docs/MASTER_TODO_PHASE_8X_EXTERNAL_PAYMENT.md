@@ -1,11 +1,57 @@
 # Master TODO — Phase 8X: External Payment Events
 
-**Status**: 🟡 PLANNED — not started.
-**Workflow**: All commits go directly to `develop` (project policy — no feature branches).
-**Architect-approval**: 2026-05-07 (this conversation).
+**Status**: ✅ **SHIPPED + STAGING-VERIFIED** (2026-05-07 → 2026-05-08).
+**Workflow**: All commits direct to `develop` (project policy — no feature branches).
+**Architect-approval**: 2026-05-07.
 **Origin**: User requirement 2026-05-07 — third event payment mode where pricing is displayed but payment + registration happens off-platform (e.g., Eventbrite, Humanitix, organiser's own page, bank-deposit instructions).
 **Classification**: feature missing, cross-stack (Domain + EF + App + API + FE + email).
-**Baseline domain test count (pre-flight)**: 642 (snapshotted 2026-05-07; subsequent slices must not drop below this).
+**Baseline domain test count (pre-flight)**: 642 (snapshotted 2026-05-07).
+**Final test counts**: Domain 685 (+43, 47 new methods incl. xUnit Theory expansion); Application 2627 (+29 validator tests); 0 Phase 8X regressions.
+
+## Shipped commits on develop (in order)
+
+| Slice | Commit | Notes |
+|---|---|---|
+| 8X.1 Domain enum + ExternalRegistration VO + 27 unit tests | `8e12fc75` | ✅ deployed |
+| 8X.2 EF config + migration + backfill + RAISE EXCEPTION | `df1c9d84` | ✅ deployed; verified via API regression smoke (66 events list/get OK) |
+| 8X.3 Domain methods + RegisterWith* guards + 15 tests | `e45e2fd7` | ✅ deployed |
+| 8X.3.5 ExternalPaid blocks add-ons/waitlist + 5 tests | `36a7d475` | ✅ deployed |
+| 8X.4a Command shape + FluentValidation + 29 tests | `b5bd6a06` | ✅ deployed |
+| 8X.4b Handler wiring + Stripe webhook defence | `86379ffd` (failed CI) → `9514167e` (hotfix: gate SetPaymentMode on pricing!=null) | ✅ deployed |
+| 8X.5 EventDto + AutoMapper projection (5 query handlers) | `7b4043d0` (cascaded fail) → fixed via 8X.4b hotfix | ✅ deployed |
+| RSVP smoke-fix (architect-locked message) | `c6295e74` | ✅ deployed; R1/R2 verified PASS |
+| 8X.6 FE types + EventEditForm 3-way radio + ExternalRegistration card | `50b0ed37` | ✅ deployed |
+| 8X.7+8 Detail page CTA + ExternalRegistrationCta + list card badge + TicketSection gate | `1d6e73e1` | ✅ deployed |
+
+## Staging API smoke matrix — 15/15 testable cells PASS
+
+C1 ExternalPaid happy path → 201 + DB row correct ✓
+C2 missing URL → 400 ✓ · C3 http URL → 400 ✓ · C4 loopback URL → 400 ✓ · C5 + Mode A explicit → 400 ✓
+C8 legacy isFree=true → Free ✓ · C9 legacy isFree=false → OnPlatformPaid ✓
+C10 isFree=null + pricing → OnPlatformPaid (security default) ✓
+C11 isFree=true + ExternalPaid → 400 inconsistent ✓
+C12 `<script>` instructions stored raw (XSS render-side) ✓
+U3 update URL on ExternalPaid → 200 ✓ · U4 ExternalPaid → OnPlatformPaid clears + resets ✓
+R1 RSVP architect-locked message verified ✓ · R2 anon-register architect-locked message verified ✓
+R3 waitlist 4xx ✓
+**N/A** (covered by domain unit tests): C6/C7 AssignedSeating + add-ons (domain-only path setup), A1/A2 signup-commitments + donations (endpoint shape varies), S1 Stripe webhook (requires staging webhook signing secret + helper).
+**Not Phase 8X regressions**: L1 cancel paid event (pre-existing Phase 6A.91 organizer-contact rule), L3 GET /registrations (endpoint shape).
+
+## Honest residuals (not blocking release)
+
+- Operator UAT walkthrough (manual browser smoke of M1-M12 matrix) — deferred to operator's choice.
+- RTL tests for `ExternalRegistrationCta` + `EventEditForm.Phase8X.test.tsx` — deferred to follow-up.
+- Newsletter HTML rendering branch + iCal `URL:` switching — Phase 8Y refinement.
+- Pre-existing failures (`FormResponseTests.UpdateAnswer_Should_Succeed`, `DonationConfigurationTests.Create_WithMinGreaterThanMax_Should_Fail`) unchanged — neither file touched by Phase 8X (verified via `git stash` regression test).
+
+## Lesson logged
+
+My initial 8X.4b ship used `dotnet test --no-build` for the regression check, reusing a stale assembly that missed 10 unit-test regressions CI then surfaced. Hotfix `9514167e` recovered cleanly. Going forward: run `dotnet test` without `--no-build` after any handler edit.
+
+---
+
+## Pre-Phase-8X content (for reference / audit trail)
+
 
 ## Hard rules (do not violate)
 - [ ] Never use `builder.Ignore` — Phase 6A.123 silent INSERT failure lesson

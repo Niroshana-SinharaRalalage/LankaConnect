@@ -195,6 +195,9 @@ export enum RegistrationMode {
   HeadCountByGender = 'HeadCountByGender',
   HeadCountByAgeAndGender = 'HeadCountByAgeAndGender',
   NoRegistration = 'NoRegistration',
+  /** Phase 8X.11 — registration captured externally (Eventbrite, cash-at-door, etc.).
+   * Only allowed when paymentMode === ExternalPaid. */
+  External = 'External',
 }
 
 /**
@@ -393,8 +396,10 @@ export interface EventDto {
   id: string;
   title: string;
   description: string;
-  startDate: string; // ISO 8601 date-time
-  endDate: string; // ISO 8601 date-time
+  // Phase 8YA.3: Null on TBD events (Status === Planning, or rare Published-with-TBD
+  // per Q1=A). Display surfaces must render a "Date TBD" badge when null.
+  startDate: string | null; // ISO 8601 date-time, or null for TBD events
+  endDate: string | null;   // ISO 8601 date-time, or null for TBD events
   organizerId: string;
   capacity: number;
   currentRegistrations: number;
@@ -856,8 +861,10 @@ export interface GetNearbyEventsRequest {
 export interface CreateEventRequest {
   title: string;
   description: string;
-  startDate: string;
-  endDate: string;
+  // Phase 8YA.3: Both null -> backend creates a TBD event in Planning status.
+  // Both set -> Draft. Mixed (one null, one set) -> backend validator returns 400.
+  startDate: string | null;
+  endDate: string | null;
   organizerId: string;
   capacity: number;
   category?: EventCategory;
@@ -951,8 +958,11 @@ export interface UpdateEventRequest {
   eventId: string;
   title?: string;
   description?: string;
-  startDate?: string;
-  endDate?: string;
+  // Phase 8YA.3: Both null -> backend keeps existing dates unchanged (organiser
+  // editing other fields). Both set -> SetDates path. Mixed -> backend validator
+  // returns 400.
+  startDate?: string | null;
+  endDate?: string | null;
   capacity?: number;
   category?: EventCategory;
 
@@ -3303,6 +3313,12 @@ export interface AllowedRegistrationModesRequest {
   hasTicketTiers?: boolean;
   hasIdentityBoundAddOn?: boolean;
   hasMatrixPricing?: boolean;
+  /**
+   * Phase 8X.11 — payment-mode axis. The picker passes the form's current paymentMode
+   * so the External option shows up exactly when the event is ExternalPaid. Defaults
+   * to Free server-side for back-compat with pre-8X.11 callers.
+   */
+  paymentMode?: EventPaymentMode;
 }
 
 /**

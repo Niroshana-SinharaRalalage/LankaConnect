@@ -447,16 +447,22 @@ function EventCard({
   event: EventDto;
   categoryLabels: Record<string, string>;
 }) {
-  const startDate = new Date(event.startDate);
-  const formattedDate = startDate.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const formattedTime = startDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  // Phase 8YA.3: TBD events render "Date TBD" / "Time TBD" badges (Q1=A —
+  // public listing of TBD events with a clear placeholder).
+  const startDate = event.startDate ? new Date(event.startDate) : null;
+  const formattedDate = startDate
+    ? startDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Date TBD';
+  const formattedTime = startDate
+    ? startDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : 'Time TBD';
 
   return (
     <Card

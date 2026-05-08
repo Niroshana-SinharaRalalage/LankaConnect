@@ -215,6 +215,9 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const enableTieredTicketing = watch('enableTieredTicketing');
+  // Phase 8YA.3: TBD-event toggle. When checked the date inputs are hidden and
+  // the form submits null dates so the backend creates a Planning-status event.
+  const datesUnknown = watch('datesUnknown') ?? false;
   // Phase 7E.5: Mode picker state
   const registrationMode = watch('registrationMode') ?? RegistrationMode.DetailedAttendees;
   const groupPricingTiers = watch('groupPricingTiers') || [];
@@ -383,9 +386,17 @@ export function EventCreationForm() {
 
       // Issue #48 Fix: Convert local datetime-local input values to UTC ISO strings
       // The datetime-local input returns local time (e.g., "2024-01-15T14:00")
-      // We need to convert this to UTC before sending to the backend
-      const startDateUtc = new Date(data.startDate).toISOString();
-      const endDateUtc = new Date(data.endDate).toISOString();
+      // We need to convert this to UTC before sending to the backend.
+      //
+      // Phase 8YA.3: When `datesUnknown` is true the form submits null dates so the
+      // backend creates a Planning-status event. The backend validator (Phase 2)
+      // enforces the both-null OR both-set invariant; we emit only those two shapes.
+      const startDateUtc = data.datesUnknown
+        ? null
+        : new Date(data.startDate).toISOString();
+      const endDateUtc = data.datesUnknown
+        ? null
+        : new Date(data.endDate).toISOString();
 
       const eventData = {
         title: data.title,
@@ -780,39 +791,65 @@ export function EventCreationForm() {
           onOpenChange={(o) => setOpen('datetime', o)}
         >
           <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Start Date & Time */}
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                Start Date & Time *
+            {/* Phase 8YA.3: Dates-not-yet-decided toggle. When checked the event is
+                created in Planning status (TBD); listing card shows "Date TBD" badge.
+                Organizers can fill dates later via Edit. */}
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <label htmlFor="datesUnknown" className="flex items-start gap-3 cursor-pointer">
+                <input
+                  id="datesUnknown"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
+                  {...register('datesUnknown')}
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-neutral-800">
+                    Dates not yet decided (TBD)
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    Create the event now and announce dates later. The event will appear
+                    publicly with a "Date TBD" badge; registration is unlocked once you
+                    add the start and end dates.
+                  </p>
+                </div>
               </label>
-              <Input
-                id="startDate"
-                type="datetime-local"
-                error={!!errors.startDate}
-                {...register('startDate')}
-              />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
-              )}
             </div>
 
-            {/* End Date & Time */}
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                End Date & Time *
-              </label>
-              <Input
-                id="endDate"
-                type="datetime-local"
-                error={!!errors.endDate}
-                {...register('endDate')}
-              />
-              {errors.endDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
-              )}
-            </div>
-          </div>
+            {!datesUnknown && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Date & Time */}
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Start Date & Time *
+                  </label>
+                  <Input
+                    id="startDate"
+                    type="datetime-local"
+                    error={!!errors.startDate}
+                    {...register('startDate')}
+                  />
+                  {errors.startDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
+                  )}
+                </div>
+
+                {/* End Date & Time */}
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    End Date & Time *
+                  </label>
+                  <Input
+                    id="endDate"
+                    type="datetime-local"
+                    error={!!errors.endDate}
+                    {...register('endDate')}
+                  />
+                  {errors.endDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CollapsibleSection>
       </div>

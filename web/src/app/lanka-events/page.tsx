@@ -188,7 +188,10 @@ export default function LankaEventsHome() {
                             <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">{event.title}</h3>
                             <div className="flex items-center gap-2 text-white/90 text-sm">
                               <Calendar className="h-3.5 w-3.5" />
-                              <span>{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                              {/* Phase 8YA.3: Featured query excludes TBD events (Q3=A), defensive fallback. */}
+                              <span>{event.startDate
+                                ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                : 'Date TBD'}</span>
                             </div>
                           </div>
                         </div>
@@ -219,7 +222,10 @@ export default function LankaEventsHome() {
                             <h3 className="text-white font-bold text-base leading-tight line-clamp-2 drop-shadow-lg mb-1">{event.title}</h3>
                             <div className="flex items-center gap-2 text-white/90 text-sm">
                               <Calendar className="h-3.5 w-3.5" />
-                              <span>{new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                              {/* Phase 8YA.3: Featured query excludes TBD events (Q3=A), defensive fallback. */}
+                              <span>{event.startDate
+                                ? `${new Date(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${new Date(event.startDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                                : 'Date TBD'}</span>
                             </div>
                           </div>
                         </div>

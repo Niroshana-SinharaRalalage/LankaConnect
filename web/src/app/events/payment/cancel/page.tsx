@@ -104,21 +104,28 @@ function PaymentCancelContent() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date:</span>
                       <span className="font-medium">
-                        {new Date(event.startDate).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {/* Phase 8YA.3: payment-cancel summary should never show
+                            for a TBD event in practice (registration is blocked
+                            on TBD per Q2=A), but render a placeholder defensively. */}
+                        {event.startDate
+                          ? new Date(event.startDate).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'Date TBD'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Time:</span>
                       <span className="font-medium">
-                        {new Date(event.startDate).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
+                        {event.startDate
+                          ? new Date(event.startDate).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Time TBD'}
                       </span>
                     </div>
                     {event.ticketPriceAmount && (

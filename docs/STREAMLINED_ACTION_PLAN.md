@@ -6,6 +6,30 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2+3 of 5 ✅ COMPLETE on develop
+
+**Phase 3 deliverables (this commit) — Frontend (zod + types + forms + display):**
+- `events.types.ts` — `EventDto.startDate` / `endDate`, `CreateEventRequest.startDate` / `endDate`, `UpdateEventRequest.startDate` / `endDate` are now `string | null`
+- `event.schemas.ts` — new `datesUnknown` boolean field on both `createEventSchema` and `editEventSchema`. When checked, the schema skips all date refines (future-date, end > start, mixed-pair) and the form submits null dates. When unchecked, both dates must be present + valid.
+- `EventCreationForm` + `EventEditForm` — "Dates not yet decided (TBD)" checkbox in the Date & Time section. Edit form pre-checks itself on load when the event has no dates (Planning event); operator can uncheck + fill in dates → save routes through `Event.SetDates(...)` (Phase 1's domain method) which auto-transitions Planning → Draft. `formatDateForInput` is now null-safe.
+- ~10 display surfaces patched defensively for `string | null`: listing card on `/events`, detail page on `/events/[id]`, payment success/cancel pages, landing-page Featured carousel, search results, dashboard EventsList, EventDetailsTab, EventScroller, NewsletterForm. Each renders `"Date TBD"` / `"Time TBD"` placeholders when null.
+- `application/mappers/eventMapper.ts` — `sortEventsByDate` puts TBD events at the bottom (`Number.POSITIVE_INFINITY` fallback in the comparator); `getUpcomingEvents` excludes TBD events (Q3=A).
+- 16 new vitest tests across 2 files (`event.schemas.tbd-dates.test.ts` 11 + `eventMapper.tbd-dates.test.ts` 5), all pass.
+
+**Phase 3 verification:**
+- `tsc --noEmit` clean (only one pre-existing error in `page_old_backup.tsx` — backup file, not a real surface; not related to my changes)
+- New TBD-dates tests: 16/16 pass (validator coverage + eventMapper coverage)
+- Event component RTL tests: 78/78 pass — no regressions
+- All validator tests: 55/55 pass
+
+**Out of Phase 3 (deferred):**
+- Manage-page banner ("Add dates to enable registration") — the create + edit form toggles already give the operator a clear path; defer to Phase 4 polish if needed.
+- Full RTL test for the create/edit form TBD toggle — would require deep provider mocking. Covered indirectly by the zod schema tests + the manual smoke matrix in Phase 5.
+
+**Migration NOT yet applied to staging** — that's still Phase 5 alongside the operator-UAT gate and the 12-cell cross-surface smoke matrix.
+
+**Phase 1+2 deliverables earlier today (commits `303e4648` + `6a3b7710`)** — see status below.
+
 ## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2 of 5 ✅ COMPLETE on develop
 
 **Phase 2 deliverables (this commit):**

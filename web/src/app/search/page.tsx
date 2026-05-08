@@ -435,16 +435,22 @@ function EventCard({
   event: EventDto | EventSearchResultDto;
   categoryLabels: Record<string, string>;
 }) {
-  const startDate = new Date(event.startDate);
-  const formattedDate = startDate.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const formattedTime = startDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  // Phase 8YA.3: TBD events render placeholders — search returns date-range
+  // queries usually but defensive in case TBD events appear in results.
+  const startDate = event.startDate ? new Date(event.startDate) : null;
+  const formattedDate = startDate
+    ? startDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Date TBD';
+  const formattedTime = startDate
+    ? startDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : 'Time TBD';
 
   return (
     <Card

@@ -108,7 +108,29 @@
 ---
 
 ### Phase 3 — Frontend (zod, types, forms, display)
-**Status:** ⚪ NOT STARTED
+**Status:** ✅ COMPLETE (2026-05-08)
+
+**What shipped:**
+- `events.types.ts` — `EventDto.startDate`, `EventDto.endDate`, `CreateEventRequest.startDate`, `CreateEventRequest.endDate`, `UpdateEventRequest.startDate`, `UpdateEventRequest.endDate` are now `string | null`
+- `event.schemas.ts` — `createEventSchema` + `editEventSchema` accept optional dates and gate all date refines (future-date, end > start, mixed-pair) on a new `datesUnknown` boolean toggle. When `datesUnknown=true`, the form skips date validation entirely.
+- `EventCreationForm` — new "Dates not yet decided (TBD)" toggle in the Date & Time section. When checked, hides the datetime-local inputs and submits `{ startDate: null, endDate: null }` to the backend (which creates a Planning-status event).
+- `EventEditForm` — same toggle. Pre-checks itself when the loaded event has no dates (Planning event); operator can uncheck + fill in dates → save routes through `Event.SetDates(...)` (Planning → Draft auto-transition).
+- `formatDateForInput` in `EventEditForm` — null-safe (returns empty string instead of throwing on null).
+- `formatEventDateRange` in `presentation/utils/eventMapper.ts` — returns `"Date TBD"` early when either date is null.
+- `mapEventToFeedItem` in `presentation/utils/eventMapper.ts` — surfaces `date: "Date TBD"` / `time: "Time TBD"` in metadata for null dates.
+- `application/mappers/eventMapper.ts` — `sortEventsByDate` puts TBD events at the bottom; `getUpcomingEvents` excludes them (Q3=A).
+- Display surfaces patched defensively for `string | null`: `events/[id]/page.tsx`, `events/page.tsx`, `events/payment/cancel/page.tsx`, `events/payment/success/page.tsx`, `lanka-events/page.tsx`, `search/page.tsx`, `EventsList.tsx` (dashboard), `EventDetailsTab.tsx`, `EventScroller.tsx`, `NewsletterForm.tsx`. Each renders `"Date TBD"` / `"Time TBD"` placeholder when null.
+- 16 new vitest tests across 2 files: `event.schemas.tbd-dates.test.ts` (11) + `eventMapper.tbd-dates.test.ts` (5)
+
+**Phase 3 verification:**
+- `tsc --noEmit` clean (only one pre-existing error in `page_old_backup.tsx` — backup file, not a real surface)
+- New TBD-dates tests: 16/16 pass
+- Event component tests (RTL): 78/78 pass — no regressions
+- Validators: 55/55 pass (phone + volunteer + event-tbd-dates)
+
+**Out of Phase 3 (deferred):**
+- Manage-page banner ("Add dates to enable registration") — not blocking the user flow; the create + edit form toggles already give the operator a clear path. Defer to Phase 4 polish if needed.
+- RTL test for the full create/edit form TBD toggle (would require deep provider mocking) — covered indirectly by the zod schema tests + manual smoke in Phase 5.
 
 **Scope:**
 - `events.types.ts`: `startDate?: string | null`, `endDate?: string | null`.
@@ -219,15 +241,24 @@
 - Email param class refactor (`*EmailParams.Create()` accepting `DateTime?`) — defer; registration-flow handlers can't fire on TBD per Q2=A.
 - `CreateEventCommandHandler` — already wires nullable through to `Event.Create` via implicit conversion; no change needed.
 
-### Phase 3 (later)
-- [ ] `web/src/infrastructure/api/types/events.types.ts`
-- [ ] `web/src/presentation/lib/validators/event.schemas.ts`
-- [ ] `web/src/presentation/components/features/events/EventCreationForm.tsx`
-- [ ] `web/src/presentation/components/features/events/EventEditForm.tsx`
-- [ ] `web/src/presentation/components/features/events/EventDetailsTab.tsx`
-- [ ] `web/src/presentation/utils/eventMapper.ts`
-- [ ] `web/src/app/events/page.tsx`
-- [ ] `web/src/app/events/[id]/page.tsx`
+### Phase 3 ✅
+- [x] `web/src/infrastructure/api/types/events.types.ts` — EventDto + CreateEventRequest + UpdateEventRequest dates → `string | null`
+- [x] `web/src/presentation/lib/validators/event.schemas.ts` — datesUnknown toggle + nullable dates + gated refines
+- [x] `web/src/presentation/components/features/events/EventCreationForm.tsx` — TBD toggle UI + null submit
+- [x] `web/src/presentation/components/features/events/EventEditForm.tsx` — TBD toggle UI + auto-check on Planning events + null-safe formatDateForInput
+- [x] `web/src/presentation/components/features/events/EventDetailsTab.tsx` — "Date TBD" placeholder
+- [x] `web/src/presentation/utils/eventMapper.ts` — formatEventDateRange + mapEventToFeedItem null-safe
+- [x] `web/src/application/mappers/eventMapper.ts` — sortEventsByDate (TBD bottom) + getUpcomingEvents (excludes TBD)
+- [x] `web/src/app/events/page.tsx` — listing card "Date TBD" / "Time TBD"
+- [x] `web/src/app/events/[id]/page.tsx` — detail page null-safe formatters + hasStarted=false on TBD
+- [x] `web/src/app/events/payment/cancel/page.tsx` + `payment/success/page.tsx` — defensive placeholder
+- [x] `web/src/app/lanka-events/page.tsx` — featured carousel placeholder (Q3=A excludes TBD anyway)
+- [x] `web/src/app/search/page.tsx` — search card placeholder
+- [x] `web/src/presentation/components/features/dashboard/EventsList.tsx` — dashboard "Date TBD"
+- [x] `web/src/presentation/components/features/landing/EventScroller.tsx` — landing scroller placeholder
+- [x] `web/src/presentation/components/features/newsletters/NewsletterForm.tsx` — newsletter compose placeholder
+- [x] `web/src/presentation/lib/validators/__tests__/event.schemas.tbd-dates.test.ts` — 11 vitest tests
+- [x] `web/src/presentation/utils/__tests__/eventMapper.tbd-dates.test.ts` — 5 vitest tests
 
 ### Phase 4 (later)
 - [ ] `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` (sort tiebreakers)
@@ -242,3 +273,4 @@
 - 2026-05-08 — Phase 8YA kicked off. Architect RCA + plan locked. Q1–Q4 answered (A, A, A, A). Phase 1 starting.
 - 2026-05-08 — Phase 1 complete. 13 new domain tests pass, zero regressions in Domain/Application unit suites. Migration `20260508153410_Phase8YA1_AllowNullEventDates` generated and scoped. Build clean across the solution. Pre-existing test failures (FormResponseTests + DonationConfigurationTests in Domain.Tests; 5 timezone-related in Shared.Tests) confirmed unrelated to Phase 1 — present before changes. Phase 2 next: Application command/DTO, validator update, jobs filter TBD, ICS 422.
 - 2026-05-08 — Phase 2 complete. CreateEventCommand/UpdateEventCommand/EventDto now nullable; validators reject mixed-dates; UpdateEventCommandHandler routes through Event.SetDates; EventStatusUpdateJob filters TBD events; GetEventIcsQueryHandler returns Failure → controller maps to HTTP 422; EventPublished/Approved/Rejected email handlers + EventPublished WhatsApp handler skip TBD events with structured logs. 10 new Application unit tests; Application.Tests now 2637/2643 (was 2627; +10), 0 fail. Domain + Shared test counts unchanged from Phase 1 baseline (2 + 5 pre-existing failures unrelated). Build clean. Phase 3 next: Frontend zod + form toggle + "Date TBD" display.
+- 2026-05-08 — Phase 3 complete. Frontend `EventDto` / `CreateEventRequest` / `UpdateEventRequest` dates flip to `string | null`; `event.schemas.ts` gains a `datesUnknown` toggle that gates all date refines (future-date, end > start, mixed-pair) so checking it submits null dates without errors. `EventCreationForm` + `EventEditForm` get a "Dates not yet decided (TBD)" checkbox in the Date & Time section; the edit form pre-checks itself when loading a Planning event and routes save through `Event.SetDates(...)` when the operator unchecks + fills in dates. `formatDateForInput` in EventEditForm is now null-safe. ~10 display surfaces (events listing card, detail page, payment success/cancel pages, lanka-events landing, search results, dashboard EventsList, EventDetailsTab, EventScroller, NewsletterForm) render "Date TBD" / "Time TBD" placeholders when dates are null. `application/mappers/eventMapper.ts` sorts TBD events to the bottom in `sortEventsByDate` and excludes them from `getUpcomingEvents` (Q3=A). 16 new vitest tests across 2 files (zod schema TBD coverage + eventMapper TBD coverage), all pass. tsc clean (one pre-existing error in `page_old_backup.tsx` backup file, unrelated). Event component RTL tests 78/78 pass — no regressions. Validators 55/55 pass. Phase 4 next: backend listing/sort/filter polish to put TBD events at the bottom of date-ordered lists + featured/nearby exclusion. Phase 5: deploy to staging + operator UAT + 12-cell smoke matrix.

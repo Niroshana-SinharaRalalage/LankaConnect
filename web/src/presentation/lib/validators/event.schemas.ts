@@ -70,18 +70,18 @@ export const createEventSchema = z.object({
   category: z.nativeEnum(EventCategory),
 
   // Date and Time
-  startDate: z
-    .string()
-    .min(1, 'Start date and time are required')
-    .refine((date) => {
-      const selectedDate = new Date(date);
-      const now = new Date();
-      return selectedDate > now;
-    }, 'Start date must be in the future'),
+  // Phase 8YA.3: Dates are optional when datesUnknown=true (TBD event).
+  // When both supplied, the cross-field refines below enforce future-start
+  // and end > start. When mixed (one set, one empty), the mixed-dates refine
+  // rejects.
+  startDate: z.string().optional().default(''),
 
-  endDate: z
-    .string()
-    .min(1, 'End date and time are required'),
+  endDate: z.string().optional().default(''),
+
+  // Phase 8YA.3: TBD-event toggle. When true the form submits null dates and
+  // the backend creates a Planning-status event; when false both dates must
+  // be provided and pass the refines below.
+  datesUnknown: z.boolean().optional().default(false),
 
   // Capacity
   capacity: z
@@ -332,18 +332,50 @@ export const createEventSchema = z.object({
     isPrimary: z.boolean().optional().default(false),
     linkedUserId: z.string().uuid().optional().nullable(),
   })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
-}).refine(
-  (data) => {
-    // Validate that end date is after start date
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    return end > start;
-  },
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'],
+}).superRefine((data, ctx) => {
+  // Phase 8YA.3: TBD-dates pair invariant + future-date + end > start, gated on
+  // the datesUnknown toggle.
+  // - datesUnknown=true: dates are submitted as null; skip all date refines.
+  // - datesUnknown=false: both dates must be provided AND start in future AND end > start.
+  if (data.datesUnknown) {
+    return;
   }
-).refine(
+  const startProvided = !!data.startDate?.trim();
+  const endProvided = !!data.endDate?.trim();
+  if (!startProvided && !endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date and time are required (or check "Dates not yet decided" for a TBD event)',
+      path: ['startDate'],
+    });
+    return;
+  }
+  if (startProvided !== endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Both start and end dates must be provided together, or check "Dates not yet decided" for a TBD event',
+      path: startProvided ? ['endDate'] : ['startDate'],
+    });
+    return;
+  }
+  // Both provided — run create-mode validations.
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  if (start <= new Date()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date must be in the future',
+      path: ['startDate'],
+    });
+  }
+  if (end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    });
+  }
+}).refine(
   (data) => {
     // Session 33: If not free and not using dual, group, or tiered pricing, single price and currency are required
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
@@ -583,14 +615,13 @@ const baseEditEventSchema = z.object({
 
   category: z.nativeEnum(EventCategory),
 
-  // Date and Time - NO future date validation for edit mode
-  startDate: z
-    .string()
-    .min(1, 'Start date and time are required'),
+  // Date and Time - NO future date validation for edit mode (events being edited may
+  // be ongoing or past). Phase 8YA.3: dates optional when datesUnknown=true.
+  startDate: z.string().optional().default(''),
+  endDate: z.string().optional().default(''),
 
-  endDate: z
-    .string()
-    .min(1, 'End date and time are required'),
+  // Phase 8YA.3: TBD-event toggle.
+  datesUnknown: z.boolean().optional().default(false),
 
   // Capacity
   capacity: z
@@ -843,18 +874,40 @@ const baseEditEventSchema = z.object({
  * Same as CreateEventFormData but without future date requirement (since events being edited may be ongoing or past)
  * Note: We must redefine refinements because .omit().extend() loses them
  */
-export const editEventSchema = baseEditEventSchema.refine(
-  (data) => {
-    // Validate that end date is after start date
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    return end > start;
-  },
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'],
+export const editEventSchema = baseEditEventSchema.superRefine((data, ctx) => {
+  // Phase 8YA.3: TBD-dates pair invariant for edit. No future-date check (edit
+  // mode allows historical events). Same gating on datesUnknown toggle as create.
+  if (data.datesUnknown) {
+    return;
   }
-).refine(
+  const startProvided = !!data.startDate?.trim();
+  const endProvided = !!data.endDate?.trim();
+  if (!startProvided && !endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date and time are required (or check "Dates not yet decided" for a TBD event)',
+      path: ['startDate'],
+    });
+    return;
+  }
+  if (startProvided !== endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Both start and end dates must be provided together, or check "Dates not yet decided" for a TBD event',
+      path: startProvided ? ['endDate'] : ['startDate'],
+    });
+    return;
+  }
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  if (end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    });
+  }
+}).refine(
   (data) => {
     // If not free and not using any advanced pricing mode, single price and currency are required
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {

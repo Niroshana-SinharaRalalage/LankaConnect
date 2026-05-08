@@ -207,8 +207,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
   }, [currencies]);
 
   // Format dates for datetime-local input
-  const formatDateForInput = (dateString: string | Date) => {
+  // Phase 8YA.3: TBD events have null start/end dates; surface an empty string so
+  // the datetime-local input renders blank rather than the JS epoch.
+  const formatDateForInput = (dateString: string | Date | null | undefined) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
     // Convert to local timezone and format as YYYY-MM-DDTHH:mm
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -234,6 +238,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
       category: convertCategoryToNumber(event.category),
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
+      // Phase 8YA.3: pre-check the toggle when the loaded event has no dates so the
+      // edit form opens in TBD mode for Planning events. Organisers can uncheck to
+      // fill in real dates (auto-transitions Planning → Draft on save via SetDates).
+      datesUnknown: !event.startDate || !event.endDate,
       capacity: event.capacity,
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
@@ -343,6 +351,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
       category: categoryNumber,
       startDate: formatDateForInput(event.startDate),
       endDate: formatDateForInput(event.endDate),
+      // Phase 8YA.3: stay in TBD mode if the loaded event has no dates.
+      datesUnknown: !event.startDate || !event.endDate,
       capacity: event.capacity,
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
@@ -420,6 +430,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const enableTieredTicketing = watch('enableTieredTicketing');
   const ticketTiers = (watch('ticketTiers') || []) as TicketTierFormData[];
   const publishOrganizerContact = watch('publishOrganizerContact');
+  // Phase 8YA.3: TBD-event toggle. Same shape as EventCreationForm.
+  const datesUnknown = watch('datesUnknown') ?? false;
 
   // Seating Redesign Slice 1: local controlled state for assigned seating toggle.
   // Persisted server-side on submit via eventsRepository.setSeatingMode(...).
@@ -543,9 +555,18 @@ export function EventEditForm({ event }: EventEditFormProps) {
         }
       }
 
-      // Convert datetime-local format to ISO 8601
-      const startDateISO = new Date(data.startDate).toISOString();
-      const endDateISO = new Date(data.endDate).toISOString();
+      // Convert datetime-local format to ISO 8601.
+      // Phase 8YA.3: when datesUnknown=true the form submits null dates so the
+      // backend's UpdateEventCommandHandler treats it as "leave existing dates
+      // unchanged" (organiser is editing other fields). To clear dates back to
+      // TBD, the operator would unpublish + recreate; we don't expose a
+      // "clear dates" path from the edit form.
+      const startDateISO = data.datesUnknown
+        ? null
+        : new Date(data.startDate).toISOString();
+      const endDateISO = data.datesUnknown
+        ? null
+        : new Date(data.endDate).toISOString();
 
       // Session 33: Determine pricing mode and build appropriate pricing fields
       const isDualPricing = !data.isFree && data.enableDualPricing;
@@ -990,39 +1011,66 @@ export function EventEditForm({ event }: EventEditFormProps) {
           onOpenChange={(o) => setOpen('datetime', o)}
         >
           <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Start Date & Time */}
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                Start Date & Time *
+            {/* Phase 8YA.3: Dates-not-yet-decided toggle. Edit-form variant — when
+                checked the event stays/returns to TBD (Planning); when unchecked
+                and dates are filled in, save routes through Event.SetDates which
+                transitions Planning → Draft automatically. */}
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <label htmlFor="datesUnknown" className="flex items-start gap-3 cursor-pointer">
+                <input
+                  id="datesUnknown"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
+                  {...register('datesUnknown')}
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-neutral-800">
+                    Dates not yet decided (TBD)
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    The event appears publicly with a "Date TBD" badge while you finalise
+                    the schedule. Uncheck to add the start and end dates and unlock
+                    registration.
+                  </p>
+                </div>
               </label>
-              <Input
-                id="startDate"
-                type="datetime-local"
-                error={!!errors.startDate}
-                {...register('startDate')}
-              />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
-              )}
             </div>
 
-            {/* End Date & Time */}
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                End Date & Time *
-              </label>
-              <Input
-                id="endDate"
-                type="datetime-local"
-                error={!!errors.endDate}
-                {...register('endDate')}
-              />
-              {errors.endDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
-              )}
-            </div>
-          </div>
+            {!datesUnknown && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Date & Time */}
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Start Date & Time *
+                  </label>
+                  <Input
+                    id="startDate"
+                    type="datetime-local"
+                    error={!!errors.startDate}
+                    {...register('startDate')}
+                  />
+                  {errors.startDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
+                  )}
+                </div>
+
+                {/* End Date & Time */}
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    End Date & Time *
+                  </label>
+                  <Input
+                    id="endDate"
+                    type="datetime-local"
+                    error={!!errors.endDate}
+                    {...register('endDate')}
+                  />
+                  {errors.endDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CollapsibleSection>
       </div>
@@ -1231,6 +1279,16 @@ export function EventEditForm({ event }: EventEditFormProps) {
                         // Keep legacy isFree boolean in sync so the existing pricing-block
                         // visibility (line ~1252 below) continues to work without churn.
                         setValue('isFree', opt.value === EventPaymentMode.Free, { shouldValidate: false });
+                        // Phase 8X.11 — sync registrationMode with paymentMode flips:
+                        //   ExternalPaid → External (the new dedicated mode)
+                        //   any other  → DetailedAttendees (the safe-default for internal flows)
+                        // This mirrors the backend SetExternalPayment + SetPaymentMode rules,
+                        // so the picker always shows a valid selection on every flip.
+                        if (opt.value === EventPaymentMode.ExternalPaid) {
+                          setValue('registrationMode', RegistrationMode.External, { shouldValidate: false });
+                        } else {
+                          setValue('registrationMode', RegistrationMode.DetailedAttendees, { shouldValidate: false });
+                        }
                       }}
                     />
                     <div className="flex-1">
@@ -1253,13 +1311,12 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 <h4 className="text-sm font-semibold text-neutral-900">External registration details</h4>
               </div>
               <p className="text-xs text-neutral-600">
-                Buyers will see a "Buy Ticket / Register Externally" button on the event page that opens this link in a new tab.
-                LankaConnect will display the pricing you configure below for reference but won't collect payment.
+                LankaConnect will show your pricing for reference and surface these details in the registration section of the event page. Provide whichever combination fits your flow — a registration URL, plain-text instructions (e.g. cash at door / bank deposit), or a vendor name. All fields are optional individually.
               </p>
 
               <div>
                 <label htmlFor="externalRegistrationUrl" className="block text-sm font-medium text-neutral-700 mb-1">
-                  Registration / ticket URL <span className="text-red-500">*</span>
+                  Registration / ticket URL <span className="text-neutral-400 font-normal">(optional)</span>
                 </label>
                 <Input
                   id="externalRegistrationUrl"
@@ -1270,7 +1327,7 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 {errors.externalRegistrationUrl && (
                   <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationUrl.message as string}</p>
                 )}
-                <p className="mt-1 text-xs text-neutral-500">Must use https. Maximum 2,048 characters.</p>
+                <p className="mt-1 text-xs text-neutral-500">If supplied, must use https. Maximum 2,048 characters. Leave blank for cash-at-door / phone / email registration.</p>
               </div>
 
               <div>
@@ -1327,6 +1384,9 @@ export function EventEditForm({ event }: EventEditFormProps) {
                     hasDualPricing: !isFree && enableDualPricing,
                     hasGroupTiers: !isFree && (watch('enableGroupPricing') ?? false),
                     hasTicketTiers: !isFree && (watch('enableTieredTicketing') ?? false),
+                    // Phase 8X.11 — pass payment-mode axis so the picker shows External
+                    // exactly when paymentMode = ExternalPaid (and disables it otherwise).
+                    paymentMode: watch('paymentMode'),
                   }}
                   helpText={
                     // Phase 7F-B (architect-approved 2026-04-30): when registrations exist
@@ -2024,6 +2084,13 @@ export function EventEditForm({ event }: EventEditFormProps) {
         </CollapsibleSection>
       </div>
 
+      {/* Phase 8X.11 — Donations / Collections / Sponsors / Sign-up Lists are blocked
+          for ExternalPaid events (architect + product-owner-locked: ExternalPaid is a
+          "pure external" mode). Hide the entire monetisation cluster when paymentMode is
+          ExternalPaid so the organiser doesn't see options that the backend will reject. */}
+      {watch('paymentMode') !== EventPaymentMode.ExternalPaid && (
+      <>
+
       {/* Donation Feature: Donation Configuration */}
       <div id="donations" className="scroll-mt-20">
         <CollapsibleSection
@@ -2132,6 +2199,21 @@ export function EventEditForm({ event }: EventEditFormProps) {
           />
         </CollapsibleSection>
       </div>
+
+      </>
+      )}
+      {/* End Phase 8X.11 — monetisation cluster (donations / collections / sponsors / add-ons) hidden for ExternalPaid. */}
+
+      {watch('paymentMode') === EventPaymentMode.ExternalPaid && (
+        <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50/50">
+          <p className="text-sm text-neutral-700">
+            <strong>External payment events</strong> route the buyer entirely off-platform.
+            On-platform contribution surfaces (donations, collections, sponsors, add-ons, sign-up lists)
+            are not available — switch the payment mode to Free or "Paid — collected on LankaConnect"
+            if you want to capture those.
+          </p>
+        </div>
+      )}
 
       {/* Note about Media */}
       <Card>

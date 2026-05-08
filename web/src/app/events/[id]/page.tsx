@@ -315,16 +315,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     registrationMode === RegistrationMode.HeadCountByAge ||
     registrationMode === RegistrationMode.HeadCountByGender ||
     registrationMode === RegistrationMode.HeadCountByAgeAndGender;
-  // Phase 8X: ExternalPaid takes priority over Mode A/B/C labels — the CTA on the
-  // event page becomes "Buy Ticket / Register Externally" (or vendor-specific if set).
+  // Phase 8X.11 — ExternalPaid uses the standard "Register" CTA label (per product
+  // owner: "We still display the registration button on top of the event details page.
+  // When we click it, user will navigate the registration section and external payment
+  // details will be shown there"). The vendor-aware "Buy on {Vendor}" copy lives inside
+  // the ExternalRegistrationCta card in the section, where it's contextually relevant.
   const isExternalPaid = event?.paymentMode === EventPaymentMode.ExternalPaid;
-  const registrationCtaLabel = isExternalPaid
-    ? (event?.externalRegistrationVendorName
-        ? `Buy on ${event.externalRegistrationVendorName}`
-        : 'Buy Ticket / Register Externally')
-    : isModeB ? 'RSVP' : 'Register';
+  const registrationCtaLabel = isModeB ? 'RSVP' : 'Register';
   const registrationSectionTitle = isExternalPaid
-    ? 'Register / Buy Ticket'
+    ? 'Register for this Event'
     : isModeC
       ? 'About this event'
       : isModeB
@@ -685,15 +684,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Phase 6A.97: Use timezone-aware date formatting for consistent display
-  const formattedStartDate = formatEventDate(event.startDate, event.timeZoneId);
-  const formattedStartTime = formatEventTime(event.startDate, event.timeZoneId);
-  const formattedEndTime = formatEventTime(event.endDate, event.timeZoneId);
-  const timezoneAbbreviation = getTimezoneAbbreviation(event.timeZoneId, event.startDate);
+  // Phase 6A.97: Use timezone-aware date formatting for consistent display.
+  // Phase 8YA.3: TBD events surface "Date TBD" / "Time TBD" placeholders so the
+  // page renders cleanly without throwing on null inputs.
+  const formattedStartDate = event.startDate
+    ? formatEventDate(event.startDate, event.timeZoneId)
+    : 'Date TBD';
+  const formattedStartTime = event.startDate
+    ? formatEventTime(event.startDate, event.timeZoneId)
+    : 'Time TBD';
+  const formattedEndTime = event.endDate
+    ? formatEventTime(event.endDate, event.timeZoneId)
+    : 'Time TBD';
+  const timezoneAbbreviation = event.startDate
+    ? getTimezoneAbbreviation(event.timeZoneId, event.startDate)
+    : '';
 
   const isFull = event.currentRegistrations >= event.capacity;
   const spotsLeft = event.capacity - event.currentRegistrations;
-  const hasStarted = new Date(event.startDate) <= new Date();
+  // TBD events haven't started by definition — they have no scheduled time yet.
+  const hasStarted = event.startDate ? new Date(event.startDate) <= new Date() : false;
   // GitHub Issue #37: Check if event is cancelled to hide registration section
   // Note: Backend may return status as string "Cancelled" or enum number 4
   const isCancelled = (event.status as unknown) === 'Cancelled' || event.status === EventStatus.Cancelled;

@@ -6,9 +6,20 @@ import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
 import {
   Bold,
   Italic,
+  Underline as UnderlineIcon,
+  Strikethrough,
   List,
   ListOrdered,
   Heading1,
@@ -18,31 +29,32 @@ import {
   ImageIcon,
   Undo,
   Redo,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Table as TableIcon,
+  Rows as RowsIcon,
+  Columns as ColumnsIcon,
+  Trash2,
+  Palette,
+  Highlighter,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 
 /**
  * Rich Text Editor Component using TipTap
- * Phase 6A.74 Part 5A
  *
- * Features:
- * - Bold, Italic formatting
- * - Headings (H1, H2, H3)
- * - Bullet lists, Numbered lists
- * - Links
- * - Image upload (base64 inline)
- * - Undo/Redo
- * - Character count
- * - HTML output
+ * Email-body-like WYSIWYG with formatting, alignment, colors, tables, and image upload.
  *
  * @example
  * ```tsx
  * <RichTextEditor
  *   content={htmlContent}
  *   onChange={(html) => setValue('description', html)}
- *   placeholder="Write your newsletter content here..."
- *   error={!!errors.description}
+ *   placeholder="Write your event description here..."
+ *   onImageUpload={uploadImage}
  * />
  * ```
  */
@@ -64,9 +76,11 @@ export interface RichTextEditorProps {
   maxLength?: number;
   /** Minimum height in pixels */
   minHeight?: number;
-  /** Phase 6A.106 Part 3: Callback for Azure Blob Storage image upload */
+  /** Callback for Azure Blob Storage image upload (used for toolbar button, paste, and drop) */
   onImageUpload?: (file: File) => Promise<string>;
 }
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB — matches backend limit
 
 export function RichTextEditor({
   content,
@@ -79,24 +93,68 @@ export function RichTextEditor({
   minHeight = 300,
   onImageUpload,
 }: RichTextEditorProps) {
-  // Phase 6A.106 Fix 1A: Debounce onChange to reduce re-renders
   const debouncedOnChange = useDebouncedCallback((html: string) => {
     onChange(html);
   }, 300);
 
-  // Phase 6A.106 Part 3: Track image upload state
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Stable ref so editor extensions can call the latest uploader
+  const onImageUploadRef = useRef(onImageUpload);
+  useEffect(() => {
+    onImageUploadRef.current = onImageUpload;
+  }, [onImageUpload]);
+
+  // Insert an uploaded image at the current selection
+  const uploadAndInsertImage = useCallback(
+    async (file: File, editorInstance: ReturnType<typeof useEditor>) => {
+      const uploader = onImageUploadRef.current;
+      if (!uploader || !editorInstance) return false;
+
+      if (!file.type.startsWith('image/')) return false;
+      if (file.size > MAX_IMAGE_BYTES) {
+        alert('Image size must be less than 10MB');
+        return true; // handled — block default paste/drop
+      }
+
+      try {
+        setIsUploadingImage(true);
+        const azureUrl = await uploader(file);
+        editorInstance.chain().focus().setImage({ src: azureUrl }).run();
+      } catch (err) {
+        console.error('[RichTextEditor] Image upload failed:', err);
+        alert(err instanceof Error ? err.message : 'Image upload failed. Please try again.');
+      } finally {
+        setIsUploadingImage(false);
+      }
+      return true;
+    },
+    [],
+  );
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        heading: { levels: [1, 2, 3] },
       }),
+      Underline,
+      TextStyle,
+      Color,
+      Highlight.configure({ multicolor: true }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+        alignments: ['left', 'center', 'right', 'justify'],
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: { class: 'rte-table' },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Image.configure({
         inline: true,
-        allowBase64: false, // Phase 6A.106 Part 3: Base64 disabled, use Azure upload
+        allowBase64: false,
       }),
       Link.configure({
         openOnClick: false,
@@ -104,57 +162,65 @@ export function RichTextEditor({
           class: 'text-orange-600 underline hover:text-orange-700',
         },
       }),
-      Placeholder.configure({
-        placeholder,
-      }),
+      Placeholder.configure({ placeholder }),
       CharacterCount.configure({
         limit: maxLength,
-        mode: 'textSize', // Count text only, not HTML markup or base64 images
+        mode: 'textSize',
       }),
     ],
     content,
     editable: !readonly,
+    editorProps: {
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items || !onImageUploadRef.current) return false;
+        for (const item of Array.from(items)) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+              void uploadAndInsertImage(file, editor);
+              return true;
+            }
+          }
+        }
+        return false;
+      },
+      handleDrop: (view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0 || !onImageUploadRef.current) return false;
+        const imageFile = Array.from(files).find((f) => f.type.startsWith('image/'));
+        if (!imageFile) return false;
+        event.preventDefault();
+        void uploadAndInsertImage(imageFile, editor);
+        return true;
+      },
+    },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      // Track editor's own output to distinguish user edits from external prop changes
       lastContentRef.current = html;
       debouncedOnChange(html);
     },
   });
 
-  // Track the last content set (either from editor output or external prop sync)
   const lastContentRef = useRef<string>(content || '');
 
-  // Sync editor content when prop changes (handles form reset and async data loading)
-  // Race condition prevention: lastContentRef tracks the editor's own onChange output,
-  // so debounced echoes from the parent are detected and skipped.
-  // Only genuinely new content (e.g., form reset with API data) triggers a sync.
   useEffect(() => {
     if (!editor) return;
-
-    // Skip empty/placeholder content
     if (!content || content === '<p></p>') return;
-
-    // Skip if content matches what the editor already produced or what we last set
-    // This prevents the debounce race condition (parent re-renders with debounced value)
     if (content === lastContentRef.current) return;
-
-    console.log('[RichTextEditor] Syncing external content:', content.substring(0, 100));
     editor.commands.setContent(content, { emitUpdate: false });
     lastContentRef.current = content;
   }, [editor, content]);
 
-  // Get character count
   const characterCount = editor?.storage.characterCount?.characters() || 0;
 
-  // Phase 6A.106 Fix 2B: Calculate HTML blob size
   const htmlSize = useMemo(() => {
     if (!editor) return '0.0';
     const html = editor.getHTML();
-    return (new Blob([html]).size / 1024).toFixed(1); // Convert to KB
+    return (new Blob([html]).size / 1024).toFixed(1);
   }, [editor?.getHTML()]);
 
-  // Phase 6A.106 Part 3: Handle Azure image upload
   const addImage = useCallback(() => {
     if (!onImageUpload) {
       alert('Image upload is not configured for this editor');
@@ -166,44 +232,20 @@ export function RichTextEditor({
     input.accept = 'image/jpeg,image/png,image/gif,image/webp';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      // Validate file size (10MB max - matches backend)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('Image size must be less than 10MB');
-        return;
-      }
-
-      try {
-        setIsUploadingImage(true);
-
-        // Upload to Azure via callback
-        const azureUrl = await onImageUpload(file);
-
-        // Insert image into editor
-        editor?.chain().focus().setImage({ src: azureUrl }).run();
-      } catch (error) {
-        console.error('[RichTextEditor] Image upload failed:', error);
-        alert(error instanceof Error ? error.message : 'Image upload failed. Please try again.');
-      } finally {
-        setIsUploadingImage(false);
-      }
+      if (!file || !editor) return;
+      await uploadAndInsertImage(file, editor);
     };
     input.click();
-  }, [editor, onImageUpload]);
+  }, [editor, onImageUpload, uploadAndInsertImage]);
 
-  // Handle link insertion
   const setLink = useCallback(() => {
     const previousUrl = editor?.getAttributes('link').href;
     const url = window.prompt('Enter URL:', previousUrl);
-
     if (url === null) return;
-
     if (url === '') {
       editor?.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
-
     editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
@@ -215,33 +257,51 @@ export function RichTextEditor({
     );
   }
 
+  const isInTable = editor.isActive('table');
+
+  // Shared button class — keeps toolbar compact across many groups
+  const btn = (active: boolean, disabled?: boolean) =>
+    `p-2 rounded hover:bg-neutral-200 transition-colors ${active ? 'bg-neutral-300' : ''} ${
+      disabled ? 'opacity-30 cursor-not-allowed' : ''
+    }`;
+
   return (
     <div className="w-full">
       {/* Toolbar */}
       {!readonly && (
-        <div className="border border-neutral-300 border-b-0 rounded-t-lg bg-neutral-50 p-2 flex flex-wrap gap-1">
-          {/* Text Formatting */}
+        <div className="border border-neutral-300 border-b-0 rounded-t-lg bg-neutral-50 p-2 flex flex-wrap gap-1 items-center">
+          {/* Formatting */}
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBold().run()}
-            disabled={!editor.can().chain().focus().toggleBold().run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('bold') ? 'bg-neutral-300' : ''
-            }`}
-            title="Bold"
+            className={btn(editor.isActive('bold'))}
+            title="Bold (Ctrl+B)"
           >
             <Bold className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            disabled={!editor.can().chain().focus().toggleItalic().run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('italic') ? 'bg-neutral-300' : ''
-            }`}
-            title="Italic"
+            className={btn(editor.isActive('italic'))}
+            title="Italic (Ctrl+I)"
           >
             <Italic className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            className={btn(editor.isActive('underline'))}
+            title="Underline (Ctrl+U)"
+          >
+            <UnderlineIcon className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            className={btn(editor.isActive('strike'))}
+            title="Strikethrough"
+          >
+            <Strikethrough className="h-4 w-4" />
           </button>
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
@@ -250,9 +310,7 @@ export function RichTextEditor({
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('heading', { level: 1 }) ? 'bg-neutral-300' : ''
-            }`}
+            className={btn(editor.isActive('heading', { level: 1 }))}
             title="Heading 1"
           >
             <Heading1 className="h-4 w-4" />
@@ -260,9 +318,7 @@ export function RichTextEditor({
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('heading', { level: 2 }) ? 'bg-neutral-300' : ''
-            }`}
+            className={btn(editor.isActive('heading', { level: 2 }))}
             title="Heading 2"
           >
             <Heading2 className="h-4 w-4" />
@@ -270,12 +326,88 @@ export function RichTextEditor({
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('heading', { level: 3 }) ? 'bg-neutral-300' : ''
-            }`}
+            className={btn(editor.isActive('heading', { level: 3 }))}
             title="Heading 3"
           >
             <Heading3 className="h-4 w-4" />
+          </button>
+
+          <div className="w-px h-6 bg-neutral-300 mx-1" />
+
+          {/* Colors — native color picker keeps it small and email-like */}
+          <label
+            className={btn(false)}
+            title="Text color"
+            style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+          >
+            <Palette className="h-4 w-4" />
+            <input
+              type="color"
+              onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+              value={(editor.getAttributes('textStyle').color as string) || '#000000'}
+              style={{
+                width: 0,
+                height: 0,
+                opacity: 0,
+                position: 'absolute',
+                pointerEvents: 'none',
+              }}
+            />
+          </label>
+          <label
+            className={btn(editor.isActive('highlight'))}
+            title="Highlight color"
+            style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+          >
+            <Highlighter className="h-4 w-4" />
+            <input
+              type="color"
+              onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
+              value={(editor.getAttributes('highlight').color as string) || '#FFFF00'}
+              style={{
+                width: 0,
+                height: 0,
+                opacity: 0,
+                position: 'absolute',
+                pointerEvents: 'none',
+              }}
+            />
+          </label>
+
+          <div className="w-px h-6 bg-neutral-300 mx-1" />
+
+          {/* Alignment */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            className={btn(editor.isActive({ textAlign: 'left' }))}
+            title="Align left"
+          >
+            <AlignLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            className={btn(editor.isActive({ textAlign: 'center' }))}
+            title="Align center"
+          >
+            <AlignCenter className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            className={btn(editor.isActive({ textAlign: 'right' }))}
+            title="Align right"
+          >
+            <AlignRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            className={btn(editor.isActive({ textAlign: 'justify' }))}
+            title="Justify"
+          >
+            <AlignJustify className="h-4 w-4" />
           </button>
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
@@ -284,61 +416,92 @@ export function RichTextEditor({
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('bulletList') ? 'bg-neutral-300' : ''
-            }`}
-            title="Bullet List"
+            className={btn(editor.isActive('bulletList'))}
+            title="Bullet list"
           >
             <List className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('orderedList') ? 'bg-neutral-300' : ''
-            }`}
-            title="Numbered List"
+            className={btn(editor.isActive('orderedList'))}
+            title="Numbered list"
           >
             <ListOrdered className="h-4 w-4" />
           </button>
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
 
-          {/* Link & Image */}
+          {/* Insert: link, image, table */}
           <button
             type="button"
             onClick={setLink}
-            className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-              editor.isActive('link') ? 'bg-neutral-300' : ''
-            }`}
-            title="Insert Link"
+            className={btn(editor.isActive('link'))}
+            title="Insert link"
           >
             <LinkIcon className="h-4 w-4" />
           </button>
-          {/* Phase 6A.106 Part 3: Image button (enabled when onImageUpload provided) */}
           {onImageUpload && (
             <button
               type="button"
               onClick={addImage}
               disabled={isUploadingImage}
-              className={`p-2 rounded hover:bg-neutral-200 transition-colors ${
-                isUploadingImage ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              title={isUploadingImage ? 'Uploading image...' : 'Insert Image'}
+              className={btn(false, isUploadingImage)}
+              title={isUploadingImage ? 'Uploading image...' : 'Insert image (or paste / drop)'}
             >
               <ImageIcon className="h-4 w-4" />
             </button>
           )}
+          <button
+            type="button"
+            onClick={() =>
+              editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+            }
+            className={btn(false)}
+            title="Insert 3×3 table"
+          >
+            <TableIcon className="h-4 w-4" />
+          </button>
+
+          {/* Table contextual controls — only when cursor is inside a table */}
+          {isInTable && (
+            <>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+                className={btn(false)}
+                title="Add row below"
+              >
+                <RowsIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+                className={btn(false)}
+                title="Add column after"
+              >
+                <ColumnsIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().deleteTable().run()}
+                className={btn(false)}
+                title="Delete table"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
 
           <div className="w-px h-6 bg-neutral-300 mx-1" />
 
-          {/* Undo/Redo */}
+          {/* History */}
           <button
             type="button"
             onClick={() => editor.chain().focus().undo().run()}
             disabled={!editor.can().chain().focus().undo().run()}
-            className="p-2 rounded hover:bg-neutral-200 transition-colors disabled:opacity-30"
-            title="Undo"
+            className={btn(false, !editor.can().chain().focus().undo().run())}
+            title="Undo (Ctrl+Z)"
           >
             <Undo className="h-4 w-4" />
           </button>
@@ -346,8 +509,8 @@ export function RichTextEditor({
             type="button"
             onClick={() => editor.chain().focus().redo().run()}
             disabled={!editor.can().chain().focus().redo().run()}
-            className="p-2 rounded hover:bg-neutral-200 transition-colors disabled:opacity-30"
-            title="Redo"
+            className={btn(false, !editor.can().chain().focus().redo().run())}
+            title="Redo (Ctrl+Shift+Z)"
           >
             <Redo className="h-4 w-4" />
           </button>
@@ -386,7 +549,6 @@ export function RichTextEditor({
         )}
       </div>
 
-      {/* Phase 6A.106 Part 3: Dynamic image upload status */}
       {!readonly && !onImageUpload && (
         <p className="text-xs text-neutral-500 mt-1">
           Note: Image upload not available for this editor.
@@ -394,7 +556,7 @@ export function RichTextEditor({
       )}
       {!readonly && isUploadingImage && (
         <p className="text-xs text-orange-600 mt-1">
-          ⏳ Uploading image to Azure...
+          Uploading image to Azure...
         </p>
       )}
 
@@ -456,6 +618,74 @@ export function RichTextEditor({
 
         .ProseMirror a:hover {
           color: #E66D00;
+        }
+
+        /* Tables — email-body style */
+        .ProseMirror table {
+          border-collapse: collapse;
+          margin: 1em 0;
+          overflow: hidden;
+          table-layout: fixed;
+          width: 100%;
+        }
+
+        .ProseMirror table td,
+        .ProseMirror table th {
+          border: 1px solid #D1D5DB;
+          box-sizing: border-box;
+          min-width: 1em;
+          padding: 8px 10px;
+          position: relative;
+          vertical-align: top;
+        }
+
+        .ProseMirror table th {
+          background-color: #F3F4F6;
+          font-weight: 600;
+          text-align: left;
+        }
+
+        .ProseMirror table .selectedCell:after {
+          background: rgba(255, 121, 0, 0.15);
+          content: '';
+          left: 0;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          pointer-events: none;
+          position: absolute;
+          z-index: 2;
+        }
+
+        .ProseMirror table .column-resize-handle {
+          background-color: #FF7900;
+          bottom: -2px;
+          pointer-events: none;
+          position: absolute;
+          right: -2px;
+          top: 0;
+          width: 4px;
+        }
+
+        .ProseMirror.resize-cursor {
+          cursor: ew-resize;
+        }
+
+        /* Text alignment */
+        .ProseMirror [style*='text-align: center'] {
+          text-align: center;
+        }
+        .ProseMirror [style*='text-align: right'] {
+          text-align: right;
+        }
+        .ProseMirror [style*='text-align: justify'] {
+          text-align: justify;
+        }
+
+        /* Highlight mark */
+        .ProseMirror mark {
+          padding: 0 2px;
+          border-radius: 2px;
         }
       `}</style>
     </div>

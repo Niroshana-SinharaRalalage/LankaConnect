@@ -95,11 +95,13 @@ public class TicketService : ITicketService
             }
 
             // Create ticket entity
+            // Phase 8YA-2 TODO: tickets only created during paid registration which is blocked
+            // on TBD events (Q2=A); GetValueOrDefault keeps the build green.
             var ticketResult = Ticket.Create(
                 registrationId,
                 eventId,
                 registration.UserId,
-                @event.EndDate);
+                @event.EndDate.GetValueOrDefault());
 
             if (ticketResult.IsFailure)
             {
@@ -112,7 +114,7 @@ public class TicketService : ITicketService
             while (await _ticketRepository.TicketCodeExistsAsync(ticket.TicketCode, cancellationToken))
             {
                 // Regenerate if collision (very rare)
-                ticketResult = Ticket.Create(registrationId, eventId, registration.UserId, @event.EndDate);
+                ticketResult = Ticket.Create(registrationId, eventId, registration.UserId, @event.EndDate.GetValueOrDefault());
                 if (ticketResult.IsFailure)
                 {
                     return Result<TicketResult>.Failure(ticketResult.Error);
@@ -162,8 +164,10 @@ public class TicketService : ITicketService
                 TicketCode = ticket.TicketCode,
                 QrCodeBase64 = qrCodeBase64,
                 EventTitle = @event.Title.Value,
-                EventStartDate = @event.StartDate,
-                EventEndDate = @event.EndDate,
+                // Phase 8YA-2 TODO: TicketPdfData should accept DateTime?; tickets only fire
+                // when registration succeeds (which is blocked on TBD per Q2=A).
+                EventStartDate = @event.StartDate.GetValueOrDefault(),
+                EventEndDate = @event.EndDate.GetValueOrDefault(),
                 EventLocation = @event.Location != null
                     ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}"
                     : "Online Event",
@@ -343,8 +347,9 @@ public class TicketService : ITicketService
             TicketCode = ticket.TicketCode,
             QrCodeBase64 = qrCodeBase64,
             EventTitle = @event.Title.Value,
-            EventStartDate = @event.StartDate,
-            EventEndDate = @event.EndDate,
+            // Phase 8YA-2 TODO: TicketPdfData should accept DateTime?
+            EventStartDate = @event.StartDate.GetValueOrDefault(),
+            EventEndDate = @event.EndDate.GetValueOrDefault(),
             EventLocation = @event.Location != null
                 ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}"
                 : "Online Event",
@@ -457,8 +462,9 @@ public class TicketService : ITicketService
                 TicketCode = existingTicket.TicketCode,
                 QrCodeBase64 = qrCodeBase64,
                 EventTitle = @event.Title.Value,
-                EventStartDate = @event.StartDate,
-                EventEndDate = @event.EndDate,
+                // Phase 8YA-2 TODO: TicketPdfData should accept DateTime?
+                EventStartDate = @event.StartDate.GetValueOrDefault(),
+                EventEndDate = @event.EndDate.GetValueOrDefault(),
                 EventLocation = @event.Location != null
                     ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}"
                     : "Online Event",

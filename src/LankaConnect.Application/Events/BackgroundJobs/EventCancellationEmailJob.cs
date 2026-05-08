@@ -268,7 +268,8 @@ public class EventCancellationEmailJob
                         userEmail: email,
                         eventId: eventId,
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
-                        eventStartDate: @event.StartDate,
+                        // Phase 8YA-2 TODO: EventCancellationEmailParams.Create should accept DateTime?.
+                        eventStartDate: @event.StartDate.GetValueOrDefault(),
                         timeZoneId: @event.TimeZoneId,
                         eventLocation: eventLocation,
                         cancellationReason: cancellationReason,

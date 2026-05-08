@@ -77,7 +77,8 @@ public class GetEventRecommendationsQueryHandler : IQueryHandler<GetEventRecomme
         // Apply basic filters
         if (request.ForDate.HasValue)
         {
-            events = events.Where(e => e.StartDate.Date == request.ForDate.Value.Date).ToList();
+            // Phase 8YA-2 TODO: explicitly exclude TBD events from date-targeted recommendations.
+            events = events.Where(e => e.StartDate.HasValue && e.StartDate.Value.Date == request.ForDate.Value.Date).ToList();
         }
         
         if (request.EventTypes.Any())

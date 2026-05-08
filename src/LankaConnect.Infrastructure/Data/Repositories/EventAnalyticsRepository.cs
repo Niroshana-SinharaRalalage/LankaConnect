@@ -271,7 +271,8 @@ public class EventAnalyticsRepository : Repository<EventAnalytics>, IEventAnalyt
                         {
                             EventId = a.EventId,
                             Title = events.First(e => e.Id == a.EventId).Title.Value,
-                            EventDate = events.First(e => e.Id == a.EventId).StartDate,
+                            // Phase 8YA-2 TODO: EventAnalyticsSummary.EventDate should be DateTime?
+                            EventDate = events.First(e => e.Id == a.EventId).StartDate.GetValueOrDefault(),
                             Views = a.TotalViews,
                             Registrations = registrationDict.GetValueOrDefault(a.EventId, 0),
                             ConversionRate = a.ConversionRate
@@ -285,7 +286,7 @@ public class EventAnalyticsRepository : Repository<EventAnalytics>, IEventAnalyt
                         {
                             EventId = e.Id,
                             Title = e.Title.Value,
-                            EventDate = e.StartDate,
+                            EventDate = e.StartDate.GetValueOrDefault(),
                             Views = analytics.FirstOrDefault(a => a.EventId == e.Id)?.TotalViews ?? 0,
                             Registrations = registrationDict.GetValueOrDefault(e.Id, 0),
                             ConversionRate = analytics.FirstOrDefault(a => a.EventId == e.Id)?.ConversionRate ?? 0

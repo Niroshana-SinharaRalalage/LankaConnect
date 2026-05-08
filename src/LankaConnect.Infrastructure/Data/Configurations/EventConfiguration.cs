@@ -36,12 +36,12 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         });
 
         // Configure basic properties
+        // Phase 8YA.1: dates are nullable for TBD events. Migration
+        // Phase8YA1_AllowNullEventDates drops NOT NULL on both columns.
         builder.Property(e => e.StartDate)
-            .IsRequired()
             .HasColumnType("timestamp with time zone");
 
         builder.Property(e => e.EndDate)
-            .IsRequired()
             .HasColumnType("timestamp with time zone");
 
         builder.Property(e => e.OrganizerId)

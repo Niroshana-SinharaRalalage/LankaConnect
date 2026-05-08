@@ -144,7 +144,10 @@ public class NewsletterEmailJob
                 if (@event != null)
                 {
                     eventTitle = @event.Title?.Value ?? "Untitled Event";
-                    eventDate = FormatEventDateTimeRange(@event.StartDate, @event.EndDate);
+                    // Phase 8YA-2 TODO: render "Date TBD" when StartDate/EndDate null on TBD events.
+                    eventDate = (@event.StartDate.HasValue && @event.EndDate.HasValue)
+                        ? FormatEventDateTimeRange(@event.StartDate.Value, @event.EndDate.Value)
+                        : "Date TBD";
                     eventDescription = @event.Description?.Value ?? "";  // Phase 6A.83: Extract event description
                     eventLocation = GetEventLocationString(@event);
                     hasSignUpLists = @event.HasSignUpLists();

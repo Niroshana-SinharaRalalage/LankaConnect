@@ -97,7 +97,7 @@ public class EventApprovedEventHandler : INotificationHandler<DomainEventNotific
                     organizerEmail: organizer.Email.Value,
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime? (Q1=A allows TBD-Approved events)
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: GetEventLocationString(@event),
                     approvedAt: domainEvent.ApprovedAt,

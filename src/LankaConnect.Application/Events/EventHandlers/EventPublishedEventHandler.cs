@@ -147,7 +147,7 @@ public class EventPublishedEventHandler : INotificationHandler<DomainEventNotifi
                         eventId: @event.Id,
                         eventTitle: @event.Title.Value,
                         eventDescription: @event.Description.Value,
-                        eventStartDate: @event.StartDate,
+                        eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: Q1=A allows TBD-Published; param class must accept DateTime? and render "Date TBD"
                         timeZoneId: @event.TimeZoneId,
                         eventLocation: eventLocation,
                         eventCity: eventCity,

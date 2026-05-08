@@ -140,7 +140,7 @@ public class AnonymousRegistrationConfirmedEventHandler : INotificationHandler<D
                     userName: contactName,
                     userEmail: domainEvent.AttendeeEmail,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
                     eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),

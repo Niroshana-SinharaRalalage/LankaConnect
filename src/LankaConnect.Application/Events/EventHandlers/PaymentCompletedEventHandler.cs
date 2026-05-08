@@ -229,7 +229,8 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     userName: recipientName,
                     contactEmail: recipientEmail,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    // Phase 8YA-2 TODO: payment can't fire on TBD event today (Register blocks).
+                    eventStartDate: @event.StartDate.GetValueOrDefault(),
                     eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
@@ -525,9 +526,13 @@ public class PaymentCompletedEventHandler : INotificationHandler<DomainEventNoti
                     ticketCode = ticketResult.Value.TicketCode;
 
                     // Phase 6A.100: Update typed params with ticket info using fluent method
+                    // Phase 8YA-2 TODO: render expiry as "TBD" when EndDate is null on TBD events.
+                    var ticketExpiryText = @event.EndDate.HasValue
+                        ? @event.EndDate.Value.AddDays(1).ToString("MMMM dd, yyyy")
+                        : "TBD";
                     typedParams.WithTicket(
                         ticketResult.Value.TicketCode,
-                        @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy"),
+                        ticketExpiryText,
                         _emailUrlHelper.BuildTicketViewUrl(ticketResult.Value.TicketId));
 
                     // Get PDF bytes for email attachment

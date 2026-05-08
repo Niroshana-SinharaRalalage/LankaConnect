@@ -419,7 +419,7 @@ public class GetEventsQueryHandlerTests
                 Id = e.Id,
                 Title = e.Title.Value,
                 Status = e.Status,
-                StartDate = e.StartDate
+                StartDate = e.StartDate.GetValueOrDefault() // Phase 8YA-2 TODO: test fixture should accept DateTime?
             });
 
         // Guest user with coordinates (triggers location-based sorting)
@@ -482,7 +482,7 @@ public class GetEventsQueryHandlerTests
                 Id = e.Id,
                 Title = e.Title.Value,
                 Status = e.Status,
-                StartDate = e.StartDate
+                StartDate = e.StartDate.GetValueOrDefault() // Phase 8YA-2 TODO: test fixture should accept DateTime?
             });
 
         // Guest user with coordinates
@@ -544,7 +544,7 @@ public class GetEventsQueryHandlerTests
                 Id = e.Id,
                 Title = e.Title.Value,
                 Status = e.Status,
-                StartDate = e.StartDate
+                StartDate = e.StartDate.GetValueOrDefault() // Phase 8YA-2 TODO: test fixture should accept DateTime?
             });
 
         // Guest user with coordinates

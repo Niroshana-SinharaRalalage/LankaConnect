@@ -6,6 +6,45 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phase 1 of 5 ✅ COMPLETE on develop
+
+**Status**: Phase 1 (Domain + DB foundation) complete, committed to `develop`. Phases 2–5 pending.
+
+**Goal**: Allow organizers to create events without committing to start/end dates yet (Status = `Planning`); `SetDates(...)` transitions Planning → Draft when both dates are filled. Q1=A allows publishing TBD events publicly with a "Date TBD" badge.
+
+**Classification**: feature missing — dates were required end-to-end (DB NOT NULL → Domain non-nullable → Command non-nullable → DTO → zod). Architect-verdict 2026-05-08 selected Option 3 (lifecycle state + nullable `DateTime?`). Plan: [docs/MASTER_TODO_TBD_EVENT_DATES.md](MASTER_TODO_TBD_EVENT_DATES.md).
+
+### Phase 1 deliverables (this commit)
+- `EventStatus.Planning = 8` added to enum
+- `Event.StartDate` / `Event.EndDate` → `DateTime?`
+- New `Event.SetDates(DateTime, DateTime)` instance method (Planning → Draft transition; Q4=A silent — no email)
+- `Event.Create(...)` accepts nullable date pair; both-null → Planning, both-set → Draft, mixed → Result.Failure
+- `Event.Publish()` allows Planning → Published (Q1=A)
+- Null-safe guards in `Register*`, `Complete`, `ActivateEvent`, `HasSchedulingConflict` (Q2=A blocks register on TBD)
+- `EventConfiguration.cs` drops `IsRequired()` on the date columns
+- EF migration `20260508153410_Phase8YA1_AllowNullEventDates` — pure `DROP NOT NULL` on both columns
+- `EmailDateTimeHelper` gains `DateTime?` overloads → "Date TBD" / "Time TBD" centralisation
+- `EventExtensions.GetDisplayLabel` early-returns "Date TBD"
+- ~30 immediate compile-fallout sites patched defensively with `// Phase 8YA-2 TODO` markers
+- 13 new domain unit tests (`Event_TbdDates_Tests`), all pass
+
+### Verification
+- `dotnet build LankaConnect.sln` clean
+- Domain.Tests: 696 pass + 13 new pass + 2 pre-existing failures (FormResponse/Donation, unrelated to dates — confirmed pre-Phase-1 failures via stash test)
+- Application.Tests: 2627 pass, 0 fail (no regressions)
+- Shared.Tests: 5 pre-existing timezone failures (unrelated to my changes — confirmed via stash test)
+- Migration not yet applied to staging — Phase 5 will apply post Application/FE wiring
+
+### Out of Phase 1
+- Application command/DTO accepting nullable dates → Phase 2
+- Job filters for TBD events → Phase 2
+- ICS export 422 on TBD → Phase 2
+- Frontend form toggle + display "Date TBD" → Phase 3
+- Sort/filter polish + Featured/Nearby exclusion → Phase 4
+- Operator UAT + 12-cell smoke matrix → Phase 5
+
+---
+
 ## 🎯 2026-05-07 (Phase 8X — External Payment Events) — ✅ SHIPPED + STAGING-VERIFIED
 
 **Status**: 9 slices shipped to `develop`, staging-verified end-to-end. 15/15 testable API smoke cells PASS. Backend functionally complete; FE form + detail page + list card live.

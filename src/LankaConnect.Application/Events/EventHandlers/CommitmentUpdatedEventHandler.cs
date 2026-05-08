@@ -108,7 +108,7 @@ public class CommitmentUpdatedEventHandler : INotificationHandler<DomainEventNot
                     eventTitle: @event.Title?.Value ?? "Untitled Event",
                     signupItem: domainEvent.ItemDescription,
                     quantity: newQuantity,  // Phase 6A.121: Calculated from dual fields above
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: locationProjection.LegacyFlatString,
                     eventDetailsUrl: $"{_emailUrlHelper.BuildEventDetailsUrl(@event.Id)}#sign-ups"

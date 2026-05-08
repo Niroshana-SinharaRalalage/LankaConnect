@@ -22,8 +22,10 @@ public static class EventRecommendationMapper
             EventId = domainRecommendation.Event.Id,
             Title = domainRecommendation.Event.Title.Value,
             Description = domainRecommendation.Event.Description.Value,
-            StartDate = domainRecommendation.Event.StartDate,
-            EndDate = domainRecommendation.Event.EndDate,
+            // Phase 8YA-2 TODO: change DTO StartDate/EndDate to DateTime? and propagate
+            // null through the recommendation API for TBD events.
+            StartDate = domainRecommendation.Event.StartDate.GetValueOrDefault(),
+            EndDate = domainRecommendation.Event.EndDate.GetValueOrDefault(),
             RecommendationScore = domainRecommendation.Score.CompositeScore,
             RecommendationReasons = new List<string> { domainRecommendation.RecommendationReason }
         };

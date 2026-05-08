@@ -40,8 +40,14 @@ public static class EventExtensions
         if (@event.Status == EventStatus.Completed)
             return "Completed";
 
+        // Phase 8YA.1: TBD events (StartDate/EndDate null) skip the date-driven phases
+        // entirely and surface "Date TBD" instead of the lifecycle label. Q1=A allows
+        // these to be Published, so the listing card still gets a useful badge.
+        if (!@event.StartDate.HasValue || !@event.EndDate.HasValue)
+            return "Date TBD";
+
         // Priority 3: Inactive (1 week after event ended)
-        if (@event.EndDate.AddDays(7) < now)
+        if (@event.EndDate.Value.AddDays(7) < now)
             return "Inactive";
 
         // Priority 4: New (within 1 week of publish)
@@ -49,7 +55,7 @@ public static class EventExtensions
             return "New";
 
         // Priority 5: Upcoming (1 week before start to start time)
-        if (@event.StartDate.AddDays(-7) <= now && now < @event.StartDate)
+        if (@event.StartDate.Value.AddDays(-7) <= now && now < @event.StartDate.Value)
             return "Upcoming";
 
         // Phase 6A.X: For Published/Active events, show "Upcoming" instead of status
@@ -57,11 +63,11 @@ public static class EventExtensions
         if (@event.Status == EventStatus.Published || @event.Status == EventStatus.Active)
         {
             // If event is in the future (not within 1 week of start), show "Upcoming"
-            if (now < @event.StartDate)
+            if (now < @event.StartDate.Value)
                 return "Upcoming";
 
             // If event is currently happening, show "Active"
-            if (now >= @event.StartDate && now <= @event.EndDate)
+            if (now >= @event.StartDate.Value && now <= @event.EndDate.Value)
                 return "Active";
         }
 

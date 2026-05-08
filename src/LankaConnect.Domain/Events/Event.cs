@@ -27,8 +27,12 @@ public partial class Event : BaseEntity
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
-    public DateTime StartDate { get; private set; }
-    public DateTime EndDate { get; private set; }
+    // Phase 8YA.1: TBD-dates support. Null when the event was created in `Planning`
+    // status without confirmed dates. SetDates(start, end) populates both atomically
+    // and transitions Planning → Draft. Reads must null-check before any DateTime
+    // member access (.Date / .ToString / .AddDays / .Kind).
+    public DateTime? StartDate { get; private set; }
+    public DateTime? EndDate { get; private set; }
     public Guid OrganizerId { get; private set; }
     public int Capacity { get; private set; }
     public EventStatus Status { get; private set; }
@@ -150,17 +154,24 @@ public partial class Event : BaseEntity
         Description = null!;
     }
 
-    private Event(EventTitle title, EventDescription description, DateTime startDate, DateTime endDate,
+    private Event(EventTitle title, EventDescription description, DateTime? startDate, DateTime? endDate,
         Guid organizerId, int capacity, EventLocation? location = null, EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         Title = title;
         Description = description;
-        // Ensure dates are always stored as UTC for PostgreSQL compatibility
-        StartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
-        EndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+        // Phase 8YA.1: Dates are nullable for TBD events. Coerce to UTC only when present.
+        StartDate = startDate.HasValue
+            ? (startDate.Value.Kind == DateTimeKind.Utc ? startDate.Value : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc))
+            : null;
+        EndDate = endDate.HasValue
+            ? (endDate.Value.Kind == DateTimeKind.Utc ? endDate.Value : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc))
+            : null;
         OrganizerId = organizerId;
         Capacity = capacity;
-        Status = EventStatus.Draft;
+        // Phase 8YA.1: Status branches on date presence — TBD events start in Planning,
+        // dated events start in Draft (existing behaviour). SetDates(start, end) on a
+        // Planning event transitions it to Draft.
+        Status = (startDate.HasValue && endDate.HasValue) ? EventStatus.Draft : EventStatus.Planning;
         Location = location;
         Category = category;
         TicketPrice = ticketPrice;
@@ -170,8 +181,8 @@ public partial class Event : BaseEntity
         IsFreeEvent = ticketPrice != null && ticketPrice.IsZero;
     }
 
-    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,
-        DateTime endDate, Guid organizerId, int capacity, EventLocation? location = null,
+    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime? startDate,
+        DateTime? endDate, Guid organizerId, int capacity, EventLocation? location = null,
         EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         if (title == null)
@@ -183,17 +194,69 @@ public partial class Event : BaseEntity
         if (organizerId == Guid.Empty)
             return Result<Event>.Failure("Organizer ID is required");
 
-        if (startDate <= DateTime.UtcNow)
-            return Result<Event>.Failure("Start date cannot be in the past");
+        // Phase 8YA.1: TBD events created with both dates null start in Planning;
+        // dated events with both dates set start in Draft. Mixed (one set, one null)
+        // is invalid — the schema/domain treat the date pair as atomic.
+        var bothNull = !startDate.HasValue && !endDate.HasValue;
+        var bothSet = startDate.HasValue && endDate.HasValue;
+        if (!bothNull && !bothSet)
+            return Result<Event>.Failure(
+                "Both start and end dates must be provided together, or both must be empty (TBD event)");
 
-        if (endDate <= startDate)
-            return Result<Event>.Failure("End date must be after start date");
+        if (bothSet)
+        {
+            if (startDate!.Value <= DateTime.UtcNow)
+                return Result<Event>.Failure("Start date cannot be in the past");
+
+            if (endDate!.Value <= startDate.Value)
+                return Result<Event>.Failure("End date must be after start date");
+        }
 
         if (capacity <= 0)
             return Result<Event>.Failure("Capacity must be greater than 0");
 
         var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location, category, ticketPrice);
         return Result<Event>.Success(@event);
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: Sets (or replaces) the start/end date pair for an event. Used
+    /// to fill in TBD dates on a Planning event, or to reschedule a Draft event
+    /// before it is published.
+    ///
+    /// Status transitions:
+    /// - Planning → Draft (Q4=A: silent — no email).
+    /// - Draft, Published, UnderReview, Postponed, Active: status preserved.
+    /// - Cancelled, Completed, Archived: rejected (immutable from a date perspective —
+    ///   use the dedicated lifecycle methods if you need to revive the event).
+    /// </summary>
+    public Result SetDates(DateTime startDate, DateTime endDate)
+    {
+        if (Status == EventStatus.Cancelled || Status == EventStatus.Completed
+            || Status == EventStatus.Archived)
+        {
+            return Result.Failure($"Cannot set dates on a {Status} event");
+        }
+
+        if (startDate <= DateTime.UtcNow)
+            return Result.Failure("Start date cannot be in the past");
+
+        if (endDate <= startDate)
+            return Result.Failure("End date must be after start date");
+
+        StartDate = startDate.Kind == DateTimeKind.Utc
+            ? startDate
+            : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        EndDate = endDate.Kind == DateTimeKind.Utc
+            ? endDate
+            : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+        // Q4=A: silent Planning → Draft when dates are added.
+        if (Status == EventStatus.Planning)
+            Status = EventStatus.Draft;
+
+        MarkAsUpdated();
+        return Result.Success();
     }
 
     /// <summary>
@@ -216,8 +279,10 @@ public partial class Event : BaseEntity
         if (Status == EventStatus.Published)
             return Result.Failure("Event is already published");
 
-        if (Status != EventStatus.Draft)
-            return Result.Failure("Only draft events can be published");
+        // Phase 8YA.1 (Q1=A): Planning events can publish directly — TBD events are
+        // publicly listed with a "Date TBD" badge until SetDates fills them in.
+        if (Status != EventStatus.Draft && Status != EventStatus.Planning)
+            return Result.Failure("Only draft or planning events can be published");
 
         Status = EventStatus.Published;
         PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp for "New" label
@@ -276,7 +341,12 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events even when Published —
+        // organisers must commit to dates before accepting RSVPs.
+        if (StartDate == null)
+            return Result.Failure("Cannot register for an event without confirmed dates");
+
+        if (StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (userId == Guid.Empty)
@@ -309,7 +379,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events.
+        if (StartDate == null)
+            return Result.Failure("Cannot register for an event without confirmed dates");
+
+        if (StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (attendeeInfo == null)
@@ -368,7 +442,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events.
+        if (StartDate == null)
+            return Result.Failure("Cannot register for an event without confirmed dates");
+
+        if (StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         // Phase 8X.3 — ExternalPaid events have no internal registration path.
@@ -714,7 +792,9 @@ public partial class Event : BaseEntity
 
     public void Complete()
     {
-        if (Status == EventStatus.Published && DateTime.UtcNow > EndDate)
+        // Phase 8YA.1: TBD events (EndDate == null) are never auto-completed —
+        // they stay Published until SetDates fills in the end date.
+        if (Status == EventStatus.Published && EndDate.HasValue && DateTime.UtcNow > EndDate.Value)
         {
             Status = EventStatus.Completed;
             MarkAsUpdated();
@@ -726,7 +806,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Only published events can be activated");
 
-        if (DateTime.UtcNow < StartDate)
+        // Phase 8YA.1: TBD events cannot be activated until SetDates fills in StartDate.
+        if (!StartDate.HasValue)
+            return Result.Failure("Event cannot be activated without a confirmed start date");
+
+        if (DateTime.UtcNow < StartDate.Value)
             return Result.Failure("Event cannot be activated before start date");
 
         Status = EventStatus.Active;
@@ -893,11 +977,21 @@ public partial class Event : BaseEntity
         if (otherEvent == null)
             return Result.Failure("Cannot check conflict with null event");
 
+        // Phase 8YA.1: TBD events have no concrete dates to overlap on. Short-circuit
+        // before any DateTime member access — surfacing the unknown outcome through
+        // the existing "no conflict" Failure channel so callers don't get a false
+        // positive overlap from null comparisons.
+        if (!StartDate.HasValue || !EndDate.HasValue
+            || !otherEvent.StartDate.HasValue || !otherEvent.EndDate.HasValue)
+        {
+            return Result.Failure("Cannot determine conflict — one or both events have no confirmed dates");
+        }
+
         // Check for date overlap
-        bool hasDateOverlap = StartDate.Date == otherEvent.StartDate.Date ||
-                             EndDate.Date == otherEvent.EndDate.Date ||
-                             (StartDate <= otherEvent.StartDate && EndDate >= otherEvent.StartDate) ||
-                             (StartDate <= otherEvent.EndDate && EndDate >= otherEvent.EndDate);
+        bool hasDateOverlap = StartDate.Value.Date == otherEvent.StartDate.Value.Date ||
+                             EndDate.Value.Date == otherEvent.EndDate.Value.Date ||
+                             (StartDate.Value <= otherEvent.StartDate.Value && EndDate.Value >= otherEvent.StartDate.Value) ||
+                             (StartDate.Value <= otherEvent.EndDate.Value && EndDate.Value >= otherEvent.EndDate.Value);
 
         return hasDateOverlap ? Result.Success() : Result.Failure("No scheduling conflict");
     }

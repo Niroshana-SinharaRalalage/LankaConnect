@@ -84,8 +84,9 @@ public class RegistrationEmailService : IRegistrationEmailService
                 userName: recipientName,
                 userEmail: recipientEmail,
                 eventTitle: @event.Title.Value,
-                eventStartDate: @event.StartDate,
-                eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                // Phase 8YA-2 TODO: registration is blocked on TBD events (Q2=A); param class should accept DateTime?.
+                eventStartDate: @event.StartDate.GetValueOrDefault(),
+                eventStartTime: @event.StartDate.HasValue ? @event.StartDate.Value.ToString("h:mm tt") : "TBD",
                 eventLocation: GetEventLocationString(@event),
                 eventDetailsUrl: eventDetailsUrl,
                 registrationDate: registration.CreatedAt
@@ -217,8 +218,9 @@ public class RegistrationEmailService : IRegistrationEmailService
                 userName: recipientName,
                 contactEmail: recipientEmail,
                 eventTitle: @event.Title.Value,
-                eventStartDate: @event.StartDate,
-                eventStartTime: @event.StartDate.ToString("h:mm tt"),
+                // Phase 8YA-2 TODO: registration is blocked on TBD events (Q2=A); param class should accept DateTime?.
+                eventStartDate: @event.StartDate.GetValueOrDefault(),
+                eventStartTime: @event.StartDate.HasValue ? @event.StartDate.Value.ToString("h:mm tt") : "TBD",
                 eventLocation: GetEventLocationString(@event),
                 eventDetailsUrl: eventDetailsUrl,
                 amountPaid: amountPaid,
@@ -243,7 +245,8 @@ public class RegistrationEmailService : IRegistrationEmailService
             // Add ticket information
             emailParams.WithTicket(
                 ticketCode: ticket.TicketCode,
-                expiryDate: @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy"),
+                // Phase 8YA-2 TODO: render expiry as "TBD" when EndDate is null on TBD events.
+                expiryDate: @event.EndDate.HasValue ? @event.EndDate.Value.AddDays(1).ToString("MMMM dd, yyyy") : "TBD",
                 ticketUrl: "" // Ticket URL if applicable
             );
 

@@ -99,7 +99,7 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                     organizerEmail: organizer.Email.Value,
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
                     timeZoneId: @event.TimeZoneId,
                     reason: domainEvent.Reason,
                     rejectedAt: domainEvent.RejectedAt);

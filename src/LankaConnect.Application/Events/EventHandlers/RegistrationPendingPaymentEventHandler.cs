@@ -151,7 +151,7 @@ public class RegistrationPendingPaymentEventHandler
                 userName: domainEvent.ContactName,
                 eventId: @event.Id,
                 eventTitle: @event.Title.Value,
-                eventStartDate: @event.StartDate,
+                eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: pending payment can't fire on TBD today
                 timeZoneId: @event.TimeZoneId,
                 eventLocation: @event.Location?.ToString() ?? "TBD",
                 registrationId: domainEvent.RegistrationId,

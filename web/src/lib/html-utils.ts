@@ -48,14 +48,23 @@ function sanitizeStyleAttribute(rawStyle: string): string {
 // One-time module-level hook: filter the `style` attribute through the CSS
 // allowlist before DOMPurify finalizes the attribute. This module is the sole
 // consumer of dompurify in the codebase, so the hook is safe to set globally.
-DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
-  if (data.attrName === 'style' && typeof data.attrValue === 'string') {
-    data.attrValue = sanitizeStyleAttribute(data.attrValue);
-    if (data.attrValue.length === 0) {
-      data.keepAttr = false;
+//
+// SSR safety: dompurify's browser build expects `window` to exist; on the
+// Next.js Node SSR pass, `DOMPurify.addHook` is undefined and would throw at
+// module evaluation, breaking every route that imports this file (e.g.
+// /events/[id]). Skip hook registration on the server; sanitize() below is
+// also guarded so SSR returns a passthrough that the client re-sanitizes
+// during hydration.
+if (typeof window !== 'undefined' && typeof DOMPurify.addHook === 'function') {
+  DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
+    if (data.attrName === 'style' && typeof data.attrValue === 'string') {
+      data.attrValue = sanitizeStyleAttribute(data.attrValue);
+      if (data.attrValue.length === 0) {
+        data.keepAttr = false;
+      }
     }
-  }
-});
+  });
+}
 
 /**
  * Sanitize HTML content for safe rendering with dangerouslySetInnerHTML.
@@ -67,6 +76,12 @@ DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
  * inline CSS to the ALLOWED_CSS_PROPS allowlist.
  */
 export function sanitizeHtml(html: string): string {
+  // SSR safety: dompurify needs a DOM. On Node, return an empty placeholder
+  // so React can still render the surrounding markup; the client will
+  // re-render this content with full sanitization during hydration.
+  if (typeof window === 'undefined' || typeof DOMPurify.sanitize !== 'function') {
+    return '';
+  }
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       'p', 'br', 'b', 'i', 'strong', 'em', 'u', 's', 'del', 'mark', 'span',

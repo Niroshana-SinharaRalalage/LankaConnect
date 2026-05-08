@@ -6,6 +6,26 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2+3+4 of 5 ✅ COMPLETE on develop
+
+**Phase 4 deliverables (this commit) — Backend listing/sort/filter polish (Q3=A):**
+- `GetFeaturedEventsQueryHandler` — explicit `e.StartDate.HasValue && e.StartDate.Value > now` filter on the published-events fallback path; same pattern in the helper that picks "nearest events" by location. TBD events excluded from the Featured carousel.
+- `GetNearbyEventsQueryHandler` — added `filteredEvents = filteredEvents.Where(e => e.StartDate.HasValue)` at the top of the in-memory filter chain. TBD events excluded from Nearby.
+- `GetUpcomingEventsForUserQueryHandler` — explicit HasValue + `> UtcNow` chain replaces the old single `> now` comparison so a user's "Upcoming Events" list shows only date-confirmed entries (defensive against any future Q2 flip allowing waitlist on TBD).
+- `GetEventsQueryHandler` — main listing now sorts dated events first by `StartDate` ascending, with TBD events appended at the bottom via `OrderBy(e => e.StartDate.HasValue ? 0 : 1).ThenBy(e => e.StartDate)` tiebreaker (Q1=A — TBD events appear publicly with "Date TBD" badge but at the bottom of the listing). Same tiebreaker on the no-coords tail.
+- 5 new Application unit tests in `TbdEventsExclusionTests.cs` pinning the predicate shape + sort behaviour against real Event aggregates.
+
+**Phase 4 verification:**
+- Build clean
+- New TBD-exclusion + sort tests: 5/5 pass
+- Application.Tests: **2644 / 2650 (0 fail, 6 skipped)** — was 2637 pre-Phase-4, +5 mine + 2 from concurrent Phase 8X.11 patches
+- Domain.Tests: 697 / 699 (2 pre-existing failures unchanged)
+
+**Out of Phase 4 (deferred):**
+- `EventRepository` `OrderByDescending(StartDate)` sites (organiser dashboard, by-status job query, published-events fallback) — NOT user-facing date-sorted carousels; PostgreSQL default puts TBD events at the top of organiser-dashboard descending sort, which is acceptable UX (TBD events are typically work-in-progress and should be visible to the organiser). Can be tightened in a future polish slice if a specific surface complains.
+
+**Migration NOT yet applied to staging** — Phase 5 deploys all 4 phases + 12-cell cross-surface smoke matrix + operator UAT gate.
+
 ## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2+3 of 5 ✅ COMPLETE on develop
 
 **Phase 3 deliverables (this commit) — Frontend (zod + types + forms + display):**

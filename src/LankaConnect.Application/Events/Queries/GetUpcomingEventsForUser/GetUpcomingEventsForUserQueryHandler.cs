@@ -73,8 +73,17 @@ public class GetUpcomingEventsForUserQueryHandler : IQueryHandler<GetUpcomingEve
                 {
                     var @event = await _eventRepository.GetByIdAsync(eventId, cancellationToken);
 
-                    // Filter: upcoming events (start date in the future) and published status
-                    if (@event != null && @event.StartDate > DateTime.UtcNow && @event.Status == EventStatus.Published)
+                    // Filter: upcoming events (start date in the future) and published status.
+                    // Phase 8YA.4 (Q3=A): explicit HasValue clause excludes TBD events. A
+                    // user's "Upcoming Events" list signals "events you've registered for
+                    // that have a real start time approaching" — TBD events block
+                    // registration today (Q2=A) so this is a defensive guard, but if Q2
+                    // ever flips to allow waitlist on TBD this filter still ensures the
+                    // list shows only date-confirmed entries.
+                    if (@event != null
+                        && @event.Status == EventStatus.Published
+                        && @event.StartDate.HasValue
+                        && @event.StartDate.Value > DateTime.UtcNow)
                     {
                         upcomingEvents.Add(_mapper.Map<EventDto>(@event));
                     }

@@ -152,7 +152,23 @@
 ---
 
 ### Phase 4 — Listing/sort/filter polish
-**Status:** ⚪ NOT STARTED
+**Status:** ✅ COMPLETE (2026-05-08)
+
+**What shipped:**
+- `GetFeaturedEventsQueryHandler` — explicit `e.StartDate.HasValue && e.StartDate.Value > now` filter on the published-events fallback path; same pattern in the helper that picks "nearest events" by location. Q3=A: TBD events excluded from the Featured carousel.
+- `GetNearbyEventsQueryHandler` — added explicit `filteredEvents = filteredEvents.Where(e => e.StartDate.HasValue)` at the top of the in-memory filter chain. Q3=A: TBD events excluded from Nearby.
+- `GetUpcomingEventsForUserQueryHandler` — explicit `e.StartDate.HasValue && e.StartDate.Value > DateTime.UtcNow` clause replaces the old single comparison so a user's "Upcoming Events" list shows only date-confirmed entries (defensive against any future Q2 flip that allows waitlist on TBD).
+- `GetEventsQueryHandler` — main listing now sorts dated events first by `StartDate` ascending, with TBD events appended at the bottom via a `OrderBy(e => e.StartDate.HasValue ? 0 : 1).ThenBy(e => e.StartDate)` tiebreaker. Same tiebreaker on the no-coords tail (`eventsWithoutCoords`).
+- 5 new Application unit tests in `TbdEventsExclusionTests.cs` — pin the predicate shape (HasValue + > now) and the sort tiebreaker (TBD bottom + dated ascending) against real `Event` aggregates rather than mocked handler internals.
+
+**Phase 4 verification:**
+- Build clean across the solution.
+- New TBD-exclusion + sort tests: 5/5 pass.
+- Application.Tests: 2644 / 2650 (0 fail, 6 skipped) — was 2637 pre-Phase-4 + 5 my new tests + 2 from Phase 8X.11 patches landed by user/linter.
+- Domain.Tests: 697 / 699 (2 pre-existing FormResponse + DonationConfiguration failures unchanged from Phase 1 baseline).
+
+**Out of Phase 4 (deferred):**
+- `EventRepository` `OrderByDescending(e => e.StartDate)` sites (organiser dashboard, by-status job query, published-events fallback) — these are NOT user-facing date-sorted carousels. PostgreSQL default `NULLS LAST ASC / NULLS FIRST DESC` puts TBD events at the top of organiser-dashboard descending sort, which is acceptable UX (TBD events are typically work-in-progress and should be visible to the organiser). Repository sort ordering can be tightened in a future polish slice if a specific surface complains.
 
 **Scope:**
 - TBD events sort to bottom of date-ordered lists everywhere: `OrderBy(e => e.StartDate.HasValue).ThenBy(e => e.StartDate)`.
@@ -260,11 +276,13 @@
 - [x] `web/src/presentation/lib/validators/__tests__/event.schemas.tbd-dates.test.ts` — 11 vitest tests
 - [x] `web/src/presentation/utils/__tests__/eventMapper.tbd-dates.test.ts` — 5 vitest tests
 
-### Phase 4 (later)
-- [ ] `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` (sort tiebreakers)
-- [ ] `src/LankaConnect.Application/Events/Queries/GetFeaturedEvents/GetFeaturedEventsQueryHandler.cs`
-- [ ] `src/LankaConnect.Application/Events/Queries/GetNearbyEvents/GetNearbyEventsQueryHandler.cs`
-- [ ] `src/LankaConnect.Application/Events/Queries/GetUpcomingEventsForUser/GetUpcomingEventsForUserQueryHandler.cs`
+### Phase 4 ✅
+- [x] `src/LankaConnect.Application/Events/Queries/GetFeaturedEvents/GetFeaturedEventsQueryHandler.cs` — HasValue filter (2 sites)
+- [x] `src/LankaConnect.Application/Events/Queries/GetNearbyEvents/GetNearbyEventsQueryHandler.cs` — HasValue filter
+- [x] `src/LankaConnect.Application/Events/Queries/GetUpcomingEventsForUser/GetUpcomingEventsForUserQueryHandler.cs` — HasValue filter
+- [x] `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` — sort tiebreaker (TBD to bottom; 2 sites)
+- [x] `tests/LankaConnect.Application.Tests/Events/Queries/TbdEventsExclusionTests.cs` — 5 unit tests
+- (Deferred) `src/LankaConnect.Infrastructure/Data/Repositories/EventRepository.cs` `OrderByDescending(StartDate)` sites — see "Out of Phase 4" above; not user-facing carousels.
 
 ---
 
@@ -274,3 +292,4 @@
 - 2026-05-08 — Phase 1 complete. 13 new domain tests pass, zero regressions in Domain/Application unit suites. Migration `20260508153410_Phase8YA1_AllowNullEventDates` generated and scoped. Build clean across the solution. Pre-existing test failures (FormResponseTests + DonationConfigurationTests in Domain.Tests; 5 timezone-related in Shared.Tests) confirmed unrelated to Phase 1 — present before changes. Phase 2 next: Application command/DTO, validator update, jobs filter TBD, ICS 422.
 - 2026-05-08 — Phase 2 complete. CreateEventCommand/UpdateEventCommand/EventDto now nullable; validators reject mixed-dates; UpdateEventCommandHandler routes through Event.SetDates; EventStatusUpdateJob filters TBD events; GetEventIcsQueryHandler returns Failure → controller maps to HTTP 422; EventPublished/Approved/Rejected email handlers + EventPublished WhatsApp handler skip TBD events with structured logs. 10 new Application unit tests; Application.Tests now 2637/2643 (was 2627; +10), 0 fail. Domain + Shared test counts unchanged from Phase 1 baseline (2 + 5 pre-existing failures unrelated). Build clean. Phase 3 next: Frontend zod + form toggle + "Date TBD" display.
 - 2026-05-08 — Phase 3 complete. Frontend `EventDto` / `CreateEventRequest` / `UpdateEventRequest` dates flip to `string | null`; `event.schemas.ts` gains a `datesUnknown` toggle that gates all date refines (future-date, end > start, mixed-pair) so checking it submits null dates without errors. `EventCreationForm` + `EventEditForm` get a "Dates not yet decided (TBD)" checkbox in the Date & Time section; the edit form pre-checks itself when loading a Planning event and routes save through `Event.SetDates(...)` when the operator unchecks + fills in dates. `formatDateForInput` in EventEditForm is now null-safe. ~10 display surfaces (events listing card, detail page, payment success/cancel pages, lanka-events landing, search results, dashboard EventsList, EventDetailsTab, EventScroller, NewsletterForm) render "Date TBD" / "Time TBD" placeholders when dates are null. `application/mappers/eventMapper.ts` sorts TBD events to the bottom in `sortEventsByDate` and excludes them from `getUpcomingEvents` (Q3=A). 16 new vitest tests across 2 files (zod schema TBD coverage + eventMapper TBD coverage), all pass. tsc clean (one pre-existing error in `page_old_backup.tsx` backup file, unrelated). Event component RTL tests 78/78 pass — no regressions. Validators 55/55 pass. Phase 4 next: backend listing/sort/filter polish to put TBD events at the bottom of date-ordered lists + featured/nearby exclusion. Phase 5: deploy to staging + operator UAT + 12-cell smoke matrix.
+- 2026-05-08 — Phase 4 complete. Q3=A enforced explicitly in 3 query handlers: `GetFeaturedEventsQueryHandler` (2 sites — published-events fallback + nearest-events helper) adds `e.StartDate.HasValue` clause; `GetNearbyEventsQueryHandler` adds explicit `Where(e => e.StartDate.HasValue)` to the in-memory filter chain; `GetUpcomingEventsForUserQueryHandler` swaps the single `> now` comparison for an explicit HasValue + `> UtcNow` chain so the user's "Upcoming Events" list shows only date-confirmed entries (defensive against any future Q2 flip allowing waitlist on TBD). `GetEventsQueryHandler` (main listing) gains the architect-locked sort tiebreaker `OrderBy(e => e.StartDate.HasValue ? 0 : 1).ThenBy(e => e.StartDate)` so TBD events fall to the bottom of date-ordered listings on `/events` (Q1=A — they're publicly listed but at the bottom). 5 new Application unit tests in `TbdEventsExclusionTests.cs` pin the predicate shape (HasValue + > now) and the sort tiebreaker (TBD bottom + dated ascending) against real Event aggregates. **Test counts**: Application.Tests now 2644/2650 (0 fail, 6 skipped — was 2637 pre-Phase-4, +5 mine + 2 from Phase 8X.11 patches landed concurrently); Domain.Tests 697/699 (same 2 pre-existing failures). Build clean. **Phase 4 deferred**: `EventRepository` `OrderByDescending(StartDate)` sites (organiser dashboard, by-status job, published fallback) — these aren't user-facing date-sorted carousels; Postgres default `NULLS FIRST DESC` puts TBD events at the top of organiser-dashboard descending sort, which is acceptable UX (organisers want WIP TBD events visible). Tighten in a future polish slice if a specific surface complains. **Next**: Phase 5 — staging deploy of all 4 phases + 12-cell cross-surface smoke matrix per MEMORY.md cross-surface matrix-smoke rule + operator UAT gate before flipping status to "Shipped".

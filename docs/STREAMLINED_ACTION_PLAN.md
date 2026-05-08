@@ -6,6 +6,62 @@
 
 ---
 
+## 🎯 2026-05-08 (Phase 8X.11 — Combined UAT defect fix) — ✅ SHIPPED + STAGING-VERIFIED
+
+**Status**: Combined slice fixing 2 UAT defects from Phase 8X. **Single deploy** per product owner Q6 ("fix everything together — can't wait"). Commit `8d2182d0`, deploy `25582399726` ✅ success. **11-cell API smoke matrix: 11/11 PASS** on staging 2026-05-08 ~22:36 UTC.
+
+### What's in this slice
+
+| Defect | Fix |
+|---|---|
+| **D1**: URL was mandatory for ExternalPaid → blocked cash-at-door / bank-deposit / phone-only / email-only / in-person registration patterns | URL is now optional. `ExternalRegistration` VO accepts null URL when at least one of (instructions, vendor) is supplied. All-three-empty also passes (architect-approved per product owner Q2 = B; backend handler stores `ExternalRegistration = null`; public detail page shows friendly "Contact organiser for registration details" card). |
+| **D2**: RegistrationMode picker showed all 6 internal modes with NoRegistration greyed out as "(not available)" — confusing UX | New `RegistrationMode.External = 6` enum value paired with `EventPaymentMode.ExternalPaid`. Picker auto-selects External when payment-mode flips; all other 6 modes disabled. SetExternalPayment now sets `External` (was: NoRegistration). |
+
+### Architect-locked decisions baked in (your Q1-Q6 sign-off)
+
+- **Q1 strict 400**: `paymentMode=ExternalPaid + registrationMode=NoRegistration` returns 400 (External is the right mode; silent coerce hides organiser intent).
+- **Q2 allow-save-empty**: All-three-empty external fields are accepted; public page shows "Contact organiser for details" friendly card.
+- **Q3 prod-applicable migration**: `Phase8X11_BackfillExternalRegistrationMode` runs on prod when migration happens (forward-only; matches 0 rows on prod since no ExternalPaid events exist there yet; embedded `RAISE EXCEPTION` post-assertion per Phase 6A.122 lesson).
+- **Q4 no separate filter**: ExternalPaid events fall under existing "paid" filter on the events list; no `?registrationMode=External` filter added.
+- **Q5 BLOCK monetisation cluster**: Donations / Sponsors / Collections / Sign-up Lists / Add-Ons are all blocked when `PaymentMode=ExternalPaid` (architect + product owner agreed: ExternalPaid is a "pure external" mode; mixing on-platform monetisation creates confusing half-internal UX). Both validator + domain enforce; FE form hides the entire cluster + shows explanatory info card.
+- **Q6 single deploy**: combined slice instead of two staged deploys; one coordinated rollout.
+
+### Cross-stack changes (~30 files)
+
+- Domain (6 files): enum + VO + 4 aggregate methods (`SetExternalPayment`, `SetPaymentMode`, `SetRegistrationMode`, `RegisterWithAttendees` / `RegisterWithHeadCount` defensive guards, donation/sponsor/collection/signup blocks).
+- Infrastructure (3 files): EF migration + Designer + ModelSnapshot.
+- Application (5 files): both validators, both handlers, `GetAllowedRegistrationModesQuery` + handler, controller, `EventMappingProfile.ComputeRegistrationModeStatus`.
+- Frontend (8 files): TS types, repository, hook, picker, form, ConvertRegistrationModeDialog (Record completion), event detail page CTA logic, ExternalRegistrationCta rewrite (URL-null happy path).
+- Tests (5 files): existing tests updated (External mode persistence, URL-optional happy path, NoRegistration-now-fails). Domain 697/699 testable pass (2 pre-existing failures unchanged: `FormResponseTests.UpdateAnswer`, `DonationConfigurationTests.MinGreaterThanMax` — neither file touched). Application 2639/2645 testable pass (6 pre-existing skipped, 0 failed).
+
+### Smoke matrix (11/11 PASS, run #1 on staging 2026-05-08 22:36 UTC)
+
+| Cell | Verdict |
+|---|---|
+| C1 ExternalPaid + URL only → 201 + DB `registration_mode=External` | ✅ |
+| C2 ExternalPaid + instructions only (URL null) → 201 + URL=null in response | ✅ |
+| C3 ExternalPaid + all-three-empty → 201 (Q2=B allow-save) | ✅ |
+| C4 ExternalPaid + `registrationMode=NoRegistration` → 400 (Q1 strict) | ✅ |
+| C5 ExternalPaid + `registrationMode=External` (explicit) → 201 | ✅ |
+| C6 Free + `registrationMode=External` → 400 | ✅ |
+| C7 OnPlatformPaid + `registrationMode=External` → 400 | ✅ |
+| C8 ExternalPaid + `donationsEnabled=true` → 400 (Q5=B block monetisation) | ✅ |
+| Q1 GET `/allowed-registration-modes?paymentMode=ExternalPaid` → `["External"]` | ✅ |
+| Q2 GET `?paymentMode=Free&isFreeAttendance=true` → 6 internal modes incl. NoRegistration; no External | ✅ |
+| Q3 GET `?paymentMode=OnPlatformPaid` → 5 internal modes; no External, no NoRegistration | ✅ |
+
+### Lesson logged from Phase 8X.4b CI failure
+
+This time I ran `dotnet test` without `--no-build` for the pre-push gate. CI passed first time. The `--no-build` shortcut saved 30 seconds of local build but cost 30 minutes of failed CI deploys + a hotfix in 8X.4b. Discipline going forward: trust the full rebuild.
+
+### What this enables for organisers (effective immediately on staging)
+
+1. **Cash-at-door / bank-deposit events**: paid event with no URL — just text instructions. Public page shows the instructions card, no broken button.
+2. **Vendor-only events**: "Buy on Eventbrite" placeholder while organiser still drafts the listing.
+3. **External Registration as a first-class mode**: picker shows it correctly; validator enforces the pairing; the entire monetisation cluster is hidden when ExternalPaid so organisers don't see options that would be rejected.
+
+---
+
 ## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2+3+4 of 5 ✅ COMPLETE on develop
 
 **Phase 4 deliverables (this commit) — Backend listing/sort/filter polish (Q3=A):**

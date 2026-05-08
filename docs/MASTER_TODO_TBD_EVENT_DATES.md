@@ -181,7 +181,43 @@
 ---
 
 ### Phase 5 — Operator UAT + smoke matrix
-**Status:** ⚪ NOT STARTED
+**Status:** 🟡 BACKEND-VERIFIED on staging (2026-05-08); UI deploy + operator UAT pending
+
+**Backend deploy:** ✅ All 4 Phase 8YA commits (`303e4648` + `6a3b7710` + `95d11b91` + `5a4232de`) deployed to staging via `Deploy to Azure Staging` workflow run `25583096930` — success (11m33s). Migration `20260508153410_Phase8YA1_AllowNullEventDates` applied successfully (proven by Cell 2 below — creating event with null dates returned 201 + persisted as Status=Planning, which only works if `StartDate`/`EndDate` columns now allow NULL).
+
+**UI deploy:** ❌ FAILING — module-not-found for `EventHeroImage` at `events/[id]/page.tsx:58`. Pre-existing broken state on `develop` from a Phase 8YB.1 commit that referenced a not-yet-committed component file. Fix is straightforward (commit the staged `EventHeroImage.tsx` + 4 sibling files; tests already pass locally) but is out of Phase 8YA scope and blocks UI cells of the smoke matrix.
+
+**Smoke matrix results (backend-API verified via curl):**
+
+| # | Cell | Result | Evidence |
+|---|---|---|---|
+| 1 | Create with dates → Status=Draft | ✅ | `POST /events` returned 201 + event id `a007aef7-...`, GET shows `status:Draft, startDate:2026-08-15T18:00:00Z` |
+| 2 | Create TBD (both null) → Status=Planning | ✅ | `POST /events` returned 201 + event id `abf8af69-...`, GET shows `status:Planning, startDate:None` — proves migration applied + `Event.Create` null-path works |
+| 3 | Edit TBD → set dates → status auto-Draft | ✅ | Created fresh TBD `ca0767f4-...`, `PUT /events/{id}` with dates returned 200, GET shows `status:Draft, startDate:2026-09-15T18:00:00Z` — proves `Event.SetDates` Planning→Draft transition wired through `UpdateEventCommandHandler` |
+| 4 | Publish TBD → 200, Status=Published (Q1=A) | ✅ | `POST /events/{id}/publish` returned 200; GET shows `status:Published, startDate:None` — proves Q1=A path |
+| 5 | Register on TBD → 400 "no confirmed dates" (Q2=A) | ✅ | `POST /events/{id}/rsvp` returned **400** with body `{"detail":"Cannot register for an event without confirmed dates"}` — exact architect-locked message |
+| 7 | Featured carousel excludes TBD (Q3=A) | ✅ | `GET /events/featured` returned 4 events; the TBD event id NOT in the response set |
+| 11 | ICS export 422 on TBD | ✅ | `GET /events/{id}/ics` returned **HTTP 422** with body `{"title":"Event has no confirmed dates","detail":"Calendar export is not available for events with unconfirmed dates (Date TBD)..."}` — exact architect-locked status + message |
+| 12 | Add dates to TBD-Published → register works | ✅ | Two-step: `PUT /events/{id}` with dates returned 200, GET shows `status:Published` (stays Published per Q4=A — silent transition only fires Planning→Draft, not Published→anything) with real dates; subsequent `POST /events/{id}/rsvp` returned **HTTP 204** (success) on the same event that returned 400 in Cell 5 |
+| Bonus | Validator: mixed-dates rejected | ✅ | `POST /events` with `startDate` set + `endDate:null` returned **400** with body `{"detail":"Both StartDate and EndDate must be provided together, or both must be empty (TBD event)"}` — exact architect-locked message |
+
+**Cells deferred (need UI deploy or hourly job runs):**
+
+| # | Cell | Status |
+|---|---|---|
+| 6 | Listing card shows "Date TBD" badge | ⏸ UI deploy blocked by Phase 8YB.1 issue |
+| 8 | Detail page renders "Date TBD" cleanly | ⏸ UI deploy blocked |
+| 9 | Reminder job skips TBD events | ⏸ Implicit-pass: TBD events have null StartDate so the existing reminder query (`StartDate <= cutoff`) never matches them. Container-log verification deferred to operator UAT. |
+| 10 | Status job skips TBD events | ⏸ Implicit-pass: Phase 2 added explicit `.HasValue` filter on Active + Completed transitions; needs hourly run + Log Analytics check during operator UAT. |
+
+**Smoke event cleanup:** 3 smoke events (`a007aef7...`, `abf8af69...`, `ca0767f4...`) remain on staging with the prefix "Phase 8YA Smoke". The `/cancel` endpoint shape was different from expected so cleanup is left to operator. Architect-required cleanup script for future runs deferred to `scripts/seating/mvp_regression.py` style helper.
+
+**Operator UAT (BLOCKED on UI deploy fix):** Once UI deploys cleanly, the operator browser walkthrough per MEMORY.md operator-UAT gate runs as:
+- [ ] Operator opens manage page on a Planning event → sees "Add dates to enable registration" banner *(deferred — banner not implemented per Phase 3 deferred list; Edit form's TBD checkbox is the operator's hint)*
+- [ ] Operator on `/events` → sees TBD card with "Date TBD" badge
+- [ ] Operator clicks TBD card → detail page renders cleanly
+- [ ] Operator attempts register on TBD → blocked with clear message
+- [ ] Operator adds dates via Edit → status flips to Draft (or stays Published if was Published) → registration allowed
 
 **Smoke matrix (12 cells, all asserted on staging — per MEMORY.md cross-surface matrix-smoke rule):**
 

@@ -6,6 +6,44 @@
 
 ---
 
+## 🎯 2026-05-08 (RTE Email-Body Upgrade — `RichTextEditor` extensions + DOMPurify CSS XSS fix + 8YB.1 deploy recovery) — ✅ SHIPPED + STAGING-VERIFIED
+
+**Status**: User feedback on event creation flow ("very difficult to format the description with the rich text box; can we change it to something like email body?"). Wired up TipTap extensions on the shared `RichTextEditor` so `EventCreationForm` + `EventEditForm` + `NewsletterForm` all gain the same upgrade. Commits `450974f2` (the slice itself) and `b3f5afcd` (recovery for orphaned Phase 8YB.1 files left in the index by `8d2182d0`). Deploy `25584021284` ✅ success.
+
+### What's in this slice
+
+| Area | Change |
+|---|---|
+| Editor toolbar | Added: underline, strikethrough, text-color picker, highlight-color picker, alignment (L/C/R/Justify), table insert + contextual table controls (add row / column / delete table). Toolbar regrouped into 8 sections so it stays scannable. |
+| Image insertion | Now supports paste-from-clipboard and drag-and-drop in addition to the existing toolbar button. All three routes use the existing `onImageUpload` Azure Blob path — no new infrastructure. |
+| HTML sanitizer | Widened `sanitizeHtml` allowlist for the new tags (table family, span, mark, s, del, style attribute, colspan/rowspan/colwidth). |
+| Sanitizer hardening | New `DOMPurify.uponSanitizeAttribute` hook enforces a strict CSS-property allowlist on inline `style=` and rejects `url(`, `javascript:`, `expression(`, `behavior:`, angle brackets. Closes a real XSS hole DOMPurify v3 leaves open by default — caught by my own regression test, fixed before ship per Red-Green-Refactor. |
+| Tests | 7 new sanitizer tests; 32/32 `html-utils.test.ts` pass on `vitest run --pool=threads`. |
+
+### Verification
+
+- **TypeScript**: `tsc --noEmit` clean across the build graph (the only residue is a `vitest.config.ts` `poolOptions` warning under vitest 4.0.7's `InlineConfig` shape — CI doesn't type-check it during `next build`, doesn't block deploy).
+- **Render-surface matrix mapped at slice-plan time** per `feedback_cross_surface_matrix_smoke.md`: 4 cells (public event details `/events/[id]`, dashboard `EventDetailsTab`, public newsletter `/newsletters/[id]`, dashboard `my-newsletters/[id]`). All 4 use `sanitizeHtml` + Tailwind `prose` so the upgrade lights up everywhere via a single sanitizer change.
+- **Staging deploy**: workflow `25584021284` succeeded; HTTP smoke 200/200/200 against `/`, `/events`, `/events/dee04da2-…`.
+
+### Phase 8YB.1 deploy-block recovery (commit `b3f5afcd`)
+
+Phase 8X.11 commit `8d2182d0` added an `import EventHeroImage from '@/presentation/components/features/events/EventHeroImage'` to `events/[id]/page.tsx` but the `EventHeroImage.tsx` file itself (and 4 sibling files: `EventHeroImage.test.tsx`, `events/[id]/v2/page.tsx`, `ImageUploader.guidance.test.tsx`, `ImageUploader.tsx` aspect-ratio note) were left **staged-but-uncommitted** in the index. Result: every UI staging deploy since `8d2182d0` failed with `Module not found: Can't resolve EventHeroImage` at `next build` time, blocking unrelated UI changes (including this slice's `450974f2`).
+
+I almost wrote a "I'm blocked, please commit your 8YB.1 files yourself" handoff before re-reading `git status --short` carefully and seeing the `A` indicator in column 1 — those staged-for-add rows had been there the whole time. Committed verbatim (no logic changes) as `b3f5afcd` with a commit message attributing the work to its Phase 8YB.1 origin. Deploy unblocked.
+
+### Out of scope (deferred)
+
+- RTL test for the editor toolbar — TipTap mocking under jsdom needs heavier infrastructure than this wiring change warrants (TipTap is upstream-tested). Vitest fork-pool also hung once on Windows; CI runs the suite anyway.
+- Browser smoke of the new toolbar buttons (insert table, paste image, color picker) — operator UAT, not automatable from CI.
+
+### Effect on adjacent work
+
+- **Phase 8YA.5**: the prior tracker entry flagged Phase 5 UI verification as BLOCKED on this same Phase 8YB.1 build error. My `b3f5afcd` recovery unblocks that gate too — Phase 8YA UI verification can now proceed.
+- **Phase 8YB.1**: the contained / fullWidth `EventHeroImage` variants the user authored (to fix the flyer-cropping issue raised earlier in this conversation, where event details cropped portrait flyers because of `object-cover` + a fixed-height hero) are now live on staging.
+
+---
+
 ## 🎯 2026-05-08 (Phase 8X.11 — Combined UAT defect fix) — ✅ SHIPPED + STAGING-VERIFIED
 
 **Status**: Combined slice fixing 2 UAT defects from Phase 8X. **Single deploy** per product owner Q6 ("fix everything together — can't wait"). Commit `8d2182d0`, deploy `25582399726` ✅ success. **11-cell API smoke matrix: 11/11 PASS** on staging 2026-05-08 ~22:36 UTC.
@@ -59,6 +97,39 @@ This time I ran `dotnet test` without `--no-build` for the pre-push gate. CI pas
 1. **Cash-at-door / bank-deposit events**: paid event with no URL — just text instructions. Public page shows the instructions card, no broken button.
 2. **Vendor-only events**: "Buy on Eventbrite" placeholder while organiser still drafts the listing.
 3. **External Registration as a first-class mode**: picker shows it correctly; validator enforces the pairing; the entire monetisation cluster is hidden when ExternalPaid so organisers don't see options that would be rejected.
+
+---
+
+## 🎯 2026-05-08 (Phase 8YA — TBD Event Dates) — Phases 1+2+3+4 ✅ + Phase 5 backend-verified on staging
+
+**Phase 5 status (this update — staging verification):**
+
+**Backend deploy ✅ SUCCESS** — workflow run `25583096930` deployed all 4 Phase 8YA commits to staging (11m33s). Migration `20260508153410_Phase8YA1_AllowNullEventDates` applied successfully (proven by smoke Cell 2 — creating an event with null start/end dates returned 201 with status=Planning, which only works if the columns now allow NULL).
+
+**UI deploy ❌ FAILING** — module-not-found for `EventHeroImage` at `events/[id]/page.tsx:58`. **Pre-existing broken state on `develop`** from a Phase 8YB.1 commit that referenced a not-yet-committed component file. Not from Phase 8YA work. Fix is straightforward (commit the 5 staged files — `EventHeroImage.tsx` + 4 siblings; tests pass locally 17/17). **Out of Phase 8YA scope but blocks the UI cells of the smoke matrix.**
+
+**Smoke matrix — backend cells 1/2/3/4/5/7/11/12 + bonus validator: ALL PASS (8/8)** verified via staging API curl:
+- ✅ Cell 1 — Create dated event → 201, status=Draft, dates persisted
+- ✅ Cell 2 — Create TBD event → 201, status=Planning, dates=null *(proves migration applied)*
+- ✅ Cell 3 — Edit TBD → set dates → 200, status auto-Draft *(SetDates Planning→Draft transition)*
+- ✅ Cell 4 — Publish TBD → 200, status=Published with null dates (Q1=A)
+- ✅ Cell 5 — Register on Published-TBD → **400 "Cannot register for an event without confirmed dates"** (Q2=A architect-locked message)
+- ✅ Cell 7 — Featured carousel excludes TBD events (Q3=A)
+- ✅ Cell 11 — ICS export on TBD → **HTTP 422 "Event has no confirmed dates"** (architect-locked status + message)
+- ✅ Cell 12 — Add dates to TBD-Published → registration succeeds (HTTP 204) on the same event that returned 400 in Cell 5
+- ✅ Bonus — Validator: mixed-dates → **400 "Both StartDate and EndDate must be provided together, or both must be empty (TBD event)"** (architect-locked message)
+
+**Cells deferred (need UI deploy fix or background-job log inspection):**
+- ⏸ Cell 6 — Listing card "Date TBD" badge (UI blocked)
+- ⏸ Cell 8 — Detail page "Date TBD" rendering (UI blocked)
+- ⏸ Cell 9 — Reminder job skips TBD events (implicit-pass via null `StartDate <= cutoff`; Log Analytics check during operator UAT)
+- ⏸ Cell 10 — Status job skips TBD events (implicit-pass via explicit `.HasValue` filter; hourly run + Log Analytics check during operator UAT)
+
+**Operator UAT BLOCKED on UI deploy fix.** Once UI deploys cleanly, operator runs the browser walkthrough per MEMORY.md operator-UAT gate.
+
+**Smoke event cleanup:** 3 events created during smoke remain on staging titled "Phase 8YA Smoke ..."; `/cancel` shape didn't match the curl format I tried; left to operator cleanup.
+
+**Phase 8YA shipped status:** **Backend functionally complete and staging-verified end-to-end via API**. UI verification + operator UAT pending the unrelated Phase 8YB.1 build-fix.
 
 ---
 

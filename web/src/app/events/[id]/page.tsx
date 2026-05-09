@@ -56,6 +56,8 @@ import { AlbumStatus } from '@/infrastructure/api/types/events.types';
 import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp/WhatsAppShareButton';
 // Phase 8YB.1: Hero image component shared by [id]/page.tsx (contained) and [id]/v2/page.tsx (fullWidth)
 import { EventHeroImage, type EventHeroVariant } from '@/presentation/components/features/events/EventHeroImage';
+// Phase 8YB.3: Mode-C "No registration required" hint (banner + quick-nav pill)
+import { RegistrationStatusHint } from '@/presentation/components/features/events/RegistrationStatusHint';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -825,8 +827,16 @@ export function EventDetailPageInternal({
                 />
               </div>
 
-              {/* Quick Navigation Bar — anchor links to sections below */}
+              {/* Quick Navigation Bar — anchor links to sections below.
+                  Phase 8YB.3: Mode-C events have no Register anchor (no section to jump
+                  to), so we lead the row with a non-clickable "No registration required"
+                  status pill instead of leaving the gap silent. */}
               <div className="flex flex-wrap gap-2 mb-4">
+                <RegistrationStatusHint
+                  registrationMode={registrationMode}
+                  variant="pill"
+                  isCancelled={isCancelled}
+                />
                 {[
                   { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
                   { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
@@ -851,6 +861,17 @@ export function EventDetailPageInternal({
                     {btn.label}
                   </button>
                 ))}
+              </div>
+
+              {/* Phase 8YB.3: Mode-C above-the-fold "No registration required" banner.
+                  Renders nothing for other modes / cancelled events — the component
+                  itself gates visibility, so this is safe to always include. */}
+              <div className="mb-4">
+                <RegistrationStatusHint
+                  registrationMode={registrationMode}
+                  variant="banner"
+                  isCancelled={isCancelled}
+                />
               </div>
 
               <div

@@ -1,8 +1,13 @@
 # Phase 8YB.5 — TBD-Publish Recovery Slice
 
 **Date:** 2026-05-09
-**Status:** IN PROGRESS
+**Status:** API-VERIFIED on staging — awaiting operator browser UAT to flip to SHIPPED.
 **Architect-approved.** Single slice; 8 code edits across 7 files; 22-cell smoke matrix; 8-cell operator UAT.
+
+**Commit:** `e9e8ce31` (`develop`) — 11 files, +521 / -26.
+**Deploys:** BE run `25610497852` GREEN. UI run `25610497854` GREEN.
+**API smoke:** **17 / 17 PASS** on staging via `scripts/phase8YB5_smoke.py` (3 setup + 3 headline publish + 3 listing/filter + 2 detail/iCal + 2 search/featured + 1 SetDates + 1 cancel + 1 unpublish + 1 RSVP-blocked).
+**Tests:** 4 new domain tests + 2 new application tests (TDD red→green). Domain 703/705 + Application 2646/2652 PASS (2 unrelated pre-existing fails). Frontend typecheck + Next.js build clean.
 
 ---
 

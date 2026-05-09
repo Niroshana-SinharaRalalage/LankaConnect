@@ -6,6 +6,48 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YB.5 — TBD-publish recovery; product-rule overturn enables direct publish from Planning) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+
+**Status**: Niroshana repro `541876b8` (TBD ExternalPaid event, no Publish button, missing from public search) prompted a product-rule overturn — TBD events must be publishable directly. Architect-approved single slice; commit `e9e8ce31`, deploys BE `25610497852` + UI `25610497854` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8YB_5_TBD_PUBLISH_2026_05_09.md` written before code.
+
+### Architect classification
+
+**PRIMARY: UI issue + SECONDARY: 1 backend filter bug + spec gap.** NOT auth / DB / feature missing. Phase 8YA.1-8YA.4 had already laid the durable foundation (domain Publish() accepted Planning, dates nullable, both EventPublishedEvent handlers already early-returned on null StartDate, iCal/cron handlers already gated). What was missing was the UI surface to reach the foundation, plus 3 holes the previous slices didn't anticipate.
+
+### What's in this slice
+
+| Defect/decision | Surface | Fix |
+|---|---|---|
+| **D1=A** Publish button on Planning | `web/src/app/events/[id]/manage/page.tsx` | Added `isPlanning` derivation; gate now `isDraft \|\| isPlanning`; statusLabels gains `'Planning (Date TBD)'`; canCancel/canDelete extended |
+| **D2=B** TS EventStatus to string | `web/src/infrastructure/api/types/events.types.ts` | Numeric → string-valued enum to match `JsonStringEnumConverter`. Audited 4 consumer files: 0 arithmetic / reverse-lookup. Added `EventStatus.Planning` |
+| **D5=A** Coming Soon pill | `web/src/app/events/page.tsx` (EventCard) | Orange pill renders next to "Date TBD" text whenever startDate null and event not in terminal state |
+| **D5b=A** Date filter behaviour | `src/LankaConnect.Application/Events/Queries/GetEvents/GetEventsQueryHandler.cs` | `StartDateFrom`-only INCLUDES TBD; `StartDateFrom+To` EXCLUDES TBD. Pre-fix `e.StartDate >= from` silently dropped null-StartDate rows |
+| **D6=A** Postpone domain tighten | `src/LankaConnect.Domain/Events/Event.cs` | `Postpone()` requires `StartDate.HasValue`. Postponing a TBD event is semantically incoherent |
+| **E16** Unpublish revert path | `src/LankaConnect.Domain/Events/Event.cs` | Reverts to Planning when StartDate null (was always Draft). Preserves Phase 8YA.1 `Draft × null-dates` impossible-cell invariant |
+| **D7=A** Public detail TBD CTA | `web/src/app/events/[id]/page.tsx` | New section gate: `!event.startDate && !isUserRegistered` → "Coming soon" disabled CTA. Mode-agnostic across Free/OnPlatformPaid/ExternalPaid |
+
+### Discipline
+
+- HS-8YB.5 hard-stop clear (architect verified domain Publish already accepts Planning; iCal/cron/email/WhatsApp handlers already gated; under 3-site threshold for additional structural changes).
+- Per-file `git add` only.
+- TDD: 4 new domain tests + 2 new application tests written FIRST (red → green).
+- Backend: Domain 703/705 + Application 2646/2652 PASS (2 unrelated pre-existing fails). Frontend typecheck + Next.js build clean.
+- API smoke 17/17 PASS on staging via `scripts/phase8YB5_smoke.py`.
+
+### Operator UAT cells (8) — cannot self-attest
+
+Required before status flips from API-VERIFIED to SHIPPED:
+1. Open `541876b8` Manage page → Publish button visible + status badge "Planning (Date TBD)"
+2. Click Publish → status flips to "Published" without error
+3. Anonymous incognito tab visits `/events` → event appears with "Date TBD" + "Coming Soon" pill
+4. Anonymous opens detail page → renders OK; "Coming soon" CTA replaces Register form; disabled button reads "Registration opens when dates are announced"
+5. Operator goes back to manage, edits, sets future dates, saves → status STAYS Published; listing card now shows real dates
+6. Operator unpublishes the now-dated event → status reverts to **Draft** (regression guard)
+7. Operator unpublishes a still-TBD-Published event → status reverts to **Planning** (validates E16 in browser)
+8. Niroshana confirms `541876b8` end-to-end: Publish-able, listing-visible, registration-blocked-with-clear-copy
+
+---
+
 ## 🎯 2026-05-09 (Phase 8X.12 — combined recovery slice D1 + D2 + D3) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
 
 **Status**: Three defects from real browser UAT after Phase 8X.11 recovery, bundled into one architect-approved slice. Commit `bdfdc149`, deploys BE `25607095872` + UI `25607095876` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8X_12_RECOVERY_2026_05_09.md` written before code.

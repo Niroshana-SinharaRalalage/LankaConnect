@@ -1,12 +1,11 @@
 'use client';
 
 /**
- * Phase 8YB.1 — TEMPORARY hero-layout comparison route.
+ * Phase 8YB.2 — Sandbox route for the legacy contained-column hero (Option C).
  *
- * Renders the same event detail page logic as `/events/{id}` but with the full-bleed
- * hero variant (Option E) so the user can A/B compare against the contained hero
- * (Option C) on staging. Once a winner is picked, this route + the heroVariant prop
- * will be removed and the chosen layout becomes the only hero.
+ * The user picked the full-bleed hero (Option E) as the new default for `/events/{id}`.
+ * This route stays around so they can keep iterating on the contained variant without
+ * disturbing the primary route — same page logic, just `heroVariant="contained"`.
  *
  * URL: /events/{id}/v2
  */
@@ -18,5 +17,5 @@ export default function EventDetailPageV2({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  return <EventDetailPageInternal params={params} heroVariant="fullWidth" />;
+  return <EventDetailPageInternal params={params} heroVariant="contained" />;
 }

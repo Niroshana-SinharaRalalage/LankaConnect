@@ -90,12 +90,13 @@ function getStatusBadgeColor(label: string): string {
 /**
  * Event Detail Page (default export)
  *
- * Phase 8YB.1: Defaults to the existing constrained-column hero (`heroVariant="contained"`).
- * The internal component is exported for the v2 test route to render the same page logic
- * with `heroVariant="fullWidth"` so the user can A/B compare hero layouts on staging.
+ * Phase 8YB.1 → 8YB.2: After A/B comparison on staging the user picked the full-bleed
+ * hero (Option E), so the default route now renders `heroVariant="fullWidth"`. The
+ * legacy constrained-column variant (Option C) lives at `/events/{id}/v2` for any
+ * future tweaks the user wants to iterate on without touching the primary surface.
  */
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  return <EventDetailPageInternal params={params} heroVariant="contained" />;
+  return <EventDetailPageInternal params={params} heroVariant="fullWidth" />;
 }
 
 /**
@@ -103,13 +104,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
  * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management.
  *
  * @param heroVariant
+ *   - "fullWidth" → hero rendered above the constrained column, spanning the full
+ *                   viewport (Option E). Default — used by `/events/{id}`.
  *   - "contained" → hero rendered inside the existing max-w-7xl Card column (Option C).
- *   - "fullWidth" → hero rendered above the constrained column, spanning the full viewport
- *                   (Option E). Used by the /v2 comparison route only.
+ *                   Used by `/events/{id}/v2` (kept as a sandbox for layout iteration).
  */
 export function EventDetailPageInternal({
   params,
-  heroVariant = 'contained',
+  heroVariant = 'fullWidth',
 }: {
   params: Promise<{ id: string }>;
   heroVariant?: EventHeroVariant;

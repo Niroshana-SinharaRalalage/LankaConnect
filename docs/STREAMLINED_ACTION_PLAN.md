@@ -6,6 +6,31 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8X.12 — combined recovery slice D1 + D2 + D3) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+
+**Status**: Three defects from real browser UAT after Phase 8X.11 recovery, bundled into one architect-approved slice. Commit `bdfdc149`, deploys BE `25607095872` + UI `25607095876` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8X_12_RECOVERY_2026_05_09.md` written before code.
+
+### What's in this slice
+
+| Defect | Surface | Fix |
+|---|---|---|
+| **D1** — `/events/create` showed legacy `isFree` checkbox UI | `EventCreationForm.tsx` (0 Phase 8X.11 markers vs 24 in EditForm) | Ported the 3-way payment-mode radio + External Registration card (URL / instructions / vendor — all optional) + monetisation-cluster gate (donations/collections/sponsors/add-ons hidden when ExternalPaid) + isFree-mirror + registrationMode auto-coerce + payload extension (`paymentMode` + 3 external fields). |
+| **D2** — `events/[id]/page.tsx` rendered attendee form for ExternalPaid events | 5 RsvpFormSection mount sites; only line 1149 was gated on `isExternalPaid` | Single section-level gate inside the registration-section ternary chain: `: isExternalPaid && !isUserRegistered ? <ExternalRegistrationCta event={event} />`. Makes the 4 leaking branches (refund-in-progress, expired-checkout, incomplete-payment, standard fallback) structurally unreachable for ExternalPaid (those states only exist for on-platform regs). Decision #1 = B locked. |
+| **D3** — Pricing was wrongly required for ExternalPaid events | `Event.SetExternalPayment` + `CreateEventCommandHandler` + `UpdateEventCommandHandler` + 2 Zod refines | Domain `SetExternalPayment` signature changed to `TicketPricing? pricing`; explicit null clears stale legacy pricing. Zod refines scoped to `paymentMode !== ExternalPaid`. Architect's earlier "External requires pricing for display" rule is overturned. Public CTA renders user-locked copy `"See external site or reach out organizer for pricing"` (Decision #3 = custom). |
+
+### Discipline
+
+- HS.5 audit clear (`Event.cs:1265` and `Event.RegistrationMode.cs:777` paid-pricing guards live in registration-time price-calc paths only; structurally unreachable for ExternalPaid; under 3-site hard-stop threshold).
+- Per-file `git add` only (no whole-file mistake from 8X.11).
+- 8/8 SetExternalPayment domain tests including 3 new D3 acceptance cases. Application 2644/2644 PASS. Frontend typecheck + Next.js build clean.
+- API smoke 13/13 PASS on staging via `scripts/phase8x12_smoke.py`.
+
+### Operator UAT cells (cannot self-attest)
+
+5 D1 + 7 D2 + 3 D3 cells in master TODO. Required before status flips from API-VERIFIED to SHIPPED.
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.4 — broaden Mode-C banner copy + gate Signup Lists / Signup Forms quick-nav pills + sections on presence probes) — ✅ SHIPPED + STAGING-VERIFIED (operator UAT pending)
 
 **Status**: Two related UI/state-derivation fixes on the public event details page. Commit `93f2d62a`, deploy `25606370850`.

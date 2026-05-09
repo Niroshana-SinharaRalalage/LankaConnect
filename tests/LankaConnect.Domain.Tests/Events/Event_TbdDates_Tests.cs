@@ -231,6 +231,85 @@ public class Event_TbdDates_Tests
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    //  Phase 8YB.5 — Unpublish revert path (E16)
+    //
+    //  TBD-Published events must revert to Planning, NOT Draft, when unpublished.
+    //  Reverting to Draft creates an impossible "Draft × null-dates" state per the
+    //  Phase 8YA.1 invariant ("Draft only when dates set"). Architect-locked
+    //  decision 2026-05-09 D1=A bundle.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Unpublish_FromPublishedTbd_RevertsToPlanning()
+    {
+        // Phase 8YB.5 (E16): TBD-Published → Unpublish must revert to Planning,
+        // not Draft. Draft × null-dates is an impossible cell in the lifecycle matrix.
+        var ev = CreatePlanningEvent();
+        ev.Publish().IsSuccess.Should().BeTrue();
+        ev.Status.Should().Be(EventStatus.Published);
+        ev.StartDate.Should().BeNull();
+
+        var result = ev.Unpublish();
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.Status.Should().Be(EventStatus.Planning);
+        ev.PublishedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Unpublish_FromPublished_WithDates_RevertsToDraft()
+    {
+        // Regression guard: dated event Published → Unpublish stays on the existing
+        // Draft revert path. Phase 6A.41 behaviour preserved.
+        var ev = CreateDraftEvent();
+        ev.Publish().IsSuccess.Should().BeTrue();
+        ev.Status.Should().Be(EventStatus.Published);
+        ev.StartDate.Should().NotBeNull();
+
+        var result = ev.Unpublish();
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.Status.Should().Be(EventStatus.Draft);
+        ev.PublishedAt.Should().BeNull();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Phase 8YB.5 — Postpone domain tighten (D6)
+    //
+    //  Postpone() on a TBD-Published event is semantically incoherent
+    //  ("postponed from when?"). Tighten the rule to require StartDate.HasValue.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Postpone_OnPublishedTbdEvent_Fails()
+    {
+        // Phase 8YB.5 (D6): Postpone requires a confirmed start date — postponing
+        // an event without dates is semantically meaningless.
+        var ev = CreatePlanningEvent();
+        ev.Publish().IsSuccess.Should().BeTrue();
+        ev.Status.Should().Be(EventStatus.Published);
+
+        var result = ev.Postpone("Venue unavailable");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("date",
+            because: "the rejection must explain dates are required for postponement");
+    }
+
+    [Fact]
+    public void Postpone_OnPublishedDatedEvent_Succeeds()
+    {
+        // Regression guard: dated Published → Postpone keeps working as before.
+        var ev = CreateDraftEvent();
+        ev.Publish().IsSuccess.Should().BeTrue();
+
+        var result = ev.Postpone("Venue unavailable");
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.Status.Should().Be(EventStatus.Postponed);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     //  Builders
     // ─────────────────────────────────────────────────────────────────────────
 

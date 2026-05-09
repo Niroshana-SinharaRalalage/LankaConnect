@@ -736,4 +736,112 @@ public class GetEventsQueryHandlerTests
     }
 
     #endregion
+
+    #region Phase 8YB.5 — TBD-Publish date-range filter behaviour (D5b=A)
+
+    /// <summary>
+    /// Phase 8YB.5 (D5b=A): when only StartDateFrom is supplied (open-ended
+    /// "Upcoming" bucket), TBD events with null StartDate must pass through.
+    /// Pre-fix the inequality `e.StartDate >= from` silently dropped them.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WithStartDateFromOnly_IncludesTbdPublishedEvents()
+    {
+        var datedPublished = CreateTestEvent("Dated Published", EventStatus.Published);
+        var tbdPublished = CreateTbdPublishedEvent("TBD Published");
+        var allEvents = new List<Event> { datedPublished, tbdPublished };
+
+        _mockEventRepository
+            .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(allEvents);
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto { Id = e.Id, Title = e.Title.Value, Status = e.Status });
+
+        var query = new GetEventsQuery(StartDateFrom: DateTime.UtcNow.AddHours(-1));
+
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(2,
+            "open-ended Upcoming filter must include TBD events alongside dated ones");
+        result.Value.Should().Contain(e => e.Title == "TBD Published",
+            "TBD-Published event must appear in default Upcoming listing");
+    }
+
+    /// <summary>
+    /// Phase 8YB.5 (D5b=A): when both StartDateFrom AND StartDateTo are set
+    /// (specific window like "This Week"), TBD events must be excluded —
+    /// the user explicitly asked for a dated window.
+    /// </summary>
+    [Fact]
+    public async Task Handle_WithStartDateFromAndTo_ExcludesTbdEvents()
+    {
+        var inWindow = CreateTestEventOnDate("In Window", EventStatus.Published, DateTime.UtcNow.AddDays(2));
+        var outOfWindow = CreateTestEventOnDate("Out of Window", EventStatus.Published, DateTime.UtcNow.AddDays(30));
+        var tbdPublished = CreateTbdPublishedEvent("TBD Published");
+        var allEvents = new List<Event> { inWindow, outOfWindow, tbdPublished };
+
+        _mockEventRepository
+            .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(allEvents);
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto { Id = e.Id, Title = e.Title.Value, Status = e.Status });
+
+        var query = new GetEventsQuery(
+            StartDateFrom: DateTime.UtcNow,
+            StartDateTo: DateTime.UtcNow.AddDays(7));
+
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(1, "only the in-window dated event should match");
+        result.Value.Should().Contain(e => e.Title == "In Window");
+        result.Value.Should().NotContain(e => e.Title == "TBD Published",
+            "TBD events must not appear in explicit date-window queries");
+    }
+
+    private Event CreateTbdPublishedEvent(string title)
+    {
+        var eventTitle = EventTitle.Create(title).Value;
+        var description = EventDescription.Create("Phase 8YB.5 TBD test").Value;
+
+        var @event = Event.Create(
+            eventTitle,
+            description,
+            startDate: null,
+            endDate: null,
+            organizerId: Guid.NewGuid(),
+            capacity: 100
+        ).Value;
+
+        @event.Publish().IsSuccess.Should().BeTrue();
+        return @event;
+    }
+
+    private Event CreateTestEventOnDate(string title, EventStatus status, DateTime startDate)
+    {
+        var eventTitle = EventTitle.Create(title).Value;
+        var description = EventDescription.Create("Phase 8YB.5 dated test").Value;
+
+        var @event = Event.Create(
+            eventTitle,
+            description,
+            startDate,
+            startDate.AddHours(2),
+            Guid.NewGuid(),
+            100
+        ).Value;
+
+        var backingField = typeof(Event).GetField("<Status>k__BackingField",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        backingField?.SetValue(@event, status);
+
+        return @event;
+    }
+
+    #endregion
 }

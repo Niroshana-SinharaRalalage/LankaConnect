@@ -1100,6 +1100,39 @@ export function EventDetailPageInternal({
                       If you were registered for this event, you should have received a notification about the cancellation.
                     </p>
                   </div>
+                ) : !event.startDate && !isUserRegistered ? (
+                  // Phase 8YB.5 (D1=A + D7=A): TBD-Published events show a "Coming soon"
+                  // message instead of a registration form. Domain Register() already
+                  // returns 400 when StartDate is null (Phase 8YA.1 Q2=A), so the form
+                  // would fail to submit anyway — surface the reason up-front so users
+                  // understand the event is published but registration opens later.
+                  // Mode-agnostic: applies to Free / OnPlatformPaid / ExternalPaid TBD
+                  // events uniformly (D7=A locks this).
+                  <div
+                    className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg space-y-4"
+                    data-testid="tbd-coming-soon-cta"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-neutral-900 mb-1">
+                          Coming soon
+                        </h3>
+                        <p className="text-sm text-neutral-600">
+                          This event is on the calendar — dates haven't been confirmed yet.
+                          Check back soon: registration opens once the organiser announces
+                          the start and end times.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center justify-center w-full px-6 py-3 bg-neutral-200 text-neutral-500 font-semibold rounded-lg cursor-not-allowed"
+                      aria-label="Registration opens when dates are announced"
+                    >
+                      Registration opens when dates are announced
+                    </button>
+                  </div>
                 ) : isExternalPaid && !isUserRegistered ? (
                   // Phase 8X.12 — single registration-section gate for ExternalPaid.
                   // Replaces the prior 5 RsvpFormSection mount sites that were ungated for

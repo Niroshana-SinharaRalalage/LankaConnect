@@ -296,18 +296,29 @@ public partial class Event : BaseEntity
 
     /// <summary>
     /// Phase 6A.41: Unpublishes a published event, returning it to Draft status.
+    /// Phase 8YB.5 (E16): TBD-Published events revert to Planning instead of Draft —
+    /// Draft × null-dates is an impossible cell in the lifecycle matrix per the
+    /// Phase 8YA.1 invariant (Draft only when both dates set).
     /// Allows organizers to make corrections after premature publication.
     /// Business Rules:
     /// - Only Published events can be unpublished
     /// - Cannot unpublish Active, Cancelled, Postponed, or Completed events
     /// - Events with registrations CAN be unpublished (organizer's decision)
+    /// - Status reverts to: Draft when dates set, Planning when dates null
     /// </summary>
     public Result Unpublish()
     {
         if (Status != EventStatus.Published)
             return Result.Failure("Only published events can be unpublished");
 
-        Status = EventStatus.Draft;
+        // Phase 8YB.5 (E16): preserve the Phase 8YA.1 invariant by routing the revert
+        // based on date availability. A Published-TBD event has null StartDate/EndDate
+        // (Q1=A allows TBD-publish); reverting it to Draft would leave it in an
+        // impossible state. Revert to Planning instead so the (status, dates) pair
+        // remains coherent.
+        Status = StartDate.HasValue && EndDate.HasValue
+            ? EventStatus.Draft
+            : EventStatus.Planning;
         PublishedAt = null; // Phase 6A.46: Clear publish timestamp when unpublishing
         MarkAsUpdated();
 
@@ -835,13 +846,21 @@ public partial class Event : BaseEntity
         if (string.IsNullOrWhiteSpace(reason))
             return Result.Failure("Postponement reason is required");
 
+        // Phase 8YB.5 (D6): Postpone requires a confirmed start date.
+        // Postponing a TBD event ("postponed from when?") is semantically
+        // incoherent — organisers should set dates first or cancel the event.
+        if (!StartDate.HasValue)
+            return Result.Failure(
+                "Cannot postpone an event without confirmed dates. " +
+                "Set the event's start and end dates first, or cancel the event instead.");
+
         Status = EventStatus.Postponed;
         CancellationReason = reason.Trim(); // Reuse cancellation reason field for postponement
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventPostponedEvent(Id, reason.Trim(), DateTime.UtcNow));
-        
+
         return Result.Success();
     }
 

@@ -707,14 +707,38 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 e.Location.Address.State.Equals(request.State, StringComparison.OrdinalIgnoreCase));
         }
 
-        if (request.StartDateFrom.HasValue)
+        // Phase 8YB.5 (D5b=A): TBD-Publish filter behaviour.
+        //  - When BOTH StartDateFrom AND StartDateTo are set (specific window like
+        //    "This Week" / "Next Month"), exclude TBD events. The user explicitly
+        //    asked for a dated window — TBD events have no start date to match.
+        //  - When only StartDateFrom is set (open-ended "Upcoming" bucket),
+        //    INCLUDE TBD events. They surface alongside dated future events;
+        //    Phase 8YA.4 sort tiebreaker pushes TBD to the bottom of the list.
+        //  - When only StartDateTo is set (rare past-bound query), exclude TBD
+        //    events — there's no anchor to compare against the upper bound.
+        // Pre-fix the simple inequality `e.StartDate >= from` silently dropped
+        // null-StartDate rows even on the open-ended Upcoming path; that's the
+        // bug Phase 8YB.5 closes.
+        if (request.StartDateFrom.HasValue && request.StartDateTo.HasValue)
         {
-            filteredEvents = filteredEvents.Where(e => e.StartDate >= request.StartDateFrom.Value);
+            var from = request.StartDateFrom.Value;
+            var to = request.StartDateTo.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                e.StartDate.HasValue &&
+                e.StartDate.Value >= from &&
+                e.StartDate.Value <= to);
         }
-
-        if (request.StartDateTo.HasValue)
+        else if (request.StartDateFrom.HasValue)
         {
-            filteredEvents = filteredEvents.Where(e => e.StartDate <= request.StartDateTo.Value);
+            var from = request.StartDateFrom.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                !e.StartDate.HasValue || e.StartDate.Value >= from);
+        }
+        else if (request.StartDateTo.HasValue)
+        {
+            var to = request.StartDateTo.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                e.StartDate.HasValue && e.StartDate.Value <= to);
         }
 
         if (request.IsFreeOnly == true)

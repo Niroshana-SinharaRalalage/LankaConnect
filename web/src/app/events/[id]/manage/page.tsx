@@ -90,6 +90,9 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
     [EventStatus.Completed]: 'Completed',
     [EventStatus.Archived]: 'Archived',
     [EventStatus.UnderReview]: 'Under Review',
+    // Phase 8YB.5 (D1=A): TBD events created without dates land in Planning
+    // and can publish directly via the Publish button below.
+    [EventStatus.Planning]: 'Planning (Date TBD)',
   };
 
   // Handle Publish Event
@@ -252,9 +255,18 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
                        (event.status as any) === 'Cancelled' ||
                        String(event.status).toLowerCase() === 'cancelled';
 
-  // Phase 6A.59: Button visibility logic
-  const canCancel = (isDraft || isPublished) && !isCancelled;
-  const canDelete = (isDraft || isCancelled) && event.currentRegistrations === 0;
+  // Phase 8YB.5 (D1=A): Planning events (TBD-dates) can publish directly.
+  // Mirrors the defensive triple-compare pattern used for the other status flags
+  // so we tolerate string-or-number variants from any cached/stale payloads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isPlanning = (event.status as any) === EventStatus.Planning ||
+                     (event.status as any) === 'Planning' ||
+                     String(event.status).toLowerCase() === 'planning';
+
+  // Phase 6A.59 + Phase 8YB.5: Button visibility logic.
+  // Planning events are pre-publication too — same Cancel/Delete affordances as Draft.
+  const canCancel = (isDraft || isPlanning || isPublished) && !isCancelled;
+  const canDelete = (isDraft || isPlanning || isCancelled) && event.currentRegistrations === 0;
 
   // Backward compatibility: map old tab IDs to the consolidated tab
   const resolveTab = (tab: string | null): string => {
@@ -375,13 +387,18 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           </Button>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Publish Button - Show for Draft events */}
-            {isDraft && (
+            {/* Publish Button — Phase 8YB.5 (D1=A): Planning events (TBD-dates) can
+                publish directly alongside Draft events. The domain Publish() method
+                accepts both Draft and Planning per Phase 8YA.1. Listing/detail pages
+                render "Date TBD" + "Coming Soon" affordances; registration is still
+                domain-blocked while StartDate is null (Phase 8YA.1 Q2=A). */}
+            {(isDraft || isPlanning) && (
               <Button
                 onClick={handlePublishEvent}
                 disabled={isPublishing}
                 className="flex items-center gap-2 text-white"
                 style={{ background: '#10B981', color: 'white' }}
+                data-testid="publish-event-button"
               >
                 {isPublishing ? 'Publishing...' : 'Publish Event'}
               </Button>

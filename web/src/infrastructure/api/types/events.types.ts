@@ -8,17 +8,31 @@ import type { EventBadgeDto } from './badges.types';
 // ==================== Enums ====================
 
 /**
- * Event status enum matching backend LankaConnect.Domain.Events.Enums.EventStatus
+ * Event status enum matching backend LankaConnect.Domain.Events.Enums.EventStatus.
+ *
+ * Phase 8YB.5 (D2=B): converted from numeric to string-valued so identity
+ * comparisons against API responses (which arrive as strings via
+ * JsonStringEnumConverter) work without `(event.status as any)` casts.
+ *
+ * Phase 8YA.1: `Planning` value added — TBD events created without dates land
+ * in this state. Phase 8YB.5 lifts the manage-page Publish gate so Planning
+ * events can be Published directly.
+ *
+ * Existing call-sites (equality compares + Record-as-object-key + Array.includes)
+ * keep working: `EventStatus.Draft === event.status` is `'Draft' === 'Draft'`.
+ * No reverse-lookup or arithmetic usage exists in the codebase (audited 2026-05-09).
  */
 export enum EventStatus {
-  Draft = 0,
-  Published = 1,
-  Active = 2,
-  Postponed = 3,
-  Cancelled = 4,
-  Completed = 5,
-  Archived = 6,
-  UnderReview = 7,
+  Draft = 'Draft',
+  Published = 'Published',
+  Active = 'Active',
+  Postponed = 'Postponed',
+  Cancelled = 'Cancelled',
+  Completed = 'Completed',
+  Archived = 'Archived',
+  UnderReview = 'UnderReview',
+  /** Phase 8YA.1 — TBD events with no committed dates yet. */
+  Planning = 'Planning',
 }
 
 /**

@@ -6,6 +6,35 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YB.4 — broaden Mode-C banner copy + gate Signup Lists / Signup Forms quick-nav pills + sections on presence probes) — ✅ SHIPPED + STAGING-VERIFIED (operator UAT pending)
+
+**Status**: Two related UI/state-derivation fixes on the public event details page. Commit `93f2d62a`, deploy `25606370850`.
+
+### What's in this slice
+
+| Area | Change |
+|---|---|
+| Banner copy | `RegistrationStatusHint.tsx` Mode-C banner now reads: *"This is a drop-in event — just show up. Any sign-up lists, signup forms, donations, sponsorships, collections or add-ons the organizer has set up remain available via the actions on this page."* Architect-approved wording reads as a natural restrictive clause instead of a conditional; matches the surface vocabulary used elsewhere on the page. Pill copy unchanged. |
+| New helper hook | `useHasSignUps(eventId, kind)` — thin wrapper over `useEventSignUps` returning `{ hasSignUps, isFetched }`. Mirrors the volunteers probe pattern from page.tsx:321. Adding a future SignUpKind = the helper just works. |
+| Pill gates | `signup-lists → hasItemSignUpLists` (was `show: true`); `signup-forms → !isLoadingForms && activeForms.length > 0` (was `show: true`). The `isLoading` guard on forms avoids the worse "pill flashes in then disappears" failure mode on slow networks. |
+| Section gates | Sections at page.tsx:2254 (Signup Lists) and page.tsx:2289 (Signup Forms) wrapped in the same gates as their pills — mirrors the canonical volunteers section pattern at page.tsx:2270. Page no longer ships empty `CollapsibleSection` cards on events without lists/forms. Architect-flagged this as the latent half-fix to avoid (pill hidden, empty card present = worse than today). |
+| Component extraction | Inline pill descriptor → render loop lifted into new `EventQuickNav` component (fragment-returning so the parent's `flex flex-wrap gap-2` row stays intact). Pure presentation, table-driven unit-testable, single insertion point for any future action-surface pill. |
+
+### Verification
+- 4 new `useHasSignUps` tests + 6 new `EventQuickNav` tests + 1 new banner-copy assertion in `RegistrationStatusHint`
+- 46/46 Phase 8YB tests green; 120/120 events feature tests green; `tsc --noEmit` clean
+- Both `/events/{id}` (full-bleed default) and `/events/{id}/v2` (contained sandbox) inherit via shared `EventDetailPageInternal`
+
+### Operator UAT matrix (post-deploy)
+- **Mode-C event WITHOUT lists/forms** (e.g. `64bd61d3-ef9e-488f-ae20-7fe3902bcf5e`): expect the broadened banner copy enumerating all surfaces; expect Signup Lists + Signup Forms pills AND sections to be absent.
+- **Mode-A event WITH lists/forms** (any DetailedAttendees event with at least one signup list and one active form): expect both pills + sections to render normally — regression guard.
+- **Cancelled Mode-C event**: hint banner + pill must NOT render (cancelled banner / Cancelled `displayLabel` keep precedence — `RegistrationStatusHint` returns null when `isCancelled` is true).
+
+### Backend / DB / API / Auth / migration impact
+**Zero.** `useHasSignUps` calls an endpoint already used elsewhere; just one extra React Query invocation per page mount, cached per `signUpKeys.list(eventId, kind)`. Frontend-only slice via `deploy-ui-staging.yml`.
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.3 — "No registration required" hint surfaced above the fold for Mode C events) — ✅ SHIPPED + STAGING-VERIFIED (deploy in_progress at write time; operator UAT pending)
 
 **Status**: User reported drop-in (NoRegistration / "Mode C") events had no clear "registration not needed" message on the public details page. The copy lived inside `RsvpFormSection` but was gated behind a `defaultOpen={false}` `CollapsibleSection` rendered well below the hero/RTE/media gallery, AND the quick-nav row was actively *removing* the Register pill for Mode C without a replacement — silent gap. Architect-recommended Option E built on shared component (Option F). Commit `bf45ab2e`, deploy `25593078826`.

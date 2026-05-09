@@ -14,8 +14,22 @@ describe('RegistrationStatusHint (Phase 8YB.3)', () => {
       );
       expect(screen.getByText(/no registration required/i)).toBeInTheDocument();
       expect(
-        screen.getByText(/just show up|drop.in|contributions are still welcome/i),
+        screen.getByText(/just show up|drop.in/i),
       ).toBeInTheDocument();
+    });
+
+    it('banner body enumerates the full set of action surfaces (Phase 8YB.4 copy)', () => {
+      render(
+        <RegistrationStatusHint
+          registrationMode={RegistrationMode.NoRegistration}
+          variant="banner"
+        />,
+      );
+      // The user reported the original 8YB.3 copy only mentioned donations + sponsorships.
+      // 8YB.4 broadens it to the full set, hedged on what the organizer has set up.
+      const body = screen.getByText(/sign-up lists.*signup forms.*donations.*sponsorships.*collections.*add-ons/i);
+      expect(body).toBeInTheDocument();
+      expect(body.textContent).toMatch(/the organizer has set up/i);
     });
 
     it('banner uses the blue Info card visual language (matches existing prior-art)', () => {

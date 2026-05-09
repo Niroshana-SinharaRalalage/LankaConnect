@@ -11,7 +11,6 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
-import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -58,6 +57,9 @@ import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp
 import { EventHeroImage, type EventHeroVariant } from '@/presentation/components/features/events/EventHeroImage';
 // Phase 8YB.3: Mode-C "No registration required" hint (banner + quick-nav pill)
 import { RegistrationStatusHint } from '@/presentation/components/features/events/RegistrationStatusHint';
+// Phase 8YB.4: Quick-nav pill row (extracted) + signup-lists/forms presence probe
+import { EventQuickNav, type EventQuickNavPill } from '@/presentation/components/features/events/EventQuickNav';
+import { useHasSignUps } from '@/presentation/hooks/useHasSignUps';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -315,14 +317,14 @@ export function EventDetailPageInternal({
   // Phase 7.3: Fetch custom forms for this event
   const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
 
-  // Phase 7D.1 Phase G: page-scope volunteer-list probe used to gate the nav
-  // button + section. Separate query key per kind (see useEventSignUps) so it
-  // cannot collide with the kind-Items query mounted inside SignUpManagementSection.
-  const { data: volunteerLists, isFetched: volunteersFetched } = useEventSignUps(
-    id,
-    SignUpKind.Volunteers,
-  );
-  const hasVolunteerLists = volunteersFetched && (volunteerLists?.length ?? 0) > 0;
+  // Phase 7D.1 Phase G + Phase 8YB.4: page-scope sign-up probes used to gate the
+  // quick-nav pills + their sibling sections. Each probe uses a kind-specific
+  // query key (see `signUpKeys.list` in useEventSignUps) so they cannot collide
+  // with each other or with the kind-Items query mounted inside
+  // SignUpManagementSection. The probe-level isFetched gate prevents the worse
+  // "pill flashes in then disappears" failure mode on slower networks.
+  const { hasSignUps: hasVolunteerLists } = useHasSignUps(id, SignUpKind.Volunteers);
+  const { hasSignUps: hasItemSignUpLists } = useHasSignUps(id, SignUpKind.Items);
 
   // Filter to show only Active forms to attendees
   // Note: Backend sends enum as string ('Active'), frontend enum is numeric (1)
@@ -830,37 +832,30 @@ export function EventDetailPageInternal({
               {/* Quick Navigation Bar — anchor links to sections below.
                   Phase 8YB.3: Mode-C events have no Register anchor (no section to jump
                   to), so we lead the row with a non-clickable "No registration required"
-                  status pill instead of leaving the gap silent. */}
+                  status pill instead of leaving the gap silent.
+                  Phase 8YB.4: signup-lists / signup-forms pills are now gated on
+                  presence probes (mirrors the volunteers pattern) so the row no longer
+                  advertises sections the event hasn't configured. The descriptor array
+                  is rendered by EventQuickNav for unit-testable visibility logic. */}
               <div className="flex flex-wrap gap-2 mb-4">
                 <RegistrationStatusHint
                   registrationMode={registrationMode}
                   variant="pill"
                   isCancelled={isCancelled}
                 />
-                {[
-                  { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
-                  { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
-                  { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
-                  { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
-                  { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
-                  { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
-                  { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
-                  { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
-                  { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
-                ].filter(btn => btn.show).map(btn => (
-                  <button
-                    key={btn.id}
-                    type="button"
-                    onClick={() => document.getElementById(btn.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border text-neutral-700 bg-white hover:text-white hover:border-transparent transition-colors"
-                    style={{ borderColor: '#FF7900' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FF7900'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = ''; }}
-                  >
-                    {btn.icon}
-                    {btn.label}
-                  </button>
-                ))}
+                <EventQuickNav
+                  pills={[
+                    { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
+                    { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
+                    { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
+                    { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
+                    { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
+                    { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: hasItemSignUpLists },
+                    { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
+                    { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: !isLoadingForms && activeForms.length > 0 },
+                    { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
+                  ] satisfies EventQuickNavPill[]}
+                />
               </div>
 
               {/* Phase 8YB.3: Mode-C above-the-fold "No registration required" banner.
@@ -2251,20 +2246,26 @@ export function EventDetailPageInternal({
         {/* Signup Lists Section — CollapsibleSection (replaces old TabPanel) */}
         {/* Backward compat: hidden anchor for email links using #sign-ups */}
         <div id="sign-ups" className="sr-only" aria-hidden="true" />
-        <div id="signup-lists" className="mt-8">
-          <CollapsibleSection
-            title="Signup Lists"
-            icon={<List className="h-5 w-5 text-indigo-600" />}
-            defaultOpen={false}
-          >
-            <SignUpManagementSection
-              eventId={id}
-              userId={user?.userId}
-              isOrganizer={false}
-              kind={SignUpKind.Items}
-            />
-          </CollapsibleSection>
-        </div>
+        {/* Phase 8YB.4: only render when at least one Items-kind signup list exists,
+            mirroring the volunteers section pattern below. Otherwise the page used
+            to ship an empty CollapsibleSection card for events that never created
+            any lists. */}
+        {hasItemSignUpLists && (
+          <div id="signup-lists" className="mt-8">
+            <CollapsibleSection
+              title="Signup Lists"
+              icon={<List className="h-5 w-5 text-indigo-600" />}
+              defaultOpen={false}
+            >
+              <SignUpManagementSection
+                eventId={id}
+                userId={user?.userId}
+                isOrganizer={false}
+                kind={SignUpKind.Items}
+              />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Phase 7D.1 Phase G: Volunteer Roles — dedicated section, separate from Signup Lists */}
         {hasVolunteerLists && (
@@ -2285,7 +2286,13 @@ export function EventDetailPageInternal({
           </div>
         )}
 
-        {/* Signup Forms Section — CollapsibleSection */}
+        {/* Signup Forms Section — CollapsibleSection.
+            Phase 8YB.4: only render when at least one Active form exists; otherwise
+            the page used to ship an empty "No signup forms available for this event
+            yet." card on every event without forms. The probe is `!isLoadingForms &&
+            activeForms.length > 0` (matches the quick-nav pill gate) so the section
+            stays hidden during the in-flight fetch — avoids flash-then-disappear. */}
+        {!isLoadingForms && activeForms.length > 0 && (
         <div id="signup-forms" className="mt-8">
           <CollapsibleSection
             title="Signup Forms"
@@ -2416,6 +2423,7 @@ export function EventDetailPageInternal({
             )}
           </CollapsibleSection>
         </div>
+        )}
       </div>
 
       <Footer />

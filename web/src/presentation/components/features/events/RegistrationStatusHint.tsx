@@ -72,8 +72,9 @@ export const RegistrationStatusHint: React.FC<RegistrationStatusHintProps> = ({
             No registration required for this event
           </p>
           <p className="text-sm text-blue-800 mt-1">
-            This is a drop-in event — just show up. Donations, sponsorships, and other
-            contributions are still welcome via the actions on this page.
+            This is a drop-in event — just show up. Any sign-up lists, signup forms,
+            donations, sponsorships, collections or add-ons the organizer has set up
+            remain available via the actions on this page.
           </p>
         </div>
       </div>

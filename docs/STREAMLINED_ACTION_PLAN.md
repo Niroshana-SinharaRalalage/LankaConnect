@@ -6,6 +6,52 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YB.6 — TBD-as-regular event refinement; drops 8YB.5 over-aggressive UI gates + overturns Phase 8YA.1 Q2=A) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+
+**Status**: User feedback on 8YB.5 ship was that my "Coming soon" CTA + listing pill were over-aggressive — they intercepted the ExternalPaid CTA path on the public detail page and blocked normal registration. Verbatim: *"Even though it is a date or venue TBD event treat it as a regular event."* Architect-class classification: PRIMARY UI bug (mine, from 8YB.5) + SECONDARY domain rule overturn (Phase 8YA.1 Q2=A). Commits `b74ce227` + `78adfc70` (hotfix). Deploys BE `25611460146` + `25611967990` GREEN, UI `25611460142` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8YB_6_TBD_AS_REGULAR_2026_05_09.md` written before code.
+
+### What's in this slice
+
+| Layer | Change |
+|---|---|
+| Domain `Event.cs` | Dropped Q2=A "Cannot register without confirmed dates" guard from `Register()` (line 350+), `RegisterAnonymous()` (line 388+), AND `RegisterWithAttendees()` (line 446+). The third site was missed in initial PF audit and surfaced via smoke matrix C23/C24 — hotfixed in `78adfc70` minutes after the first commit. The "already started" check now uses `StartDate.HasValue && StartDate.Value <= now` so TBD events short-circuit safely |
+| UI public detail `events/[id]/page.tsx` | Removed the 8YB.5 TBD CTA gate. ExternalPaid TBD events now correctly render the existing `ExternalRegistrationCta` (vendor name, instructions). Free / OnPlatformPaid TBD events fall through to `RsvpFormSection` which now succeeds because the domain block was dropped |
+| UI listing `events/page.tsx` | Removed orange "Coming Soon" pill. Phase 8YA.3 "Date TBD" / "Time TBD" text remains as factual indicator |
+| UI manage `manage/page.tsx` | Status label `'Planning (Date TBD)'` simplified to `'Planning'` (DP3=A) |
+
+### Decisions (user-locked, all A)
+
+- DP1=A — keep Phase 8YA.2 email-on-Publish skip when StartDate null. Templates would render awkwardly otherwise
+- DP2=A — keep WhatsApp skip. Twilio template requires `{{EventDate}}` parameter
+- DP3=A — simplify manage status label
+
+### What stays unchanged from Phase 8YB.5 (correct as-is)
+
+- D1=A: Publish button on Planning events
+- D2=B: TS `EventStatus` enum string conversion
+- D5b=A: backend filter — Upcoming includes TBD
+- D6=A: Postpone requires `StartDate.HasValue`
+- E16: Unpublish reverts to Planning when StartDate null
+
+### Discipline + lessons
+
+- Master TODO before code (re-affirmed)
+- Per-file `git add` only (re-affirmed)
+- TDD: 3 new domain tests written FIRST, all RED → GREEN after impl. 19/19 Event_TbdDates_Tests PASS
+- API smoke 4/4 PASS on staging via `scripts/phase8YB6_smoke.py` — C23 Free TBD RSVP, C24 OnPlatformPaid TBD RSVP + Stripe, C25 ExternalPaid TBD CTA fields, C25b Niroshana repro
+- **HS-8YB.6 audit lesson** — PF audit missed `RegisterWithAttendees` as a third enforcement site because the grep was scoped to two known methods; smoke matrix caught it immediately. Future audits must grep for the entire failure-message string, not just method names
+
+### Operator UAT cells (5) — cannot self-attest
+
+Required before status flips from API-VERIFIED to SHIPPED:
+1. Open `541876b8` (Niroshana's repro) public detail page → renders `ExternalRegistrationCta` with "XYZ" vendor + "Connect with XYZ for more info" instructions. **No "Coming soon" card**
+2. Open the listing page → event has "Date TBD" text but **no orange "Coming Soon" pill**
+3. Manage page status badge for `541876b8` reads **"Planning"** (not "Planning (Date TBD)")
+4. Create a TBD Free event → Publish → as a different user open detail page → click Register → multi-attendee form submits successfully
+5. Create a TBD OnPlatformPaid event → Publish → as a different user start RSVP → Stripe checkout opens (paid TBD registration end-to-end)
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.5 — TBD-publish recovery; product-rule overturn enables direct publish from Planning) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
 
 **Status**: Niroshana repro `541876b8` (TBD ExternalPaid event, no Publish button, missing from public search) prompted a product-rule overturn — TBD events must be publishable directly. Architect-approved single slice; commit `e9e8ce31`, deploys BE `25610497852` + UI `25610497854` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8YB_5_TBD_PUBLISH_2026_05_09.md` written before code.

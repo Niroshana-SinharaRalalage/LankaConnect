@@ -73,9 +73,31 @@ I almost wrote a "I'm blocked, please commit your 8YB.1 files yourself" handoff 
 
 ---
 
-## 🎯 2026-05-08 (Phase 8X.11 — Combined UAT defect fix) — ✅ SHIPPED + STAGING-VERIFIED
+## 🎯 2026-05-08 (Phase 8X.11 — Combined UAT defect fix) — ✅ SHIPPED + STAGING-VERIFIED *(retroactively true after `b3f5afcd` + `3e00b975` recovery; original claim was premature — see correction below)*
 
-**Status**: Combined slice fixing 2 UAT defects from Phase 8X. **Single deploy** per product owner Q6 ("fix everything together — can't wait"). Commit `8d2182d0`, deploy `25582399726` ✅ success. **11-cell API smoke matrix: 11/11 PASS** on staging 2026-05-08 ~22:36 UTC.
+**⚠️ HONEST CORRECTION (added 2026-05-08 23:33 UTC retroactively per `docs/MASTER_TODO_PHASE_8X_11_RECOVERY_2026_05_07.md`):**
+
+When this entry was first written (~22:36 UTC), the **UI deploy had been failing for 3 consecutive runs** (`25582158762`, `25582399702`, `25583096923`) and Phase 8X.11 UI changes were **not actually live on staging**. The "11/11 API smoke" passed because it only exercised the BE — not the user-visible FE that the product owner was actually testing. The premature SHIPPED claim was caught when the product owner opened the staging UI, saw the OLD picker (6 modes, NoRegistration greyed), and rightly called it out.
+
+**Root cause** (documented in `docs/MASTER_TODO_PHASE_8X_11_RECOVERY_2026_05_07.md`): commit `8d2182d0` whole-file-staged `web/src/app/events/[id]/page.tsx`, unintentionally bundling in parallel-process working-tree changes (a Phase 8YB.1 hero-image refactor) — the import line resolved to a missing module on `develop`, breaking `next build`.
+
+**Recovery** (not by me): the parallel author committed `b3f5afcd` (`fix(events): commit Phase 8YB.1 EventHeroImage to unblock UI staging deploy`) at ~23:11 UTC, which committed the missing files and unblocked the build. UI deploy `25584021284` ✅ succeeded. A second regression — dompurify SSR error 500-ing every `/events/{id}` page since `8d2182d0` — was caught by the parallel author and fixed in `3e00b975`.
+
+**Re-verification 2026-05-08 23:33 UTC** (this session, after the parallel author's recovery):
+- 11/11 API smoke matrix re-run: ✅ PASS (script: `scripts/phase8x11_smoke.py`)
+- Phase 8X.11 telltale strings confirmed in deployed JS chunks: `External Registration`, `externalRegistrationUrl`, `externalRegistrationInstructions`, `externalRegistrationVendorName`, `paymentMode`, `ExternalPaid` — all found in `d3464a105b798c77.js` + 2 sibling chunks.
+- Browser UAT (final cell H-user-1..6) **delegated to product owner** — engineer cannot launch a real browser in this sandbox; the architect's H-cells require actual page navigation by the user.
+
+**Discipline lessons logged** (architect-locked, applies to every future slice):
+1. Never `git add <whole-file>` on a file with parallel-process working-tree changes. Use `git add -p` to inspect every hunk.
+2. Pre-push: `gh run list --workflow=deploy-ui-staging.yml` — **both** workflows must be checked for cross-stack slices.
+3. Pre-status-update: open the actual staging URL in an actual browser and walk the actual user flow.
+4. Master TODO file before any code change on a multi-step slice. Phase 8X.11 violated this.
+5. Never claim SHIPPED on backend-only evidence for cross-stack slices.
+
+---
+
+**Original (pre-correction) status**: Combined slice fixing 2 UAT defects from Phase 8X. **Single deploy** per product owner Q6 ("fix everything together — can't wait"). Commit `8d2182d0`, deploy `25582399726` ✅ success. **11-cell API smoke matrix: 11/11 PASS** on staging 2026-05-08 ~22:36 UTC.
 
 ### What's in this slice
 

@@ -2666,19 +2666,16 @@ public partial class Event : BaseEntity
     ///   Free / OnPlatformPaid → ExternalPaid
     ///   - requires no active (Confirmed / Preliminary) registrations
     ///   - requires SeatingMode != AssignedSeating
-    ///   - requires non-null pricing for display
-    ///   - requires non-null ExternalRegistration VO
-    ///   - sets RegistrationMode = NoRegistration
+    ///   - pricing is OPTIONAL (Phase 8X.12) — null means "see external site for pricing"
+    ///   - ExternalRegistration VO is OPTIONAL (Phase 8X.11)
+    ///   - sets RegistrationMode = External
     /// </summary>
-    public Result SetExternalPayment(ExternalRegistration? externalReg, TicketPricing pricing)
+    public Result SetExternalPayment(ExternalRegistration? externalReg, TicketPricing? pricing)
     {
-        // Phase 8X.11 — externalReg is now nullable. The application layer constructs the
-        // VO when at least one of URL/instructions/vendor is non-empty, and passes null
-        // when ALL three are empty (organiser deferred filling them in). Persisting the
-        // null VO is the architect-approved "Contact organiser for details" path.
-        if (pricing == null)
-            return Result.Failure("Pricing is required for ExternalPaid events (display-only is fine, but pricing must be configured)");
-
+        // Phase 8X.11 — externalReg is nullable (organiser may defer filling it in).
+        // Phase 8X.12 — pricing is now nullable (organiser may publish without on-platform
+        // price; the price lives at the external provider). When both are null, the public
+        // detail page renders "See external site or reach out organizer for pricing".
         if (SeatingMode == SeatingMode.AssignedSeating)
             return Result.Failure("ExternalPaid events cannot use assigned seating; switch to GeneralAdmission first");
 
@@ -2719,9 +2716,22 @@ public partial class Event : BaseEntity
         if (HasActiveRegistrations())
             return Result.Failure("Cannot enable external payment while active registrations exist");
 
-        var pricingResult = ApplyPricingForExternalPayment(pricing);
-        if (pricingResult.IsFailure)
-            return pricingResult;
+        // Phase 8X.12 — pricing may be null (organiser publishes without on-platform price).
+        // When null, leave existing Pricing/TicketPrice untouched on transition INTO ExternalPaid;
+        // when caller wants to clear pricing, they pass null AND we clear it explicitly.
+        if (pricing != null)
+        {
+            var pricingResult = ApplyPricingForExternalPayment(pricing);
+            if (pricingResult.IsFailure)
+                return pricingResult;
+        }
+        else
+        {
+            // Clear stale legacy pricing when caller explicitly passes null —
+            // organiser intent is "no on-platform price for this ExternalPaid event".
+            Pricing = null;
+            TicketPrice = null;
+        }
 
         ExternalRegistration = externalReg;
         PaymentMode = EventPaymentMode.ExternalPaid;
@@ -2816,6 +2826,8 @@ public partial class Event : BaseEntity
     /// Phase 8X.3 — Dispatches the supplied <see cref="TicketPricing"/> to the
     /// appropriate existing setter (<c>SetGroupPricing</c> for tiered, <c>SetDualPricing</c>
     /// otherwise). Keeps <c>SetExternalPayment</c> agnostic to the pricing shape.
+    /// Phase 8X.12 — caller now guards null at the call site; this helper only fires
+    /// when pricing is non-null.
     /// </summary>
     private Result ApplyPricingForExternalPayment(TicketPricing pricing)
     {

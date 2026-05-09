@@ -113,13 +113,50 @@ public class Event_SetExternalPayment_Tests
     }
 
     [Fact]
-    public void SetExternalPayment_WithNullPricing_Fails()
+    public void SetExternalPayment_WithNullPricing_Succeeds_NoOnPlatformPricing()
     {
+        // Phase 8X.12 — pricing is now optional. Organiser may publish an ExternalPaid
+        // event with no on-platform price (the price lives at the external provider).
+        // Public detail page renders "See external site or reach out organizer for pricing".
         var ev = CreateFreshEvent();
-        var result = ev.SetExternalPayment(ExternalReg(), pricing: null!);
+        var result = ev.SetExternalPayment(ExternalReg(), pricing: null);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Pricing");
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
+        ev.RegistrationMode.Should().Be(RegistrationMode.External);
+        ev.Pricing.Should().BeNull();
+        ev.TicketPrice.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetExternalPayment_WithNullPricing_AndExistingLegacyPricing_ClearsLegacyPricing()
+    {
+        // Phase 8X.12 — explicit null pricing on a transition INTO ExternalPaid clears
+        // any stale legacy pricing (organiser intent: "no on-platform price").
+        var ev = CreateFreshEvent();
+        ev.SetDualPricing(DualPricing()).IsSuccess.Should().BeTrue();
+        ev.Pricing.Should().NotBeNull();
+
+        var result = ev.SetExternalPayment(ExternalReg(), pricing: null);
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.Pricing.Should().BeNull();
+        ev.TicketPrice.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetExternalPayment_WithBothNull_Succeeds_FriendlyEmptyState()
+    {
+        // Phase 8X.12 — null externalReg + null pricing is the most permissive ExternalPaid
+        // state. Public detail page nudges the user to contact the organiser.
+        var ev = CreateFreshEvent();
+        var result = ev.SetExternalPayment(externalReg: null, pricing: null);
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+        ev.PaymentMode.Should().Be(EventPaymentMode.ExternalPaid);
+        ev.RegistrationMode.Should().Be(RegistrationMode.External);
+        ev.ExternalRegistration.Should().BeNull();
+        ev.Pricing.Should().BeNull();
     }
 
     [Fact]

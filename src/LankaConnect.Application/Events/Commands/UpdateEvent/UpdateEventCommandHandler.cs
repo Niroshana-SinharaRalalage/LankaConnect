@@ -413,14 +413,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         // events have no registrations by definition).
         if (request.PaymentMode == EventPaymentMode.ExternalPaid)
         {
-            if (pricing == null && @event.Pricing == null)
-            {
-                _logger.LogWarning(
-                    "UpdateEvent: ExternalPaid requested but no pricing supplied or existing - EventId={EventId}",
-                    request.EventId);
-                return Result.Failure("Pricing is required for ExternalPaid events");
-            }
-
+            // Phase 8X.12 — pricing is optional. Null pricing + null existing pricing is now
+            // a valid state (organiser publishes without on-platform price). When caller
+            // passes null pricing on update, SetExternalPayment clears any stale legacy pricing.
             // Phase 8X.11 — externalReg may be null when organiser cleared all 3 fields.
             ExternalRegistration? externalReg = null;
             var allEmpty = string.IsNullOrWhiteSpace(request.ExternalRegistrationUrl)
@@ -453,8 +448,14 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 }
             }
 
-            var pricingForExternal = pricing ?? @event.Pricing!;
-            var setExternalResult = @event.SetExternalPayment(externalReg, pricingForExternal);
+            // Phase 8X.12 — caller-as-source-of-truth: pricing reflects form intent.
+            // - Form submits existing pricing values when user didn't touch the field
+            //   (the FE pre-populates from the loaded event).
+            // - Form submits null when user explicitly cleared the field.
+            // SetExternalPayment treats null as "clear stale pricing" (organiser
+            // moves pricing off-platform); the public detail page renders the
+            // "See external site or reach out organizer for pricing" copy.
+            var setExternalResult = @event.SetExternalPayment(externalReg, pricing);
             if (setExternalResult.IsFailure)
             {
                 _logger.LogWarning(

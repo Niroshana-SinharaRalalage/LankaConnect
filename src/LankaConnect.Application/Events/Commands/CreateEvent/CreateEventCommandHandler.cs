@@ -381,16 +381,10 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
         // Phase 8X.4b — ExternalPaid branch: bundles pricing + VO + RegistrationMode coercion in one call.
         // SetExternalPayment internally dispatches to SetDualPricing / SetGroupPricing, so the
         // legacy pricing block below is skipped for this branch.
+        // Phase 8X.12 — pricing is now optional; SetExternalPayment accepts null and renders
+        // "See external site or reach out organizer for pricing" on the public detail page.
         if (effectivePaymentMode == EventPaymentMode.ExternalPaid)
         {
-            if (pricing == null)
-            {
-                _logger.LogWarning(
-                    "CreateEvent: ExternalPaid requested but no pricing supplied — OrganizerId={OrganizerId}",
-                    request.OrganizerId);
-                return Result<Guid>.Failure("Pricing is required for ExternalPaid events");
-            }
-
             // Phase 8X.11 — externalReg may be null when organiser supplied no URL +
             // no instructions + no vendor. Domain stores ExternalRegistration = null;
             // public detail page renders the friendly "Contact organiser for details" card.

@@ -1100,6 +1100,16 @@ export function EventDetailPageInternal({
                       If you were registered for this event, you should have received a notification about the cancellation.
                     </p>
                   </div>
+                ) : isExternalPaid && !isUserRegistered ? (
+                  // Phase 8X.12 — single registration-section gate for ExternalPaid.
+                  // Replaces the prior 5 RsvpFormSection mount sites that were ungated for
+                  // ExternalPaid (only the 1149 site was — see UAT defect D2). On-platform
+                  // states (refund-in-progress / expired-checkout / incomplete-payment) are
+                  // structurally impossible for ExternalPaid (no on-platform registrations),
+                  // so this branch is the complete handler for non-cancelled ExternalPaid views.
+                  // Decision #1 = B: already-registered users (impossible for ExternalPaid but
+                  // defensive) fall through to the isUserRegistered branch below for context.
+                  <ExternalRegistrationCta event={event} />
                 ) : registrationDetails?.status === 'Cancelled' ? (
                   // Show cancelled status with option to re-register
                   <div className="space-y-6">

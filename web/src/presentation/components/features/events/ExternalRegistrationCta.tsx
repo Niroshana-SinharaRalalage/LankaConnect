@@ -26,9 +26,16 @@ import { type EventDto } from '@/infrastructure/api/types/events.types';
  */
 export interface ExternalRegistrationCtaProps {
   event: EventDto;
+  /**
+   * Phase 8X.12 — optional notice surfaced when this CTA replaces the user's
+   * existing RSVP context (e.g. mid-refund, expired-checkout, incomplete-payment).
+   * The page-level early-return passes a state-specific message so the user
+   * isn't dropped into the CTA without context.
+   */
+  priorRegistrationNotice?: string;
 }
 
-export function ExternalRegistrationCta({ event }: ExternalRegistrationCtaProps) {
+export function ExternalRegistrationCta({ event, priorRegistrationNotice }: ExternalRegistrationCtaProps) {
   const url = event.externalRegistrationUrl?.trim() || null;
   const vendorName = event.externalRegistrationVendorName?.trim() || null;
   const instructions = event.externalRegistrationInstructions?.trim() || null;
@@ -38,23 +45,46 @@ export function ExternalRegistrationCta({ event }: ExternalRegistrationCtaProps)
   const hasVendor = vendorName !== null;
   const allEmpty = !hasUrl && !hasInstructions && !hasVendor;
 
+  // Phase 8X.12 — pricing is now optional. When the event has no on-platform
+  // pricing configured, the description copy switches to the user-locked phrase
+  // "See external site or reach out organizer for pricing". Detection: legacy
+  // ticketPriceAmount is null/zero AND no advanced pricing shape is configured.
+  const hasOnPlatformPricing =
+    (event.ticketPriceAmount != null && event.ticketPriceAmount > 0) ||
+    event.hasDualPricing ||
+    event.hasGroupPricing ||
+    (event.ticketTiers && event.ticketTiers.length > 0);
+
   // Card heading is consistent across branches; vendor name personalises it when set.
   const heading = hasVendor
     ? `Registration handled by ${vendorName}`
     : 'External registration';
+
+  const pricingSnippet = hasOnPlatformPricing
+    ? 'Pricing is shown here for reference'
+    : 'See external site or reach out organizer for pricing';
 
   return (
     <div
       className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg space-y-4"
       data-testid="external-registration-cta"
     >
+      {priorRegistrationNotice && (
+        <div
+          className="p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-900"
+          data-testid="external-registration-cta-prior-notice"
+        >
+          {priorRegistrationNotice}
+        </div>
+      )}
+
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <h3 className="text-base font-semibold text-neutral-900 mb-1">{heading}</h3>
           <p className="text-sm text-neutral-600">
             {hasUrl
-              ? `This event uses an external registration page. Pricing is shown here for reference — you'll complete checkout on ${vendorName ?? "the organiser's site"}.`
-              : 'This event uses external registration. Pricing is shown here for reference; see below for how to register.'}
+              ? `This event uses an external registration page. ${pricingSnippet} — you'll complete checkout on ${vendorName ?? "the organiser's site"}.`
+              : `This event uses external registration. ${pricingSnippet}; see below for how to register.`}
           </p>
         </div>
       </div>

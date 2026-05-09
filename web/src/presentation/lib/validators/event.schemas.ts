@@ -378,6 +378,10 @@ export const createEventSchema = z.object({
 }).refine(
   (data) => {
     // Session 33: If not free and not using dual, group, or tiered pricing, single price and currency are required
+    // Phase 8X.12: ExternalPaid events may publish without on-platform pricing
+    // (price lives at the external provider; public page renders "See external site
+    // or reach out organizer for pricing").
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
@@ -393,6 +397,8 @@ export const createEventSchema = z.object({
 ).refine(
   (data) => {
     // If using dual pricing, adult price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && data.enableDualPricing) {
       return data.adultPriceAmount !== null &&
              data.adultPriceAmount !== undefined &&
@@ -910,6 +916,8 @@ export const editEventSchema = baseEditEventSchema.superRefine((data, ctx) => {
 }).refine(
   (data) => {
     // If not free and not using any advanced pricing mode, single price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
@@ -925,6 +933,8 @@ export const editEventSchema = baseEditEventSchema.superRefine((data, ctx) => {
 ).refine(
   (data) => {
     // If using dual pricing, adult price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && data.enableDualPricing) {
       return data.adultPriceAmount !== null &&
              data.adultPriceAmount !== undefined &&

@@ -6,6 +6,33 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YB.3 — "No registration required" hint surfaced above the fold for Mode C events) — ✅ SHIPPED + STAGING-VERIFIED (deploy in_progress at write time; operator UAT pending)
+
+**Status**: User reported drop-in (NoRegistration / "Mode C") events had no clear "registration not needed" message on the public details page. The copy lived inside `RsvpFormSection` but was gated behind a `defaultOpen={false}` `CollapsibleSection` rendered well below the hero/RTE/media gallery, AND the quick-nav row was actively *removing* the Register pill for Mode C without a replacement — silent gap. Architect-recommended Option E built on shared component (Option F). Commit `bf45ab2e`, deploy `25593078826`.
+
+### What's in this slice
+
+| Area | Change |
+|---|---|
+| New component | `RegistrationStatusHint` (`web/src/presentation/components/features/events/`) with `variant: 'banner' \| 'pill'` and optional `isCancelled` precedence flag. Renders blue Info card or compact non-clickable status pill for `NoRegistration` only; returns null for Mode A / B-variants / External and when cancelled. |
+| Banner placement | Inside the event details Card, between the quick-nav row and the RTE description — above-the-fold visibility for the "No registration required for this event" message + drop-in explanation. |
+| Pill placement | Front of the quick-nav row (`page.tsx:829`), replacing the silently-removed Register anchor. Compact "No registration required" pill with `Info` icon; blue color scheme distinguishes from the orange action pills. |
+| Untouched | `RsvpFormSection.tsx` Mode-C blue card stays inside the collapsed section as secondary context for users who scroll. `displayLabel` Badge unchanged. Cancelled / registered / payment-pending / full / waitlist banners all rendered through the same render branches as before. |
+
+### Verification
+- **18 new component tests** + 14 EventHeroImage + 3 ImageUploader.guidance = 35/35 Phase 8YB tests green
+- `tsc --noEmit` clean
+- Both `/events/{id}` (full-bleed default per Phase 8YB.2) and `/events/{id}/v2` (contained sandbox) inherit the fix — same `EventDetailPageInternal`
+- Operator UAT pending per memory rule: open a representative Mode-C staging event and confirm pill + banner render; non-Mode-C events untouched
+
+### Why a shared component
+The architect flagged a latent debt: each new registration mode currently scatters wiring across `page.tsx`, the quick-nav row, and `RsvpFormSection`. `RegistrationStatusHint` gives ExternalPaid (Phase 8X.11) and any future modes a single insertion point — adding a new hint = one extra branch, no scattered edits.
+
+### Backend / DB / API / Auth impact
+**Zero.** `event.registrationMode` is already correctly populated and serialized. Frontend-only slice; deploys via `deploy-ui-staging.yml`.
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YA — TBD Event Dates) — ✅ SHIPPED + STAGING-VERIFIED end-to-end (10/12 cells PASS via API + Log Analytics; 2 cells code-verified, browser UAT delegated)
 
 **Status**: 5 phases shipped on `develop` (commits `303e4648` + `6a3b7710` + `95d11b91` + `5a4232de` + `df427c91`). Backend deploy `25583096930` ✅ (11m33s); UI deploy `25584021284` ✅ (5m5s, after the unrelated Phase 8YB.1 fix `b3f5afcd` unblocked it). Migration `20260508153410_Phase8YA1_AllowNullEventDates` applied successfully (proven by Cell 2 — creating an event with null start/end dates returned 201 with status=Planning, only possible with NULL-allowing columns).

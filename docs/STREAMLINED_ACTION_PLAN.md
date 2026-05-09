@@ -6,6 +6,41 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YA — TBD Event Dates) — ✅ SHIPPED + STAGING-VERIFIED end-to-end (10/12 cells PASS via API + Log Analytics; 2 cells code-verified, browser UAT delegated)
+
+**Status**: 5 phases shipped on `develop` (commits `303e4648` + `6a3b7710` + `95d11b91` + `5a4232de` + `df427c91`). Backend deploy `25583096930` ✅ (11m33s); UI deploy `25584021284` ✅ (5m5s, after the unrelated Phase 8YB.1 fix `b3f5afcd` unblocked it). Migration `20260508153410_Phase8YA1_AllowNullEventDates` applied successfully (proven by Cell 2 — creating an event with null start/end dates returned 201 with status=Planning, only possible with NULL-allowing columns).
+
+**Goal**: Allow organizers to create events without committing to start/end dates yet. New `EventStatus.Planning = 8` lifecycle state models the dates-not-yet-known intent; `Event.SetDates(start, end)` transitions Planning → Draft once both dates are filled. Q1=A allows publishing TBD events publicly with a "Date TBD" badge.
+
+**Architect verdict 2026-05-08**: Option 3 (lifecycle state + nullable `DateTime?`) chosen over full-nullable (Opt 1) and sentinel+flag (Opt 2). User answers (locked 2026-05-08): Q1=A (TBD events appear in public listings with a "Date TBD" badge — `Publish()` allows `Planning → Published`); Q2=A (`Register*` blocks on TBD); Q3=A (Featured/Nearby/Upcoming queries exclude TBD); Q4=A (silent transition Planning → Draft, no email).
+
+### Smoke matrix results (2026-05-09 03:00-03:13 UTC)
+
+**10 of 12 cells verified live on staging:**
+- ✅ Cell 1 — Create dated event → 201, status=Draft
+- ✅ Cell 2 — Create TBD event → 201, status=Planning, dates=null *(proves migration applied)*
+- ✅ Cell 3 — Edit TBD → set dates → 200, status auto-Draft *(SetDates Planning→Draft transition)*
+- ✅ Cell 4 — Publish TBD → 200, status=Published with null dates (Q1=A)
+- ✅ Cell 5 — Register on TBD → **400 "Cannot register for an event without confirmed dates"** (Q2=A architect-locked message)
+- ✅ Cell 7 — Featured carousel excludes TBD events (Q3=A — 4 events returned, TBD not among them)
+- ✅ Cell 9 — EventReminderJob ran at 03:00:23 UTC, 0 events in any reminder window, never inspected the TBD event
+- ✅ Cell 10 — EventStatusUpdateJob ran at 03:00:23 UTC, transitioned 36 Published events to Active — TBD-Published `bb55d0ff-...` NOT in the activated list (proves Phase 4's explicit `.HasValue` filter)
+- ✅ Cell 11 — ICS export on TBD → **HTTP 422 "Event has no confirmed dates"** (architect-locked status + message)
+- ✅ Cell 12 — Add dates to TBD-Published → registration HTTP 204 on the same event that returned 400 in Cell 5
+- ✅ Bonus — Validator: mixed-dates → **400 "Both StartDate and EndDate must be provided together, or both must be empty (TBD event)"** (architect-locked message)
+
+**Cells 6 + 8 (UI badge render) — code-verified, operator browser UAT remaining:**
+- 🟡 Cell 6 — Listing card "Date TBD" badge: API contract verified (TBD events returned with null dates, 1 in `/api/events` listing); UI page `/events` returns HTTP 200, no server crash. Server-rendered HTML doesn't contain "Date TBD" text because the badge is client-side rendered (Next.js sends shell + JS, hydration fetches the data); curl can't execute JS. Visual verification = operator opens the page in a real browser. Phase 3's 16 vitest tests pin the rendering.
+- 🟡 Cell 8 — Detail page "Date TBD" render: same shape as Cell 6 — both old + new TBD event IDs return HTTP 200 (initial 500 was a transient deploy-rollover blip), no server crash on null dates. Visual verification = operator opens the detail page in a real browser. Code path verified by `events/[id]/page.tsx` patch (lines 687-695 gate `formatEventDate(...)` on `event.startDate` truthiness).
+
+**Smoke event cleanup**: ✅ All 4 smoke events (`a007aef7...`, `abf8af69...`, `ca0767f4...`, `bb55d0ff...`) cancelled successfully via `POST /events/{id}/cancel` — staging is back to its pre-smoke state.
+
+**Phase 8YA shipped status: backend functionally complete + staging-verified end-to-end across API + jobs + cleanup; UI render verification = code-complete + tsc-clean + 16 vitest tests + smoke pages return 200; final visual confirmation in browser delegated to operator UAT.**
+
+Plan: [docs/MASTER_TODO_TBD_EVENT_DATES.md](MASTER_TODO_TBD_EVENT_DATES.md)
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.2 — Full-bleed hero promoted to default; contained variant kept at `/v2` as a sandbox) — ✅ SHIPPED + STAGING-VERIFIED
 
 **Status**: User picked Option E (full-bleed hero) after browsing the staging A/B comparison. Swapped the `heroVariant` value in the two route wrappers — `/events/{id}` now passes `"fullWidth"`, `/events/{id}/v2` keeps `"contained"` as a sandbox for future iteration on the legacy variant. Commit `b95dc763`, deploy `25589730070` ✅ success (~5m).

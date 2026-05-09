@@ -92,7 +92,10 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
     [EventStatus.UnderReview]: 'Under Review',
     // Phase 8YB.5 (D1=A): TBD events created without dates land in Planning
     // and can publish directly via the Publish button below.
-    [EventStatus.Planning]: 'Planning (Date TBD)',
+    // Phase 8YB.6 (DP3=A): simplified label from "Planning (Date TBD)" — the
+    // listing card already surfaces "Date TBD" in the date field below, so the
+    // suffix on the manage badge was redundant visual noise.
+    [EventStatus.Planning]: 'Planning',
   };
 
   // Handle Publish Event

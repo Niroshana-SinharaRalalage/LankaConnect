@@ -352,12 +352,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events even when Published —
-        // organisers must commit to dates before accepting RSVPs.
-        if (StartDate == null)
-            return Result.Failure("Cannot register for an event without confirmed dates");
-
-        if (StartDate.Value <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned. Product-owner-locked:
+        // "Even though it is a date or venue TBD event treat it as a regular event."
+        // Registration is now allowed on TBD-Published events; the "already started"
+        // guard short-circuits when StartDate is null (TBD events have no past anchor).
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (userId == Guid.Empty)
@@ -390,11 +389,10 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events.
-        if (StartDate == null)
-            return Result.Failure("Cannot register for an event without confirmed dates");
-
-        if (StartDate.Value <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned. Anonymous registration follows
+        // the same rule as authenticated registration: TBD events are treated as
+        // regular events for the purpose of accepting RSVPs.
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (attendeeInfo == null)

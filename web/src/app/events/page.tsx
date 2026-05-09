@@ -521,19 +521,10 @@ function EventCard({
             {event.displayLabel}
           </Badge>
 
-          {/* Phase 8YB.5 (D5=A): Coming Soon pill for TBD events. Surfaces at-a-glance
-              that this event has no confirmed dates yet, distinct from a normal upcoming
-              event. Renders only when StartDate is null AND event isn't already in a
-              terminal state where a "coming soon" framing would be misleading. */}
-          {!event.startDate && event.displayLabel !== 'Cancelled' && event.displayLabel !== 'Completed' && (
-            <Badge
-              variant="default"
-              className="font-semibold bg-orange-100 text-orange-800 border border-orange-300"
-              data-testid="coming-soon-pill"
-            >
-              Coming Soon
-            </Badge>
-          )}
+          {/* Phase 8YB.6 (2026-05-09): "Coming Soon" pill removed per product-owner
+              rule overturn — TBD events are treated as regular events. The factual
+              "Date TBD" / "Time TBD" text in the date field below is sufficient
+              indicator that the schedule isn't confirmed yet. */}
 
           {/* Registration Badge - Issue #2: Only shows for Confirmed status */}
           <RegistrationBadge registrationStatus={event.userRegistrationStatus} compact={false} />

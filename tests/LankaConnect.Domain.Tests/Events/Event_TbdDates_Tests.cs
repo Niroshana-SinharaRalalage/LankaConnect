@@ -172,18 +172,42 @@ public class Event_TbdDates_Tests
     }
 
     [Fact]
-    public void Register_OnPublishedTbdEvent_Fails()
+    public void Register_OnPublishedTbdEvent_Succeeds()
     {
-        // Q1=A allows publishing a TBD event; Q2=A still blocks registration.
+        // Phase 8YB.6 (2026-05-09): Q2=A overturned. Product-owner-locked rule:
+        // "Even though it is a date or venue TBD event treat it as a regular event."
+        // Registration is allowed on TBD-Published events as long as registration
+        // is otherwise enabled. The "already started" guard short-circuits when
+        // StartDate is null (TBD events have no past anchor to compare against).
         var ev = CreatePlanningEvent();
         var publishResult = ev.Publish();
         publishResult.IsSuccess.Should().BeTrue();
         ev.Status.Should().Be(EventStatus.Published);
+        ev.StartDate.Should().BeNull();
 
         var result = ev.Register(Guid.NewGuid(), quantity: 1);
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("date", because: "the rejection should explain dates are not confirmed");
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+    }
+
+    [Fact]
+    public void RegisterAnonymous_OnPublishedTbdEvent_Succeeds()
+    {
+        // Phase 8YB.6: anonymous registration on TBD events follows the same rule
+        // as authenticated registration — allowed when status is Published.
+        var ev = CreatePlanningEvent();
+        ev.Publish().IsSuccess.Should().BeTrue();
+
+        var attendeeInfo = AttendeeInfo.Create(
+            name: "Smoke Tester",
+            age: 30,
+            address: "100 Main St",
+            email: "smoke-tbd@example.com",
+            phoneNumber: "+15555550100").Value;
+
+        var result = ev.RegisterAnonymous(attendeeInfo, quantity: 1);
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

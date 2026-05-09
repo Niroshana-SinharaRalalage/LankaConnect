@@ -191,6 +191,33 @@ public class Event_TbdDates_Tests
     }
 
     [Fact]
+    public void RegisterWithAttendees_OnPublishedTbdEvent_Succeeds()
+    {
+        // Phase 8YB.6: multi-attendee Mode-A path also accepts TBD events.
+        // The HTTP RSVP endpoint routes new-format requests through this method,
+        // so the smoke matrix C23/C24 cells exercise this code path specifically.
+        var ev = CreatePlanningEvent();
+        // Mark as free explicitly — the multi-attendee path runs CalculatePriceForAttendees
+        // which requires either Free or pricing-configured. The TBD-specific assertion is
+        // the same regardless of payment mode (Phase 8YB.6 D7=A is mode-agnostic).
+        ev.SetAsFreeEvent().IsSuccess.Should().BeTrue();
+        ev.Publish().IsSuccess.Should().BeTrue();
+
+        var attendee = AttendeeDetails.Create("TBD Multi-Attendee", AgeCategory.Adult).Value;
+        var contact = RegistrationContact.Create(
+            email: "smoke-multi-tbd@example.com",
+            phoneNumber: "+15555550101",
+            address: null).Value;
+
+        var result = ev.RegisterWithAttendees(
+            userId: Guid.NewGuid(),
+            attendees: new[] { attendee },
+            contact: contact);
+
+        result.IsSuccess.Should().BeTrue($"got error: {result.Error}");
+    }
+
+    [Fact]
     public void RegisterAnonymous_OnPublishedTbdEvent_Succeeds()
     {
         // Phase 8YB.6: anonymous registration on TBD events follows the same rule

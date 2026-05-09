@@ -451,11 +451,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        // Phase 8YA.1 (Q2=A): Registration blocked on TBD events.
-        if (StartDate == null)
-            return Result.Failure("Cannot register for an event without confirmed dates");
-
-        if (StartDate.Value <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned for the multi-attendee path
+        // too. Mirrors the same change in Register() and RegisterAnonymous():
+        // TBD events are treated as regular events; "already started" is the
+        // only date-anchored guard that fires here.
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         // Phase 8X.3 — ExternalPaid events have no internal registration path.

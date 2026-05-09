@@ -6,6 +6,28 @@
 
 ---
 
+## 🎯 2026-05-09 (Phase 8YB.2 — Full-bleed hero promoted to default; contained variant kept at `/v2` as a sandbox) — ✅ SHIPPED + STAGING-VERIFIED
+
+**Status**: User picked Option E (full-bleed hero) after browsing the staging A/B comparison. Swapped the `heroVariant` value in the two route wrappers — `/events/{id}` now passes `"fullWidth"`, `/events/{id}/v2` keeps `"contained"` as a sandbox for future iteration on the legacy variant. Commit `b95dc763`, deploy `25589730070` ✅ success (~5m).
+
+### What changed
+- `web/src/app/events/[id]/page.tsx` default export now passes `heroVariant="fullWidth"`; the `EventDetailPageInternal` default-arg flipped to `'fullWidth'` to match.
+- `web/src/app/events/[id]/v2/page.tsx` now passes `heroVariant="contained"` (was `"fullWidth"`).
+- Doc comments in both files updated to reflect the new mapping. `EventHeroImage` component, all 17 hero + uploader tests, and the upload-time guidance copy unchanged.
+
+### Verification
+- `tsc --noEmit` clean
+- 17/17 hero + uploader tests still pass
+- Staging HTTP 200 on `/events/0d876309-…` (full-bleed) AND `/events/0d876309-…/v2` (contained)
+
+### Why keep `/v2`
+The `heroVariant` prop and the `/v2` route stay around as a low-friction iteration sandbox. User can tweak the contained variant on `/v2` (typography, spacing, badge anchor, anything) without disturbing the primary `/events/{id}` surface, then promote the result back by flipping the wrapper's prop value. When the user eventually picks one and stops iterating, follow-up will collapse the prop and delete `/v2`.
+
+### Next user-driven
+Either iterate on the `/v2` contained variant, or browser-UAT the new full-bleed primary on the Vesak event.
+
+---
+
 ## 🎯 2026-05-08 (Phase 8YB.1 — Hero image cropping fix on `/events/[id]` + comparison route + dompurify SSR-guard hotfix) — ✅ SHIPPED + STAGING-VERIFIED
 
 **Status**: User reported their Vesak flyer's title and bottom contact strip were being cropped on the public event hero. RCA with system-architect identified the cause (`h-96` fixed-height hero with `object-cover`) plus a latent gap (no aspect-ratio guidance at upload time). Implemented Option C on the existing route + Option E on a temporary `/events/{id}/v2` test route so the user can A/B compare on staging before picking a winner. Commits `b3f5afcd` (5 hero files, recovered by a prior wakeup) and `3e00b975` (this session's dompurify SSR-guard hotfix). Deploy `25584438669` ✅ success.

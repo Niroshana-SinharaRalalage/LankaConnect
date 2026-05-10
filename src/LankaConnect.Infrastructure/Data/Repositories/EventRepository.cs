@@ -684,12 +684,20 @@ public class EventRepository : Repository<Event>, IEventRepository
             _repoLogger.LogInformation("[SEARCH-4] Added free-only filter");
         }
 
-        // Add start date filter if provided
+        // Add start date filter if provided.
+        // Phase 8YB.6 hotfix (2026-05-09) — match the in-memory filter behaviour from
+        // GetEventsQueryHandler.ApplyInMemoryFilters: when only StartDateFrom is set
+        // (the open-ended "Upcoming" bucket), TBD events with NULL StartDate must
+        // pass through. Postgres null-comparison `>=` returns NULL (falsy in WHERE),
+        // which silently dropped TBD events from search results — caught by Niroshana
+        // searching "Sample" on the public listing and not finding 541876b8.
+        // SearchAsync has no StartDateTo parameter today, so any caller-supplied
+        // StartDateFrom corresponds to the Upcoming-only bucket per D5b=A.
         if (startDateFrom.HasValue)
         {
-            whereConditions.Add($@"e.""StartDate"" >= {{{parameters.Count}}}"); // PascalCase with quotes
+            whereConditions.Add($@"(e.""StartDate"" >= {{{parameters.Count}}} OR e.""StartDate"" IS NULL)"); // PascalCase with quotes; NULL allowed for TBD events
             parameters.Add(startDateFrom.Value);
-            _repoLogger.LogInformation("[SEARCH-5] Added start date filter: {StartDateFrom}", startDateFrom.Value);
+            _repoLogger.LogInformation("[SEARCH-5] Added start date filter (TBD-inclusive): {StartDateFrom}", startDateFrom.Value);
         }
 
         var whereClause = string.Join(" AND ", whereConditions);

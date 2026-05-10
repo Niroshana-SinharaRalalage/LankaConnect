@@ -1,7 +1,7 @@
 # Phase 8X.12 — Combined Recovery Slice (D1 + D2 + D3)
 
 **Date:** 2026-05-09
-**Status:** API-VERIFIED on staging — awaiting operator browser UAT to flip to SHIPPED.
+**Status:** ✅ SHIPPED + STAGING-VERIFIED 2026-05-09 — Niroshana's screenshot of `541876b8` confirmed the ExternalRegistrationCta renders with vendor + instructions on the public detail page, and the user-locked "See external site or reach out organizer for pricing" copy fires correctly when no on-platform pricing is set.
 **Architect-approved.** Single recovery slice covering three defects from real browser UAT after Phase 8X.11.
 
 **Commit:** `bdfdc149` (`develop`) — 9 files, +462 / -55.

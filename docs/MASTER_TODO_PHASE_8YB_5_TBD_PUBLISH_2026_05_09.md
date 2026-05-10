@@ -1,7 +1,7 @@
 # Phase 8YB.5 — TBD-Publish Recovery Slice
 
 **Date:** 2026-05-09
-**Status:** API-VERIFIED on staging — awaiting operator browser UAT to flip to SHIPPED.
+**Status:** ✅ SHIPPED + STAGING-VERIFIED 2026-05-09 — Niroshana's screenshot confirmed search "Sam" with default Active+Upcoming filters returns `541876b8` (TBD ExternalPaid event), validating the headline rule overturn end-to-end.
 **Architect-approved.** Single slice; 8 code edits across 7 files; 22-cell smoke matrix; 8-cell operator UAT.
 
 **Commit:** `e9e8ce31` (`develop`) — 11 files, +521 / -26.

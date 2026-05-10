@@ -6,7 +6,13 @@
 
 ---
 
-## 🎯 2026-05-09 (Phase 8YB.6 — TBD-as-regular event refinement; drops 8YB.5 over-aggressive UI gates + overturns Phase 8YA.1 Q2=A) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+## 🎯 2026-05-09 (Phase 8YB.6 + 8YB.5 + 8X.12 — three combined event-system slices) — ✅ SHIPPED + STAGING-VERIFIED
+
+**All three slices flipped to SHIPPED 2026-05-09** based on Niroshana's accumulated real-browser UAT evidence: (1) public detail page on `541876b8` correctly rendering `ExternalRegistrationCta` with vendor + instructions and the user-locked "See external site or reach out organizer for pricing" copy; (2) search "Sam" + Active + Upcoming filters returning `541876b8` post hotfix #2. The Phase 8YB.6 hotfix series caught two latent enforcement-site misses (RegisterWithAttendees + SearchAsync SQL filter) and one pre-existing UX regression (listing-card "Buy on {Vendor}" copy when null URL) — all resolved before final flip. Aggregate: 10 commits (`bdfdc149` → `933f4e6e`), 6 backend deploys + 4 UI deploys all GREEN, 35/35 API smoke cells across the three matrices, 19/19 Event_TbdDates_Tests + Application 2646/2652 PASS, frontend typecheck + Next.js build clean.
+
+---
+
+## 🎯 2026-05-09 (Phase 8YB.6 — TBD-as-regular event refinement; drops 8YB.5 over-aggressive UI gates + overturns Phase 8YA.1 Q2=A) — ✅ SHIPPED 2026-05-09 (was API-VERIFIED, flipped after operator UAT)
 
 **Status**: User feedback on 8YB.5 ship was that my "Coming soon" CTA + listing pill were over-aggressive — they intercepted the ExternalPaid CTA path on the public detail page and blocked normal registration. Verbatim: *"Even though it is a date or venue TBD event treat it as a regular event."* Plus a follow-up real-browser UAT defect: searching "Sample" on `/events` didn't find `541876b8` (TBD) — caught a third missed enforcement site in the FTS search SQL. Architect-class classification: PRIMARY UI bug (mine, from 8YB.5) + SECONDARY domain rule overturn (Phase 8YA.1 Q2=A) + TERTIARY infrastructure bug (FTS search SQL filter). Commits `b74ce227` + `78adfc70` (hotfix #1) + `e038ca63` (hotfix #2). Deploys BE `25611460146` + `25611967990` + `25615447368` GREEN, UI `25611460142` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8YB_6_TBD_AS_REGULAR_2026_05_09.md` written before code.
 
@@ -54,7 +60,7 @@ Required before status flips from API-VERIFIED to SHIPPED:
 
 ---
 
-## 🎯 2026-05-09 (Phase 8YB.5 — TBD-publish recovery; product-rule overturn enables direct publish from Planning) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+## 🎯 2026-05-09 (Phase 8YB.5 — TBD-publish recovery; product-rule overturn enables direct publish from Planning) — ✅ SHIPPED 2026-05-09 (was API-VERIFIED, flipped after Niroshana confirmed search "Sam" returns `541876b8`)
 
 **Status**: Niroshana repro `541876b8` (TBD ExternalPaid event, no Publish button, missing from public search) prompted a product-rule overturn — TBD events must be publishable directly. Architect-approved single slice; commit `e9e8ce31`, deploys BE `25610497852` + UI `25610497854` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8YB_5_TBD_PUBLISH_2026_05_09.md` written before code.
 
@@ -96,7 +102,7 @@ Required before status flips from API-VERIFIED to SHIPPED:
 
 ---
 
-## 🎯 2026-05-09 (Phase 8X.12 — combined recovery slice D1 + D2 + D3) — 🟡 API-VERIFIED on staging, awaiting operator browser UAT
+## 🎯 2026-05-09 (Phase 8X.12 — combined recovery slice D1 + D2 + D3) — ✅ SHIPPED 2026-05-09 (was API-VERIFIED, flipped after Niroshana confirmed `541876b8` public detail renders the ExternalRegistrationCta correctly)
 
 **Status**: Three defects from real browser UAT after Phase 8X.11 recovery, bundled into one architect-approved slice. Commit `bdfdc149`, deploys BE `25607095872` + UI `25607095876` GREEN. Master TODO `docs/MASTER_TODO_PHASE_8X_12_RECOVERY_2026_05_09.md` written before code.
 

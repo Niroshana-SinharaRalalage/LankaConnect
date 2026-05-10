@@ -1,7 +1,7 @@
 # Phase 8YB.6 — TBD-as-Regular Event Refinement
 
 **Date:** 2026-05-09
-**Status:** API-VERIFIED on staging — awaiting operator browser UAT to flip to SHIPPED.
+**Status:** ✅ SHIPPED + STAGING-VERIFIED 2026-05-09 by Niroshana's real-browser UAT.
 **User-locked product rule clarification.** Single small slice; 5 files; 4 smoke cells; 5-cell operator UAT.
 
 **Commits:** `b74ce227` (initial slice, 6 files, +154/-62) → `78adfc70` (hotfix #1: `RegisterWithAttendees` missed enforcement site, 2 files) → `e038ca63` (hotfix #2: FTS search SQL filter dropped TBD events, 1 file).

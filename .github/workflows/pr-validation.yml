@@ -75,6 +75,11 @@ jobs:
         uses: ./.github/actions/cultural-intelligence-validator
 
       - name: PR Summary Comment
+        # Non-blocking: requires pull-requests:write permission on GITHUB_TOKEN.
+        # If repo default permissions are read-only, this fails with
+        # "Resource not accessible by integration" — should not fail the quality gate.
+        # Substantive checks (Domain/Infra build, Domain Tests, Infrastructure smoke) above are the real gates.
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |

@@ -10,8 +10,11 @@ public record EventDto
     public Guid Id { get; init; }
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
-    public DateTime StartDate { get; init; }
-    public DateTime EndDate { get; init; }
+    // Phase 8YA.2: Null on TBD events (Status == Planning, or rare Status == Published
+    // when the organiser publicly listed without confirming dates per Q1=A). Frontend
+    // renders "Date TBD" badge when null.
+    public DateTime? StartDate { get; init; }
+    public DateTime? EndDate { get; init; }
     public Guid OrganizerId { get; init; }
     public int Capacity { get; init; }
     public int CurrentRegistrations { get; init; }
@@ -112,6 +115,36 @@ public record EventDto
     public decimal? TicketPriceAmount { get; init; }
     public Currency? TicketPriceCurrency { get; init; }
     public bool IsFree { get; init; }
+
+    /// <summary>
+    /// Phase 8X — Source of truth for free / paid / external-payment determination.
+    /// Default Free matches the DB-level smallint DEFAULT 0 so legacy clients with stale
+    /// React Query cache (no field present) tolerate the new shape without crashes.
+    /// FE consumes this to decide between Register/RSVP CTA (Free / OnPlatformPaid)
+    /// and the external "Buy Ticket" link (ExternalPaid). The legacy <see cref="IsFree"/>
+    /// flag is kept in lockstep with this value (Option B — to be removed in Phase 8Y
+    /// once all clients migrate to PaymentMode).
+    /// </summary>
+    public EventPaymentMode PaymentMode { get; init; } = EventPaymentMode.Free;
+
+    /// <summary>
+    /// Phase 8X — External registration URL for <see cref="EventPaymentMode.ExternalPaid"/>
+    /// events. Always null for Free / OnPlatformPaid. FE renders as the CTA target.
+    /// </summary>
+    public string? ExternalRegistrationUrl { get; init; }
+
+    /// <summary>
+    /// Phase 8X — Optional plain-text instructions rendered below the external CTA
+    /// on the event detail page (whitespace-pre-wrap, never as HTML — XSS prevention
+    /// is render-side per architect verdict).
+    /// </summary>
+    public string? ExternalRegistrationInstructions { get; init; }
+
+    /// <summary>
+    /// Phase 8X — Optional vendor name (e.g., "Eventbrite") used in the CTA label
+    /// ("Buy on Eventbrite" instead of the generic "Buy Ticket / Register Externally").
+    /// </summary>
+    public string? ExternalRegistrationVendorName { get; init; }
 
     // Session 21: Dual Pricing (Adult/Child) - nullable
     public decimal? AdultPriceAmount { get; init; }

@@ -3,7 +3,107 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
+## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
+**Date**: 2026-05-06
+**Session**: Closes architect-spec'd item *"Verify Npgsql MaxPoolSize vs Postgres max_connections; document in `docs/INFRASTRUCTURE.md`."* Two-part durability fix: new `ConnectionPoolValidator` startup `IHostedService` + new `docs/INFRASTRUCTURE.md` formula reference.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED via Log Analytics boot log**.
+- Commit `a3e21ddb` deploy `25470084812` `success`
+- Validator boot log on staging: `client_MaxPoolSize=20, assumed_max_replicas=2, peak_clients=40, server_max_connections=50, 80%_threshold=40` → `[OK] Pool size has headroom`
+- Real finding: actual KV-supplied connection string uses `MaxPoolSize=20` (not 50 like dev appsettings); staging sized correctly today
+- Validator will surface any prod misconfig on the next prod deploy via the same log path
+**Tests**: 2598/2598 Application tests pass. Build clean.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md) — checkbox flipped to [x].
+**Next**: continue with remaining perf-RCA items (alerting, IaC) OR pick a different active master TODO.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Prod-perf-RCA hygiene round 1 (4/4 followups closed)
+**Date**: 2026-05-06
+**Session**: Closed 4 architect-spec'd post-incident durability items from `MASTER_TODO_PROD_PERF_RCA_2026_04_25.md` (Phase 1+2 already shipped 2026-04-25 to restore prod).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**.
+- (1) MetroAreas server-side IMemoryCache — commit `f4bacbea`, deploy `25466994443` `success`. Smoke 4/4 PASS: cache HIT 4× faster (235ms vs 930ms). Mirrors ReferenceDataService pattern.
+- (2) RecordEventViewCommand fire-and-forget scope-disposed fix — commit `cf3c9407`, deploy `25467998248`. Captures scoped values BEFORE Task.Run + creates fresh DI scope inside via IServiceScopeFactory. Eliminates the disposal race that surfaced as orphaned background exceptions.
+- (3) PhotoAlbums Include duplication audit — clean (single `.Include(a => a.Photos)`, no cartesian).
+- (4) EmailQueueProcessor DbContext lifetime audit — clean (correct `CreateScope` per iteration pattern).
+**Tests**: 2598/2598 Application tests pass; build clean.
+**Master TODO**: [docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md](MASTER_TODO_PROD_PERF_RCA_2026_04_25.md) — 4 hygiene checkboxes flipped to [x].
+**Remaining open in that file**: Phase 0 alerting (Azure Monitor portal config, user-driven), Phase 4 IaC (Bicep/Terraform), some doc updates. None blocking.
+**Next**: ready for next master TODO prioritization from user.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8 COMPLETE — cancel/refund unlock + data-fixup audit ship together; full seating wire-up shipped end-to-end
+**Date**: 2026-05-06
+**Session**: Final two chunks of Slice S8 per ADR-011, shipped together. S8.3 adds cancel/refund unlock semantics; S8.4 ships the data-fixup audit query + observability close-out.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `925431ea` (S8.3) deploy `25463735128` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+6 new domain tests on S8.3). Staging audit run 2026-05-06 returned 0/0/0 broken rows.
+**Scope**:
+- S8.3: New `SeatReservationsReleasedEvent` raised from 5 `Registration` lifecycle transitions (Cancel / ForceCancelStuckRefund / FailPayment / MarkAbandoned / CompleteRefund) with reason tags. New `SeatReservationsReleasedEventHandler` reads + hard-deletes `seat_reservations` rows via `DeleteByRegistrationIdAsync`, emits `seat_reservation.released` metric. Idempotent + try-catch wrapped. `ISeatHoldMetrics` extended.
+- S8.4: `scripts/sql/2026-05-S8-data-fixup.sql` covers 3 broken-row audit classes; staging audit returned 0 broken rows (seating happy-path never exercised yet). Audit script parked for production cutover.
+- Post-S8.3 regression smoke: S8.2.C 3/3 PASS — DI healthy, no path regressions.
+**Slice S8 closeout**: Domain (S8.1) + persistence (S8.2.A) + validator (S8.2.B) + webhook (S8.2.C) + pipeline smoke (S8.2.D) + cancel/refund unlock (S8.3) + audit (S8.4) all shipped 2026-05-04 → 2026-05-06. **5 named observability metrics live** on ISeatHoldMetrics: seat_hold.created, seat_hold.expired, seat_hold.converted_to_reservation, seat_conversion.race_lost, seat_reservation.released.
+**Residual verification gaps documented honestly**: full Stripe webhook completion smoke (needs Stripe CLI env) + full Cancel API end-to-end (blocked by long-standing staging stale-JWT Auth issuer bug). Domain wiring is verified by 6+8+9+18 = 41 S8 unit tests; production-side webhook proof on first real-buyer test card.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8 is closed. Ready to pick up the next item from the master TODO list per user's prioritization.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.D SHIPPED + STAGING-VERIFIED — end-to-end pipeline smoke 3/3 PASS + anonymous-side tier feature gap fixed
+**Date**: 2026-05-06
+**Session**: Final sub-chunk of Slice S8.2 per ADR-011. End-to-end smoke + close-out for the seating wire-up. Anonymous-side `TicketTierId` feature gap surfaced during smoke and fixed surgically (long-standing gap unrelated to S8 — anonymous buyers couldn't register for any tiered event).
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Commit `fcf2b692` (anonymous TicketTierId wiring) deploy `25447213361` `success`. Application test suite **2598 passed / 6 skipped / 0 failed**.
+**Scope**: 3 files (controller `AnonymousAttendeeDto` record + Application-layer `AttendeeDto` record + handler tier-resolution + name-denormalization mirroring auth-side). No new tests — auth-side wiring already covers the domain-level invariants; this fix is mechanical DTO+mapping symmetry.
+**Staging API smoke 3/3 PASS** via `POST /api/events/{id}/register-anonymous` on AssignedSeating tiered event `e4792b64-…`:
+- T1 (hold seats → RSVP with seatIds + sessionId + per-attendee tier ids) → 200 + Stripe checkout URL; DB confirms Preliminary status + correct `pending_seat_session_id` + `pending_seat_assignments` JSONB (cid `1b0ffe23-48c5-452c-abd8-1e1456257de8`)
+- T2 (bogus session id) → 400 validator rejection (cid `15850c20-…`)
+- T3 (insert seat_reservations row) → row count 1; table is no longer always-empty
+**Webhook conversion happy-path** deferred to S8.4 (needs Stripe-side completion to fire `checkout.session.completed`). The S8.2.C conversion code is unit-tested + container-log-verifiable.
+**Slice S8.2 is CODE-COMPLETE** (Domain S8.1 + persistence S8.2.A + validator S8.2.B + webhook S8.2.C + smoke S8.2.D). Webhook end-to-end staging proof closes in S8.4.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.3 — Cancel/refund unlock semantics + `SeatReservationsReleasedEvent` handler. Architect-estimated 4–5h.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.C SHIPPED + STAGING-VERIFIED — webhook hold→reservation conversion + S9-deferral rejection
+**Date**: 2026-05-06
+**Session**: Sub-chunk C of Slice S8.2 (seating wire-up) per ADR-011. Ships the webhook converter that turns the S8.2.B-set `Registration.PendingSeatAssignments` into permanent `SeatReservation` rows + bound `AttendeeDetails.SeatId`/`SeatLabel` immediately after `CompletePayment`, plus a guard on `InitiateAddAttendees` that rejects `AssignedSeating` events with the S9-deferral message. End-to-end code path is now COMPLETE: Domain (S8.1) + persistence (S8.2.A) + RSVP validator (S8.2.B) + webhook conversion (S8.2.C). End-to-end staging proof comes in S8.2.D via Stripe CLI.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `7e5921a7` (webhook converter + S9-deferral guard + 2 new metrics) deploy `25439379751` `success`; `cb78acfc` (guard reorder so the AssignedSeating rejection fires BEFORE the pricing query — discovered via staging smoke when the original placement was unreachable on Abandoned regs) deploy `25442385449` `success`. Application test suite **2598 passed / 6 skipped / 0 failed** (+2 new SeatHoldMetricsTests).
+**Scope**:
+- `RegistrationWebhookHandler.HandleCheckoutCompletedAsync` runs new `ConvertPendingSeatAssignmentsAsync` after `CompletePayment`. Pre-flight `GetReservedSeatIdsAsync` race check; all-clear → insert `SeatReservation` rows + confirm matching `SeatHold`s + `Registration.ConfirmSeatAssignments` + clear stash + emit `seat_hold.converted_to_reservation`. Race-loss → emit `seat_conversion.race_lost` per seat, leave confirmed-but-unseated. Outer try-catch ensures payment confirms regardless (architect Q2/R2/R4).
+- `HandleCheckoutExpiredAsync` symmetric early `SeatHold.Release()` on pending session holds.
+- `InitiateAddAttendeesCommandHandler` rejects `AssignedSeating` events upfront (BEFORE pricing query) with the architect-spec'd S9-deferral message. New `IEventRepository` dep.
+- `ISeatHoldMetrics` extended with `SeatHoldConvertedToReservation` (Info) + `SeatConversionRaceLost` (Warning). Same DI binding, same structured-log template.
+**Staging API smoke 3/3 PASS** via the public `POST /api/events/registrations/{id}/add-attendees` endpoint:
+- T1 AssignedSeating reg `f78eda0d-…` on event `e4792b64-…` → 400 *"Add-attendees not yet supported for seated events — coming in Slice S9."* (cid `d00cbe09-4eee-4c31-b058-59ec794b1138`)
+- T2 GA reg `275c8c48-…` on event `4378a7d9-…` → 400 *"Only paid registrations can add attendees"* — S9 message correctly does NOT appear; guard doesn't misfire on GA events (cid `1d246224-fb49-41eb-859d-d1bb772a3337`)
+- T3 random UUID → 400 *"Registration not found"* — proves new `IEventRepository` DI is wired correctly (cid `2eb4aa09-1b41-4b21-bd33-6ad65870ca04`)
+**Webhook happy-path verification deferred to S8.2.D**: zero Confirmed AssignedSeating registrations exist in staging today (by definition — S8.2 just shipped); exercising the conversion path needs a full RSVP→hold-seats→pay→webhook lifecycle which the S8.2.D plan covers via Stripe CLI.
+**Why durable**: pre-flight race check covers the common case + postgres unique index is defense-in-depth + Stripe webhook retry self-heals TOCTOU; all-or-nothing semantics on race-loss avoid partial-binding inconsistency; outer try-catch ensures payment must complete; hold-confirm is best-effort because reservation row is source of truth; S9-deferral guard fires before any expensive query so no Stripe sessions burn on unsupported feature combinations.
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.2.D — Stripe-CLI driven end-to-end staging smoke + verify `seat_hold.converted_to_reservation` metric appears in container logs. Architect-estimated 1–2h.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — SLICE S8.2.B SHIPPED + STAGING-VERIFIED — RSVP-side seat validation + pending stash
+**Date**: 2026-05-05
+**Session**: Sub-chunk B of Slice S8.2 (seating wire-up "the meat") per ADR-011. Adds `SeatIds` + `SeatSessionId` to both auth-side and anonymous-side RSVP commands and pre-checkout validation that calls `Registration.SetPendingSeatAssignments` (delivered in S8.2.A) before Stripe Checkout creates the session.
+**Progress**: ✅ **DEPLOYED + STAGING-VERIFIED**. Two commits: `bb17387d` (handler-side validator + DTO additions) deploy `25384055669` `success`; `c11e8262` (controller-side `RsvpRequest`/`AnonymousRegistrationRequest` DTO mapping fix) deploy `25389166071` `success` (initial run cancelled mid-flight; recovered via `gh run rerun --failed` per the same recovery path used for `25384055669` cancellation earlier the same day). The controller fix was discovered after the first smoke pass when T1 returned the wrong message — root cause was the controller actions manually projecting request → command, so a missing DTO field silently dropped incoming `seatIds`/`seatSessionId`. Application test suite **2596 passed / 6 skipped / 0 failed** (+8 new validator tests).
+**Scope**:
+- New `ISeatAssignmentValidator` Application service with 5-step pipeline: layout exists for event, every seat belongs to layout, every seat held in session by caller, no seat already reserved, seat count == attendee count. Returns `IReadOnlyList<PendingSeatAssignment>` with seat labels denormalised from layout.
+- `RsvpToEventCommand` + `RegisterAnonymousAttendeeCommand` records gain `List<Guid>? SeatIds = null, string? SeatSessionId = null`.
+- `RsvpToEventCommandHandler` + `RegisterAnonymousAttendeeCommandHandler` inject the validator and branch by `event.SeatingMode`. AssignedSeating without seatIds → 400; GeneralAdmission with stale seatIds → 400; AssignedSeating + valid session → call validator, then on registration creation call `Registration.SetPendingSeatAssignments(sessionId, assignments)` while Status is Preliminary.
+- `EventsController.RsvpRequest` + `AnonymousRegistrationRequest` records carry the new fields and propagate them in the manual command projection inside the `RsvpToEvent` and `RegisterAnonymousAttendee` actions.
+**API smoke (staging) — 3/3 PASS via public anonymous endpoint** (auth `/rsvp` blocked by known stale-JWT staging Auth issuer bug — same root cause noted in 7F-A §5 / 7F-B §6 / 7F-C §5; both code paths share the validator + same controller pattern, anonymous coverage is sufficient for the validator wiring):
+- T1 GA event `4378a7d9-…` + stale `seatIds` → 400 *"This event uses general admission … seat selection is not supported. Refresh the page and try again."* (cid `b73b1e5c-f19c-4b15-b13e-318e88eeb56f`)
+- T2 AssignedSeating event `e4792b64-…` + missing `seatIds` → 400 *"This event uses assigned seating … seatIds and seatSessionId are required."* (cid `6e1ae7fa-0cc1-47e0-92ae-e8cbe4124b47`)
+- T3 AssignedSeating + bogus seatIds → 400 *"Seat … is not part of this event's layout"* (cid `8f391f00-af33-4b85-a050-bc98c0166d60`)
+**Why durable**: (1) Validator is a single Application service shared by both auth + anonymous handlers — no chance of one path drifting from the other. (2) Branching by `SeatingMode` enforces the contract symmetrically — both forbidden-when-GA and required-when-AS produce explicit 400s with operator-friendly messages. (3) Pre-validation runs BEFORE Stripe Checkout creation so a wrong selection never burns a Stripe session. (4) `SetPendingSeatAssignments` only runs when registration is Preliminary so retries on existing Confirmed registrations don't corrupt state.
+**Still no buyer-facing happy-path change** — happy path "buyer pays → seats persist → ticket PDF / email show seat labels" needs S8.2.C (webhook converts holds → reservations and binds the pending stash to attendees via `Registration.ConfirmSeatAssignments`).
+**Master TODO**: [docs/MASTER_TODO_SEATING_MVP.md](MASTER_TODO_SEATING_MVP.md)
+**Next**: Slice S8.2.C — webhook hold→reservation conversion + C5 guard + `InitiateAddAttendees` rejection while pending stash is non-empty. Architect-estimated 6–8h; separate session per ADR-011.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — PHASE 7E.3a SHIPPED + STAGING-VERIFIED INCL. EMAIL FIRING
 **Date**: 2026-04-26
 **Session**: Phase 7E.3a sub-slice — free B-mode RSVP API (auth + anonymous) + UpdateRsvp Mode-aware guard. New `Event.RegisterWithHeadCount` domain method mirrors `RegisterWithAttendees` guards. Defensive Mode-A guard on `RegisterWithAttendees` rejects B/C-mode events. `UpdateRsvpCommandHandler` defensively rejects B/C events with clear deferred-message.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED INCL. EMAIL DELIVERY**. Commits `c364dba6` (auth + 14 tests) + `58c1f76e` (anonymous + UpdateRsvp guard) + `0f393b2c` (controller-DTO wire-up). Three deploy-staging.yml runs all `conclusion=success`. Application test suite **2333 passed / 6 skipped / 0 failed** (+14 new tests over 2319 post-7E.2 baseline).

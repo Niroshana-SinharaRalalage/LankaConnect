@@ -111,7 +111,7 @@ public class UserCommittedToSignUpEventHandler : INotificationHandler<DomainEven
                     eventTitle: @event.Title?.Value ?? "Event",
                     signupItem: domainEvent.ItemDescription,
                     quantity: quantity,  // Phase 6A.121: Calculated from dual fields above
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: signups on TBD events — decide whether to allow + how to render
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: locationProjection.LegacyFlatString,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id)

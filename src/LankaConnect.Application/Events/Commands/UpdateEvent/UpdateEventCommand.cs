@@ -10,8 +10,12 @@ public record UpdateEventCommand(
     Guid EventId,
     string Title,
     string Description,
-    DateTime StartDate,
-    DateTime EndDate,
+    // Phase 8YA.2: TBD-dates support. Both null is allowed and is interpreted as
+    // "do not change the existing dates" (organiser is updating other fields).
+    // Both set → SetDates path (validates + may transition Planning → Draft).
+    // Mixed → validator rejects.
+    DateTime? StartDate,
+    DateTime? EndDate,
     int Capacity,
     // Issue #51: Max attendees per registration (optional)
     int? MaxAttendeesPerRegistration = null,
@@ -65,5 +69,12 @@ public record UpdateEventCommand(
     // Phase 7E.2: Optional registration mode change.
     // Null means "don't modify". Domain rule (Event.SetRegistrationMode) forbids change once
     // registrations exist; the handler surfaces that as a 400 with a clear message.
-    RegistrationMode? RegistrationMode = null
+    RegistrationMode? RegistrationMode = null,
+    // Phase 8X — Optional payment-mode transition (Free / OnPlatformPaid / ExternalPaid).
+    // Null means "don't modify". Domain rule (Event.SetPaymentMode / SetExternalPayment)
+    // forbids change once active registrations exist.
+    EventPaymentMode? PaymentMode = null,
+    string? ExternalRegistrationUrl = null,
+    string? ExternalRegistrationInstructions = null,
+    string? ExternalRegistrationVendorName = null
 ) : ICommand;

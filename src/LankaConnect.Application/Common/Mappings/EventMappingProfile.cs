@@ -34,6 +34,11 @@ public class EventMappingProfile : Profile
             // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
             .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
+            // Phase 8X — payment mode + external registration projection.
+            .ForMember(dest => dest.PaymentMode, opt => opt.MapFrom(src => src.PaymentMode))
+            .ForMember(dest => dest.ExternalRegistrationUrl, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.Url : null))
+            .ForMember(dest => dest.ExternalRegistrationInstructions, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.Instructions : null))
+            .ForMember(dest => dest.ExternalRegistrationVendorName, opt => opt.MapFrom(src => src.ExternalRegistration != null ? src.ExternalRegistration.VendorName : null))
             // Phase 7E paid-B-mode gate (review iteration 1, 2026-04-28): tells the frontend
             // whether the configured RegistrationMode is currently implementable. "deferred" is
             // the fail-safe default in EventDto; the mapper explicitly sets "active" when the
@@ -63,9 +68,10 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.HasSecondaryLocation, opt => opt.MapFrom(src => src.SecondaryLocation != null))
             // Phase 6A.97: Timezone mapping for consistent date/time display
             .ForMember(dest => dest.TimeZoneId, opt => opt.MapFrom(src => src.TimeZoneId))
+            // Phase 8YA-2 TODO: render TimeZoneAbbreviation as null on TBD events.
             .ForMember(dest => dest.TimeZoneAbbreviation, opt => opt.MapFrom(src =>
-                src.TimeZoneId != null
-                    ? LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate)
+                (src.TimeZoneId != null && src.StartDate.HasValue)
+                    ? LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.GetTimezoneAbbreviation(src.TimeZoneId, src.StartDate.Value)
                     : null))
             // Legacy ticket price mapping (nullable - backward compatibility)
             .ForMember(dest => dest.TicketPriceAmount, opt => opt.MapFrom(src => src.TicketPrice != null ? src.TicketPrice.Amount : (decimal?)null))
@@ -199,6 +205,9 @@ public class EventMappingProfile : Profile
             var ctx = new RegistrationModeContext
             {
                 IsFreeAttendance = src.IsFree(),
+                // Phase 8X.11 — pass payment-mode axis so ExternalPaid events render the
+                // External mode as "active" (compatibility helper now switches on PaymentMode).
+                PaymentMode = src.PaymentMode,
                 HasDualPricing = src.Pricing != null && src.Pricing.HasChildPricing,
                 HasGroupTiers = src.Pricing != null && src.Pricing.HasGroupTiers,
                 HasTicketTiers = src.HasTicketTiers,

@@ -50,11 +50,15 @@ export function mapEventToFeedItem(event: EventDto): FeedItem {
   const actions: FeedAction[] = createEventActions(event);
 
   // Map event-specific metadata
-  // Phase 6A.97: Use event's timezone for time display
+  // Phase 6A.97: Use event's timezone for time display.
+  // Phase 8YA.3: TBD events have null startDate/endDate; surface "Date TBD" /
+  // "Time TBD" so the feed-card UI renders a clear placeholder.
   const metadata: EventMetadata = {
     type: 'event',
-    date: event.startDate,
-    time: extractTimeFromDate(event.startDate, event.timeZoneId),
+    date: event.startDate ?? 'Date TBD',
+    time: event.startDate
+      ? extractTimeFromDate(event.startDate, event.timeZoneId)
+      : 'Time TBD',
     venue: formatVenue(event),
     interestedCount: event.currentRegistrations || 0,
     commentCount: 0, // TODO: Add when comments feature is implemented
@@ -338,6 +342,12 @@ export function getAvailableSpots(event: EventDto): number {
  * ```
  */
 export function formatEventDateRange(event: EventDto): string {
+  // Phase 8YA.3: TBD events have null start/end; render "Date TBD" without
+  // forcing the formatter to throw. The catch fallback below covers any
+  // legacy formatter throws on malformed-but-non-null strings.
+  if (!event.startDate || !event.endDate) {
+    return 'Date TBD';
+  }
   try {
     // Phase 6A.97: Use timezone-aware formatter
     return formatDateRangeWithTz(event.startDate, event.endDate, event.timeZoneId);

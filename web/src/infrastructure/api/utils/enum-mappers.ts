@@ -66,13 +66,22 @@ export function buildEventCategoryMap(
 }
 
 /**
- * Build EventStatus code to int value map
- * Specific helper for EventStatus enum
+ * Build EventStatus code to enum-value map.
+ *
+ * Phase 8YB.5 (D2=B): EventStatus is now string-valued (`'Published'`, `'Planning'`,
+ * etc.) to match the backend's `JsonStringEnumConverter` output. The backend
+ * reference-data feed still ships an intValue for legacy consumers, but the
+ * domain-level identity is the code string. Map each code to itself, typed as
+ * the enum so consumers retain compile-time guarantees.
  */
 export function buildEventStatusMap(
   data: ReferenceValue[] | undefined
 ): Record<string, EventStatus> {
-  return buildCodeToIntMap<EventStatus>(data);
+  if (!data) return {} as Record<string, EventStatus>;
+  return data.reduce((acc, item) => {
+    acc[item.code] = item.code as EventStatus;
+    return acc;
+  }, {} as Record<string, EventStatus>);
 }
 
 /**

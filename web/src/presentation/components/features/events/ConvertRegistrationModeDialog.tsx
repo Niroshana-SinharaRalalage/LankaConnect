@@ -52,6 +52,11 @@ const MODE_LABELS: Record<RegistrationMode, string> = {
   [RegistrationMode.HeadCountByGender]: 'Head Count by Gender',
   [RegistrationMode.HeadCountByAgeAndGender]: 'Head Count by Age × Gender',
   [RegistrationMode.NoRegistration]: 'No Registration',
+  // Phase 8X.11 — External mode is not a conversion target (paired with PaymentMode.ExternalPaid;
+  // the convert-registration-mode flow is for internal mode A↔B↔C transitions only). Label is
+  // included for the Record-completeness type constraint; the dialog should never reach this row
+  // because the parent's `targetMode` filter excludes External.
+  [RegistrationMode.External]: 'External Registration',
 };
 
 export function ConvertRegistrationModeDialog({

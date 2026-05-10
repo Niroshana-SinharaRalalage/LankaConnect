@@ -105,7 +105,7 @@ public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotif
                     refundId: Guid.NewGuid(),  // Refund ID not available in domain event yet
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: refund flow can't fire on TBD today (Register blocks)
                     timeZoneId: @event.TimeZoneId,
                     refundAmount: totalRefundAmount,
                     originalAmount: totalRefundAmount,  // Same as refund for full refunds

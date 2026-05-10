@@ -103,6 +103,13 @@ public class GetNearbyEventsQueryHandler : IQueryHandler<GetNearbyEventsQuery, I
                 var filteredEvents = events.AsEnumerable();
                 var beforeFilterCount = events.Count;
 
+                // Phase 8YA.4 (Q3=A): TBD events are excluded from Nearby because
+                // a "near me" carousel signals events with confirmed dates worth
+                // attending. The spatial query at the repository layer already
+                // joins on Location which TBD events may also have, so the
+                // exclusion has to happen here at the application filter chain.
+                filteredEvents = filteredEvents.Where(e => e.StartDate.HasValue);
+
                 if (request.Category.HasValue)
                 {
                     filteredEvents = filteredEvents.Where(e => e.Category == request.Category.Value);

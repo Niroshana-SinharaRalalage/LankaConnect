@@ -50,14 +50,22 @@ public record RegisterAnonymousAttendeeCommand(
     // the handler dispatches by event.RegistrationMode. Reuses RsvpToEvent.HeadCountDto and
     // TierCountDto via the existing using statement.
     string? LeadAttendeeName = null,
-    HeadCountDto? HeadCount = null
+    HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Same semantics as
+    // RsvpToEventCommand.SeatIds/SeatSessionId — required when the event's
+    // SeatingMode == AssignedSeating, rejected on GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null
 ) : ICommand<string?>;
 
 /// <summary>
-/// Individual attendee information with age category and optional gender
+/// Individual attendee information with age category and optional gender.
+/// Phase 8 S8.2.D: Optional ticket tier assignment so anonymous buyers can
+/// register for tiered events (mirrors RsvpToEvent.AttendeeDto).
 /// </summary>
 public record AttendeeDto(
     string Name,
     AgeCategory AgeCategory,
-    Gender? Gender = null
+    Gender? Gender = null,
+    Guid? TicketTierId = null
 );

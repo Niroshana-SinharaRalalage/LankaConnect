@@ -359,6 +359,9 @@ public class Registration : BaseEntity
         {
             Status = RegistrationStatus.Cancelled;
             MarkAsUpdated();
+            // Phase 8 S8.3: release seat reservations on cancel.
+            RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+                EventId, Id, "registration_cancelled"));
         }
     }
 
@@ -385,6 +388,9 @@ public class Registration : BaseEntity
 
         Status = RegistrationStatus.Cancelled;
         MarkAsUpdated();
+        // Phase 8 S8.3: release seat reservations on force-cancel.
+        RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+            EventId, Id, "force_cancelled_stuck_refund"));
         return Result.Success();
     }
 
@@ -739,6 +745,9 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Failed;
         Status = RegistrationStatus.Cancelled;  // Cancel registration if payment fails
         MarkAsUpdated();
+        // Phase 8 S8.3: release seat reservations on payment failure.
+        RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+            EventId, Id, "payment_failed"));
         return Result.Success();
     }
 
@@ -915,6 +924,10 @@ public class Registration : BaseEntity
             DateTime.UtcNow,
             AddOnRefundAmount ?? 0m));
 
+        // Phase 8 S8.3: release seat reservations on refund completion.
+        RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+            EventId, Id, "refund_completed"));
+
         return Result.Success();
     }
 
@@ -951,6 +964,13 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Failed;  // Mark payment as failed since it was never completed
         AbandonedAt = DateTime.UtcNow;
         MarkAsUpdated();
+
+        // Phase 8 S8.3: release seat reservations on abandonment. Defensive: a
+        // Preliminary registration shouldn't have seat_reservations rows yet
+        // (those come from the webhook conversion in S8.2.C), but the handler
+        // is idempotent — DeleteByRegistrationIdAsync is a no-op when no rows.
+        RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+            EventId, Id, "checkout_abandoned"));
 
         return Result.Success();
     }

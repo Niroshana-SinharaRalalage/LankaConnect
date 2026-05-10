@@ -98,7 +98,7 @@ public class RegistrationCancelledEventHandler : INotificationHandler<DomainEven
                     registrationId: Guid.Empty,  // Phase 6A.97: RegistrationId is optional - domain event doesn't include it
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: cancellation can't fire on TBD today (Register blocks)
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: GetEventLocationString(@event),
                     cancellationReason: "User cancelled registration",

@@ -128,7 +128,12 @@ public class EventRecommendationEngine : IEventRecommendationEngine
 
         foreach (var @event in events)
         {
-            var appropriateness = _culturalCalendar.GetEventAppropriateness(@event, @event.StartDate);
+            // Phase 8YA.1: TBD events have no concrete date — feed UtcNow as a neutral
+            // proxy so cultural appropriateness defaults to "no date-specific concerns".
+            // TODO Phase 8YA-2: skip TBD events from cultural recommendations entirely
+            // once the recommendation pipeline is reviewed end-to-end.
+            var appropriateness = _culturalCalendar.GetEventAppropriateness(
+                @event, @event.StartDate ?? DateTime.UtcNow);
             
             // Filter based on cultural sensitivity level
             var minimumAppropriatenessThreshold = culturalSensitivity switch
@@ -832,11 +837,19 @@ public class EventRecommendationEngine : IEventRecommendationEngine
 
     private double CalculateDateRelevance(Event @event, DateTime targetDate, SignificantDate[] significantDates)
     {
-        var daysDifference = Math.Abs((@event.StartDate - targetDate).TotalDays);
+        // Phase 8YA.1: TBD events have no concrete start date — they cannot have
+        // date relevance to a target date or significant date, so score 0.
+        // TODO Phase 8YA-2: review whether TBD events should be excluded entirely
+        // from the recommendation pipeline rather than scored to 0.
+        if (!@event.StartDate.HasValue)
+            return 0.0;
+
+        var startDate = @event.StartDate.Value;
+        var daysDifference = Math.Abs((startDate - targetDate).TotalDays);
         var proximityScore = Math.Max(0, 1.0 - (daysDifference / 30.0)); // Score based on 30-day window
 
-        var significantDateBonus = significantDates.Any(sd => 
-            Math.Abs((sd.Date - @event.StartDate).TotalDays) <= 3) ? 0.2 : 0.0;
+        var significantDateBonus = significantDates.Any(sd =>
+            Math.Abs((sd.Date - startDate).TotalDays) <= 3) ? 0.2 : 0.0;
 
         return Math.Min(1.0, proximityScore + significantDateBonus);
     }

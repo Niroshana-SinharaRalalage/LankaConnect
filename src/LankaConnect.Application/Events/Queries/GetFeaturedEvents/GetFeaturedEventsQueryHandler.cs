@@ -171,7 +171,13 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
 
                     var publishedEvents = await _eventRepository.GetPublishedEventsAsync(cancellationToken);
                     var additionalEvents = publishedEvents
-                        .Where(e => e.StartDate > now
+                        // Phase 8YA.4 (Q3=A): TBD events are excluded from Featured.
+                        // The explicit HasValue clause makes intent obvious; the
+                        // following `> now` comparison would reject null implicitly
+                        // (false in nullable arithmetic) but a refactor using a
+                        // different comparison shape could leak TBD events through.
+                        .Where(e => e.StartDate.HasValue
+                                 && e.StartDate.Value > now
                                  && !featuredEvents.Any(fe => fe.Id == e.Id))
                         .OrderBy(e => e.StartDate)
                         .Take(MAX_RESULTS - featuredEvents.Count)
@@ -278,10 +284,12 @@ public class GetFeaturedEventsQueryHandler : IQueryHandler<GetFeaturedEventsQuer
             maxResults: maxResults * 3,
             cancellationToken);
 
-        // Filter for published and upcoming events only
+        // Filter for published and upcoming events only.
+        // Phase 8YA.4 (Q3=A): explicit HasValue keeps TBD events out of Featured.
         return nearestEvents
             .Where(e => e.Status == Domain.Events.Enums.EventStatus.Published
-                     && e.StartDate > now)
+                     && e.StartDate.HasValue
+                     && e.StartDate.Value > now)
             .Take(maxResults)
             .ToList();
     }

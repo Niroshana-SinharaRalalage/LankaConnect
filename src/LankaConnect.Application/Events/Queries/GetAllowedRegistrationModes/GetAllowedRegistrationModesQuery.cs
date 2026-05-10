@@ -24,5 +24,9 @@ public record GetAllowedRegistrationModesQuery(
     bool HasGroupTiers = false,
     bool HasTicketTiers = false,
     bool HasIdentityBoundAddOn = false,
-    bool HasMatrixPricing = false
+    bool HasMatrixPricing = false,
+    // Phase 8X.11 — payment-mode axis. Defaults to Free for back-compat with pre-8X.11
+    // FE callers; FE picker passes the current paymentMode so External shows up exactly
+    // when the event is ExternalPaid.
+    EventPaymentMode PaymentMode = EventPaymentMode.Free
 ) : IQuery<IReadOnlyList<RegistrationMode>>;

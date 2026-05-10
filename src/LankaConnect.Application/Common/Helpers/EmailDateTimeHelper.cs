@@ -54,6 +54,34 @@ public static class EmailDateTimeHelper
 
     #endregion
 
+    #region Phase 8YA.1: TBD-dates support (nullable overloads)
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware date formatter — returns "Date TBD" when null.
+    /// </summary>
+    public static string FormatEventDate(DateTime? utcDateTime, string? timeZoneId)
+        => SharedHelper.FormatEventDate(utcDateTime, timeZoneId);
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware time formatter — returns "Time TBD" when null.
+    /// </summary>
+    public static string FormatEventTime(DateTime? utcDateTime, string? timeZoneId)
+        => SharedHelper.FormatEventTime(utcDateTime, timeZoneId);
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware datetime+timezone formatter for TBD events.
+    /// </summary>
+    public static string FormatDateTimeWithTz(DateTime? utcDateTime, string? timeZoneId)
+        => SharedHelper.FormatDateTimeWithTz(utcDateTime, timeZoneId);
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware custom-format formatter for TBD events.
+    /// </summary>
+    public static string Format(DateTime? utcDateTime, string? timeZoneId, string format)
+        => SharedHelper.Format(utcDateTime, timeZoneId, format);
+
+    #endregion
+
     #region Legacy methods (backward compatibility)
 
     /// <summary>

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EventCategory, Currency, PricingType, RegistrationMode, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, PricingType, RegistrationMode, EventPaymentMode, SecondaryLocationType, SignUpItemType, SignUpItemCategory } from '@/infrastructure/api/types/events.types';
 
 /**
  * Event Validation Schemas
@@ -70,18 +70,18 @@ export const createEventSchema = z.object({
   category: z.nativeEnum(EventCategory),
 
   // Date and Time
-  startDate: z
-    .string()
-    .min(1, 'Start date and time are required')
-    .refine((date) => {
-      const selectedDate = new Date(date);
-      const now = new Date();
-      return selectedDate > now;
-    }, 'Start date must be in the future'),
+  // Phase 8YA.3: Dates are optional when datesUnknown=true (TBD event).
+  // When both supplied, the cross-field refines below enforce future-start
+  // and end > start. When mixed (one set, one empty), the mixed-dates refine
+  // rejects.
+  startDate: z.string().optional().default(''),
 
-  endDate: z
-    .string()
-    .min(1, 'End date and time are required'),
+  endDate: z.string().optional().default(''),
+
+  // Phase 8YA.3: TBD-event toggle. When true the form submits null dates and
+  // the backend creates a Planning-status event; when false both dates must
+  // be provided and pass the refines below.
+  datesUnknown: z.boolean().optional().default(false),
 
   // Capacity
   capacity: z
@@ -181,6 +181,31 @@ export const createEventSchema = z.object({
 
   // Pricing (Required)
   isFree: z.boolean(),
+
+  // Phase 8X: Event payment mode. Optional on the wire — backend infers from isFree per
+  // the architect-locked inference table when absent. Required as 'ExternalPaid' for
+  // external-payment events; in that case ExternalRegistrationUrl is also required.
+  paymentMode: z.nativeEnum(EventPaymentMode).optional(),
+
+  externalRegistrationUrl: z
+    .string()
+    .max(2048, 'URL cannot exceed 2048 characters')
+    .url('Must be a valid URL')
+    .refine(u => u.toLowerCase().startsWith('https://'), 'URL must use https')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationInstructions: z
+    .string()
+    .max(4000, 'Instructions cannot exceed 4000 characters')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationVendorName: z
+    .string()
+    .max(100, 'Vendor name cannot exceed 100 characters')
+    .optional()
+    .or(z.literal('')),
 
   // Phase 7E.5: Per-event registration capture mode. Optional — defaults to
   // DetailedAttendees server-side when absent. Picker UI sets this; legacy create-event
@@ -307,20 +332,56 @@ export const createEventSchema = z.object({
     isPrimary: z.boolean().optional().default(false),
     linkedUserId: z.string().uuid().optional().nullable(),
   })).max(10, 'Maximum 10 organizer contacts allowed').optional().default([]),
+}).superRefine((data, ctx) => {
+  // Phase 8YA.3: TBD-dates pair invariant + future-date + end > start, gated on
+  // the datesUnknown toggle.
+  // - datesUnknown=true: dates are submitted as null; skip all date refines.
+  // - datesUnknown=false: both dates must be provided AND start in future AND end > start.
+  if (data.datesUnknown) {
+    return;
+  }
+  const startProvided = !!data.startDate?.trim();
+  const endProvided = !!data.endDate?.trim();
+  if (!startProvided && !endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date and time are required (or check "Dates not yet decided" for a TBD event)',
+      path: ['startDate'],
+    });
+    return;
+  }
+  if (startProvided !== endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Both start and end dates must be provided together, or check "Dates not yet decided" for a TBD event',
+      path: startProvided ? ['endDate'] : ['startDate'],
+    });
+    return;
+  }
+  // Both provided — run create-mode validations.
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  if (start <= new Date()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date must be in the future',
+      path: ['startDate'],
+    });
+  }
+  if (end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    });
+  }
 }).refine(
   (data) => {
-    // Validate that end date is after start date
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    return end > start;
-  },
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'],
-  }
-).refine(
-  (data) => {
     // Session 33: If not free and not using dual, group, or tiered pricing, single price and currency are required
+    // Phase 8X.12: ExternalPaid events may publish without on-platform pricing
+    // (price lives at the external provider; public page renders "See external site
+    // or reach out organizer for pricing").
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
@@ -336,6 +397,8 @@ export const createEventSchema = z.object({
 ).refine(
   (data) => {
     // If using dual pricing, adult price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && data.enableDualPricing) {
       return data.adultPriceAmount !== null &&
              data.adultPriceAmount !== undefined &&
@@ -558,14 +621,13 @@ const baseEditEventSchema = z.object({
 
   category: z.nativeEnum(EventCategory),
 
-  // Date and Time - NO future date validation for edit mode
-  startDate: z
-    .string()
-    .min(1, 'Start date and time are required'),
+  // Date and Time - NO future date validation for edit mode (events being edited may
+  // be ongoing or past). Phase 8YA.3: dates optional when datesUnknown=true.
+  startDate: z.string().optional().default(''),
+  endDate: z.string().optional().default(''),
 
-  endDate: z
-    .string()
-    .min(1, 'End date and time are required'),
+  // Phase 8YA.3: TBD-event toggle.
+  datesUnknown: z.boolean().optional().default(false),
 
   // Capacity
   capacity: z
@@ -665,6 +727,29 @@ const baseEditEventSchema = z.object({
 
   // Pricing
   isFree: z.boolean(),
+
+  // Phase 8X: Event payment mode (mirrored on the edit schema). Same rules as create.
+  paymentMode: z.nativeEnum(EventPaymentMode).optional(),
+
+  externalRegistrationUrl: z
+    .string()
+    .max(2048, 'URL cannot exceed 2048 characters')
+    .url('Must be a valid URL')
+    .refine(u => u.toLowerCase().startsWith('https://'), 'URL must use https')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationInstructions: z
+    .string()
+    .max(4000, 'Instructions cannot exceed 4000 characters')
+    .optional()
+    .or(z.literal('')),
+
+  externalRegistrationVendorName: z
+    .string()
+    .max(100, 'Vendor name cannot exceed 100 characters')
+    .optional()
+    .or(z.literal('')),
 
   // Phase 7E.5: Per-event registration capture mode (mirrored on the edit schema).
   registrationMode: z.nativeEnum(RegistrationMode).optional(),
@@ -795,20 +880,44 @@ const baseEditEventSchema = z.object({
  * Same as CreateEventFormData but without future date requirement (since events being edited may be ongoing or past)
  * Note: We must redefine refinements because .omit().extend() loses them
  */
-export const editEventSchema = baseEditEventSchema.refine(
-  (data) => {
-    // Validate that end date is after start date
-    const start = new Date(data.startDate);
-    const end = new Date(data.endDate);
-    return end > start;
-  },
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'],
+export const editEventSchema = baseEditEventSchema.superRefine((data, ctx) => {
+  // Phase 8YA.3: TBD-dates pair invariant for edit. No future-date check (edit
+  // mode allows historical events). Same gating on datesUnknown toggle as create.
+  if (data.datesUnknown) {
+    return;
   }
-).refine(
+  const startProvided = !!data.startDate?.trim();
+  const endProvided = !!data.endDate?.trim();
+  if (!startProvided && !endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Start date and time are required (or check "Dates not yet decided" for a TBD event)',
+      path: ['startDate'],
+    });
+    return;
+  }
+  if (startProvided !== endProvided) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Both start and end dates must be provided together, or check "Dates not yet decided" for a TBD event',
+      path: startProvided ? ['endDate'] : ['startDate'],
+    });
+    return;
+  }
+  const start = new Date(data.startDate);
+  const end = new Date(data.endDate);
+  if (end <= start) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End date must be after start date',
+      path: ['endDate'],
+    });
+  }
+}).refine(
   (data) => {
     // If not free and not using any advanced pricing mode, single price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing) {
       return data.ticketPriceAmount !== null &&
              data.ticketPriceAmount !== undefined &&
@@ -824,6 +933,8 @@ export const editEventSchema = baseEditEventSchema.refine(
 ).refine(
   (data) => {
     // If using dual pricing, adult price and currency are required
+    // Phase 8X.12: ExternalPaid events skip on-platform pricing requirements.
+    if (data.paymentMode === EventPaymentMode.ExternalPaid) return true;
     if (!data.isFree && data.enableDualPricing) {
       return data.adultPriceAmount !== null &&
              data.adultPriceAmount !== undefined &&

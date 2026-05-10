@@ -27,8 +27,12 @@ public partial class Event : BaseEntity
 
     public EventTitle Title { get; private set; }
     public EventDescription Description { get; private set; }
-    public DateTime StartDate { get; private set; }
-    public DateTime EndDate { get; private set; }
+    // Phase 8YA.1: TBD-dates support. Null when the event was created in `Planning`
+    // status without confirmed dates. SetDates(start, end) populates both atomically
+    // and transitions Planning → Draft. Reads must null-check before any DateTime
+    // member access (.Date / .ToString / .AddDays / .Kind).
+    public DateTime? StartDate { get; private set; }
+    public DateTime? EndDate { get; private set; }
     public Guid OrganizerId { get; private set; }
     public int Capacity { get; private set; }
     public EventStatus Status { get; private set; }
@@ -57,8 +61,35 @@ public partial class Event : BaseEntity
     /// - Unambiguous intent (NULL pricing no longer means "free")
     /// - Security: Prevents payment bypass vulnerabilities
     /// - Simplicity: Single boolean instead of complex price checking
+    ///
+    /// Phase 8X note: superseded as the source of truth by <see cref="PaymentMode"/>
+    /// but kept as a real entity property (Option B per architect verdict — no
+    /// builder.Ignore, no shadow property, Phase 6A.123 lesson). The two are kept
+    /// in lockstep by <c>SyncLegacyIsFree()</c> called from every PaymentMode
+    /// mutation (Slice 8X.3). To be dropped in Phase 8Y once all reports / exports
+    /// migrate to read <c>PaymentMode == Free</c> directly.
     /// </summary>
     public bool IsFreeEvent { get; private set; }
+
+    /// <summary>
+    /// Phase 8X — Source of truth for free / paid / external-payment determination.
+    /// Default <see cref="EventPaymentMode.Free"/> matches the DB-level smallint
+    /// DEFAULT 0 added by the Phase 8X.2 migration so legacy rows materialise
+    /// correctly (Phase 6A.123 lesson — never rely on app-side defaults for NOT
+    /// NULL columns). Mutations go through <c>SetExternalPayment</c> /
+    /// <c>SetPaymentMode</c> domain methods (Slice 8X.3).
+    /// </summary>
+    public EventPaymentMode PaymentMode { get; private set; } = EventPaymentMode.Free;
+
+    /// <summary>
+    /// Phase 8X — External registration details (URL + optional vendor name +
+    /// optional instructions) for <see cref="EventPaymentMode.ExternalPaid"/>
+    /// events. Always null for <see cref="EventPaymentMode.Free"/> /
+    /// <see cref="EventPaymentMode.OnPlatformPaid"/>. Set via
+    /// <c>SetExternalPayment</c>; cleared automatically when payment mode
+    /// transitions away from ExternalPaid.
+    /// </summary>
+    public ExternalRegistration? ExternalRegistration { get; private set; }
 
     /// <summary>
     /// Issue #51: Maximum number of attendees allowed per single registration
@@ -123,17 +154,24 @@ public partial class Event : BaseEntity
         Description = null!;
     }
 
-    private Event(EventTitle title, EventDescription description, DateTime startDate, DateTime endDate,
+    private Event(EventTitle title, EventDescription description, DateTime? startDate, DateTime? endDate,
         Guid organizerId, int capacity, EventLocation? location = null, EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         Title = title;
         Description = description;
-        // Ensure dates are always stored as UTC for PostgreSQL compatibility
-        StartDate = startDate.Kind == DateTimeKind.Utc ? startDate : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
-        EndDate = endDate.Kind == DateTimeKind.Utc ? endDate : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+        // Phase 8YA.1: Dates are nullable for TBD events. Coerce to UTC only when present.
+        StartDate = startDate.HasValue
+            ? (startDate.Value.Kind == DateTimeKind.Utc ? startDate.Value : DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc))
+            : null;
+        EndDate = endDate.HasValue
+            ? (endDate.Value.Kind == DateTimeKind.Utc ? endDate.Value : DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc))
+            : null;
         OrganizerId = organizerId;
         Capacity = capacity;
-        Status = EventStatus.Draft;
+        // Phase 8YA.1: Status branches on date presence — TBD events start in Planning,
+        // dated events start in Draft (existing behaviour). SetDates(start, end) on a
+        // Planning event transitions it to Draft.
+        Status = (startDate.HasValue && endDate.HasValue) ? EventStatus.Draft : EventStatus.Planning;
         Location = location;
         Category = category;
         TicketPrice = ticketPrice;
@@ -143,8 +181,8 @@ public partial class Event : BaseEntity
         IsFreeEvent = ticketPrice != null && ticketPrice.IsZero;
     }
 
-    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime startDate,
-        DateTime endDate, Guid organizerId, int capacity, EventLocation? location = null,
+    public static Result<Event> Create(EventTitle title, EventDescription description, DateTime? startDate,
+        DateTime? endDate, Guid organizerId, int capacity, EventLocation? location = null,
         EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
         if (title == null)
@@ -156,17 +194,69 @@ public partial class Event : BaseEntity
         if (organizerId == Guid.Empty)
             return Result<Event>.Failure("Organizer ID is required");
 
-        if (startDate <= DateTime.UtcNow)
-            return Result<Event>.Failure("Start date cannot be in the past");
+        // Phase 8YA.1: TBD events created with both dates null start in Planning;
+        // dated events with both dates set start in Draft. Mixed (one set, one null)
+        // is invalid — the schema/domain treat the date pair as atomic.
+        var bothNull = !startDate.HasValue && !endDate.HasValue;
+        var bothSet = startDate.HasValue && endDate.HasValue;
+        if (!bothNull && !bothSet)
+            return Result<Event>.Failure(
+                "Both start and end dates must be provided together, or both must be empty (TBD event)");
 
-        if (endDate <= startDate)
-            return Result<Event>.Failure("End date must be after start date");
+        if (bothSet)
+        {
+            if (startDate!.Value <= DateTime.UtcNow)
+                return Result<Event>.Failure("Start date cannot be in the past");
+
+            if (endDate!.Value <= startDate.Value)
+                return Result<Event>.Failure("End date must be after start date");
+        }
 
         if (capacity <= 0)
             return Result<Event>.Failure("Capacity must be greater than 0");
 
         var @event = new Event(title, description, startDate, endDate, organizerId, capacity, location, category, ticketPrice);
         return Result<Event>.Success(@event);
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: Sets (or replaces) the start/end date pair for an event. Used
+    /// to fill in TBD dates on a Planning event, or to reschedule a Draft event
+    /// before it is published.
+    ///
+    /// Status transitions:
+    /// - Planning → Draft (Q4=A: silent — no email).
+    /// - Draft, Published, UnderReview, Postponed, Active: status preserved.
+    /// - Cancelled, Completed, Archived: rejected (immutable from a date perspective —
+    ///   use the dedicated lifecycle methods if you need to revive the event).
+    /// </summary>
+    public Result SetDates(DateTime startDate, DateTime endDate)
+    {
+        if (Status == EventStatus.Cancelled || Status == EventStatus.Completed
+            || Status == EventStatus.Archived)
+        {
+            return Result.Failure($"Cannot set dates on a {Status} event");
+        }
+
+        if (startDate <= DateTime.UtcNow)
+            return Result.Failure("Start date cannot be in the past");
+
+        if (endDate <= startDate)
+            return Result.Failure("End date must be after start date");
+
+        StartDate = startDate.Kind == DateTimeKind.Utc
+            ? startDate
+            : DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+        EndDate = endDate.Kind == DateTimeKind.Utc
+            ? endDate
+            : DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+        // Q4=A: silent Planning → Draft when dates are added.
+        if (Status == EventStatus.Planning)
+            Status = EventStatus.Draft;
+
+        MarkAsUpdated();
+        return Result.Success();
     }
 
     /// <summary>
@@ -189,8 +279,10 @@ public partial class Event : BaseEntity
         if (Status == EventStatus.Published)
             return Result.Failure("Event is already published");
 
-        if (Status != EventStatus.Draft)
-            return Result.Failure("Only draft events can be published");
+        // Phase 8YA.1 (Q1=A): Planning events can publish directly — TBD events are
+        // publicly listed with a "Date TBD" badge until SetDates fills them in.
+        if (Status != EventStatus.Draft && Status != EventStatus.Planning)
+            return Result.Failure("Only draft or planning events can be published");
 
         Status = EventStatus.Published;
         PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp for "New" label
@@ -204,18 +296,29 @@ public partial class Event : BaseEntity
 
     /// <summary>
     /// Phase 6A.41: Unpublishes a published event, returning it to Draft status.
+    /// Phase 8YB.5 (E16): TBD-Published events revert to Planning instead of Draft —
+    /// Draft × null-dates is an impossible cell in the lifecycle matrix per the
+    /// Phase 8YA.1 invariant (Draft only when both dates set).
     /// Allows organizers to make corrections after premature publication.
     /// Business Rules:
     /// - Only Published events can be unpublished
     /// - Cannot unpublish Active, Cancelled, Postponed, or Completed events
     /// - Events with registrations CAN be unpublished (organizer's decision)
+    /// - Status reverts to: Draft when dates set, Planning when dates null
     /// </summary>
     public Result Unpublish()
     {
         if (Status != EventStatus.Published)
             return Result.Failure("Only published events can be unpublished");
 
-        Status = EventStatus.Draft;
+        // Phase 8YB.5 (E16): preserve the Phase 8YA.1 invariant by routing the revert
+        // based on date availability. A Published-TBD event has null StartDate/EndDate
+        // (Q1=A allows TBD-publish); reverting it to Draft would leave it in an
+        // impossible state. Revert to Planning instead so the (status, dates) pair
+        // remains coherent.
+        Status = StartDate.HasValue && EndDate.HasValue
+            ? EventStatus.Draft
+            : EventStatus.Planning;
         PublishedAt = null; // Phase 6A.46: Clear publish timestamp when unpublishing
         MarkAsUpdated();
 
@@ -249,7 +352,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned. Product-owner-locked:
+        // "Even though it is a date or venue TBD event treat it as a regular event."
+        // Registration is now allowed on TBD-Published events; the "already started"
+        // guard short-circuits when StartDate is null (TBD events have no past anchor).
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (userId == Guid.Empty)
@@ -282,7 +389,10 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned. Anonymous registration follows
+        // the same rule as authenticated registration: TBD events are treated as
+        // regular events for the purpose of accepting RSVPs.
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
         if (attendeeInfo == null)
@@ -341,8 +451,22 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Cannot register for unpublished event");
 
-        if (StartDate <= DateTime.UtcNow)
+        // Phase 8YB.6 (2026-05-09) — Q2=A overturned for the multi-attendee path
+        // too. Mirrors the same change in Register() and RegisterAnonymous():
+        // TBD events are treated as regular events; "already started" is the
+        // only date-anchored guard that fires here.
+        if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
+
+        // Phase 8X.3 — ExternalPaid events have no internal registration path.
+        // The buyer registers + pays off-platform via the organiser-supplied URL.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(ExternalRegistrationGuardMessage);
+
+        // Phase 8X.11 — defence-in-depth: even if PaymentMode + RegistrationMode somehow
+        // drift (impossible by construction, but not by hostile API client), reject.
+        if (RegistrationMode == RegistrationMode.External)
+            return Result.Failure(ExternalRegistrationGuardMessage);
 
         // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
         // it on a B-mode event would create a Registration row that contradicts the event's
@@ -682,7 +806,9 @@ public partial class Event : BaseEntity
 
     public void Complete()
     {
-        if (Status == EventStatus.Published && DateTime.UtcNow > EndDate)
+        // Phase 8YA.1: TBD events (EndDate == null) are never auto-completed —
+        // they stay Published until SetDates fills in the end date.
+        if (Status == EventStatus.Published && EndDate.HasValue && DateTime.UtcNow > EndDate.Value)
         {
             Status = EventStatus.Completed;
             MarkAsUpdated();
@@ -694,7 +820,11 @@ public partial class Event : BaseEntity
         if (Status != EventStatus.Published)
             return Result.Failure("Only published events can be activated");
 
-        if (DateTime.UtcNow < StartDate)
+        // Phase 8YA.1: TBD events cannot be activated until SetDates fills in StartDate.
+        if (!StartDate.HasValue)
+            return Result.Failure("Event cannot be activated without a confirmed start date");
+
+        if (DateTime.UtcNow < StartDate.Value)
             return Result.Failure("Event cannot be activated before start date");
 
         Status = EventStatus.Active;
@@ -714,13 +844,21 @@ public partial class Event : BaseEntity
         if (string.IsNullOrWhiteSpace(reason))
             return Result.Failure("Postponement reason is required");
 
+        // Phase 8YB.5 (D6): Postpone requires a confirmed start date.
+        // Postponing a TBD event ("postponed from when?") is semantically
+        // incoherent — organisers should set dates first or cancel the event.
+        if (!StartDate.HasValue)
+            return Result.Failure(
+                "Cannot postpone an event without confirmed dates. " +
+                "Set the event's start and end dates first, or cancel the event instead.");
+
         Status = EventStatus.Postponed;
         CancellationReason = reason.Trim(); // Reuse cancellation reason field for postponement
         MarkAsUpdated();
-        
+
         // Raise domain event
         RaiseDomainEvent(new EventPostponedEvent(Id, reason.Trim(), DateTime.UtcNow));
-        
+
         return Result.Success();
     }
 
@@ -861,11 +999,21 @@ public partial class Event : BaseEntity
         if (otherEvent == null)
             return Result.Failure("Cannot check conflict with null event");
 
+        // Phase 8YA.1: TBD events have no concrete dates to overlap on. Short-circuit
+        // before any DateTime member access — surfacing the unknown outcome through
+        // the existing "no conflict" Failure channel so callers don't get a false
+        // positive overlap from null comparisons.
+        if (!StartDate.HasValue || !EndDate.HasValue
+            || !otherEvent.StartDate.HasValue || !otherEvent.EndDate.HasValue)
+        {
+            return Result.Failure("Cannot determine conflict — one or both events have no confirmed dates");
+        }
+
         // Check for date overlap
-        bool hasDateOverlap = StartDate.Date == otherEvent.StartDate.Date ||
-                             EndDate.Date == otherEvent.EndDate.Date ||
-                             (StartDate <= otherEvent.StartDate && EndDate >= otherEvent.StartDate) ||
-                             (StartDate <= otherEvent.EndDate && EndDate >= otherEvent.EndDate);
+        bool hasDateOverlap = StartDate.Value.Date == otherEvent.StartDate.Value.Date ||
+                             EndDate.Value.Date == otherEvent.EndDate.Value.Date ||
+                             (StartDate.Value <= otherEvent.StartDate.Value && EndDate.Value >= otherEvent.StartDate.Value) ||
+                             (StartDate.Value <= otherEvent.EndDate.Value && EndDate.Value >= otherEvent.EndDate.Value);
 
         return hasDateOverlap ? Result.Success() : Result.Failure("No scheduling conflict");
     }
@@ -1543,6 +1691,15 @@ public partial class Event : BaseEntity
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
+        // Phase 8X.3.5 — Waitlist requires an internal registration path to promote
+        // entries off the list. ExternalPaid events have no such path; the buyer
+        // joins the external vendor's waitlist (if any). Reject explicitly so the
+        // failure message guides the organiser to the right surface.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Waitlist is not supported for ExternalPaid events. " +
+                "Buyers should use the external registration link directly.");
+
         // Business Rule 1: Event must be at capacity
         if (!IsAtCapacity())
             return Result.Failure("Event still has available capacity");
@@ -1726,6 +1883,14 @@ public partial class Event : BaseEntity
     {
         if (signUpList == null)
             return Result.Failure("Sign-up list cannot be null");
+
+        // Phase 8X.11 — ExternalPaid events route the buyer entirely off-platform.
+        // Sign-up lists are an on-platform contribution surface; mixing them with
+        // external ticket flow creates a confusing half-internal/half-external UX.
+        if (PaymentMode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Sign-up lists cannot be added to external-paid events. " +
+                "Switch to Free or OnPlatformPaid first if you want to capture volunteer / item commitments.");
 
         // Phase 7D.1: Uniqueness keys on (Kind, Category) so organizers can run an
         // Items list and a Volunteers list that happen to share a category label.
@@ -2306,6 +2471,16 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Donation configuration is required");
 
+        // Phase 8X.11 — ExternalPaid events route the buyer entirely off-platform.
+        // On-platform donations would create a half-internal/half-external surface
+        // (buyer pays the vendor for a ticket, then comes back here to also donate?)
+        // — confusing UX. Block when ExternalPaid AND the new config is enabled.
+        // Disabled config is fine (it's a no-op surface).
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Donations cannot be enabled on external-paid events. " +
+                "Disable donations or switch to Free / OnPlatformPaid first.");
+
         DonationConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2350,6 +2525,12 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Collection configuration is required");
 
+        // Phase 8X.11 — collections are a sibling of donations; same reasoning.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Collections cannot be enabled on external-paid events. " +
+                "Disable collections or switch to Free / OnPlatformPaid first.");
+
         CollectionConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2393,6 +2574,12 @@ public partial class Event : BaseEntity
         if (config == null)
             return Result.Failure("Sponsor configuration is required");
 
+        // Phase 8X.11 — same reasoning as donations: ExternalPaid is a "pure external" mode.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Sponsors cannot be enabled on external-paid events. " +
+                "Disable sponsors or switch to Free / OnPlatformPaid first.");
+
         SponsorConfig = config;
         MarkAsUpdated();
         return Result.Success();
@@ -2424,6 +2611,14 @@ public partial class Event : BaseEntity
     {
         if (config == null)
             return Result.Failure("Add-on configuration is required");
+
+        // Phase 8X.3.5 — Add-ons require an internal Registration row to attach to.
+        // ExternalPaid events have no internal registration path, so allowing add-ons
+        // would create a half-internal-half-external order surface. Reject upfront.
+        if (PaymentMode == EventPaymentMode.ExternalPaid && config.IsEnabled)
+            return Result.Failure(
+                "Add-ons cannot be enabled for ExternalPaid events. " +
+                "Disable add-ons or switch to Free / OnPlatformPaid first.");
 
         AddOnConfig = config;
         MarkAsUpdated();
@@ -2467,4 +2662,194 @@ public partial class Event : BaseEntity
         Pricing != null
         || TicketPrice != null
         || HasTicketTiers;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Phase 8X.3 — External Payment Mode (architect-locked transitions)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Phase 8X.3 — Documented user-facing message when an internal registration
+    /// path is invoked on an ExternalPaid event.
+    /// </summary>
+    internal const string ExternalRegistrationGuardMessage =
+        "This event uses external registration. Users must register via the link provided by the organiser.";
+
+    /// <summary>
+    /// Phase 8X.3 — Configures the event for off-platform payment + registration.
+    /// Convenience method: sets pricing + ExternalRegistration VO + flips PaymentMode
+    /// + forces RegistrationMode = NoRegistration in one call.
+    ///
+    /// Architect-locked transition rule (see master TODO 8X table):
+    ///   Free / OnPlatformPaid → ExternalPaid
+    ///   - requires no active (Confirmed / Preliminary) registrations
+    ///   - requires SeatingMode != AssignedSeating
+    ///   - pricing is OPTIONAL (Phase 8X.12) — null means "see external site for pricing"
+    ///   - ExternalRegistration VO is OPTIONAL (Phase 8X.11)
+    ///   - sets RegistrationMode = External
+    /// </summary>
+    public Result SetExternalPayment(ExternalRegistration? externalReg, TicketPricing? pricing)
+    {
+        // Phase 8X.11 — externalReg is nullable (organiser may defer filling it in).
+        // Phase 8X.12 — pricing is now nullable (organiser may publish without on-platform
+        // price; the price lives at the external provider). When both are null, the public
+        // detail page renders "See external site or reach out organizer for pricing".
+        if (SeatingMode == SeatingMode.AssignedSeating)
+            return Result.Failure("ExternalPaid events cannot use assigned seating; switch to GeneralAdmission first");
+
+        if (AddOnConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have add-ons enabled. " +
+                "Disable add-ons before switching to external payment.");
+
+        // Phase 8X.11 — donations / sponsors / collections / signup-lists are blocked
+        // for ExternalPaid (architect-locked + product-owner-locked Q5=B). These are
+        // on-platform contribution surfaces; mixing with off-platform ticket flow creates
+        // confusing half-internal/half-external UX.
+        if (DonationConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have donations enabled. " +
+                "Disable donations before switching to external payment.");
+
+        if (SponsorConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have sponsors enabled. " +
+                "Disable sponsors before switching to external payment.");
+
+        if (CollectionConfig?.IsEnabled == true)
+            return Result.Failure(
+                "ExternalPaid events cannot have collections enabled. " +
+                "Disable collections before switching to external payment.");
+
+        if (_signUpLists.Count > 0)
+            return Result.Failure(
+                "ExternalPaid events cannot have sign-up lists. " +
+                "Remove existing sign-up lists before switching to external payment.");
+
+        if (_waitingList.Count > 0)
+            return Result.Failure(
+                "Cannot enable external payment while users are on the waiting list. " +
+                "Clear the waiting list first.");
+
+        if (HasActiveRegistrations())
+            return Result.Failure("Cannot enable external payment while active registrations exist");
+
+        // Phase 8X.12 — pricing may be null (organiser publishes without on-platform price).
+        // When null, leave existing Pricing/TicketPrice untouched on transition INTO ExternalPaid;
+        // when caller wants to clear pricing, they pass null AND we clear it explicitly.
+        if (pricing != null)
+        {
+            var pricingResult = ApplyPricingForExternalPayment(pricing);
+            if (pricingResult.IsFailure)
+                return pricingResult;
+        }
+        else
+        {
+            // Clear stale legacy pricing when caller explicitly passes null —
+            // organiser intent is "no on-platform price for this ExternalPaid event".
+            Pricing = null;
+            TicketPrice = null;
+        }
+
+        ExternalRegistration = externalReg;
+        PaymentMode = EventPaymentMode.ExternalPaid;
+        // Phase 8X.11 — RegistrationMode = External (was: NoRegistration) so the picker
+        // shows a semantically-correct option for ExternalPaid events.
+        RegistrationMode = RegistrationMode.External;
+        SyncLegacyIsFree();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Transitions the event between payment modes.
+    /// Architect-locked transition table (master TODO 8X):
+    /// <list type="bullet">
+    ///   <item>Free → OnPlatformPaid: requires pricing already configured; RegistrationMode unchanged.</item>
+    ///   <item>OnPlatformPaid → Free: requires no active regs; pricing cleared; RegistrationMode unchanged.</item>
+    ///   <item>ExternalPaid → OnPlatformPaid: requires no active regs; ExternalRegistration cleared;
+    ///       RegistrationMode auto-resets to DetailedAttendees.</item>
+    ///   <item>ExternalPaid → Free: requires no active regs; ExternalRegistration cleared; pricing cleared;
+    ///       RegistrationMode auto-resets to DetailedAttendees.</item>
+    ///   <item>* → ExternalPaid: NOT supported via this method — use <see cref="SetExternalPayment"/>
+    ///       which bundles the required ExternalRegistration VO + pricing.</item>
+    /// </list>
+    /// Idempotent on same-mode set.
+    /// </summary>
+    public Result SetPaymentMode(EventPaymentMode mode)
+    {
+        if (PaymentMode == mode)
+            return Result.Success();
+
+        if (mode == EventPaymentMode.ExternalPaid)
+            return Result.Failure(
+                "Use SetExternalPayment(externalReg, pricing) to enable ExternalPaid mode " +
+                "(it requires an ExternalRegistration value object that this overload cannot accept).");
+
+        if (HasActiveRegistrations())
+            return Result.Failure(
+                $"Cannot change payment mode from {PaymentMode} to {mode} while active registrations exist");
+
+        if (mode == EventPaymentMode.OnPlatformPaid && !HasPaidPricingConfigured())
+            return Result.Failure(
+                "Cannot enable OnPlatformPaid: configure pricing first via SetPricing / SetDualPricing / SetGroupPricing");
+
+        var fromExternal = PaymentMode == EventPaymentMode.ExternalPaid;
+
+        PaymentMode = mode;
+
+        if (fromExternal)
+        {
+            ExternalRegistration = null;
+            RegistrationMode = RegistrationMode.DetailedAttendees;
+        }
+
+        if (mode == EventPaymentMode.Free)
+        {
+            // Clear pricing — Free events don't carry a non-zero ticket price.
+            Pricing = null;
+            var zeroResult = Money.Create(0m, Shared.Enums.Currency.USD);
+            TicketPrice = zeroResult.IsSuccess ? zeroResult.Value : null;
+        }
+
+        SyncLegacyIsFree();
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Keeps the legacy <see cref="IsFreeEvent"/> column in lockstep with
+    /// <see cref="PaymentMode"/>. Called from every PaymentMode mutation (Option B per
+    /// architect verdict — no <c>builder.Ignore</c>, no shadow property, Phase 6A.123
+    /// lesson). To be removed in Phase 8Y when the legacy column is dropped.
+    /// </summary>
+    private void SyncLegacyIsFree()
+    {
+        IsFreeEvent = PaymentMode == EventPaymentMode.Free;
+    }
+
+    /// <summary>
+    /// Phase 8X.3 — Returns true when the event has at least one Confirmed or
+    /// Preliminary registration. Used to gate any PaymentMode transition that would
+    /// otherwise orphan internal registration state. Mirrors <c>ReservedCapacity</c>
+    /// (line 137-143) — if those statuses are reserving capacity, they're "active".
+    /// </summary>
+    private bool HasActiveRegistrations() =>
+        _registrations.Any(r =>
+            r.Status == Enums.RegistrationStatus.Confirmed ||
+            r.Status == Enums.RegistrationStatus.Preliminary);
+
+    /// <summary>
+    /// Phase 8X.3 — Dispatches the supplied <see cref="TicketPricing"/> to the
+    /// appropriate existing setter (<c>SetGroupPricing</c> for tiered, <c>SetDualPricing</c>
+    /// otherwise). Keeps <c>SetExternalPayment</c> agnostic to the pricing shape.
+    /// Phase 8X.12 — caller now guards null at the call site; this helper only fires
+    /// when pricing is non-null.
+    /// </summary>
+    private Result ApplyPricingForExternalPayment(TicketPricing pricing)
+    {
+        if (pricing.Type == Enums.PricingType.GroupTiered)
+            return SetGroupPricing(pricing);
+        return SetDualPricing(pricing);
+    }
 }

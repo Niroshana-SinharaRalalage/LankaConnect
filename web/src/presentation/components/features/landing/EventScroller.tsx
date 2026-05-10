@@ -44,16 +44,18 @@ function EventCard({ event, index }: { event: EventDto; index: number }) {
         </h3>
         <div className="flex items-center gap-1.5 text-white/90 text-xs">
           <Calendar className="h-3 w-3" />
+          {/* Phase 8YA.3: landing-page scroller defensively handles TBD events;
+              the underlying query (Featured) excludes TBD per Q3=A. */}
           <span>
-            {new Date(event.startDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}{' '}
-            at{' '}
-            {new Date(event.startDate).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
+            {event.startDate
+              ? `${new Date(event.startDate).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })} at ${new Date(event.startDate).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}`
+              : 'Date TBD'}
           </span>
         </div>
       </div>

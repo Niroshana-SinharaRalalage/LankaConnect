@@ -37,6 +37,26 @@ public static class RegistrationModeCompatibility
         if (context == null)
             return Result.Failure("Registration mode context is required");
 
+        // Phase 8X.11 — ExternalPaid events accept ONLY RegistrationMode.External.
+        // Every other mode (DetailedAttendees / HeadCount* / NoRegistration) is rejected
+        // for ExternalPaid because they all imply internal Registration rows that
+        // ExternalPaid events don't have.
+        if (context.PaymentMode == EventPaymentMode.ExternalPaid && mode != RegistrationMode.External)
+        {
+            return Result.Failure(
+                "External-paid events use the External registration mode (registration handled " +
+                "by the external site). Other registration modes capture internal attendee data " +
+                "which doesn't apply here.");
+        }
+
+        // Conversely, External mode requires PaymentMode = ExternalPaid.
+        if (mode == RegistrationMode.External && context.PaymentMode != EventPaymentMode.ExternalPaid)
+        {
+            return Result.Failure(
+                "External registration mode requires PaymentMode = ExternalPaid. " +
+                "Set the event to 'Paid — external registration link' first, then choose External mode.");
+        }
+
         switch (mode)
         {
             case RegistrationMode.NoRegistration:
@@ -51,7 +71,13 @@ public static class RegistrationModeCompatibility
                 return CheckHeadCountWithAge(mode, context);
 
             case RegistrationMode.DetailedAttendees:
-                // Mode A is always allowed — it's the maximum-info capture and never excluded.
+                // Mode A is always allowed for non-ExternalPaid events (the early-return above
+                // already handled the ExternalPaid case).
+                return Result.Success();
+
+            case RegistrationMode.External:
+                // External is allowed iff PaymentMode == ExternalPaid (early-return above
+                // already handled the negative case).
                 return Result.Success();
 
             default:

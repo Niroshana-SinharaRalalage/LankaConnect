@@ -122,9 +122,18 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
                 // Step 4: Sort and map to DTOs
                 // Phase 6A.133: Compute IsCurrentUserOrganizer for each event
+                // Phase 8YA.4 (Q1=A): TBD events appear in the public listing but
+                // sort to the bottom — dated events are still scannable in date
+                // order at the top. The tiebreaker `e.StartDate.HasValue ? 0 : 1`
+                // groups dated events first (rank 0), TBD events second (rank 1);
+                // ThenBy(e.StartDate) preserves chronological order within each
+                // group (null compares equal so TBD events end up in input order
+                // among themselves, which is fine — operators typically have one
+                // or two TBD events at a time).
                 var currentUserId = _currentUserService.IsAuthenticated ? _currentUserService.UserId : Guid.Empty;
                 var result = filteredList
-                    .OrderBy(e => e.StartDate)
+                    .OrderBy(e => e.StartDate.HasValue ? 0 : 1)
+                    .ThenBy(e => e.StartDate)
                     .Select(e =>
                     {
                         var dto = _mapper.Map<EventDto>(e);
@@ -567,8 +576,12 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
             .Select(x => x.Event)
             .ToList();
 
-        // Issue #23 Fix: Append events without coordinates, sorted by StartDate
-        result.AddRange(eventsWithoutCoords.OrderBy(e => e.StartDate));
+        // Issue #23 Fix: Append events without coordinates, sorted by StartDate.
+        // Phase 8YA.4: tiebreaker so TBD events fall to the very end of the
+        // no-coords tail rather than mixing with dated no-coords events.
+        result.AddRange(eventsWithoutCoords
+            .OrderBy(e => e.StartDate.HasValue ? 0 : 1)
+            .ThenBy(e => e.StartDate));
 
         _logger.LogDebug(
             "SortEventsByDistance: Sorted {WithCoords} events by distance, appended {WithoutCoords} events without coordinates",
@@ -694,14 +707,38 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 e.Location.Address.State.Equals(request.State, StringComparison.OrdinalIgnoreCase));
         }
 
-        if (request.StartDateFrom.HasValue)
+        // Phase 8YB.5 (D5b=A): TBD-Publish filter behaviour.
+        //  - When BOTH StartDateFrom AND StartDateTo are set (specific window like
+        //    "This Week" / "Next Month"), exclude TBD events. The user explicitly
+        //    asked for a dated window — TBD events have no start date to match.
+        //  - When only StartDateFrom is set (open-ended "Upcoming" bucket),
+        //    INCLUDE TBD events. They surface alongside dated future events;
+        //    Phase 8YA.4 sort tiebreaker pushes TBD to the bottom of the list.
+        //  - When only StartDateTo is set (rare past-bound query), exclude TBD
+        //    events — there's no anchor to compare against the upper bound.
+        // Pre-fix the simple inequality `e.StartDate >= from` silently dropped
+        // null-StartDate rows even on the open-ended Upcoming path; that's the
+        // bug Phase 8YB.5 closes.
+        if (request.StartDateFrom.HasValue && request.StartDateTo.HasValue)
         {
-            filteredEvents = filteredEvents.Where(e => e.StartDate >= request.StartDateFrom.Value);
+            var from = request.StartDateFrom.Value;
+            var to = request.StartDateTo.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                e.StartDate.HasValue &&
+                e.StartDate.Value >= from &&
+                e.StartDate.Value <= to);
         }
-
-        if (request.StartDateTo.HasValue)
+        else if (request.StartDateFrom.HasValue)
         {
-            filteredEvents = filteredEvents.Where(e => e.StartDate <= request.StartDateTo.Value);
+            var from = request.StartDateFrom.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                !e.StartDate.HasValue || e.StartDate.Value >= from);
+        }
+        else if (request.StartDateTo.HasValue)
+        {
+            var to = request.StartDateTo.Value;
+            filteredEvents = filteredEvents.Where(e =>
+                e.StartDate.HasValue && e.StartDate.Value <= to);
         }
 
         if (request.IsFreeOnly == true)

@@ -16,7 +16,7 @@ import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useEventCategories, useCurrencies } from '@/infrastructure/api/hooks/useReferenceData';
 import { useContentImageUpload } from '@/presentation/hooks/useContentImageUpload';
-import { EventCategory, Currency, TicketingMode, SeatingMode, RegistrationMode } from '@/infrastructure/api/types/events.types';
+import { EventCategory, Currency, TicketingMode, SeatingMode, RegistrationMode, EventPaymentMode } from '@/infrastructure/api/types/events.types';
 import { RegistrationModePicker } from './RegistrationModePicker';
 import { geocodeAddress } from '@/presentation/lib/utils/geocoding';
 import { RichTextEditor } from '@/presentation/components/ui/RichTextEditor';
@@ -188,6 +188,10 @@ export function EventCreationForm() {
     resolver: zodResolver(createEventSchema),
     defaultValues: {
       isFree: true,
+      // Phase 8X.12 — paymentMode defaults to Free; the 3-way radio below keeps it in
+      // lockstep with isFree (Free/OnPlatformPaid/ExternalPaid). Selecting ExternalPaid
+      // also flips registrationMode to External (mirrors EventEditForm).
+      paymentMode: EventPaymentMode.Free,
       // Phase 7E.5: Default to DetailedAttendees so existing event-creation flows are unchanged.
       registrationMode: RegistrationMode.DetailedAttendees,
       enableDualPricing: false,
@@ -215,6 +219,9 @@ export function EventCreationForm() {
   const enableDualPricing = watch('enableDualPricing');
   const enableGroupPricing = watch('enableGroupPricing');
   const enableTieredTicketing = watch('enableTieredTicketing');
+  // Phase 8YA.3: TBD-event toggle. When checked the date inputs are hidden and
+  // the form submits null dates so the backend creates a Planning-status event.
+  const datesUnknown = watch('datesUnknown') ?? false;
   // Phase 7E.5: Mode picker state
   const registrationMode = watch('registrationMode') ?? RegistrationMode.DetailedAttendees;
   const groupPricingTiers = watch('groupPricingTiers') || [];
@@ -383,9 +390,17 @@ export function EventCreationForm() {
 
       // Issue #48 Fix: Convert local datetime-local input values to UTC ISO strings
       // The datetime-local input returns local time (e.g., "2024-01-15T14:00")
-      // We need to convert this to UTC before sending to the backend
-      const startDateUtc = new Date(data.startDate).toISOString();
-      const endDateUtc = new Date(data.endDate).toISOString();
+      // We need to convert this to UTC before sending to the backend.
+      //
+      // Phase 8YA.3: When `datesUnknown` is true the form submits null dates so the
+      // backend creates a Planning-status event. The backend validator (Phase 2)
+      // enforces the both-null OR both-set invariant; we emit only those two shapes.
+      const startDateUtc = data.datesUnknown
+        ? null
+        : new Date(data.startDate).toISOString();
+      const endDateUtc = data.datesUnknown
+        ? null
+        : new Date(data.endDate).toISOString();
 
       const eventData = {
         title: data.title,
@@ -401,6 +416,15 @@ export function EventCreationForm() {
         emailGroupIds: data.emailGroupIds || [],
         // IsFreeEvent fix: Send explicit free event flag to backend
         isFree: data.isFree ?? false,
+        // Phase 8X.11/12 — paymentMode (Free / OnPlatformPaid / ExternalPaid) + optional
+        // external registration fields. Backend infers from isFree if paymentMode omitted,
+        // but we send it explicitly so the radio's selection is authoritative.
+        paymentMode: data.paymentMode ?? EventPaymentMode.Free,
+        ...(data.paymentMode === EventPaymentMode.ExternalPaid && {
+          externalRegistrationUrl: data.externalRegistrationUrl?.trim() || undefined,
+          externalRegistrationInstructions: data.externalRegistrationInstructions?.trim() || undefined,
+          externalRegistrationVendorName: data.externalRegistrationVendorName?.trim() || undefined,
+        }),
         // Phase 7E.5: Per-event registration capture mode (default DetailedAttendees back-compat).
         registrationMode: data.registrationMode ?? RegistrationMode.DetailedAttendees,
         // Organizer Contact Details (multiple contacts)
@@ -780,39 +804,65 @@ export function EventCreationForm() {
           onOpenChange={(o) => setOpen('datetime', o)}
         >
           <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Start Date & Time */}
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                Start Date & Time *
+            {/* Phase 8YA.3: Dates-not-yet-decided toggle. When checked the event is
+                created in Planning status (TBD); listing card shows "Date TBD" badge.
+                Organizers can fill dates later via Edit. */}
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <label htmlFor="datesUnknown" className="flex items-start gap-3 cursor-pointer">
+                <input
+                  id="datesUnknown"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-neutral-300 text-primary focus:ring-primary"
+                  {...register('datesUnknown')}
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-neutral-800">
+                    Dates not yet decided (TBD)
+                  </div>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    Create the event now and announce dates later. The event will appear
+                    publicly with a "Date TBD" badge; registration is unlocked once you
+                    add the start and end dates.
+                  </p>
+                </div>
               </label>
-              <Input
-                id="startDate"
-                type="datetime-local"
-                error={!!errors.startDate}
-                {...register('startDate')}
-              />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
-              )}
             </div>
 
-            {/* End Date & Time */}
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
-                End Date & Time *
-              </label>
-              <Input
-                id="endDate"
-                type="datetime-local"
-                error={!!errors.endDate}
-                {...register('endDate')}
-              />
-              {errors.endDate && (
-                <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
-              )}
-            </div>
-          </div>
+            {!datesUnknown && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Start Date & Time */}
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Start Date & Time *
+                  </label>
+                  <Input
+                    id="startDate"
+                    type="datetime-local"
+                    error={!!errors.startDate}
+                    {...register('startDate')}
+                  />
+                  {errors.startDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.startDate.message}</p>
+                  )}
+                </div>
+
+                {/* End Date & Time */}
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-neutral-700 mb-2">
+                    End Date & Time *
+                  </label>
+                  <Input
+                    id="endDate"
+                    type="datetime-local"
+                    error={!!errors.endDate}
+                    {...register('endDate')}
+                  />
+                  {errors.endDate && (
+                    <p className="mt-1 text-sm text-destructive">{errors.endDate.message}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CollapsibleSection>
       </div>
@@ -995,18 +1045,120 @@ export function EventCreationForm() {
             </p>
           </div>
 
-          {/* Free Event Toggle */}
-          <div className="flex items-center gap-3 p-4 bg-neutral-50 rounded-lg">
-            <input
-              id="isFree"
-              type="checkbox"
-              className="h-5 w-5 rounded border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
-              {...register('isFree')}
-            />
-            <label htmlFor="isFree" className="text-sm font-medium text-neutral-700">
-              This is a free event (no ticket purchase required)
-            </label>
-          </div>
+          {/* Phase 8X.12 — 3-way Payment Mode radio (replaces the legacy isFree checkbox).
+              Selecting "Paid (external)" reveals the External Registration card below.
+              isFree stays in lockstep with paymentMode === Free for back-compat with the
+              existing pricing-block visibility logic (still keyed on !isFree). */}
+          <Controller
+            control={control}
+            name="paymentMode"
+            render={({ field }) => (
+              <div className="p-4 bg-neutral-50 rounded-lg space-y-3">
+                <div className="text-sm font-medium text-neutral-700 mb-1">Payment</div>
+                {[
+                  { value: EventPaymentMode.Free, label: 'Free event', helper: 'No ticket purchase required.' },
+                  { value: EventPaymentMode.OnPlatformPaid, label: 'Paid — collected on LankaConnect', helper: 'Buyers pay via Stripe checkout.' },
+                  { value: EventPaymentMode.ExternalPaid, label: 'Paid — external registration link', helper: 'Buyers register and pay off-platform via your link. On-platform pricing is optional.' },
+                ].map(opt => (
+                  <label key={opt.value} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      className="mt-1 h-4 w-4 border-neutral-300 text-orange-500 focus:ring-2 focus:ring-orange-500"
+                      value={opt.value}
+                      checked={field.value === opt.value}
+                      onChange={() => {
+                        field.onChange(opt.value);
+                        // Keep legacy isFree boolean in sync so the existing pricing-block
+                        // visibility (line ~1074 below, gated on !isFree) continues to work.
+                        setValue('isFree', opt.value === EventPaymentMode.Free, { shouldValidate: false });
+                        // Phase 8X.11 — sync registrationMode with paymentMode flips:
+                        //   ExternalPaid → External (the new dedicated mode)
+                        //   any other  → DetailedAttendees (the safe-default for internal flows)
+                        if (opt.value === EventPaymentMode.ExternalPaid) {
+                          setValue('registrationMode', RegistrationMode.External, { shouldValidate: false });
+                        } else {
+                          setValue('registrationMode', RegistrationMode.DetailedAttendees, { shouldValidate: false });
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-neutral-800">{opt.label}</div>
+                      <div className="text-xs text-neutral-500">{opt.helper}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          />
+
+          {/* Phase 8X.11/12 — External Registration card. Optional URL + optional vendor + optional
+              instructions. URL must be https + parse-OK if supplied; backend additionally rejects
+              loopback / RFC1918 / link-local hosts and enforces length caps. All three may be empty
+              (architect-approved "Contact organiser for details" path). */}
+          {watch('paymentMode') === EventPaymentMode.ExternalPaid && (
+            <div className="space-y-3 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
+              <div className="flex items-center gap-2 mb-1">
+                <Link2 className="h-5 w-5 text-blue-600" />
+                <h4 className="text-sm font-semibold text-neutral-900">External registration details</h4>
+              </div>
+              <p className="text-xs text-neutral-600">
+                LankaConnect surfaces these details in the registration section of the event page. Provide whichever combination fits your flow — a registration URL, plain-text instructions (e.g. cash at door / bank deposit), or a vendor name. All fields are optional individually.
+              </p>
+
+              <div>
+                <label htmlFor="externalRegistrationUrl" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Registration / ticket URL <span className="text-neutral-400 font-normal">(optional)</span>
+                </label>
+                <Input
+                  id="externalRegistrationUrl"
+                  type="url"
+                  placeholder="https://eventbrite.com/e/your-event-12345"
+                  {...register('externalRegistrationUrl')}
+                />
+                {errors.externalRegistrationUrl && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationUrl.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">If supplied, must use https. Maximum 2,048 characters. Leave blank for cash-at-door / phone / email registration.</p>
+              </div>
+
+              <div>
+                <label htmlFor="externalRegistrationVendorName" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Vendor name <span className="text-neutral-400">(optional)</span>
+                </label>
+                <Input
+                  id="externalRegistrationVendorName"
+                  type="text"
+                  placeholder="Eventbrite, Humanitix, etc."
+                  maxLength={100}
+                  {...register('externalRegistrationVendorName')}
+                />
+                {errors.externalRegistrationVendorName && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationVendorName.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">Used in CTA label e.g. "Buy on Eventbrite". Maximum 100 characters.</p>
+              </div>
+
+              <div>
+                <label htmlFor="externalRegistrationInstructions" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Instructions <span className="text-neutral-400">(optional)</span>
+                </label>
+                <textarea
+                  id="externalRegistrationInstructions"
+                  rows={4}
+                  maxLength={4000}
+                  placeholder="e.g. Pay $25 at the door. Bring a copy of this email."
+                  className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  {...register('externalRegistrationInstructions')}
+                />
+                {errors.externalRegistrationInstructions && (
+                  <p className="mt-1 text-xs text-red-600">{errors.externalRegistrationInstructions.message as string}</p>
+                )}
+                <p className="mt-1 text-xs text-neutral-500">
+                  Plain text only — rendered as text on the event page (no HTML, no formatting). Maximum 4,000 characters.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Phase 7E.5: Registration Mode Picker.
               Compatibility with the current event shape is queried server-side via
@@ -1025,9 +1177,9 @@ export function EventCreationForm() {
                   hasDualPricing: !isFree && enableDualPricing,
                   hasGroupTiers: !isFree && enableGroupPricing,
                   hasTicketTiers: !isFree && enableTieredTicketing,
-                  // Other axes (named seating, identity-bound add-on, matrix pricing) aren't
-                  // captured at create-time today — defaulted false. As those fields land,
-                  // wire them in here.
+                  // Phase 8X.11 — pass payment-mode axis so the picker shows External
+                  // exactly when paymentMode = ExternalPaid (and disables it otherwise).
+                  paymentMode: watch('paymentMode'),
                 }}
               />
             )}
@@ -1594,6 +1746,13 @@ export function EventCreationForm() {
         </CollapsibleSection>
       </div>
 
+      {/* Phase 8X.11/12 — Donations / Collections / Sponsors / Add-Ons are blocked
+          for ExternalPaid events (architect + product-owner-locked: ExternalPaid is a
+          "pure external" mode). Hide the entire monetisation cluster when paymentMode is
+          ExternalPaid so the organiser doesn't see options that the backend will reject. */}
+      {watch('paymentMode') !== EventPaymentMode.ExternalPaid && (
+      <>
+
       {/* Donation Feature: Donation Configuration */}
       <div id="donations" className="scroll-mt-20">
         <CollapsibleSection
@@ -1703,6 +1862,21 @@ export function EventCreationForm() {
           />
         </CollapsibleSection>
       </div>
+
+      </>
+      )}
+      {/* End Phase 8X.11/12 — monetisation cluster (donations / collections / sponsors / add-ons) hidden for ExternalPaid. */}
+
+      {watch('paymentMode') === EventPaymentMode.ExternalPaid && (
+        <div className="p-4 border-2 border-blue-200 rounded-lg bg-blue-50/50">
+          <p className="text-sm text-neutral-700">
+            <strong>External payment events</strong> route the buyer entirely off-platform.
+            On-platform contribution surfaces (donations, collections, sponsors, add-ons, sign-up lists)
+            are not available — switch the payment mode to Free or "Paid — collected on LankaConnect"
+            if you want to capture those.
+          </p>
+        </div>
+      )}
 
       {/* Note about Media */}
       <Card>

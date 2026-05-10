@@ -108,7 +108,7 @@ public class FormResponseDeletedEmailHandler : INotificationHandler<DomainEventN
                     eventTitle: eventEntity.Title.Value,
                     formTitle: form.Title,
                     responseSummary: responseSummary,
-                    eventStartDate: eventEntity.StartDate,
+                    eventStartDate: eventEntity.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
                     timeZoneId: eventEntity.TimeZoneId,
                     eventLocation: eventEntity.Location?.ToString() ?? string.Empty,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(eventEntity.Id),

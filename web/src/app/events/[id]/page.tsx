@@ -11,8 +11,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
-import { useEventSignUps } from '@/presentation/hooks/useEventSignUps';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
+import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
@@ -24,7 +24,7 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
-import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, EventPaymentMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { useState, useEffect } from 'react';
@@ -53,6 +53,13 @@ import { AlbumPhotoCarousel } from '@/presentation/components/features/events/Al
 import { AlbumStatus } from '@/infrastructure/api/types/events.types';
 // Phase 7A.4: WhatsApp share button
 import { WhatsAppShareButton } from '@/presentation/components/features/whatsapp/WhatsAppShareButton';
+// Phase 8YB.1: Hero image component shared by [id]/page.tsx (contained) and [id]/v2/page.tsx (fullWidth)
+import { EventHeroImage, type EventHeroVariant } from '@/presentation/components/features/events/EventHeroImage';
+// Phase 8YB.3: Mode-C "No registration required" hint (banner + quick-nav pill)
+import { RegistrationStatusHint } from '@/presentation/components/features/events/RegistrationStatusHint';
+// Phase 8YB.4: Quick-nav pill row (extracted) + signup-lists/forms presence probe
+import { EventQuickNav, type EventQuickNavPill } from '@/presentation/components/features/events/EventQuickNav';
+import { useHasSignUps } from '@/presentation/hooks/useHasSignUps';
 
 /**
  * Phase 6A.46: Get badge color based on event lifecycle label
@@ -85,10 +92,34 @@ function getStatusBadgeColor(label: string): string {
 }
 
 /**
- * Event Detail Page
- * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management
+ * Event Detail Page (default export)
+ *
+ * Phase 8YB.1 → 8YB.2: After A/B comparison on staging the user picked the full-bleed
+ * hero (Option E), so the default route now renders `heroVariant="fullWidth"`. The
+ * legacy constrained-column variant (Option C) lives at `/events/{id}/v2` for any
+ * future tweaks the user wants to iterate on without touching the primary surface.
  */
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return <EventDetailPageInternal params={params} heroVariant="fullWidth" />;
+}
+
+/**
+ * Event Detail Page — internal implementation.
+ * Displays full event details with RSVP, Stripe payment, waitlist, and sign-up management.
+ *
+ * @param heroVariant
+ *   - "fullWidth" → hero rendered above the constrained column, spanning the full
+ *                   viewport (Option E). Default — used by `/events/{id}`.
+ *   - "contained" → hero rendered inside the existing max-w-7xl Card column (Option C).
+ *                   Used by `/events/{id}/v2` (kept as a sandbox for layout iteration).
+ */
+export function EventDetailPageInternal({
+  params,
+  heroVariant = 'fullWidth',
+}: {
+  params: Promise<{ id: string }>;
+  heroVariant?: EventHeroVariant;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -286,14 +317,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Phase 7.3: Fetch custom forms for this event
   const { data: eventForms, isLoading: isLoadingForms } = useEventForms(id);
 
-  // Phase 7D.1 Phase G: page-scope volunteer-list probe used to gate the nav
-  // button + section. Separate query key per kind (see useEventSignUps) so it
-  // cannot collide with the kind-Items query mounted inside SignUpManagementSection.
-  const { data: volunteerLists, isFetched: volunteersFetched } = useEventSignUps(
-    id,
-    SignUpKind.Volunteers,
-  );
-  const hasVolunteerLists = volunteersFetched && (volunteerLists?.length ?? 0) > 0;
+  // Phase 7D.1 Phase G + Phase 8YB.4: page-scope sign-up probes used to gate the
+  // quick-nav pills + their sibling sections. Each probe uses a kind-specific
+  // query key (see `signUpKeys.list` in useEventSignUps) so they cannot collide
+  // with each other or with the kind-Items query mounted inside
+  // SignUpManagementSection. The probe-level isFetched gate prevents the worse
+  // "pill flashes in then disappears" failure mode on slower networks.
+  const { hasSignUps: hasVolunteerLists } = useHasSignUps(id, SignUpKind.Volunteers);
+  const { hasSignUps: hasItemSignUpLists } = useHasSignUps(id, SignUpKind.Items);
 
   // Filter to show only Active forms to attendees
   // Note: Backend sends enum as string ('Active'), frontend enum is numeric (1)
@@ -314,12 +345,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     registrationMode === RegistrationMode.HeadCountByAge ||
     registrationMode === RegistrationMode.HeadCountByGender ||
     registrationMode === RegistrationMode.HeadCountByAgeAndGender;
+  // Phase 8X.11 — ExternalPaid uses the standard "Register" CTA label (per product
+  // owner: "We still display the registration button on top of the event details page.
+  // When we click it, user will navigate the registration section and external payment
+  // details will be shown there"). The vendor-aware "Buy on {Vendor}" copy lives inside
+  // the ExternalRegistrationCta card in the section, where it's contextually relevant.
+  const isExternalPaid = event?.paymentMode === EventPaymentMode.ExternalPaid;
   const registrationCtaLabel = isModeB ? 'RSVP' : 'Register';
-  const registrationSectionTitle = isModeC
-    ? 'About this event'
-    : isModeB
-      ? 'RSVP for this Event'
-      : 'Register for this Event';
+  const registrationSectionTitle = isExternalPaid
+    ? 'Register for this Event'
+    : isModeC
+      ? 'About this event'
+      : isModeB
+        ? 'RSVP for this Event'
+        : 'Register for this Event';
 
   // Phase 6A.128: Use React Query's useQueries for user form responses (single source of truth)
   // Replaces manual useEffect + useState — cache invalidation from mutations propagates automatically
@@ -675,15 +714,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  // Phase 6A.97: Use timezone-aware date formatting for consistent display
-  const formattedStartDate = formatEventDate(event.startDate, event.timeZoneId);
-  const formattedStartTime = formatEventTime(event.startDate, event.timeZoneId);
-  const formattedEndTime = formatEventTime(event.endDate, event.timeZoneId);
-  const timezoneAbbreviation = getTimezoneAbbreviation(event.timeZoneId, event.startDate);
+  // Phase 6A.97: Use timezone-aware date formatting for consistent display.
+  // Phase 8YA.3: TBD events surface "Date TBD" / "Time TBD" placeholders so the
+  // page renders cleanly without throwing on null inputs.
+  const formattedStartDate = event.startDate
+    ? formatEventDate(event.startDate, event.timeZoneId)
+    : 'Date TBD';
+  const formattedStartTime = event.startDate
+    ? formatEventTime(event.startDate, event.timeZoneId)
+    : 'Time TBD';
+  const formattedEndTime = event.endDate
+    ? formatEventTime(event.endDate, event.timeZoneId)
+    : 'Time TBD';
+  const timezoneAbbreviation = event.startDate
+    ? getTimezoneAbbreviation(event.timeZoneId, event.startDate)
+    : '';
 
   const isFull = event.currentRegistrations >= event.capacity;
   const spotsLeft = event.capacity - event.currentRegistrations;
-  const hasStarted = new Date(event.startDate) <= new Date();
+  // TBD events haven't started by definition — they have no scheduled time yet.
+  const hasStarted = event.startDate ? new Date(event.startDate) <= new Date() : false;
   // GitHub Issue #37: Check if event is cancelled to hide registration section
   // Note: Backend may return status as string "Cancelled" or enum number 4
   const isCancelled = (event.status as unknown) === 'Cancelled' || event.status === EventStatus.Cancelled;
@@ -691,6 +741,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <LankaEventsHeader />
+
+      {/* Phase 8YB.1 — Option E: full-bleed hero rendered above the constrained column.
+          Only active on the /v2 test route (heroVariant="fullWidth"). The default route
+          renders the hero inside the Card below (Option C). */}
+      {heroVariant === 'fullWidth' && (
+        <EventHeroImage
+          images={event.images}
+          title={event.title}
+          categoryLabel={categoryLabels[event.category] ?? ''}
+          variant="fullWidth"
+        />
+      )}
 
       {/* Back Button and Organizer Actions */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -726,24 +788,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       {/* Event Hero Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <Card className="overflow-hidden">
-          {/* Event Image */}
-          {event.images && event.images.length > 0 && (
-            <div className="relative h-96 bg-gradient-to-br from-orange-500 to-rose-500">
-              <img
-                src={(event.images.find(img => img.isPrimary) || event.images[0]).imageUrl}
-                alt={event.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 right-4">
-                <Badge
-                  variant="default"
-                  className="text-white shadow-lg text-base px-4 py-2"
-                  style={{ background: '#8B1538' }}
-                >
-                  {categoryLabels[event.category]}
-                </Badge>
-              </div>
-            </div>
+          {/* Phase 8YB.1 — Option C: contained hero (responsive aspect-ratio + object-contain).
+              Only renders on the default route. The /v2 route uses fullWidth above instead. */}
+          {heroVariant === 'contained' && (
+            <EventHeroImage
+              images={event.images}
+              title={event.title}
+              categoryLabel={categoryLabels[event.category] ?? ''}
+              variant="contained"
+            />
           )}
 
           <CardContent className="p-8">
@@ -776,32 +829,44 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 />
               </div>
 
-              {/* Quick Navigation Bar — anchor links to sections below */}
+              {/* Quick Navigation Bar — anchor links to sections below.
+                  Phase 8YB.3: Mode-C events have no Register anchor (no section to jump
+                  to), so we lead the row with a non-clickable "No registration required"
+                  status pill instead of leaving the gap silent.
+                  Phase 8YB.4: signup-lists / signup-forms pills are now gated on
+                  presence probes (mirrors the volunteers pattern) so the row no longer
+                  advertises sections the event hasn't configured. The descriptor array
+                  is rendered by EventQuickNav for unit-testable visibility logic. */}
               <div className="flex flex-wrap gap-2 mb-4">
-                {[
-                  { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
-                  { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
-                  { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
-                  { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
-                  { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
-                  { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: true },
-                  { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
-                  { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: true },
-                  { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
-                ].filter(btn => btn.show).map(btn => (
-                  <button
-                    key={btn.id}
-                    type="button"
-                    onClick={() => document.getElementById(btn.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border text-neutral-700 bg-white hover:text-white hover:border-transparent transition-colors"
-                    style={{ borderColor: '#FF7900' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FF7900'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = ''; }}
-                  >
-                    {btn.icon}
-                    {btn.label}
-                  </button>
-                ))}
+                <RegistrationStatusHint
+                  registrationMode={registrationMode}
+                  variant="pill"
+                  isCancelled={isCancelled}
+                />
+                <EventQuickNav
+                  pills={[
+                    { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
+                    { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
+                    { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
+                    { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },
+                    { id: 'add-ons', label: 'Add-Ons', icon: <ShoppingBag className="h-3.5 w-3.5" />, show: event?.addOnConfig?.isEnabled === true && event?.addOnConfig?.availableStandalone === true },
+                    { id: 'signup-lists', label: 'Signup Lists', icon: <List className="h-3.5 w-3.5" />, show: hasItemSignUpLists },
+                    { id: 'volunteers', label: 'Volunteer', icon: <HandHeart className="h-3.5 w-3.5" />, show: hasVolunteerLists },
+                    { id: 'signup-forms', label: 'Signup Forms', icon: <ClipboardList className="h-3.5 w-3.5" />, show: !isLoadingForms && activeForms.length > 0 },
+                    { id: 'albums', label: 'Albums', icon: <Camera className="h-3.5 w-3.5" />, show: publishedAlbumsWithPhotos.length > 0 && (isUserRegistered || isOrganizer) },
+                  ] satisfies EventQuickNavPill[]}
+                />
+              </div>
+
+              {/* Phase 8YB.3: Mode-C above-the-fold "No registration required" banner.
+                  Renders nothing for other modes / cancelled events — the component
+                  itself gates visibility, so this is safe to always include. */}
+              <div className="mb-4">
+                <RegistrationStatusHint
+                  registrationMode={registrationMode}
+                  variant="banner"
+                  isCancelled={isCancelled}
+                />
               </div>
 
               <div
@@ -1035,6 +1100,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       If you were registered for this event, you should have received a notification about the cancellation.
                     </p>
                   </div>
+                ) : isExternalPaid && !isUserRegistered ? (
+                  // Phase 8X.12 — single registration-section gate for ExternalPaid.
+                  // Replaces the prior 5 RsvpFormSection mount sites that were ungated for
+                  // ExternalPaid (only the 1149 site was — see UAT defect D2). On-platform
+                  // states (refund-in-progress / expired-checkout / incomplete-payment) are
+                  // structurally impossible for ExternalPaid (no on-platform registrations),
+                  // so this branch is the complete handler for non-cancelled ExternalPaid views.
+                  // Decision #1 = B: already-registered users (impossible for ExternalPaid but
+                  // defensive) fall through to the isUserRegistered branch below for context.
+                  <ExternalRegistrationCta event={event} />
                 ) : registrationDetails?.status === 'Cancelled' ? (
                   // Show cancelled status with option to re-register
                   <div className="space-y-6">
@@ -1072,6 +1147,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           This event has already started. Registration is no longer available.
                         </p>
                       </div>
+                    ) : isExternalPaid ? (
+                      // Phase 8X.7+8: ExternalPaid events render the outbound CTA + optional
+                      // vendor + instructions instead of an internal registration form. No
+                      // capacity / "full" check applies — capacity is informational only for
+                      // ExternalPaid since registrations happen off-platform.
+                      <ExternalRegistrationCta event={event} />
                     ) : !isFull ? (
                       // Phase 7E.6: dispatcher routes to per-attendee form (Mode A), head-count
                       // form (Mode B), or "no registration required" notice (Mode C).
@@ -1870,7 +1951,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Phase 6A.24: Ticket Section for Paid Events */}
         {/* Shows QR code, download PDF, and resend email buttons for registered paid events */}
         {/* Wait for auth hydration before rendering to ensure token is available for API calls */}
-        {_hasHydrated && isUserRegistered && event && !event.isFree && (
+        {/* Phase 8X.7+8: TicketSection only renders for OnPlatformPaid (paid + Stripe-issued
+            tickets). ExternalPaid events have no internal Registration row and no internal
+            ticket — ticketing happens off-platform. */}
+        {_hasHydrated && isUserRegistered && event && !event.isFree && !isExternalPaid && (
           <div className="mt-8">
             <TicketSection eventId={id} isPaidEvent={!event.isFree} />
           </div>
@@ -2172,20 +2256,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Signup Lists Section — CollapsibleSection (replaces old TabPanel) */}
         {/* Backward compat: hidden anchor for email links using #sign-ups */}
         <div id="sign-ups" className="sr-only" aria-hidden="true" />
-        <div id="signup-lists" className="mt-8">
-          <CollapsibleSection
-            title="Signup Lists"
-            icon={<List className="h-5 w-5 text-indigo-600" />}
-            defaultOpen={false}
-          >
-            <SignUpManagementSection
-              eventId={id}
-              userId={user?.userId}
-              isOrganizer={false}
-              kind={SignUpKind.Items}
-            />
-          </CollapsibleSection>
-        </div>
+        {/* Phase 8YB.4: only render when at least one Items-kind signup list exists,
+            mirroring the volunteers section pattern below. Otherwise the page used
+            to ship an empty CollapsibleSection card for events that never created
+            any lists. */}
+        {hasItemSignUpLists && (
+          <div id="signup-lists" className="mt-8">
+            <CollapsibleSection
+              title="Signup Lists"
+              icon={<List className="h-5 w-5 text-indigo-600" />}
+              defaultOpen={false}
+            >
+              <SignUpManagementSection
+                eventId={id}
+                userId={user?.userId}
+                isOrganizer={false}
+                kind={SignUpKind.Items}
+              />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Phase 7D.1 Phase G: Volunteer Roles — dedicated section, separate from Signup Lists */}
         {hasVolunteerLists && (
@@ -2206,7 +2296,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* Signup Forms Section — CollapsibleSection */}
+        {/* Signup Forms Section — CollapsibleSection.
+            Phase 8YB.4: only render when at least one Active form exists; otherwise
+            the page used to ship an empty "No signup forms available for this event
+            yet." card on every event without forms. The probe is `!isLoadingForms &&
+            activeForms.length > 0` (matches the quick-nav pill gate) so the section
+            stays hidden during the in-flight fetch — avoids flash-then-disappear. */}
+        {!isLoadingForms && activeForms.length > 0 && (
         <div id="signup-forms" className="mt-8">
           <CollapsibleSection
             title="Signup Forms"
@@ -2337,6 +2433,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </CollapsibleSection>
         </div>
+        )}
       </div>
 
       <Footer />

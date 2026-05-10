@@ -132,21 +132,28 @@ function PaymentSuccessContent() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date:</span>
                       <span className="font-medium">
-                        {new Date(event.startDate).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {/* Phase 8YA.3: defensive placeholder — registration on TBD
+                            events is blocked per Q2=A so this should never trigger
+                            in practice. */}
+                        {event.startDate
+                          ? new Date(event.startDate).toLocaleDateString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'Date TBD'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Time:</span>
                       <span className="font-medium">
-                        {new Date(event.startDate).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
+                        {event.startDate
+                          ? new Date(event.startDate).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Time TBD'}
                       </span>
                     </div>
                     {/* Phase 6A.137F-Fix: Full financial breakdown for bundled checkout items */}

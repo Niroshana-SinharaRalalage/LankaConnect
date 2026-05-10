@@ -47,7 +47,13 @@ public record RsvpToEventCommand(
     // LeadAttendeeName is the named "lead" attendee (printed in emails); HeadCount carries
     // the multi-axis breakdown (Total + Demographics? + TierCounts?).
     string? LeadAttendeeName = null,
-    HeadCountDto? HeadCount = null
+    HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
+    // SeatingMode == AssignedSeating (one seat per attendee, all seats
+    // currently held in SeatSessionId, none already reserved). Rejected
+    // with 400 if either field is set on a GeneralAdmission event.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null
 ) : ICommand<string?>;  // Returns checkout session URL for paid events, null for free events
 
 /// <summary>

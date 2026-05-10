@@ -217,14 +217,18 @@ public class EventReminderJob
                         }
 
                         // Phase 6A.87: Use typed email parameters for compile-time safety
-                        var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
+                        // Phase 8YA-2 TODO: skip TBD events from reminder pipeline once Application
+                        // layer can produce TBD events. Today the job query implicitly filters
+                        // them out via WHERE StartDate <= cutoff comparisons that return false
+                        // on null in nullable arithmetic.
+                        var hoursUntilEvent = Math.Round((@event.StartDate.GetValueOrDefault() - now).TotalHours, 1);
                         var emailParams = EventReminderEmailParams.Create(
                             eventId: @event.Id,
                             registrationId: registration.Id,
                             attendeeName: toName,
                             attendeeEmail: toEmail,
                             eventTitle: @event.Title?.Value ?? "Untitled Event",
-                            eventStartDate: @event.StartDate,
+                            eventStartDate: @event.StartDate.GetValueOrDefault(),
                             eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                             eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                             quantity: registration.Quantity,
@@ -458,14 +462,15 @@ public class EventReminderJob
                     }
 
                     // Phase 6A.87: Use typed email parameters for compile-time safety
-                    var hoursUntilEvent = Math.Round((@event.StartDate - now).TotalHours, 1);
+                    // Phase 8YA-2 TODO: filter TBD events out of this anonymous-reminder branch.
+                    var hoursUntilEvent = Math.Round((@event.StartDate.GetValueOrDefault() - now).TotalHours, 1);
                     var emailParams = EventReminderEmailParams.Create(
                         eventId: @event.Id,
                         registrationId: registration.Id,
                         attendeeName: toName,
                         attendeeEmail: toEmail,
                         eventTitle: @event.Title?.Value ?? "Untitled Event",
-                        eventStartDate: @event.StartDate,
+                        eventStartDate: @event.StartDate.GetValueOrDefault(),
                         eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                         eventLocation: @event.Location?.Address.ToString() ?? "Location TBD",
                         quantity: registration.Quantity,

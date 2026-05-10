@@ -5,6 +5,7 @@ using LankaConnect.Application.Events.Commands.UpdateEventOrganizerContact;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Enums; // Phase 8X: EventPaymentMode
 using LankaConnect.Domain.Events.Services; // Phase 6A.X: Revenue breakdown
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -88,12 +89,19 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         if (descriptionResult.IsFailure)
             return Result.Failure(descriptionResult.Error);
 
-        // Validate dates
-        if (request.StartDate <= DateTime.UtcNow)
-            return Result.Failure("Start date cannot be in the past");
+        // Phase 8YA.2: TBD-dates handling. Validator already rejected the mixed case;
+        // here we branch on the both-null vs both-set paths.
+        // - Both null: leave existing dates unchanged (organiser is updating other fields).
+        // - Both set: validate now-vs-start + end-vs-start, then SetDates() below.
+        var bothDatesProvided = request.StartDate.HasValue && request.EndDate.HasValue;
+        if (bothDatesProvided)
+        {
+            if (request.StartDate!.Value <= DateTime.UtcNow)
+                return Result.Failure("Start date cannot be in the past");
 
-        if (request.EndDate <= request.StartDate)
-            return Result.Failure("End date must be after start date");
+            if (request.EndDate!.Value <= request.StartDate.Value)
+                return Result.Failure("End date must be after start date");
+        }
 
         if (request.Capacity <= 0)
             return Result.Failure("Capacity must be greater than 0");
@@ -294,11 +302,16 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         var descriptionProperty = typeof(Event).GetProperty(nameof(Event.Description));
         descriptionProperty?.SetValue(@event, descriptionResult.Value);
 
-        var startDateProperty = typeof(Event).GetProperty(nameof(Event.StartDate));
-        startDateProperty?.SetValue(@event, request.StartDate);
-
-        var endDateProperty = typeof(Event).GetProperty(nameof(Event.EndDate));
-        endDateProperty?.SetValue(@event, request.EndDate);
+        // Phase 8YA.2: route through Event.SetDates when both dates supplied so the
+        // domain enforces UTC coercion + Planning → Draft transition. When dates are
+        // omitted (both null), leave the event's existing dates unchanged — the
+        // organiser is updating other fields and we never silently clear dates.
+        if (bothDatesProvided)
+        {
+            var setDatesResult = @event.SetDates(request.StartDate!.Value, request.EndDate!.Value);
+            if (setDatesResult.IsFailure)
+                return Result.Failure(setDatesResult.Error);
+        }
 
         var capacityResult = @event.UpdateCapacity(request.Capacity);
         if (capacityResult.IsFailure)
@@ -388,8 +401,75 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 request.EventId, location?.Address?.State);
         }
 
+        // Phase 8X.4b — Resolve effective payment mode using the same inference helper as Create.
+        var effectivePaymentMode = LankaConnect.Application.Events.Commands.CreateEvent.CreateEventCommandValidator
+            .InferPaymentMode(request.IsFree, request.PaymentMode).Mode;
+
+        // Phase 8X.4b — ExternalPaid branch: bundles pricing + VO + RegistrationMode coercion.
+        // When transitioning INTO ExternalPaid, SetExternalPayment internally calls
+        // ApplyPricingForExternalPayment which dispatches to SetDualPricing / SetGroupPricing.
+        // For an existing ExternalPaid event whose URL/instructions are being updated, we still
+        // call SetExternalPayment — the active-regs guard is naturally satisfied (ExternalPaid
+        // events have no registrations by definition).
+        if (request.PaymentMode == EventPaymentMode.ExternalPaid)
+        {
+            // Phase 8X.12 — pricing is optional. Null pricing + null existing pricing is now
+            // a valid state (organiser publishes without on-platform price). When caller
+            // passes null pricing on update, SetExternalPayment clears any stale legacy pricing.
+            // Phase 8X.11 — externalReg may be null when organiser cleared all 3 fields.
+            ExternalRegistration? externalReg = null;
+            var allEmpty = string.IsNullOrWhiteSpace(request.ExternalRegistrationUrl)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationInstructions)
+                && string.IsNullOrWhiteSpace(request.ExternalRegistrationVendorName);
+
+            if (!allEmpty)
+            {
+                try
+                {
+                    var voResult = ExternalRegistration.Create(
+                        request.ExternalRegistrationUrl,
+                        request.ExternalRegistrationInstructions,
+                        request.ExternalRegistrationVendorName);
+                    if (voResult.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "UpdateEvent: ExternalRegistration VO rejected - EventId={EventId}, Reason={Reason}",
+                            request.EventId, voResult.Error);
+                        return Result.Failure(voResult.Error);
+                    }
+                    externalReg = voResult.Value;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "UpdateEvent: ExternalRegistration VO creation faulted - EventId={EventId}",
+                        request.EventId);
+                    return Result.Failure("Failed to validate external registration details");
+                }
+            }
+
+            // Phase 8X.12 — caller-as-source-of-truth: pricing reflects form intent.
+            // - Form submits existing pricing values when user didn't touch the field
+            //   (the FE pre-populates from the loaded event).
+            // - Form submits null when user explicitly cleared the field.
+            // SetExternalPayment treats null as "clear stale pricing" (organiser
+            // moves pricing off-platform); the public detail page renders the
+            // "See external site or reach out organizer for pricing" copy.
+            var setExternalResult = @event.SetExternalPayment(externalReg, pricing);
+            if (setExternalResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetExternalPayment domain rejection - EventId={EventId}, Error={Error}",
+                    request.EventId, setExternalResult.Error);
+                return setExternalResult;
+            }
+
+            _logger.LogInformation(
+                "UpdateEvent: ExternalPaid configured - EventId={EventId}, Url={Url}, AllEmpty={AllEmpty}",
+                request.EventId, externalReg?.Url ?? "(none)", allEmpty);
+        }
         // Session 33 + Session 21: Update pricing if provided
-        if (pricing != null)
+        else if (pricing != null)
         {
             Result setPricingResult;
             if (isGroupPricing)
@@ -473,7 +553,8 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
         ticketPriceProperty?.SetValue(@event, ticketPrice);
 
         // IsFreeEvent fix: Explicitly mark as free event when frontend sends IsFree=true
-        if (request.IsFree == true && pricing == null)
+        if (request.PaymentMode != EventPaymentMode.ExternalPaid
+            && request.IsFree == true && pricing == null)
         {
             var setFreeResult = @event.SetAsFreeEvent();
             if (setFreeResult.IsFailure)
@@ -489,6 +570,22 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             // via the domain methods that manage the flag
         }
 
+        // Phase 8X.4b — Sync PaymentMode for explicit transitions (Free / OnPlatformPaid).
+        // ExternalPaid handled in the dedicated branch above. SetPaymentMode is idempotent
+        // on same-mode set, and surfaces the active-registration guard from the domain
+        // when a paid → free / paid → paid transition would orphan internal regs.
+        if (request.PaymentMode.HasValue && request.PaymentMode.Value != EventPaymentMode.ExternalPaid)
+        {
+            var setPaymentModeResult = @event.SetPaymentMode(request.PaymentMode.Value);
+            if (setPaymentModeResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetPaymentMode rejected - EventId={EventId}, RequestedMode={Mode}, Reason={Reason}",
+                    request.EventId, request.PaymentMode.Value, setPaymentModeResult.Error);
+                return setPaymentModeResult;
+            }
+        }
+
         // Phase 7E.2: Handle optional registration mode change. Null = caller didn't request a
         // change → leave the existing mode untouched.
         if (request.RegistrationMode.HasValue && request.RegistrationMode.Value != @event.RegistrationMode)
@@ -498,6 +595,9 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
             var modeContext = new LankaConnect.Domain.Events.Services.RegistrationModeContext
             {
                 IsFreeAttendance = @event.IsFreeEvent,
+                // Phase 8X.11 — pass payment-mode axis so the compatibility helper rejects
+                // External for non-ExternalPaid events and the other modes for ExternalPaid.
+                PaymentMode = @event.PaymentMode,
                 HasDualPricing = @event.Pricing != null && @event.Pricing.HasChildPricing,
                 HasGroupTiers = @event.Pricing != null && @event.Pricing.HasGroupTiers,
                 HasTicketTiers = @event.HasTicketTiers,

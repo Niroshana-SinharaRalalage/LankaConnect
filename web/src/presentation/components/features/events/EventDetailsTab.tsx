@@ -155,14 +155,18 @@ export function EventDetailsTab({
               />
             </div>
 
-            {/* Start Date - Phase 6A.97: Uses event's timezone for consistent display */}
+            {/* Start Date - Phase 6A.97: Uses event's timezone for consistent display.
+                Phase 8YA.3: render "Date TBD" placeholder when event has no confirmed
+                dates (Status=Planning, or Q1=A Published-with-TBD). */}
             <div className="grid grid-cols-[140px_1fr] gap-x-4 items-center border-b pb-3">
               <span className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#FF7900]" />
                 Start Date:
               </span>
               <span className="text-sm text-neutral-900">
-                {formatEventDateTime(event.startDate, event.timeZoneId)}
+                {event.startDate
+                  ? formatEventDateTime(event.startDate, event.timeZoneId)
+                  : 'Date TBD'}
               </span>
             </div>
 

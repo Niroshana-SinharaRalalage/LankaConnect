@@ -70,6 +70,11 @@ public static class DependencyInjection
         // Slice 5 Chunk 3: Blocks destructive layout edits when seats are held/reserved.
         services.AddScoped<IStructuralEditGuard, StructuralEditGuard>();
 
+        // Phase 8 S8.2.B: Validates that requested seat IDs are eligible for stash
+        // on the registration before Stripe Checkout (held in session, not reserved,
+        // belong to event's layout). Reusable across the auth + anonymous RSVP paths.
+        services.AddScoped<ISeatAssignmentValidator, SeatAssignmentValidator>();
+
         // Slice 5 Chunk 13: Named-metric emission (layout.created, layout.structural_edit_rejected).
         services.AddScoped<ILayoutMetrics, LayoutMetrics>();
 

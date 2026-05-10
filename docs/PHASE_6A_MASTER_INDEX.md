@@ -288,6 +288,16 @@
 
 ---
 
+## Phase 8X: External Payment Events
+
+| Phase | Feature | Status | Document | Implemented |
+|-------|---------|--------|----------|-------------|
+| 8X    | External Payment Events (paid event with off-platform payment + registration link) | ✅ Shipped + staging-verified | [MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md](./MASTER_TODO_PHASE_8X_EXTERNAL_PAYMENT.md) | 2026-05-07 |
+
+Adds a third `EventPaymentMode` value `ExternalPaid` alongside `Free` and `OnPlatformPaid`. Pricing is displayed; in-page CTA replaces Register/RSVP with a link to an external URL plus optional vendor name + instructions. No internal Registration row is created (forces `RegistrationMode=NoRegistration`); Stripe pipeline is untouched. Cross-stack: Domain + EF + Application + API + FE + email/iCal rendering.
+
+---
+
 ## Related Documents
 
 - **Primary Tracking Docs** (must stay in sync):

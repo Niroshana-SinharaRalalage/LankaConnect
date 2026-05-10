@@ -341,7 +341,8 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                     userName: recipientName,
                     contactEmail: recipientEmail,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    // Phase 8YA-2 TODO: skip resend on TBD events; param class should accept DateTime?.
+                    eventStartDate: @event.StartDate.GetValueOrDefault(),
                     eventStartTime: LankaConnect.Shared.Email.Helpers.EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),
                     eventLocation: GetEventLocationString(@event),
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),
@@ -396,9 +397,13 @@ public class ResendTicketEmailCommandHandler : ICommandHandler<ResendTicketEmail
                 typedParams.WithEventImage(eventImageUrl);
 
                 // Set ticket info
+                // Phase 8YA-2 TODO: render expiry as "TBD" when EndDate is null on TBD events.
+                var expiryDateText = @event.EndDate.HasValue
+                    ? @event.EndDate.Value.AddDays(1).ToString("MMMM dd, yyyy")
+                    : "TBD";
                 typedParams.WithTicket(
                     ticket.TicketCode,
-                    @event.EndDate.AddDays(1).ToString("MMMM dd, yyyy"),
+                    expiryDateText,
                     _emailUrlHelper.BuildTicketViewUrl(ticket.Id));
 
                 // Set contact information

@@ -36,6 +36,9 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
     private readonly ISponsorRepository _sponsorRepository;
     // Phase 7E.3b (architect edit #2): Mode-B paid checkout shared with the auth handler.
     private readonly LankaConnect.Application.Events.Services.IRegistrationCheckoutService _checkoutService;
+    // Phase 8 S8.2.B: Same validator the auth handler uses — guarantees identical
+    // semantics + error messages across both RSVP paths.
+    private readonly LankaConnect.Application.Events.Services.ISeatAssignmentValidator _seatAssignmentValidator;
     private readonly ILogger<RegisterAnonymousAttendeeCommandHandler> _logger;
 
     public RegisterAnonymousAttendeeCommandHandler(
@@ -51,6 +54,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         ICollectionRepository collectionRepository,
         ISponsorRepository sponsorRepository,
         LankaConnect.Application.Events.Services.IRegistrationCheckoutService checkoutService,
+        LankaConnect.Application.Events.Services.ISeatAssignmentValidator seatAssignmentValidator,
         ILogger<RegisterAnonymousAttendeeCommandHandler> logger)
     {
         _eventRepository = eventRepository;
@@ -64,6 +68,7 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _collectionRepository = collectionRepository;
         _sponsorRepository = sponsorRepository;
         _checkoutService = checkoutService;
+        _seatAssignmentValidator = seatAssignmentValidator;
         _logger = logger;
     }
 
@@ -166,6 +171,18 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     "RegisterAnonymousAttendee: Email not found in event registrations - proceeding - EventId={EventId}, Email={Email}",
                     request.EventId, request.Email);
 
+                // Phase 8X.4b — ExternalPaid events have no internal registration path.
+                // Architect-locked guard message wins over the generic NoRegistration message.
+                if (@event.PaymentMode == LankaConnect.Domain.Events.Enums.EventPaymentMode.ExternalPaid)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "RegisterAnonymousAttendee REJECTED: ExternalPaid event - EventId={EventId}, Duration={ElapsedMs}ms",
+                        request.EventId, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure(
+                        "This event uses external registration. Users must register via the link provided by the organiser.");
+                }
+
                 // Phase 7E.3a: Dispatch by event.RegistrationMode BEFORE format detection.
                 // Mode C → 400; B-mode → head-count flow; DetailedAttendees → existing logic.
                 if (@event.RegistrationMode == LankaConnect.Domain.Events.Enums.RegistrationMode.NoRegistration)
@@ -245,11 +262,47 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
             "HandleMultiAttendeeRegistration: Creating attendee value objects - EventId={EventId}, AttendeeCount={AttendeeCount}",
             @event.Id, request.Attendees!.Count);
 
-        // Create AttendeeDetails value objects from DTOs
+        // Create AttendeeDetails value objects from DTOs.
+        // Phase 8 S8.2.D: Pass TicketTierId for tiered events; resolve tier name for
+        // denormalization. Mirrors the auth-side RsvpToEventCommandHandler logic so
+        // anonymous + auth flows produce identical AttendeeDetails on tiered events.
         var attendeeDetailsList = new List<AttendeeDetails>();
         foreach (var attendeeDto in request.Attendees!)
         {
-            var attendeeResult = AttendeeDetails.Create(attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender);
+            string? tierName = null;
+            if (attendeeDto.TicketTierId.HasValue && @event.TicketingMode == TicketingMode.Tiered)
+            {
+                var tier = @event.GetTicketTier(attendeeDto.TicketTierId.Value);
+                if (tier == null)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration FAILED: Ticket tier not found - EventId={EventId}, TierId={TierId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                        @event.Id, attendeeDto.TicketTierId.Value, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure($"Ticket tier not found for attendee '{attendeeDto.Name}'");
+                }
+                if (!tier.IsActive)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "HandleMultiAttendeeRegistration FAILED: Ticket tier inactive - EventId={EventId}, TierId={TierId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                        @event.Id, attendeeDto.TicketTierId.Value, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                    return Result<string?>.Failure($"Ticket tier '{tier.Name}' is not active");
+                }
+                tierName = tier.Name;
+            }
+            else if (@event.TicketingMode == TicketingMode.Tiered && !attendeeDto.TicketTierId.HasValue)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "HandleMultiAttendeeRegistration FAILED: Tiered event requires TicketTierId per attendee - EventId={EventId}, AttendeeName={Name}, Duration={ElapsedMs}ms",
+                    @event.Id, attendeeDto.Name, stopwatch.ElapsedMilliseconds);
+                return Result<string?>.Failure($"Ticket tier is required for attendee '{attendeeDto.Name}' (event uses tiered ticketing)");
+            }
+
+            var attendeeResult = AttendeeDetails.Create(
+                attendeeDto.Name, attendeeDto.AgeCategory, attendeeDto.Gender,
+                attendeeDto.TicketTierId, tierName);
             if (attendeeResult.IsFailure)
             {
                 stopwatch.Stop();
@@ -267,6 +320,44 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
         _logger.LogInformation(
             "HandleMultiAttendeeRegistration: Attendee value objects created - EventId={EventId}, Count={Count}",
             @event.Id, attendeeDetailsList.Count);
+
+        // Phase 8 S8.2.B: assigned-seating validation. Mirrors the auth-path
+        // logic in RsvpToEventCommandHandler so anonymous + auth flows share
+        // identical semantics + error messages. See ADR-011.
+        IReadOnlyList<PendingSeatAssignment>? pendingSeatAssignments = null;
+        if (@event.SeatingMode == SeatingMode.AssignedSeating)
+        {
+            if (request.SeatIds is null || request.SeatSessionId is null)
+            {
+                return Result<string?>.Failure(
+                    "This event uses assigned seating — please select your seats before registering. " +
+                    "(seatIds and seatSessionId are required.)");
+            }
+
+            var seatValidation = await _seatAssignmentValidator.ValidateAndBuildAssignmentsAsync(
+                request.EventId,
+                request.SeatSessionId,
+                request.SeatIds,
+                attendeeDetailsList.Count,
+                cancellationToken);
+            if (seatValidation.IsFailure)
+            {
+                _logger.LogWarning(
+                    "HandleMultiAttendeeRegistration: assigned-seating validation failed — EventId={EventId}, Error={Error}",
+                    request.EventId, seatValidation.Error);
+                return Result<string?>.Failure(seatValidation.Error);
+            }
+            pendingSeatAssignments = seatValidation.Value;
+        }
+        else
+        {
+            if (request.SeatIds is { Count: > 0 } || !string.IsNullOrWhiteSpace(request.SeatSessionId))
+            {
+                return Result<string?>.Failure(
+                    "This event uses general admission — seat selection is not supported. " +
+                    "Refresh the page and try again.");
+            }
+        }
 
         // Create RegistrationContact value object
         // Phase 7A.6D: Pass WhatsApp phone + opt-in flag
@@ -320,6 +411,28 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
 
         // Get the just-created registration
         var registration = @event.Registrations.Last();
+
+        // Phase 8 S8.2.B: Stash pending seat assignments on the freshly-created
+        // registration. Same conditional pattern as the auth handler — only
+        // for Preliminary (paid) registrations; free events get the sync
+        // conversion in S8.2.C.
+        if (pendingSeatAssignments is not null
+            && registration.Status == Domain.Events.Enums.RegistrationStatus.Preliminary)
+        {
+            var stashResult = registration.SetPendingSeatAssignments(
+                request.SeatSessionId!,
+                pendingSeatAssignments);
+            if (stashResult.IsFailure)
+            {
+                _logger.LogError(
+                    "HandleMultiAttendeeRegistration: SetPendingSeatAssignments failed unexpectedly after validation passed — RegistrationId={RegistrationId}, Error={Error}",
+                    registration.Id, stashResult.Error);
+                return Result<string?>.Failure(stashResult.Error);
+            }
+            _logger.LogInformation(
+                "[Phase 8 S8.2.B] Pending seat assignments stashed (anon) — RegistrationId={RegistrationId}, SeatCount={Count}, SessionId={SessionId}",
+                registration.Id, pendingSeatAssignments.Count, request.SeatSessionId);
+        }
 
         // Phase 6A.81: Log registration state for observability
         _logger.LogInformation(

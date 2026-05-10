@@ -74,6 +74,21 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                     "EventRejected: Event loaded - EventTitle={EventTitle}, OrganizerId={OrganizerId}",
                     @event.Title.Value, @event.OrganizerId);
 
+                // Phase 8YA.2: defensive guard. Reject only fires from UnderReview → Draft,
+                // and SubmitForReview requires Status=Draft (which requires a date pair),
+                // so this branch is theoretically unreachable. Guard anyway so a future
+                // refactor that loosens UnderReview entry can't ship a "0001-01-01"
+                // rejection email.
+                if (!@event.StartDate.HasValue || !@event.EndDate.HasValue)
+                {
+                    stopwatch.Stop();
+                    _logger.LogInformation(
+                        "EventRejected SKIPPED: TBD event has no confirmed dates - " +
+                        "EventId={EventId}, Duration={ElapsedMs}ms.",
+                        @event.Id, stopwatch.ElapsedMilliseconds);
+                    return;
+                }
+
                 // Retrieve organizer's user details
                 var organizer = await _userRepository.GetByIdAsync(@event.OrganizerId, cancellationToken);
                 if (organizer == null)
@@ -99,7 +114,8 @@ public class EventRejectedEventHandler : INotificationHandler<DomainEventNotific
                     organizerEmail: organizer.Email.Value,
                     eventId: @event.Id,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    // Phase 8YA.2: early-returned above when StartDate was null.
+                    eventStartDate: @event.StartDate.Value,
                     timeZoneId: @event.TimeZoneId,
                     reason: domainEvent.Reason,
                     rejectedAt: domainEvent.RejectedAt);

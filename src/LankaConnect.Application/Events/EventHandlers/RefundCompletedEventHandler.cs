@@ -106,7 +106,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     refundId: Guid.NewGuid(),  // Internal refund ID
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: refund flow can't fire on TBD today (Register blocks)
                     timeZoneId: @event.TimeZoneId,
                     refundAmount: totalRefundAmount,  // Phase 6A.135: Combined ticket + add-on amount
                     originalAmount: totalRefundAmount,  // Same as refund for full refunds

@@ -401,9 +401,15 @@ export function NewsletterForm({ newsletterId, initialEventId, onSuccess, onCanc
                     )}
 
                     {/* Date */}
+                    {/* Phase 8YA.3: render "Date TBD" placeholder when an organiser
+                        is composing a newsletter for a TBD event. */}
                     <div className="flex items-center gap-2 text-neutral-700">
                       <Calendar className="h-4 w-4 text-neutral-500" />
-                      <span>{new Date(selectedEvent.startDate).toLocaleDateString()}</span>
+                      <span>
+                        {selectedEvent.startDate
+                          ? new Date(selectedEvent.startDate).toLocaleDateString()
+                          : 'Date TBD'}
+                      </span>
                     </div>
 
                     {/* Attendees */}

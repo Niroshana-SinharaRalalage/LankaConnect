@@ -133,6 +133,76 @@ describe('HTML Utils', () => {
       expect(output).toContain('<blockquote>A quote</blockquote>');
       expect(output).toContain('<code>const x = 1;</code>');
     });
+
+    // Email-body editor upgrade: tables, color, alignment, highlight,
+    // underline, strikethrough — see RichTextEditor.tsx
+    it('should preserve TipTap tables with header row', () => {
+      const input =
+        '<table><thead><tr><th>Name</th><th>Date</th></tr></thead>' +
+        '<tbody><tr><td>Dana</td><td>June 22</td></tr></tbody></table>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<table>');
+      expect(output).toContain('<thead>');
+      expect(output).toContain('<th>Name</th>');
+      expect(output).toContain('<td>Dana</td>');
+      expect(output).toContain('</table>');
+    });
+
+    it('should preserve table cell colspan and rowspan attributes', () => {
+      const input = '<table><tbody><tr><td colspan="2" rowspan="1">Merged</td></tr></tbody></table>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('colspan="2"');
+      expect(output).toContain('rowspan="1"');
+    });
+
+    it('should preserve text color via inline style on <span>', () => {
+      const input = '<p>Hello <span style="color: #FF7900">orange</span> world</p>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<span');
+      expect(output).toContain('color');
+      expect(output).toContain('orange');
+    });
+
+    it('should preserve <mark> highlight with background-color style', () => {
+      const input = '<p>This is <mark style="background-color: #FFFF00">highlighted</mark></p>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<mark');
+      expect(output).toContain('background-color');
+      expect(output).toContain('highlighted');
+    });
+
+    it('should preserve text-align inline style on paragraph', () => {
+      const input = '<p style="text-align: center">Centered text</p>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('text-align');
+      expect(output).toContain('center');
+      expect(output).toContain('Centered text');
+    });
+
+    it('should preserve underline (<u>) and strikethrough (<s>) tags', () => {
+      const input = '<p><u>under</u> and <s>strike</s></p>';
+      const output = sanitizeHtml(input);
+
+      expect(output).toContain('<u>under</u>');
+      expect(output).toContain('<s>strike</s>');
+    });
+
+    it('should strip javascript: URL inside style attribute (XSS regression)', () => {
+      const input =
+        '<p style="background: url(javascript:alert(1))">XSS attempt</p>' +
+        '<span style="color: expression(alert(1))">Old IE XSS</span>';
+      const output = sanitizeHtml(input);
+
+      expect(output.toLowerCase()).not.toContain('javascript:');
+      expect(output.toLowerCase()).not.toContain('expression(');
+      // Surrounding text is preserved; only the dangerous CSS fragment is stripped
+      expect(output).toContain('XSS attempt');
+    });
   });
 
   describe('isHtmlContent', () => {

@@ -57,6 +57,21 @@ public class EventPublishedWhatsAppHandler : INotificationHandler<DomainEventNot
                     return;
                 }
 
+                // Phase 8YA.2 (Q1=A): TBD events can be Published. Skip the WhatsApp
+                // broadcast — Twilio approved templates have a required {{EventDate}}
+                // parameter and substituting "Date TBD" yields an unprofessional
+                // notification. Once the organiser sets dates and re-publishes (or we
+                // add a SetDates → re-broadcast hook in a later phase), recipients
+                // get a notification with a real date.
+                if (!@event.StartDate.HasValue)
+                {
+                    _logger.LogInformation(
+                        "[Phase 8YA.2] WhatsApp EventPublished SKIPPED: TBD event has no " +
+                        "confirmed start date - EventId={EventId}.",
+                        eventId);
+                    return;
+                }
+
                 var location = @event.Location?.Address != null
                     ? $"{@event.Location.Address.Street}, {@event.Location.Address.City}".Trim(',', ' ')
                     : "Online Event";

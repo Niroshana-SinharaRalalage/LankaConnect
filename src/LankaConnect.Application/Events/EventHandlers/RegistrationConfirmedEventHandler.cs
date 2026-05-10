@@ -150,7 +150,7 @@ public class RegistrationConfirmedEventHandler : INotificationHandler<DomainEven
                 userName: $"{user.FirstName} {user.LastName}",
                 userEmail: user.Email.Value,
                 eventTitle: @event.Title.Value,
-                eventStartDate: @event.StartDate,
+                eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: registration can't fire on TBD today (Register blocks)
                 eventStartTime: EmailDateTimeHelper.FormatEventTime(@event.StartDate, @event.TimeZoneId),  // Phase 6A.97: Uses event's timezone
                 eventLocation: locationProjection.LegacyFlatString,
                 eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id),

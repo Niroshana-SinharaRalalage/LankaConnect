@@ -226,7 +226,7 @@ public class AttendeesAddedEventHandler : INotificationHandler<DomainEventNotifi
                     userName: recipientName,
                     userEmail: recipientEmail,
                     eventTitle: @event.Title.Value,
-                    eventStartDate: @event.StartDate,
+                    eventStartDate: @event.StartDate.GetValueOrDefault(), // Phase 8YA-2 TODO: param class should accept DateTime?
                     timeZoneId: @event.TimeZoneId,
                     eventLocation: GetEventLocationString(@event),
                     previousCount: domainEvent.PreviousAttendeeCount,

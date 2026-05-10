@@ -16,9 +16,12 @@ import { createFeedItem } from '@/domain/models/FeedItem';
  * @returns FeedItem for display in feed
  */
 export function mapEventToFeedItem(event: EventDto): FeedItem {
-  // Format date and time
-  const startDate = new Date(event.startDate);
-  const endDate = new Date(event.endDate);
+  // Format date and time.
+  // Phase 8YA.3: TBD events have null start/end. We use a 30-day-future placeholder
+  // for sort/filter math below (the consumer ignores this when isDateTbd is set in
+  // metadata, which downstream surfaces check); display layer renders "Date TBD".
+  const startDate = event.startDate ? new Date(event.startDate) : new Date(Date.now() + 30 * 86400_000);
+  const endDate = event.endDate ? new Date(event.endDate) : new Date(Date.now() + 30 * 86400_000);
 
   const dateOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
@@ -174,9 +177,11 @@ export function filterEventsByCategory(
  * @returns Sorted array of EventDto
  */
 export function sortEventsByDate(events: EventDto[]): EventDto[] {
+  // Phase 8YA.3: TBD events sort to the bottom (Number.POSITIVE_INFINITY for null
+  // startDate so ascending-by-date pushes them past every dated event).
   return [...events].sort((a, b) => {
-    const dateA = new Date(a.startDate).getTime();
-    const dateB = new Date(b.startDate).getTime();
+    const dateA = a.startDate ? new Date(a.startDate).getTime() : Number.POSITIVE_INFINITY;
+    const dateB = b.startDate ? new Date(b.startDate).getTime() : Number.POSITIVE_INFINITY;
     return dateA - dateB;
   });
 }
@@ -190,6 +195,10 @@ export function sortEventsByDate(events: EventDto[]): EventDto[] {
 export function getUpcomingEvents(events: EventDto[]): EventDto[] {
   const now = Date.now();
   return events.filter((event) => {
+    // Phase 8YA.3 (Q3=A): TBD events excluded from "upcoming" because they have
+    // no confirmed start. Surfaces that explicitly want to include TBD events
+    // (e.g. organiser dashboard) must use a different filter.
+    if (!event.startDate) return false;
     const startDate = new Date(event.startDate).getTime();
     return startDate > now;
   });

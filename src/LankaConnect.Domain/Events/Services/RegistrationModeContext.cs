@@ -1,3 +1,5 @@
+using LankaConnect.Domain.Events.Enums;
+
 namespace LankaConnect.Domain.Events.Services;
 
 /// <summary>
@@ -19,6 +21,14 @@ public sealed record RegistrationModeContext
 {
     /// <summary>True when attendance is free (no per-attendee fee).</summary>
     public bool IsFreeAttendance { get; init; }
+
+    /// <summary>
+    /// Phase 8X.11 — payment locus for the event. Defaults to Free so existing callers
+    /// (which don't yet pass this axis) keep their pre-Phase-8X behaviour. The value
+    /// gates whether <see cref="RegistrationMode.External"/> is allowed (only ExternalPaid)
+    /// and forbids the other modes for ExternalPaid.
+    /// </summary>
+    public EventPaymentMode PaymentMode { get; init; } = EventPaymentMode.Free;
 
     /// <summary>True when the event uses any seating (assigned or auto-block).</summary>
     public bool HasSeating { get; init; }

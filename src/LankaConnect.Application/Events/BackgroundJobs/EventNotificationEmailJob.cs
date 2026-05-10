@@ -397,7 +397,8 @@ public class EventNotificationEmailJob
         {
             // Core fields (original)
             { "EventTitle", @event.Title?.Value ?? "Untitled Event" },
-            { "EventDate", @event.StartDate.ToString("f") }, // Full date/time pattern (e.g., "Monday, December 25, 2025 7:00 PM")
+            // Phase 8YA-2 TODO: render "Date TBD" when StartDate is null on TBD events.
+            { "EventDate", @event.StartDate.HasValue ? @event.StartDate.Value.ToString("f") : "Date TBD" },
             { "EventLocation", GetEventLocationString(@event) },
             { "EventDetailsUrl", _emailUrlHelper.BuildEventDetailsUrl(@event.Id) },
             { "IsFreeEvent", isFree },

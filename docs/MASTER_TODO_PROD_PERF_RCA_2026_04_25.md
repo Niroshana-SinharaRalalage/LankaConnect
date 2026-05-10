@@ -41,11 +41,11 @@ az containerapp update \
 ```
 
 **Verification gates (all must pass before declaring restored):**
-- [ ] `az containerapp revision list` shows new revision Active; prior revision available for rollback
-- [ ] Replica count climbs to ≥ 2 within 60s
-- [ ] `curl /api/MetroAreas` returns < 1s (proves replica-level resource exhaustion is gone)
-- [ ] `curl /api/events/{busiest-id}` returns < 35s without 503 (still slow until Phase 1, but completes)
-- [ ] Browser console no longer shows `ECONNABORTED` or 503 in 5-min window
+- [x] `az containerapp revision list` shows new revision Active; prior revision available for rollback — VERIFIED 2026-04-25 18:00 UTC. Rollback target `lankaconnect-api-prod--0000035` (image `85aa3a71`) confirmed available, Healthy. Recorded in execution log below.
+- [x] Replica count climbs to ≥ 2 within 60s — VERIFIED 2026-04-25 18:00:56 UTC ("Both replicas Running"). Recorded in execution log.
+- [x] `curl /api/MetroAreas` returns < 1s (proves replica-level resource exhaustion is gone) — VERIFIED 2026-04-25 18:01 UTC — 0.32-0.37s (200) (was 30s timeout pre-fix). Recorded in execution log.
+- [x] `curl /api/events/{busiest-id}` returns < 35s without 503 — VERIFIED 2026-04-25 Phase 2 (1.5-3.9s); after Phase 1 split-query fix shipped, **0.18-0.86s** (was 10-35s + 503s pre-fix). Recorded in execution log.
+- [x] Browser console no longer shows `ECONNABORTED` or 503 in 5-min window — VERIFIED 2026-04-25 post-Phase-2.
 
 If `az containerapp update` rejects combined resource + scale-rule flags on this CLI version (older `az containerapp` extensions have been finicky), fall back to two commands but in this order: **scale rule first, resources second**. Never leave bigger box without rule.
 
@@ -105,7 +105,7 @@ The whole reason this surprised us is no signal fired. Cheap; do this week.
 - [ ] Azure Monitor alert: `GET /api/events/{id}` p95 > 2s over 5-min window → page on-call
 - [ ] Azure Monitor alert: Container App replica count == max-replicas for > 5 min → warn
 - [ ] Azure Monitor alert: Container App HTTP 5xx rate > 1% over 5-min → page
-- [ ] Document alert routing in `docs/ON_CALL_RUNBOOK.md`
+- [x] Document alert routing in `docs/ON_CALL_RUNBOOK.md` — DONE 2026-05-06. New `docs/ON_CALL_RUNBOOK.md` documents target alert routing (the 3 architect-spec'd alerts above with severity / window / action), standard incident response checklist (5 steps from `/health` smoke through Postgres connection check to revision rollback), known operational ceilings (max_connections=50, http-scaler thresholds, Stripe webhook retry semantics), key Log Analytics queries (named-metric filter), and the 2026-04-25 history entry. The 3 Azure Monitor alerts themselves still need portal setup (or `az monitor metrics alert create` automation, separate item) — runbook is ready for them.
 
 ### Phase 3 — Decompose `GetByIdAsync` into specialized methods
 
@@ -120,11 +120,11 @@ Phase 1 makes prod healthy; Phase 3 makes the codebase honest about read shapes.
 
 ### Phase 4 — Other findings from the audit
 
-- [ ] Cache `MetroAreas` (rarely changes; trivial perf win)
-- [ ] Fix `PhotoAlbums` Include duplication (similar cartesian risk pattern)
-- [ ] Audit `EmailQueueProcessor` DbContext lifetime (suspected scope leak holding connections)
-- [ ] Fix fire-and-forget `RecordEventViewCommand` scope at `EventsController.cs:238` (suspected scope-disposed exceptions on slow paths)
-- [ ] **Verify Npgsql `MaxPoolSize` vs Postgres flexible-server `max_connections`** (slow reads can hold connections for full 35s, starving small endpoints). Document in `docs/INFRASTRUCTURE.md`
+- [x] Cache `MetroAreas` (rarely changes; trivial perf win) — SHIPPED 2026-05-06 commit `f4bacbea` deploy `25466994443` `success`. Server-side `IMemoryCache` fronting `GetMetroAreasQueryHandler`, 1-hour TTL, key derived from filter params, mirrors `ReferenceDataService` pattern. `[ResponseCache(900)]` HTTP attribute kept (works when proxies respect it; new server cache covers the gap when they don't, e.g. via Next.js `/api/proxy`). Also added `.AsNoTracking()` for the cache-miss DB path. Staging smoke 4/4 PASS: T1 first call (miss) 930ms → T2 second call (HIT) 235ms — 4× faster, identical 134 items. 2598/2598 app tests pass. Correlations `3010817d-…` (T1), `92bd385b-…` (T2 HIT), `e93583c0-…` (T3 NY filter), `530e0ff9-…` (T4 NY HIT).
+- [x] Fix `PhotoAlbums` Include duplication (similar cartesian risk pattern) — AUDITED CLEAN 2026-05-06. `PhotoAlbumRepository` only chains a single `.Include(a => a.Photos)` per query path — no cartesian product is possible (only one collection). The architect's TODO line was precautionary defense-in-depth; the actual code doesn't replicate the 6+ Includes pattern that caused the original Event prod incident. Documented for traceability; no fix needed.
+- [x] Audit `EmailQueueProcessor` DbContext lifetime (suspected scope leak holding connections) — AUDITED CLEAN 2026-05-06. `EmailQueueProcessor.ProcessQueuedEmailsAsync` opens a fresh `using var scope = _serviceProvider.CreateScope()` per iteration and resolves `IEmailMessageRepository` + `IUnitOfWork` from the scope (lines 62-65). DbContext is scoped, so it lives + disposes with the scope on every interval. Correct pattern; no leak. Documented for traceability; no fix needed.
+- [x] Fix fire-and-forget `RecordEventViewCommand` scope at `EventsController.cs:238` (suspected scope-disposed exceptions on slow paths) — SHIPPED 2026-05-06 commit `cf3c9407` deploy `25467998248`. The previous block read `User.Identity`, `HttpContext.Connection`, `HttpContext.Request.Headers`, and `Mediator` INSIDE the `Task.Run` lambda — all four are scoped per request. When the controller method returned, the request scope disposed; if the analytics task hadn't finished yet, those reads raised `ObjectDisposedException` as orphaned background exceptions. Fix: capture all scope-bound values BEFORE the `Task.Run` (userId, ipAddress, userAgent, eventId, scopeFactory, loggerRef), and inside the task create a fresh DI scope via `IServiceScopeFactory` + resolve a fresh `IMediator`. `Logger` is `ILogger<T>` (singleton in ASP.NET DI), safe to close over. Behaviour unchanged on happy path; eliminates disposal race on slow background paths. 2598/2598 app tests pass.
+- [x] **Verify Npgsql `MaxPoolSize` vs Postgres flexible-server `max_connections`** (slow reads can hold connections for full 35s, starving small endpoints). Document in `docs/INFRASTRUCTURE.md` — SHIPPED 2026-05-06 commit `a3e21ddb` deploy `25470084812`. **Real finding from staging audit**: Postgres `max_connections=50` (Burstable SKU default) AND dev appsettings `MaxPoolSize=50`. With 2 replicas this overflows by 2× and triggers *"FATAL: sorry, too many clients already"*. **Two-part fix**: (1) New `ConnectionPoolValidator` startup `IHostedService` reads connection string `MaxPoolSize` via `NpgsqlConnectionStringBuilder`, queries server-side `SHOW max_connections`, compares `(MaxPoolSize × assumedReplicas)` vs `(max_connections × 0.8)`, emits `[OK]` or `[POOL-OVERFLOW-RISK]` structured log so ops can grep container logs before users hit connection errors. Never throws / blocks startup — pure observability. `assumedReplicas` configurable via `ConnectionPool:AssumedMaxReplicas` (default 2). (2) New `docs/INFRASTRUCTURE.md` documents the formula `MaxPoolSize × peak_replicas ≤ max_connections × 0.8`, captures current staging+prod sizing, recommends `MaxPoolSize=20` for 2-replica baseline (40 = 80% of 50), and action items for when ops scales up replicas. Code change does NOT modify the actual KV connection string — that's an ops coordination call (lowering `MaxPoolSize` + bumping `min_replicas` need to land together).
 - [ ] Sanity-check via `pg_stat_statements` snapshot during next p95 spike that the Event query hash dominates (post-mortem confirmation)
 
 ### Phase 4 chore — Sync staging↔prod Container App config permanently
@@ -132,18 +132,18 @@ Phase 1 makes prod healthy; Phase 3 makes the codebase honest about read shapes.
 Drift caused the outage amplification. Lives under infra-as-code.
 
 - [ ] Add `infra/containerapp-prod.bicep` (or Terraform) with explicit `scaleRules` block. Same for staging. Identical rule shape
-- [ ] CI gate: deploy job rejects if `scaleRules` is null on either env
-- [ ] One-time manual diff: `az containerapp show` on staging + prod, compare every field beyond resources/replicas. Document any other drift
-- [ ] Add to `docs/DEPLOYMENT.md`: "Container App config changes go through IaC, never via ad-hoc `az containerapp update` except for documented emergency mitigations like 2026-04-25"
+- [x] CI gate: deploy job rejects if `scaleRules` is null on either env — DONE 2026-05-06. Added "Verify Container App scale rules (Phase 8 perf-RCA hygiene)" step to BOTH `.github/workflows/deploy-staging.yml` (after the `Update Container App` + `ingress update` block) and `.github/workflows/deploy-production.yml` (matching position). The step queries `az containerapp show ... --query properties.template.scale.rules`, fails the deploy job with `exit 1` if the result is `null` or `[]`, otherwise prints the JSON and continues. Comment in the step references the 2026-04-25 incident. The `.github/workflows/` are version-controlled so this gate ships with the next deploy.
+- [x] One-time manual diff: `az containerapp show` on staging + prod, compare every field beyond resources/replicas. Document any other drift — DONE 2026-05-06. Recorded in `docs/INFRASTRUCTURE.md` under "Container App config — staging ↔ prod diff (audited 2026-05-06)". Three real findings beyond the intentional resource/replica drift: (1) **registry auth drift** — staging uses static `username + passwordSecretRef`, prod uses `identity: system` (managed identity); align staging to managed identity on next maintenance window for security; (2) **no health probes** — both envs have `probes = []` or `null`; required before raising prod replica count to avoid routing traffic to unready replicas; (3) **secret count drift** — staging=25 vs prod=18, worth a manual reconciliation pass. The `scaleRules` drift the architect flagged is now CLOSED — both envs have `http-scaler` (different thresholds, same shape).
+- [x] Add to `docs/DEPLOYMENT.md`: "Container App config changes go through IaC, never via ad-hoc `az containerapp update` except for documented emergency mitigations like 2026-04-25" — DONE 2026-05-06. New `docs/DEPLOYMENT.md` documents the IaC-only rule, captures the 2026-04-25 emergency mitigation as the documented exception, lists pre-deploy gates (workflow YAML diff, ConnectionPoolValidator boot log, EF migrations, smoke endpoints, post-deploy container log scan), and rollback windows (30s revision activate, 30min Postgres PITR).
 
 ---
 
 ## Tracking doc updates (per CLAUDE.md §7)
 
 After Phase 1 ships:
-- [ ] `docs/PROGRESS_TRACKER.md` — entry dated 2026-04-25, RCA + fix
-- [ ] `docs/STREAMLINED_ACTION_PLAN.md` — close perf RCA item
-- [ ] `docs/TASK_SYNCHRONIZATION_STRATEGY.md` — phase status update
+- [x] `docs/PROGRESS_TRACKER.md` — entry dated 2026-04-25, RCA + fix — DONE post-incident (Phase 1+2 entries) + 2026-05-06 hygiene-cycle entries.
+- [x] `docs/STREAMLINED_ACTION_PLAN.md` — close perf RCA item — DONE post-incident + 2026-05-06 hygiene-cycle entries.
+- [x] `docs/TASK_SYNCHRONIZATION_STRATEGY.md` — phase status update — DONE post-incident + 2026-05-06 hygiene-cycle entries.
 
 ---
 

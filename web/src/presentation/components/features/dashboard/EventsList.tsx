@@ -5,6 +5,7 @@ import { Calendar, MapPin, Users, Eye, Edit, Upload, Ban, Trash2 } from 'lucide-
 import { EventDto, EventStatus, EventCategory } from '@/infrastructure/api/types/events.types';
 import { RegistrationBadge } from '../events/RegistrationBadge';
 import { useEventCategories, useEventStatuses } from '@/infrastructure/api/hooks/useReferenceData';
+import { getNameFromCode } from '@/infrastructure/api/utils/enum-mappers';
 import { getNameFromIntValue } from '@/infrastructure/api/utils/enum-mappers';
 import { Button } from '@/presentation/components/ui/Button';
 
@@ -92,8 +93,11 @@ export function EventsList({
   };
 
   // Phase 6A.47: Use reference data for status and category labels
+  // Phase 8YB.5 (D2=B): EventStatus is now string-valued, so look up by code
+  // rather than by intValue. Reference data still ships both fields; the code
+  // (e.g. 'Published', 'Planning') is the canonical identity post-conversion.
   const getStatusLabel = (status: EventStatus): string => {
-    return getNameFromIntValue(statuses, status) || `Unknown (${status})`;
+    return getNameFromCode(statuses, status) || status || 'Unknown';
   };
 
   const getCategoryLabel = (category: EventCategory): string => {
@@ -225,11 +229,13 @@ export function EventsList({
               {/* Event Info */}
               <div className="space-y-2">
             {/* Date */}
+            {/* Phase 8YA.3: TBD events show "Date TBD" placeholder in the
+                organiser dashboard so they're scannable but clearly unfinished. */}
             <div className="flex items-center text-sm text-gray-600">
               <Calendar className="w-4 h-4 mr-2 text-[#FF7900]" />
               <span>
-                {formatDate(event.startDate)}
-                {event.endDate && event.endDate !== event.startDate && (
+                {event.startDate ? formatDate(event.startDate) : 'Date TBD'}
+                {event.startDate && event.endDate && event.endDate !== event.startDate && (
                   <> - {formatDate(event.endDate)}</>
                 )}
               </span>

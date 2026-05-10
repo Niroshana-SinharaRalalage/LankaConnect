@@ -158,6 +158,64 @@ public static class EmailDateTimeHelper
 
     #endregion
 
+    #region Phase 8YA.1: TBD-dates support (nullable overloads)
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware date formatter for TBD events.
+    /// Returns "Date TBD" when <paramref name="utcDateTime"/> is null; otherwise
+    /// delegates to <see cref="FormatEventDate(DateTime, string?)"/>.
+    /// </summary>
+    public static string FormatEventDate(DateTime? utcDateTime, string? timeZoneId)
+    {
+        return utcDateTime.HasValue
+            ? FormatEventDate(utcDateTime.Value, timeZoneId)
+            : "Date TBD";
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware time formatter for TBD events.
+    /// Returns "Time TBD" when <paramref name="utcDateTime"/> is null; otherwise
+    /// delegates to <see cref="FormatEventTime(DateTime, string?)"/>.
+    /// </summary>
+    public static string FormatEventTime(DateTime? utcDateTime, string? timeZoneId)
+    {
+        return utcDateTime.HasValue
+            ? FormatEventTime(utcDateTime.Value, timeZoneId)
+            : "Time TBD";
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware time-only formatter for TBD events.
+    /// </summary>
+    public static string FormatEventTimeOnly(DateTime? utcDateTime, string? timeZoneId)
+    {
+        return utcDateTime.HasValue
+            ? FormatEventTimeOnly(utcDateTime.Value, timeZoneId)
+            : "Time TBD";
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware date+time formatter for TBD events.
+    /// </summary>
+    public static string FormatDateTimeWithTz(DateTime? utcDateTime, string? timeZoneId)
+    {
+        return utcDateTime.HasValue
+            ? FormatDateTimeWithTz(utcDateTime.Value, timeZoneId)
+            : "Date and time TBD";
+    }
+
+    /// <summary>
+    /// Phase 8YA.1: nullable-aware custom-format formatter for TBD events.
+    /// </summary>
+    public static string Format(DateTime? utcDateTime, string? timeZoneId, string format)
+    {
+        return utcDateTime.HasValue
+            ? Format(utcDateTime.Value, timeZoneId, format)
+            : "TBD";
+    }
+
+    #endregion
+
     #region Legacy methods (backward compatibility - will be updated to use timezone in Phase 6A.97)
 
     /// <summary>

@@ -412,6 +412,13 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                     {imagesRemaining} {imagesRemaining === 1 ? 'image' : 'images'} remaining
                     (max {maxImages})
                   </p>
+                  {/* Phase 8YB.1: Aspect-ratio guidance for the event hero banner.
+                      Off-ratio images still display via letterbox; this just helps
+                      organizers pick a shape that fills the hero edge-to-edge. */}
+                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-2">
+                    Recommended for the banner image: 3:1 landscape (e.g. 2400×800 or larger).
+                    Other shapes will be letterboxed so your full image stays visible.
+                  </p>
                 </div>
               </>
             )}

@@ -295,6 +295,36 @@ jobs:
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --target-port 5000
 
+      - name: Verify Container App scale rules (Phase 8 perf-RCA hygiene)
+        run: |
+          # Phase 8 (post-prod-perf-RCA hygiene): the 2026-04-25 prod incident
+          # was amplified by an empty scaleRules block — KEDA never spawned
+          # replica #2 fast enough and Envoy queues went into a 503 cascade.
+          # This gate fails the deploy job if the Container App's scale rules
+          # are missing or empty, so the same drift can never silently happen
+          # again. See docs/MASTER_TODO_PROD_PERF_RCA_2026_04_25.md.
+          echo "════════════════════════════════════════════════════════════════"
+          echo "Verifying Container App scale rules are configured"
+          echo "════════════════════════════════════════════════════════════════"
+
+          SCALE_RULES_JSON=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.template.scale.rules" -o json)
+
+          # az returns "null" or "[]" for an empty scale-rules block;
+          # both are unacceptable per the architect-spec'd hygiene rule.
+          if [ -z "$SCALE_RULES_JSON" ] || [ "$SCALE_RULES_JSON" = "null" ] || [ "$SCALE_RULES_JSON" = "[]" ]; then
+            echo "❌ Container App scale rules are NULL or EMPTY — this triggered"
+            echo "   the 2026-04-25 prod incident. Refusing to ship without an"
+            echo "   http-scaler rule. Add scale-rule config via 'az containerapp"
+            echo "   update --scale-rule-*' or in IaC, then re-run."
+            exit 1
+          fi
+
+          echo "✅ Container App scale rules configured:"
+          echo "$SCALE_RULES_JSON" | jq '.'
+
       - name: Wait for deployment
         run: |
           echo "Waiting 30 seconds for Container App to update..."

@@ -13,7 +13,7 @@ import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
-import { EventCategory, EventDto, EventStatusFilter, EventStatusFilterLabels } from '@/infrastructure/api/types/events.types';
+import { EventCategory, EventDto, EventPaymentMode, EventStatusFilter, EventStatusFilterLabels } from '@/infrastructure/api/types/events.types';
 import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
@@ -447,16 +447,22 @@ function EventCard({
   event: EventDto;
   categoryLabels: Record<string, string>;
 }) {
-  const startDate = new Date(event.startDate);
-  const formattedDate = startDate.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const formattedTime = startDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  // Phase 8YA.3: TBD events render "Date TBD" / "Time TBD" badges (Q1=A —
+  // public listing of TBD events with a clear placeholder).
+  const startDate = event.startDate ? new Date(event.startDate) : null;
+  const formattedDate = startDate
+    ? startDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Date TBD';
+  const formattedTime = startDate
+    ? startDate.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : 'Time TBD';
 
   return (
     <Card
@@ -514,6 +520,11 @@ function EventCard({
           >
             {event.displayLabel}
           </Badge>
+
+          {/* Phase 8YB.6 (2026-05-09): "Coming Soon" pill removed per product-owner
+              rule overturn — TBD events are treated as regular events. The factual
+              "Date TBD" / "Time TBD" text in the date field below is sufficient
+              indicator that the schedule isn't confirmed yet. */}
 
           {/* Registration Badge - Issue #2: Only shows for Confirmed status */}
           <RegistrationBadge registrationStatus={event.userRegistrationStatus} compact={false} />
@@ -575,12 +586,37 @@ function EventCard({
                       : 'Paid Event'}
             </span>
           </div>
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-            style={{ background: '#FF7900' }}
-          >
-            {event.isFree ? 'View Details / Register →' : 'View Details / Buy Tickets →'}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Phase 8X.7+8: ExternalPaid badge so users know payment happens off-platform
+                before they click through to the event page. */}
+            {event.paymentMode === EventPaymentMode.ExternalPaid && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800"
+                title="Payment + registration handled by an external site"
+                data-testid="external-payment-badge"
+              >
+                External payment
+              </span>
+            )}
+            <button
+              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
+              style={{ background: '#FF7900' }}
+            >
+              {event.paymentMode === EventPaymentMode.ExternalPaid
+                // Phase 8YB.6 hotfix #3 (2026-05-09): "Buy on {Vendor}" copy implies a
+                // direct path to the vendor — so it must only render when an
+                // externalRegistrationUrl is actually set. Without a URL the card click
+                // takes the user to the LankaConnect detail page (where they read the
+                // organiser's plain-text instructions). Showing "Buy on XYZ →" with no
+                // URL was misleading; fall through to the neutral "View Details" copy.
+                ? (event.externalRegistrationUrl
+                    ? (event.externalRegistrationVendorName
+                        ? `Buy on ${event.externalRegistrationVendorName} →`
+                        : 'Buy Ticket / Register →')
+                    : 'View Details →')
+                : event.isFree ? 'View Details / Register →' : 'View Details / Buy Tickets →'}
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>

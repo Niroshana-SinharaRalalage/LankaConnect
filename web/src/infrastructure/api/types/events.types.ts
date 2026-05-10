@@ -8,17 +8,31 @@ import type { EventBadgeDto } from './badges.types';
 // ==================== Enums ====================
 
 /**
- * Event status enum matching backend LankaConnect.Domain.Events.Enums.EventStatus
+ * Event status enum matching backend LankaConnect.Domain.Events.Enums.EventStatus.
+ *
+ * Phase 8YB.5 (D2=B): converted from numeric to string-valued so identity
+ * comparisons against API responses (which arrive as strings via
+ * JsonStringEnumConverter) work without `(event.status as any)` casts.
+ *
+ * Phase 8YA.1: `Planning` value added — TBD events created without dates land
+ * in this state. Phase 8YB.5 lifts the manage-page Publish gate so Planning
+ * events can be Published directly.
+ *
+ * Existing call-sites (equality compares + Record-as-object-key + Array.includes)
+ * keep working: `EventStatus.Draft === event.status` is `'Draft' === 'Draft'`.
+ * No reverse-lookup or arithmetic usage exists in the codebase (audited 2026-05-09).
  */
 export enum EventStatus {
-  Draft = 0,
-  Published = 1,
-  Active = 2,
-  Postponed = 3,
-  Cancelled = 4,
-  Completed = 5,
-  Archived = 6,
-  UnderReview = 7,
+  Draft = 'Draft',
+  Published = 'Published',
+  Active = 'Active',
+  Postponed = 'Postponed',
+  Cancelled = 'Cancelled',
+  Completed = 'Completed',
+  Archived = 'Archived',
+  UnderReview = 'UnderReview',
+  /** Phase 8YA.1 — TBD events with no committed dates yet. */
+  Planning = 'Planning',
 }
 
 /**
@@ -195,6 +209,27 @@ export enum RegistrationMode {
   HeadCountByGender = 'HeadCountByGender',
   HeadCountByAgeAndGender = 'HeadCountByAgeAndGender',
   NoRegistration = 'NoRegistration',
+  /** Phase 8X.11 — registration captured externally (Eventbrite, cash-at-door, etc.).
+   * Only allowed when paymentMode === ExternalPaid. */
+  External = 'External',
+}
+
+/**
+ * Phase 8X: Event payment mode (Free / OnPlatformPaid / ExternalPaid).
+ * Matches backend `LankaConnect.Domain.Events.Enums.EventPaymentMode`. String-valued
+ * to align with backend `JsonStringEnumConverter` (memory 6A.124 — numeric TS enums
+ * compared against backend's string output silently never match).
+ *
+ * - Free: free event (no pricing).
+ * - OnPlatformPaid: paid event with payment collected on LankaConnect via Stripe.
+ * - ExternalPaid: paid event whose payment + registration happens off-platform.
+ *   Pricing is displayed; in-page CTA links to organiser-supplied URL with optional
+ *   vendor name and instructions. No internal Registration row is created.
+ */
+export enum EventPaymentMode {
+  Free = 'Free',
+  OnPlatformPaid = 'OnPlatformPaid',
+  ExternalPaid = 'ExternalPaid',
 }
 
 /**
@@ -375,8 +410,10 @@ export interface EventDto {
   id: string;
   title: string;
   description: string;
-  startDate: string; // ISO 8601 date-time
-  endDate: string; // ISO 8601 date-time
+  // Phase 8YA.3: Null on TBD events (Status === Planning, or rare Published-with-TBD
+  // per Q1=A). Display surfaces must render a "Date TBD" badge when null.
+  startDate: string | null; // ISO 8601 date-time, or null for TBD events
+  endDate: string | null;   // ISO 8601 date-time, or null for TBD events
   organizerId: string;
   capacity: number;
   currentRegistrations: number;
@@ -460,6 +497,18 @@ export interface EventDto {
   ticketPriceAmount?: number | null;
   ticketPriceCurrency?: Currency | null;
   isFree: boolean;
+
+  /**
+   * Phase 8X: Source of truth for payment mode. Defaults to Free for stale-cache
+   * back-compat with FE bundles cached before Phase 8X.5 shipped — those will
+   * fall back to "paid event" rendering for ExternalPaid (acceptable degradation).
+   * Use this instead of `isFree` to decide between Register/RSVP CTA and the
+   * external "Buy Ticket" link.
+   */
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string | null;
+  externalRegistrationInstructions?: string | null;
+  externalRegistrationVendorName?: string | null;
 
   // Session 21: Dual ticket pricing (adult/child)
   adultPriceAmount?: number | null;
@@ -826,8 +875,10 @@ export interface GetNearbyEventsRequest {
 export interface CreateEventRequest {
   title: string;
   description: string;
-  startDate: string;
-  endDate: string;
+  // Phase 8YA.3: Both null -> backend creates a TBD event in Planning status.
+  // Both set -> Draft. Mixed (one null, one set) -> backend validator returns 400.
+  startDate: string | null;
+  endDate: string | null;
   organizerId: string;
   capacity: number;
   category?: EventCategory;
@@ -875,6 +926,14 @@ export interface CreateEventRequest {
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
 
+  // Phase 8X: Payment mode (Free / OnPlatformPaid / ExternalPaid). Optional on the wire
+  // — backend infers from isFree per the architect-locked inference table when absent.
+  // Required when ExternalPaid; the validator returns 400 if URL is missing or insecure.
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string;
+  externalRegistrationInstructions?: string;
+  externalRegistrationVendorName?: string;
+
   // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
   // to DetailedAttendees when absent for back-compat with pre-7E API clients.
   registrationMode?: RegistrationMode;
@@ -913,8 +972,11 @@ export interface UpdateEventRequest {
   eventId: string;
   title?: string;
   description?: string;
-  startDate?: string;
-  endDate?: string;
+  // Phase 8YA.3: Both null -> backend keeps existing dates unchanged (organiser
+  // editing other fields). Both set -> SetDates path. Mixed -> backend validator
+  // returns 400.
+  startDate?: string | null;
+  endDate?: string | null;
   capacity?: number;
   category?: EventCategory;
 
@@ -960,6 +1022,14 @@ export interface UpdateEventRequest {
 
   // IsFreeEvent fix: Explicit free event flag
   isFree?: boolean;
+
+  // Phase 8X: Payment mode (Free / OnPlatformPaid / ExternalPaid). Optional on the wire
+  // — backend infers from isFree per the architect-locked inference table when absent.
+  // Required when ExternalPaid; the validator returns 400 if URL is missing or insecure.
+  paymentMode?: EventPaymentMode;
+  externalRegistrationUrl?: string;
+  externalRegistrationInstructions?: string;
+  externalRegistrationVendorName?: string;
 
   // Phase 7E: Per-event registration capture mode. Optional on the wire — backend defaults
   // to DetailedAttendees when absent for back-compat with pre-7E API clients.
@@ -3257,6 +3327,12 @@ export interface AllowedRegistrationModesRequest {
   hasTicketTiers?: boolean;
   hasIdentityBoundAddOn?: boolean;
   hasMatrixPricing?: boolean;
+  /**
+   * Phase 8X.11 — payment-mode axis. The picker passes the form's current paymentMode
+   * so the External option shows up exactly when the event is ExternalPaid. Defaults
+   * to Free server-side for back-compat with pre-8X.11 callers.
+   */
+  paymentMode?: EventPaymentMode;
 }
 
 /**

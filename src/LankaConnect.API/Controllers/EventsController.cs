@@ -233,28 +233,47 @@ public class EventsController : BaseController<EventsController>
             return NotFound();
         }
 
-        // Fire-and-forget: Record event view for analytics (non-blocking)
-        // This runs asynchronously and doesn't affect the response time
+        // Fire-and-forget: Record event view for analytics (non-blocking).
+        //
+        // Phase 8 (post-prod-perf-RCA hygiene): the previous version of this
+        // block read User.Identity, HttpContext.Connection, HttpContext.Request.Headers,
+        // and Mediator INSIDE the Task.Run lambda — all scoped per request.
+        // When the controller method returns, the request scope disposes; if
+        // the analytics task hadn't finished yet, those reads raised
+        // ObjectDisposedException, which surfaced as orphaned background
+        // exceptions (architect flagged this in MASTER_TODO_PROD_PERF_RCA).
+        //
+        // Fix: capture all scope-bound values BEFORE the Task.Run, create a
+        // fresh DI scope inside, and resolve a fresh IMediator from that
+        // scope. Logger from BaseController is ILogger<T> which is registered
+        // as singleton — safe to close over.
         if (result.IsSuccess && result.Value != null)
         {
+            var capturedUserId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
+            var capturedIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+            var capturedUserAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+            var scopeFactory = HttpContext.RequestServices.GetRequiredService<IServiceScopeFactory>();
+            var loggerRef = Logger;
+            var capturedEventId = id;
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var userId = User.Identity?.IsAuthenticated == true ? User.TryGetUserId() : null;
-                    var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
-                    var userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+                    using var scope = scopeFactory.CreateScope();
+                    var scopedMediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
-                    var recordViewCommand = new RecordEventViewCommand(id, userId, ipAddress, userAgent);
-                    await Mediator.Send(recordViewCommand);
+                    var recordViewCommand = new RecordEventViewCommand(
+                        capturedEventId, capturedUserId, capturedIpAddress, capturedUserAgent);
+                    await scopedMediator.Send(recordViewCommand);
 
-                    Logger.LogDebug("Event view recorded for: {EventId}, User: {UserId}, IP: {IpAddress}",
-                        id, userId, ipAddress);
+                    loggerRef.LogDebug("Event view recorded for: {EventId}, User: {UserId}, IP: {IpAddress}",
+                        capturedEventId, capturedUserId, capturedIpAddress);
                 }
                 catch (Exception ex)
                 {
-                    // Fail-silent: Don't let analytics errors affect the main request
-                    Logger.LogWarning(ex, "Failed to record event view for: {EventId}", id);
+                    // Fail-silent: don't let analytics errors affect the main request.
+                    loggerRef.LogWarning(ex, "Failed to record event view for: {EventId}", capturedEventId);
                 }
             });
         }
@@ -334,11 +353,16 @@ public class EventsController : BaseController<EventsController>
         [FromQuery] bool hasGroupTiers = false,
         [FromQuery] bool hasTicketTiers = false,
         [FromQuery] bool hasIdentityBoundAddOn = false,
-        [FromQuery] bool hasMatrixPricing = false)
+        [FromQuery] bool hasMatrixPricing = false,
+        // Phase 8X.11 — payment-mode axis. Defaults to Free; FE picker passes the
+        // current paymentMode so External shows up exactly when ExternalPaid.
+        [FromQuery] LankaConnect.Domain.Events.Enums.EventPaymentMode paymentMode =
+            LankaConnect.Domain.Events.Enums.EventPaymentMode.Free)
     {
         var query = new GetAllowedRegistrationModesQuery(
             isFreeAttendance, hasSeating, hasNamedSeating, requiresAttendeeNameOnTicket,
-            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing);
+            hasDualPricing, hasGroupTiers, hasTicketTiers, hasIdentityBoundAddOn, hasMatrixPricing,
+            paymentMode);
 
         var result = await Mediator.Send(query);
         return HandleResult(result);
@@ -703,7 +727,10 @@ public class EventsController : BaseController<EventsController>
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode events
             LeadAttendeeName: request.LeadAttendeeName,
-            HeadCount: request.HeadCount
+            HeadCount: request.HeadCount,
+            // Phase 8 S8.2.B: Pass assigned-seating fields through to handler.
+            SeatIds: request.SeatIds,
+            SeatSessionId: request.SeatSessionId
         );
         var result = await Mediator.Send(command);
 
@@ -772,7 +799,8 @@ public class EventsController : BaseController<EventsController>
                 new LankaConnect.Application.Events.Commands.RegisterAnonymousAttendee.AttendeeDto(
                     a.Name,
                     a.AgeCategory,
-                    a.Gender
+                    a.Gender,
+                    a.TicketTierId  // Phase 8 S8.2.D: propagate optional tier id to handler
                 )).ToList();
         }
 
@@ -804,7 +832,10 @@ public class EventsController : BaseController<EventsController>
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
             LeadAttendeeName: request.LeadAttendeeName,
-            HeadCount: request.HeadCount
+            HeadCount: request.HeadCount,
+            // Phase 8 S8.2.B: Pass assigned-seating fields through to handler
+            SeatIds: request.SeatIds,
+            SeatSessionId: request.SeatSessionId
         );
 
         var result = await Mediator.Send(command);
@@ -1649,6 +1680,7 @@ public class EventsController : BaseController<EventsController>
     [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetEventIcs(Guid id)
     {
         Logger.LogInformation("Generating ICS file for event {EventId}", id);
@@ -1659,6 +1691,21 @@ public class EventsController : BaseController<EventsController>
         if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("not found") == true)
         {
             return NotFound();
+        }
+
+        // Phase 8YA.2: TBD events have no DTSTART/DTEND; the iCalendar spec has no
+        // "Date TBD" representation. Return 422 Unprocessable Entity (architect-locked)
+        // so callers (mobile apps, calendar UIs) know the event exists but can't be
+        // exported until the organiser sets dates — distinct from 404 (not found) and
+        // from a 400 BadRequest on a malformed request.
+        if (result.IsFailure && result.Errors.FirstOrDefault()?.Contains("Date TBD", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Title = "Event has no confirmed dates",
+                Detail = result.Errors.First(),
+                Status = StatusCodes.Status422UnprocessableEntity,
+            });
         }
 
         if (result.IsFailure)
@@ -3537,7 +3584,11 @@ public record RsvpRequest(
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
     // handler dispatches by event.RegistrationMode).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
+    // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null
 );
 
 // Phase 6A.11: AttendeeDto is imported from Application layer (RsvpToEvent namespace)
@@ -3580,15 +3631,22 @@ public record AnonymousRegistrationRequest(
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
     string? LeadAttendeeName = null,
-    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null);
+    LankaConnect.Application.Events.Commands.RsvpToEvent.HeadCountDto? HeadCount = null,
+    // Phase 8 S8.2.B: Assigned-seating fields. Required when the event's
+    // SeatingMode == AssignedSeating; rejected for GeneralAdmission events.
+    List<Guid>? SeatIds = null,
+    string? SeatSessionId = null);
 
 /// <summary>
-/// Attendee DTO for anonymous registration
+/// Attendee DTO for anonymous registration.
+/// Phase 8 S8.2.D: Optional TicketTierId so anonymous buyers can register for
+/// tiered events (mirrors auth-side RsvpRequest.AttendeeDto.TicketTierId).
 /// </summary>
 public record AnonymousAttendeeDto(
     string Name,
     LankaConnect.Domain.Events.Enums.AgeCategory AgeCategory,
-    LankaConnect.Domain.Events.Enums.Gender? Gender = null);
+    LankaConnect.Domain.Events.Enums.Gender? Gender = null,
+    Guid? TicketTierId = null);
 
 /// <summary>
 /// Phase 6A.44: Response from anonymous registration

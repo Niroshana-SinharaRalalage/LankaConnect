@@ -168,8 +168,11 @@ public class FormResponseTests
 
         result.IsSuccess.Should().BeTrue();
         response.GetAnswer(questionId)!.TextValue.Should().Be("Updated");
-        response.DomainEvents.Should().ContainSingle()
-            .Which.Should().BeOfType<FormResponseUpdatedEvent>();
+        // Phase 6A.114: FormResponseUpdatedEvent raising moved out of UpdateAnswer()
+        // into RaiseUpdatedEventWithContext(form, @event) to eliminate duplicate queries.
+        // See FormResponse.cs lines 185-186. Event raising is tested separately when
+        // EventForm + Event fixtures are available.
+        response.DomainEvents.Should().BeEmpty();
     }
 
     [Fact]

@@ -4,11 +4,14 @@
 **Status:** API-VERIFIED on staging — awaiting operator browser UAT to flip to SHIPPED.
 **User-locked product rule clarification.** Single small slice; 5 files; 4 smoke cells; 5-cell operator UAT.
 
-**Commits:** `b74ce227` (initial slice, 6 files, +154 / -62) → `78adfc70` (hotfix: third enforcement site `RegisterWithAttendees`, 2 files).
-**Deploys:** BE runs `25611460146` + `25611967990` GREEN. UI run `25611460142` GREEN.
-**API smoke:** **4 / 4 PASS** on staging via `scripts/phase8YB6_smoke.py` (C23 Free TBD RSVP → 204; C24 OnPlatformPaid TBD RSVP + Stripe → 200; C25 ExternalPaid TBD GET surfaces vendor+instructions; C25b Niroshana repro `541876b8` still intact).
-**Tests:** 19/19 Event_TbdDates_Tests PASS — flipped Phase 8YA.1 Q2=A test, added 2 new tests covering all 3 register paths (Register, RegisterAnonymous, RegisterWithAttendees).
-**HS-8YB.6 audit lesson:** PF audit missed `RegisterWithAttendees` as a third enforcement site; smoke matrix surfaced the hole immediately. Future audits must grep for the entire failure-message string, not just the two known method names.
+**Commits:** `b74ce227` (initial slice, 6 files, +154/-62) → `78adfc70` (hotfix #1: `RegisterWithAttendees` missed enforcement site, 2 files) → `e038ca63` (hotfix #2: FTS search SQL filter dropped TBD events, 1 file).
+**Deploys:** BE runs `25611460146` + `25611967990` + `25615447368` GREEN. UI run `25611460142` GREEN.
+**API smoke:** **5 / 5 PASS** on staging — original 4/4 + verified search+Upcoming now returns TBD event `541876b8` after hotfix #2.
+**Tests:** 19/19 Event_TbdDates_Tests PASS.
+
+**HS-8YB.6 audit lessons (TWO missed sites):**
+1. **PF #1 missed `RegisterWithAttendees`** — caught by smoke matrix C23/C24 within minutes. Future audits must grep for the entire failure-message string, not just method names.
+2. **PF #2 missed `EventRepository.SearchAsync` SQL filter** — caught by Niroshana's real-browser UAT (searched "Sample", didn't see `541876b8`). Phase 8YB.5 D5b=A only fixed the in-memory filter (`GetEventsQueryHandler.ApplyInMemoryFilters`); the FTS search path had its own SQL `e.\"StartDate\" >= {value}` clause at line 690. Postgres null-comparison with `>=` returns NULL (falsy), so TBD events were silently dropped from any search-with-date-filter request. Future audits must grep for ALL inequality predicates against StartDate / EndDate, not just the application-layer filter location. Smoke matrix C6 didn't catch this because it tested without searchTerm — the cross-surface matrix needs a search × date-filter cell.
 
 ---
 

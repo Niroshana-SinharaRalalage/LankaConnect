@@ -603,9 +603,17 @@ function EventCard({
               style={{ background: '#FF7900' }}
             >
               {event.paymentMode === EventPaymentMode.ExternalPaid
-                ? (event.externalRegistrationVendorName
-                    ? `Buy on ${event.externalRegistrationVendorName} →`
-                    : 'Buy Ticket / Register →')
+                // Phase 8YB.6 hotfix #3 (2026-05-09): "Buy on {Vendor}" copy implies a
+                // direct path to the vendor — so it must only render when an
+                // externalRegistrationUrl is actually set. Without a URL the card click
+                // takes the user to the LankaConnect detail page (where they read the
+                // organiser's plain-text instructions). Showing "Buy on XYZ →" with no
+                // URL was misleading; fall through to the neutral "View Details" copy.
+                ? (event.externalRegistrationUrl
+                    ? (event.externalRegistrationVendorName
+                        ? `Buy on ${event.externalRegistrationVendorName} →`
+                        : 'Buy Ticket / Register →')
+                    : 'View Details →')
                 : event.isFree ? 'View Details / Register →' : 'View Details / Buy Tickets →'}
             </button>
           </div>

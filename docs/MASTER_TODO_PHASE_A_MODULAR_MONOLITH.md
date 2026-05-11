@@ -402,6 +402,40 @@ JSON shape diff is insufficient (misses field reordering, semantic changes, pagi
 
 ## Phase A.W1 — Hygiene & Foundation (Week 1, 5 days)
 
+### W1 — Execution Status (2026-05-11)
+
+> Execution sequence follows §"Plan Delta Amendments" budget table (lines 70-86, authoritative). The W1.1/W1.2/W1.3 *section bodies* below kept their original (pre-delta) numbering and content for context — refer to the table here for actual landing status.
+
+| Delta-table day | Delta task | Maps to body section | Status | Evidence |
+|---|---|---|---|---|
+| W1 D3 | W1.1: secret rotation + remove `Secrets/` + KV wiring | W1.1 (rotation + files) + W1.2 (KV wiring → split as **W1.1b**) | 🟡 **PARTIAL** | #117 files deleted ✅; rotation **deferred per founder** ⚠️ (`docs/operations/W1.1-secret-cleanup-decision.md`); KV wiring → W1.1b ⏳ |
+| W1 D4 | W1.2: debug-file cleanup at repo root | W1.3 (Repo cleanup) | ✅ **DONE** | #118 — 234 files deleted; root 262→28 tracked; `docs/operations/W1.2-root-cleanup.md` |
+| W1 D5 | W1.3: scripts/ triage (target `<5` tracked, 0 untracked) | W1.3 (Repo cleanup) | ✅ **DONE — deviation noted** | #119 — 357 tracked + 24 untracked (9 subdirs) → **14 tracked + 0 untracked** (3 live-referenced clusters: `scripts/azure/`, `scripts/docker/`, `scripts/email-assets/`); kept 14 not `<5` because deleting would break docker-compose mounts + EmailBrandingService runtime uploads — defensible deviation per architect; `docs/operations/W1.3-scripts-cleanup.md` |
+| follow-up | W1.3a: architect P1 follow-ups (gitignore anchor + orphan deletion) | n/a — review correction | ✅ DONE | #122 — 3 over-broad `.gitignore` patterns anchored to root (`*test-login*.json` etc. were silently false-positive-blocking `tests/e2e/*test_login*.json` fixtures); orphan `AlertSeverityConsolidationValidation.cs` deleted (not in `.sln`/`.csproj`) |
+| W1 D6 | W1.4: Bicep skeleton for staging RG | W1.4 (Bicep skeleton) | ⏳ **NEXT** | architect: skeleton + 1-2 illustrative modules (container-apps-env, postgres) + non-blocking `az deployment what-if` CI; path `infra/bicep/` |
+| W1 D7 | W1.5: `Microsoft.FeatureManagement` install + first flag stub | W1.6 (Microsoft.FeatureManagement install) | ⏳ pending | — |
+| W1 D8 | W1.7: `.claude/settings.json` audit + W1 close-out | (added in delta; no body section yet) | ⏳ pending | — |
+| unscheduled | **W1.1b**: Azure Key Vault wiring (split out from W1.1 per architect) | W1.2 (Azure Key Vault wiring) | ⏳ founder picks | independent acceptance criteria; deferred when founder accepted W1.1 rotation residual risk |
+
+#### Architect Review (2026-05-11) — GREEN verdict + 6 follow-ups
+
+- **P1 (landed via W1.3a #122)**:
+  - 3 over-broad `.gitignore` patterns anchored to root with leading `/` to avoid false-positive blocks against legitimate `tests/e2e/` login fixtures.
+  - Orphan `AlertSeverityConsolidationValidation.cs` at repo root deleted (zero `.sln`/`.csproj` references; doesn't compile).
+- **P1 (founder browser actions, pending — compensating controls for deferred rotation)**:
+  - Enable GitHub Push Protection + Secret Scanning (Settings → Code security, ~5 min).
+  - Set Azure AD sign-in alert (or Conditional Access named-location) on staging Service Principal (~15 min).
+- **P2 (founder, ~30 sec)**: change password for `niroshhh2@gmail.com` in app profile — was in plaintext in deleted `tests/e2e-api/login-request.json` (now in git history; rotation eliminates residual).
+- **Exit criterion added**: as each Bicep module covers a resource in W1.4, the corresponding `scripts/azure/provision-*.sh` lines get deleted in the same commit. Prevents IaC + shell drift.
+
+#### Process Retrospective + Course Correction
+
+4 PRs (#117 / #118 / #119 / #122) were opened through `pr-validation.yml` + Phase A PR Title Gate for develop work — wrong move; plan line 7 (this document) says "Trunk-based development + feature flags (no long-lived branch)". Founder corrected verbatim: *"to push to develop, dont create PR, PR neede for Prod merge."*  Memory rule `feedback_branch_pr_overhead.md` saved.
+
+**Forward W1 discipline**: commit-per-subtask direct to `develop` with `W1.Nx: <summary>` message convention; PROGRESS_TRACKER + STREAMLINED_ACTION_PLAN + TASK_SYNCHRONIZATION_STRATEGY updated in the **same commit** as the code; PRs reserved exclusively for `develop → main` (prod) merges.
+
+---
+
 ### W1.1 — Secret rotation (CRITICAL — Day 1)
 - [ ] **Action**: Rotate every committed secret in:
   - `Secrets/` folder contents

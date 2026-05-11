@@ -89,8 +89,19 @@ module keyVault 'modules/key-vault.bicep' = {
   }
 }
 
+module acr 'modules/acr.bicep' = {
+  name: 'acr-${environment}'
+  params: {
+    // ACR naming rule: alphanumeric only, no hyphens
+    name: 'lankaconnect${environment}'
+    location: location
+    // Staging: Basic. Production should override to Premium in production.parameters.json.
+    sku: 'Basic'
+    tags: commonTags
+  }
+}
+
 // Pending follow-up modules (NOT YET LANDED — placeholders for review):
-// - modules/acr.bicep                 -> lankaconnect${environment} (no hyphens — ACR naming rule)
 // - modules/application-insights.bicep -> lankaconnect-${environment}-ai
 // - modules/app-configuration.bicep   -> lankaconnect-${environment}-appcfg (for FeatureManagement W1.5)
 
@@ -116,3 +127,9 @@ output keyVaultUri string = keyVault.outputs.vaultUri
 
 @description('Key Vault name — useful for `az keyvault secret` commands during W1.1b.')
 output keyVaultName string = keyVault.outputs.name
+
+@description('ACR login server (e.g. lankaconnectstaging.azurecr.io) — Container Apps reference this for image pulls.')
+output acrLoginServer string = acr.outputs.loginServer
+
+@description('ACR name (informational).')
+output acrName string = acr.outputs.name

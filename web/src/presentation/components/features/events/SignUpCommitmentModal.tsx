@@ -1,26 +1,18 @@
 /**
  * SignUpCommitmentModal Component
  *
- * Professional modal dialog for committing to sign-up list items
- * Phase 6A.23: Updated to support anonymous sign-up workflow
+ * Professional modal dialog for committing to sign-up list items.
  *
- * Features:
- * - Works for both logged-in and anonymous users
- * - Auto-fills Name, Email, Phone from logged-in user (if available)
- * - Validates email on submit:
- *   1. If member account → prompts to log in
- *   2. If anonymous + registered → allows commitment
- *   3. If not registered → prompts to register first
- * - Quantity selector (respects remaining availability)
- * - Optional notes field
- * - Form validation
- * - SignUpGenius-style UX
+ * Phase 6A.23: Anonymous sign-up workflow added (email pre-check gated member /
+ *              unregistered emails).
+ * Phase 6A.140: Pre-check removed. Anyone — member or not — can submit. Backend
+ *               does smart UserId resolution: real UserId when the email matches
+ *               a member, else deterministic anonymous GUID.
  */
 
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +25,6 @@ import { Button } from '@/presentation/components/ui/Button';
 import { PhoneInput } from '@/presentation/components/ui/PhoneInput';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { SignUpItemCategory, isQuantityBased, isSlotBased, type SignUpItemDto, type SignUpCommitmentDto } from '@/infrastructure/api/types/events.types';
-import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 /**
  * Phase 7D.1 Step 21: labels prop lets wrapper components (e.g. volunteer UI)
@@ -153,7 +144,6 @@ export function SignUpCommitmentModal({
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isValidatingEmail, setIsValidatingEmail] = useState(false);
 
   // Auto-fill user details and existing commitment data when modal opens
   useEffect(() => {
@@ -240,15 +230,10 @@ export function SignUpCommitmentModal({
   };
 
   /**
-   * Handle form submission with proper UX flow
-   * Phase 6A.23: Supports both logged-in and anonymous users
-   *
-   * Decision Flow:
-   * - If LOGGED IN → Skip email check, use authenticated endpoint directly
-   * - If NOT LOGGED IN → Check email:
-   *   - Member account → Prompt to log in
-   *   - Registered for event → Allow anonymous commitment
-   *   - Not registered → Prompt to register first
+   * Handle form submission.
+   * Phase 6A.140: pre-check call removed. PATH 2 now submits directly through the
+   * anonymous endpoint regardless of whether the email matches a member or is
+   * registered for the event — the backend handles smart UserId resolution.
    */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,7 +251,7 @@ export function SignUpCommitmentModal({
     const effectiveQuantity = hideQuantitySelector ? 1 : quantity;
 
     try {
-      // PATH 1: User is LOGGED IN - skip email validation, use authenticated endpoint
+      // PATH 1: logged in → authenticated endpoint.
       if (isLoggedIn && user?.userId) {
         const commitmentData: CommitmentFormData = {
           userId: user.userId,
@@ -284,55 +269,28 @@ export function SignUpCommitmentModal({
         return;
       }
 
-      // PATH 2: User is NOT LOGGED IN - need to validate email
-      setIsValidatingEmail(true);
-
-      // Check email registration status for anonymous users
-      const registrationCheck = await eventsRepository.checkEventRegistrationByEmail(eventId, email.trim());
-
-      // Handle based on result
-      if (registrationCheck.shouldPromptLogin) {
-        // Email belongs to a member - they should log in
-        setErrors({
-          email: "This email is associated with a LankaConnect account. Please log in to sign up for items."
-        });
-        setIsValidatingEmail(false);
-        return;
-      }
-
-      if (registrationCheck.needsEventRegistration) {
-        // Not registered for event
-        setErrors({
-          email: 'This email is not registered for the event. You must register for the event first.'
-        });
-        setIsValidatingEmail(false);
-        return;
-      }
-
-      setIsValidatingEmail(false);
-
-      // Anonymous user registered for event - use anonymous endpoint
-      if (registrationCheck.canCommitAnonymously && onCommitAnonymous) {
-        const anonymousData: AnonymousCommitmentFormData = {
-          signUpListId,
-          itemId: item.id,
-          quantity: effectiveQuantity,
-          notes: notes.trim() || undefined,
-          contactName: name.trim() || undefined,
-          contactEmail: email.trim(),
-          contactPhone: phone.trim() || undefined,
-        };
-
-        await onCommitAnonymous(anonymousData);
-        onOpenChange(false);
-      } else {
-        // Fallback error - shouldn't happen if flow is correct
+      // PATH 2: anonymous → submit directly; backend will smart-resolve the UserId
+      // (member → real UserId, non-member → deterministic anonymous GUID).
+      if (!onCommitAnonymous) {
         setErrors({ submit: 'Unable to process your sign-up. Please try again.' });
+        return;
       }
+
+      const anonymousData: AnonymousCommitmentFormData = {
+        signUpListId,
+        itemId: item.id,
+        quantity: effectiveQuantity,
+        notes: notes.trim() || undefined,
+        contactName: name.trim() || undefined,
+        contactEmail: email.trim(),
+        contactPhone: phone.trim() || undefined,
+      };
+
+      await onCommitAnonymous(anonymousData);
+      onOpenChange(false);
     } catch (error) {
       console.error('Failed to process sign-up:', error);
       setErrors({ submit: error instanceof Error ? error.message : 'Failed to sign up. Please try again.' });
-      setIsValidatingEmail(false);
     }
   };
 
@@ -455,25 +413,7 @@ export function SignUpCommitmentModal({
                 placeholder="your.email@example.com"
               />
               {errors.email && (
-                <div className="mt-1 text-xs text-red-600">
-                  <p>{errors.email}</p>
-                  {errors.email.includes('associated with a LankaConnect account') && (
-                    <Link
-                      href={`/login?redirect=${encodeURIComponent(`/events/${eventId}`)}`}
-                      className="underline hover:text-red-700 mt-1 inline-block font-medium"
-                    >
-                      Click here to log in
-                    </Link>
-                  )}
-                  {errors.email.includes('not registered for the event') && (
-                    <Link
-                      href={`/events/${eventId}`}
-                      className="underline hover:text-red-700 mt-1 inline-block"
-                    >
-                      Click here to register for the event
-                    </Link>
-                  )}
-                </div>
+                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
               )}
             </div>
 
@@ -567,19 +507,17 @@ export function SignUpCommitmentModal({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={isSubmitting || isValidatingEmail}
+                disabled={isSubmitting}
               >
                 Close
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || isValidatingEmail}
+                disabled={isSubmitting}
               >
-                {isValidatingEmail
-                  ? 'Validating...'
-                  : isSubmitting
-                    ? existingCommitment ? effectiveLabels.submitUpdateBusy : effectiveLabels.submitCreateBusy
-                    : existingCommitment ? effectiveLabels.submitUpdate : effectiveLabels.submitCreate}
+                {isSubmitting
+                  ? existingCommitment ? effectiveLabels.submitUpdateBusy : effectiveLabels.submitCreateBusy
+                  : existingCommitment ? effectiveLabels.submitUpdate : effectiveLabels.submitCreate}
               </Button>
             </div>
           </DialogFooter>

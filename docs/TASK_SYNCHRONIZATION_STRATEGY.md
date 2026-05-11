@@ -3,7 +3,21 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
+## 🚀 CURRENT SESSION STATUS — Phase 6A.140 Sign-Up Email Gates Removal + Smart UserId Resolution
+**Date**: 2026-05-11
+**Session**: Architect-refined design after product-owner clarification — server-side smart UserId resolution replaces the prior "drop both gates" plan. Member emails resolve to real UserIds (no orphans); non-member emails fall back to the deterministic anonymous GUID; UI never blocks with "please log in" or "register for event first". Two latent bugs bundled because the main fix exposes them: case-insensitive member-email lookup in `CheckEventRegistrationQueryHandler`, and anonymous-confirmation-email fallback in `UserCommittedToSignUpEventHandler`. Phase 6A.141 follow-ups tracked: orphan-commitment backfill, auth trust-boundary fix in the authenticated commit handler (pre-existing), optional rate limit.
+**Progress**: ✅ **SHIPPED + STAGING-VERIFIED**.
+- Branch: `fix/phase-6a-140-signup-login-modal` (legacy name from the abandoned LoginModal approach; PR title carries the accurate scope)
+- Backend deploy: run 25694120880 GREEN, active Container App revision `0001632` confirmed running image SHA `4da3d87a` (this was the second attempt — the first one was overwritten by a concurrent develop-branch deploy due to missing `concurrency` group on the workflow; tracked as separate small CI ticket)
+- UI deploy: run 25694770267 GREEN
+- API smoke (curl): case-insensitive lookup confirmed — 3 case variants (lowercase, UPPERCASE, Mixed) all resolve to the same UserId `5e782b4d-29ed-4e1d-9039-6c8f698aeea9`; non-member email returns `hasUserAccount:false` as expected
+- Operator UAT (browser): user verified anonymous (non-member) sign-up flow end-to-end — form submits without "please log in" wall, and the confirmation email actually arrived at the form-submitted address (fixes pre-existing silent-skip bug)
+- Files: 7 src + 2 new test files; 13 files changed total including the 4 tracking docs
+**Tests**: Application 2646/2646 GREEN, web modal 13/13 GREEN, 3 new domain-event tests GREEN, 2 pre-existing FormResponseTests failures unrelated to sign-ups.
+
+---
+
+## Earlier Session — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
 **Date**: 2026-05-06
 **Session**: Closes architect-spec'd item *"Verify Npgsql MaxPoolSize vs Postgres max_connections; document in `docs/INFRASTRUCTURE.md`."* Two-part durability fix: new `ConnectionPoolValidator` startup `IHostedService` + new `docs/INFRASTRUCTURE.md` formula reference.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED via Log Analytics boot log**.

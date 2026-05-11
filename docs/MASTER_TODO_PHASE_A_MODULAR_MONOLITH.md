@@ -2,11 +2,128 @@
 
 | | |
 |---|---|
-| **Plan Version** | v3 (architect-reviewed 2026-04-26 — amendments applied) |
-| **Phase A Duration** | 19 weeks calendar (~80 person-days) |
+| **Plan Version** | v4 (architect-reviewed 2026-05-11 — delta amendments applied) |
+| **Phase A Duration** | **20 weeks calendar** (~85 person-days; was 19 weeks pre-delta) |
 | **Approach** | Trunk-based development + feature flags (no long-lived branch) |
 | **Cutover Discipline** | Per-module flag flip with 7-day staging soak + 24h production canary |
 | **Definition of Done** | LankaEvents (and all current functionality) works identically post-cutover; 3-week stabilization soak completed |
+| **Pre-flight gates landed** | PR-0 (#107), PR-0a (#108), PR-A (#109), PR-B (#113) all merged on develop |
+| **First Phase A task** | W1.0a — align this doc with plan-file delta amendments (this PR) |
+
+---
+
+## Plan Delta Amendments (re-baselined 2026-05-11) — read first
+
+The strategic plan was finalized 2026-04-26. Between then and pre-flight kickoff (2026-05-11), the codebase accumulated 21 operational migrations, the events mega-page grew +89 LOC, and the existing `.github/CODEOWNERS` was found unfit (15 fictional team handles). Architect re-reviewed and approved the delta amendments below. **These amendments take precedence over the Architect Review v3 section and weekly tasks below where they conflict.**
+
+Mirror of plan file §10 at `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`. Maintained here so this doc is self-sufficient.
+
+### Execution sequence (replaces the old §4 in mid-document)
+
+Four pre-flight PRs landed in order:
+
+1. ✅ **PR-0** (#107 merged 2026-05-11) — doc commit (this Master TODO + 5 ADRs)
+2. ✅ **PR-0a** (#108 merged 2026-05-11) — fix 2 stale Domain tests + workflow `continue-on-error` on PR Summary Comment step
+3. ✅ **PR-A** (#109 merged 2026-05-11) — replace CODEOWNERS (solo-founder), add PR template, create `phase-a` + `point-of-no-return` labels
+4. ✅ **PR-B** (#113 merged 2026-05-11) — PR-title regex gate as separate job in `pr-validation.yml`
+
+**This PR (W1.0a) is the first labeled `phase-a`** — exercises the new gate.
+
+### Week ordering — Money refactor moved from W9 → W5
+
+| New Week | Was | Module |
+|---|---|---|
+| W3 | W3 | Notifications |
+| W4 | W4 | Communications + Media |
+| **W5** | **W9** | **Money refactor** (moved up; Payments needs Money) |
+| W6 | W5 | Forms |
+| W7 | W6 | Payments (now uses Money) |
+| W8–W9 | W7–W8 | Events extraction |
+| **W7-9.5** | **W7-8** | Events extraction extended to 3 weeks (was 2) |
+| W10 | W10 | Identity |
+| W11 | W11–W12 | Frontend feature packages + Money DTO migration + **events mega-page split** (moved from W1) |
+| W12 | W13 | Per-Module CI/CD hardening |
+| W13–W14 | W14–W15 | Staging regression + buffer |
+| W15 | W16 | Production cutover |
+| W16–W18 | W17–W19 | Stabilization soak (3 weeks) |
+
+Total: **20 weeks** (was 19).
+
+### Production canary order (W15.3) — Identity LAST
+
+Replaces the original "low risk first" order. Identity is highest-blast-radius (auth break = everything breaks). All other modules must prove stable on new path BEFORE touching auth substrate.
+
+```
+Notifications → Communications → Media → Forms → Payments → Events → Identity
+```
+
+If Identity flip fails, rollback isolates to just Identity; other 6 modules continue working on new path.
+
+### API baseline regression mechanism (A.0.B.6) replaced
+
+JSON shape diff is insufficient (misses field reordering, semantic changes, side-effect drift). Replaced with:
+
+- **Primary**: Schemathesis OpenAPI conformance testing (property-based; explores all endpoints)
+- **Secondary**: 5 Pact-style consumer-driven contract tests for: auth, event-detail, payment-checkout, email-send, photo-upload
+- **Supplementary**: bash smoke script kept but downgraded (limits documented)
+
+### W0+W1 budget extended from 5 to 8 days
+
+The codebase accumulated more debt between plan-write and execution. W0+W1 absorbs:
+
+| Day | Task |
+|---|---|
+| W0 D1 | PR-0 doc commit ✅ DONE 2026-05-11 |
+| W0 D2 | PR-A template + CODEOWNERS + label creation ✅ DONE 2026-05-11 |
+| W1 D1 | PR-B title gate (separate job) ✅ DONE 2026-05-11 |
+| W1 D2 | **W1.0a (this PR)**: align Master TODO with delta amendments + W1.0b: add 4 disk-only test projects to sln + triage |
+| W1 D3 | W1.1: secret rotation; remove `Secrets/`; Azure Key Vault wiring |
+| W1 D4 | W1.2: debug-file cleanup at repo root (~72 files) |
+| W1 D5 | W1.3: `scripts/` triage with deletion bias (target: <5 committed scripts, zero untracked) |
+| W1 D6 | W1.4: Bicep skeleton for staging RG |
+| W1 D7 | W1.5: Microsoft.FeatureManagement install + first flag stub |
+| W1 D8 | W1.7: `.claude/settings.json` audit + W1 close-out |
+
+### W1 hygiene NON-GOALS (explicitly excluded — prevent scope creep)
+
+- ❌ **Mega-page split** of `events/[id]/page.tsx` (2,603 LOC). Owned by **W11 frontend phase**, NOT W1.
+- ❌ **Archive scripts folder** under `scripts/_archive/`. Hoarding; git log is the archive. Delete instead.
+- ❌ **Preserve old CODEOWNERS Cultural Intelligence rules**. Reset; not needed.
+- ❌ **Tighten `pr-validation.yml` Application threshold from 50**. Defer to stabilization (W17-W18).
+
+### Schema freeze schedule (NEW — soft pause per module week)
+
+Operational work continues on `develop` during Phase A. Per architect amendment, a **schema-by-schema soft freeze** prevents rebase hell:
+
+| Window | Frozen schema | Reason |
+|---|---|---|
+| W3-W4 | `notifications.*` | Notifications module extraction |
+| W4 | `communications.*`, `media.*` | Comm + Media extraction |
+| W5 | (no schema freeze — Money refactor touches monetary columns across schemas) | Cross-schema coordination required |
+| W6 | `forms.*` | Forms extraction |
+| W7-9.5 | **`events.*` (CRITICAL)** | Events extraction — 21 new migrations recently; biggest risk gate |
+| W10 | `identity.*`, `users.*` | Identity extraction |
+
+**W6.5 Pre-W7 task (NEW)**: announce events schema freeze 1 week before W7. Complete any pending events migrations. No new events schema PRs during W7-9.5.
+
+### Pre-flight decisions — RESOLVED 2026-04-26
+
+| # | Decision | Resolution |
+|---|---|---|
+| **D1** | Bank multi-currency settlement to USD account | **Assumed YES.** Verification deferred to pre-Phase-3. Foundation built regardless. |
+| **D2** | Cart scoping | **One cart per storefront.** Mart cart + Seyla cart coexist. |
+| **D3** | Commerce launch geography | **USA-only / USD-only at Phase 3.** Multi-currency *foundation* in Phase A; *implementation* deferred. |
+| **D4** | `Ops.*` flag cache TTL | **5 seconds.** Other categories: 60s. |
+| **D5** | W0 length | **7 days.** |
+
+### Risks newly introduced by deltas (additions to risk register)
+
+| Category | New failure mode | Rollback signal |
+|---|---|---|
+| Doc-commit ordering | Master TODO references stale untracked state | Grep `docs/MASTER_TODO_PHASE_A_*` against `git ls-files` — must show committed ✅ |
+| CODEOWNERS rewrite | New CODEOWNERS misses a path that `pr-validation.yml` checks | Open tiny no-op PR; if PR-validation green, CODEOWNERS sound ✅ verified PR-A |
+| Schema freeze enforcement | Operational hotfix needs events migration during W7-9.5 freeze | Architect-approved exception via `point-of-no-return` label |
+| Test project triage | 4 disk-only test projects fail to build → must delete | Capture pre-deletion test counts; document in `docs/operations/W1-test-triage.md` (W1.0b task) |
 
 ---
 

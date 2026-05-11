@@ -379,3 +379,143 @@ credentials*.json
 .env
 .env.*
 !.env.example
+
+# =============================================================================
+# Root-level debug artifacts (W1.2 cleanup 2026-05-11)
+# These accumulated from dev sessions and should not live in the repo root.
+# Use /tmp or .gitignored work folders for ad-hoc debug output.
+# History: docs/operations/W1.2-root-cleanup.md
+# =============================================================================
+
+# Build output captures at root
+/build_*.txt
+/build-*.txt
+/build_output*.txt
+/new_build.txt
+/phase1a_baseline.txt
+
+# Test scripts at root (real tests live under tests/ and scripts/)
+/test-*.ps1
+/test-*.sh
+/test-*.py
+/test_*.ps1
+/test_*.sh
+/test_*.py
+/test_*.json
+/test-*.json
+/test-*.html
+/test-*.csv
+/test.csv
+/test-output.txt
+/test_output.txt
+/test-results.txt
+/test-results.log
+/test-image*.png
+/test-img.png
+/test-image.txt
+/test-export.csv
+
+# API response / payload captures at root
+/api-*.json
+/api_*.json
+/*-response.json
+/*_response.json
+/*-result.json
+/*_result.json
+/raw-response.txt
+/anon_register_payload.json
+/register_*.json
+/registration_request.json
+/update_*.json
+/before_update.json
+/create_signup_*.json
+/get_signups_response.json
+/get_single_signup_response.json
+/image_upload_response.json
+/metro-api-response.json
+/events.json
+/events_*.json
+/event_*.json
+/newsletters.json
+/attendees-response.json
+/attendees_response.json
+/signup-lists-result.json
+/signup_lists*.json
+/orphaned_items_check.json
+/rice_tay_*.json
+/dana_*.json
+/cookies.txt
+
+# Hidden debug captures at root
+/.event_forms.json
+/.form_detail.json
+/.my_events.json
+/.my_response.json
+/.oil_lamp_forms.json
+/.simple_update.json
+/.staging_auth.json
+/.test_admin_real.json
+/.test_real_admin.json
+/.update_payload.json
+/.update_response.json
+/.login_response.txt
+
+# Diagnostic / check / query scripts at root (real scripts live under /scripts)
+/check-*.ps1
+/check-*.sql
+/check_*.ps1
+/check_*.sh
+/check_*.sql
+/check_*.py
+/diagnose-*.ps1
+/diagnostic-*.sql
+/fix-*.sql
+/verify-*.ps1
+/verify-*.sql
+/verify_*.ps1
+/query-*.sql
+/query-*.sh
+/query_*.sql
+/query_*.py
+/temp-*.sql
+/temp_*.sql
+/tmp*.json
+/apply_migration.py
+/capture-*.ps1
+/get-*.ps1
+/get-*.sh
+/login.ps1
+/debug_login.ps1
+/simple_test.ps1
+/final_test.ps1
+/verbose_test.ps1
+
+# Build error / type analysis dumps at root
+/all-errors.txt
+/all_existing_types.txt
+/ambiguous_reference_analysis.txt
+/azure-logs.txt
+/batch*_analysis.txt
+/current-architect-build.txt
+/current-build-errors.txt
+/deployment_log.txt
+/error-categorization.txt
+/error_code_analysis.txt
+/error_patterns.txt
+/infrastructure_errors.txt
+/interface-gaps.txt
+/interface_implementation_analysis.txt
+/layer_error_distribution.txt
+/logs.txt
+/missing-types.txt
+/missing_types*.txt
+/namespace-issues.txt
+/newsletter_rca_logs_*.txt
+/scriptstype_search_output.txt
+/docscurrent-build-errors.txt
+/export-with-data.xlsx
+/test-api-response.html
+/test-set-primary.txt
+
+# Stray Windows-path-encoded filenames (debug script bugs)
+/[Cc]:WorkLankaConnect*

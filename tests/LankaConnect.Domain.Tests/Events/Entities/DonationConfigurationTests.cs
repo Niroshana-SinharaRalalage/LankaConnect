@@ -121,9 +121,12 @@ public class DonationConfigurationTests
     public void Create_WithMinGreaterThanMax_Should_Fail()
     {
         // Act
+        // Note: suggestedAmounts must be empty (not [25m]) so we reach the min>max
+        // validation (line 131 in DonationConfiguration.cs). Otherwise the earlier
+        // "suggested amounts cannot be below minimum" check short-circuits the test.
         var result = DonationConfiguration.Create(
             isEnabled: true,
-            suggestedAmounts: new List<decimal> { 25m },
+            suggestedAmounts: new List<decimal>(),
             allowCustomAmount: true,
             minAmount: 100m,
             maxAmount: 50m,

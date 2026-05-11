@@ -60,7 +60,11 @@ param postgresAdminPassword string
 module containerAppsEnv 'modules/container-apps-env.bicep' = {
   name: 'containerAppsEnv-${environment}'
   params: {
-    name: 'lankaconnect-${environment}-env'
+    // NOTE: actual staging resource is `lankaconnect-staging-env2` — the
+    // original `lankaconnect-staging-env` was created and replaced; the
+    // "2" suffix is the canonical live name. Verified via `az resource
+    // list` 2026-05-11. provision-staging.sh §line 53 has stale name.
+    name: 'lankaconnect-${environment}-env2'
     location: location
     logAnalyticsWorkspaceName: 'lankaconnect-${environment}-logs'
     tags: commonTags

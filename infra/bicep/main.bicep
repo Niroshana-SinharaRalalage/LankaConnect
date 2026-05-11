@@ -78,8 +78,18 @@ module postgres 'modules/postgres.bicep' = {
   }
 }
 
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'keyVault-${environment}'
+  params: {
+    name: 'lankaconnect-${environment}-kv'
+    location: location
+    // Production will pass enablePurgeProtection: true here.
+    enablePurgeProtection: environment == 'production'
+    tags: commonTags
+  }
+}
+
 // Pending follow-up modules (NOT YET LANDED — placeholders for review):
-// - modules/key-vault.bicep           -> lankaconnect-${environment}-kv
 // - modules/acr.bicep                 -> lankaconnect${environment} (no hyphens — ACR naming rule)
 // - modules/application-insights.bicep -> lankaconnect-${environment}-ai
 // - modules/app-configuration.bicep   -> lankaconnect-${environment}-appcfg (for FeatureManagement W1.5)
@@ -100,3 +110,9 @@ output postgresFqdn string = postgres.outputs.fullyQualifiedDomainName
 
 @description('Postgres application database name.')
 output postgresDatabaseName string = postgres.outputs.databaseName
+
+@description('Key Vault URI — passed to AddAzureKeyVault in W1.1b application wiring.')
+output keyVaultUri string = keyVault.outputs.vaultUri
+
+@description('Key Vault name — useful for `az keyvault secret` commands during W1.1b.')
+output keyVaultName string = keyVault.outputs.name

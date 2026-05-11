@@ -6,9 +6,9 @@ Declarative description of LankaConnect's Azure resources. Goal: every resource 
 
 | File | Purpose | Status |
 |---|---|---|
-| `main.bicep` | Composition root, resource-group-scoped | ✅ landed |
-| `modules/container-apps-env.bicep` | Container Apps Env + Log Analytics workspace | ✅ landed (illustrative) |
-| `modules/postgres.bicep` | PostgreSQL Flexible Server (`lankaconnect-staging-db`) | ⏳ follow-up commit |
+| `main.bicep` | Composition root, resource-group-scoped | ✅ landed (postgres wired) |
+| `modules/container-apps-env.bicep` | Container Apps Env + Log Analytics workspace | ✅ landed |
+| `modules/postgres.bicep` | PostgreSQL Flexible Server (`lankaconnect-staging-db`) + `LankaConnectDB` database + `AllowAzureServices` firewall rule | ✅ landed |
 | `modules/key-vault.bicep` | Key Vault (`lankaconnect-staging-kv`) — unblocks W1.1b | ⏳ follow-up commit |
 | `modules/acr.bicep` | Azure Container Registry (`lankaconnectstaging`) | ⏳ follow-up commit |
 | `modules/application-insights.bicep` | App Insights for trace/metric ingestion | ⏳ follow-up commit |

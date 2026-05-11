@@ -47,6 +47,14 @@ param commonTags object = {
   refactor: 'phase-a'
 }
 
+@description('Postgres admin login. Staging uses adminuser.')
+param postgresAdminLogin string = 'adminuser'
+
+@description('Postgres admin password. Pass at deploy time — never commit. Will be moved to a Key Vault reference once modules/key-vault.bicep lands.')
+@secure()
+@minLength(8)
+param postgresAdminPassword string
+
 // ---------- Modules ----------
 
 module containerAppsEnv 'modules/container-apps-env.bicep' = {
@@ -59,8 +67,18 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
   }
 }
 
+module postgres 'modules/postgres.bicep' = {
+  name: 'postgres-${environment}'
+  params: {
+    name: 'lankaconnect-${environment}-db'
+    location: location
+    administratorLogin: postgresAdminLogin
+    administratorLoginPassword: postgresAdminPassword
+    tags: commonTags
+  }
+}
+
 // Pending follow-up modules (NOT YET LANDED — placeholders for review):
-// - modules/postgres.bicep            -> lankaconnect-${environment}-db
 // - modules/key-vault.bicep           -> lankaconnect-${environment}-kv
 // - modules/acr.bicep                 -> lankaconnect${environment} (no hyphens — ACR naming rule)
 // - modules/application-insights.bicep -> lankaconnect-${environment}-ai
@@ -76,3 +94,9 @@ output containerAppsDefaultDomain string = containerAppsEnv.outputs.defaultDomai
 
 @description('Log Analytics workspace ID — wired into containerAppsEnv for log shipping.')
 output logAnalyticsWorkspaceId string = containerAppsEnv.outputs.logAnalyticsWorkspaceId
+
+@description('Postgres FQDN — consumed by Container App env vars for connection strings.')
+output postgresFqdn string = postgres.outputs.fullyQualifiedDomainName
+
+@description('Postgres application database name.')
+output postgresDatabaseName string = postgres.outputs.databaseName

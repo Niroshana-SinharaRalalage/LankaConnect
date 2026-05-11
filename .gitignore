@@ -519,3 +519,80 @@ credentials*.json
 
 # Stray Windows-path-encoded filenames (debug script bugs)
 /[Cc]:WorkLankaConnect*
+
+# =============================================================================
+# scripts/ folder hygiene (W1.3 cleanup 2026-05-11)
+# Only scripts/azure, scripts/docker, scripts/email-assets are tracked.
+# Block re-introduction of debug + one-off + phase-specific scripts.
+# History: docs/operations/W1.3-scripts-cleanup.md
+# =============================================================================
+
+# Debug + test artifacts at any depth inside scripts/
+scripts/test_*.py
+scripts/test_*.js
+scripts/test_*.sh
+scripts/test_*.ps1
+scripts/test-*.py
+scripts/test-*.js
+scripts/test-*.sh
+scripts/test-*.ps1
+scripts/debug_*
+scripts/check_*
+scripts/check-*
+scripts/diagnose_*
+scripts/diagnose-*
+scripts/verify_*
+scripts/verify-*
+scripts/probe_*
+scripts/inspect_*
+scripts/investigate_*
+scripts/monitor-*
+scripts/smoke_*
+scripts/_tmp_*
+scripts/commit_msg.txt
+
+# Phase-specific one-off scripts
+scripts/Phase6A*
+scripts/phase6a*
+scripts/Phase6a*
+scripts/phase7*
+scripts/Phase7*
+scripts/phase8*
+scripts/Phase8*
+scripts/VerifyPhase*
+
+# Migration apply scripts (real migrations live under src/LankaConnect.Infrastructure/Migrations)
+scripts/apply_*
+scripts/apply-*
+scripts/fix_*
+scripts/fix-*
+scripts/FIX_*
+scripts/FixEvent*
+scripts/hotfix*
+scripts/HOTFIX*
+scripts/cleanup_*
+scripts/cleanup-*
+scripts/recover-*
+scripts/recovery-*
+scripts/RECOVERY*
+scripts/EMERGENCY*
+scripts/seed_*
+scripts/seed-*
+
+# .NET sub-projects inside scripts/ (orphan, not in sln)
+scripts/**/bin/
+scripts/**/obj/
+scripts/**/*.csproj
+
+# Token / login captures inside scripts/
+scripts/token*.txt
+scripts/*token*.json
+scripts/*login*.json
+scripts/*login*.txt
+
+# Logs / outputs
+scripts/stub-generation.log
+scripts/*_output.txt
+scripts/analysis_output.txt
+scripts/template_extraction_output.txt
+scripts/form_update_test_results.txt

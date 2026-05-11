@@ -6,6 +6,12 @@
 
 ---
 
+## 🎯 2026-05-11 (Phase 6A.140 — Sign-Up Email Gates Removal + Smart UserId Resolution) — 🔧 CODE COMPLETE, awaiting staging deploy + operator UAT
+
+Architect-refined design after product-owner clarification that the prior "drop both gates" plan would orphan member-while-logged-out commitments. **New design**: smart UserId resolution server-side — member emails resolve to the real UserId, non-member emails fall back to the existing deterministic anonymous GUID. UI never shows "please log in" again. Bundled scope additions (both pre-existing latent bugs the gate removal exposes): (a) case-insensitive member-email lookup in `CheckEventRegistrationQueryHandler` — Postgres is case-sensitive by default, the Email value object normalises on write but the query was matching raw submitted strings, so capitalized inputs missed members; (b) `UserCommittedToSignUpEventHandler` now falls back to `domainEvent.ContactEmail` when User lookup is null — fixes a silent zero-email regression for every anonymous commitment ever made. **Scope NOT bundled** (Phase 6A.141 follow-ups): orphan-commitment backfill, auth trust-boundary fix in the authenticated commit handler (predates 6A.140), optional rate limit. **Tests**: 5 new (3 domain + 2 frontend), full suites Application 2646/2646 + web modal 13/13 GREEN; Domain 708/710 (2 pre-existing FormResponse failures, unrelated). **Files**: 7 src + 2 new test files. **Deploy order**: API first then UI.
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.6 + 8YB.5 + 8X.12 — three combined event-system slices) — ✅ SHIPPED + STAGING-VERIFIED
 
 **All three slices flipped to SHIPPED 2026-05-09** based on Niroshana's accumulated real-browser UAT evidence: (1) public detail page on `541876b8` correctly rendering `ExternalRegistrationCta` with vendor + instructions and the user-locked "See external site or reach out organizer for pricing" copy; (2) search "Sam" + Active + Upcoming filters returning `541876b8` post hotfix #2. The Phase 8YB.6 hotfix series caught two latent enforcement-site misses (RegisterWithAttendees + SearchAsync SQL filter) and one pre-existing UX regression (listing-card "Buy on {Vendor}" copy when null URL) — all resolved before final flip. Aggregate: 10 commits (`bdfdc149` → `933f4e6e`), 6 backend deploys + 4 UI deploys all GREEN, 35/35 API smoke cells across the three matrices, 19/19 Event_TbdDates_Tests + Application 2646/2652 PASS, frontend typecheck + Next.js build clean.

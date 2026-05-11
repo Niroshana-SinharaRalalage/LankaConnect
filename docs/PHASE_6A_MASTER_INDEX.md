@@ -108,6 +108,8 @@
 | 6A.135-137F | Registration Bundling + Add-On Fixes | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-25 to 2026-03-29 |
 | 6A.138 | Photo Album Video Upload Support | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-29 |
 | 6A.139 | Admin-Initiated Upgrade to Event Organizer (symmetric to 6A.106 downgrade) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-04-28 |
+| 6A.140 | Sign-Up Email Gates Removal + Smart UserId Resolution (refined: member emails resolve to real UserId server-side; non-member emails fall back to deterministic anonymous GUID — no "please log in" wall) | ✅ Code Complete | See PROGRESS_TRACKER.md | 2026-05-11 |
+| 6A.141 | Follow-ups deferred from 6A.140: (a) reconcile pre-existing orphan deterministic-GUID commitments for users who later joined; (b) auth trust-boundary fix in `CommitToSignUpItemCommandHandler` (trusts body `UserId` instead of JWT subject — predates 6A.140); (c) optional spam/quota rate limit on anonymous sign-up endpoints | ⏳ Planned | Depends on 6A.140 | 2026-05-11 |
 
 ---
 

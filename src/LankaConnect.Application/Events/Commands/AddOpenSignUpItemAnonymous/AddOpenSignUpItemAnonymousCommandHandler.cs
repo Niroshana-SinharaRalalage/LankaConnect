@@ -12,12 +12,12 @@ namespace LankaConnect.Application.Events.Commands.AddOpenSignUpItemAnonymous;
 
 /// <summary>
 /// Handler for adding Open sign-up items for anonymous users
-/// Phase 6A.44: Supports anonymous Open item creation if user is registered for the event
-///
-/// Flow:
-/// 1. Check if email belongs to a member → Reject with "Please log in" message
-/// 2. Check if registered for event → Reject with "Please register first" message
-/// 3. If anonymous + registered → Allow adding Open item with deterministic UserId
+/// Phase 6A.44: Original — gated on member-account + event-registration.
+/// Phase 6A.140: Gates removed. Any email may add an Open item. Smart UserId resolution:
+///   - Email matches a LankaConnect member → item recorded under that member's real UserId
+///     (they can later log in and manage it).
+///   - Email does not match a member → item recorded under the deterministic anonymous GUID
+///     (same as the prior anonymous path).
 /// </summary>
 public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenSignUpItemAnonymousCommand, Guid>
 {
@@ -74,7 +74,9 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
                     "AddOpenSignUpItemAnonymous: Email validated - Email={Email}",
                     emailToCheck);
 
-                // Step 1: Check registration status and member status
+                // Phase 6A.140: Smart UserId resolution. Same pattern as
+                // CommitToSignUpItemAnonymousCommandHandler — gates removed, real-UserId-when-
+                // member resolution + deterministic-GUID fallback.
                 var checkQuery = new CheckEventRegistrationQuery(request.EventId, emailToCheck);
                 var checkHandler = new CheckEventRegistrationQueryHandler(_context, _checkEventRegistrationLogger);
                 var registrationResult = await checkHandler.Handle(checkQuery, cancellationToken);
@@ -91,47 +93,13 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
                 }
 
                 var check = registrationResult.Value;
+                var resolvedUserId = check.HasUserAccount && check.UserId.HasValue
+                    ? check.UserId.Value
+                    : GenerateDeterministicGuid(emailToCheck);
 
                 _logger.LogInformation(
-                    "AddOpenSignUpItemAnonymous: Registration check complete - ShouldPromptLogin={ShouldPromptLogin}, NeedsEventRegistration={NeedsEventRegistration}, CanCommitAnonymously={CanCommitAnonymously}",
-                    check.ShouldPromptLogin, check.NeedsEventRegistration, check.CanCommitAnonymously);
-
-                // Step 2: Validate based on UX flow
-                if (check.ShouldPromptLogin)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "AddOpenSignUpItemAnonymous FAILED: Email belongs to member account - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    // Email belongs to a LankaConnect member - they should log in
-                    return Result<Guid>.Failure("MEMBER_ACCOUNT:This email is associated with a LankaConnect account. Please log in to add items.");
-                }
-
-                if (check.NeedsEventRegistration)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "AddOpenSignUpItemAnonymous FAILED: User not registered for event - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    // Not registered for event
-                    return Result<Guid>.Failure("NOT_REGISTERED:You must be registered for this event to add items. Please register for the event first.");
-                }
-
-                // Step 3: User can proceed with anonymous commitment
-                if (!check.CanCommitAnonymously)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "AddOpenSignUpItemAnonymous FAILED: Cannot commit anonymously - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    return Result<Guid>.Failure("Unable to process request. Please try again.");
-                }
+                    "AddOpenSignUpItemAnonymous: Smart-resolved UserId - EventId={EventId}, HasUserAccount={HasUserAccount}, IsRegistered={IsRegistered}, ResolvedUserId={ResolvedUserId}",
+                    request.EventId, check.HasUserAccount, check.IsRegisteredForEvent, resolvedUserId);
 
                 // Step 4: Get the event with sign-up lists
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
@@ -167,17 +135,11 @@ public class AddOpenSignUpItemAnonymousCommandHandler : ICommandHandler<AddOpenS
                     "AddOpenSignUpItemAnonymous: Sign-up list loaded - SignUpListId={SignUpListId}, Category={Category}",
                     signUpList.Id, signUpList.Category);
 
-                // Step 6: Generate deterministic UserId for anonymous user
-                // This ensures the same email always gets the same "virtual" UserId
-                var anonymousUserId = GenerateDeterministicGuid(emailToCheck.ToLowerInvariant());
-
-                _logger.LogInformation(
-                    "AddOpenSignUpItemAnonymous: Generated deterministic UserId - AnonymousUserId={AnonymousUserId}",
-                    anonymousUserId);
+                // Phase 6A.140: resolvedUserId set above by smart resolution.
 
                 // Step 7: Add the Open item (domain method handles validation and auto-commitment)
                 var itemResult = signUpList.AddOpenItem(
-                    anonymousUserId,
+                    resolvedUserId,
                     request.ItemName,
                     request.Quantity,
                     request.Notes,

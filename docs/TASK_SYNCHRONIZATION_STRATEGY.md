@@ -3,7 +3,19 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
+## 🚀 CURRENT SESSION STATUS — Phase 6A.140 Sign-Up Email Gates Removal + Smart UserId Resolution
+**Date**: 2026-05-11
+**Session**: Architect-refined design after product-owner clarification — server-side smart UserId resolution replaces the prior "drop both gates" plan. Member emails resolve to real UserIds (no orphans); non-member emails fall back to the deterministic anonymous GUID; UI never blocks with "please log in" or "register for event first". Two latent bugs bundled because the main fix exposes them: case-insensitive member-email lookup in `CheckEventRegistrationQueryHandler`, and anonymous-confirmation-email fallback in `UserCommittedToSignUpEventHandler`. Phase 6A.141 follow-ups tracked: orphan-commitment backfill, auth trust-boundary fix in the authenticated commit handler (pre-existing), optional rate limit.
+**Progress**: 🔧 **CODE COMPLETE, awaiting staging deploy + operator UAT**.
+- Branch: `fix/phase-6a-140-signup-login-modal` (legacy name from the abandoned LoginModal approach; PR title carries the accurate scope)
+- Files: 7 src + 2 new test files
+- .NET build clean (0 errors, 8 pre-existing advisory warnings)
+**Tests**: Application 2646/2646 GREEN, web modal 13/13 GREEN, 3 new domain-event tests GREEN, 2 pre-existing FormResponseTests failures unrelated to sign-ups.
+**Deploy order**: API first then UI (UI-first would leave the new modal submitting against the old API and getting unhandled `MEMBER_ACCOUNT:` / `NOT_REGISTERED:` errors).
+
+---
+
+## Earlier Session — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
 **Date**: 2026-05-06
 **Session**: Closes architect-spec'd item *"Verify Npgsql MaxPoolSize vs Postgres max_connections; document in `docs/INFRASTRUCTURE.md`."* Two-part durability fix: new `ConnectionPoolValidator` startup `IHostedService` + new `docs/INFRASTRUCTURE.md` formula reference.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED via Log Analytics boot log**.

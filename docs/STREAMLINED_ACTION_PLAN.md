@@ -6,6 +6,43 @@
 
 ---
 
+## 🎯 2026-05-11 (Phase A W1.1+W1.2+W1.3+W1.3a — modular-monolith refactor W1 cleanup days 3–5) — ✅ LANDED ON DEVELOP
+
+**Status**: First five executions of the **20-week modular-monolith refactor** master TODO (`docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` §"Plan Delta Amendments" W0+W1 budget table) after the four pre-flight PRs (PR-0/PR-A/PR-B/W1.0a/W1.0b) landed earlier today. **Direction is intact (architect verdict GREEN)**; process discipline leaked — corrected mid-session.
+
+### What landed
+| Task | What | Decision record |
+|---|---|---|
+| **W1.1** (#117) | 45 committed secret-looking files deleted; `.gitignore` hardened; **rotation explicitly deferred per founder** | `docs/operations/W1.1-secret-cleanup-decision.md` |
+| **W1.2** (#118) | 234 root debug artifacts deleted; root 262→28 tracked files | `docs/operations/W1.2-root-cleanup.md` |
+| **W1.3** (#119) | scripts/ 357 tracked + 24 untracked → 14 tracked + 0 untracked; 3 live-referenced clusters kept (`azure/`, `docker/`, `email-assets/`); `dotnet build` 0 errors | `docs/operations/W1.3-scripts-cleanup.md` |
+| **W1.3a** (#122) | 3 over-broad `.gitignore` patterns anchored to root (false-positive risk for `tests/e2e/*test_login*.json`); orphan `AlertSeverityConsolidationValidation.cs` deleted | Architect-review follow-up |
+
+### Master TODO updates (in same session)
+- W1.1 marked **🟡 PARTIAL**: files deleted ✅ / rotation deferred ⚠️ / KV wiring outstanding ⏳
+- New **W1.1b** line split out for Azure Key Vault wiring (independent acceptance criteria; founder picks timing)
+- W1.3 outcome (kept 14 vs plan target <5) documented with three-cluster live-reference rationale
+
+### Process retrospective + course correction (saved to durable memory)
+4 PRs were opened through `pr-validation.yml` + Phase A PR Title Gate for develop work. Wrong move — master TODO line 7 says "Trunk-based development + feature flags (no long-lived branch)". Founder corrected verbatim: *"to push to develop, dont create PR, PR neede for Prod merge."*  `feedback_branch_pr_overhead.md` saved.  **Going forward**: commit-per-subtask direct to develop with `W1.Nx: <summary>` convention; the three tracking docs (PROGRESS_TRACKER, STREAMLINED_ACTION_PLAN, TASK_SYNCHRONIZATION_STRATEGY) updated in the same commit as the code; PRs reserved exclusively for develop→main prod merges.
+
+### Architect-recommended compensating controls (founder browser actions, pending)
+- Enable GitHub Push Protection + Secret Scanning (Settings → Code security, ~5 min)
+- Set Azure AD sign-in alert on staging Service Principal (~15 min)
+- Change password for `niroshhh2@gmail.com` in app profile (~30 sec — was in deleted `tests/e2e-api/login-request.json`)
+
+### Remaining W1 sequence
+| Day | Task | Status |
+|---|---|---|
+| W1 D6 | **W1.4** Bicep skeleton for staging RG | NEXT (in this session) |
+| W1 D7 | W1.5 `Microsoft.FeatureManagement` install + first flag stub | pending |
+| W1 D8 | W1.7 `.claude/settings.json` audit + W1 close-out | pending |
+| — | W1.1b Azure Key Vault wiring | unscheduled (founder picks) |
+
+**Master TODO**: `docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` · **Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`
+
+---
+
 ## 🎯 2026-05-09 (Phase 8YB.6 + 8YB.5 + 8X.12 — three combined event-system slices) — ✅ SHIPPED + STAGING-VERIFIED
 
 **All three slices flipped to SHIPPED 2026-05-09** based on Niroshana's accumulated real-browser UAT evidence: (1) public detail page on `541876b8` correctly rendering `ExternalRegistrationCta` with vendor + instructions and the user-locked "See external site or reach out organizer for pricing" copy; (2) search "Sam" + Active + Upcoming filters returning `541876b8` post hotfix #2. The Phase 8YB.6 hotfix series caught two latent enforcement-site misses (RegisterWithAttendees + SearchAsync SQL filter) and one pre-existing UX regression (listing-card "Buy on {Vendor}" copy when null URL) — all resolved before final flip. Aggregate: 10 commits (`bdfdc149` → `933f4e6e`), 6 backend deploys + 4 UI deploys all GREEN, 35/35 API smoke cells across the three matrices, 19/19 Event_TbdDates_Tests + Application 2646/2652 PASS, frontend typecheck + Next.js build clean.

@@ -3,7 +3,24 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
+## 🚀 CURRENT SESSION STATUS — Phase A W1.1+W1.2+W1.3+W1.3a — modular-monolith refactor W1 cleanup days 3–5 — ✅ LANDED ON DEVELOP
+**Date**: 2026-05-11
+**Session**: First five executions of `docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` §"Plan Delta Amendments" W0+W1 budget table after the four pre-flight PRs (PR-0/PR-A/PR-B/W1.0a/W1.0b) landed earlier today.
+**Progress**: ✅ **LANDED ON DEVELOP — architect verdict GREEN** with same-session process course correction.
+- **W1.1** (#117): 45 committed secret-looking files deleted; `.gitignore` hardened; **rotation explicitly deferred per founder** (residual risks in `docs/operations/W1.1-secret-cleanup-decision.md`)
+- **W1.2** (#118): 234 root debug artifacts deleted; root 262→28 tracked files (`docs/operations/W1.2-root-cleanup.md`)
+- **W1.3** (#119): scripts/ 357 tracked + 24 untracked (9 subdirs) → 14 tracked + 0 untracked (3 live-referenced clusters: `azure/`, `docker/`, `email-assets/`); `dotnet build` 0 errors (`docs/operations/W1.3-scripts-cleanup.md`)
+- **W1.3a** (#122): architect-review follow-ups — 3 over-broad `.gitignore` patterns anchored to root; orphan `AlertSeverityConsolidationValidation.cs` deleted
+- **Master TODO** edits same-session: W1.1 marked 🟡 PARTIAL; new **W1.1b** (Azure Key Vault wiring) line split out; W1.3 14-not-5 outcome documented with three-cluster rationale
+**Process retrospective**: Ran 4 PRs through `pr-validation.yml` + Phase A PR Title Gate for develop work — wrong move; master TODO line 7 specifies trunk-based development. Founder corrected verbatim: *"to push to develop, dont create PR, PR neede for Prod merge."*  Memory rule `feedback_branch_pr_overhead.md` saved durably. Forward discipline: commit-per-subtask direct to develop with `W1.Nx:` prefix; all three trackers updated in the same commit; PRs reserved for develop→main prod merges only.
+**Tests**: `dotnet build LankaConnect.sln` passes (0 errors, 4 unrelated NuGet vuln warnings); zero source code touched across the four landings.
+**Architect-recommended compensating controls (founder browser actions, pending)**: enable GitHub Push Protection + Secret Scanning; set Azure AD sign-in alert on staging SP; change password for `niroshhh2@gmail.com`.
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md). **Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Next**: W1.4 Bicep skeleton for staging RG (master TODO §"Plan Delta Amendments" W1 D6); architect recommendation = skeleton + 1-2 illustrative modules (container-apps-env, postgres) + non-blocking `az deployment what-if` CI; file layout `infra/bicep/`.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
 **Date**: 2026-05-06
 **Session**: Closes architect-spec'd item *"Verify Npgsql MaxPoolSize vs Postgres max_connections; document in `docs/INFRASTRUCTURE.md`."* Two-part durability fix: new `ConnectionPoolValidator` startup `IHostedService` + new `docs/INFRASTRUCTURE.md` formula reference.
 **Progress**: ✅ **DEPLOYED + STAGING-VERIFIED via Log Analytics boot log**.

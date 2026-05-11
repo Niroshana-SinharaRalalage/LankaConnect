@@ -3,7 +3,11 @@ name: Pull Request Validation
 on:
   pull_request:
     branches: [master, develop]
-    types: [opened, synchronize, reopened]
+    # `labeled` and `unlabeled` types added so phase-a-title-gate re-evaluates
+    # when the `phase-a` label is applied/removed without a new commit push.
+    # pr-quality-check skips these events (see its `if:` condition) to avoid
+    # spending CI cycles on label-only changes.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 env:
   DOTNET_VERSION: '8.0.x'
@@ -13,7 +17,9 @@ jobs:
   pr-quality-check:
     name: PR Quality Check
     runs-on: ubuntu-latest
-    
+    # Skip on label-only events; only run on actual code changes
+    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
+
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -121,3 +127,64 @@ jobs:
           name: pr-test-results-${{ github.event.pull_request.number }}
           path: TestResults/
           retention-days: 14
+
+  # ============================================================================
+  # Phase A PR Title Gate
+  # ----------------------------------------------------------------------------
+  # Architect-approved per:
+  #   - docs/architecture/ADR-004-feature-flag-strategy.md
+  #   - Plan §2.6 Layer 1 / §10.2 PR-B
+  #
+  # Activation: this job runs ONLY when a PR is in Phase A scope, identified by:
+  #   (a) the `phase-a` label is present, OR
+  #   (b) the head branch starts with `refactor/phase-a/`
+  #
+  # Title convention enforced: `W#.#: <imperative>` (e.g., `W3.1: extract Notifications module skeleton`).
+  # Sub-task suffixes allowed (e.g., `W1.0a`).
+  # Bypass prefixes: `Merge`, `Revert`, `[hotfix]`.
+  #
+  # Defensive check: if branch matches `refactor/phase-a/**` but `phase-a` label
+  # is missing, the gate fails loudly. Prevents the silent-skip false-green
+  # failure mode where label simply isn't applied.
+  # ============================================================================
+  phase-a-title-gate:
+    name: Phase A PR Title Gate
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'phase-a') || startsWith(github.event.pull_request.head.ref, 'refactor/phase-a/')
+
+    steps:
+      - name: Defensive — refactor/phase-a/** branches must have phase-a label
+        if: startsWith(github.event.pull_request.head.ref, 'refactor/phase-a/') && !contains(github.event.pull_request.labels.*.name, 'phase-a')
+        run: |
+          echo "::error::Branch matches 'refactor/phase-a/**' but PR is not labeled 'phase-a'."
+          echo "::error::Either apply the 'phase-a' label OR rename your branch off the refactor/phase-a/ prefix."
+          exit 1
+
+      - name: Validate PR title format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Bypass prefixes for merge commits, reverts, and emergency hotfixes
+          if echo "$PR_TITLE" | grep -qE '^(Merge|Revert|\[hotfix\])'; then
+            echo "✓ PR title uses allowed bypass prefix; skipping W#.# check."
+            echo "  Title: $PR_TITLE"
+            exit 0
+          fi
+          # Required pattern: W#.#: <imperative> or W#.#letter: <imperative>
+          if ! echo "$PR_TITLE" | grep -qE '^W[0-9]+\.[0-9]+[a-z]?: '; then
+            echo "::error::PR labeled 'phase-a' must have title matching:"
+            echo "::error::  ^W[0-9]+\.[0-9]+[a-z]?: <imperative summary>"
+            echo "::error::"
+            echo "::error::Examples that pass:"
+            echo "::error::  - W3.1: extract Notifications module skeleton"
+            echo "::error::  - W1.0a: align Master TODO with plan-file delta amendments"
+            echo "::error::  - Merge branch 'develop' into chore/foo"
+            echo "::error::  - Revert \"W3.1: extract Notifications module skeleton\""
+            echo "::error::  - [hotfix]: emergency production fix"
+            echo "::error::"
+            echo "::error::Current title: $PR_TITLE"
+            exit 1
+          fi
+          echo "✓ PR title matches W#.# convention"
+          echo "  Title: $PR_TITLE"

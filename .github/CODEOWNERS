@@ -1,43 +1,28 @@
-# Global code owners
-* @devops-team @senior-developers
+# CODEOWNERS for LankaConnect (Phase A baseline — solo founder + AI agents)
+#
+# Why this file was rewritten (2026-05-11):
+# The prior CODEOWNERS referenced 15 team handles (@devops-team, @senior-developers,
+# @domain-architects, @infrastructure-team, @application-team, @api-team,
+# @cultural-intelligence-team, @test-engineers, @qa-team, @database-team,
+# @technical-writers, @product-team, @security-team, @configuration-team,
+# @ci-maintainers). None of these resolve as real GitHub teams or users for this
+# repo, so GitHub silently ignored every rule. Result: zero enforcement, false
+# sense of governance.
+#
+# Path rules below activate as the repo's structure evolves during Phase A.
+# Rules referencing non-existent paths are harmless no-ops until those paths exist.
+# See docs/architecture/ADR-004-feature-flag-strategy.md for the broader discipline.
 
-# GitHub Actions and CI/CD
-/.github/ @devops-team @ci-maintainers
+# Default owner — catches everything not matched by a more specific rule below
+* @Niroshana-SinharaRalalage
 
-# Core Domain Layer - Requires architect approval
-/src/LankaConnect.Domain/ @domain-architects @senior-developers
+# Phase A modular monolith paths (activate when src/Modules/* directories exist; W2+)
+/src/Modules/*/Domain/** @Niroshana-SinharaRalalage
+/src/Modules/*/Infrastructure/Migrations/** @Niroshana-SinharaRalalage
 
-# Infrastructure Layer - Requires DevOps approval  
-/src/LankaConnect.Infrastructure/ @devops-team @infrastructure-team
+# Architecture decision records — every change should pause for explicit review
+/docs/architecture/** @Niroshana-SinharaRalalage
 
-# Application Layer - Requires feature team approval
-/src/LankaConnect.Application/ @application-team @senior-developers
-
-# API Layer - Requires API team approval
-/src/LankaConnect.API/ @api-team @senior-developers
-
-# Cultural Intelligence - Requires cultural team approval
-/src/**/Cultural*/ @cultural-intelligence-team @domain-architects
-/src/**/Sacred*/ @cultural-intelligence-team @senior-developers
-
-# Test Files - Requires test engineering approval
-/tests/ @test-engineers @qa-team
-
-# Database and Migrations
-/src/LankaConnect.Infrastructure/Database/ @database-team @devops-team
-/src/LankaConnect.Infrastructure/Migrations/ @database-team @devops-team
-
-# Documentation
-/docs/ @technical-writers @product-team
-/README.md @technical-writers @product-team
-
-# Configuration Files
-docker-compose*.yml @devops-team
-*.json @configuration-team
-*.yml @devops-team
-*.yaml @devops-team
-
-# Security Sensitive
-/src/**/*Auth*/ @security-team @senior-developers
-/src/**/*Security*/ @security-team @senior-developers
-/src/**/*Encryption*/ @security-team @senior-developers
+# CI/CD workflows — changes have global blast radius
+/.github/workflows/** @Niroshana-SinharaRalalage
+/.github/actions/** @Niroshana-SinharaRalalage

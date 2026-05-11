@@ -304,3 +304,78 @@ Thumbs.db
 *.sqlite-journal
 *.sqlite-wal
 docs/DNS_CONFIGURATION_PRODUCTION.md
+
+# =============================================================================
+# Secrets, tokens, and auth artifacts (W1.1 cleanup 2026-05-11)
+# DO NOT commit any of these. Real credentials belong in Azure Key Vault.
+# History: docs/operations/W1.1-secret-cleanup-decision.md
+# =============================================================================
+
+# Service-principal / credential folders
+Secrets/
+**/Secrets/
+.secrets/
+**/.secrets/
+
+# Cert / key material
+*.pem
+*.pfx
+*.key
+*.p12
+*.cer
+
+# Login / auth response captures (developer debug artifacts)
+admin_login*.json
+fresh-login*.json
+fresh_login*.json
+staging_token*.json
+staging_token*.txt
+*test-login*.json
+*test_login*.json
+test_admin_login*.json
+test_adminmanager_login*.json
+*login-payload*.json
+*login_payload*.json
+*login-request*.json
+*login_request*.json
+*login-response*.json
+*login_response*.json
+*login-result*.json
+*login_result*.json
+new_login*.json
+login_fresh*.json
+final_test_login*.json
+.admin_token_response*.json
+.adminmanager_token_response*.json
+.login_response*.json
+.real_admin_token*.json
+.staging_token_response*.json
+.test_admin_login*.json
+.test_adminmanager_login*.json
+.test_login*.json
+
+# Token captures
+token.txt
+token_*.txt
+*_token.txt
+*token_response*.json
+current_token*.txt
+fresh_token*.json
+fresh_token*.txt
+.token*.txt
+
+# Bare login.json at any depth (excludes legitimate locales/i18n named login.json
+# which should live under apps/ or web/ subtrees — adjust if needed)
+/login.json
+/scripts/login.json
+/scripts/login_*.json
+/scripts/test-login.json
+/scripts/test_login.json
+/scripts/token*.txt
+
+# Generic credential file patterns
+credentials*.json
+*credentials*.json
+.env
+.env.*
+!.env.example

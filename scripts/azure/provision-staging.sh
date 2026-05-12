@@ -3,6 +3,47 @@
 ################################################################################
 # LankaConnect - Azure Staging Environment Provisioning Script
 #
+# =============================================================================
+# !! PARTIAL DEPRECATION 2026-05-12 (W1.4 Phase 4) !!
+# =============================================================================
+# Most resource-creation logic has been migrated to declarative Bicep at
+# `infra/bicep/`. This script is now SECONDARY — primary source-of-truth
+# is the Bicep templates, which have been verified at `what-if NoChange`
+# for 12 staging resources (W1.4 Phases 1-3 commits 9ccf3c86/d2f6d8e7/f312e86c).
+#
+# Resources NOW IN BICEP (this script's logic is preserved for reference + initial RG bootstrap only):
+#   - ACR (Step 2)                       -> infra/bicep/modules/acr.bicep
+#   - Postgres + DB + firewall (Step 3)  -> infra/bicep/modules/postgres.bicep
+#   - Key Vault (Step 4)                 -> infra/bicep/modules/key-vault.bicep
+#   - Container Apps Env (Step 6)        -> infra/bicep/modules/container-apps-env.bicep
+#   - Log Analytics workspace (Step 6)   -> infra/bicep/modules/container-apps-env.bicep
+#   - Storage Account                    -> infra/bicep/modules/storage.bicep (was created out-of-band)
+#   - Managed Identity                   -> infra/bicep/modules/managed-identity.bicep (was created out-of-band)
+#   - ACS + Email Service + 2 Domains    -> infra/bicep/modules/acs.bicep (was created out-of-band)
+#
+# Resources STILL ONLY HERE (no Bicep equivalent):
+#   - Resource Group bootstrap (Step 1) — Bicep is RG-scoped, can't create the RG itself
+#   - KV secret population (Step 5)     — operational; secret VALUES are not IaC
+#   - Container App initial bootstrap (Step 7) — CI-managed; modeling in Bicep would
+#     create dual-ownership with .github/workflows/deploy-staging.yml `az containerapp update`
+#   - Service Principal creation (Step 8) — operational; auth, not infra
+#
+# To provision a new environment going forward, use:
+#   az deployment group create -g <RG_NAME> \
+#     --template-file infra/bicep/main.bicep \
+#     --parameters infra/bicep/staging.parameters.json \
+#     --parameters postgresAdminPassword=$(...)
+#   then run Steps 1, 5, 7, 8 of THIS script for the parts not in Bicep.
+#
+# The retained az-create blocks below are idempotent (they `az X show` first
+# and skip if the resource already exists) so they coexist safely with Bicep —
+# whichever runs first wins, the other no-ops. Drift risk is mitigated by:
+#   (a) Bicep what-if CI in .github/workflows/bicep-what-if.yml
+#   (b) this header documenting Bicep as primary
+#
+# Future hardening: replace the deprecated step bodies with `echo "[NOW IN BICEP — see infra/bicep/modules/$NAME.bicep]"; exit 0` once Container App bootstrap also moves to Bicep.
+# =============================================================================
+#
 # This script provisions all Azure resources required for the staging environment.
 #
 # Prerequisites:
@@ -132,6 +173,10 @@ echo ""
 
 ################################################################################
 # Step 2: Create Container Registry
+# ⚠️ BICEP PRIMARY — infra/bicep/modules/acr.bicep (what-if NoChange 2026-05-12)
+# The az-create block below is idempotent (skips if exists) — safe to coexist
+# with Bicep, but Bicep is the source of truth. Update both if you change ACR
+# config, or update Bicep only and run `az deployment group create`.
 ################################################################################
 
 log_info "Step 2: Creating Azure Container Registry..."
@@ -163,6 +208,10 @@ echo ""
 
 ################################################################################
 # Step 3: Create PostgreSQL Flexible Server
+# ⚠️ BICEP PRIMARY — infra/bicep/modules/postgres.bicep (what-if NoChange 2026-05-12)
+# Covers server + LankaConnectDB database + AllowAzureServices firewall rule.
+# The az-create blocks below are idempotent; POSTGRES_CONNECTION_STRING (line ~244)
+# is still used by Step 5 KV secret population — that's operational, kept here.
 ################################################################################
 
 log_info "Step 3: Creating PostgreSQL Flexible Server..."
@@ -250,6 +299,10 @@ echo ""
 
 ################################################################################
 # Step 4: Create Key Vault
+# ⚠️ BICEP PRIMARY — infra/bicep/modules/key-vault.bicep (what-if NoChange 2026-05-12)
+# The vault CONTAINER is now in Bicep. Step 5 below (KV secret population) is
+# operational and stays here — Bicep cannot manage secret VALUES.
+# W1.1b will add the API managed-identity access policy via Bicep separately.
 ################################################################################
 
 log_info "Step 4: Creating Azure Key Vault..."
@@ -397,6 +450,12 @@ echo ""
 
 ################################################################################
 # Step 6: Create Container Apps Environment
+# ⚠️ BICEP PRIMARY — infra/bicep/modules/container-apps-env.bicep (what-if NoChange 2026-05-12)
+# Covers Log Analytics workspace + Container Apps managed environment.
+# NOTE: the actual staging env is `lankaconnect-staging-env2` (with "2" suffix);
+# this script's $CONTAINERAPPS_ENV variable still has the old name without suffix.
+# The Bicep is the canonical name; this script's variable should be aligned in
+# a follow-up if this script is ever re-run.
 ################################################################################
 
 log_info "Step 6: Creating Container Apps Environment..."

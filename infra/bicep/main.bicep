@@ -97,9 +97,49 @@ module acr 'modules/acr.bicep' = {
   }
 }
 
-// Pending follow-up modules (NOT YET LANDED — placeholders for review):
-// - modules/application-insights.bicep -> lankaconnect-${environment}-ai
-// - modules/app-configuration.bicep   -> lankaconnect-${environment}-appcfg (for FeatureManagement W1.5)
+module storage 'modules/storage.bicep' = {
+  name: 'storage-${environment}'
+  params: {
+    // Storage naming rule: lowercase alphanumeric, 3-24 chars, no hyphens
+    name: 'lankaconnectstrgaccount'
+    // Existing staging storage is in eastus (NOT eastus2 like other resources).
+    // Cross-region rebuild is out of W1.4 scope.
+    location: 'eastus'
+  }
+}
+
+module managedIdentity 'modules/managed-identity.bicep' = {
+  name: 'identity-${environment}'
+  params: {
+    name: 'lankaconnect-${environment}-identity'
+    location: location
+  }
+}
+
+module communicationServices 'modules/acs.bicep' = {
+  name: 'acs-${environment}'
+  params: {
+    communicationServiceName: 'lankaconnect-communication'
+    emailServiceName: 'lankaconnect-email'
+    customDomainName: 'lankaconnect.app'
+  }
+}
+
+// Container Apps (lankaconnect-api-staging, lankaconnect-ui-staging) are
+// intentionally NOT in Bicep. They are managed by CI workflows
+// (.github/workflows/deploy-staging.yml + deploy-ui-staging.yml) which push
+// new image tags on every commit. Modeling them here would create dual-
+// ownership: Bicep would try to set the image to a literal tag while CI
+// sets it to the latest commit SHA, causing perpetual drift.
+//
+// Future state (post W1.4 if desired): move Container App orchestration
+// fully into Bicep with the image tag as a deploy-time parameter passed
+// from CI. Out of W1.4 scope.
+
+// Application Insights + Azure App Configuration: planned by master TODO
+// §W1.4 but DO NOT EXIST in staging today. Will be added as create-new
+// modules when those resources are provisioned (e.g. App Config arrives
+// with W1.5 Microsoft.FeatureManagement work).
 
 // ---------- Outputs ----------
 
@@ -129,3 +169,18 @@ output acrLoginServer string = acr.outputs.loginServer
 
 @description('ACR name (informational).')
 output acrName string = acr.outputs.name
+
+@description('Storage account primary blob endpoint — used in EmailBrandingService blob URLs.')
+output storagePrimaryBlobEndpoint string = storage.outputs.primaryBlobEndpoint
+
+@description('Managed identity principal ID — used for RBAC role assignments in downstream modules.')
+output managedIdentityPrincipalId string = managedIdentity.outputs.principalId
+
+@description('Managed identity resource ID — assigned to Container Apps for ACR pull + KV access.')
+output managedIdentityId string = managedIdentity.outputs.id
+
+@description('ACS hostname — used in connection strings.')
+output communicationServiceHost string = communicationServices.outputs.communicationServiceHost
+
+@description('Custom email domain From sender domain — used in EmailBrandingService.')
+output emailFromSenderDomain string = communicationServices.outputs.customDomainSenderDomain

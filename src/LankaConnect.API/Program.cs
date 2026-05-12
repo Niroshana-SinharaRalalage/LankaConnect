@@ -71,6 +71,10 @@ try
     // without redeploy. IFeatureManager is now injectable across all controllers.
     builder.Services.AddFeatureManagement();
 
+    // Add Application Layer (registers MediatR via AddMediatR — provides
+    // IMediator/ISender/IPublisher consumed by AppDbContext + handlers)
+    builder.Services.AddApplication(builder.Configuration);
+
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
 

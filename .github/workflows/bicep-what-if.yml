@@ -1,0 +1,112 @@
+name: Bicep What-If (Staging)
+
+# Non-blocking validation of infra/bicep/ changes against staging.
+# Per Phase A trunk-based discipline: this runs on direct pushes to develop
+# (touching infra/bicep/**) and on any PR. Failure does NOT block merges —
+# it surfaces deltas so the operator can review before manually deploying.
+#
+# Wired in W1.4 Phase 3 (2026-05-11). Master TODO:
+# docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md § W1.4
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'infra/bicep/**'
+      - '.github/workflows/bicep-what-if.yml'
+  pull_request:
+    paths:
+      - 'infra/bicep/**'
+      - '.github/workflows/bicep-what-if.yml'
+  workflow_dispatch:
+
+env:
+  STAGING_RESOURCE_GROUP: lankaconnect-staging
+  TEMPLATE_FILE: infra/bicep/main.bicep
+  PARAMETERS_FILE: infra/bicep/staging.parameters.json
+
+jobs:
+  what-if:
+    name: Bicep what-if against staging
+    runs-on: ubuntu-latest
+    # Non-blocking on develop; on PRs surface deltas as a warning but do not fail the check.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (staging service principal)
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+
+      - name: Validate Bicep build
+        run: |
+          set -euo pipefail
+          echo "::group::az bicep build"
+          az bicep build --file "$TEMPLATE_FILE"
+          echo "::endgroup::"
+          # Clean compiled artifact so it doesn't accidentally get cached
+          rm -f infra/bicep/main.json
+
+      - name: Run what-if
+        id: what_if
+        run: |
+          set -euo pipefail
+          echo "::group::az deployment group what-if"
+
+          # Postgres admin password placeholder — what-if doesn't actually
+          # use it for property comparison; @secure() requires a value.
+          WHATIF_OUTPUT=$(az deployment group what-if \
+            --resource-group "$STAGING_RESOURCE_GROUP" \
+            --template-file "$TEMPLATE_FILE" \
+            --parameters "$PARAMETERS_FILE" \
+            --parameters postgresAdminPassword='WHATIF-PROBE-NOT-USED' \
+            --no-pretty-print \
+            --result-format FullResourcePayloads 2>&1 || true)
+
+          echo "$WHATIF_OUTPUT"
+          echo "::endgroup::"
+
+          # Compact summary for the workflow step summary
+          {
+            echo "## Bicep what-if summary"
+            echo ""
+            echo '```'
+            az deployment group what-if \
+              --resource-group "$STAGING_RESOURCE_GROUP" \
+              --template-file "$TEMPLATE_FILE" \
+              --parameters "$PARAMETERS_FILE" \
+              --parameters postgresAdminPassword='WHATIF-PROBE-NOT-USED' \
+              --result-format ResourceIdOnly 2>&1 | grep -E "Resource changes:|changeType" | head -40 || true
+            echo '```'
+            echo ""
+            echo "_Non-blocking check — review any Modify or Delete lines before next deployment._"
+            echo ""
+            echo "Master TODO: \`docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md\` § W1.4"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post PR comment (PR runs only)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `## Bicep what-if (staging)
+            Non-blocking check ran against \`lankaconnect-staging\`.
+            See the workflow step summary for the resource change list.
+
+            **Reminder**: Phase A is trunk-based; this PR is unusual unless it's a develop → main promotion. If you're trying to land Bicep changes, commit directly to \`develop\`.
+            `;
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: summary,
+            });

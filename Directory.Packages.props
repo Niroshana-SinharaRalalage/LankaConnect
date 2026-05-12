@@ -26,6 +26,8 @@
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.8" />
     <PackageVersion Include="Twilio" Version="7.14.7" />
+    <!-- W1.5 Phase A feature flag infra (ADR-004) -->
+    <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.5.0" />
   </ItemGroup>
   <!-- Entity Framework Core -->
   <ItemGroup>

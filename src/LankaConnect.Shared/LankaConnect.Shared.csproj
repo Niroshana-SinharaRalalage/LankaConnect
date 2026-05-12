@@ -12,6 +12,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <!-- W1.5 Phase A feature flag infra (ADR-004) — placeholder home in Shared; will move to BuildingBlocks.Web in W2 -->
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
   </ItemGroup>
 
 </Project>

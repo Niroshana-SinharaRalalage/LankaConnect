@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement;
 
 namespace LankaConnect.API.Controllers;
 
@@ -9,10 +10,12 @@ namespace LankaConnect.API.Controllers;
 public class HealthController : ControllerBase
 {
     private readonly ILogger<HealthController> _logger;
+    private readonly IFeatureManager _featureManager;
 
-    public HealthController(ILogger<HealthController> logger)
+    public HealthController(ILogger<HealthController> logger, IFeatureManager featureManager)
     {
         _logger = logger;
+        _featureManager = featureManager;
     }
     /// <summary>
     /// Health check endpoint for the API
@@ -70,5 +73,64 @@ public class HealthController : ControllerBase
         
         _logger.LogInformation("Detailed health check completed successfully in {Environment} environment", environment);
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Feature flag smoke endpoint — proves Microsoft.FeatureManagement wiring per W1.5 / ADR-004.
+    /// Returns the evaluated state of `Refactor.Smoke.Enabled` plus the list of currently
+    /// registered flag names. Anonymous endpoint (does not require auth) so the staging deploy
+    /// smoke step can hit it directly.
+    /// </summary>
+    /// <remarks>
+    /// Registry: see <see href="../../../docs/feature-flags.md"/>. Flag categories per ADR-004:
+    /// Refactor.* (≤4 weeks), Feature.* (indefinite), Experiment.* (≤8 weeks), Ops.* (kill-switches),
+    /// Country.* (geo gates).
+    /// </remarks>
+    [HttpGet("feature-flags")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> FeatureFlags()
+    {
+        using var scope = _logger.BeginScope(new Dictionary<string, object> { ["Operation"] = "FeatureFlagsSmoke" });
+
+        try
+        {
+            // Smoke flag — evaluated to prove wiring. Defined in appsettings.json
+            // under FeatureManagement section. ADR-004 default-closed rule for
+            // Refactor.* category means the absence of config = false.
+            var smokeEnabled = await _featureManager.IsEnabledAsync("Refactor.Smoke.Enabled");
+
+            // Collect all registered flag names — useful for the staging smoke
+            // step + the frontend GET /api/featureflags endpoint that lands next.
+            var registeredFlags = new List<string>();
+            await foreach (var name in _featureManager.GetFeatureNamesAsync())
+            {
+                registeredFlags.Add(name);
+            }
+
+            var response = new
+            {
+                Status = "Healthy",
+                Timestamp = DateTime.UtcNow,
+                FeatureManagement = new
+                {
+                    SmokeFlag = "Refactor.Smoke.Enabled",
+                    SmokeFlagValue = smokeEnabled,
+                    RegisteredFlags = registeredFlags,
+                    RegisteredCount = registeredFlags.Count
+                }
+            };
+
+            _logger.LogInformation(
+                "Feature flag smoke evaluated: Refactor.Smoke.Enabled={SmokeEnabled}, registered count={Count}",
+                smokeEnabled,
+                registeredFlags.Count);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Feature flag smoke endpoint failed");
+            throw;
+        }
     }
 }

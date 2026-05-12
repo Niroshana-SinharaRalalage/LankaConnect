@@ -14,6 +14,7 @@ using Serilog.Events;
 using Serilog.Context;
 using Microsoft.OpenApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.FeatureManagement;
 using System.Reflection;
 
 // Configure Serilog with enhanced enrichment
@@ -64,8 +65,11 @@ try
     // Add HttpContextAccessor for CurrentUserService and other services
     builder.Services.AddHttpContextAccessor();
 
-    // Add Application Layer
-    builder.Services.AddApplication(builder.Configuration);
+    // W1.5 Phase A — Microsoft.FeatureManagement (ADR-004 feature flag strategy).
+    // Reads from "FeatureManagement" section in appsettings*.json; future work
+    // (post W1.5) will layer Azure App Configuration for runtime flag flips
+    // without redeploy. IFeatureManager is now injectable across all controllers.
+    builder.Services.AddFeatureManagement();
 
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);

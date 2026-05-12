@@ -67,15 +67,14 @@ param backupRetentionDays int = 7
 @description('Application database to create inside the server.')
 param databaseName string = 'LankaConnectDB'
 
-@description('Common tags propagated from main.bicep.')
-param tags object = {}
+// Tags intentionally NOT applied in Bicep (see container-apps-env.bicep note).
+// Postgres currently has {"Environment": "Staging"} which Bicep leaves alone.
 
 // ---------- Flexible Server ----------
 
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: name
   location: location
-  tags: tags
   sku: {
     name: skuName
     tier: skuTier
@@ -86,7 +85,9 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
     version: version
     storage: {
       storageSizeGB: storageSizeGB
-      // autoGrow + tier left at API defaults to match existing staging.
+      autoGrow: 'Disabled'  // matches existing staging
+      iops: 120             // matches existing staging (P4 tier baseline)
+      tier: 'P4'            // matches existing staging
     }
     backup: {
       backupRetentionDays: backupRetentionDays
@@ -100,6 +101,16 @@ resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
       // (firewall rule below allows Azure services).
       publicNetworkAccess: 'Enabled'
     }
+    authConfig: {
+      activeDirectoryAuth: 'Disabled' // matches existing staging
+    }
+    dataEncryption: {
+      type: 'SystemManaged' // matches existing staging
+    }
+    replica: {
+      role: 'Primary' // matches existing staging
+    }
+    replicationRole: 'Primary' // matches existing staging
   }
 }
 

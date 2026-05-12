@@ -51,15 +51,13 @@ param enableRbacAuthorization bool = false
 @description('Enable purge protection. Strongly recommended for production; defaults off for staging to allow quick teardown. Once enabled cannot be disabled.')
 param enablePurgeProtection bool = false
 
-@description('Common tags propagated from main.bicep.')
-param tags object = {}
+// Tags intentionally NOT applied in Bicep (see container-apps-env.bicep note).
 
 // ---------- Key Vault ----------
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
   name: name
   location: location
-  tags: tags
   properties: {
     sku: {
       family: 'A'
@@ -76,12 +74,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
     enablePurgeProtection: enablePurgeProtection ? true : null
     enableRbacAuthorization: enableRbacAuthorization
     publicNetworkAccess: 'Enabled' // matches existing staging shape
-    networkAcls: {
-      bypass: 'AzureServices'
-      defaultAction: 'Allow'
-      ipRules: []
-      virtualNetworkRules: []
-    }
+    // networkAcls intentionally omitted — existing staging vault has no
+    // networkAcls block; what-if showed Bicep would ADD this property.
+    // With public access Enabled and no ACLs, traffic is unrestricted
+    // (same effective behavior as Allow defaultAction with AzureServices bypass).
     // accessPolicies intentionally omitted in this skeleton:
     //   - Existing staging vault was created with --enable-rbac-authorization false
     //     and access policies set imperatively (e.g. the developer's principal,

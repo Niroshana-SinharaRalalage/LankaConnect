@@ -20,41 +20,43 @@ param location string
 @description('Name of the Log Analytics workspace backing the env. Created here if it does not exist.')
 param logAnalyticsWorkspaceName string
 
-@description('Common tags propagated from main.bicep.')
-param tags object = {}
-
 @description('Log Analytics retention in days. 30 = Azure default cheap tier.')
 @minValue(30)
 @maxValue(730)
 param logRetentionInDays int = 30
+
+// Tags intentionally NOT applied in Bicep — staging resources have
+// heterogeneous tag state (null, {}, partial) and uniform commonTags
+// would produce false drift. Tag policy is a separate later task.
 
 // ---------- Log Analytics workspace ----------
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsWorkspaceName
   location: location
-  tags: tags
   properties: {
     sku: {
       name: 'PerGB2018'
     }
     retentionInDays: logRetentionInDays
-    features: {
-      enableLogAccessUsingOnlyResourcePermissions: true
-    }
     workspaceCapping: {
       // dailyQuotaGb: -1 means uncapped; aligns with current staging behavior.
       dailyQuotaGb: -1
     }
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+    // `features.enableLogAccessUsingOnlyResourcePermissions` omitted — what-if
+    // marks it as `Noeffect` (no actual delta vs live resource).
   }
 }
 
 // ---------- Container Apps managed environment ----------
+// peerAuthentication + peerTrafficConfiguration: existing staging env has
+// these explicitly set (both disabled); Bicep mirrors to avoid drift.
 
 resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: name
   location: location
-  tags: tags
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -64,8 +66,17 @@ resource containerAppsEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
       }
     }
     // zoneRedundant: false matches current staging single-zone cheap tier.
-    // Flip to true post-cutover (W17+) if needed.
     zoneRedundant: false
+    peerAuthentication: {
+      mtls: {
+        enabled: false
+      }
+    }
+    peerTrafficConfiguration: {
+      encryption: {
+        enabled: false
+      }
+    }
   }
 }
 

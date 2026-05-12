@@ -34,15 +34,13 @@ param sku string = 'Basic'
 @description('Enable admin user (username/password auth). Existing staging is true; future hardening will flip to false and use Managed Identity.')
 param adminUserEnabled bool = true
 
-@description('Common tags propagated from main.bicep.')
-param tags object = {}
+// Tags intentionally NOT applied in Bicep (see container-apps-env.bicep note).
 
 // ---------- Container Registry ----------
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: name
   location: location
-  tags: tags
   sku: {
     name: sku
   }
@@ -50,6 +48,10 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
     adminUserEnabled: adminUserEnabled
     publicNetworkAccess: 'Enabled' // matches existing staging
     zoneRedundancy: 'Disabled'
+    dataEndpointEnabled: false     // matches existing staging
+    encryption: {
+      status: 'disabled'           // matches existing staging
+    }
   }
 }
 

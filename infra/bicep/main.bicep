@@ -39,13 +39,9 @@ param environment string
 @description('Azure region. All Phase A staging + production resources live in eastus2.')
 param location string = resourceGroup().location
 
-@description('Common tags applied to every resource for cost attribution + ownership lookup.')
-param commonTags object = {
-  application: 'LankaConnect'
-  environment: environment
-  managedBy: 'bicep'
-  refactor: 'phase-a'
-}
+// Tagging intentionally NOT applied uniformly via Bicep — staging resources
+// have heterogeneous tag state. Tag policy is a separate later task (Azure
+// Policy or a one-off `az tag update` pass).
 
 @description('Postgres admin login. Staging uses adminuser.')
 param postgresAdminLogin string = 'adminuser'
@@ -67,7 +63,6 @@ module containerAppsEnv 'modules/container-apps-env.bicep' = {
     name: 'lankaconnect-${environment}-env2'
     location: location
     logAnalyticsWorkspaceName: 'lankaconnect-${environment}-logs'
-    tags: commonTags
   }
 }
 
@@ -78,7 +73,6 @@ module postgres 'modules/postgres.bicep' = {
     location: location
     administratorLogin: postgresAdminLogin
     administratorLoginPassword: postgresAdminPassword
-    tags: commonTags
   }
 }
 
@@ -89,7 +83,6 @@ module keyVault 'modules/key-vault.bicep' = {
     location: location
     // Production will pass enablePurgeProtection: true here.
     enablePurgeProtection: environment == 'production'
-    tags: commonTags
   }
 }
 
@@ -101,7 +94,6 @@ module acr 'modules/acr.bicep' = {
     location: location
     // Staging: Basic. Production should override to Premium in production.parameters.json.
     sku: 'Basic'
-    tags: commonTags
   }
 }
 

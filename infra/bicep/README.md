@@ -2,51 +2,71 @@
 
 Declarative description of LankaConnect's Azure resources. Goal: every resource in `lankaconnect-staging` (and later `lankaconnect-production`) is in source control before W3 (Notifications) module extraction begins.
 
-## Status (2026-05-11) — W1.4 v1 SKELETON
+## Status (2026-05-12) — W1.4 DONE ✅
 
-Verified against actual staging inventory via `az resource list -g lankaconnect-staging` + `az deployment group what-if`. **4 modules cover 7 of 16 staging resources by name + type.**
+Verified against actual staging inventory via `az resource list -g lankaconnect-staging` + `az deployment group what-if`. **7 modules cover 12 of 16 staging resources at what-if `NoChange`.** The remaining 4 staging resources are correctly `Ignore`d (Container Apps API + UI managed by CI; 2 auto-generated LAWs managed by Azure).
+
+### Final what-if result (2026-05-12)
+
+```
+Resource changes: 1 to modify, 12 no change, 4 to ignore.
+```
+
+The 1 "modify" is a documented false-positive on `Microsoft.App/managedEnvironments.appLogsConfiguration.logAnalyticsConfiguration.customerId` — Bicep `reference()` expression resolves to the same GUID at deploy time but what-if can't pre-resolve. See https://aka.ms/WhatIfIssues.
 
 ### Modules landed
 
 | File | Purpose | Status |
 |---|---|---|
-| `main.bicep` | Composition root, resource-group-scoped, 4 modules wired | ✅ landed |
-| `modules/container-apps-env.bicep` | Container Apps Env (`lankaconnect-staging-env2`) + Log Analytics workspace (`lankaconnect-staging-logs`) | ✅ landed |
-| `modules/postgres.bicep` | PostgreSQL Flexible Server (`lankaconnect-staging-db`) + `LankaConnectDB` database + `AllowAzureServices` firewall rule | ✅ landed |
-| `modules/key-vault.bicep` | Key Vault (`lankaconnect-staging-kv`) — vault container only; secrets populated by ops; unblocks W1.1b | ✅ landed |
-| `modules/acr.bicep` | Azure Container Registry (`lankaconnectstaging`) — Basic SKU, admin user enabled | ✅ landed |
-| `staging.parameters.json` | Env-specific values (location, environment) | ✅ landed |
-| `production.parameters.json` | Env-specific values | ⏳ after staging at parity |
-| `.github/workflows/bicep-what-if.yml` | Non-blocking `what-if` on every `infra/bicep/` change | ⏳ follow-up commit |
+| `main.bicep` | Composition root, resource-group-scoped, 7 modules wired | ✅ done |
+| `modules/container-apps-env.bicep` | Container Apps Env (`lankaconnect-staging-env2`) + Log Analytics workspace (`lankaconnect-staging-logs`) | ✅ NoChange |
+| `modules/postgres.bicep` | PostgreSQL Flexible Server + `LankaConnectDB` + `AllowAzureServices` firewall | ✅ NoChange |
+| `modules/key-vault.bicep` | Key Vault container (`lankaconnect-staging-kv`) — unblocks W1.1b | ✅ NoChange |
+| `modules/acr.bicep` | Azure Container Registry (`lankaconnectstaging`) | ✅ NoChange |
+| `modules/storage.bicep` | Storage Account (`lankaconnectstrgaccount`, `eastus`) | ✅ NoChange |
+| `modules/managed-identity.bicep` | User-Assigned Managed Identity (`lankaconnect-staging-identity`) | ✅ NoChange |
+| `modules/acs.bicep` | ACS + Email Service + 2 domains (`AzureManagedDomain`, `lankaconnect.app`) | ✅ NoChange |
+| `staging.parameters.json` | Env-specific values | ✅ done |
+| `production.parameters.json` | Production env values | ⏳ when production RG is built |
+| `.github/workflows/bicep-what-if.yml` | Non-blocking `what-if` CI on push to develop + PR | ✅ wired |
 
-### Resources in staging NOT YET covered (sub-tasks for W1.4.x follow-up)
+### Resources intentionally NOT in Bicep
 
-Discovered via `az resource list` 2026-05-11. The master-TODO §W1.4 acceptance list missed these:
+| Resource | Reason |
+|---|---|
+| `lankaconnect-api-staging` Container App | Managed by `.github/workflows/deploy-staging.yml` (image SHA changes every commit); dual-ownership avoided |
+| `lankaconnect-ui-staging` Container App | Managed by `.github/workflows/deploy-ui-staging.yml`; same reason |
+| `workspace-lankaconnectstagingXKMq`, `workspace-lankaconnectstagingoue8` | Auto-generated LAWs created by Azure when Container Apps connect telemetry |
 
-| Resource | Type | Sub-task |
-|---|---|---|
-| `lankaconnect-api-staging` | `Microsoft.App/containerApps` | W1.4.6 — Container App (API) module |
-| `lankaconnect-ui-staging` | `Microsoft.App/containerApps` | W1.4.7 — Container App (UI) module |
-| `lankaconnectstrgaccount` | `Microsoft.Storage/storageAccounts` (in capitalized RG `LankaConnect-Staging`) | W1.4.8 — Storage Account module |
-| `lankaconnect-communication` | `Microsoft.Communication/CommunicationServices` | W1.4.9 — ACS module |
-| `lankaconnect-email` + 2 domains | `Microsoft.Communication/EmailServices` + Domains | W1.4.10 — Email Service module |
-| `lankaconnect-staging-identity` | `Microsoft.ManagedIdentity/userAssignedIdentities` | W1.4.11 — Managed Identity module |
-| `workspace-lankaconnectstagingXKMq`, `workspace-lankaconnectstagingoue8` | auto-generated LAWs | Leave unmanaged (Azure auto-creates) |
+### Master-TODO §W1.4 acceptance items that don't exist today
 
-### Master-TODO §W1.4 items NOT IN staging today
-
-- ❌ Application Insights — does NOT exist in staging RG; if needed, "create-new" task (not idempotent describe)
-- ❌ Azure App Configuration — does NOT exist; create-new task
-
-These are add-not-describe modules; they belong to future sub-tasks when the resources are actually provisioned.
-
-### Property-level parity (sub-task pending)
-
-Latest `what-if` (2026-05-11) shows the 4 modules **target the right 7 resources by name + type** (zero creates of resources that exist, zero deletes), but reports `changeType: Deploy` rather than `NoChange` — meaning property-level delta could exist. A property-parity sub-task per module is required: `az resource show` each existing resource, compare with module params, adjust until `what-if` reports `NoChange`. ETA roughly 30 min per module.
+- Application Insights — not in staging RG today. When provisioned, add `modules/application-insights.bicep`.
+- Azure App Configuration — not in staging RG today. Likely added with W1.5 Microsoft.FeatureManagement work.
 
 ### Exit criterion status (architect 2026-05-11)
 
-`scripts/azure/provision-staging.sh` lines for env/postgres/kv/acr/logs would be deletable IF property-parity were complete. Since `what-if` cannot yet confirm `NoChange`, the bash provisioner lines stay. Will delete in the W1.4.x sub-tasks once each module shows `NoChange`.
+`scripts/azure/provision-staging.sh` was marked **BICEP PRIMARY** in commit `19a728a2`:
+- Top-of-file deprecation header documents Bicep as source of truth
+- Per-section markers on Steps 2, 3, 4, 6 point at the corresponding Bicep module + what-if NoChange verification date
+- Bash blocks remain operational (idempotent `az X show` gates) for ops continuity but no longer authoritative
+- Literal deletion deferred because Steps 3 + 5 have cross-section dependencies (`POSTGRES_CONNECTION_STRING` feeds KV secret population)
+- Future hardening: once Container App bootstrap moves to Bicep, retire bash bodies entirely
+
+### Trail of commits
+
+| Commit | Phase | What |
+|---|---|---|
+| `3df82003` | W1.4 v1 skeleton | main.bicep + container-apps-env + staging params + README + .gitignore |
+| `18449e83` | Phase 1 module 2 | postgres.bicep — Flexible Server + DB + firewall |
+| `ae7b7302` | Phase 1 module 3 | key-vault.bicep — vault container (unblocks W1.1b) |
+| `23e3a2ff` | Phase 1 module 4 | acr.bicep — Basic SKU registry |
+| `206e8d13` | Phase 1 critical fix | Container Apps Env name `-env` → `-env2` (matched actual staging) |
+| `9ccf3c86` | Phase 1 property-parity | all 4 modules reach NoChange — peerAuthentication, dataEndpointEnabled, postgres storage tier, etc. |
+| `d2f6d8e7` | Phase 2 modules | storage + managed-identity + acs (ACS + email service + 2 domains) |
+| `f312e86c` | Phase 3 CI | bicep-what-if.yml non-blocking workflow |
+| `19a728a2` | Phase 4 cleanup | scripts/azure/provision-staging.sh BICEP PRIMARY markers |
+
+Total: **9 commits direct to develop, no PRs** (per Phase A trunk-based discipline).
 
 ## Convention
 

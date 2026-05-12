@@ -6,6 +6,46 @@
 
 ---
 
+## 🎯 2026-05-12 (Phase A W1.4 — Bicep skeleton for staging RG) — ✅ DONE on develop
+
+**Status**: Path A executed end-to-end. 7 Bicep modules in `infra/bicep/` covering 12 of 16 staging resources at what-if `NoChange`. 4 staging resources correctly `Ignore`d (CI-managed Container Apps + 2 auto-LAWs). The single `Modify` line in what-if is a documented false-positive on `customerId` reference resolution.
+
+### Phases (per Path A plan)
+| Phase | Commit | What |
+|---|---|---|
+| 1 — property-parity | `3df82003` → `9ccf3c86` | main.bicep + 4 modules (env, postgres, KV, ACR) tuned to NoChange |
+| 2 — missing modules | `d2f6d8e7` | storage, managed-identity, ACS (with email service + 2 domains) — all NoChange |
+| 3 — what-if CI | `f312e86c` | `.github/workflows/bicep-what-if.yml` (non-blocking, push to develop + PR + workflow_dispatch) |
+| 4 — exit criterion | `19a728a2` | `scripts/azure/provision-staging.sh` marked BICEP PRIMARY with top-of-file + per-step markers |
+| 5 — close-out | this commit | trackers + master TODO `W1.4 ✅ DONE` + README final state |
+
+**9 commits, all direct to develop, zero PRs** (Phase A trunk-based discipline).
+
+### What's intentionally not in this Bicep
+- Container Apps (`lankaconnect-api-staging`, `lankaconnect-ui-staging`) — CI manages image SHAs every commit; Bicep would create perpetual drift
+- 2 auto-generated `workspace-lankaconnectstaging*` LAWs — Azure auto-creates
+- Application Insights, App Configuration — not in staging today; create-new modules when provisioned (App Config likely with W1.5 FeatureManagement work)
+
+### Critical drift caught + fixed
+- **Container Apps Env name** is `lankaconnect-staging-env2` (the `-env2` suffix), not `lankaconnect-staging-env` as documented in `scripts/azure/provision-staging.sh`. Fixed in 206e8d13 before any deploy attempted. Without this catch, Bicep would have created a parallel env-without-suffix (wasted infra) or required manual rename.
+
+### Next W1 sequence
+| Day | Task | Status |
+|---|---|---|
+| W1 D7 | **W1.5** `Microsoft.FeatureManagement` install + first flag stub | NEXT |
+| W1 D8 | W1.7 `.claude/settings.json` audit + W1 close-out | pending |
+| — | W1.1b Azure Key Vault application wiring | unscheduled (founder picks) |
+
+### Founder action items (architect-recommended compensating controls — browser, ~20 min total)
+- Enable GitHub Push Protection + Secret Scanning (Settings → Code security)
+- Set Azure AD sign-in alert on staging Service Principal
+- Change password for `niroshhh2@gmail.com` (~30 sec; was in deleted `tests/e2e-api/login-request.json`)
+
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) § "W1 — Execution Status (2026-05-11)"
+**Bicep details**: [infra/bicep/README.md](../infra/bicep/README.md) § Status (2026-05-12)
+
+---
+
 ## 🎯 2026-05-11 (Phase A W1.1+W1.2+W1.3+W1.3a — modular-monolith refactor W1 cleanup days 3–5) — ✅ LANDED ON DEVELOP
 
 **Status**: First five executions of the **20-week modular-monolith refactor** master TODO (`docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` §"Plan Delta Amendments" W0+W1 budget table) after the four pre-flight PRs (PR-0/PR-A/PR-B/W1.0a/W1.0b) landed earlier today. **Direction is intact (architect verdict GREEN)**; process discipline leaked — corrected mid-session.

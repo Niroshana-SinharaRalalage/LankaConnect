@@ -3,7 +3,25 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase A W1.1+W1.2+W1.3+W1.3a — modular-monolith refactor W1 cleanup days 3–5 — ✅ LANDED ON DEVELOP
+## 🚀 CURRENT SESSION STATUS — Phase A W1.4 — Bicep skeleton for staging RG — ✅ DONE on develop
+**Date**: 2026-05-12
+**Session**: Path A executed end-to-end on the master TODO §W1.4 acceptance criteria ("existing infra version-controlled in Bicep; what-if shows no drift"). 7 Bicep modules in `infra/bicep/` covering 12 of 16 staging resources at what-if `NoChange`. Direction confirmed GREEN by architect 2026-05-11; process aligned to trunk-based discipline (9 commits direct to develop, zero PRs).
+**Progress**: ✅ **DONE on develop**. Per-phase commits:
+- Phase 1 (property-parity tuning of 4 v1 modules): `3df82003` → `9ccf3c86` — main.bicep + container-apps-env + postgres + KV + ACR all reach NoChange after surgical property additions (peerAuthentication, dataEndpointEnabled, postgres storage.tier/iops/autoGrow, authConfig, dataEncryption, replica, replicationRole, publicNetworkAccessForIngestion/Query). Tags removed from all modules (staging tag state heterogeneous → false drift).
+- Phase 2 (5 missing modules): `d2f6d8e7` — storage (eastus, not eastus2), managed-identity, ACS (bundling ACS + email service + 2 domains). Container Apps (API + UI) intentionally NOT modeled — CI manages image SHAs every commit; modeling would create perpetual drift.
+- Phase 3 (CI workflow): `f312e86c` — `.github/workflows/bicep-what-if.yml` non-blocking, runs on push to develop touching `infra/bicep/**`, on PR, and on workflow_dispatch. Uses existing `AZURE_CREDENTIALS_STAGING` secret. Surfaces deltas as workflow step summary + PR comment.
+- Phase 4 (exit criterion): `19a728a2` — `scripts/azure/provision-staging.sh` marked BICEP PRIMARY with top-of-file deprecation header + per-section markers on Steps 2/3/4/6. Bash blocks retained (idempotent gates) because Steps 3+5 cross-depend (POSTGRES_CONNECTION_STRING feeds KV secret population) and Container App bootstrap stays bash.
+- Phase 5 (close-out): this commit — `infra/bicep/README.md` final state, master TODO `W1 — Execution Status` table W1.4 ✅ DONE, the 3 top-level trackers updated.
+**Critical drift caught**: `lankaconnect-staging-env2` (Container Apps Env has "2" suffix; provision-staging.sh §line 53 had stale name without suffix) — fixed in 206e8d13 before any deploy attempted. Without this catch, Bicep would have created a parallel env-without-suffix (wasted infra) or required manual rename.
+**Final what-if (2026-05-12)**: 12 NoChange + 1 documented false-positive (`customerId` reference resolution) + 4 Ignore (CI-managed Container Apps + 2 auto-LAWs).
+**Tests**: `az bicep build` exit 0; what-if scan completes successfully against staging via AZURE_CREDENTIALS_STAGING.
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) § "W1 — Execution Status (2026-05-11)" — W1.4 row ✅ DONE 2026-05-12.
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Next**: **W1.5** `Microsoft.FeatureManagement` install + first flag stub (master TODO §"Plan Delta Amendments" W1 D7).
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Phase A W1.1+W1.2+W1.3+W1.3a — modular-monolith refactor W1 cleanup days 3–5 — ✅ LANDED ON DEVELOP
 **Date**: 2026-05-11
 **Session**: First five executions of `docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md` §"Plan Delta Amendments" W0+W1 budget table after the four pre-flight PRs (PR-0/PR-A/PR-B/W1.0a/W1.0b) landed earlier today.
 **Progress**: ✅ **LANDED ON DEVELOP — architect verdict GREEN** with same-session process course correction.

@@ -6,6 +6,66 @@
 
 ---
 
+## 🎯 2026-05-12 (Phase A W1.5 + W1.7 — FeatureManagement install + .claude/settings.json audit + W1 CLOSE-OUT) — ✅ DONE on develop
+
+**Status**: **All Phase A Week 1 tasks closed**. Master TODO §"Plan Delta Amendments" budget table 10 tasks ✅ DONE except W1.1 🟡 PARTIAL (founder-deferred rotation + W1.1b KV wiring split out for later founder pickup).
+
+### W1.5 — Microsoft.FeatureManagement install + first flag stub (master TODO W1 D7)
+
+| Action | Outcome |
+|---|---|
+| NuGet 4.5.0 pinned in `Directory.Packages.props` + referenced in `LankaConnect.Shared.csproj` | ✅ |
+| `builder.Services.AddFeatureManagement()` wired in `Program.cs` | ✅ |
+| First flag `Refactor.Smoke.Enabled` added to `appsettings.json` | ✅ (default true on staging) |
+| `GET /api/Health/feature-flags` smoke endpoint with `IFeatureManager` injection + try/catch | ✅ |
+| `docs/feature-flags.md` registry doc per ADR-004 lifecycle discipline | ✅ |
+| Staging-verified end-to-end | ✅ revision 0001647 Healthy; smoke returns 200 with `smokeFlagValue=true` |
+
+**Production regression caught + hotfixed**:
+- Commit `4d50251e` Edit accidentally deleted `AddApplication(builder.Configuration)` when inserting FeatureManagement
+- Staging revision 0001646 went Unhealthy with `MediatR.IPublisher` unresolved at Program.cs line 602
+- Azure Container Apps held previous healthy revision 0001645 serving traffic (correct rollback behavior)
+- Hotfix `e142724b` restored the missing call between FeatureManagement and Infrastructure registration
+- Memory rule saved: `feedback_di_test_failures_are_real.md`
+
+### W1.7 — `.claude/settings.json` audit + W1 close-out (master TODO W1 D8)
+
+| Section | Before | After | Delta |
+|---|---|---|---|
+| `permissions.allow` | 344 | 326 | -9 JWT-laden entries (PII via base64), -9 one-off UUID curls |
+| `permissions.deny` | 4 | 19 | **+15 hardening rules** |
+| `permissions.additionalDirectories` | 11 | 10 | -1 case/slash dupe |
+
+New deny rules: prod-RG blocks for `lankaconnect-prod`, git force-push variants, psql DROP/TRUNCATE, dotnet ef migrations remove/database drop, rm -rf wildcard, find -delete. Audit decision record: [`docs/operations/W1.7-claude-settings-audit.md`](operations/W1.7-claude-settings-audit.md).
+
+### W1 final scorecard
+
+| Day | Task | Status |
+|---|---|---|
+| W0 D1 | PR-0 doc commit | ✅ |
+| W0 D2 | PR-A template + CODEOWNERS + labels | ✅ |
+| W1 D1 | PR-B title gate | ✅ |
+| W1 D2 | W1.0a + W1.0b doc alignment + test triage | ✅ |
+| W1 D3 | W1.1 secret cleanup | 🟡 PARTIAL (rotation deferred per founder; KV wiring → W1.1b) |
+| W1 D4 | W1.2 root debug cleanup | ✅ |
+| W1 D5 | W1.3 scripts/ triage | ✅ |
+| W1 D6 | W1.4 Bicep skeleton + 7 modules + what-if NoChange | ✅ |
+| W1 D7 | W1.5 Microsoft.FeatureManagement install + smoke | ✅ |
+| W1 D8 | W1.7 .claude/settings.json audit + W1 close-out | ✅ |
+
+### Founder action items still open (~20 min browser)
+- Enable GitHub Push Protection + Secret Scanning (Settings → Code security)
+- Set Azure AD sign-in alert on staging Service Principal
+- Change password for `niroshhh2@gmail.com` (leaked plaintext in deleted `tests/e2e-api/login-request.json`)
+
+### Next master-TODO phase: W2 — BuildingBlocks + Observability (5 days)
+First task **W2.1**: create empty `src/BuildingBlocks/BuildingBlocks.*.csproj` shells (Domain / Application / Infrastructure / Web / Contracts) + `src/Modules/` parent + `src/Hosts/Host.AllInOne.csproj` placeholder. Build green = acceptance.
+
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md)
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`
+
+---
+
 ## 🎯 2026-05-12 (Phase A W1.4 — Bicep skeleton for staging RG) — ✅ DONE on develop
 
 **Status**: Path A executed end-to-end. 7 Bicep modules in `infra/bicep/` covering 12 of 16 staging resources at what-if `NoChange`. 4 staging resources correctly `Ignore`d (CI-managed Container Apps + 2 auto-LAWs). The single `Modify` line in what-if is a documented false-positive on `customerId` reference resolution.

@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase A W1.4 — Bicep skeleton for staging RG — ✅ DONE on develop
+## 🚀 CURRENT SESSION STATUS — Phase A W1.5 + W1.7 — FeatureManagement install + settings.json audit + W1 CLOSE-OUT — ✅ DONE on develop
+**Date**: 2026-05-12
+**Session**: Closes Phase A Week 1. Lands W1.5 (`Microsoft.FeatureManagement.AspNetCore` install + smoke endpoint) and W1.7 (`.claude/settings.json` audit + W1 close-out) per master TODO §"Plan Delta Amendments" budget table D7/D8. **All 10 W1 budget-table tasks now ✅ DONE except W1.1 🟡 PARTIAL** (rotation deferred per founder; KV wiring split as W1.1b for later founder pickup).
+**Progress**: ✅ **DONE on develop, staging-verified end-to-end where applicable**.
+- **W1.5** (W1 D7): Microsoft.FeatureManagement.AspNetCore 4.5.0 added to `LankaConnect.Shared`; `AddFeatureManagement()` wired in `Program.cs` (with hotfix `e142724b` restoring an accidentally-deleted `AddApplication()` call — see lessons below); first flag `Refactor.Smoke.Enabled` in `appsettings.json`; smoke endpoint `GET /api/Health/feature-flags` on `HealthController` with `IFeatureManager` injection + try/catch observability; `docs/feature-flags.md` registry per ADR-004 lifecycle discipline. Staging revision 0001647 Healthy; smoke returns 200 with `{"smokeFlagValue":true,"registeredFlags":["Refactor.Smoke.Enabled"],"registeredCount":1}`.
+- **W1.7** (W1 D8): `.claude/settings.json` audit — `permissions.allow` 344→326 (removed 9 entries with embedded JWT bearer tokens containing user PII via base64-decode, plus 9 one-off UUID-laden curls), `permissions.deny` 4→19 (added 15 hardening rules: prod-RG blocks for `lankaconnect-prod`, git force-push variants, psql DROP/TRUNCATE, dotnet ef migrations remove/database drop, `rm -rf *` wildcard, `find -delete`), `additionalDirectories` 11→10 (case-dedup). Decision record: `docs/operations/W1.7-claude-settings-audit.md`.
+**Critical hotfix in W1.5**: commit `4d50251e` Edit accidentally deleted `builder.Services.AddApplication(builder.Configuration);` when inserting `AddFeatureManagement()` — staging revision 0001646 went Unhealthy with `MediatR.IPublisher` unresolved at `Program.cs:602` (ValidateEfCoreConfigurationsAsync). Azure Container Apps correctly held the previous healthy revision 0001645 serving traffic. Hotfix `e142724b` restored the missing line. **Lesson saved to memory**: `feedback_di_test_failures_are_real.md` — never dismiss IntegrationTests DI errors as "pre-existing fixture issues" when Program.cs service registration was just touched; diff-bisect against last known good commit. WebApplicationFactory boots the real `Program.cs`, so test DI = production DI.
+**Tests**: `dotnet build` 0 errors; Domain.Tests 707/707, Infrastructure.Tests 317/317, Shared.Tests 303/303 (+5 skipped timezone, W1.0c carry-forward). IntegrationTests still have a separate pre-existing DI fixture issue (not the same MediatR error — distinct test-host bootstrap problem) that's tracked but out of W1 scope.
+**Staging verification**: `curl https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Health/feature-flags` returns HTTP 200 with expected JSON shape; baseline `/api/Health` still 200 (no regression).
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) § "W1 — Execution Status (2026-05-11)" — W1.5 + W1.7 rows ✅ DONE; all 10 W1 budget-table tasks closed.
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Founder action items still open** (architect compensating controls for deferred W1.1 rotation, ~20 min browser): enable GitHub Push Protection + Secret Scanning; set Azure AD sign-in alert on staging SP; change password for `niroshhh2@gmail.com`.
+**Next**: **Phase A.W2 — BuildingBlocks + Observability** (master TODO §"Phase A.W2", 5 days). First task **W2.1**: create empty `src/BuildingBlocks/BuildingBlocks.*.csproj` shells (Domain / Application / Infrastructure / Web / Contracts) + `src/Modules/` parent + `src/Hosts/Host.AllInOne.csproj` placeholder. Build green = acceptance.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Phase A W1.4 — Bicep skeleton for staging RG — ✅ DONE on develop
 **Date**: 2026-05-12
 **Session**: Path A executed end-to-end on the master TODO §W1.4 acceptance criteria ("existing infra version-controlled in Bicep; what-if shows no drift"). 7 Bicep modules in `infra/bicep/` covering 12 of 16 staging resources at what-if `NoChange`. Direction confirmed GREEN by architect 2026-05-11; process aligned to trunk-based discipline (9 commits direct to develop, zero PRs).
 **Progress**: ✅ **DONE on develop**. Per-phase commits:

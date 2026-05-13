@@ -108,7 +108,8 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Infrastructure_DoesNotDependOnWeb()
     {
-        var assembly = typeof(BuildingBlocks.Infrastructure.AssemblyMarker).Assembly;
+        // W2.5 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        var assembly = typeof(BuildingBlocks.Infrastructure.Persistence.BaseDbContext).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

@@ -611,16 +611,42 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - [x] **Verify**: unit tests for each value object (90%+ coverage) — 194/194 pass
 - **Acceptance**: foundation types in place; tested ✅
 
-### W2.4 — Extract BuildingBlocks.Application
-- [ ] **Action**: Implement MediatR pipeline behaviors:
-  - `ValidationBehavior` (FluentValidation)
-  - `LoggingBehavior` (correlation IDs, scoped Serilog)
-  - `TransactionBehavior` (UoW per command)
-  - `IdempotencyBehavior` (per-module idempotency table conventions)
-  - `OutboxBehavior` (publish IntegrationEventVx)
-  - **`AuditBehavior`** (writes to `platform.audit_events` — NEW per architect review)
-- [ ] **Verify**: behaviors unit tested with mock pipelines
-- **Acceptance**: pipeline behaviors ready for module use
+### W2.4 — Extract BuildingBlocks.Application ✅ DONE 2026-05-13
+
+**Status**: 6 MediatR pipeline behaviors + 7 abstractions landed; **27 unit tests pass** in 141ms (hand-written fakes, no Moq dependency). AssemblyMarker removed from `BuildingBlocks.Application`; ArchTest anchor switched to `typeof(ICommand<>).Assembly`; all 4 layering rules still green. NO production runtime references this assembly yet — modules consume it from W3+, so "test via API" is N/A; verification is unit tests + full-sln build + ArchTest CI gate.
+
+**Abstractions added** (`src/BuildingBlocks/BuildingBlocks.Application/Abstractions/`):
+- `ICommand<TResponse>` / `IQuery<TResponse>` — marker interfaces so behaviors target message types selectively (commands get transaction + outbox + audit; queries skip them)
+- `IIdempotentCommand<TResponse>` — extends `ICommand` with `IdempotencyKey` Guid for at-most-once semantics
+- `IUnitOfWork` — Begin/Commit/Rollback over a per-module DbContext transaction (W2.5 implements)
+- `IIdempotencyStore` — TryGet/Put for replay short-circuit (W2.5 backs onto Postgres `idempotency_keys` table)
+- `IOutbox` — Enqueue integration events for the W2.5 `OutboxProcessor` hosted service
+- `IAuditLogger` + `AuditEntry` record — write cross-module `platform.audit_events`
+- `ICurrentActor` — supplies the authenticated actor id for audit attribution (W2.6 implements from `HttpContext.User`)
+
+**Behaviors landed** (`src/BuildingBlocks/BuildingBlocks.Application/Behaviors/`):
+- `LoggingBehavior` — structured Serilog scope with correlation id + Stopwatch + try/catch + re-throw
+- `ValidationBehavior` — FluentValidation `IValidator<TRequest>` instances; throws `ValidationException` on failure (handled by ProblemDetails middleware in W2.6)
+- `TransactionBehavior` — `IUnitOfWork` Begin → handler → Commit/Rollback; rollback failures swallowed-after-log so the original handler exception propagates as the real cause
+- `IdempotencyBehavior` — `JsonSerializer` round-trip via `IIdempotencyStore`; deserialize failure or store-put failure falls through to handler re-execution (better to occasionally double-run than serve stale or block on storage)
+- `OutboxBehavior` — drains `IIntegrationEventBuffer` (also defined in this assembly; concrete impl is the W2.5 `BaseDbContext` event collector) and enqueues to `IOutbox`; doesn't drain on handler exception so events don't leak past failed transactions
+- `AuditBehavior` — success + failure outcomes; details JSON includes exception **type** but NOT the message (PII risk per ADR-002); audit-write failures swallowed so they can't roll back the business operation
+
+**Test coverage** (`tests/LankaConnect.BuildingBlocks.Application.Tests/`):
+- 6 test classes, **27 tests pass** in 141ms
+- Each behavior: happy path + null-next guard + key failure modes (handler throws, rollback throws, store throws, audit throws, corrupted cache entry, anonymous actor, multi-validator failure accumulation)
+- Hand-written fakes in `Fakes/Fakes.cs` (`FakeUnitOfWork`, `FakeIdempotencyStore`, `FakeOutbox`, `FakeIntegrationEventBuffer`, `FakeAuditLogger`, `FakeCurrentActor`, `NullLog.For<>()`)
+
+### W2.4 — Extract BuildingBlocks.Application (original spec)
+- [x] **Action**: Implement MediatR pipeline behaviors:
+  - [x] `ValidationBehavior` (FluentValidation)
+  - [x] `LoggingBehavior` (correlation IDs, scoped Serilog)
+  - [x] `TransactionBehavior` (UoW per command)
+  - [x] `IdempotencyBehavior` (per-module idempotency table conventions)
+  - [x] `OutboxBehavior` (publish IntegrationEventVx)
+  - [x] **`AuditBehavior`** (writes to `platform.audit_events` — NEW per architect review)
+- [x] **Verify**: behaviors unit tested with mock pipelines — 27/27 pass
+- **Acceptance**: pipeline behaviors ready for module use ✅
 
 ### W2.5 — Extract BuildingBlocks.Infrastructure
 - [ ] **Action**: Implement:

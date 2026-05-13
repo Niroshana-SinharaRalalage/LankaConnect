@@ -87,7 +87,8 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Application_DependsOnDomainAndContractsOnly()
     {
-        var assembly = typeof(BuildingBlocks.Application.AssemblyMarker).Assembly;
+        // W2.4 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        var assembly = typeof(BuildingBlocks.Application.Abstractions.ICommand<>).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

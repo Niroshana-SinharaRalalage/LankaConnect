@@ -239,6 +239,27 @@ public class Ticket : BaseEntity
     }
 
     /// <summary>
+    /// Phase 6A.141 — admin override that reverses a prior scan. Resets
+    /// <see cref="ValidatedAt"/> to <c>null</c> so the ticket can be scanned again.
+    /// The audit log still retains both the original accepted-scan row AND a new
+    /// admin-unmark row, so the forensic history is complete.
+    ///
+    /// Returns failure when the ticket isn't currently scanned (nothing to unmark)
+    /// or has been invalidated (refund / cancellation reset path is different).
+    /// </summary>
+    public Result UnmarkScanned()
+    {
+        if (!IsValid)
+            return Result.Failure("Ticket is invalidated; can't unmark a refunded/cancelled ticket.");
+        if (!ValidatedAt.HasValue)
+            return Result.Failure("Ticket has not been scanned; nothing to unmark.");
+
+        ValidatedAt = null;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Invalidates the ticket (e.g., when registration is cancelled)
     /// </summary>
     public Result Invalidate()

@@ -877,6 +877,46 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.141 admin override — reverses a prior accepted scan. AdminOnly policy
+    /// (event organizers do not have unmark privilege by default to limit abuse during
+    /// disputes). Writes a new TicketScanLog row with scan_result='unmarked' carrying
+    /// the admin's stated reason; the original accepted-scan row stays for forensic
+    /// completeness.
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/{ticketCode}/unmark-scanned")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(UnmarkScannedResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnmarkScanned(
+        Guid eventId,
+        string ticketCode,
+        [FromBody] UnmarkScannedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var adminName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Logger.LogInformation(
+            "UnmarkScanned endpoint: EventId={EventId}, TicketCode={TicketCode}, AdminUserId={AdminUserId}",
+            eventId, ticketCode, userId);
+
+        var command = new UnmarkScannedCommand(
+            EventId: eventId,
+            TicketCode: ticketCode,
+            AdminUserId: userId,
+            AdminName: adminName,
+            Reason: request.Reason,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Register anonymous attendee for an event (No authentication required)
     /// Phase 6A.44: Returns checkout URL for paid events, null for free events
     /// </summary>
@@ -3805,6 +3845,7 @@ public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email vali
 // Phase 6A.141: Paid-event ticket scanner request DTOs
 public record ScanTicketQrRequest(string QrPayload);
 public record ScanTicketByCodeRequest(string TicketCode);
+public record UnmarkScannedRequest(string Reason);
 
 public record UpdateSignUpListRequest(
     string Category,

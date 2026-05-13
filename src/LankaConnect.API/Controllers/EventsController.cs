@@ -109,6 +109,7 @@ using LankaConnect.Application.Events.Commands.UpdateTicketTier;
 using LankaConnect.Application.Events.Commands.RemoveTicketTier;
 using LankaConnect.Application.Events.Commands.SetTicketingMode;
 using LankaConnect.Application.Events.Commands.SetSeatingMode;
+using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
@@ -774,6 +775,104 @@ public class EventsController : BaseController<EventsController>
             return StatusCode(StatusCodes.Status403Forbidden, new { error = result.Errors.First() });
         }
 
+        return HandleResult(result);
+    }
+
+    // ============================================================
+    // Phase 6A.141: Paid-Event Ticket Check-in / QR Scanner endpoints
+    //
+    // Two endpoints, one ScanTicketCommand backing both:
+    //   POST .../tickets/scan          — QR-scan path (body: { qrPayload })
+    //   POST .../tickets/scan-by-code  — Manual-entry fallback (body: { ticketCode })
+    // Authorization is enforced inside the handler via Event.IsOrganizer(scannerUserId) —
+    // see Phase 6A.133 organizer-link pattern. The handler returns Result.Forbidden which
+    // BaseController.BuildProblem maps to HTTP 403.
+    //
+    // F3: client_ip extracted via BaseController.GetClientIpAddress (X-Forwarded-For aware).
+    // ============================================================
+
+    /// <summary>
+    /// Scan a QR-encoded ticket payload at the event gate. Returns accepted with attendee
+    /// + tier details, or rejected with a reason code (already_scanned, invalid_signature,
+    /// expired, invalidated, ticket_not_found, wrong_event, malformed_payload).
+    /// Both accepted and rejected business outcomes are HTTP 200 with the outcome on the
+    /// body — HTTP 4xx is reserved for protocol/auth failures (per Plan-agent D5).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicket(
+        Guid eventId,
+        [FromBody] ScanTicketQrRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        // Phase 6A.116-style cache-prevention: scan endpoints must never be cached.
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (QR) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, PayloadLength={Length}",
+            eventId, userId, request.QrPayload?.Length ?? 0);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: request.QrPayload,
+            TicketCode: null,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Manual-entry fallback for the gate scanner — staff types in the LC-YYYY-XXXXXX
+    /// ticket code when the QR can't be scanned (e.g. damaged print, dead phone). No
+    /// signature verification (trust comes from organizer auth).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan-by-code")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicketByCode(
+        Guid eventId,
+        [FromBody] ScanTicketByCodeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (manual) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, TicketCode={TicketCode}",
+            eventId, userId, request.TicketCode);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: null,
+            TicketCode: request.TicketCode,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
 
@@ -3702,6 +3801,10 @@ public record CreateSignUpListRequest(
     SignUpKind Kind = SignUpKind.Items);      // Phase 7D.1: Items (default) or Volunteers
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
+
+// Phase 6A.141: Paid-event ticket scanner request DTOs
+public record ScanTicketQrRequest(string QrPayload);
+public record ScanTicketByCodeRequest(string TicketCode);
 
 public record UpdateSignUpListRequest(
     string Category,

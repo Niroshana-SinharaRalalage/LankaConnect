@@ -86,7 +86,19 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                 if (@event == null)
                 {
                     _logger.LogWarning("ScanTicket: event not found EventId={EventId}", command.EventId);
-                    return Result<ScanTicketResult>.Failure($"Event {command.EventId} not found");
+                    return Result<ScanTicketResult>.NotFound($"Event {command.EventId} not found");
+                }
+
+                // 2a. Authorization — only the event organizer (primary or co-organizer) can
+                // scan tickets. Reuses Phase 6A.133 organizer-link pattern via Event.IsOrganizer.
+                // Plan-agent F8: this also gates the non-primary co-organizer case which must
+                // be exercised in operator UAT.
+                if (!@event.IsOrganizer(command.ScannerUserId))
+                {
+                    _logger.LogWarning(
+                        "ScanTicket: caller {ScannerUserId} is not an organizer of event {EventId} — 403",
+                        command.ScannerUserId, command.EventId);
+                    return Result<ScanTicketResult>.Forbidden("Only event organizers can scan tickets for this event.");
                 }
 
                 // 3. Resolve ticketCode + entryMethod, verifying signature if v1 QR

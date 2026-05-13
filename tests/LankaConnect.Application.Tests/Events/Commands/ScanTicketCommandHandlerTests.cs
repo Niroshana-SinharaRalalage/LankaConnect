@@ -45,12 +45,15 @@ public class ScanTicketCommandHandlerTests
             _uow.Object,
             NullLogger<ScanTicketCommandHandler>.Instance);
 
-    private static Event BuildEvent(Guid eventId, string title = "Test Event")
+    private Event BuildEvent(Guid eventId, string title = "Test Event", Guid? organizerId = null)
     {
+        // Default to _scannerUserId as the organizer so the handler's auth check passes
+        // in the happy-path tests. Tests that exercise the forbidden path can pass an
+        // explicit organizerId.
         var t = LankaConnect.Domain.Events.ValueObjects.EventTitle.Create(title).Value;
         var d = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("desc").Value;
         var ev = Event.Create(t, d, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2),
-            organizerId: Guid.NewGuid(), capacity: 100).Value;
+            organizerId: organizerId ?? _scannerUserId, capacity: 100).Value;
         typeof(BaseEntity).GetProperty("Id")!.SetValue(ev, eventId);
         return ev;
     }

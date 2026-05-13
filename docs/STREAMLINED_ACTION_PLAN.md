@@ -6,6 +6,44 @@
 
 ---
 
+## 🎯 2026-05-13 (Phase A W2.2 — NetArchTest layering project + first 4 rules + CI gate) — ✅ DONE on develop
+
+**Status**: Second task of master TODO §"Phase A.W2". Layering enforcement is live both at local-build and CI time.
+
+### What landed
+
+| Layer | Deliverable | Status |
+|---|---|---|
+| Test project | `tests/architecture/LankaConnect.ArchitectureTests/` with NetArchTest.Rules 1.3.2 | ✅ |
+| Rule 1 | `BuildingBlocks.Domain` has no `LankaConnect.*` dependencies | ✅ pass |
+| Rule 2 | `BuildingBlocks.Contracts` has no `LankaConnect.*` dependencies | ✅ pass |
+| Rule 3 | `BuildingBlocks.Application` doesn't depend on Infrastructure/Web | ✅ pass |
+| Rule 4 | `BuildingBlocks.Infrastructure` doesn't depend on Web | ✅ pass |
+| CI | `arch-test` job in `pr-validation.yml` (runs on PR + push to develop) | ✅ wired |
+| Anchor types | `public static class AssemblyMarker {}` × 5 (temporary; replaced in W2.3+) | ✅ |
+
+### Why the markers + why public
+
+NetArchTest's `Types.InAssembly(typeof(X).Assembly)` needs an actual type to anchor an assembly load. With empty W2.1 shells there are no types. Single-line `public static class AssemblyMarker {}` per project gives the test harness an anchor without polluting the API surface (they're explicitly placeholders, XML-doc-commented as "remove when W2.X fills the assembly"). Initially declared `internal` — test project couldn't see them; promoted to `public` since they're temporary and the visibility doesn't matter long-term.
+
+### CI design choices
+
+- **Triggers extended**: `pr-validation.yml` now triggers on `push: branches: [develop]` with paths-filter on `src/BuildingBlocks/**`, `src/Modules/**`, `src/Hosts/**`, `tests/architecture/**`, `Directory.Packages.props`, and the workflow itself. Phase A is trunk-based; push must run the gate too.
+- **`pr-quality-check`** guarded with `if: github.event_name == 'pull_request'` so the heavy full-codebase validation stays PR-only. ArchTest is fast (~30s) and runs on both.
+- **`phase-a-title-gate`** auto-skips on push events because its `if:` references `github.event.pull_request.labels` (null on push). No edit needed.
+- **Results artifact**: `arch-test-results` uploaded with 7-day retention for forensic debugging on failures.
+
+### Build issues encountered + fixed
+1. `CS0122 'AssemblyMarker' is inaccessible` — markers were `internal`; promoted to `public` (they're temporary anyway).
+2. Transient `NuGet.targets(174,5): error: Cannot create a file when that file already exists` — stale `obj/` from prior `dotnet sln add`; cleared by deleting `tests/architecture/LankaConnect.ArchitectureTests/obj` and rebuilding.
+
+### Next per master TODO §W2
+W2.3 — fill `BuildingBlocks.Domain` with foundation types: `Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject`, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`. Plus NEW value objects per architect review: **`Money`** (composite to `_amount` + `_currency` EF columns per ADR-005), **`Currency`** with ISO 4217 registry (USD, LKR, INR, GBP, EUR, AUD, CAD), **`Locale`**, **`Country`**. Each with unit tests reaching 90%+ coverage. The `AssemblyMarker` placeholder in `BuildingBlocks.Domain` gets removed in the same commit that lands the first real type.
+
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2"
+
+---
+
 ## 🎯 2026-05-13 (Phase A W2.1 — BuildingBlocks + Hosts + Modules skeleton) — ✅ DONE on develop
 
 **Status**: First task of master TODO §"Phase A.W2 — BuildingBlocks + Observability". 5 BuildingBlocks shells + 1 Hosts placeholder + Modules parent landed on develop; `dotnet build LankaConnect.sln` exit 0.

@@ -550,12 +550,34 @@ src/Hosts/Host.AllInOne/             (placeholder class lib; W7 converts to Web 
 - [x] **Verify**: `dotnet build LankaConnect.sln` green
 - **Acceptance**: empty projects build green ✅
 
-### W2.2 — Architecture test project
-- [ ] **Action**: Create `tests/architecture/LankaConnect.ArchitectureTests.csproj` with NetArchTest
-- [ ] First rule: `Domain` projects reference only `BuildingBlocks.Domain`
-- [ ] **Verify**: `dotnet test --filter Category=ArchTest` green
-- [ ] **CI**: add ArchTest job to `.github/workflows/pr-validation.yml`
-- **Acceptance**: ArchTest job blocks PRs that violate
+### W2.2 — Architecture test project ✅ DONE 2026-05-13
+
+**Status**: NetArchTest 1.3.2 wired into a new `tests/architecture/LankaConnect.ArchitectureTests` project; first 4 layering rules landed and pass; CI gate added to `.github/workflows/pr-validation.yml`. Direct-to-develop discipline preserved via push-trigger.
+
+**Rules landed (all `[Trait("Category", "ArchTest")]`)**:
+1. `BuildingBlocks.Domain` has no dependency on any other `LankaConnect.*` assembly (innermost layer)
+2. `BuildingBlocks.Contracts` has no dependency on any other `LankaConnect.*` assembly (cross-module ABI)
+3. `BuildingBlocks.Application` does not depend on `BuildingBlocks.Infrastructure` or `BuildingBlocks.Web`
+4. `BuildingBlocks.Infrastructure` does not depend on `BuildingBlocks.Web`
+
+**`public static class AssemblyMarker {}`** added to each of the 5 BuildingBlocks projects so NetArchTest's `Types.InAssembly(typeof(X).Assembly)` has an anchor type until W2.3+ fills the assemblies with real types. Markers are temporary; remove or replace when first real type lands.
+
+**CI integration**:
+- Extended `pr-validation.yml` triggers to include `push: branches: [develop]` with paths-filter on `src/BuildingBlocks/**`, `src/Modules/**`, `src/Hosts/**`, `tests/architecture/**`, `Directory.Packages.props`, and the workflow file itself.
+- New `arch-test` job runs on both PR (gate develop→main) and push (catch direct trunk commits).
+- Existing `pr-quality-check` job guarded with `if: github.event_name == 'pull_request'` so it stays PR-only; `phase-a-title-gate` auto-skips on push because its `if:` references `github.event.pull_request.labels` (null on push).
+- Results uploaded as `arch-test-results` artifact (retention 7 days).
+
+**Verification**:
+- `dotnet build LankaConnect.sln` exit 0 (0 errors, 4 unrelated NuGet vuln warnings)
+- `dotnet test --filter Category=ArchTest` 4/4 pass (~13ms)
+
+### W2.2 — Architecture test project (original spec)
+- [x] **Action**: Create `tests/architecture/LankaConnect.ArchitectureTests.csproj` with NetArchTest
+- [x] First rule: `Domain` projects reference only `BuildingBlocks.Domain` (expanded to 4 layering rules covering all 5 BuildingBlocks projects)
+- [x] **Verify**: `dotnet test --filter Category=ArchTest` green (4/4 pass)
+- [x] **CI**: add ArchTest job to `.github/workflows/pr-validation.yml` (extended trigger covers push-to-develop too)
+- **Acceptance**: ArchTest job blocks PRs that violate ✅
 
 ### W2.3 — Extract BuildingBlocks.Domain
 - [ ] Move/create: `Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject` base, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`

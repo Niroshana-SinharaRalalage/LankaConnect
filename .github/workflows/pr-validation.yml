@@ -8,17 +8,75 @@ on:
     # pr-quality-check skips these events (see its `if:` condition) to avoid
     # spending CI cycles on label-only changes.
     types: [opened, synchronize, reopened, labeled, unlabeled]
+  # W2.2 (2026-05-13): also trigger on direct commits to develop so the
+  # architecture gate catches layering violations from trunk-based commits.
+  # Only `arch-test` job runs on push (others are PR-only — see `if:` guards).
+  push:
+    branches: [develop]
+    paths:
+      - 'src/BuildingBlocks/**'
+      - 'src/Modules/**'
+      - 'src/Hosts/**'
+      - 'tests/architecture/**'
+      - 'Directory.Packages.props'
+      - '.github/workflows/pr-validation.yml'
 
 env:
   DOTNET_VERSION: '8.0.x'
   BUILD_CONFIGURATION: 'Release'
 
 jobs:
+  arch-test:
+    name: Architecture Tests (NetArchTest layering)
+    runs-on: ubuntu-latest
+    # W2.2 (master TODO §"Phase A.W2") — runs on both PR (gate develop→main
+    # promotion) and direct push to develop (Phase A trunk-based discipline).
+    # Fast (~30s) — restores only the architecture-test project graph.
+    # If this job fails the PR cannot merge and the develop commit is flagged.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore architecture-test project graph
+        run: |
+          dotnet restore tests/architecture/LankaConnect.ArchitectureTests/LankaConnect.ArchitectureTests.csproj
+
+      - name: Build architecture-test project
+        run: |
+          dotnet build tests/architecture/LankaConnect.ArchitectureTests/LankaConnect.ArchitectureTests.csproj \
+            --no-restore \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --verbosity minimal
+
+      - name: Run architecture tests (filter Category=ArchTest)
+        run: |
+          dotnet test tests/architecture/LankaConnect.ArchitectureTests/LankaConnect.ArchitectureTests.csproj \
+            --no-build \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --filter "Category=ArchTest" \
+            --logger "console;verbosity=normal" \
+            --logger trx \
+            --results-directory TestResults/ArchTest
+
+      - name: Upload ArchTest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-test-results
+          path: TestResults/ArchTest/
+          retention-days: 7
+
   pr-quality-check:
     name: PR Quality Check
     runs-on: ubuntu-latest
     # Skip on label-only events; only run on actual code changes
-    if: github.event.action != 'labeled' && github.event.action != 'unlabeled'
+    # Also skip on push events (this job is PR-only — arch-test covers push triggers)
+    if: github.event_name == 'pull_request' && github.event.action != 'labeled' && github.event.action != 'unlabeled'
 
     steps:
       - name: Checkout PR

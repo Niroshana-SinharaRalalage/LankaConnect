@@ -3,7 +3,26 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase A W2.1 — BuildingBlocks + Hosts + Modules skeleton — ✅ DONE on develop
+## 🚀 CURRENT SESSION STATUS — Phase A W2.2 — NetArchTest layering project + first 4 rules + CI gate — ✅ DONE on develop
+**Date**: 2026-05-13
+**Session**: Second task of master TODO §"Phase A.W2 — BuildingBlocks + Observability". Layering enforcement live: 4 architecture rules pass against the W2.1 BuildingBlocks shells; CI gate on `arch-test` job blocks PRs that violate AND catches direct trunk commits via push-trigger on develop.
+**Progress**: ✅ **DONE on develop**. New project `tests/architecture/LankaConnect.ArchitectureTests/` using `NetArchTest.Rules` 1.3.2. Four rules tagged `[Trait("Category", "ArchTest")]`: BuildingBlocks.Domain has no LankaConnect.* dependencies (innermost layer); BuildingBlocks.Contracts has no LankaConnect.* dependencies (cross-module ABI); BuildingBlocks.Application doesn't depend on Infrastructure/Web; BuildingBlocks.Infrastructure doesn't depend on Web. `dotnet test --filter Category=ArchTest` 4/4 pass in 13ms.
+**Scope**:
+- `tests/architecture/LankaConnect.ArchitectureTests.csproj` — references all 5 BuildingBlocks projects, NetArchTest.Rules, xunit, FluentAssertions
+- `LayeringRules.cs` — 4 [Fact]+[Trait("Category", "ArchTest")] tests with shared `AssertCompliant` helper that emits failing types + remediation hint on violation
+- `AssemblyMarker.cs` × 5 (one per BuildingBlocks project) — anchors NetArchTest's `Types.InAssembly(typeof(X).Assembly)` until W2.3+ fills assemblies with real types. Public visibility (test project needs to see them); explicitly temporary per their XML doc comments.
+- `Directory.Packages.props` — pinned `NetArchTest.Rules` 1.3.2
+- `.github/workflows/pr-validation.yml` — extended triggers to include `push: branches: [develop]` with paths-filter on `src/BuildingBlocks/**`, `src/Modules/**`, `src/Hosts/**`, `tests/architecture/**`, `Directory.Packages.props`, and the workflow file itself; new `arch-test` job runs on both PR + push; existing `pr-quality-check` job guarded with `if: github.event_name == 'pull_request'` to stay PR-only; `phase-a-title-gate` auto-skips on push events
+**Tests**: `dotnet build LankaConnect.sln` exit 0 (0 errors, 4 unrelated NuGet vuln warnings); `dotnet test --filter Category=ArchTest` 4/4 pass.
+**Build issues encountered + fixed**: (1) `CS0122 'AssemblyMarker' is inaccessible` — markers were `internal`; promoted to `public` (temporary anyway). (2) Transient `NuGet.targets(174,5): Cannot create a file when that file already exists` — stale `obj/` after `dotnet sln add`; cleared by deleting `tests/architecture/LankaConnect.ArchitectureTests/obj` and rebuilding.
+**Verification**: full sln build 0 errors; ArchTests 4/4 pass; CI workflow YAML lints cleanly (no syntax errors triggered the editor).
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2" — W2.2 row marked ✅ DONE.
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Next**: **W2.3** — fill `BuildingBlocks.Domain` with foundation types (`Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject`, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`) and NEW value objects per architect review (`Money`, `Currency` with ISO 4217 registry, `Locale`, `Country`), each with unit tests at 90%+ coverage. The `AssemblyMarker` placeholder in `BuildingBlocks.Domain` gets removed in the same commit that lands the first real type.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Phase A W2.1 — BuildingBlocks + Hosts + Modules skeleton — ✅ DONE on develop
 **Date**: 2026-05-13
 **Session**: First task of master TODO §"Phase A.W2 — BuildingBlocks + Observability" budget table. Lands the empty project shells that will host BuildingBlocks code from W2.3 onward.
 **Progress**: ✅ **DONE on develop**. 5 BuildingBlocks shells + 1 Hosts placeholder + Modules parent. `dotnet build LankaConnect.sln` exit 0 (4 unrelated NuGet vuln warnings unchanged from baseline). Each csproj nested in own subdirectory matching existing `src/LankaConnect.X/LankaConnect.X.csproj` convention. Clean Architecture dependency graph wired in shells so W2.2 ArchTest can enforce layering from day one before any code lands. Each csproj minimal — `Directory.Build.props` supplies `TargetFramework=net8.0`, `Nullable=enable`, `ImplicitUsings=enable`, `TreatWarningsAsErrors=true`, `LangVersion=12.0`; shells set only `RootNamespace`, `AssemblyName`, `Description`, plus `ProjectReference` per layering.

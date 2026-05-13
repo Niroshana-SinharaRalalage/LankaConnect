@@ -113,13 +113,10 @@ public class HmacTicketSignatureService : ITicketSignatureService
     }
 
     /// <inheritdoc />
-    public TicketSignatureVerifyResult Verify(string bodyToSign, ReadOnlySpan<byte> signature)
+    public TicketSignatureVerifyResult Verify(string bodyToSign, byte[] signature)
     {
         if (bodyToSign is null) return TicketSignatureVerifyResult.Invalid;
-        if (signature.Length != 32) return TicketSignatureVerifyResult.Invalid;
-
-        // Capture the candidate bytes once; HMAC objects are short-lived per check.
-        byte[] candidateBytes = signature.ToArray();
+        if (signature is null || signature.Length != 32) return TicketSignatureVerifyResult.Invalid;
 
         try
         {
@@ -128,7 +125,7 @@ public class HmacTicketSignatureService : ITicketSignatureService
             using (var hmacCurrent = new HMACSHA256(_currentSecret))
             {
                 var expectedCurrent = hmacCurrent.ComputeHash(Encoding.UTF8.GetBytes(bodyToSign));
-                if (CryptographicOperations.FixedTimeEquals(expectedCurrent, candidateBytes))
+                if (CryptographicOperations.FixedTimeEquals(expectedCurrent, signature))
                 {
                     return TicketSignatureVerifyResult.VerifiedWithCurrent;
                 }
@@ -139,7 +136,7 @@ public class HmacTicketSignatureService : ITicketSignatureService
             {
                 using var hmacPrevious = new HMACSHA256(_previousSecret);
                 var expectedPrevious = hmacPrevious.ComputeHash(Encoding.UTF8.GetBytes(bodyToSign));
-                if (CryptographicOperations.FixedTimeEquals(expectedPrevious, candidateBytes))
+                if (CryptographicOperations.FixedTimeEquals(expectedPrevious, signature))
                 {
                     _logger.LogInformation(
                         "Ticket QR signature verified using the PREVIOUS key — this QR was minted before the most-recent rotation. The audit log will record UsedPreviousKey=true.");

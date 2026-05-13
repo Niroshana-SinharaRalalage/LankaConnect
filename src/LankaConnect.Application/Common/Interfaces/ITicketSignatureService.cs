@@ -30,8 +30,13 @@ public interface ITicketSignatureService
     /// distinguish "verified with current" from "verified with previous" — the latter
     /// is a signal that the QR was minted before the most-recent rotation, useful for
     /// audit-log forensics.
+    ///
+    /// Signature is <c>byte[]</c> rather than <c>ReadOnlySpan&lt;byte&gt;</c> because the
+    /// latter is a ref struct that Moq cannot match in unit-test setups. The handler
+    /// already materializes the signature via <c>.ToArray()</c> before calling, so the
+    /// allocation cost is identical.
     /// </summary>
-    TicketSignatureVerifyResult Verify(string bodyToSign, ReadOnlySpan<byte> signature);
+    TicketSignatureVerifyResult Verify(string bodyToSign, byte[] signature);
 }
 
 /// <summary>

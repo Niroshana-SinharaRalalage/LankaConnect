@@ -505,6 +505,10 @@ public static class DependencyInjection
         // process lifetime; rotation happens via container restart after a Key Vault update.
         services.AddSingleton<ITicketSignatureService, HmacTicketSignatureService>();
 
+        // Phase 6A.141: Ticket-scan audit log repository.
+        services.AddScoped<LankaConnect.Domain.Events.Repositories.ITicketScanLogRepository,
+            LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
+
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();

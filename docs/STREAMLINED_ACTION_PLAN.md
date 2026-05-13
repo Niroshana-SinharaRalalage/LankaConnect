@@ -6,6 +6,68 @@
 
 ---
 
+## 🎯 2026-05-13 (Phase A W2.3 — BuildingBlocks.Domain foundation types + value objects) — ✅ DONE on develop in 2 commits
+
+**Status**: Third task of master TODO §"Phase A.W2". All 12 foundation types per master TODO §W2.3 acceptance landed; AssemblyMarker placeholder removed in `BuildingBlocks.Domain` (real types anchor the assembly now); ArchTest still 4/4 green; **194 unit tests pass** in 163ms.
+
+### W2.3a — 8 foundation primitives (commit `3cb20de1`)
+
+| Type | Purpose |
+|---|---|
+| `Error` | Sealed record (`Code`, `Message`) + sentinels (None/NullValue/NotFound/Validation/Conflict/Forbidden); dotted code convention per ADR-001 |
+| `Result` / `Result<T>` | Railway-style outcome with Map/Bind/Match + implicit conversions from T/Error |
+| `Maybe<T>` | Readonly struct Some/None with value-based equality + Map/Bind/Match |
+| `IDomainEvent` + `IAggregateRoot` | DDD markers — domain events stay in-module; cross-module uses BuildingBlocks.Contracts (W2.7) |
+| `Entity<TId>` | Identity equality (different concrete types with same Id stay distinct) + domain-events buffer |
+| `ValueObject` | Structural equality via `GetEqualityComponents()` |
+| `BusinessRule` | Abstract named-rule pattern + static Check/CheckAll |
+| `Guard` | Static argument-checks (NotNull, NotNullOrWhitespace, NotEmpty, NotNegative, Positive, InRange) |
+
+### W2.3b — 4 value objects per architect review (this commit)
+
+| Type | Notes |
+|---|---|
+| `Currency` | ISO 4217 with 7-currency registry (USD, LKR, INR, GBP, EUR, AUD, CAD). FromCode throws; TryFromCode returns Maybe. Case-insensitive lookup. |
+| `Money` | Composite (decimal Amount + Currency) with **same-currency-enforced** arithmetic (+ - * /) and comparison (< > <= >=). Cross-currency operations throw `InvalidOperationException` with clear message — silent currency coercion is the #1 source of monetary bugs. Banker's rounding to `Currency.DecimalDigits` via `RoundToCurrency`. |
+| `Country` | ISO 3166-1 alpha-2 with 6-country registry (LK, US, IN, GB, AU, CA). |
+| `Locale` | BCP 47 / .NET-culture tag validated via `CultureInfo.GetCultureInfo(predefinedOnly: true)` — rejects typos at the boundary. EnUs/SiLk/TaLk/EnGb static instances. |
+
+### Test coverage
+
+- 7 test classes, 194 tests
+- Errors, Result/Result<T> (combinators + invariants + Combine), Maybe (Some/None + equality + Map/Bind), Entity (identity equality + cross-type + DomainEvents lifecycle), ValueObject (structural + null safety + hash distinct), BusinessRule (Check + CheckAll), Guard (each overload + boundaries), Currency/Money/Country/Locale (each registry + TryFromCode + case-insensitive + ToString)
+
+### Out of W2.3 scope (deferred)
+
+- **EF value-converter for Money** (composite → `_amount` + `_currency` columns per ADR-005) lands in W2.5 `BuildingBlocks.Infrastructure`.
+
+### Compiler-error lessons during W2.3a
+
+1. `CS0109 'new' keyword not required` on `Result<T>.Success(T)` — generic-arity-binding difference means it doesn't hide the base. Dropped `new`.
+2. After fix #1, `CS0108 'Result<T>.Failure(Error)' hides inherited member` — same signature DOES hide. Added `new` to Failure only.
+3. **TDD discipline**: when overriding factories on a generic derived class, let the compiler tell you which case applies. Don't preemptively add/remove `new`.
+
+### CI verification
+
+- arch-test job on commit `3cb20de1` (run 25802277387) ✅ success
+- AssemblyMarker removal didn't break the ArchTest anchor (switched to `typeof(BuildingBlocks.Domain.Error).Assembly`)
+
+### Next per master TODO §W2
+
+W2.4 — `BuildingBlocks.Application` MediatR pipeline behaviors:
+- `ValidationBehavior` (FluentValidation)
+- `LoggingBehavior` (correlation IDs, scoped Serilog)
+- `TransactionBehavior` (UoW per command)
+- `IdempotencyBehavior` (per-module idempotency table conventions)
+- `OutboxBehavior` (publish IntegrationEventVx)
+- `AuditBehavior` (writes to `platform.audit_events` — NEW per architect review)
+
+Each behavior unit-tested with mock pipelines.
+
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2"
+
+---
+
 ## 🎯 2026-05-13 (Phase A W2.2 — NetArchTest layering project + first 4 rules + CI gate) — ✅ DONE on develop
 
 **Status**: Second task of master TODO §"Phase A.W2". Layering enforcement is live both at local-build and CI time.

@@ -579,13 +579,37 @@ src/Hosts/Host.AllInOne/             (placeholder class lib; W7 converts to Web 
 - [x] **CI**: add ArchTest job to `.github/workflows/pr-validation.yml` (extended trigger covers push-to-develop too)
 - **Acceptance**: ArchTest job blocks PRs that violate ✅
 
-### W2.3 — Extract BuildingBlocks.Domain
-- [ ] Move/create: `Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject` base, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`
-- [ ] **NEW**: Add `Money` value object
-- [ ] **NEW**: Add `Currency` value object with ISO 4217 registry (USD, LKR, INR, GBP, EUR, AUD, CAD)
-- [ ] **NEW**: Add `Locale` and `Country` value objects
-- [ ] **Verify**: unit tests for each value object (90%+ coverage)
-- **Acceptance**: foundation types in place; tested
+### W2.3 — Extract BuildingBlocks.Domain ✅ DONE 2026-05-13
+
+**Status**: All 12 types landed across 2 commits (3cb20de1 + this commit). **194 unit tests pass** in 163ms. AssemblyMarker placeholder removed; ArchTest anchor switched to `typeof(Error).Assembly`; layering rules still 4/4 pass on the new types.
+
+**W2.3a (commit `3cb20de1`)** — 8 foundation primitives:
+- `Error` (sealed record with sentinels None/NullValue/NotFound/Validation/Conflict/Forbidden)
+- `Result` (non-generic outcome with Success/Failure factories + Combine)
+- `Result<T>` (value-bearing with implicit conversions from T/Error + Map/Bind/Match railway combinators)
+- `Maybe<T>` (readonly struct Some/None with value-based equality + Map/Bind/Match)
+- `IDomainEvent` (in-process marker with `OccurredAt`)
+- `IAggregateRoot` (DDD aggregate-root marker)
+- `Entity<TId>` (identity equality across concrete types + domain-events buffer)
+- `ValueObject` (structural equality via `GetEqualityComponents()`)
+- `BusinessRule` (abstract named-rule pattern + static Check/CheckAll)
+- `Guard` (static argument-check helpers — NotNull, NotNullOrWhitespace, NotEmpty, NotNegative, Positive, InRange)
+
+**W2.3b (this commit)** — 4 value-object value-types per architect review:
+- `Currency` — ISO 4217 with the 7-currency registry (USD, LKR, INR, GBP, EUR, AUD, CAD); `FromCode` throws / `TryFromCode` returns Maybe; case-insensitive code lookup
+- `Money` — composite (decimal amount + Currency) with same-currency-enforced arithmetic (+ - * / unary-minus) and comparison (< > <= >=); cross-currency operations throw `InvalidOperationException` with a clear message; `RoundToCurrency` uses banker's rounding to `Currency.DecimalDigits`; `Zero(currency)`, `IsZero/IsPositive/IsNegative`, `Negate`, `Abs`
+- `Country` — ISO 3166-1 alpha-2 with 6-country registry (LK, US, IN, GB, AU, CA)
+- `Locale` — BCP 47 / .NET-culture tag with EnUs/SiLk/TaLk/EnGb static instances; validates against `CultureInfo.GetCultureInfo` with `predefinedOnly: true`; `ToCultureInfo()` for downstream formatting
+
+EF value-converter for `Money` (composite to `_amount` + `_currency` columns per ADR-005) lands in W2.5 BuildingBlocks.Infrastructure — out of W2.3 scope.
+
+### W2.3 — Extract BuildingBlocks.Domain (original spec)
+- [x] Move/create: `Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject` base, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`
+- [x] **NEW**: Add `Money` value object
+- [x] **NEW**: Add `Currency` value object with ISO 4217 registry (USD, LKR, INR, GBP, EUR, AUD, CAD)
+- [x] **NEW**: Add `Locale` and `Country` value objects
+- [x] **Verify**: unit tests for each value object (90%+ coverage) — 194/194 pass
+- **Acceptance**: foundation types in place; tested ✅
 
 ### W2.4 — Extract BuildingBlocks.Application
 - [ ] **Action**: Implement MediatR pipeline behaviors:

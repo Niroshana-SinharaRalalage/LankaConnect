@@ -3,7 +3,28 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase A W2.2 — NetArchTest layering project + first 4 rules + CI gate — ✅ DONE on develop
+## 🚀 CURRENT SESSION STATUS — Phase A W2.3 — BuildingBlocks.Domain foundation types + value objects — ✅ DONE on develop in 2 commits
+**Date**: 2026-05-13
+**Session**: Third task of master TODO §"Phase A.W2 — BuildingBlocks + Observability". All 12 foundation types per master TODO §W2.3 acceptance landed across 2 direct-to-develop commits (W2.3a `3cb20de1` primitives, W2.3b this commit value objects). `AssemblyMarker` placeholder removed in `BuildingBlocks.Domain`; ArchTest anchor switched to `typeof(Error).Assembly`. **194 unit tests pass in 163ms**, ArchTest 4/4 green, full sln build 0 errors.
+**Progress**: ✅ **DONE on develop**.
+- **W2.3a (3cb20de1)** — 8 foundation primitives: Error / Result / Result<T> / Maybe<T> / IDomainEvent / IAggregateRoot / Entity<TId> / ValueObject / BusinessRule / Guard. Railway-style Result combinators (Map/Bind/Match) with implicit conversions from T/Error; identity equality on Entity<TId> across concrete types; structural equality via GetEqualityComponents on ValueObject; named BusinessRule pattern (vs Func<>) so rules surface in stack traces.
+- **W2.3b (this commit)** — 4 value-object value-types per architect review: Currency (ISO 4217, 7-currency registry USD/LKR/INR/GBP/EUR/AUD/CAD; FromCode throws / TryFromCode returns Maybe); Money (composite decimal+Currency with same-currency-enforced arithmetic and comparison; cross-currency throws); Country (ISO 3166-1 alpha-2, 6-country registry LK/US/IN/GB/AU/CA); Locale (BCP 47 validated via CultureInfo.GetCultureInfo predefinedOnly).
+**Scope**:
+- 12 source files in `src/BuildingBlocks/BuildingBlocks.Domain/` (8 primitives + 4 value objects)
+- 11 test classes in `tests/LankaConnect.BuildingBlocks.Domain.Tests/` (one per primitive + value object, total 194 tests)
+- AssemblyMarker.cs removed from BuildingBlocks.Domain (real types now anchor NetArchTest's Types.InAssembly call)
+- `tests/architecture/LankaConnect.ArchitectureTests/LayeringRules.cs` updated to use `typeof(BuildingBlocks.Domain.Error).Assembly` instead of `typeof(BuildingBlocks.Domain.AssemblyMarker).Assembly`
+- EF value-converter for Money (composite → `_amount` + `_currency` per ADR-005) is W2.5 BuildingBlocks.Infrastructure work — out of W2.3 scope
+**Tests**: `dotnet build LankaConnect.sln` 0 errors; `dotnet test BuildingBlocks.Domain.Tests` 194/194 pass; `dotnet test --filter Category=ArchTest` 4/4 pass.
+**Compiler-error lessons in W2.3a**: (1) `CS0109 'new' keyword not required` on `Result<T>.Success(T)` — generic-arity-binding difference means it doesn't hide the base `Result.Success<T>(T)`; dropped `new`. (2) After fix #1, `CS0108 'Result<T>.Failure(Error)' hides inherited member` — same signature DOES hide the base; added `new` to Failure only. TDD lesson: let the compiler tell you which case applies when overriding factories on a generic derived class.
+**CI verification**: arch-test job on commit `3cb20de1` (run 25802277387) ✅ success; AssemblyMarker removal didn't break the ArchTest anchor.
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2" — W2.3 row marked ✅ DONE.
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Next**: **W2.4** — `BuildingBlocks.Application` MediatR pipeline behaviors (ValidationBehavior with FluentValidation; LoggingBehavior with correlation IDs + scoped Serilog; TransactionBehavior UoW per command; IdempotencyBehavior per-module table conventions; OutboxBehavior publish IntegrationEventVx; **AuditBehavior** writes to `platform.audit_events` — NEW per architect review). Each behavior unit-tested with mock pipelines.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Phase A W2.2 — NetArchTest layering project + first 4 rules + CI gate — ✅ DONE on develop
 **Date**: 2026-05-13
 **Session**: Second task of master TODO §"Phase A.W2 — BuildingBlocks + Observability". Layering enforcement live: 4 architecture rules pass against the W2.1 BuildingBlocks shells; CI gate on `arch-test` job blocks PRs that violate AND catches direct trunk commits via push-trigger on develop.
 **Progress**: ✅ **DONE on develop**. New project `tests/architecture/LankaConnect.ArchitectureTests/` using `NetArchTest.Rules` 1.3.2. Four rules tagged `[Trait("Category", "ArchTest")]`: BuildingBlocks.Domain has no LankaConnect.* dependencies (innermost layer); BuildingBlocks.Contracts has no LankaConnect.* dependencies (cross-module ABI); BuildingBlocks.Application doesn't depend on Infrastructure/Web; BuildingBlocks.Infrastructure doesn't depend on Web. `dotnet test --filter Category=ArchTest` 4/4 pass in 13ms.

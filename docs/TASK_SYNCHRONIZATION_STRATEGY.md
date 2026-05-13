@@ -3,7 +3,23 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.140 Sign-Up Email Gates Removal + Smart UserId Resolution
+## 🚀 CURRENT SESSION STATUS — Phase 6A.141 Paid-Event Ticket Check-in / QR Scanner
+**Date**: 2026-05-13
+**Session**: End-to-end implementation of the paid-event ticket check-in feature. The QR code printed on every paid-event ticket has been decorative since Phase 6A.24 — generated correctly but never scannable because no scan endpoint, no organizer UI, no HMAC signature. This phase closes that gap with a full backend + frontend implementation, validated by an independent Plan-agent architect review that surfaced 18 findings (6 must-fix-before-Phase-C/F) all incorporated before code touched the tree.
+**Progress**: 🔧 **CODE COMPLETE on branch `feat/phase-6a-141-ticket-checkin`, awaiting Phase I staging deploy + operator UAT**.
+- Branch: `feat/phase-6a-141-ticket-checkin` off `main` (HEAD `c0b5edc9` at branch-time)
+- 9 commits: foundation → master TODO doc → F5 dual-key → Phase C (signed payload generation) → Phase D (audit table + migration) → Phase E (handler) → Phase F.1+F.2 (scan endpoints) → Phase F.3 (admin-unmark) → Phase G (scanner UI)
+- Files: 18 new + 8 modified across Domain / Application / Infrastructure / API / web
+- Tests: 60+ unit tests GREEN across Domain (19 + 9 + 8 = 36 ticket-related), Infrastructure (14 signature-service), Application (5 handler). Frontend page tests skipped at page level — React 19 `use(params)` doesn't play well with vitest microtask flushing; operator UAT is the verification gate.
+- .NET build clean (0 errors, 8 pre-existing AutoMapper/MailKit advisory warnings)
+- TypeScript clean (`tsc --noEmit` passes)
+**Tests**: backend handler tests 5/5 GREEN (happy, invalid-sig, ticket-not-found, wrong-event, race-loser); signature-service tests 14/14 GREEN (8 single-key + 6 dual-key rotation grace); TicketSignedPayload 19/19; TicketScanLog factory 9/9; Ticket.Create regression 8/8.
+**Deploy order**: Phase I — F6 pre-flight `az keyvault secret set --vault-name lankaconnect-kv-staging --name TICKET-QR-SIGNING-KEY --value $(openssl rand -base64 32)` BEFORE API deploy (else DI throws on startup and container won't start), then `deploy-staging.yml` against `feat/phase-6a-141-ticket-checkin`, verify revision SHA matches, query DB for `TicketScanLogs` table existence + indices, run 13-cell smoke matrix, then `deploy-ui-staging.yml`, then hand 10-cell operator UAT checklist to product owner. Phase J (production) only after operator UAT signs off.
+**Master TODO**: [docs/MASTER_TODO_PHASE_6A_141_TICKET_CHECKIN_2026_05_13.md](MASTER_TODO_PHASE_6A_141_TICKET_CHECKIN_2026_05_13.md) — canonical implementation guide with 18 review findings, 13-cell smoke matrix, 10-cell UAT checklist.
+
+---
+
+## Earlier Session — Phase 6A.140 Sign-Up Email Gates Removal + Smart UserId Resolution
 **Date**: 2026-05-11
 **Session**: Architect-refined design after product-owner clarification — server-side smart UserId resolution replaces the prior "drop both gates" plan. Member emails resolve to real UserIds (no orphans); non-member emails fall back to the deterministic anonymous GUID; UI never blocks with "please log in" or "register for event first". Two latent bugs bundled because the main fix exposes them: case-insensitive member-email lookup in `CheckEventRegistrationQueryHandler`, and anonymous-confirmation-email fallback in `UserCommittedToSignUpEventHandler`. Phase 6A.141 follow-ups tracked: orphan-commitment backfill, auth trust-boundary fix in the authenticated commit handler (pre-existing), optional rate limit.
 **Progress**: ✅ **SHIPPED + STAGING-VERIFIED**.

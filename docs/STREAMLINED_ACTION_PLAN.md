@@ -6,6 +6,48 @@
 
 ---
 
+## 🎯 2026-05-13 (Phase A W2.1 — BuildingBlocks + Hosts + Modules skeleton) — ✅ DONE on develop
+
+**Status**: First task of master TODO §"Phase A.W2 — BuildingBlocks + Observability". 5 BuildingBlocks shells + 1 Hosts placeholder + Modules parent landed on develop; `dotnet build LankaConnect.sln` exit 0.
+
+### Layout (Clean Architecture dependency graph wired in shells)
+
+```
+src/BuildingBlocks/
+  BuildingBlocks.Domain/           innermost; zero project refs
+  BuildingBlocks.Contracts/        cross-module ABI; zero refs
+  BuildingBlocks.Application/      → Domain + Contracts
+  BuildingBlocks.Infrastructure/   → Application + Domain + Contracts
+  BuildingBlocks.Web/              → Application + Domain + Contracts + Microsoft.AspNetCore.App
+src/Modules/.gitkeep               empty parent (W3+ extracts populate)
+src/Hosts/Host.AllInOne/           class-lib placeholder (W7 → Web SDK)
+```
+
+Each csproj nested in its own subdirectory matching existing `src/LankaConnect.X/LankaConnect.X.csproj` convention. Minimal csproj bodies — `Directory.Build.props` supplies `TargetFramework=net8.0`, `Nullable=enable`, `ImplicitUsings=enable`, `TreatWarningsAsErrors=true`, `LangVersion=12.0`. Shells set only `RootNamespace`, `AssemblyName`, `Description`, plus `ProjectReference` items per layering.
+
+### Why wire the dependency graph in empty shells?
+
+W2.2 (NetArchTest) needs the project-reference structure to exist before any rules can be written. Setting up correct references in empty shells now means: (1) W2.3+ code lands into a layering-constrained environment from commit one; (2) any accidental cross-layer reference becomes a build failure or ArchTest failure immediately, not "tech debt to fix later."
+
+### Verification
+- `dotnet sln add` for all 6 projects succeeded
+- `dotnet clean + restore + build LankaConnect.sln` exit 0
+- One transient `CS8784 ModelReaderWriterContextGenerator init failure` on first build resolved by `dotnet clean` (stale-cache artifact unrelated to new shells)
+
+### Next per master TODO §W2
+1. **W2.2** — `tests/architecture/LankaConnect.ArchitectureTests.csproj` with NetArchTest; first rule "Domain projects reference only BuildingBlocks.Domain"; CI ArchTest job in `pr-validation.yml`
+2. **W2.3** — fill BuildingBlocks.Domain with foundation types (`Result<T>`, `Maybe<T>`, `Entity<TId>`, `ValueObject`, `IAggregateRoot`, `IDomainEvent`, `BusinessRule`, `Guard`, **`Money`**, **`Currency`** with ISO 4217 registry, **`Locale`**, **`Country`**)
+3. **W2.4** — Application MediatR pipeline behaviors (Validation/Logging/Transaction/Idempotency/Outbox/**Audit** per architect review)
+4. **W2.5** — Infrastructure BaseDbContext + Money EF value converter + OutboxProcessor + IntegrationEventDispatcher + DeadLetterTable
+5. **W2.6** — Web JWT middleware + ProblemDetails + **OpenTelemetry + Application Insights** + health checks + rate limiting + **API versioning (Asp.Versioning)** + FeatureManagement integration
+6. **W2.7** — Contracts IntegrationEventBase + V1 versioning + IIntegrationEventDispatcher
+7. **W2.8** — API baseline regression run
+8. **W2.9** — tracker close-out
+
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2"
+
+---
+
 ## 🎯 2026-05-12 (Phase A W1.5 + W1.7 — FeatureManagement install + .claude/settings.json audit + W1 CLOSE-OUT) — ✅ DONE on develop
 
 **Status**: **All Phase A Week 1 tasks closed**. Master TODO §"Plan Delta Amendments" budget table 10 tasks ✅ DONE except W1.1 🟡 PARTIAL (founder-deferred rotation + W1.1b KV wiring split out for later founder pickup).

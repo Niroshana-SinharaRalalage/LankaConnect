@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.BuildingBlocks.Web</RootNamespace>
+    <AssemblyName>LankaConnect.BuildingBlocks.Web</AssemblyName>
+    <Description>Web cross-cutting building blocks: JWT auth middleware, ProblemDetails handler, OpenTelemetry + Application Insights wiring, health checks, rate limiting, API versioning (Asp.Versioning), Microsoft.FeatureManagement integration. Depends on BuildingBlocks.Application + BuildingBlocks.Domain.</Description>
+    <!--
+      Switched to Microsoft.NET.Sdk.Web at the start of W2.6 to bring in
+      ASP.NET Core MVC + middleware framework references. For W2.1 skeleton,
+      using Microsoft.NET.Sdk to keep build minimal.
+    -->
+  </PropertyGroup>
+
+  <!--
+    W2.1 SKELETON (2026-05-12). Empty shell — W2.6 lights up middleware + OTel.
+    Per ADR-004 the Microsoft.FeatureManagement integration also lives here
+    (placeholder home in LankaConnect.Shared since W1.5 — will move in W2.6).
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

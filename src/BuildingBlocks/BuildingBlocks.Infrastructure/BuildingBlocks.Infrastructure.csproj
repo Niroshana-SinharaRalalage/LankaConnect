@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.BuildingBlocks.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.BuildingBlocks.Infrastructure</AssemblyName>
+    <Description>Infrastructure-layer building blocks: BaseDbContext (audit fields, soft delete, JSONB ValueComparer per MEMORY.md), Money EF value converter, OutboxProcessor, IntegrationEventDispatcher, DeadLetterTable. Depends on BuildingBlocks.Application + BuildingBlocks.Domain.</Description>
+  </PropertyGroup>
+
+  <!--
+    W2.1 SKELETON (2026-05-12). Empty shell — W2.5 fills with persistence primitives.
+    Per Clean Architecture: Infrastructure references Application + Domain.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+# Phase A W2.1 — Modules parent folder
+#
+# This directory is the parent for all extracted modules. It will be populated
+# by W3+ as each module gets extracted from the LankaConnect.* monolith:
+#
+#   src/Modules/Notifications/      W3 (Week 3)
+#   src/Modules/Communications/     W4
+#   src/Modules/Media/              W4
+#   src/Modules/Money/              W5 (moved up from W9 per architect review)
+#   src/Modules/Forms/              W6
+#   src/Modules/Payments/           W7
+#   src/Modules/Events/             W8-W9 (extended to 3 weeks)
+#   src/Modules/Identity/           W10
+#
+# Each module follows the canonical 5-layer structure:
+#   <Module>.Domain.csproj
+#   <Module>.Application.csproj
+#   <Module>.Infrastructure.csproj
+#   <Module>.Web.csproj
+#   <Module>.Contracts.csproj (the public ABI other modules consume)
+#   <Module>.Tests.csproj (per-module test project)
+#
+# Per ADR-002 (tenancy strategy) + ADR-005 (Money DTO migration), modules
+# communicate via IntegrationEvent contracts published through the
+# BuildingBlocks.Contracts dispatcher — NEVER via direct project references.
+# ArchTest (landing in W2.2) enforces.
+#
+# Master TODO: docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md §"Phase A.W3" et seq.

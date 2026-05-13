@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.BuildingBlocks.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.BuildingBlocks.Domain</AssemblyName>
+    <Description>Domain-layer building blocks: Entity, ValueObject, IAggregateRoot, IDomainEvent, BusinessRule, Guard, Result&lt;T&gt;, Money, Currency, Locale, Country. Innermost layer; references no other LankaConnect projects.</Description>
+  </PropertyGroup>
+
+  <!--
+    W2.1 SKELETON (2026-05-12). Empty shell — W2.3 fills with foundation types.
+    Per master TODO §"Phase A.W2", this is the innermost Clean Architecture
+    layer. Zero ProjectReferences by design (ArchTest in W2.2 will enforce).
+  -->
+
+</Project>

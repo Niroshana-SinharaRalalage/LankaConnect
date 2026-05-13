@@ -3,7 +3,27 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase A W1.5 + W1.7 — FeatureManagement install + settings.json audit + W1 CLOSE-OUT — ✅ DONE on develop
+## 🚀 CURRENT SESSION STATUS — Phase A W2.1 — BuildingBlocks + Hosts + Modules skeleton — ✅ DONE on develop
+**Date**: 2026-05-13
+**Session**: First task of master TODO §"Phase A.W2 — BuildingBlocks + Observability" budget table. Lands the empty project shells that will host BuildingBlocks code from W2.3 onward.
+**Progress**: ✅ **DONE on develop**. 5 BuildingBlocks shells + 1 Hosts placeholder + Modules parent. `dotnet build LankaConnect.sln` exit 0 (4 unrelated NuGet vuln warnings unchanged from baseline). Each csproj nested in own subdirectory matching existing `src/LankaConnect.X/LankaConnect.X.csproj` convention. Clean Architecture dependency graph wired in shells so W2.2 ArchTest can enforce layering from day one before any code lands. Each csproj minimal — `Directory.Build.props` supplies `TargetFramework=net8.0`, `Nullable=enable`, `ImplicitUsings=enable`, `TreatWarningsAsErrors=true`, `LangVersion=12.0`; shells set only `RootNamespace`, `AssemblyName`, `Description`, plus `ProjectReference` per layering.
+**Scope**:
+- `src/BuildingBlocks/BuildingBlocks.Domain/` — innermost; zero project refs by design (ArchTest will enforce)
+- `src/BuildingBlocks/BuildingBlocks.Contracts/` — cross-module ABI; zero refs by design
+- `src/BuildingBlocks/BuildingBlocks.Application/` — refs Domain + Contracts
+- `src/BuildingBlocks/BuildingBlocks.Infrastructure/` — refs Application + Domain + Contracts
+- `src/BuildingBlocks/BuildingBlocks.Web/` — refs Application + Domain + Contracts + `Microsoft.AspNetCore.App` framework ref for W2.6 middleware
+- `src/Hosts/Host.AllInOne/` — class-lib placeholder; W7 converts to `Microsoft.NET.Sdk.Web` and moves Program.cs composition here
+- `src/Modules/.gitkeep` — empty parent; documents W3+ module placement convention inline
+**Tests**: No source code touched; no test regressions expected. Domain.Tests / Infrastructure.Tests / Shared.Tests / Application.Tests unchanged. IntegrationTests pre-existing fixture issue tracked separately (out of W2.1 scope).
+**Verification**: `dotnet sln add` succeeded for all 6 projects; `dotnet clean + restore + build LankaConnect.sln` exit 0; one transient `CS8784 ModelReaderWriterContextGenerator init failure` on first build resolved by `dotnet clean` (stale-cache artifact unrelated to new shells).
+**Master TODO**: [docs/MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md](MASTER_TODO_PHASE_A_MODULAR_MONOLITH.md) §"Phase A.W2" — W2.1 row marked ✅ DONE.
+**Source plan mirror**: `C:\Users\Niroshana\.claude\plans\yes-one-cart-per-streamed-rocket.md`.
+**Next**: **W2.2** — Architecture test project (`tests/architecture/LankaConnect.ArchitectureTests.csproj` with NetArchTest); first rule "Domain projects reference only BuildingBlocks.Domain"; add CI ArchTest job to `pr-validation.yml` so layering violations are blocked at PR time.
+
+---
+
+## 🚀 PRIOR SESSION STATUS — Phase A W1.5 + W1.7 — FeatureManagement install + settings.json audit + W1 CLOSE-OUT — ✅ DONE on develop
 **Date**: 2026-05-12
 **Session**: Closes Phase A Week 1. Lands W1.5 (`Microsoft.FeatureManagement.AspNetCore` install + smoke endpoint) and W1.7 (`.claude/settings.json` audit + W1 close-out) per master TODO §"Plan Delta Amendments" budget table D7/D8. **All 10 W1 budget-table tasks now ✅ DONE except W1.1 🟡 PARTIAL** (rotation deferred per founder; KV wiring split as W1.1b for later founder pickup).
 **Progress**: ✅ **DONE on develop, staging-verified end-to-end where applicable**.

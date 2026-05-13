@@ -523,8 +523,23 @@ JSON shape diff is insufficient (misses field reordering, semantic changes, pagi
 
 ## Phase A.W2 — BuildingBlocks + Observability (Week 2, 5 days)
 
-### W2.1 — Module skeleton folders
-- [ ] **Action**: Create empty `.csproj` shells:
+### W2.1 — Module skeleton folders ✅ DONE 2026-05-12
+
+**Status**: 5 BuildingBlocks shells + `Hosts/Host.AllInOne.csproj` placeholder + `src/Modules/.gitkeep` parent all landed on develop. `dotnet build LankaConnect.sln` exits 0 (4 unrelated NuGet vuln warnings). Each csproj is in its own nested subdirectory (matches existing convention `src/LankaConnect.X/LankaConnect.X.csproj`). Clean Architecture dependency graph wired in shells before any code lands so W2.2 ArchTest can enforce layering from day one:
+
+```
+src/BuildingBlocks/
+  BuildingBlocks.Domain/             (innermost; zero refs by design)
+  BuildingBlocks.Contracts/          (cross-module ABI; zero refs by design)
+  BuildingBlocks.Application/        → Domain + Contracts
+  BuildingBlocks.Infrastructure/     → Application + Domain + Contracts
+  BuildingBlocks.Web/                → Application + Domain + Contracts + Microsoft.AspNetCore.App
+src/Modules/.gitkeep                 (empty parent; W3+ extracts populate this)
+src/Hosts/Host.AllInOne/             (placeholder class lib; W7 converts to Web SDK + moves Program.cs here)
+```
+
+### W2.1 — Module skeleton folders (original spec)
+- [x] **Action**: Create empty `.csproj` shells:
   - `src/BuildingBlocks/BuildingBlocks.Domain.csproj`
   - `src/BuildingBlocks/BuildingBlocks.Application.csproj`
   - `src/BuildingBlocks/BuildingBlocks.Infrastructure.csproj`
@@ -532,8 +547,8 @@ JSON shape diff is insufficient (misses field reordering, semantic changes, pagi
   - `src/BuildingBlocks/BuildingBlocks.Contracts.csproj`
   - `src/Modules/` (empty parent)
   - `src/Hosts/Host.AllInOne.csproj` (placeholder; logic in W7)
-- [ ] **Verify**: `dotnet build LankaConnect.sln` green
-- **Acceptance**: empty projects build green
+- [x] **Verify**: `dotnet build LankaConnect.sln` green
+- **Acceptance**: empty projects build green ✅
 
 ### W2.2 — Architecture test project
 - [ ] **Action**: Create `tests/architecture/LankaConnect.ArchitectureTests.csproj` with NetArchTest

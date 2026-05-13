@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Hosts.AllInOne</RootNamespace>
+    <AssemblyName>LankaConnect.Hosts.AllInOne</AssemblyName>
+    <Description>Composition root for the All-In-One deployment topology — placeholder for Phase A W7 (Payments extraction) which wires up the real module-by-module Program.cs replacing src/LankaConnect.API/Program.cs.</Description>
+  </PropertyGroup>
+
+  <!--
+    W2.1 PLACEHOLDER (2026-05-12). Empty class-library shell.
+
+    W7 will: (a) convert this to Microsoft.NET.Sdk.Web, (b) move Program.cs
+    composition logic from src/LankaConnect.API here, (c) wire each module
+    (Notifications, Communications, Media, Forms, Payments, Events, Identity)
+    via their respective module-host registration extensions.
+
+    For W2.1 the project just needs to BUILD; no main entry point required
+    in a class library SDK. The actual web host comes in W7.
+  -->
+
+</Project>

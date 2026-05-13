@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.BuildingBlocks.Application</RootNamespace>
+    <AssemblyName>LankaConnect.BuildingBlocks.Application</AssemblyName>
+    <Description>Application-layer building blocks: MediatR pipeline behaviors (Validation, Logging, Transaction, Idempotency, Outbox, Audit). Depends on BuildingBlocks.Domain.</Description>
+  </PropertyGroup>
+
+  <!--
+    W2.1 SKELETON (2026-05-12). Empty shell — W2.4 fills with pipeline behaviors.
+    Per Clean Architecture: Application references Domain (and Contracts for
+    integration event types it dispatches). ArchTest in W2.2 will enforce.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

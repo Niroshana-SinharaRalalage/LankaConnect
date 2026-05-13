@@ -103,13 +103,22 @@ public class Ticket : BaseEntity
     }
 
     /// <summary>
-    /// Creates a new standard ticket for a paid event registration (legacy SingleTier mode)
+    /// Creates a new standard ticket for a paid event registration (legacy SingleTier mode).
+    /// Phase 6A.141: <paramref name="ticketCode"/> and <paramref name="qrCodeData"/> are
+    /// caller-supplied. The Phase 6A.24-compatible behaviour (auto-generate both) is the
+    /// default when both are <c>null</c> — preserves test callers that predate the signing
+    /// flow. Production callers (TicketService) always supply both: <see cref="GenerateTicketCode"/>
+    /// + signature-service-built signed v1 payload. If <paramref name="qrCodeData"/> is
+    /// supplied but <paramref name="ticketCode"/> is not, the signature inside the payload
+    /// would not match the entity's generated code — that's rejected with a Result failure.
     /// </summary>
     public static Result<Ticket> Create(
         Guid registrationId,
         Guid eventId,
         Guid? userId,
-        DateTime eventEndDate)
+        DateTime eventEndDate,
+        string? ticketCode = null,
+        string? qrCodeData = null)
     {
         if (registrationId == Guid.Empty)
             return Result<Ticket>.Failure("Registration ID is required");
@@ -117,28 +126,33 @@ public class Ticket : BaseEntity
         if (eventId == Guid.Empty)
             return Result<Ticket>.Failure("Event ID is required");
 
-        // Generate unique ticket code: LC-YYYY-XXXXXX (Year + 6 random alphanumeric)
-        var ticketCode = GenerateTicketCode();
+        if (!string.IsNullOrEmpty(qrCodeData) && string.IsNullOrEmpty(ticketCode))
+            return Result<Ticket>.Failure("ticketCode must be supplied when qrCodeData is supplied so the signed payload binds to the entity's code");
 
-        // Generate QR code data (JSON with ticket info and validation hash)
-        var qrCodeData = GenerateQrCodeData(ticketCode, eventId, registrationId);
+        // Phase 6A.141: if the caller supplied a ticketCode (production path, TicketService
+        // already resolved collisions), use it. Otherwise auto-generate (legacy / test path).
+        var resolvedTicketCode = ticketCode ?? GenerateTicketCode();
 
-        // Ticket expires 24 hours after event ends
+        // If the caller supplied a signed payload, trust it. Otherwise fall back to the
+        // legacy unsigned base64 form so unmigrated callers keep working.
+        var resolvedQrCodeData = qrCodeData ?? GenerateLegacyQrCodeData(resolvedTicketCode, eventId, registrationId);
+
         var expiresAt = eventEndDate.AddHours(24);
 
         var ticket = new Ticket(
             registrationId,
             eventId,
             userId,
-            ticketCode,
-            qrCodeData,
+            resolvedTicketCode,
+            resolvedQrCodeData,
             expiresAt);
 
         return Result<Ticket>.Success(ticket);
     }
 
     /// <summary>
-    /// Creates a tiered ticket (Master or Individual) for multi-tier events
+    /// Creates a tiered ticket (Master or Individual) for multi-tier events.
+    /// Phase 6A.141: same ticketCode + qrCodeData injection pattern as <see cref="Create"/>.
     /// </summary>
     public static Result<Ticket> CreateTiered(
         Guid registrationId,
@@ -148,7 +162,9 @@ public class Ticket : BaseEntity
         string ticketTierName,
         TicketCategory ticketCategory,
         int? attendeeIndex = null,
-        string? attendeeNames = null)
+        string? attendeeNames = null,
+        string? ticketCode = null,
+        string? qrCodeData = null)
     {
         if (registrationId == Guid.Empty)
             return Result<Ticket>.Failure("Registration ID is required");
@@ -168,16 +184,19 @@ public class Ticket : BaseEntity
         if (ticketCategory == TicketCategory.Master && string.IsNullOrWhiteSpace(attendeeNames))
             return Result<Ticket>.Failure("Attendee names are required for master tickets");
 
-        var ticketCode = GenerateTicketCode();
-        var qrCodeData = GenerateQrCodeData(ticketCode, eventId, registrationId);
+        if (!string.IsNullOrEmpty(qrCodeData) && string.IsNullOrEmpty(ticketCode))
+            return Result<Ticket>.Failure("ticketCode must be supplied when qrCodeData is supplied so the signed payload binds to the entity's code");
+
+        var resolvedTicketCode = ticketCode ?? GenerateTicketCode();
+        var resolvedQrCodeData = qrCodeData ?? GenerateLegacyQrCodeData(resolvedTicketCode, eventId, registrationId);
         var expiresAt = eventEndDate.AddHours(24);
 
         var ticket = new Ticket(
             registrationId,
             eventId,
             userId,
-            ticketCode,
-            qrCodeData,
+            resolvedTicketCode,
+            resolvedQrCodeData,
             expiresAt,
             ticketTierName.Trim(),
             ticketCategory,
@@ -233,9 +252,12 @@ public class Ticket : BaseEntity
     }
 
     /// <summary>
-    /// Generates a unique ticket code in format LC-YYYY-XXXXXX
+    /// Generates a unique ticket code in format LC-YYYY-XXXXXX.
+    /// Phase 6A.141: lifted to public so <c>TicketService</c> can generate the code,
+    /// resolve any DB-side collisions, and then build the signed QR payload around
+    /// the final code before calling <see cref="Create"/>.
     /// </summary>
-    private static string GenerateTicketCode()
+    public static string GenerateTicketCode()
     {
         var year = DateTime.UtcNow.Year;
         var randomPart = GenerateRandomAlphanumeric(6);
@@ -258,17 +280,15 @@ public class Ticket : BaseEntity
     }
 
     /// <summary>
-    /// Generates QR code data with validation information
+    /// Phase 6A.141: legacy fallback for callers that don't yet supply a signed payload.
+    /// New code should not rely on this — TicketService now constructs a signed v1
+    /// payload via ITicketSignatureService and passes it into Create / CreateTiered.
+    /// Preserved so any caller predating Phase 6A.141 still produces a parseable QR.
     /// </summary>
-    private static string GenerateQrCodeData(string ticketCode, Guid eventId, Guid registrationId)
+    private static string GenerateLegacyQrCodeData(string ticketCode, Guid eventId, Guid registrationId)
     {
-        // Create a validation token combining ticket info
         var validationData = $"{ticketCode}|{eventId}|{registrationId}";
-
-        // Simple base64 encoding for now - in production, consider encryption
-        var encodedData = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(validationData));
-
-        return encodedData;
+        return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(validationData));
     }
 
     /// <summary>

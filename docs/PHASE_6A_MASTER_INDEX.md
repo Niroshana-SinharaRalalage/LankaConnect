@@ -109,7 +109,8 @@
 | 6A.138 | Photo Album Video Upload Support | ✅ Complete | See PROGRESS_TRACKER.md | 2026-03-29 |
 | 6A.139 | Admin-Initiated Upgrade to Event Organizer (symmetric to 6A.106 downgrade) | ✅ Complete | See PROGRESS_TRACKER.md | 2026-04-28 |
 | 6A.140 | Sign-Up Email Gates Removal + Smart UserId Resolution (refined: member emails resolve to real UserId server-side; non-member emails fall back to deterministic anonymous GUID — no "please log in" wall) | ✅ SHIPPED + STAGING-VERIFIED | See PROGRESS_TRACKER.md | 2026-05-11 |
-| 6A.141 | Follow-ups deferred from 6A.140: (a) reconcile pre-existing orphan deterministic-GUID commitments for users who later joined; (b) auth trust-boundary fix in `CommitToSignUpItemCommandHandler` (trusts body `UserId` instead of JWT subject — predates 6A.140); (c) optional spam/quota rate limit on anonymous sign-up endpoints | ⏳ Planned | Depends on 6A.140 | 2026-05-11 |
+| 6A.141 | Paid-Event Ticket Check-in / QR Scanner end-to-end (HMAC-signed QR payload, organizer-scoped scan endpoint, html5-qrcode scanner page at `/events/{id}/manage/scan`, audit log via new `ticket_scan_log` table, lazy migration of legacy unsigned QRs) | 🔧 In Progress | See PROGRESS_TRACKER.md | 2026-05-13 |
+| 6A.142 | Follow-ups deferred from 6A.140 (renumbered from 6A.141 on 2026-05-13 so the round number could be assigned to the user-facing ticket-scanner feature): (a) reconcile pre-existing orphan deterministic-GUID commitments for users who later joined; (b) auth trust-boundary fix in `CommitToSignUpItemCommandHandler` (trusts body `UserId` instead of JWT subject — predates 6A.140); (c) optional spam/quota rate limit on anonymous sign-up endpoints | ⏳ Planned | Depends on 6A.140 | 2026-05-13 |
 
 ---
 

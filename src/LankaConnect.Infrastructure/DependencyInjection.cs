@@ -499,6 +499,12 @@ public static class DependencyInjection
         services.AddScoped<IPdfTicketService, PdfTicketService>();
         services.AddScoped<ITicketService, TicketService>();
 
+        // Phase 6A.141: Ticket QR signature service. HMAC-SHA256 backed by Azure Key Vault
+        // secret TICKET-QR-SIGNING-KEY, surfaced through configuration key Tickets:QrSigningKey.
+        // Singleton because the HMAC secret is read once at construction and reused for the
+        // process lifetime; rotation happens via container restart after a Key Vault update.
+        services.AddSingleton<ITicketSignatureService, HmacTicketSignatureService>();
+
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();

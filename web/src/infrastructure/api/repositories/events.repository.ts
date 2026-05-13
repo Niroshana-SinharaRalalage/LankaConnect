@@ -84,6 +84,9 @@ import type {
   ConvertRegistrationModeResult,
   // Phase 7F-D: paid Mode-B add-attendees with delta payment
   InitiateAddHeadCountRequest,
+  // Phase 6A.141: ticket scanner
+  ScanTicketResult,
+  UnmarkScannedResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1984,6 +1987,46 @@ export class EventsRepository {
     await apiClient.delete<void>(`/events/${eventId}/ticket-tiers/${tierId}`);
   }
 
+  // ============================================================
+  // Phase 6A.141: Paid-event ticket check-in / QR scanner
+  // ============================================================
+
+  /**
+   * Scans a QR-encoded ticket payload at the event gate.
+   * Returns accepted with attendee + tier details, OR rejected with a reason code.
+   * Both outcomes are HTTP 200 — the body's `result` field distinguishes them.
+   * Only HTTP 4xx for protocol/auth failures (401 unauth, 403 not-organizer, 404 event-missing).
+   */
+  async scanTicket(eventId: string, qrPayload: string): Promise<ScanTicketResult> {
+    return await apiClient.post<ScanTicketResult>(
+      `${this.basePath}/${eventId}/tickets/scan`,
+      { qrPayload }
+    );
+  }
+
+  /**
+   * Manual-entry fallback for the scanner — gate staff types in the LC-YYYY-XXXXXX
+   * code when the QR can't be scanned (damaged print, dead phone). No signature
+   * verification (trust comes from organizer auth).
+   */
+  async scanTicketByCode(eventId: string, ticketCode: string): Promise<ScanTicketResult> {
+    return await apiClient.post<ScanTicketResult>(
+      `${this.basePath}/${eventId}/tickets/scan-by-code`,
+      { ticketCode }
+    );
+  }
+
+  /**
+   * Admin-only — reverses a wrongly-scanned ticket so the attendee can re-scan
+   * and walk in. Writes a new `ticket_scan_log` row with `scan_result='unmarked'`
+   * carrying the admin's stated reason. The original accepted row stays.
+   */
+  async unmarkScanned(eventId: string, ticketCode: string, reason: string): Promise<UnmarkScannedResult> {
+    return await apiClient.post<UnmarkScannedResult>(
+      `${this.basePath}/${eventId}/tickets/${ticketCode}/unmark-scanned`,
+      { reason }
+    );
+  }
 }
 
 /**

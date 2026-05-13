@@ -3383,3 +3383,52 @@ export interface InitiateAddHeadCountRequest {
   successUrl: string;
   cancelUrl: string;
 }
+
+// ============================================================
+// Phase 6A.141: Paid-event ticket check-in / QR scanner DTOs
+// ============================================================
+
+export interface TierBreakdownEntry {
+  tier: string;
+  count: number;
+}
+
+/**
+ * Outcome of a ticket-scan attempt. Mirrors the server-side ScanTicketResult.
+ * Most fields are nullable because the shape covers both accepted (green panel)
+ * and rejected (red panel) outcomes via a single discriminator (`result`).
+ */
+export interface ScanTicketResult {
+  result: 'accepted' | 'rejected';
+  reason?: string | null;
+  reasonMessage?: string | null;
+  ticketCode?: string | null;
+  attendeeName?: string | null;
+  tier?: string | null;
+  attendeeCount?: number | null;
+  tierBreakdown?: TierBreakdownEntry[] | null;
+  scannedAt?: string | null;        // ISO 8601 from server
+  scannedBy?: string | null;
+  usedPreviousKey: boolean;
+  wrongEventTitle?: string | null;  // populated only on wrong_event rejection
+}
+
+/**
+ * Canonical rejection reason codes shared with the server's ReasonCode constants
+ * and the audit log's `rejection_reason` column. Adding a new code requires
+ * matching server-side updates.
+ */
+export type ScanRejectionReason =
+  | 'invalid_signature'
+  | 'malformed_payload'
+  | 'ticket_not_found'
+  | 'wrong_event'
+  | 'expired'
+  | 'invalidated'
+  | 'already_scanned'
+  | 'malformed_request';
+
+export interface UnmarkScannedResult {
+  ticketCode: string;
+  unmarkedAt: string;
+}

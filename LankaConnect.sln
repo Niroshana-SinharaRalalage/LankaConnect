@@ -47,6 +47,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "architecture", "architectur
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.ArchitectureTests", "tests\architecture\LankaConnect.ArchitectureTests\LankaConnect.ArchitectureTests.csproj", "{FB8F09AE-7FD9-4103-92E3-AF66DF23A648}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LankaConnect.BuildingBlocks.Domain.Tests", "tests\LankaConnect.BuildingBlocks.Domain.Tests\LankaConnect.BuildingBlocks.Domain.Tests.csproj", "{8641CF01-5A78-4FBB-982D-8CA9E58FC365}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -124,6 +126,10 @@ Global
 		{FB8F09AE-7FD9-4103-92E3-AF66DF23A648}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB8F09AE-7FD9-4103-92E3-AF66DF23A648}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB8F09AE-7FD9-4103-92E3-AF66DF23A648}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8641CF01-5A78-4FBB-982D-8CA9E58FC365}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8641CF01-5A78-4FBB-982D-8CA9E58FC365}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8641CF01-5A78-4FBB-982D-8CA9E58FC365}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8641CF01-5A78-4FBB-982D-8CA9E58FC365}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{88DC2F5A-D5CB-4AA0-91BA-01E70C0822B0} = {1C682E29-A286-437F-BFB1-70E7B2D5C95D}
@@ -146,5 +152,6 @@ Global
 		{190AFE4B-CCE1-43B3-A909-C9ED576EB02B} = {F0BA15FC-BC31-4022-8CEA-D04AC82D19E8}
 		{5A6D04BC-B8DD-49FB-BB44-88474DE53137} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 		{FB8F09AE-7FD9-4103-92E3-AF66DF23A648} = {5A6D04BC-B8DD-49FB-BB44-88474DE53137}
+		{8641CF01-5A78-4FBB-982D-8CA9E58FC365} = {5B4DD37B-8BB1-49F8-B305-92F5DE52B238}
 	EndGlobalSection
 EndGlobal

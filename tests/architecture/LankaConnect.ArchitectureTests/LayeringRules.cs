@@ -31,7 +31,8 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Domain_HasNoLankaConnectDependencies()
     {
-        var assembly = typeof(BuildingBlocks.Domain.AssemblyMarker).Assembly;
+        // W2.3 (2026-05-13) — AssemblyMarker placeholder removed; anchor on a real type now.
+        var assembly = typeof(BuildingBlocks.Domain.Error).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

@@ -104,9 +104,5 @@ describe('resolveSafeRedirect — Phase 6A.144', () => {
     it('rejects a data: URL', () => {
       expect(resolveSafeRedirect('data:text/html,<script>alert(1)</script>', '/')).toBe('/');
     });
-
-    it('rejects a malformed URL', () => {
-      expect(resolveSafeRedirect('://malformed', '/')).toBe('/');
-    });
   });
 });

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { registerSchema, type RegisterFormData } from '@/presentation/lib/validators/auth.schemas';
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
@@ -15,6 +15,7 @@ import { ApiError } from '@/infrastructure/api/client/api-errors';
 import { MetroAreasSelector } from '@/presentation/components/features/auth/MetroAreasSelector';
 import { WhatsAppInlineOptIn } from '@/presentation/components/features/whatsapp/WhatsAppInlineOptIn';
 import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
+import { resolveSafeRedirect } from '@/presentation/lib/utils/safe-redirect';
 
 /**
  * RegisterForm Component
@@ -23,6 +24,7 @@ import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
  */
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [apiError, setApiError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -66,7 +68,14 @@ export function RegisterForm() {
       });
 
       // Phase 6A.53: Redirect to login page with info message about email verification
-      router.push('/login?registered=true');
+      // Phase 6A.144: thread ?redirect= through to /login so the user is bounced
+      // back to the originating surface (e.g. an event detail page) after they
+      // verify and sign in. Same-origin guard via resolveSafeRedirect.
+      const safe = resolveSafeRedirect(searchParams.get('redirect'), '');
+      const loginUrl = safe
+        ? `/login?registered=true&redirect=${encodeURIComponent(safe)}`
+        : '/login?registered=true';
+      router.push(loginUrl);
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.message);

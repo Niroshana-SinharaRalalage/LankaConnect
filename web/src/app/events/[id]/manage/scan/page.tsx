@@ -63,18 +63,47 @@ function classifyScanError(err: unknown): { kind: 'network-loss' | 'server-error
 }
 
 /**
+ * Format a per-attendee price for display. Returns a localized currency string
+ * when both amount and currency are present, else null (caller hides the row).
+ * USD example: $100.00; LKR example: LKR 5,000.00. Falls back to plain numeric
+ * if Intl.NumberFormat doesn't recognize the currency code.
+ */
+function formatPrice(amount?: number | null, currency?: string | null): string | null {
+  if (amount === null || amount === undefined || !currency) return null;
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+
+/**
  * Shared attendee-details block — rendered identically on the accepted panel and
  * on the four ticket-resolved rejection panels (already_scanned, expired,
- * invalidated, wrong_event). UAT R2 Issue A: operator wants to see who the
- * ticket belongs to either way. `accent` picks the color palette to match the
- * surrounding panel.
+ * invalidated, wrong_event).
+ *
+ * UAT R2 Issue A: operator wants to see who the ticket belongs to regardless of
+ * accept/reject. `accent` picks the color palette to match the surrounding panel.
+ *
+ * UAT R3: when `result.attendees` is non-empty, render a scrollable per-attendee
+ * sub-block below the header lines — each row shows name, age category, gender,
+ * tier, and per-attendee price. For head-count-mode tickets (no Attendees in DTO)
+ * the UI falls through to the legacy aggregate lines only — preserving backwards
+ * compatible behavior for older registrations.
  */
 function AttendeeBlock({ result, accent }: { result: ScanTicketResult; accent: 'green' | 'amber' | 'red' }) {
   const nameCls = accent === 'green' ? 'text-green-900' : accent === 'amber' ? 'text-amber-900' : 'text-red-900';
   const subCls = accent === 'green' ? 'text-green-700' : accent === 'amber' ? 'text-amber-800' : 'text-red-700';
   const metaCls = accent === 'green' ? 'text-green-600' : accent === 'amber' ? 'text-amber-700' : 'text-red-600';
+  const rowBorderCls = accent === 'green' ? 'border-green-200' : accent === 'amber' ? 'border-amber-300' : 'border-red-200';
+  const rowSubCls = accent === 'green' ? 'text-green-800' : accent === 'amber' ? 'text-amber-900' : 'text-red-800';
+
+  const hasAttendees = !!(result.attendees && result.attendees.length > 0);
+
   return (
     <>
+      {/* Header lines — primary contact name + tier + party-of-N. Preserved verbatim
+          for backwards compat with head-count tickets and the existing UAT R2 shape. */}
       <p className={`text-2xl font-bold mt-1 ${nameCls}`}>
         {result.attendeeName ?? '(no name on registration)'}
       </p>
@@ -89,6 +118,32 @@ function AttendeeBlock({ result, accent }: { result: ScanTicketResult; accent: '
           )}
         </p>
       )}
+
+      {/* UAT R3 — per-attendee detail list. Bounded height + inner scroll so a
+          party of 10 doesn't push "Scan Next Ticket" off the mobile screen. */}
+      {hasAttendees && (
+        <div
+          className={`mt-3 max-h-64 overflow-y-auto rounded border ${rowBorderCls} bg-white/40 divide-y ${rowBorderCls}`}
+          data-testid="scan-attendee-list"
+        >
+          {result.attendees!.map((a, idx) => {
+            const priceLabel = formatPrice(a.priceAmount, a.priceCurrency);
+            return (
+              <div key={idx} className="px-3 py-2 text-sm" data-testid={`scan-attendee-row-${idx}`}>
+                <div className={`font-medium ${nameCls}`}>{a.name}</div>
+                <div className={`text-xs ${rowSubCls}`}>
+                  {a.ageCategory}
+                  {a.gender && <> • {a.gender}</>}
+                  {a.ticketTierName && <> • {a.ticketTierName}</>}
+                  {a.seatLabel && <> • Seat {a.seatLabel}</>}
+                  {priceLabel && <> • {priceLabel}</>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {result.ticketCode && (
         <p className={`text-xs mt-2 ${metaCls}`}>
           Ticket {result.ticketCode}

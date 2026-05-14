@@ -3411,10 +3411,27 @@ export interface ScanTicketResult {
   scannedBy?: string | null;
   usedPreviousKey: boolean;
   wrongEventTitle?: string | null;  // populated only on wrong_event rejection
-  // UAT R2 Issue A — populated on already_scanned (and other ticket-resolved rejections) once backend
-  // ships the enriched DTO. Optional until Commit 2 lands.
+  // UAT R2 Issue A — populated on already_scanned (and other ticket-resolved rejections).
   previousScanCount?: number | null;
   previousScannedBy?: string | null;
+  // UAT R3 — full per-attendee detail. Null/empty for head-count tickets and
+  // pre-MultiAttendee registrations; UI falls back to legacy aggregates above.
+  attendees?: AttendeeDetail[] | null;
+}
+
+/**
+ * UAT R3 — single attendee on a ticket as projected by the scan endpoint.
+ * Mirrors the server-side LankaConnect.Application.Events.Commands.ScanTicket.AttendeeDetail.
+ * Stringified enums for AgeCategory and Gender keep the wire stable across schema changes.
+ */
+export interface AttendeeDetail {
+  name: string;
+  ageCategory: string;          // "Adult" | "Child"
+  gender?: string | null;       // "Male" | "Female" | "Other" | null
+  ticketTierName?: string | null;
+  priceAmount?: number | null;  // decimal from server; null when tier was deleted post-registration
+  priceCurrency?: string | null; // ISO code e.g. "USD", "LKR"
+  seatLabel?: string | null;
 }
 
 /**

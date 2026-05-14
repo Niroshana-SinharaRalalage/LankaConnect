@@ -710,4 +710,127 @@ public class AddOnDefinitionTests
     }
 
     #endregion
+
+    #region Phase 6A.143 — Image methods (SetImage / ClearImage)
+
+    [Fact]
+    public void SetImage_WithValidUrlAndBlobName_Succeeds()
+    {
+        var addOn = CreateValidAddOn();
+
+        var result = addOn.SetImage(
+            "https://blob.example.com/addons/abc.png",
+            "abc_dinner-pass.png");
+
+        result.IsSuccess.Should().BeTrue();
+        addOn.ImageUrl.Should().Be("https://blob.example.com/addons/abc.png");
+        addOn.ImageBlobName.Should().Be("abc_dinner-pass.png");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyUrl_Fails(string? badUrl)
+    {
+        var addOn = CreateValidAddOn();
+
+        var result = addOn.SetImage(badUrl!, "blob.png");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("URL");
+        addOn.ImageUrl.Should().BeNull("rejected SetImage must NOT mutate the entity");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyBlobName_Fails(string? badBlobName)
+    {
+        var addOn = CreateValidAddOn();
+
+        var result = addOn.SetImage("https://blob.example.com/x.png", badBlobName!);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("blob");
+        addOn.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_ReplacingExistingImage_OverwritesBoth()
+    {
+        var addOn = CreateValidAddOn();
+        addOn.SetImage("https://blob.example.com/old.png", "old_pic.png");
+
+        addOn.SetImage("https://blob.example.com/new.png", "new_pic.png");
+
+        addOn.ImageUrl.Should().Be("https://blob.example.com/new.png");
+        addOn.ImageBlobName.Should().Be("new_pic.png");
+    }
+
+    [Fact]
+    public void SetImage_PreservesOtherFields()
+    {
+        var addOn = CreateValidAddOn();
+        var originalName = addOn.Name;
+        var originalPrice = addOn.Price;
+        var originalQuantityLimit = addOn.QuantityLimit;
+        var originalIsActive = addOn.IsActive;
+
+        addOn.SetImage("https://blob.example.com/x.png", "x.png");
+
+        addOn.Name.Should().Be(originalName);
+        addOn.Price.Should().Be(originalPrice);
+        addOn.QuantityLimit.Should().Be(originalQuantityLimit);
+        addOn.IsActive.Should().Be(originalIsActive);
+    }
+
+    [Fact]
+    public void SetImage_TrimsWhitespaceFromBothFields()
+    {
+        var addOn = CreateValidAddOn();
+
+        addOn.SetImage("  https://blob.example.com/x.png  ", "  x_blob.png  ");
+
+        addOn.ImageUrl.Should().Be("https://blob.example.com/x.png");
+        addOn.ImageBlobName.Should().Be("x_blob.png");
+    }
+
+    [Fact]
+    public void ClearImage_RemovesBothFields()
+    {
+        var addOn = CreateValidAddOn();
+        addOn.SetImage("https://blob.example.com/x.png", "x.png");
+
+        var result = addOn.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        addOn.ImageUrl.Should().BeNull();
+        addOn.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ClearImage_WhenNoImage_IsIdempotent()
+    {
+        var addOn = CreateValidAddOn();
+        addOn.ImageUrl.Should().BeNull();
+
+        var result = addOn.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        addOn.ImageUrl.Should().BeNull();
+        addOn.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void NewAddOnDefinition_HasNullImageFields()
+    {
+        var addOn = CreateValidAddOn();
+
+        addOn.ImageUrl.Should().BeNull("image is optional and unset by default");
+        addOn.ImageBlobName.Should().BeNull();
+    }
+
+    #endregion
 }

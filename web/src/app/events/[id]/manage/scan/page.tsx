@@ -24,7 +24,7 @@
 
 import { use, useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Keyboard, QrCode, Camera, CheckCircle2, XCircle, WifiOff, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Keyboard, QrCode, Camera, CheckCircle2, XCircle, WifiOff, AlertCircle, ServerCrash } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Button } from '@/presentation/components/ui/Button';
@@ -32,15 +32,33 @@ import { useEventById } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { ScanTicketResult } from '@/infrastructure/api/types/events.types';
+import { NetworkError } from '@/infrastructure/api/client/api-errors';
 
 // html5-qrcode is dynamic-imported inside the start handler so the scanner-only
 // library never enters the main manage-page bundle (F16).
 type Html5QrcodeModule = typeof import('html5-qrcode');
 
 interface ScanOutcome {
-  kind: 'idle' | 'scanning' | 'accepted' | 'rejected' | 'network-loss' | 'camera-denied';
+  kind: 'idle' | 'scanning' | 'accepted' | 'rejected' | 'network-loss' | 'server-error' | 'camera-denied';
   result?: ScanTicketResult;
   errorMessage?: string;
+}
+
+/**
+ * Issue 2.5 fix — classify a thrown scan error so the UI shows the right panel.
+ *   NetworkError (true wire failure) → yellow "Cannot reach server"
+ *   Any other ApiError (4xx/5xx including 400 InvalidOperation from backend) →
+ *     yellow "Server rejected the scan" with the backend's actual message.
+ * In all cases the ticket is NOT marked scanned — door stays closed.
+ */
+function classifyScanError(err: unknown): { kind: 'network-loss' | 'server-error'; errorMessage: string } {
+  if (err instanceof NetworkError) {
+    return { kind: 'network-loss', errorMessage: err.message };
+  }
+  if (err instanceof Error) {
+    return { kind: 'server-error', errorMessage: err.message };
+  }
+  return { kind: 'server-error', errorMessage: 'Unknown error from server' };
 }
 
 const COOLDOWN_MS = 2000;
@@ -109,12 +127,10 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
         playFeedback(false);
       }
     } catch (err) {
-      // Network or 5xx — explicitly NOT a business-reject. Yellow panel.
-      console.error('[scan] network error', err);
-      setOutcome({
-        kind: 'network-loss',
-        errorMessage: err instanceof Error ? err.message : 'Unknown network error',
-      });
+      // Issue 2.5 fix: differentiate true network failure from server-side rejection (400/500).
+      // Both keep the door closed (no green panel) but show distinct operator messaging.
+      console.error('[scan] error', err);
+      setOutcome(classifyScanError(err));
     }
   }, [eventId, playFeedback]);
 
@@ -133,19 +149,23 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
         playFeedback(false);
       }
     } catch (err) {
-      console.error('[scan] manual-entry network error', err);
-      setOutcome({
-        kind: 'network-loss',
-        errorMessage: err instanceof Error ? err.message : 'Unknown network error',
-      });
+      console.error('[scan] manual-entry error', err);
+      setOutcome(classifyScanError(err));
     } finally {
       setManualCode('');
     }
   }, [eventId, manualCode, playFeedback]);
 
   const startCamera = useCallback(async () => {
-    if (!scannerDivRef.current) return;
+    // Issue 2 fix: the viewfinder div is ALWAYS rendered (hidden via CSS when idle),
+    // so scannerDivRef.current is never null on first click. The previous early-return
+    // would no-op the click because the div was conditionally rendered.
     setOutcome({ kind: 'scanning' });
+    if (!scannerDivRef.current) {
+      // Should never happen now, but stay defensive — log instead of silent return.
+      console.error('[scan] viewfinder div not yet mounted; aborting camera start');
+      return;
+    }
 
     try {
       // F16: dynamic import — html5-qrcode loads on first start, not at page load.
@@ -270,9 +290,10 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
           Point the camera at the QR on the attendee's ticket. Tap "Enter code manually" for damaged or unscannable codes.
         </p>
 
-        {/* Scanner viewfinder */}
+        {/* Scanner viewfinder — ALWAYS mounted (Issue 2 fix); idle state hides via CSS so
+            the camera button can grab a real ref synchronously on click. */}
         <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
-          {outcome.kind === 'idle' ? (
+          {outcome.kind === 'idle' && (
             <div className="text-center py-8">
               <Camera className="w-12 h-12 mx-auto text-neutral-400 mb-3" />
               <p className="text-neutral-600 mb-4">Press "Start Scanning" to open the camera.</p>
@@ -280,14 +301,13 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                 <Camera className="w-5 h-5 mr-2" /> Start Scanning
               </Button>
             </div>
-          ) : (
-            <div
-              id="qr-scanner-region"
-              ref={scannerDivRef}
-              className="w-full max-w-md mx-auto"
-              data-testid="qr-scanner-region"
-            />
           )}
+          <div
+            id="qr-scanner-region"
+            ref={scannerDivRef}
+            className={`w-full max-w-md mx-auto${outcome.kind === 'idle' ? ' hidden' : ''}`}
+            data-testid="qr-scanner-region"
+          />
         </div>
 
         {/* Result panel (only when not idle) */}
@@ -363,6 +383,30 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                 <p className="text-yellow-800 mt-1">
                   Check your network connection and try scanning again. The ticket has NOT been marked as
                   scanned — do not let the attendee through yet.
+                </p>
+                {outcome.errorMessage && (
+                  <p className="text-xs text-yellow-700 mt-2 font-mono">{outcome.errorMessage}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Issue 2.5 fix — distinct panel for server-side rejections (HTTP 400/500 etc.)
+            so the operator knows to call a coordinator, not retry on the assumption it
+            was a network blip. */}
+        {outcome.kind === 'server-error' && (
+          <div
+            data-testid="scan-result-server-error"
+            className="bg-yellow-50 border-2 border-yellow-500 rounded-lg p-6 mb-4"
+          >
+            <div className="flex items-start gap-3">
+              <ServerCrash className="w-10 h-10 text-yellow-600 flex-shrink-0" />
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-yellow-900">Server rejected the scan</h2>
+                <p className="text-yellow-800 mt-1">
+                  Something went wrong on our end and the ticket was NOT marked as scanned. Try once more, and
+                  if it still fails, please contact the event coordinator instead of letting the attendee through.
                 </p>
                 {outcome.errorMessage && (
                   <p className="text-xs text-yellow-700 mt-2 font-mono">{outcome.errorMessage}</p>

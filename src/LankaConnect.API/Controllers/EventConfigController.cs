@@ -1,4 +1,6 @@
 using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.ClearSponsorConfigImage;
+using LankaConnect.Application.Events.Commands.SetSponsorConfigImage;
 using LankaConnect.Application.Events.Commands.UpdateCollectionConfig;
 using LankaConnect.Application.Events.Commands.UpdateSponsorConfig;
 using LankaConnect.Application.Events.Commands.UpdateAddOnConfig;
@@ -97,6 +99,65 @@ public class EventConfigController : BaseController<EventConfigController>
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.143 — uploads (or replaces) the sponsor banner image for an event.
+    /// Requires sponsor config to exist and be enabled. Authorization: organizer only.
+    /// </summary>
+    [HttpPost("sponsor-config/image")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SetSponsorConfigImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSponsorConfigImage(
+        Guid eventId,
+        IFormFile image)
+    {
+        Logger.LogInformation(
+            "SetSponsorConfigImage: EventId={EventId}, FileName={FileName}, Size={Size}",
+            eventId, image?.FileName, image?.Length);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        using var ms = new MemoryStream();
+        await image.CopyToAsync(ms);
+
+        var command = new SetSponsorConfigImageCommand
+        {
+            EventId = eventId,
+            ImageData = ms.ToArray(),
+            FileName = image.FileName
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.143 — clears the sponsor banner image. Idempotent.
+    /// Authorization: organizer only.
+    /// </summary>
+    [HttpDelete("sponsor-config/image")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSponsorConfigImage(Guid eventId)
+    {
+        Logger.LogInformation("ClearSponsorConfigImage: EventId={EventId}", eventId);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var result = await Mediator.Send(new ClearSponsorConfigImageCommand { EventId = eventId });
+        return result.IsSuccess ? NoContent() : HandleResult(result);
     }
 
     /// <summary>

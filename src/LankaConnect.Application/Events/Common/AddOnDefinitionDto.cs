@@ -13,6 +13,11 @@ public record AddOnDefinitionDto
     public int? RemainingStock { get; init; }
     public bool IsActive { get; init; }
     public int SortOrder { get; init; }
+    // Phase 6A.143 — optional add-on image surfaced to FE for thumbnail rendering
+    // in AddOnSelector (buyer) and AddOnsManagementTab (organizer). Both fields
+    // are either both set or both null.
+    public string? ImageUrl { get; init; }
+    public string? ImageBlobName { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
 }

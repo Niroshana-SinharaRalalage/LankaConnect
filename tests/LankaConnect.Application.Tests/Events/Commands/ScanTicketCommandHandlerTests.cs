@@ -212,7 +212,40 @@ public class ScanTicketCommandHandlerTests
     }
 
     // ============================================================
-    // 5) Race-lost (TryMarkScannedAsync returns 0) → rejected as already_scanned
+    // 5a) UAT R2 Issue A — already_scanned (synchronous path) returns enriched
+    //     attendee details + scan history (PreviousScanCount, PreviousScannedBy)
+    // ============================================================
+    [Fact]
+    public async Task Handle_AlreadyScanned_Rejects_WithEnrichedAttendeeAndScanHistory()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+        ticket.Validate(); // sets ValidatedAt — handler hits the synchronous already-scanned branch
+
+        var originalScanAt = ticket.ValidatedAt;
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildEvent(_eventId));
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _scanLogRepo.Setup(r => r.GetAcceptedSummaryForTicketAsync(ticket.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AcceptedCount: 1, LastScannerName: "Lakmal Silva", LastAcceptedAt: originalScanAt));
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("rejected");
+        result.Value.Reason.Should().Be(ReasonCode.AlreadyScanned);
+        result.Value.PreviousScanCount.Should().Be(1, "enrichment must surface accepted-count to the operator");
+        result.Value.PreviousScannedBy.Should().Be("Lakmal Silva", "operator wants to see who originally admitted the attendee");
+        result.Value.ScannedAt.Should().Be(originalScanAt, "amber panel needs the ORIGINAL accepted-at timestamp");
+        result.Value.TicketCode.Should().Be(_ticketCode, "ticket code echoed so the operator can cross-check");
+    }
+
+    // ============================================================
+    // 6) Race-lost (TryMarkScannedAsync returns 0) → rejected as already_scanned
     // ============================================================
     [Fact]
     public async Task Handle_RaceLost_Rejects_AsAlreadyScanned()

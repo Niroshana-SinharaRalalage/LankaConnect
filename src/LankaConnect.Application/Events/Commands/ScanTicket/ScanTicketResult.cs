@@ -45,6 +45,17 @@ public record ScanTicketResult
     /// event this ticket actually belongs to. Helps staff redirect the attendee.</summary>
     public string? WrongEventTitle { get; init; }
 
+    /// <summary>UAT R2 Issue A: number of prior accepted scans for this ticket. Populated
+    /// on ticket-resolved rejections (already_scanned, expired, invalidated, wrong_event).
+    /// Normally 1 for already_scanned, but can be ≥2 if admin-unmark cycles have happened.
+    /// Null when no ticket was resolved (invalid_signature, malformed_payload, ticket_not_found).</summary>
+    public int? PreviousScanCount { get; init; }
+
+    /// <summary>UAT R2 Issue A: denormalized name of the operator who took the most recent
+    /// accepted scan for this ticket. Pairs with <see cref="ScannedAt"/> on the
+    /// already_scanned amber panel ("First admitted 7:32 PM by Lakmal Silva").</summary>
+    public string? PreviousScannedBy { get; init; }
+
     public static ScanTicketResult AcceptedFor(
         string ticketCode,
         string? attendeeName,

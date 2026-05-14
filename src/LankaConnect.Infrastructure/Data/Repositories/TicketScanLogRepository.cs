@@ -71,4 +71,30 @@ public class TicketScanLogRepository : ITicketScanLogRepository
             .OrderBy(l => l.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<(int AcceptedCount, string? LastScannerName, DateTime? LastAcceptedAt)>
+        GetAcceptedSummaryForTicketAsync(
+            Guid ticketId,
+            CancellationToken cancellationToken = default)
+    {
+        // Two filtered queries against the same index (ticket_id + scan_result + created_at).
+        // Accepted rows per ticket are 1 in the steady state and very small (≤3) even with
+        // admin-unmark cycles, so this is cheap and clear. A GroupBy projection would save
+        // one round-trip but EF translation can be fragile across providers.
+        var accepted = await _context.TicketScanLogs
+            .AsNoTracking()
+            .Where(l => l.TicketId == ticketId && l.ScanResult == TicketScanLog.ScanResultAccepted)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new { l.ScannerName, l.CreatedAt })
+            .ToListAsync(cancellationToken);
+
+        if (accepted.Count == 0)
+        {
+            return (0, null, null);
+        }
+
+        var mostRecent = accepted[0];
+        return (accepted.Count, mostRecent.ScannerName, mostRecent.CreatedAt);
+    }
 }

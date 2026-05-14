@@ -37,4 +37,20 @@ public interface ITicketScanLogRepository
     Task<IReadOnlyList<TicketScanLog>> GetForTicketAsync(
         Guid ticketId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// UAT R2 Issue A — projection used to enrich an "already scanned" rejection so the
+    /// operator sees how many times the ticket has been admitted and by whom most recently.
+    /// Counts ONLY accepted rows (ignores rejected attempts and admin unmarks); a normal
+    /// already-scanned reject returns AcceptedCount = 1. Cycles of admin-unmark + re-accept
+    /// return AcceptedCount ≥ 2.
+    /// </summary>
+    /// <returns>
+    /// Tuple of (AcceptedCount, LastScannerName, LastAcceptedAt). All zero/null when the
+    /// ticket has never been accepted-scanned.
+    /// </returns>
+    Task<(int AcceptedCount, string? LastScannerName, DateTime? LastAcceptedAt)>
+        GetAcceptedSummaryForTicketAsync(
+            Guid ticketId,
+            CancellationToken cancellationToken = default);
 }

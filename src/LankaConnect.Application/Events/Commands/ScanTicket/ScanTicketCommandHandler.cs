@@ -172,12 +172,16 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         resolvedTicketCode, command.EventId, ticket.EventId);
                     await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
                         ReasonCode.WrongEvent, entryMethod, usedPreviousKey, cancellationToken);
-                    var rejected = ScanTicketResult.RejectedFor(
+                    var wrongEventRejection = await BuildTicketResolvedRejectionAsync(
+                        ticket,
                         ReasonCode.WrongEvent,
                         wrongEventTitle is null
                             ? "This ticket is for a different event."
-                            : $"This ticket is for a different event: {wrongEventTitle}.");
-                    return Result<ScanTicketResult>.Success(rejected with { WrongEventTitle = wrongEventTitle });
+                            : $"This ticket is for a different event: {wrongEventTitle}.",
+                        wrongEventTitle,
+                        usedPreviousKey,
+                        cancellationToken);
+                    return Result<ScanTicketResult>.Success(wrongEventRejection);
                 }
 
                 // 6. Synchronous state checks
@@ -186,8 +190,14 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                     _logger.LogInformation("ScanTicket: invalidated ticket TicketCode={TicketCode}", resolvedTicketCode);
                     await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
                         ReasonCode.Invalidated, entryMethod, usedPreviousKey, cancellationToken);
-                    return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
-                        ReasonCode.Invalidated, "This ticket has been invalidated (likely refunded or cancelled)."));
+                    var invalidatedRejection = await BuildTicketResolvedRejectionAsync(
+                        ticket,
+                        ReasonCode.Invalidated,
+                        "This ticket has been invalidated (likely refunded or cancelled).",
+                        wrongEventTitle: null,
+                        usedPreviousKey,
+                        cancellationToken);
+                    return Result<ScanTicketResult>.Success(invalidatedRejection);
                 }
                 if (ticket.ExpiresAt < DateTime.UtcNow)
                 {
@@ -195,8 +205,14 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         resolvedTicketCode, ticket.ExpiresAt);
                     await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
                         ReasonCode.Expired, entryMethod, usedPreviousKey, cancellationToken);
-                    return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
-                        ReasonCode.Expired, "This ticket has expired."));
+                    var expiredRejection = await BuildTicketResolvedRejectionAsync(
+                        ticket,
+                        ReasonCode.Expired,
+                        "This ticket has expired.",
+                        wrongEventTitle: null,
+                        usedPreviousKey,
+                        cancellationToken);
+                    return Result<ScanTicketResult>.Success(expiredRejection);
                 }
                 if (ticket.ValidatedAt.HasValue)
                 {
@@ -205,9 +221,14 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         resolvedTicketCode, ticket.ValidatedAt.Value);
                     await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
                         ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
-                    return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
+                    var alreadyScannedRejection = await BuildTicketResolvedRejectionAsync(
+                        ticket,
                         ReasonCode.AlreadyScanned,
-                        $"Already scanned at {ticket.ValidatedAt.Value:HH:mm} UTC."));
+                        $"Already scanned at {ticket.ValidatedAt.Value:HH:mm} UTC.",
+                        wrongEventTitle: null,
+                        usedPreviousKey,
+                        cancellationToken);
+                    return Result<ScanTicketResult>.Success(alreadyScannedRejection);
                 }
 
                 // 7. Mark-scanned + audit.
@@ -257,8 +278,14 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         resolvedTicketCode);
                     await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
                         ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
-                    return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
-                        ReasonCode.AlreadyScanned, "Already scanned (by another scanner just now)."));
+                    var raceLostRejection = await BuildTicketResolvedRejectionAsync(
+                        ticket,
+                        ReasonCode.AlreadyScanned,
+                        "Already scanned (by another scanner just now).",
+                        wrongEventTitle: null,
+                        usedPreviousKey,
+                        cancellationToken);
+                    return Result<ScanTicketResult>.Success(raceLostRejection);
                 }
 
                 // Winner: queue accepted audit row in a separate CommitAsync.
@@ -328,6 +355,63 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                 throw;
             }
         }
+    }
+
+    /// <summary>
+    /// UAT R2 Issue A — assemble an enriched rejection DTO for the 4 ticket-resolved
+    /// rejection reasons (already_scanned, expired, invalidated, wrong_event). The
+    /// scanner UI renders attendee details on these panels (operator wants to see who
+    /// the ticket belongs to regardless of accept/reject), and renders an amber
+    /// "Already Scanned (Nx)" panel with scan history when reason==already_scanned.
+    ///
+    /// Skipped for invalid_signature / malformed_payload / ticket_not_found /
+    /// malformed_request because there is no resolved ticket to enrich from.
+    /// </summary>
+    private async Task<ScanTicketResult> BuildTicketResolvedRejectionAsync(
+        Domain.Events.Entities.Ticket ticket,
+        string reason,
+        string reasonMessage,
+        string? wrongEventTitle,
+        bool usedPreviousKey,
+        CancellationToken cancellationToken)
+    {
+        var registration = await _registrationRepository.GetByIdAsync(ticket.RegistrationId, cancellationToken);
+        var attendeeName = registration?.Attendees.FirstOrDefault()?.Name;
+        var tier = registration?.Attendees.FirstOrDefault()?.TicketTierName;
+        var attendeeCount = registration?.GetAttendeeCount();
+        IReadOnlyList<TierBreakdownEntry>? breakdown = null;
+        if (registration is not null && registration.Attendees.Any())
+        {
+            breakdown = registration.Attendees
+                .Where(a => !string.IsNullOrWhiteSpace(a.TicketTierName))
+                .GroupBy(a => a.TicketTierName!)
+                .Select(g => new TierBreakdownEntry(g.Key, g.Count()))
+                .ToList();
+        }
+
+        var (acceptedCount, lastScannerName, lastAcceptedAt) =
+            await _scanLogRepository.GetAcceptedSummaryForTicketAsync(ticket.Id, cancellationToken);
+
+        return new ScanTicketResult
+        {
+            Result = "rejected",
+            Reason = reason,
+            ReasonMessage = reasonMessage,
+            TicketCode = ticket.TicketCode,
+            AttendeeName = attendeeName,
+            Tier = tier,
+            AttendeeCount = attendeeCount,
+            TierBreakdown = breakdown,
+            // For already_scanned, prefer the audit-log timestamp (denormalized scanner name
+            // pairs with it). Fall back to Ticket.ValidatedAt for the rare case where the
+            // accepted audit row was lost to the forensic gap documented in the main flow.
+            ScannedAt = lastAcceptedAt ?? ticket.ValidatedAt,
+            ScannedBy = null, // ScannedBy is for the CURRENT operator on accept; rejections don't populate it
+            UsedPreviousKey = usedPreviousKey,
+            WrongEventTitle = wrongEventTitle,
+            PreviousScanCount = acceptedCount > 0 ? acceptedCount : null,
+            PreviousScannedBy = lastScannerName,
+        };
     }
 
     /// <summary>

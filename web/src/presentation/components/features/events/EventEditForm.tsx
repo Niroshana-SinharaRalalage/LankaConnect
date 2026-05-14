@@ -357,6 +357,19 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
       isFree: event.isFree,
+      // Phase 8X.13 fix: paymentMode + ExternalRegistration fields MUST be in the reset()
+      // payload. React Hook Form treats omitted fields as undefined on reset, so leaving
+      // these out (they exist in defaultValues at mount time) caused the loaded URL /
+      // vendor / instructions to disappear once React Query resolved the event payload
+      // and the useEffect fired. Symptom: organizer fills external reg details, saves
+      // (DB persists fine), comes back to edit, fields are blank.
+      paymentMode: event.paymentMode
+        ?? (event.isFree ? EventPaymentMode.Free : EventPaymentMode.OnPlatformPaid),
+      externalRegistrationUrl: event.externalRegistrationUrl ?? '',
+      externalRegistrationInstructions: event.externalRegistrationInstructions ?? '',
+      externalRegistrationVendorName: event.externalRegistrationVendorName ?? '',
+      // Phase 7E.5: same omission risk for registrationMode — mirror defaultValues here.
+      registrationMode: event.registrationMode ?? RegistrationMode.DetailedAttendees,
       // Session 33 Fix: Load pricing data with PROPERLY CONVERTED currency values
       // Single pricing - only set if in single pricing mode
       ticketPriceAmount: hasSinglePricing ? (event.ticketPriceAmount ?? undefined) : undefined,

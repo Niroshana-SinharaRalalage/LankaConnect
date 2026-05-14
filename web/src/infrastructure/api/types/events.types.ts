@@ -2349,6 +2349,10 @@ export interface SponsorConfigurationDto {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  // Phase 6A.143 — optional sponsor banner image (rendered above the form on event details).
+  // Always either both set or both null. Editing flows through dedicated upload/delete endpoints.
+  sponsorImageUrl?: string | null;
+  sponsorImageBlobName?: string | null;
 }
 
 export interface SponsorDto {
@@ -2445,8 +2449,18 @@ export interface AddOnDefinitionDto {
   remainingStock?: number | null;
   isActive: boolean;
   sortOrder: number;
+  // Phase 6A.143 — optional add-on image (rendered as a thumbnail in AddOnSelector + manage tab).
+  // Always either both set or both null. Editing flows through dedicated upload/delete endpoints.
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+}
+
+// Phase 6A.143 — response from image-upload endpoints (Set commands).
+export interface ImageUploadResultDto {
+  imageUrl: string;
+  imageBlobName: string;
 }
 
 export interface AddOnPurchaseDto {

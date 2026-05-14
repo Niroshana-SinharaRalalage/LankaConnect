@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import { eventKeys } from '@/presentation/hooks/useEvents';
 import type {
   EventSponsorsResponse,
   SponsorSummaryDto,
@@ -69,6 +70,36 @@ export function useCreateItemSponsor() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.143 — upload (or replace) the sponsor banner image.
+ * Banner lives on Event.SponsorConfig (JSONB VO), so invalidate the event detail query
+ * to make SponsorSection pick up the new URL.
+ */
+export function useUploadSponsorImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; file: File }) =>
+      eventsRepository.uploadSponsorImage(data.eventId, data.file),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.143 — clear the sponsor banner image. Idempotent.
+ */
+export function useDeleteSponsorImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string }) =>
+      eventsRepository.deleteSponsorImage(data.eventId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: eventKeys.detail(variables.eventId) });
     },
   });
 }

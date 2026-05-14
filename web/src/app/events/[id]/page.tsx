@@ -755,7 +755,7 @@ export function EventDetailPageInternal({
       )}
 
       {/* Back Button and Organizer Actions */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
@@ -786,7 +786,7 @@ export function EventDetailPageInternal({
       </div>
 
       {/* Event Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <Card className="overflow-hidden">
           {/* Phase 8YB.1 — Option C: contained hero (responsive aspect-ratio + object-contain).
               Only renders on the default route. The /v2 route uses fullWidth above instead. */}

@@ -1864,6 +1864,55 @@ export class EventsRepository {
     return await apiClient.put<void>(`${this.basePath}/${eventId}/add-ons/${definitionId}`, request);
   }
 
+  /**
+   * Phase 6A.143 — upload (or replace) the display image for an add-on definition.
+   * Organizer only (server-side enforced). Returns the new public URL + blob name.
+   * If an image was previously set, the server deletes the old blob best-effort.
+   */
+  async uploadAddOnImage(
+    eventId: string,
+    definitionId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/add-ons/${definitionId}/image`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.143 — clear the display image from an add-on definition. Idempotent.
+   * Server deletes the blob best-effort. 204 NoContent on success.
+   */
+  async deleteAddOnImage(eventId: string, definitionId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/add-ons/${definitionId}/image`);
+  }
+
+  /**
+   * Phase 6A.143 — upload (or replace) the sponsor banner image for an event.
+   * Requires sponsor config to exist + be enabled. Organizer only.
+   */
+  async uploadSponsorImage(
+    eventId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/sponsor-config/image`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.143 — clear the sponsor banner image. Idempotent.
+   */
+  async deleteSponsorImage(eventId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsor-config/image`);
+  }
+
   async purchaseAddOn(eventId: string, definitionId: string, request: import('../types/events.types').PurchaseAddOnRequest): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);
   }

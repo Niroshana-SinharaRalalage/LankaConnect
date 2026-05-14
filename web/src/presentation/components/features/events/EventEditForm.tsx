@@ -2186,6 +2186,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
             onSponsorMessageChange={setSponsorMessage}
             showSponsorList={showSponsorList}
             onShowSponsorListChange={setShowSponsorList}
+            eventId={event.id}
+            sponsorImageUrl={event.sponsorConfig?.sponsorImageUrl ?? null}
           />
         </CollapsibleSection>
       </div>

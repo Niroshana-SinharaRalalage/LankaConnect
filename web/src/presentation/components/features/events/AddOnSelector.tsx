@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ShoppingBag, RefreshCw, ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, Clock } from 'lucide-react';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
@@ -45,6 +45,16 @@ export function AddOnSelector({ eventId, addOnConfig, myAddOnPurchases }: AddOnS
         .sort((a, b) => a.sortOrder - b.sortOrder),
     [definitions]
   );
+
+  // Phase 6A.143 — auto-expand the section when any active add-on has an image so
+  // the new visuals get exposure on first load. Controlled state required because
+  // defaultOpen is read once at mount (definitions haven't loaded yet).
+  const [sectionOpen, setSectionOpen] = useState(false);
+  useEffect(() => {
+    if (activeDefinitions.some((d) => !!d.imageUrl)) {
+      setSectionOpen(true);
+    }
+  }, [activeDefinitions]);
 
   // Filter to only show completed/pending purchases (not abandoned/failed)
   const visiblePurchases = useMemo(() => {
@@ -186,7 +196,8 @@ export function AddOnSelector({ eventId, addOnConfig, myAddOnPurchases }: AddOnS
       title="Event Add-Ons"
       icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
       description={addOnConfig.addOnMessage || undefined}
-      defaultOpen={false}
+      open={sectionOpen}
+      onOpenChange={setSectionOpen}
     >
       {/* Loading State */}
       {isLoading && (
@@ -236,15 +247,33 @@ export function AddOnSelector({ eventId, addOnConfig, myAddOnPurchases }: AddOnS
                   }`}
                 >
                   <CardContent className="p-4">
-                    {/* Name */}
-                    <h4 className="font-semibold text-neutral-900">{definition.name}</h4>
+                    {/* Phase 6A.143 — left-side 64x64 thumbnail with Package icon
+                        fallback so card layout stays consistent across images-vs-no-images. */}
+                    <div className="flex items-start gap-3">
+                      {definition.imageUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={definition.imageUrl}
+                          alt={definition.name}
+                          className="h-16 w-16 flex-shrink-0 rounded border border-neutral-200 object-cover bg-white"
+                        />
+                      ) : (
+                        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded border border-neutral-200 bg-neutral-50 text-neutral-300">
+                          <Package className="h-6 w-6" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {/* Name */}
+                        <h4 className="font-semibold text-neutral-900">{definition.name}</h4>
 
-                    {/* Description */}
-                    {definition.description && (
-                      <p className="text-sm text-neutral-500 mt-1 line-clamp-2">
-                        {definition.description}
-                      </p>
-                    )}
+                        {/* Description */}
+                        {definition.description && (
+                          <p className="text-sm text-neutral-500 mt-1 line-clamp-2">
+                            {definition.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
 
                     {/* Price & Stock */}
                     <div className="flex items-center justify-between mt-3">

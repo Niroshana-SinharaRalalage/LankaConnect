@@ -1,6 +1,10 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { ImagePlus, X, Handshake } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';
+import { Button } from '@/presentation/components/ui/Button';
+import { useUploadSponsorImage, useDeleteSponsorImage } from '@/presentation/hooks/useSponsors';
 
 interface SponsorConfigFormProps {
   /** Whether sponsorships are enabled */
@@ -21,6 +25,109 @@ interface SponsorConfigFormProps {
   /** Whether to show sponsor list publicly */
   showSponsorList: boolean;
   onShowSponsorListChange: (show: boolean) => void;
+  /**
+   * Phase 6A.143 — when both provided, render a sponsor banner image upload widget.
+   * Banner endpoint requires sponsor config to ALREADY be saved + enabled server-side,
+   * so eventId is only meaningful in edit mode after a save.
+   */
+  eventId?: string;
+  sponsorImageUrl?: string | null;
+}
+
+/**
+ * Phase 6A.143 — sponsor banner image widget. Shown only when eventId is known
+ * (edit mode after save) AND sponsorships are server-confirmed enabled. Mirrors
+ * the AddOnImageField pattern in AddOnDefinitionEditor.
+ */
+function SponsorBannerField({
+  eventId,
+  imageUrl,
+}: {
+  eventId: string;
+  imageUrl: string | null | undefined;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const uploadMutation = useUploadSponsorImage();
+  const deleteMutation = useDeleteSponsorImage();
+  const isBusy = uploadMutation.isPending || deleteMutation.isPending;
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    setError(null);
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image too large (max 5MB).');
+      return;
+    }
+    try {
+      await uploadMutation.mutateAsync({ eventId, file });
+    } catch (err: any) {
+      console.error('Sponsor banner upload failed:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Upload failed. Please try again.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemove = async () => {
+    setError(null);
+    try {
+      await deleteMutation.mutateAsync({ eventId });
+    } catch (err: any) {
+      console.error('Sponsor banner delete failed:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Delete failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">Sponsor Banner (optional)</label>
+      <div className="flex items-start gap-3">
+        {imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageUrl}
+            alt="Sponsor banner"
+            className="h-20 w-40 rounded border border-neutral-200 object-cover bg-neutral-50"
+          />
+        ) : (
+          <div className="flex h-20 w-40 items-center justify-center rounded border border-dashed border-neutral-300 bg-neutral-50 text-neutral-400">
+            <Handshake className="h-7 w-7" />
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+            disabled={isBusy}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isBusy}
+          >
+            <ImagePlus className="h-4 w-4 mr-1" />
+            {imageUrl ? 'Replace banner' : 'Upload banner'}
+          </Button>
+          {imageUrl && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleRemove} disabled={isBusy}>
+              <X className="h-4 w-4 mr-1 text-red-500" />
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-gray-500">
+        JPG / PNG / WebP / GIF, max 5MB. Banner appears above the sponsor form on the event page.
+      </p>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 /**
@@ -40,6 +147,8 @@ export function SponsorConfigForm({
   onSponsorMessageChange,
   showSponsorList,
   onShowSponsorListChange,
+  eventId,
+  sponsorImageUrl,
 }: SponsorConfigFormProps) {
   const showTypeWarning = isEnabled && !acceptMoneySponsors && !acceptItemSponsors;
 
@@ -133,6 +242,19 @@ export function SponsorConfigForm({
                   />
                 </div>
               </div>
+            )}
+
+            {/* Phase 6A.143 — Sponsor banner image upload. Only available when the
+                config has been server-confirmed enabled (eventId provided) — endpoint
+                rejects upload otherwise. New-event flow: save with sponsors enabled
+                first, then come back to upload a banner. */}
+            {eventId && (
+              <SponsorBannerField eventId={eventId} imageUrl={sponsorImageUrl} />
+            )}
+            {!eventId && (
+              <p className="text-xs text-gray-500 italic">
+                Save the event with sponsorships enabled, then you can upload a sponsor banner image.
+              </p>
             )}
 
             {/* Sponsor Message */}

@@ -146,8 +146,20 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
       title="Sponsor This Event"
       icon={<Award className="h-5 w-5 text-indigo-500" />}
       description={sponsorConfig.sponsorMessage || undefined}
-      defaultOpen={false}
+      defaultOpen={!!sponsorConfig.sponsorImageUrl}
     >
+      {/* Phase 6A.143 — full-width banner image when the organizer uploaded one.
+          Rendered above the form so visitors see it without scrolling. Auto-expand
+          (defaultOpen above) ensures the banner gets exposure when present. */}
+      {sponsorConfig.sponsorImageUrl && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={sponsorConfig.sponsorImageUrl}
+          alt="Sponsor banner"
+          className="mb-4 w-full max-h-64 rounded-lg border border-neutral-200 object-cover bg-neutral-50"
+        />
+      )}
+
       {/* Mode Toggle */}
       {showToggle && (
         <div className="mb-4 flex rounded-lg bg-indigo-50 p-1">

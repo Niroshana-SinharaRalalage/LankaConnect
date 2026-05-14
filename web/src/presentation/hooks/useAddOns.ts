@@ -74,6 +74,37 @@ export function useUpdateAddOnDefinition() {
   });
 }
 
+/**
+ * Phase 6A.143 — upload (or replace) the add-on display image.
+ * Invalidates the definitions list so AddOnSelector + manage tab pick up the new URL.
+ */
+export function useUploadAddOnImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; definitionId: string; file: File }) =>
+      eventsRepository.uploadAddOnImage(data.eventId, data.definitionId, data.file),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: addOnKeys.definitions(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: addOnKeys.purchases(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.143 — clear the add-on display image. Idempotent.
+ */
+export function useDeleteAddOnImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; definitionId: string }) =>
+      eventsRepository.deleteAddOnImage(data.eventId, data.definitionId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: addOnKeys.definitions(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: addOnKeys.purchases(variables.eventId) });
+    },
+  });
+}
+
 export function usePurchaseAddOn() {
   const queryClient = useQueryClient();
   return useMutation({

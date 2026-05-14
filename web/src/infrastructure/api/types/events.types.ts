@@ -3411,6 +3411,10 @@ export interface ScanTicketResult {
   scannedBy?: string | null;
   usedPreviousKey: boolean;
   wrongEventTitle?: string | null;  // populated only on wrong_event rejection
+  // UAT R2 Issue A — populated on already_scanned (and other ticket-resolved rejections) once backend
+  // ships the enriched DTO. Optional until Commit 2 lands.
+  previousScanCount?: number | null;
+  previousScannedBy?: string | null;
 }
 
 /**

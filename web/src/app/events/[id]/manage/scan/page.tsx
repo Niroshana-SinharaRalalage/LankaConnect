@@ -4,16 +4,17 @@
  * Phase 6A.141 — Paid-event ticket check-in / QR scanner page.
  *
  * Organizer-only page accessed at `/events/{id}/manage/scan`. Opens the device
- * camera (via html5-qrcode), scans incoming QR codes, posts each to the backend
+ * camera (via html5-qrcode), scans an incoming QR code, posts it to the backend
  * scan endpoint, and renders an accept/reject panel for gate staff.
  *
  * Architectural notes:
+ * - One-shot scan mode (UAT R2 Issue B): camera stops as soon as the first
+ *   decode fires. The operator reads the result, then taps "Scan Next Ticket"
+ *   to start the camera again. This prevents the mobile-scroll bug where a
+ *   still-live camera re-decoded the same QR and flipped the panel to
+ *   "Already scanned".
  * - F14 (camera-denied UX): if the browser denies camera permission, a yellow
  *   panel surfaces the manual-entry button prominently so the gate isn't blocked.
- * - F15 (cooldown keyed on lastScannedCode): the cooldown debounce uses
- *   `lastScannedCode == currentCode AND lastScanAt + 2s > now` so re-rendering
- *   phone-displayed QRs doesn't re-trigger a scan, but two different QRs in
- *   rapid succession both go through.
  * - F16 (code-split): html5-qrcode is dynamic-imported so the scanner-only
  *   library doesn't bloat the main manage-page bundle.
  * - HTTP-status semantics: accepted + rejected are both HTTP 200 (the body's
@@ -61,7 +62,42 @@ function classifyScanError(err: unknown): { kind: 'network-loss' | 'server-error
   return { kind: 'server-error', errorMessage: 'Unknown error from server' };
 }
 
-const COOLDOWN_MS = 2000;
+/**
+ * Shared attendee-details block — rendered identically on the accepted panel and
+ * on the four ticket-resolved rejection panels (already_scanned, expired,
+ * invalidated, wrong_event). UAT R2 Issue A: operator wants to see who the
+ * ticket belongs to either way. `accent` picks the color palette to match the
+ * surrounding panel.
+ */
+function AttendeeBlock({ result, accent }: { result: ScanTicketResult; accent: 'green' | 'amber' | 'red' }) {
+  const nameCls = accent === 'green' ? 'text-green-900' : accent === 'amber' ? 'text-amber-900' : 'text-red-900';
+  const subCls = accent === 'green' ? 'text-green-700' : accent === 'amber' ? 'text-amber-800' : 'text-red-700';
+  const metaCls = accent === 'green' ? 'text-green-600' : accent === 'amber' ? 'text-amber-700' : 'text-red-600';
+  return (
+    <>
+      <p className={`text-2xl font-bold mt-1 ${nameCls}`}>
+        {result.attendeeName ?? '(no name on registration)'}
+      </p>
+      {result.tier && (
+        <p className={`${subCls} font-medium`}>Tier: {result.tier}</p>
+      )}
+      {result.attendeeCount && result.attendeeCount > 1 && (
+        <p className={`${subCls} mt-1`}>
+          Party of {result.attendeeCount}
+          {result.tierBreakdown && result.tierBreakdown.length > 0 && (
+            <span> ({result.tierBreakdown.map((b) => `${b.count}× ${b.tier}`).join(', ')})</span>
+          )}
+        </p>
+      )}
+      {result.ticketCode && (
+        <p className={`text-xs mt-2 ${metaCls}`}>
+          Ticket {result.ticketCode}
+          {result.scannedBy && <> • scanned by {result.scannedBy}</>}
+        </p>
+      )}
+    </>
+  );
+}
 
 export default function ScanTicketPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = use(params);
@@ -72,7 +108,9 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
 
   const scannerDivRef = useRef<HTMLDivElement>(null);
   const html5QrcodeRef = useRef<unknown>(null); // Html5Qrcode instance (any-shaped from dynamic import)
-  const lastScanRef = useRef<{ code: string; at: number } | null>(null);
+  // One-shot scan guard: flipped true on first decode to swallow stray re-decodes
+  // that fire during the ~100ms window between decode callback and stopCamera() resolve.
+  const decodedRef = useRef<boolean>(false);
 
   const [outcome, setOutcome] = useState<ScanOutcome>({ kind: 'idle' });
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -115,7 +153,24 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
     }
   }, [audioEnabled]);
 
+  const stopCamera = useCallback(async () => {
+    try {
+      if (html5QrcodeRef.current) {
+        const inst = html5QrcodeRef.current as { stop: () => Promise<void>; clear: () => void };
+        await inst.stop();
+        inst.clear();
+        html5QrcodeRef.current = null;
+      }
+    } catch (err) {
+      console.warn('[scan] camera stop failed (often safe to ignore)', err);
+    }
+  }, []);
+
   const submitScan = useCallback(async (qrPayload: string) => {
+    // One-shot mode: stop the camera BEFORE the API call so it can't re-decode
+    // the same QR while we're waiting on the network. decodedRef already swallows
+    // any stray callbacks fired in the gap; this also blacks out the viewfinder.
+    await stopCamera();
     setOutcome({ kind: 'scanning' });
     try {
       const result = await eventsRepository.scanTicket(eventId, qrPayload);
@@ -132,12 +187,14 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
       console.error('[scan] error', err);
       setOutcome(classifyScanError(err));
     }
-  }, [eventId, playFeedback]);
+  }, [eventId, playFeedback, stopCamera]);
 
   const submitManualScan = useCallback(async () => {
     const code = manualCode.trim();
     if (!code) return;
     setShowManualEntry(false);
+    // Stop the camera if it happened to be running — manual entry takes over.
+    await stopCamera();
     setOutcome({ kind: 'scanning' });
     try {
       const result = await eventsRepository.scanTicketByCode(eventId, code);
@@ -154,12 +211,14 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
     } finally {
       setManualCode('');
     }
-  }, [eventId, manualCode, playFeedback]);
+  }, [eventId, manualCode, playFeedback, stopCamera]);
 
   const startCamera = useCallback(async () => {
-    // Issue 2 fix: the viewfinder div is ALWAYS rendered (hidden via CSS when idle),
-    // so scannerDivRef.current is never null on first click. The previous early-return
-    // would no-op the click because the div was conditionally rendered.
+    // One-shot guard: reset the flag every time we (re)start the camera so the
+    // next decode is accepted. Without this, "Scan Next Ticket" would no-op.
+    decodedRef.current = false;
+    // The viewfinder div is ALWAYS mounted (hidden via CSS when idle/terminal),
+    // so scannerDivRef.current is never null on first click.
     setOutcome({ kind: 'scanning' });
     if (!scannerDivRef.current) {
       // Should never happen now, but stay defensive — log instead of silent return.
@@ -182,14 +241,12 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
           qrbox: { width: 250, height: 250 },
         },
         (decodedText) => {
-          // F15: cooldown keyed on lastScannedCode + 2s window.
-          const now = Date.now();
-          const last = lastScanRef.current;
-          if (last && last.code === decodedText && now - last.at < COOLDOWN_MS) {
-            return; // same code in cooldown — ignore
-          }
-          lastScanRef.current = { code: decodedText, at: now };
-          submitScan(decodedText);
+          // One-shot mode: swallow any decode after the first. The decoder can
+          // fire 2-3 times in the ~100ms window before stopCamera() actually
+          // releases the video stream, so we set the flag synchronously here.
+          if (decodedRef.current) return;
+          decodedRef.current = true;
+          void submitScan(decodedText);
         },
         () => {
           // per-frame "no QR detected" — silent, expected.
@@ -204,19 +261,6 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
       });
     }
   }, [submitScan]);
-
-  const stopCamera = useCallback(async () => {
-    try {
-      if (html5QrcodeRef.current) {
-        const inst = html5QrcodeRef.current as { stop: () => Promise<void>; clear: () => void };
-        await inst.stop();
-        inst.clear();
-        html5QrcodeRef.current = null;
-      }
-    } catch (err) {
-      console.warn('[scan] camera stop failed (often safe to ignore)', err);
-    }
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -290,9 +334,14 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
           Point the camera at the QR on the attendee's ticket. Tap "Enter code manually" for damaged or unscannable codes.
         </p>
 
-        {/* Scanner viewfinder — ALWAYS mounted (Issue 2 fix); idle state hides via CSS so
-            the camera button can grab a real ref synchronously on click. */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-4">
+        {/* Scanner viewfinder card — ALWAYS mounted to keep the scanner div ref valid
+            across state transitions, but hidden via CSS on terminal states so the
+            result panel dominates the mobile screen (UAT R2 Issue B). */}
+        <div
+          className={`bg-white rounded-lg shadow-sm border p-4 mb-4${
+            outcome.kind !== 'idle' && outcome.kind !== 'scanning' ? ' hidden' : ''
+          }`}
+        >
           {outcome.kind === 'idle' && (
             <div className="text-center py-8">
               <Camera className="w-12 h-12 mx-auto text-neutral-400 mb-3" />
@@ -305,12 +354,12 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
           <div
             id="qr-scanner-region"
             ref={scannerDivRef}
-            className={`w-full max-w-md mx-auto${outcome.kind === 'idle' ? ' hidden' : ''}`}
+            className={`w-full max-w-md mx-auto${outcome.kind === 'scanning' ? '' : ' hidden'}`}
             data-testid="qr-scanner-region"
           />
         </div>
 
-        {/* Result panel (only when not idle) */}
+        {/* Result panel (only when terminal) */}
         {outcome.kind === 'accepted' && outcome.result && (
           <div
             data-testid="scan-result-accepted"
@@ -320,25 +369,7 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
               <CheckCircle2 className="w-10 h-10 text-green-600 flex-shrink-0" />
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-green-900">Accepted</h2>
-                <p className="text-2xl font-bold text-green-900 mt-1">
-                  {outcome.result.attendeeName ?? '(no name on registration)'}
-                </p>
-                {outcome.result.tier && (
-                  <p className="text-green-700 font-medium">Tier: {outcome.result.tier}</p>
-                )}
-                {outcome.result.attendeeCount && outcome.result.attendeeCount > 1 && (
-                  <p className="text-green-700 mt-1">
-                    Party of {outcome.result.attendeeCount}
-                    {outcome.result.tierBreakdown && outcome.result.tierBreakdown.length > 0 && (
-                      <span>
-                        {' '}({outcome.result.tierBreakdown.map((b) => `${b.count}× ${b.tier}`).join(', ')})
-                      </span>
-                    )}
-                  </p>
-                )}
-                <p className="text-xs text-green-600 mt-2">
-                  Ticket {outcome.result.ticketCode} • scanned by {outcome.result.scannedBy ?? 'you'}
-                </p>
+                <AttendeeBlock result={outcome.result} accent="green" />
                 {outcome.result.usedPreviousKey && (
                   <p className="text-xs text-amber-700 mt-1">
                     (Verified with rotated-out key — pre-rotation ticket)
@@ -346,10 +377,52 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                 )}
               </div>
             </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={startCamera} size="lg" data-testid="scan-next-from-accepted">
+                <Camera className="w-5 h-5 mr-2" /> Scan Next Ticket
+              </Button>
+            </div>
           </div>
         )}
 
-        {outcome.kind === 'rejected' && outcome.result && (
+        {/* Already-scanned: amber panel with CheckCircle2 — operator wants to see the
+            attendee was a legitimate ticket-holder, just re-presenting. UAT R2 Issue A. */}
+        {outcome.kind === 'rejected' && outcome.result?.reason === 'already_scanned' && (
+          <div
+            data-testid="scan-result-already-scanned"
+            className="bg-amber-50 border-2 border-amber-500 rounded-lg p-6 mb-4"
+          >
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-10 h-10 text-amber-600 flex-shrink-0" />
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-amber-900">
+                  Already Scanned
+                  {outcome.result.previousScanCount && outcome.result.previousScanCount > 0 && (
+                    <span> ({outcome.result.previousScanCount}×)</span>
+                  )}
+                </h2>
+                {outcome.result.scannedAt && (
+                  <p className="text-amber-800 mt-1 text-sm">
+                    First admitted {new Date(outcome.result.scannedAt).toLocaleString()}
+                    {outcome.result.previousScannedBy && (
+                      <> by {outcome.result.previousScannedBy}</>
+                    )}
+                  </p>
+                )}
+                <AttendeeBlock result={outcome.result} accent="amber" />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={startCamera} size="lg" data-testid="scan-next-from-already-scanned">
+                <Camera className="w-5 h-5 mr-2" /> Scan Next Ticket
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Other rejections (expired, invalidated, wrong_event, invalid_signature,
+            malformed_payload, ticket_not_found, malformed_request) — red panel. */}
+        {outcome.kind === 'rejected' && outcome.result && outcome.result.reason !== 'already_scanned' && (
           <div
             data-testid="scan-result-rejected"
             className="bg-red-50 border-2 border-red-500 rounded-lg p-6 mb-4"
@@ -362,11 +435,14 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                   {outcome.result.reasonMessage ?? 'This ticket cannot be accepted.'}
                 </p>
                 {outcome.result.attendeeName && (
-                  <p className="text-xs text-red-700 mt-2">
-                    Ticket {outcome.result.ticketCode} for {outcome.result.attendeeName}
-                  </p>
+                  <AttendeeBlock result={outcome.result} accent="red" />
                 )}
               </div>
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={startCamera} size="lg" data-testid="scan-next-from-rejected">
+                <Camera className="w-5 h-5 mr-2" /> Scan Next Ticket
+              </Button>
             </div>
           </div>
         )}
@@ -389,12 +465,16 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                 )}
               </div>
             </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={startCamera} size="lg" data-testid="scan-next-from-network-loss">
+                <Camera className="w-5 h-5 mr-2" /> Scan Next Ticket
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* Issue 2.5 fix — distinct panel for server-side rejections (HTTP 400/500 etc.)
-            so the operator knows to call a coordinator, not retry on the assumption it
-            was a network blip. */}
+        {/* Distinct panel for server-side rejections (HTTP 400/500 etc.) so the
+            operator knows to call a coordinator, not retry blindly. */}
         {outcome.kind === 'server-error' && (
           <div
             data-testid="scan-result-server-error"
@@ -412,6 +492,11 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                   <p className="text-xs text-yellow-700 mt-2 font-mono">{outcome.errorMessage}</p>
                 )}
               </div>
+            </div>
+            <div className="mt-4 flex justify-center">
+              <Button onClick={startCamera} size="lg" data-testid="scan-next-from-server-error">
+                <Camera className="w-5 h-5 mr-2" /> Scan Next Ticket
+              </Button>
             </div>
           </div>
         )}

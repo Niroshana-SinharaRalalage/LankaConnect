@@ -210,27 +210,61 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         $"Already scanned at {ticket.ValidatedAt.Value:HH:mm} UTC."));
                 }
 
-                // 7. Atomic mark-scanned + audit (F2 explicit transaction)
+                // 7. Mark-scanned + audit.
+                //
+                // Phase 6A.141 UAT hotfix (Issue 1): the original design wrapped both steps
+                // in an explicit IUnitOfWork.BeginTransactionAsync/CommitTransactionAsync per
+                // F2. Operator UAT surfaced that the project's AppDbContext.CommitAsync
+                // (Phase 6A.74 RCA) interacts with EF Core 8 ExecuteUpdateAsync inside an
+                // open IDbContextTransaction in a way that throws InvalidOperationException
+                // → GlobalExceptionMiddleware returned 400 "The requested operation is
+                // invalid." for every real ticket scan.
+                //
+                // Fix per system-architect: run the atomic UPDATE standalone (race-safety
+                // is still guaranteed at the row level by the WHERE clause inside
+                // TryMarkScannedAsync — `WHERE Id=@id AND ValidatedAt IS NULL`), then write
+                // the audit row via a separate CommitAsync. Trade-off: a forensic gap on
+                // partial DB failure (UPDATE succeeds but audit insert fails → ticket
+                // scanned with no audit row). Acceptable because:
+                //   • Door correctly opens (UPDATE succeeded, attendee gets in)
+                //   • Rejection-audit path already accepts the same gap (see
+                //     TryWriteRejectionAuditAsync which swallows audit failures)
+                //   • Reconciliation queries (Tickets with ValidatedAt and no accepted
+                //     scan log row) can detect mismatches for post-hoc cleanup
+                //   • The clean alternative (xmin concurrency token on Ticket + migration)
+                //     is over-engineered for the failure mode; deferred to a future hardening
+                //     phase if real-world audit gaps appear in logs.
                 var now = DateTime.UtcNow;
-                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                int rowsAffected;
                 try
                 {
-                    var rowsAffected = await _ticketRepository.TryMarkScannedAsync(ticket.Id, now, cancellationToken);
-                    if (rowsAffected == 0)
-                    {
-                        // Race-loser: someone scanned between our read and our atomic UPDATE.
-                        await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                        _logger.LogWarning(
-                            "ScanTicket: race-lost — TryMarkScannedAsync returned 0 rows. TicketCode={TicketCode}",
-                            resolvedTicketCode);
-                        // Write rejection audit OUTSIDE the rolled-back transaction.
-                        await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
-                            ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
-                        return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
-                            ReasonCode.AlreadyScanned, "Already scanned (by another scanner just now)."));
-                    }
+                    rowsAffected = await _ticketRepository.TryMarkScannedAsync(ticket.Id, now, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "ScanTicket: TryMarkScannedAsync threw. TicketCode={TicketCode}",
+                        resolvedTicketCode);
+                    throw;
+                }
 
-                    // Winner: queue audit row in the same transaction.
+                if (rowsAffected == 0)
+                {
+                    // Race-loser: another scanner marked this ticket scanned between our
+                    // read and our atomic UPDATE.
+                    _logger.LogWarning(
+                        "ScanTicket: race-lost — TryMarkScannedAsync returned 0 rows. TicketCode={TicketCode}",
+                        resolvedTicketCode);
+                    await TryWriteRejectionAuditAsync(command, ticket.Id, resolvedTicketCode,
+                        ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
+                    return Result<ScanTicketResult>.Success(ScanTicketResult.RejectedFor(
+                        ReasonCode.AlreadyScanned, "Already scanned (by another scanner just now)."));
+                }
+
+                // Winner: queue accepted audit row in a separate CommitAsync.
+                // If the audit-insert fails, we log + continue (door already open via UPDATE).
+                try
+                {
                     var acceptedAudit = TicketScanLog.Accepted(
                         ticket.Id, command.EventId, ticket.TicketCode,
                         command.ScannerUserId, command.ScannerName,
@@ -238,12 +272,16 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         command.ClientIp, command.UserAgent);
                     await _scanLogRepository.AddAsync(acceptedAudit, cancellationToken);
                     await _unitOfWork.CommitAsync(cancellationToken);
-                    await _unitOfWork.CommitTransactionAsync(cancellationToken);
                 }
-                catch
+                catch (Exception auditEx)
                 {
-                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                    throw;
+                    // Forensic-gap: ticket is marked scanned but no accepted-audit row.
+                    // Don't fail the scan response — the door is already open for the
+                    // attendee per the successful UPDATE. Surface in logs for later
+                    // reconciliation.
+                    _logger.LogError(auditEx,
+                        "ScanTicket: accepted-audit write failed AFTER successful mark-scanned. TicketCode={TicketCode}. Reconciliation query can detect this gap.",
+                        resolvedTicketCode);
                 }
 
                 // 8. Build accepted response

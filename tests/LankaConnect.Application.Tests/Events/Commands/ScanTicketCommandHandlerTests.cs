@@ -110,8 +110,17 @@ public class ScanTicketCommandHandlerTests
         result.Value.TicketCode.Should().Be(_ticketCode);
         result.Value.ScannedBy.Should().Be("Sarah Organizer");
         result.Value.UsedPreviousKey.Should().BeFalse();
-        _uow.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
-        _uow.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
+        // Issue 1 UAT hotfix: the handler no longer wraps mark-scanned + audit in an
+        // explicit transaction. The atomic UPDATE provides the race-safety guarantee
+        // standalone; the audit insert runs in a separate CommitAsync. Trade-off: a
+        // forensic gap on partial DB failure (UPDATE succeeded but audit insert failed)
+        // — acceptable per architect review since the door correctly opens regardless.
+        _uow.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never,
+            "transaction wrapper dropped to avoid the AppDbContext.CommitAsync (Phase 6A.74) " +
+            "× EF Core 8 ExecuteUpdateAsync InvalidOperationException at runtime");
+        _uow.Verify(u => u.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once,
+            "audit row is written via a single CommitAsync after the atomic UPDATE succeeded");
         _scanLogRepo.Verify(s => s.AddAsync(
             It.Is<TicketScanLog>(l => l.ScanResult == TicketScanLog.ScanResultAccepted),
             It.IsAny<CancellationToken>()), Times.Once);
@@ -225,11 +234,14 @@ public class ScanTicketCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Result.Should().Be("rejected");
         result.Value.Reason.Should().Be(ReasonCode.AlreadyScanned);
-        _uow.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Once,
-            "race-loser must rollback the transaction so no audit row binds to the no-op UPDATE");
+        // Issue 1 UAT hotfix: no transaction wrapper anymore — nothing to roll back.
+        // The race-loser path is detected by ExecuteUpdateAsync returning RowsAffected==0;
+        // no UPDATE happened, so no audit binding to the no-op update is needed.
+        _uow.Verify(u => u.RollbackTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _uow.Verify(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         _scanLogRepo.Verify(s => s.AddAsync(
             It.Is<TicketScanLog>(l => l.RejectionReason == ReasonCode.AlreadyScanned),
             It.IsAny<CancellationToken>()), Times.Once,
-            "race-loser still gets its own audit row written OUTSIDE the rolled-back transaction");
+            "race-loser still gets its own audit row via TryWriteRejectionAuditAsync");
     }
 }

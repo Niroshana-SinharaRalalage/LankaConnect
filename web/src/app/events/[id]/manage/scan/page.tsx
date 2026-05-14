@@ -32,7 +32,7 @@ import { Button } from '@/presentation/components/ui/Button';
 import { useEventById } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import type { ScanTicketResult } from '@/infrastructure/api/types/events.types';
+import type { ScanTicketResult, AddOnSummary } from '@/infrastructure/api/types/events.types';
 import { NetworkError } from '@/infrastructure/api/client/api-errors';
 
 // html5-qrcode is dynamic-imported inside the start handler so the scanner-only
@@ -151,6 +151,44 @@ function AttendeeBlock({ result, accent }: { result: ScanTicketResult; accent: '
         </p>
       )}
     </>
+  );
+}
+
+/**
+ * UAT R4 — confirmed-bundled add-ons for the scanned ticket. Rendered as a
+ * separate sub-block below AttendeeBlock so the operator can see what extras
+ * the attendee paid for (e.g. "Dinner Add-on x1 — $5.00"). Hidden entirely
+ * when the server returned a null/empty addOns array — no empty card noise.
+ */
+function AddOnsBlock({ addOns, accent }: { addOns: AddOnSummary[] | null | undefined; accent: 'green' | 'amber' | 'red' }) {
+  if (!addOns || addOns.length === 0) return null;
+  const borderCls = accent === 'green' ? 'border-green-200' : accent === 'amber' ? 'border-amber-300' : 'border-red-200';
+  const labelCls = accent === 'green' ? 'text-green-700' : accent === 'amber' ? 'text-amber-800' : 'text-red-700';
+  const nameCls = accent === 'green' ? 'text-green-900' : accent === 'amber' ? 'text-amber-900' : 'text-red-900';
+  return (
+    <div className={`mt-3 rounded border ${borderCls} bg-white/40`} data-testid="scan-addons-list">
+      <p className={`px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide ${labelCls}`}>
+        Add-ons
+      </p>
+      <div className={`divide-y ${borderCls}`}>
+        {addOns.map((a, idx) => {
+          const total = formatPrice(a.totalAmount, a.currency);
+          const unit = formatPrice(a.unitPrice, a.currency);
+          return (
+            <div key={idx} className="px-3 py-2 flex justify-between items-baseline text-sm" data-testid={`scan-addon-row-${idx}`}>
+              <div className={`font-medium ${nameCls}`}>
+                {a.name}
+                {a.quantity > 1 && <span className={`ml-1 text-xs ${labelCls}`}>×{a.quantity}</span>}
+              </div>
+              <div className={`text-xs ${labelCls}`}>
+                {a.quantity > 1 && unit && <span className="mr-2">{unit} ea</span>}
+                {total && <span className={`font-medium ${nameCls}`}>{total}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -425,6 +463,7 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-green-900">Accepted</h2>
                 <AttendeeBlock result={outcome.result} accent="green" />
+                <AddOnsBlock addOns={outcome.result.addOns} accent="green" />
                 {outcome.result.usedPreviousKey && (
                   <p className="text-xs text-amber-700 mt-1">
                     (Verified with rotated-out key — pre-rotation ticket)
@@ -465,6 +504,7 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                   </p>
                 )}
                 <AttendeeBlock result={outcome.result} accent="amber" />
+                <AddOnsBlock addOns={outcome.result.addOns} accent="amber" />
               </div>
             </div>
             <div className="mt-4 flex justify-center">
@@ -492,6 +532,7 @@ export default function ScanTicketPage({ params }: { params: Promise<{ id: strin
                 {outcome.result.attendeeName && (
                   <AttendeeBlock result={outcome.result} accent="red" />
                 )}
+                <AddOnsBlock addOns={outcome.result.addOns} accent="red" />
               </div>
             </div>
             <div className="mt-4 flex justify-center">

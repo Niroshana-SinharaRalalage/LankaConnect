@@ -3417,6 +3417,21 @@ export interface ScanTicketResult {
   // UAT R3 — full per-attendee detail. Null/empty for head-count tickets and
   // pre-MultiAttendee registrations; UI falls back to legacy aggregates above.
   attendees?: AttendeeDetail[] | null;
+  // UAT R4 — confirmed-bundled add-ons (filter: Completed AND RegistrationId match).
+  // Null when the registration has no qualifying add-ons; UI omits the section.
+  addOns?: AddOnSummary[] | null;
+}
+
+/**
+ * UAT R4 — one confirmed add-on purchase bundled with the scanned ticket.
+ * Mirrors LankaConnect.Application.Events.Commands.ScanTicket.AddOnSummary.
+ */
+export interface AddOnSummary {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  currency: string;        // ISO code e.g. "USD"
 }
 
 /**

@@ -41,6 +41,14 @@ public record ScanTicketResult
     /// price computed from <c>TicketTier.CalculatePriceForAttendee</c>.</summary>
     public IReadOnlyList<AttendeeDetail>? Attendees { get; init; }
 
+    /// <summary>UAT R4 — confirmed-and-bundled add-ons for this registration (e.g. dinner
+    /// add-on, merch). Filter applied server-side: Status == Completed AND
+    /// RegistrationId == this registration. Standalone add-ons (purchased separately
+    /// from the event page) and Pending/Failed/Abandoned/Refunded purchases are
+    /// excluded. Null when there are no matching bundled add-ons — UI omits the
+    /// section entirely (no empty card).</summary>
+    public IReadOnlyList<AddOnSummary>? AddOns { get; init; }
+
     /// <summary>When this scan was accepted (or when the previous scan was, in the
     /// case of <see cref="ReasonCode.AlreadyScanned"/>).</summary>
     public DateTime? ScannedAt { get; init; }
@@ -77,7 +85,8 @@ public record ScanTicketResult
         DateTime scannedAt,
         string? scannedBy,
         bool usedPreviousKey,
-        IReadOnlyList<AttendeeDetail>? attendees = null) =>
+        IReadOnlyList<AttendeeDetail>? attendees = null,
+        IReadOnlyList<AddOnSummary>? addOns = null) =>
         new()
         {
             Result = "accepted",
@@ -90,6 +99,7 @@ public record ScanTicketResult
             ScannedBy = scannedBy,
             UsedPreviousKey = usedPreviousKey,
             Attendees = attendees,
+            AddOns = addOns,
         };
 
     public static ScanTicketResult RejectedFor(string reason, string reasonMessage) =>
@@ -119,6 +129,19 @@ public record AttendeeDetail(
     decimal? PriceAmount,      // from TicketTier.CalculatePriceForAttendee
     string? PriceCurrency,     // ISO code (Currency enum .ToString())
     string? SeatLabel);        // assigned-seating events only
+
+/// <summary>
+/// UAT R4 — single bundled add-on purchase as projected onto the scanner panel.
+/// UnitPrice is the snapshot at checkout time (organizer price changes don't affect
+/// historical purchases). TotalAmount = UnitPrice * Quantity, denormalized so the UI
+/// renders without recomputing.
+/// </summary>
+public record AddOnSummary(
+    string Name,           // AddOnDefinition.Name
+    int Quantity,
+    decimal UnitPrice,
+    decimal TotalAmount,
+    string Currency);      // ISO code e.g. "USD", "LKR"
 
 /// <summary>Canonical rejection reason codes — wire-compatible strings shared with
 /// <c>TicketScanLog</c> audit entries and the scanner UI's i18n catalog.</summary>

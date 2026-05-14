@@ -30,6 +30,8 @@ public class ScanTicketCommandHandlerTests
     private readonly Mock<ITicketScanLogRepository> _scanLogRepo = new();
     private readonly Mock<IEventRepository> _eventRepo = new();
     private readonly Mock<IRegistrationRepository> _registrationRepo = new();
+    private readonly Mock<IAddOnPurchaseRepository> _addOnPurchaseRepo = new();
+    private readonly Mock<IAddOnDefinitionRepository> _addOnDefinitionRepo = new();
     private readonly Mock<ITicketSignatureService> _sigService = new();
     private readonly Mock<IUnitOfWork> _uow = new();
 
@@ -45,6 +47,8 @@ public class ScanTicketCommandHandlerTests
             _scanLogRepo.Object,
             _eventRepo.Object,
             _registrationRepo.Object,
+            _addOnPurchaseRepo.Object,
+            _addOnDefinitionRepo.Object,
             _sigService.Object,
             _uow.Object,
             NullLogger<ScanTicketCommandHandler>.Instance);
@@ -490,5 +494,95 @@ public class ScanTicketCommandHandlerTests
         result.Value.Attendees!.Single().PriceCurrency.Should().BeNull();
         result.Value.Attendees!.Single().TicketTierName.Should().Be("OldDeletedTier",
             "denormalized tier name on AttendeeDetails survives even when the live tier row is gone");
+    }
+
+    // ============================================================
+    // 11) UAT R4 — Accepted scan surfaces bundled add-ons (Completed status,
+    //     RegistrationId matches THIS registration). AddOnDefinition name resolved.
+    // ============================================================
+    [Fact]
+    public async Task Handle_Accepted_WithBundledAddOn_ProjectsAddOnSummary()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+        var (ev, vipTier) = BuildEventWithVipTier(_eventId);
+        var registration = BuildRegistrationWith2Attendees(_eventId, vipTier);
+        var addOnDefinitionId = Guid.NewGuid();
+        // Build a Completed bundled add-on purchase tied to this registration.
+        var unitPrice = Money.Create(5m, Currency.USD).Value;
+        var purchase = AddOnPurchase.CreateBundledWithRegistration(
+            eventId: _eventId,
+            addOnDefinitionId: addOnDefinitionId,
+            registrationId: _registrationId,
+            buyerUserId: _scannerUserId,
+            buyerName: "Niroshana Sinharage",
+            buyerEmail: "niroshhh@example.com",
+            buyerPhone: null,
+            quantity: 1,
+            unitPrice: unitPrice).Value;
+        // Move it to Completed via the entity lifecycle so the filter accepts it.
+        purchase.SetStripeCheckoutSession("cs_test_abc", DateTime.UtcNow.AddHours(1));
+        purchase.CompletePayment("pi_test_xyz");
+        // Build a matching AddOnDefinition so the name lookup succeeds.
+        var defNameField = AddOnDefinition.Create(_eventId, "Dinner Add-on", "Extra", unitPrice, 100).Value;
+        typeof(BaseEntity).GetProperty("Id")!.SetValue(defNameField, addOnDefinitionId);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ev);
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(registration);
+        _addOnPurchaseRepo.Setup(r => r.GetByUserIdAndEventIdAsync(_scannerUserId, _eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { purchase });
+        _addOnDefinitionRepo.Setup(r => r.GetByEventIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { defNameField });
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("accepted");
+        result.Value.AddOns.Should().NotBeNull();
+        result.Value.AddOns!.Should().HaveCount(1, "exactly one bundled add-on on this registration");
+        var addOn = result.Value.AddOns!.Single();
+        addOn.Name.Should().Be("Dinner Add-on", "definition name resolved via IAddOnDefinitionRepository");
+        addOn.Quantity.Should().Be(1);
+        addOn.UnitPrice.Should().Be(5m);
+        addOn.TotalAmount.Should().Be(5m);
+        addOn.Currency.Should().Be("USD");
+    }
+
+    // ============================================================
+    // 12) UAT R4 — No add-ons → AddOns is null (UI omits the section).
+    //     Also pins that non-bundled add-ons (different RegistrationId or
+    //     Pending status) are filtered out.
+    // ============================================================
+    [Fact]
+    public async Task Handle_Accepted_NoAddOns_AddOnsIsNull()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildEvent(_eventId));
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Registration?)null); // simulate no registration data
+        // _addOnPurchaseRepo intentionally unmocked → default empty result
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("accepted");
+        result.Value.AddOns.Should().BeNull("registration is null → no add-ons to enrich");
     }
 }

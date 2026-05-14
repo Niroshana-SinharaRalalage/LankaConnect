@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     private readonly ITicketScanLogRepository _scanLogRepository;
     private readonly IEventRepository _eventRepository;
     private readonly IRegistrationRepository _registrationRepository;
+    private readonly IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly IAddOnDefinitionRepository _addOnDefinitionRepository;
     private readonly ITicketSignatureService _signatureService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ScanTicketCommandHandler> _logger;
@@ -44,6 +47,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
         ITicketScanLogRepository scanLogRepository,
         IEventRepository eventRepository,
         IRegistrationRepository registrationRepository,
+        IAddOnPurchaseRepository addOnPurchaseRepository,
+        IAddOnDefinitionRepository addOnDefinitionRepository,
         ITicketSignatureService signatureService,
         IUnitOfWork unitOfWork,
         ILogger<ScanTicketCommandHandler> logger)
@@ -52,6 +57,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
         _scanLogRepository = scanLogRepository;
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _addOnDefinitionRepository = addOnDefinitionRepository;
         _signatureService = signatureService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -342,6 +349,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                     ticket.TicketCode, attendeeName, tier, usedPreviousKey, sw.ElapsedMilliseconds);
 
                 var attendees = BuildAttendeeDetails(registration, @event);
+                var addOns = await BuildAddOnsAsync(registration, command.EventId, cancellationToken);
 
                 return Result<ScanTicketResult>.Success(ScanTicketResult.AcceptedFor(
                     ticketCode: ticket.TicketCode,
@@ -352,7 +360,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                     scannedAt: now,
                     scannedBy: command.ScannerName,
                     usedPreviousKey: usedPreviousKey,
-                    attendees: attendees));
+                    attendees: attendees,
+                    addOns: addOns));
             }
             catch (Exception ex)
             {
@@ -421,6 +430,80 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     }
 
     /// <summary>
+    /// UAT R4 — project the add-on purchases bundled with this registration so the
+    /// scanner UI can surface what extras the attendee paid for (e.g. dinner add-on,
+    /// merch, parking pass).
+    ///
+    /// Filter: only Completed add-on purchases whose RegistrationId matches THIS
+    /// registration. Standalone add-ons (purchased separately from the event page)
+    /// and pending/failed/abandoned/refunded purchases are excluded — at the gate,
+    /// the operator only cares about confirmed bundled items for the ticket in hand.
+    ///
+    /// Two DB round-trips on the hot scan path:
+    ///   1. <see cref="IAddOnPurchaseRepository.GetByUserIdAndEventIdAsync"/> for known users,
+    ///      or <see cref="IAddOnPurchaseRepository.GetAllByCheckoutSessionIdAsync"/> for anonymous.
+    ///   2. <see cref="IAddOnDefinitionRepository.GetByEventIdAsync"/> for the display names.
+    /// Both bounded — typically ≤3 purchases and ≤5 definitions per event.
+    ///
+    /// Returns null when there are no matching bundled add-ons; the UI then renders
+    /// nothing for the add-ons section (no empty card).
+    /// </summary>
+    private async Task<IReadOnlyList<AddOnSummary>?> BuildAddOnsAsync(
+        Domain.Events.Registration? registration,
+        Guid eventId,
+        CancellationToken cancellationToken)
+    {
+        if (registration is null) return null;
+
+        try
+        {
+            IReadOnlyList<AddOnPurchase>? purchases = null;
+            if (registration.UserId.HasValue && registration.UserId.Value != Guid.Empty)
+            {
+                purchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
+                    registration.UserId.Value, eventId, cancellationToken);
+            }
+            else if (!string.IsNullOrEmpty(registration.StripeCheckoutSessionId))
+            {
+                purchases = await _addOnPurchaseRepository.GetAllByCheckoutSessionIdAsync(
+                    registration.StripeCheckoutSessionId, cancellationToken);
+            }
+
+            // Gate-staff filter: Completed AND bundled with THIS registration.
+            var bundled = purchases?
+                .Where(p => p.Status == AddOnPurchaseStatus.Completed
+                         && p.RegistrationId == registration.Id)
+                .ToList();
+            if (bundled is null || bundled.Count == 0) return null;
+
+            // One query for names; index by Id.
+            var definitions = await _addOnDefinitionRepository
+                .GetByEventIdAsync(eventId, cancellationToken);
+            var namesById = definitions?.ToDictionary(d => d.Id, d => d.Name);
+
+            return bundled.Select(p => new AddOnSummary(
+                Name: namesById is not null && namesById.TryGetValue(p.AddOnDefinitionId, out var name)
+                    ? name
+                    : "Add-on",
+                Quantity: p.Quantity,
+                UnitPrice: p.UnitPrice.Amount,
+                TotalAmount: p.TotalAmount.Amount,
+                Currency: p.UnitPrice.Currency.ToString())).ToList();
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the scan if add-on enrichment hits a transient DB error — the
+            // door still opens for the attendee. Log forensic detail; return null so the
+            // UI shows the scan panel without the add-ons section.
+            _logger.LogWarning(ex,
+                "ScanTicket: failed to enrich add-ons for RegistrationId={RegistrationId}. " +
+                "Scan response will omit the add-ons section.",
+                registration.Id);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// UAT R2 Issue A — assemble an enriched rejection DTO for the 4 ticket-resolved
     /// rejection reasons (already_scanned, expired, invalidated, wrong_event). The
     /// scanner UI renders attendee details on these panels (operator wants to see who
@@ -459,6 +542,9 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
         }
 
         var attendees = BuildAttendeeDetails(registration, ticketEvent);
+        // UAT R4: enrich rejection with bundled add-ons for the ORIGINAL event (wrong_event
+        // branch passes the ticket's home event; same-event branches pass @event).
+        var addOns = await BuildAddOnsAsync(registration, ticket.EventId, cancellationToken);
 
         var (acceptedCount, lastScannerName, lastAcceptedAt) =
             await _scanLogRepository.GetAcceptedSummaryForTicketAsync(ticket.Id, cancellationToken);
@@ -474,6 +560,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
             AttendeeCount = attendeeCount,
             TierBreakdown = breakdown,
             Attendees = attendees,
+            AddOns = addOns,
             // For already_scanned, prefer the audit-log timestamp (denormalized scanner name
             // pairs with it). Fall back to Ticket.ValidatedAt for the rare case where the
             // accepted audit row was lost to the forensic gap documented in the main flow.

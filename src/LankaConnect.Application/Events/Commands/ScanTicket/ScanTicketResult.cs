@@ -24,10 +24,22 @@ public record ScanTicketResult
     public string? ReasonMessage { get; init; }
 
     public string? TicketCode { get; init; }
+
+    // V1 fallback aggregates — kept for head-count-mode registrations where Attendees
+    // is empty, and for backward compat with existing test fixtures + the prior UI
+    // contract. When <see cref="Attendees"/> has rows, prefer those for display.
     public string? AttendeeName { get; init; }
     public string? Tier { get; init; }
     public int? AttendeeCount { get; init; }
     public IReadOnlyList<TierBreakdownEntry>? TierBreakdown { get; init; }
+
+    /// <summary>UAT R3 — full per-attendee detail. Null/empty for head-count-mode
+    /// registrations (Mode-B) or pre-MultiAttendee-migration registrations; in those
+    /// cases the UI falls back to <see cref="AttendeeName"/> + <see cref="Tier"/> +
+    /// <see cref="AttendeeCount"/>. When populated, the gate operator sees every
+    /// person on the ticket with their age category, gender, tier, and per-attendee
+    /// price computed from <c>TicketTier.CalculatePriceForAttendee</c>.</summary>
+    public IReadOnlyList<AttendeeDetail>? Attendees { get; init; }
 
     /// <summary>When this scan was accepted (or when the previous scan was, in the
     /// case of <see cref="ReasonCode.AlreadyScanned"/>).</summary>
@@ -64,7 +76,8 @@ public record ScanTicketResult
         IReadOnlyList<TierBreakdownEntry>? tierBreakdown,
         DateTime scannedAt,
         string? scannedBy,
-        bool usedPreviousKey) =>
+        bool usedPreviousKey,
+        IReadOnlyList<AttendeeDetail>? attendees = null) =>
         new()
         {
             Result = "accepted",
@@ -76,6 +89,7 @@ public record ScanTicketResult
             ScannedAt = scannedAt,
             ScannedBy = scannedBy,
             UsedPreviousKey = usedPreviousKey,
+            Attendees = attendees,
         };
 
     public static ScanTicketResult RejectedFor(string reason, string reasonMessage) =>
@@ -89,6 +103,22 @@ public record ScanTicketResult
 
 /// <summary>One entry in the per-ticket tier breakdown for a registration with multiple attendees.</summary>
 public record TierBreakdownEntry(string Tier, int Count);
+
+/// <summary>
+/// UAT R3 — full per-attendee projection for the scanner panel. One row per row in
+/// <c>Registration.Attendees</c>. Stringified enum values (AgeCategory, Gender) keep
+/// the wire stable across schema changes. Price fields are nullable to handle:
+///   - tier-deleted-after-registration drift (PriceAmount = null)
+///   - head-count-mode tickets (the whole Attendees list is null instead)
+/// </summary>
+public record AttendeeDetail(
+    string Name,
+    string AgeCategory,        // "Adult" | "Child" — stringified enum
+    string? Gender,            // "Male" | "Female" | "Other" | null
+    string? TicketTierName,    // denormalized from AttendeeDetails
+    decimal? PriceAmount,      // from TicketTier.CalculatePriceForAttendee
+    string? PriceCurrency,     // ISO code (Currency enum .ToString())
+    string? SeatLabel);        // assigned-seating events only
 
 /// <summary>Canonical rejection reason codes — wire-compatible strings shared with
 /// <c>TicketScanLog</c> audit entries and the scanner UI's i18n catalog.</summary>

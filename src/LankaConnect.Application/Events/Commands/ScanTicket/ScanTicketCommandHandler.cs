@@ -174,6 +174,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         ReasonCode.WrongEvent, entryMethod, usedPreviousKey, cancellationToken);
                     var wrongEventRejection = await BuildTicketResolvedRejectionAsync(
                         ticket,
+                        wrongEvent, // pass the ORIGINAL event so its TicketTiers resolve per-attendee prices
                         ReasonCode.WrongEvent,
                         wrongEventTitle is null
                             ? "This ticket is for a different event."
@@ -192,6 +193,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         ReasonCode.Invalidated, entryMethod, usedPreviousKey, cancellationToken);
                     var invalidatedRejection = await BuildTicketResolvedRejectionAsync(
                         ticket,
+                        @event,
                         ReasonCode.Invalidated,
                         "This ticket has been invalidated (likely refunded or cancelled).",
                         wrongEventTitle: null,
@@ -207,6 +209,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         ReasonCode.Expired, entryMethod, usedPreviousKey, cancellationToken);
                     var expiredRejection = await BuildTicketResolvedRejectionAsync(
                         ticket,
+                        @event,
                         ReasonCode.Expired,
                         "This ticket has expired.",
                         wrongEventTitle: null,
@@ -223,6 +226,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
                     var alreadyScannedRejection = await BuildTicketResolvedRejectionAsync(
                         ticket,
+                        @event,
                         ReasonCode.AlreadyScanned,
                         $"Already scanned at {ticket.ValidatedAt.Value:HH:mm} UTC.",
                         wrongEventTitle: null,
@@ -280,6 +284,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                         ReasonCode.AlreadyScanned, entryMethod, usedPreviousKey, cancellationToken);
                     var raceLostRejection = await BuildTicketResolvedRejectionAsync(
                         ticket,
+                        @event,
                         ReasonCode.AlreadyScanned,
                         "Already scanned (by another scanner just now).",
                         wrongEventTitle: null,
@@ -336,6 +341,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                     "ScanTicket ACCEPTED: TicketCode={TicketCode}, AttendeeName={AttendeeName}, Tier={Tier}, UsedPreviousKey={UsedPreviousKey}, Duration={ElapsedMs}ms",
                     ticket.TicketCode, attendeeName, tier, usedPreviousKey, sw.ElapsedMilliseconds);
 
+                var attendees = BuildAttendeeDetails(registration, @event);
+
                 return Result<ScanTicketResult>.Success(ScanTicketResult.AcceptedFor(
                     ticketCode: ticket.TicketCode,
                     attendeeName: attendeeName,
@@ -344,7 +351,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                     tierBreakdown: breakdown,
                     scannedAt: now,
                     scannedBy: command.ScannerName,
-                    usedPreviousKey: usedPreviousKey));
+                    usedPreviousKey: usedPreviousKey,
+                    attendees: attendees));
             }
             catch (Exception ex)
             {
@@ -358,17 +366,78 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
     }
 
     /// <summary>
+    /// UAT R3 — projects every attendee on a registration into the wire-shape used by
+    /// the scanner UI's per-attendee list. Pure projection (no DB calls); both the
+    /// registration's Attendees collection and the event's TicketTiers are eager-loaded
+    /// by their respective GetByIdAsync repos, so this runs entirely in-memory.
+    ///
+    /// Returns <c>null</c> for head-count-mode registrations or any case where the
+    /// Attendees collection is empty — the UI then falls back to the legacy aggregate
+    /// fields (AttendeeName / Tier / AttendeeCount / TierBreakdown).
+    ///
+    /// Per-attendee price is computed via <c>TicketTier.CalculatePriceForAttendee</c>
+    /// matched on the attendee's <c>TicketTierId</c>. When the tier isn't found on the
+    /// event (data drift after a tier deletion), price fields stay null but the
+    /// attendee's name + age category + tier name (denormalized) are still surfaced.
+    /// </summary>
+    private static IReadOnlyList<AttendeeDetail>? BuildAttendeeDetails(
+        Domain.Events.Registration? registration,
+        Domain.Events.Event? @event)
+    {
+        if (registration is null || registration.Attendees is null || !registration.Attendees.Any())
+            return null;
+
+        // Pre-index tiers by Id for an O(1) per-attendee lookup; the list is tiny (≤~5)
+        // so a Dictionary is overkill but readable. Null @event (e.g. wrong-event branch
+        // where the target event was deleted) means we render attendees without prices —
+        // names + ages + tier-name-denormalized still surface.
+        var tiersById = @event?.TicketTiers?
+            .Where(t => t.Id != Guid.Empty)
+            .ToDictionary(t => t.Id);
+
+        var details = new List<AttendeeDetail>(registration.Attendees.Count);
+        foreach (var a in registration.Attendees)
+        {
+            decimal? priceAmount = null;
+            string? priceCurrency = null;
+            if (a.TicketTierId.HasValue && tiersById is not null
+                && tiersById.TryGetValue(a.TicketTierId.Value, out var tier))
+            {
+                var price = tier.CalculatePriceForAttendee(a.AgeCategory);
+                priceAmount = price.Amount;
+                priceCurrency = price.Currency.ToString();
+            }
+
+            details.Add(new AttendeeDetail(
+                Name: a.Name,
+                AgeCategory: a.AgeCategory.ToString(),
+                Gender: a.Gender?.ToString(),
+                TicketTierName: a.TicketTierName,
+                PriceAmount: priceAmount,
+                PriceCurrency: priceCurrency,
+                SeatLabel: a.SeatLabel));
+        }
+        return details;
+    }
+
+    /// <summary>
     /// UAT R2 Issue A — assemble an enriched rejection DTO for the 4 ticket-resolved
     /// rejection reasons (already_scanned, expired, invalidated, wrong_event). The
     /// scanner UI renders attendee details on these panels (operator wants to see who
     /// the ticket belongs to regardless of accept/reject), and renders an amber
     /// "Already Scanned (Nx)" panel with scan history when reason==already_scanned.
     ///
+    /// UAT R3 — also projects the full per-attendee list via <see cref="BuildAttendeeDetails"/>.
+    /// The wrong_event branch deliberately passes the ORIGINAL event (the one the ticket
+    /// belongs to) so attendee tiers resolve correctly even though the scanner was
+    /// pointed at a different event.
+    ///
     /// Skipped for invalid_signature / malformed_payload / ticket_not_found /
     /// malformed_request because there is no resolved ticket to enrich from.
     /// </summary>
     private async Task<ScanTicketResult> BuildTicketResolvedRejectionAsync(
         Domain.Events.Entities.Ticket ticket,
+        Domain.Events.Event? ticketEvent,
         string reason,
         string reasonMessage,
         string? wrongEventTitle,
@@ -389,6 +458,8 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
                 .ToList();
         }
 
+        var attendees = BuildAttendeeDetails(registration, ticketEvent);
+
         var (acceptedCount, lastScannerName, lastAcceptedAt) =
             await _scanLogRepository.GetAcceptedSummaryForTicketAsync(ticket.Id, cancellationToken);
 
@@ -402,6 +473,7 @@ public class ScanTicketCommandHandler : ICommandHandler<ScanTicketCommand, ScanT
             Tier = tier,
             AttendeeCount = attendeeCount,
             TierBreakdown = breakdown,
+            Attendees = attendees,
             // For already_scanned, prefer the audit-log timestamp (denormalized scanner name
             // pairs with it). Fall back to Ticket.ValidatedAt for the rare case where the
             // accepted audit row was lost to the forensic gap documented in the main flow.

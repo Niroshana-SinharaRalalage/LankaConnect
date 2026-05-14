@@ -1,11 +1,15 @@
+using System.Reflection;
 using FluentAssertions;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Commands.ScanTicket;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Events.ValueObjects;
+using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.Domain.Shared.ValueObjects;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -79,6 +83,49 @@ public class ScanTicketCommandHandlerTests
         _sigService.Setup(s => s.Verify(payload.BodyToSign, It.IsAny<byte[]>()))
             .Returns(new TicketSignatureVerifyResult(true, false));
         return payload.EncodeWithSignature(signature);
+    }
+
+    // ============================================================
+    // UAT R3 helpers — build Event-with-VIP-tier and Registration-with-attendees
+    // so the new per-attendee projection can be exercised end-to-end through the
+    // handler. The domain factories require a fully-formed value-object graph, so
+    // we set up a real (not Mocked) Event + Registration here.
+    // ============================================================
+
+    /// <summary>Returns an Event with a single VIP TicketTier injected via reflection
+    /// (AddTicketTier requires TicketingMode=Tiered which adds setup noise — direct
+    /// list push is cleaner for the projection test).</summary>
+    private (Event ev, TicketTier vipTier) BuildEventWithVipTier(
+        Guid eventId, decimal adultPrice = 100m, decimal childPrice = 50m)
+    {
+        var ev = BuildEvent(eventId);
+        var adult = Money.Create(adultPrice, Currency.USD).Value;
+        var child = Money.Create(childPrice, Currency.USD).Value;
+        var tier = TicketTier.Create(eventId, "VIP", "VIP access",
+            adultPrice: adult, childPrice: child, childAgeLimit: 12,
+            capacity: 100, maxPerUser: 10, sortOrder: 1).Value;
+        typeof(BaseEntity).GetProperty("Id")!.SetValue(tier, Guid.NewGuid());
+        var tiersField = typeof(Event).GetField("_ticketTiers",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        var list = (List<TicketTier>)tiersField!.GetValue(ev)!;
+        list.Add(tier);
+        return (ev, tier);
+    }
+
+    /// <summary>Builds a 2-attendee Registration (Adult VIP + Child VIP) tied to the
+    /// given event and tier. Mirrors the printed-ticket data shape from UAT R3.</summary>
+    private Registration BuildRegistrationWith2Attendees(Guid eventId, TicketTier vipTier)
+    {
+        var att1 = AttendeeDetails.Create("Niroshana Sinharage", AgeCategory.Adult,
+            gender: Gender.Male, ticketTierId: vipTier.Id, ticketTierName: "VIP").Value;
+        var att2 = AttendeeDetails.Create("Navya Sinharage", AgeCategory.Child,
+            gender: Gender.Female, ticketTierId: vipTier.Id, ticketTierName: "VIP").Value;
+        var contact = RegistrationContact.Create("test@example.com", "+15551234567", null).Value;
+        var total = Money.Create(150m, Currency.USD).Value;
+        var reg = Registration.CreateWithAttendees(eventId, _scannerUserId,
+            new[] { att1, att2 }, contact, total, isPaidEvent: true).Value;
+        typeof(BaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
+        return reg;
     }
 
     // ============================================================
@@ -276,5 +323,172 @@ public class ScanTicketCommandHandlerTests
             It.Is<TicketScanLog>(l => l.RejectionReason == ReasonCode.AlreadyScanned),
             It.IsAny<CancellationToken>()), Times.Once,
             "race-loser still gets its own audit row via TryWriteRejectionAuditAsync");
+    }
+
+    // ============================================================
+    // 7) UAT R3 — Accepted with multi-attendee registration projects the
+    //    full per-attendee list with names, age, gender, tier, and prices
+    // ============================================================
+    [Fact]
+    public async Task Handle_Accepted_MultiAttendee_ProjectsAllAttendeesWithPrices()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+        var (ev, vipTier) = BuildEventWithVipTier(_eventId, adultPrice: 100m, childPrice: 50m);
+        var registration = BuildRegistrationWith2Attendees(_eventId, vipTier);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ev);
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(registration);
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah Organizer", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("accepted");
+        result.Value.Attendees.Should().NotBeNull();
+        result.Value.Attendees!.Should().HaveCount(2, "registration has 2 attendees on the printed ticket");
+
+        var adultAttendee = result.Value.Attendees!.Single(a => a.AgeCategory == "Adult");
+        adultAttendee.Name.Should().Be("Niroshana Sinharage");
+        adultAttendee.Gender.Should().Be("Male");
+        adultAttendee.TicketTierName.Should().Be("VIP");
+        adultAttendee.PriceAmount.Should().Be(100m, "adult VIP price from TicketTier.CalculatePriceForAttendee");
+        adultAttendee.PriceCurrency.Should().Be("USD");
+
+        var childAttendee = result.Value.Attendees!.Single(a => a.AgeCategory == "Child");
+        childAttendee.Name.Should().Be("Navya Sinharage");
+        childAttendee.Gender.Should().Be("Female");
+        childAttendee.TicketTierName.Should().Be("VIP");
+        childAttendee.PriceAmount.Should().Be(50m, "child VIP price via HasChildPricing branch");
+        childAttendee.PriceCurrency.Should().Be("USD");
+
+        // Backward compat: legacy aggregates still populated for fallback rendering.
+        result.Value.AttendeeName.Should().Be("Niroshana Sinharage");
+        result.Value.Tier.Should().Be("VIP");
+        result.Value.AttendeeCount.Should().Be(2);
+        result.Value.TierBreakdown.Should().NotBeNullOrEmpty();
+    }
+
+    // ============================================================
+    // 8) UAT R3 — Already-scanned rejection projects the SAME per-attendee
+    //    list (proves accepted + rejected paths share BuildAttendeeDetails)
+    // ============================================================
+    [Fact]
+    public async Task Handle_AlreadyScanned_Rejects_ProjectsAttendeesIdenticallyToAcceptedPath()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+        ticket.Validate(); // sets ValidatedAt — sync already-scanned branch fires
+        var (ev, vipTier) = BuildEventWithVipTier(_eventId);
+        var registration = BuildRegistrationWith2Attendees(_eventId, vipTier);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ev);
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(registration);
+        _scanLogRepo.Setup(r => r.GetAcceptedSummaryForTicketAsync(ticket.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((AcceptedCount: 1, LastScannerName: "Lakmal Silva", LastAcceptedAt: ticket.ValidatedAt));
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("rejected");
+        result.Value.Reason.Should().Be(ReasonCode.AlreadyScanned);
+        result.Value.Attendees.Should().NotBeNull();
+        result.Value.Attendees!.Should().HaveCount(2,
+            "rejection panel must show every attendee on the ticket, identical to accepted path");
+        result.Value.Attendees!.Should().Contain(a => a.Name == "Niroshana Sinharage" && a.AgeCategory == "Adult");
+        result.Value.Attendees!.Should().Contain(a => a.Name == "Navya Sinharage" && a.AgeCategory == "Child");
+        result.Value.PreviousScanCount.Should().Be(1);
+        result.Value.PreviousScannedBy.Should().Be("Lakmal Silva");
+    }
+
+    // ============================================================
+    // 9) UAT R3 — Head-count-mode registration (no Attendees rows) leaves
+    //    the Attendees DTO field null so UI falls back to aggregates
+    // ============================================================
+    [Fact]
+    public async Task Handle_Accepted_HeadCount_AttendeesIsNullForFallback()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildEvent(_eventId));
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        // Registration intentionally null — simulates pre-MultiAttendee data or a
+        // head-count-mode registration that has no Attendees collection populated.
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Registration?)null);
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("accepted");
+        result.Value.Attendees.Should().BeNull(
+            "head-count tickets must fall through to legacy aggregate display in the UI");
+    }
+
+    // ============================================================
+    // 10) UAT R3 — Attendee whose TicketTierId doesn't match any tier on
+    //     the event (data drift after tier deletion). Name still surfaces;
+    //     price degrades to null without throwing.
+    // ============================================================
+    [Fact]
+    public async Task Handle_Accepted_AttendeeWithMissingTier_PriceIsNullButNameRenders()
+    {
+        var qrPayload = BuildSignedQrPayload(_eventId, _registrationId, _ticketCode);
+        var ticket = BuildTicket(_eventId, _ticketCode, qrPayload);
+        var (ev, vipTier) = BuildEventWithVipTier(_eventId);
+
+        // Build an attendee whose TicketTierId points at a tier that's NOT on the event.
+        var orphanedTierId = Guid.NewGuid();
+        var att = AttendeeDetails.Create("Orphan Tier Attendee", AgeCategory.Adult,
+            gender: Gender.Other, ticketTierId: orphanedTierId, ticketTierName: "OldDeletedTier").Value;
+        var contact = RegistrationContact.Create("orphan@example.com", "+15551234567", null).Value;
+        var total = Money.Create(0m, Currency.USD).Value;
+        var reg = Registration.CreateWithAttendees(_eventId, _scannerUserId,
+            new[] { att }, contact, total, isPaidEvent: true).Value;
+        typeof(BaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
+
+        _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ev);
+        _ticketRepo.Setup(r => r.GetByTicketCodeAsync(_ticketCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ticket);
+        _ticketRepo.Setup(r => r.TryMarkScannedAsync(ticket.Id, It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _registrationRepo.Setup(r => r.GetByIdAsync(_registrationId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(reg);
+
+        var handler = BuildHandler();
+        var result = await handler.Handle(new ScanTicketCommand(
+            _eventId, _scannerUserId, "Sarah", qrPayload, null, null, null), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Result.Should().Be("accepted");
+        result.Value.Attendees.Should().NotBeNull();
+        result.Value.Attendees!.Single().Name.Should().Be("Orphan Tier Attendee",
+            "name must still render even when the tier was deleted post-registration");
+        result.Value.Attendees!.Single().PriceAmount.Should().BeNull(
+            "missing tier → price degrades to null without throwing");
+        result.Value.Attendees!.Single().PriceCurrency.Should().BeNull();
+        result.Value.Attendees!.Single().TicketTierName.Should().Be("OldDeletedTier",
+            "denormalized tier name on AttendeeDetails survives even when the live tier row is gone");
     }
 }

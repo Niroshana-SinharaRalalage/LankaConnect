@@ -73,6 +73,22 @@ public class Sponsor : BaseEntity
     /// </summary>
     public DateTime? RecordedAt { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.145 — optional public URL of the sponsor's logo/image displayed on the
+    /// event details page. Eligible only when the contribution amount (Money) or
+    /// EstimatedValue (Item) meets the event's <c>MinAmountForSponsorImage</c> threshold.
+    /// Always set together with <see cref="ImageBlobName"/>; threshold enforcement lives
+    /// at the application-layer handler, not in this domain method.
+    /// </summary>
+    public string? ImageUrl { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.145 — Azure blob name (not URL) used by the upload handler to delete
+    /// the old blob when the image is replaced or cleared. Always set together with
+    /// <see cref="ImageUrl"/>.
+    /// </summary>
+    public string? ImageBlobName { get; private set; }
+
     // EF Core constructor
     private Sponsor()
     {
@@ -352,6 +368,41 @@ public class Sponsor : BaseEntity
 
         if (string.IsNullOrWhiteSpace(sponsorEmail))
             return Result.Failure("Sponsor email is required");
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — set or replace the sponsor's image. Both URL and blob name are
+    /// required and set atomically. Threshold eligibility is enforced at the
+    /// application-layer handler (which knows the event's
+    /// <c>SponsorConfiguration.MinAmountForSponsorImage</c>); this domain method only
+    /// validates that the URL+blob pair is well-formed. Handler is responsible for
+    /// uploading the new blob first and deleting any prior blob on replace.
+    /// </summary>
+    public Result SetImage(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Image URL is required");
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Image blob name is required");
+
+        ImageUrl = url.Trim();
+        ImageBlobName = blobName.Trim();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — clear the sponsor's image. Idempotent — succeeds when no image
+    /// is set today. Handler is responsible for deleting the blob from storage.
+    /// </summary>
+    public Result ClearImage()
+    {
+        ImageUrl = null;
+        ImageBlobName = null;
+        MarkAsUpdated();
 
         return Result.Success();
     }

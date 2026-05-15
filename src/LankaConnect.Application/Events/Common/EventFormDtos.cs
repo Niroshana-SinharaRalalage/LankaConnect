@@ -117,3 +117,58 @@ public record FormResponsesPagedDto
     public int Page { get; init; }
     public int PageSize { get; init; }
 }
+
+// ==================== Phase 6A.146 — Public DTOs (PII-redacted) ====================
+//
+// These DTOs are returned by the [AllowAnonymous] GET /forms/{formId}/responses/public
+// endpoint and are seen by any event visitor when the organizer has toggled
+// AllowAttendeesToViewResponses on. PII is redacted by CONSTRUCTION — the
+// respondent name, email, and user id are not properties on these types at
+// all, so they cannot be accidentally re-introduced by a future projection
+// edit. The reflection-based tests in GetPublicFormResponsesQueryHandlerTests
+// pin that contract.
+
+/// <summary>
+/// Public, PII-redacted DTO for a single form response.
+/// </summary>
+public record PublicFormResponseDto
+{
+    public Guid Id { get; init; }
+    /// <summary>
+    /// Ordinal label assigned by the handler ("Respondent 1", "Respondent 2", …)
+    /// based on <c>SubmittedAt</c> ascending. Lets readers correlate answers
+    /// across questions for the same respondent without leaking identity.
+    /// </summary>
+    public string RespondentLabel { get; init; } = string.Empty;
+    /// <summary>
+    /// Calendar date of submission. Time-of-day is intentionally dropped to
+    /// prevent timing-correlation attacks against WhatsApp / email blasts.
+    /// </summary>
+    public DateOnly SubmittedOn { get; init; }
+    public IReadOnlyList<PublicFormAnswerDto> Answers { get; init; } = Array.Empty<PublicFormAnswerDto>();
+}
+
+/// <summary>
+/// Public answer DTO. Answer values are preserved verbatim because they're
+/// the whole point of the public view — the organizer is responsible for
+/// authoring questions that don't request PII when the toggle is on.
+/// </summary>
+public record PublicFormAnswerDto
+{
+    public Guid QuestionId { get; init; }
+    public string QuestionTextSnapshot { get; init; } = string.Empty;
+    public string? TextValue { get; init; }
+    public IReadOnlyList<string> SelectedOptionTextSnapshots { get; init; } = Array.Empty<string>();
+    public bool? BooleanValue { get; init; }
+}
+
+/// <summary>
+/// Top-level payload for the public responses endpoint.
+/// </summary>
+public record PublicFormResponsesDto
+{
+    public Guid FormId { get; init; }
+    public string FormTitle { get; init; } = string.Empty;
+    public int TotalCount { get; init; }
+    public IReadOnlyList<PublicFormResponseDto> Responses { get; init; } = Array.Empty<PublicFormResponseDto>();
+}

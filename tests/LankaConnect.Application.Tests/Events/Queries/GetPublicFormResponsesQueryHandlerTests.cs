@@ -215,7 +215,7 @@ public class GetPublicFormResponsesQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_VisibilityOn_DoesNotExpose_RespondentName()
+    public void PublicFormResponseDto_DoesNotExpose_RespondentName()
     {
         // Compile-time guarantee: PublicFormResponseDto must not have a RespondentName
         // property at all. Reflection assertion ensures any future regression that
@@ -224,13 +224,13 @@ public class GetPublicFormResponsesQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_VisibilityOn_DoesNotExpose_RespondentEmail()
+    public void PublicFormResponseDto_DoesNotExpose_RespondentEmail()
     {
         typeof(PublicFormResponseDto).GetProperty("RespondentEmail").Should().BeNull();
     }
 
     [Fact]
-    public async Task Handle_VisibilityOn_DoesNotExpose_RespondentUserId()
+    public void PublicFormResponseDto_DoesNotExpose_RespondentUserId()
     {
         typeof(PublicFormResponseDto).GetProperty("RespondentUserId").Should().BeNull();
     }
@@ -321,9 +321,13 @@ public class GetPublicFormResponsesQueryHandlerTests
     [Fact]
     public async Task Handle_ReturnsFormTitle_OnSuccess()
     {
+        // Capture the form's actual Id so the assertion is against the entity's
+        // canonical identifier rather than our mock-key Guid (which need not match
+        // the entity's Id-on-Create since EventForm.Create generates a fresh GUID).
+        var form = BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active);
         _formRepository
             .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+            .ReturnsAsync(form);
 
         _responseRepository
             .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -335,6 +339,6 @@ public class GetPublicFormResponsesQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         // Title is the form's persisted title — UI uses this for the section card header.
         result.Value.FormTitle.Should().Be("Survey");
-        result.Value.FormId.Should().Be(_formId);
+        result.Value.FormId.Should().Be(form.Id);
     }
 }

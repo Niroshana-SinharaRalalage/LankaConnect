@@ -406,4 +406,47 @@ public class Sponsor : BaseEntity
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Phase 6A.145 — completes a money sponsor as off-platform (cash collected by the
+    /// organizer directly, bypassing Stripe). Used by the organizer-add-sponsor flow
+    /// in <see cref="CreateOffPlatformSponsor"/>. Sets Status=Completed +
+    /// PaymentCompletedAt=now. Skips StripeCheckoutSessionId / StripePaymentIntentId /
+    /// revenue-breakdown fields (no Stripe payment to account for).
+    ///
+    /// Architect E-3: cash sponsors are excluded from Stripe-payout totals because
+    /// money never went through Stripe; a separate "Off-platform collected" tile in
+    /// SponsorsManagementTab surfaces them. Implicit discriminator: a Completed Money
+    /// sponsor with StripeCheckoutSessionId == null is "off-platform".
+    /// </summary>
+    public Result CompleteAsOrganizerCash()
+    {
+        if (Type != SponsorType.Money)
+            return Result.Failure("CompleteAsOrganizerCash applies only to money sponsors");
+
+        if (Status != SponsorStatus.Pending)
+            return Result.Failure($"Cannot complete off-platform when status is {Status}. Must be Pending.");
+
+        Status = SponsorStatus.Completed;
+        PaymentCompletedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+
+        // Reuse SponsorPaymentCompletedEvent so existing email/notification pipelines
+        // fire for off-platform sponsors the same way they do for Stripe ones. The
+        // PaymentIntentId slot carries a sentinel "off-platform" marker so subscribers
+        // can distinguish if needed.
+        RaiseDomainEvent(new SponsorPaymentCompletedEvent(
+            EventId,
+            Id,
+            SponsorUserId,
+            SponsorName,
+            SponsorEmail,
+            SponsorOrganization,
+            PaymentIntentId: "off-platform",
+            Amount!.Amount,
+            Amount.Currency.ToString(),
+            PaymentCompletedAt.Value));
+
+        return Result.Success();
+    }
 }

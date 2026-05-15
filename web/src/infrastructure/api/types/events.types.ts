@@ -2349,10 +2349,6 @@ export interface SponsorConfigurationDto {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
-  // Phase 6A.145 — opt-in threshold for per-sponsor image uploads.
-  // Null = feature OFF. When set, sponsors whose amount (money or item EstimatedValue)
-  // reaches this threshold can attach an image displayed on the event details page.
-  minAmountForSponsorImage?: number | null;
 }
 
 export interface SponsorDto {
@@ -2379,6 +2375,14 @@ export interface SponsorDto {
   imageBlobName?: string | null;
   createdAt: string;
   paymentCompletedAt?: string | null;
+}
+
+// Phase 6A.145 Commit 7 — Money sponsor create endpoint now returns both the
+// Stripe checkout URL AND the newly-created Sponsor ID. The FE uses the ID to
+// attach an optional image to the Pending sponsor BEFORE the Stripe redirect.
+export interface CreateMoneySponsorResult {
+  checkoutUrl: string;
+  sponsorId: string;
 }
 
 // Phase 6A.145 — organizer-add-off-platform-sponsor (POST /sponsors/off-platform).
@@ -2595,8 +2599,6 @@ export interface UpdateSponsorConfigRequest {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
-  // Phase 6A.145 — opt-in threshold for per-sponsor image uploads.
-  minAmountForSponsorImage?: number | null;
 }
 
 export interface UpdateAddOnConfigRequest {

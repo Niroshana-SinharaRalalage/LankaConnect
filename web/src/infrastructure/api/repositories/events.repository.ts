@@ -1819,8 +1819,13 @@ export class EventsRepository {
 
   // ==================== SPONSORS ====================
 
-  async createMoneySponsor(eventId: string, request: import('../types/events.types').CreateMoneySponsorRequest): Promise<string> {
-    return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/money`, request);
+  async createMoneySponsor(
+    eventId: string,
+    request: import('../types/events.types').CreateMoneySponsorRequest
+  ): Promise<import('../types/events.types').CreateMoneySponsorResult> {
+    return await apiClient.post<import('../types/events.types').CreateMoneySponsorResult>(
+      `${this.basePath}/${eventId}/sponsors/money`, request
+    );
   }
 
   async createItemSponsor(eventId: string, request: import('../types/events.types').CreateItemSponsorRequest): Promise<string> {

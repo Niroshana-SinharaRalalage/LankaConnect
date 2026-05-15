@@ -21,13 +21,6 @@ interface SponsorConfigFormProps {
   /** Whether to show sponsor list publicly */
   showSponsorList: boolean;
   onShowSponsorListChange: (show: boolean) => void;
-  /**
-   * Phase 6A.145 — opt-in threshold for per-sponsor image uploads.
-   * Null = feature OFF. When set, sponsors whose money amount (or item EstimatedValue)
-   * reaches this threshold can attach a logo/image displayed on the event details page.
-   */
-  minAmountForSponsorImage: number | null;
-  onMinAmountForSponsorImageChange: (amount: number | null) => void;
 }
 
 /**
@@ -48,8 +41,6 @@ export function SponsorConfigForm({
   onSponsorMessageChange,
   showSponsorList,
   onShowSponsorListChange,
-  minAmountForSponsorImage,
-  onMinAmountForSponsorImageChange,
 }: SponsorConfigFormProps) {
   const showTypeWarning = isEnabled && !acceptMoneySponsors && !acceptItemSponsors;
 
@@ -144,35 +135,6 @@ export function SponsorConfigForm({
                 </div>
               </div>
             )}
-
-            {/* Phase 6A.145 — opt-in image-upload threshold. Null = feature OFF.
-                When set, sponsors meeting this threshold get to upload a logo/image
-                shown publicly on the event details page. */}
-            <div className="space-y-2">
-              <label htmlFor="minAmountForSponsorImage" className="block text-sm font-medium text-gray-700">
-                Image upload threshold (optional)
-              </label>
-              <div className="relative max-w-xs">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm">$</span>
-                <Input
-                  id="minAmountForSponsorImage"
-                  type="number"
-                  min="1.00"
-                  step="0.01"
-                  value={minAmountForSponsorImage ?? ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    onMinAmountForSponsorImageChange(val ? parseFloat(val) : null);
-                  }}
-                  placeholder="e.g. 100.00"
-                  className="pl-7 text-sm"
-                />
-              </div>
-              <p className="text-xs text-gray-500">
-                Sponsors who contribute this amount or more (money or item value) can attach a
-                logo/image to their sponsorship. Leave blank to disable sponsor images entirely.
-              </p>
-            </div>
 
             {/* Sponsor Message */}
             <div className="space-y-2">

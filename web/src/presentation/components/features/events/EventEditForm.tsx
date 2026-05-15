@@ -135,7 +135,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
   const [sponsorMessage, setSponsorMessage] = useState(event.sponsorConfig?.sponsorMessage ?? '');
   const [showSponsorList, setShowSponsorList] = useState(event.sponsorConfig?.showSponsorList ?? false);
   // Phase 6A.144 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
-  const [minAmountForSponsorImage, setMinAmountForSponsorImage] = useState<number | null>(event.sponsorConfig?.minAmountForSponsorImage ?? null);
 
   // Add-On configuration state (pre-filled from event)
   const [addOnsEnabled, setAddOnsEnabled] = useState(event.addOnConfig?.isEnabled ?? false);
@@ -748,7 +747,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
             minSponsorAmount: sponsorsEnabled ? minSponsorAmount : null,
             sponsorMessage: sponsorsEnabled ? (sponsorMessage || null) : null,
             showSponsorList: sponsorsEnabled ? showSponsorList : false,
-            minAmountForSponsorImage: sponsorsEnabled ? minAmountForSponsorImage : null,
           }),
           eventsRepository.updateAddOnConfig(event.id, {
             isEnabled: addOnsEnabled,
@@ -2189,8 +2187,6 @@ export function EventEditForm({ event }: EventEditFormProps) {
             onSponsorMessageChange={setSponsorMessage}
             showSponsorList={showSponsorList}
             onShowSponsorListChange={setShowSponsorList}
-            minAmountForSponsorImage={minAmountForSponsorImage}
-            onMinAmountForSponsorImageChange={setMinAmountForSponsorImage}
           />
         </CollapsibleSection>
       </div>

@@ -75,9 +75,9 @@ export function useCreateItemSponsor() {
 }
 
 /**
- * Phase 6A.145 — upload (or replace) a sponsor's image. Threshold-gated on the server;
- * public callers must meet MinAmountForSponsorImage. Invalidates sponsor list + summary
- * + the user's own-sponsors query so the new thumbnail surfaces everywhere.
+ * Phase 6A.145 — upload (or replace) a sponsor's image. Any sponsor may attach an
+ * image regardless of amount. Invalidates sponsor list + summary + the user's
+ * own-sponsors query so the new thumbnail surfaces everywhere.
  */
 export function useUploadSponsorImage() {
   const queryClient = useQueryClient();

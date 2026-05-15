@@ -112,13 +112,15 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     };
     usePublicFormResponsesMock.mockReturnValue({ data: payload, isLoading: false });
 
-    render(<PublicFormResponsesSection eventId="event-1" form={makeForm()} />);
+    const { container } = render(<PublicFormResponsesSection eventId="event-1" form={makeForm()} />);
 
     expect(screen.getByText(/respondent 1/i)).toBeInTheDocument();
     expect(screen.getByText(/respondent 2/i)).toBeInTheDocument();
-    // Date should be rendered alongside the label (any standard YYYY-MM-DD / locale
-    // is acceptable — assert the date components are present somewhere on screen).
-    expect(screen.getByText(/2026/)).toBeInTheDocument();
+    // Date should be rendered alongside the label (any standard YYYY-MM-DD /
+    // locale is acceptable). Use container.textContent (concatenates all text
+    // nodes) rather than getByText (per-node matcher) so any rendering style
+    // works.
+    expect(container.textContent).toContain('2026');
   });
 
   it('renders question → answer pairs verbatim', () => {

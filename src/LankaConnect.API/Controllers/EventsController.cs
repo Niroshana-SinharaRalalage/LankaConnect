@@ -100,6 +100,7 @@ using LankaConnect.Application.Events.Commands.DeleteFormResponse;
 using LankaConnect.Application.Events.Queries.GetEventForms;
 using LankaConnect.Application.Events.Queries.GetEventFormDetail;
 using LankaConnect.Application.Events.Queries.GetFormResponses;
+using LankaConnect.Application.Events.Queries.GetPublicFormResponses;  // Phase 6A.146
 using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
@@ -3050,6 +3051,31 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Getting responses for form {FormId} event {EventId}, page {Page}", formId, id, page);
 
         var query = new GetFormResponsesQuery(id, formId, page, pageSize);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.146 — public, PII-redacted form responses. Visible to any
+    /// event visitor when the organizer has flipped AllowAttendeesToViewResponses
+    /// to true AND the form is in Active or Closed status. Returns 404 for every
+    /// denial case (form not found / wrong event / flag off / Draft / Archived)
+    /// to avoid leaking the toggle's state.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="formId">Form ID</param>
+    /// <returns>PII-redacted response list (ordinal labels + DateOnly submitted dates)</returns>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/public")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicFormResponsesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicFormResponses(Guid id, Guid formId)
+    {
+        Logger.LogInformation(
+            "GetPublicFormResponses START: EventId={EventId}, FormId={FormId}", id, formId);
+
+        var query = new GetPublicFormResponsesQuery(id, formId);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);

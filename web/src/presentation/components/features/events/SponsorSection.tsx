@@ -515,12 +515,18 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
             {mySponsors.map((sponsor) => (
               <div key={sponsor.id} className="flex items-center justify-between py-2 px-3 bg-white rounded border border-indigo-100">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-neutral-900">
-                    {sponsor.sponsorType === 'Money' ? 'Monetary' : (sponsor.itemName || 'Item')}
-                  </span>
-                  {sponsor.sponsorType === 'Item' && (
-                    <span className="text-xs text-neutral-500">(Item)</span>
+                  {sponsor.sponsorType === 'Money' ? (
+                    <span className="text-sm font-semibold text-neutral-900">
+                      ${(sponsor.amount ?? 0).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-neutral-900">
+                      {sponsor.itemName || 'Item'}
+                    </span>
                   )}
+                  <span className="text-xs text-neutral-500">
+                    ({sponsor.sponsorType === 'Money' ? 'Monetary' : 'Item'})
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

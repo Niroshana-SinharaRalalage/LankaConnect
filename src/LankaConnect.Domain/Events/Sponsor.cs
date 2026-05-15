@@ -75,10 +75,8 @@ public class Sponsor : BaseEntity
 
     /// <summary>
     /// Phase 6A.145 — optional public URL of the sponsor's logo/image displayed on the
-    /// event details page. Eligible only when the contribution amount (Money) or
-    /// EstimatedValue (Item) meets the event's <c>MinAmountForSponsorImage</c> threshold.
-    /// Always set together with <see cref="ImageBlobName"/>; threshold enforcement lives
-    /// at the application-layer handler, not in this domain method.
+    /// event details page. Any sponsor can attach an image (no threshold gate as of
+    /// Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
     /// </summary>
     public string? ImageUrl { get; private set; }
 
@@ -374,11 +372,9 @@ public class Sponsor : BaseEntity
 
     /// <summary>
     /// Phase 6A.145 — set or replace the sponsor's image. Both URL and blob name are
-    /// required and set atomically. Threshold eligibility is enforced at the
-    /// application-layer handler (which knows the event's
-    /// <c>SponsorConfiguration.MinAmountForSponsorImage</c>); this domain method only
-    /// validates that the URL+blob pair is well-formed. Handler is responsible for
-    /// uploading the new blob first and deleting any prior blob on replace.
+    /// required and set atomically. Any sponsor can attach an image (Commit 6 removed
+    /// the threshold gate). Handler is responsible for uploading the new blob first
+    /// and deleting any prior blob on replace.
     /// </summary>
     public Result SetImage(string url, string blobName)
     {

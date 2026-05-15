@@ -47,7 +47,7 @@ public class SponsorsController : BaseController<SponsorsController>
     /// </summary>
     [HttpPost("money")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CreateMoneySponsorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateMoneySponsor(
         Guid eventId,
@@ -117,9 +117,10 @@ public class SponsorsController : BaseController<SponsorsController>
     }
 
     /// <summary>
-    /// Phase 6A.145 — uploads (or replaces) a sponsor's image. Threshold-gated:
-    /// sponsors whose contribution meets <c>SponsorConfiguration.MinAmountForSponsorImage</c>
-    /// can upload. Organizer override bypasses the threshold check.
+    /// Phase 6A.145 Commit 6 — uploads (or replaces) a sponsor's image. Any sponsor
+    /// can attach an image regardless of amount (threshold gate removed per UAT).
+    /// Public access by sponsor-id knowledge (the sponsor ID was just returned to the
+    /// caller from CreateMoneySponsor or CreateItemSponsor); organizer auth not required.
     /// </summary>
     [HttpPost("{sponsorId:guid}/image")]
     [AllowAnonymous]
@@ -139,15 +140,6 @@ public class SponsorsController : BaseController<SponsorsController>
         if (image is null || image.Length == 0)
             return BadRequest(new ProblemDetails { Title = "An image file is required." });
 
-        // Determine organizer status — used by the handler to bypass the threshold gate.
-        // Public callers (anonymous or non-organizer) are subject to the threshold.
-        bool isOrganizer = false;
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            var authResult = await VerifyOrganizerAsync(eventId);
-            isOrganizer = authResult == null;
-        }
-
         using var ms = new MemoryStream();
         await image.CopyToAsync(ms);
 
@@ -157,7 +149,6 @@ public class SponsorsController : BaseController<SponsorsController>
             SponsorId = sponsorId,
             ImageData = ms.ToArray(),
             FileName = image.FileName,
-            IsOrganizer = isOrganizer,
         };
 
         var result = await Mediator.Send(command);

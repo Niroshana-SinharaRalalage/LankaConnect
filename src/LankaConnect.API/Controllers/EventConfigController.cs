@@ -93,8 +93,7 @@ public class EventConfigController : BaseController<EventConfigController>
             AcceptItemSponsors: request.AcceptItemSponsors,
             MinSponsorAmount: request.MinSponsorAmount,
             SponsorMessage: request.SponsorMessage,
-            ShowSponsorList: request.ShowSponsorList,
-            MinAmountForSponsorImage: request.MinAmountForSponsorImage);
+            ShowSponsorList: request.ShowSponsorList);
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
@@ -190,8 +189,6 @@ public class UpdateSponsorConfigRequest
     public decimal? MinSponsorAmount { get; init; }
     public string? SponsorMessage { get; init; }
     public bool ShowSponsorList { get; init; }
-    // Phase 6A.145 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
-    public decimal? MinAmountForSponsorImage { get; init; }
 }
 
 /// <summary>

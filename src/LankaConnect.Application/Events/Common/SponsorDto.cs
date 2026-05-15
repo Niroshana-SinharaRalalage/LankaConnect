@@ -20,7 +20,7 @@ public record SponsorDto
     public string? ItemName { get; init; }
     public string? ItemDescription { get; init; }
     public decimal? EstimatedValue { get; init; }
-    // Phase 6A.145 — optional sponsor image (gated by SponsorConfiguration.MinAmountForSponsorImage).
+    // Phase 6A.145 — optional sponsor image. Any sponsor can attach an image (no threshold).
     public string? ImageUrl { get; init; }
     public string? ImageBlobName { get; init; }
     public DateTime CreatedAt { get; init; }

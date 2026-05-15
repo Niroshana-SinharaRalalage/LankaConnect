@@ -170,7 +170,7 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("recorded_at")
             .HasColumnType("timestamp with time zone");
 
-        // Phase 6A.145 — optional sponsor image (gated by SponsorConfiguration.MinAmountForSponsorImage).
+        // Phase 6A.145 — optional sponsor image. Any sponsor can attach (no threshold).
         // Both columns nullable; either both populated together or both null. Handler enforces atomicity.
         builder.Property(s => s.ImageUrl)
             .HasColumnName("image_url")

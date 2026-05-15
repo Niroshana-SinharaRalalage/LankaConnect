@@ -9,9 +9,9 @@ namespace LankaConnect.Domain.Events.ValueObjects;
 /// IMPORTANT (C5 Guard): This VO uses flat primitive types only — no nested Money
 /// value objects — to avoid EF Core OwnsOne(ToJson) nested entity issues.
 ///
-/// Phase 6A.145 — Reverted Phase 6A.143's banner-on-config design. Per-sponsor
-/// images now live on the <see cref="Sponsor"/> aggregate; this VO carries only
-/// the organizer-set threshold (<see cref="MinAmountForSponsorImage"/>).
+/// Phase 6A.145 Commit 6 — dropped the per-event MinAmountForSponsorImage threshold
+/// per UAT feedback: ANY sponsor can attach an image regardless of amount. Image
+/// upload is now an unconditional capability of the sponsor flow.
 /// </summary>
 public class SponsorConfiguration : ValueObject
 {
@@ -49,15 +49,6 @@ public class SponsorConfiguration : ValueObject
     /// </summary>
     public bool ShowSponsorList { get; private set; }
 
-    /// <summary>
-    /// Phase 6A.145 — opt-in threshold for sponsor image uploads. When null, sponsor
-    /// images are DISABLED for this event. When set, sponsors whose contribution
-    /// reaches this value can upload an image displayed on the event details page.
-    /// For money sponsors the threshold gates on amount; for item sponsors it gates
-    /// on <c>EstimatedValue</c> (item sponsors with no EstimatedValue are denied).
-    /// </summary>
-    public decimal? MinAmountForSponsorImage { get; private set; }
-
     // EF Core constructor
     private SponsorConfiguration()
     {
@@ -69,8 +60,7 @@ public class SponsorConfiguration : ValueObject
         bool acceptItemSponsors,
         decimal? minSponsorAmount,
         string? sponsorMessage,
-        bool showSponsorList,
-        decimal? minAmountForSponsorImage = null)
+        bool showSponsorList)
     {
         IsEnabled = isEnabled;
         AcceptMoneySponsors = acceptMoneySponsors;
@@ -78,7 +68,6 @@ public class SponsorConfiguration : ValueObject
         MinSponsorAmount = minSponsorAmount;
         SponsorMessage = sponsorMessage;
         ShowSponsorList = showSponsorList;
-        MinAmountForSponsorImage = minAmountForSponsorImage;
     }
 
     /// <summary>
@@ -90,8 +79,7 @@ public class SponsorConfiguration : ValueObject
         bool acceptItemSponsors,
         decimal? minSponsorAmount,
         string? sponsorMessage,
-        bool showSponsorList = false,
-        decimal? minAmountForSponsorImage = null)
+        bool showSponsorList = false)
     {
         if (!isEnabled)
             return Result<SponsorConfiguration>.Success(Disabled());
@@ -118,19 +106,13 @@ public class SponsorConfiguration : ValueObject
             return Result<SponsorConfiguration>.Failure(
                 $"Sponsor message cannot exceed {MAX_MESSAGE_LENGTH} characters");
 
-        // Phase 6A.145 — image threshold must be ≥ system minimum when set
-        if (minAmountForSponsorImage.HasValue && minAmountForSponsorImage.Value < MINIMUM_SPONSOR_AMOUNT)
-            return Result<SponsorConfiguration>.Failure(
-                $"Sponsor image threshold must be at least {MINIMUM_SPONSOR_AMOUNT:C}");
-
         return Result<SponsorConfiguration>.Success(new SponsorConfiguration(
             true,
             acceptMoneySponsors,
             acceptItemSponsors,
             minSponsorAmount,
             sponsorMessage?.Trim(),
-            showSponsorList,
-            minAmountForSponsorImage));
+            showSponsorList));
     }
 
     /// <summary>
@@ -138,7 +120,7 @@ public class SponsorConfiguration : ValueObject
     /// </summary>
     public static SponsorConfiguration Disabled()
     {
-        return new SponsorConfiguration(false, false, false, null, null, false, null);
+        return new SponsorConfiguration(false, false, false, null, null, false);
     }
 
     /// <summary>
@@ -161,18 +143,6 @@ public class SponsorConfiguration : ValueObject
         return Result.Success();
     }
 
-    /// <summary>
-    /// Phase 6A.145 — checks whether the given contribution amount qualifies the
-    /// sponsor for image upload per <see cref="MinAmountForSponsorImage"/>. Returns
-    /// false when the feature is disabled (threshold null) or the amount is null.
-    /// </summary>
-    public bool QualifiesForImage(decimal? contributionAmount)
-    {
-        if (!MinAmountForSponsorImage.HasValue) return false;
-        if (!contributionAmount.HasValue) return false;
-        return contributionAmount.Value >= MinAmountForSponsorImage.Value;
-    }
-
     public override IEnumerable<object> GetEqualityComponents()
     {
         yield return IsEnabled;
@@ -181,6 +151,5 @@ public class SponsorConfiguration : ValueObject
         yield return MinSponsorAmount ?? 0m;
         yield return SponsorMessage ?? string.Empty;
         yield return ShowSponsorList;
-        yield return MinAmountForSponsorImage ?? 0m;
     }
 }

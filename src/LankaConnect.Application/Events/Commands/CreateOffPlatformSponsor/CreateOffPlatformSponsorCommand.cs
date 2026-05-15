@@ -23,10 +23,8 @@ namespace LankaConnect.Application.Events.Commands.CreateOffPlatformSponsor;
 ///   - Item: <see cref="ItemName"/> required; creates a Sponsor with SponsorType.Item
 ///     via the existing <see cref="Sponsor.CreateItemSponsor"/> factory.
 ///
-/// Optional image upload — threshold-gated by the event's
-/// <c>SponsorConfiguration.MinAmountForSponsorImage</c>. Organizer override applies
-/// here too (per architect E-1), so the organizer can attach an image regardless
-/// of threshold when adding the sponsor on behalf of someone.
+/// Optional image upload — Phase 6A.145 Commit 6 removed the threshold gate;
+/// any sponsor (organizer-added or public) can attach an image regardless of amount.
 ///
 /// Authorization: organizer-only (enforced by controller).
 /// </summary>

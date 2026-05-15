@@ -9,14 +9,12 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.Commands.SetSponsorImage;
 
 /// <summary>
-/// Phase 6A.145 — uploads (or replaces) a sponsor's image. Threshold-gated:
-/// only sponsors whose contribution amount meets the event's
-/// <c>SponsorConfiguration.MinAmountForSponsorImage</c> can upload an image,
-/// UNLESS the caller is an organizer (organizer override per architect E-1).
+/// Phase 6A.145 — uploads (or replaces) a sponsor's image.
 ///
-/// For Money sponsors, the threshold checks <c>Amount.Amount</c>.
-/// For Item sponsors, it checks <c>EstimatedValue</c>; items without an
-/// EstimatedValue are denied.
+/// Phase 6A.145 Commit 6 — threshold gate REMOVED per UAT feedback. Any sponsor
+/// (money or item, any amount) can attach an image. Authorization is still
+/// enforced at the controller layer (sponsor ID knowledge for public callers,
+/// organizer auth for management actions).
 ///
 /// Validation + upload + persistence flow mirrors <see cref="SetAddOnDefinitionImage.SetAddOnDefinitionImageCommand"/>.
 /// </summary>
@@ -26,8 +24,6 @@ public record SetSponsorImageCommand : IRequest<Result<SetSponsorImageResult>>
     public Guid SponsorId { get; init; }
     public byte[] ImageData { get; init; } = Array.Empty<byte>();
     public string FileName { get; init; } = string.Empty;
-    /// <summary>True when the caller is the event organizer — bypasses the threshold check.</summary>
-    public bool IsOrganizer { get; init; }
 }
 
 public record SetSponsorImageResult(string ImageUrl, string ImageBlobName);
@@ -36,20 +32,17 @@ public class SetSponsorImageCommandHandler
     : IRequestHandler<SetSponsorImageCommand, Result<SetSponsorImageResult>>
 {
     private readonly ISponsorRepository _sponsorRepository;
-    private readonly IEventRepository _eventRepository;
     private readonly IImageService _imageService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SetSponsorImageCommandHandler> _logger;
 
     public SetSponsorImageCommandHandler(
         ISponsorRepository sponsorRepository,
-        IEventRepository eventRepository,
         IImageService imageService,
         IUnitOfWork unitOfWork,
         ILogger<SetSponsorImageCommandHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
-        _eventRepository = eventRepository;
         _imageService = imageService;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -61,7 +54,6 @@ public class SetSponsorImageCommandHandler
         using (LogContext.PushProperty("Operation", "SetSponsorImage"))
         using (LogContext.PushProperty("EventId", request.EventId))
         using (LogContext.PushProperty("SponsorId", request.SponsorId))
-        using (LogContext.PushProperty("IsOrganizer", request.IsOrganizer))
         {
             _logger.LogInformation(
                 "SetSponsorImage START: FileName={FileName}, SizeBytes={SizeBytes}",
@@ -91,27 +83,8 @@ public class SetSponsorImageCommandHandler
                         $"Sponsor {request.SponsorId} not found for event {request.EventId}");
                 }
 
-                // 3. Threshold check — load Event for its SponsorConfiguration.
-                //    Organizer override bypasses this check entirely.
-                if (!request.IsOrganizer)
-                {
-                    var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
-                    if (@event is null || @event.SponsorConfig is null)
-                    {
-                        _logger.LogWarning("SetSponsorImage: event/sponsor config not found");
-                        return Result<SetSponsorImageResult>.Failure(
-                            "Sponsor image upload is not enabled for this event.");
-                    }
-                    var contribution = sponsor.Amount?.Amount ?? sponsor.EstimatedValue;
-                    if (!@event.SponsorConfig.QualifiesForImage(contribution))
-                    {
-                        _logger.LogWarning(
-                            "SetSponsorImage: threshold not met - Contribution={Contribution}, Threshold={Threshold}",
-                            contribution, @event.SponsorConfig.MinAmountForSponsorImage);
-                        return Result<SetSponsorImageResult>.Failure(
-                            "Your sponsorship amount does not meet this event's image upload threshold.");
-                    }
-                }
+                // 3. Phase 6A.145 Commit 6 — threshold gate removed per UAT; any
+                //    sponsor (money or item, any amount) can attach an image.
 
                 // Remember prior blob for cleanup after the new one persists.
                 var oldBlobName = sponsor.ImageBlobName;

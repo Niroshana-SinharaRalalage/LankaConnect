@@ -14,6 +14,9 @@ import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
+// Phase 6A.145 Commit 5 — top-of-page preview strips for add-ons + sponsors.
+import { AddOnsPreviewStrip } from '@/presentation/components/features/events/AddOnsPreviewStrip';
+import { SponsorsPreviewStrip } from '@/presentation/components/features/events/SponsorsPreviewStrip';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
 import { AddHeadCountModal } from '@/presentation/components/features/events/AddHeadCountModal';
@@ -1084,15 +1087,34 @@ export function EventDetailPageInternal({
               </div>
             </div>
 
-            {/* Media Gallery */}
-            {((event.images && event.images.length > 0) || (event.videos && event.videos.length > 0)) && (
-              <div className="mb-8">
-                <MediaGallery images={event.images} videos={event.videos} />
-              </div>
-            )}
+            {/* Phase 6A.145 Commit 5 — top-of-page preview strips. Render add-ons
+                first (always visible if any active add-ons), then sponsors-with-images.
+                Both replace where the MediaGallery used to live so the prominent
+                slot goes to the items the operator most cares about. MediaGallery
+                moves to its own collapsible "Event Media" section below the card. */}
+            <AddOnsPreviewStrip eventId={event.id} addOnConfig={event.addOnConfig} />
+            <SponsorsPreviewStrip eventId={event.id} sponsorConfig={event.sponsorConfig} />
 
           </CardContent>
         </Card>
+
+        {/* Phase 6A.145 Commit 5 — Event Media section, default-collapsed. The
+            photos+videos previously lived inside the main event-details card; the
+            operator wanted that space reserved for add-ons/sponsors instead. */}
+        {((event.images && event.images.length > 0) || (event.videos && event.videos.length > 0)) && (
+          <div id="event-media" className="mt-8">
+            <CollapsibleSection
+              title="Event Media"
+              description={`${event.images?.length ?? 0} photo${event.images?.length === 1 ? '' : 's'}${
+                event.videos?.length ? ` and ${event.videos.length} video${event.videos.length === 1 ? '' : 's'}` : ''
+              }`}
+              icon={<Camera className="h-5 w-5 text-neutral-500" />}
+              defaultOpen={false}
+            >
+              <MediaGallery images={event.images} videos={event.videos} />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Registration Section — outside Event Details card */}
         <div id="registration" className="mt-8">

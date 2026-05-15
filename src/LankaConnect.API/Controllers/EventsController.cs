@@ -2645,7 +2645,8 @@ public class EventsController : BaseController<EventsController>
             request.AllowMultipleResponses,
             request.ResponseDeadline,
             request.MaxResponses,
-            questions);
+            questions,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146
 
         var result = await Mediator.Send(command);
 
@@ -2670,7 +2671,8 @@ public class EventsController : BaseController<EventsController>
             request.Description,
             request.AllowMultipleResponses,
             request.ResponseDeadline,
-            request.MaxResponses);
+            request.MaxResponses,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146 (nullable; null = leave unchanged)
 
         var result = await Mediator.Send(command);
 
@@ -4043,7 +4045,10 @@ public record CreateEventFormRequest(
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
     int? MaxResponses,
-    List<CreateFormQuestionRequest>? Questions);
+    List<CreateFormQuestionRequest>? Questions,
+    // Phase 6A.146: organizer-controlled toggle for public response visibility.
+    // Optional with default false so existing clients/Swagger requests unchanged.
+    bool AllowAttendeesToViewResponses = false);
 
 public record CreateFormQuestionRequest(
     string QuestionText,
@@ -4063,7 +4068,10 @@ public record UpdateEventFormRequest(
     string? Description,
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
-    int? MaxResponses);
+    int? MaxResponses,
+    // Phase 6A.146: nullable so a request that omits the field leaves the
+    // domain flag unchanged. UI sends the explicit user choice.
+    bool? AllowAttendeesToViewResponses = null);
 
 /// <summary>
 /// Request to add a question to a form

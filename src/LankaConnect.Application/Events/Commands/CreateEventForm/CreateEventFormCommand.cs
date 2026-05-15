@@ -14,7 +14,10 @@ public record CreateEventFormCommand(
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
     int? MaxResponses,
-    List<CreateFormQuestionItem> Questions
+    List<CreateFormQuestionItem> Questions,
+    // Phase 6A.146: optional with default false so the ~10 existing positional
+    // callers compile unchanged. UI passes the toggle explicitly.
+    bool AllowAttendeesToViewResponses = false
 ) : ICommand<Guid>;
 
 /// <summary>

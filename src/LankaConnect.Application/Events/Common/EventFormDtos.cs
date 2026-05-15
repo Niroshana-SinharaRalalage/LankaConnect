@@ -20,6 +20,12 @@ public record EventFormDto
     public int ResponseCount { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+    /// <summary>
+    /// Phase 6A.146: when true, the public /responses/public endpoint will
+    /// return PII-redacted responses for this form; the event detail page
+    /// renders a PublicFormResponsesSection card.
+    /// </summary>
+    public bool AllowAttendeesToViewResponses { get; init; }
 }
 
 /// <summary>
@@ -40,6 +46,13 @@ public record EventFormDetailDto
     public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public IReadOnlyList<FormQuestionDto> Questions { get; init; } = Array.Empty<FormQuestionDto>();
+    /// <summary>
+    /// Phase 6A.146: organizer-controlled visibility flag. UI uses this to
+    /// initialize the "Allow event visitors to see responses" toggle on the
+    /// form create/edit page AND to gate the PublicFormResponsesSection on
+    /// the event detail page.
+    /// </summary>
+    public bool AllowAttendeesToViewResponses { get; init; }
 }
 
 /// <summary>

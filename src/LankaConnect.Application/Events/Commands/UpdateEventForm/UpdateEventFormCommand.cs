@@ -13,5 +13,9 @@ public record UpdateEventFormCommand(
     string? Description,
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
-    int? MaxResponses
+    int? MaxResponses,
+    // Phase 6A.146: nullable so legacy callers (which don't supply this) pass null
+    // and EventForm.UpdateDetails(...) leaves the flag unchanged. UI sends the
+    // user's intent explicitly (true/false).
+    bool? AllowAttendeesToViewResponses = null
 ) : ICommand;

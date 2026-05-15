@@ -3,7 +3,25 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.141 Paid-Event Ticket Check-in / QR Scanner
+## 🚀 CURRENT SESSION STATUS — Phase 6A.144 Paid-Event Auth-Encouragement Modal
+**Date**: 2026-05-14
+**Session**: Soft-conversion gap on paid-event registration. Anonymous users could already register for paid events end-to-end since Phase 6A.44, but they lose post-purchase management (tickets, refunds, add-ons) because the registration has no account anchor. Architect-class RCA classified the issue as **UI/feature-missing** — backend & domain were complete; only the conversion funnel on the public event detail page was absent. Plan + 4 architect corrections folded in before code touched the tree (A1 focus trap via ref not sentinels, A3 reuse existing searchParams + strip `?intent=register` via replaceState, A5/A6 stronger same-origin guard with pre-screen for backslash + encoded bypass, B-Phase-4 hydration smoke on register page). Approach: friendly modal with three explicit exits (Sign In / Sign Up / Continue as Guest); existing anonymous flow preserved for Guest.
+**Progress**: ✅ **STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.
+- Branch: `feat/phase-6a-141-ticket-checkin` (user authorized staying on current branch over cutting new one — 6A.141 ticket-scanner + 6A.144 nudge code ride together to deploy)
+- UI deploy: run `25892924522` SUCCESS in 5m04s on SHA `a65aa8fd` — type-check ✅, unit tests ✅, env validation ✅, Next.js build ✅, standalone verify ✅, Docker push ✅, Container Apps deploy ✅, 3 smoke tests ✅ (health / home / API proxy)
+- Curl smoke after deploy: `/`, `/login`, `/register` all HTTP 200 (`/register` 28.8 KB confirms Suspense wrapper didn't break SSR hydration)
+- Files: 4 new (`AuthEncouragementModal.tsx`, `AuthEncouragementPrompt.tsx`, `authNudgePolicy.ts`, `safe-redirect.ts`) + 4 modified (`events/[id]/page.tsx`, `LoginForm.tsx`, `RegisterForm.tsx`, `(auth)/register/page.tsx`) + 4 new test files
+- TypeScript clean for all new files (`tsc --noEmit`); one pre-existing TS error in `EventEditForm.tsx` (6A.143 sponsor image work, unrelated)
+- Repo lint script broken (Next 16 + ESLint v10 config mismatch — `next lint .` reads `.` as a project subdirectory). Not 6A.144 related.
+**Tests**: 30/30 green across 4 files — `AuthEncouragementModal.test.tsx` (10 unit incl. ARIA + focus restoration), `AuthEncouragementPrompt.test.tsx` (2), `safe-redirect.test.ts` (14 covering null/empty, same-origin happy paths, cross-origin, scheme-relative, backslash bypass, encoded slashes, `javascript:`, `data:`), `authNudge.test.ts` (4 truth-table cells). Strategic pivot mid-implementation: form-level redirect tests dropped in favor of pure-helper unit tests because RegisterForm requires MetroAreasSelector + WhatsAppInlineOptIn + T&C + zod plumbing that's brittle to mock.
+**Phase numbering**: Initially planned as 6A.142 — discovered 6A.142 already assigned to anonymous-sign-up follow-ups from 6A.140, and 6A.143 to Add-On/Sponsor images. Next available was 6A.144, recorded in `PHASE_6A_MASTER_INDEX.md` BEFORE code touched the tree per CLAUDE.md rule.
+**6 commits**: `5ad49f86` test RED modal+prompt → `ab23df6a` feat GREEN modal+prompt → `5fcccb44` test RED safe-redirect → `df6c760e` feat GREEN safe-redirect+login/register → `8cbd3127` test RED nudge-policy → `a65aa8fd` feat GREEN page integration.
+**Operator UAT pending — 7 cells**: (1) anon + FREE → form inline, no modal; (2) anon + PAID + first visit → prompt panel; (3) anon + PAID + click Register → modal opens with focus on title; (4) Continue as Guest → modal closes, form inline, refresh keeps form (sessionStorage `lc:guest-ack:{eventId}` set); (5) Sign In → `/login?redirect=...?intent=register` → returns to event with scroll to `#rsvp-section` + URL stripped of `?intent=register`; (6) authed + PAID → form direct, no modal; (7) mobile 375px buttons stacked.
+**Deploy order**: Frontend-only — no backend/DB changes. `deploy-ui-staging.yml` already shipped via manual workflow_dispatch (auto-trigger is only on push to `develop`). Production deploy after operator UAT signs off.
+
+---
+
+## Earlier Session — Phase 6A.141 Paid-Event Ticket Check-in / QR Scanner
 **Date**: 2026-05-13
 **Session**: End-to-end implementation of the paid-event ticket check-in feature. The QR code printed on every paid-event ticket has been decorative since Phase 6A.24 — generated correctly but never scannable because no scan endpoint, no organizer UI, no HMAC signature. This phase closes that gap with a full backend + frontend implementation, validated by an independent Plan-agent architect review that surfaced 18 findings (6 must-fix-before-Phase-C/F) all incorporated before code touched the tree.
 **Progress**: 🔧 **CODE COMPLETE on branch `feat/phase-6a-141-ticket-checkin`, awaiting Phase I staging deploy + operator UAT**.

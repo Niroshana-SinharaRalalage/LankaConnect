@@ -105,11 +105,6 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
               {s.sponsorOrganization && s.sponsorName !== s.sponsorOrganization && (
                 <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{s.sponsorName}</p>
               )}
-              {s.sponsorType === 'Money' && s.amount != null && (
-                <p className="text-sm font-semibold text-indigo-700 mt-1">
-                  ${s.amount.toFixed(2)}
-                </p>
-              )}
               {s.sponsorType === 'Item' && s.itemName && (
                 <p className="text-sm text-indigo-700 mt-1 line-clamp-1">{s.itemName}</p>
               )}

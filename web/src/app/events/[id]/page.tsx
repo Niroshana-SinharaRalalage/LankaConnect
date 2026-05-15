@@ -11,6 +11,8 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
+// Phase 6A.146: public form responses section
+import { PublicFormResponsesSection } from '@/presentation/components/features/events/PublicFormResponsesSection';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
@@ -2526,6 +2528,27 @@ export function EventDetailPageInternal({
             )}
           </CollapsibleSection>
         </div>
+        )}
+
+        {/* Phase 6A.146 — Public Form Responses Section.
+            Renders one card per form whose organizer has enabled the
+            response-visibility toggle. The section component self-gates on
+            both the flag AND the status (Active or Closed only), so we can
+            iterate every form here unconditionally and let the section decide
+            whether to render. The hook also self-gates so disabled forms
+            don't generate network traffic. */}
+        {!isLoadingForms && eventForms && eventForms.length > 0 && (
+          <div id="public-form-responses" className="mt-8">
+            {eventForms
+              .filter((f) => f.allowAttendeesToViewResponses)
+              .map((form) => (
+                <PublicFormResponsesSection
+                  key={form.id}
+                  eventId={id}
+                  form={form}
+                />
+              ))}
+          </div>
         )}
       </div>
 

@@ -24,6 +24,7 @@ import {
   useCloseEventForm,
   useReopenEventForm,
   useDeleteEventForm,
+  useUpdateEventForm,  // Phase 6A.146
 } from '@/presentation/hooks/useEventForms';
 import toast from 'react-hot-toast';
 
@@ -64,6 +65,35 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
       toast.error(error.message || 'Failed to delete form');
     },
   });
+
+  // Phase 6A.146: inline toggle for the response-visibility flag. Sends a
+  // partial UpdateEventFormCommand carrying ONLY the new flag value plus the
+  // current form's required fields (title/etc) — backend treats null on the
+  // flag as "no change", so callers can flip just this one field safely.
+  const updateForm = useUpdateEventForm({
+    onError: (error) => toast.error(error.message || 'Failed to update form'),
+  });
+
+  const handleToggleVisibility = async (form: EventFormDto, next: boolean) => {
+    try {
+      await updateForm.mutateAsync({
+        eventId,
+        formId: form.id,
+        request: {
+          title: form.title,
+          description: form.description ?? null,
+          allowMultipleResponses: form.allowMultipleResponses,
+          responseDeadline: form.responseDeadline ?? null,
+          maxResponses: form.maxResponses ?? null,
+          allowAttendeesToViewResponses: next,
+        },
+      });
+      toast.success(next ? 'Responses are now visible to attendees' : 'Responses hidden from attendees');
+    } catch (err) {
+      // useUpdateEventForm onError already surfaces a toast — log for trace.
+      console.warn('[FormManagementSection 6A.146] toggle visibility failed', err);
+    }
+  };
 
   // Handlers
   const handlePublish = async (formId: string) => {
@@ -191,6 +221,31 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
                     {form.responseCount} response{form.responseCount !== 1 ? 's' : ''}
                   </span>
                 </div>
+              </div>
+
+              {/* Phase 6A.146 — Public response visibility toggle (always editable
+                  by the organizer; the public endpoint additionally gates on
+                  Active/Closed status, so toggling on a Draft form is fine but
+                  no public view appears until publish). */}
+              <div className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900/40">
+                <label className="flex cursor-pointer items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.allowAttendeesToViewResponses}
+                    onChange={(e) => handleToggleVisibility(form, e.target.checked)}
+                    disabled={updateForm.isPending}
+                    data-testid={`allow-attendees-toggle-${form.id}`}
+                    className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+                  />
+                  <span className="flex-1">
+                    <span className="block font-medium text-neutral-700 dark:text-neutral-300">
+                      Allow event visitors to see responses
+                    </span>
+                    <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                      Names and emails are always hidden.
+                    </span>
+                  </span>
+                </label>
               </div>
 
               {/* Dates */}

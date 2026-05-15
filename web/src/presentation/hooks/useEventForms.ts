@@ -415,6 +415,9 @@ export function useUpdateEventForm(
     onSuccess: (_, { eventId, formId }) => {
       queryClient.invalidateQueries({ queryKey: formKeys.list(eventId) });
       queryClient.invalidateQueries({ queryKey: formKeys.detail(eventId, formId) });
+      // Phase 6A.146: also invalidate the public-responses cache so a flipped
+      // visibility toggle is reflected immediately on the event detail page.
+      queryClient.invalidateQueries({ queryKey: formKeys.publicResponses(eventId, formId) });
     },
     ...options,
   });

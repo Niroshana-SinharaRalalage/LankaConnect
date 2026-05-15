@@ -24,6 +24,10 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+// Phase 6A.144: Auth-encouragement gate for paid events
+import { AuthEncouragementModal } from '@/presentation/components/features/auth/AuthEncouragementModal';
+import { AuthEncouragementPrompt } from '@/presentation/components/features/auth/AuthEncouragementPrompt';
+import { shouldShowAuthNudge, guestAckStorageKey } from '@/presentation/components/features/auth/authNudgePolicy';
 import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, EventPaymentMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -154,6 +158,12 @@ export function EventDetailPageInternal({
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
+  // Phase 6A.144: Auth-encouragement gate state. The nudge fires for anonymous
+  // users on PAID events only. `guestModeAcknowledged` is hydrated from
+  // sessionStorage so a refresh doesn't re-prompt the user mid-flow, but a new
+  // session re-asks (per architect — we don't want to train dismissal).
+  const [showAuthNudge, setShowAuthNudge] = useState(false);
+  const [guestModeAcknowledged, setGuestModeAcknowledged] = useState(false);
   // GitHub Issue #31: Replace native confirm()/alert() with styled dialogs
   const [showWithdrawRefundDialog, setShowWithdrawRefundDialog] = useState(false);
   const [showCancelPendingDialog, setShowCancelPendingDialog] = useState(false);
@@ -408,6 +418,47 @@ export function EventDetailPageInternal({
 
     return () => clearTimeout(timeoutId);
   }, [event, isLoading, _hasHydrated]);
+
+  // Phase 6A.144: Hydrate the per-event guest acknowledgement flag from
+  // sessionStorage. Wrapped in try/catch because private/Safari modes can throw.
+  useEffect(() => {
+    if (!event?.id) return;
+    try {
+      if (typeof window === 'undefined') return;
+      const ack = window.sessionStorage.getItem(guestAckStorageKey(event.id));
+      if (ack === '1') {
+        setGuestModeAcknowledged(true);
+      }
+    } catch (err) {
+      console.warn('[EventDetail 6A.144] sessionStorage read failed for guest-ack', err);
+    }
+  }, [event?.id]);
+
+  // Phase 6A.144: When the user returns from sign-in/sign-up via the auth
+  // encouragement modal, the deep link carries `?intent=register`. Once the
+  // event has loaded and the user is authenticated, scroll to the RSVP section
+  // and strip the param so back-button / re-render doesn't re-fire the scroll.
+  useEffect(() => {
+    if (!event?.id || !_hasHydrated) return;
+    if (!isAuthenticated) return;
+    const intent = searchParams.get('intent');
+    if (intent !== 'register') return;
+    const id = window.requestAnimationFrame(() => {
+      try {
+        document.getElementById('rsvp-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Strip ?intent=register from the URL — mirrors the existing
+        // history.replaceState patterns for ?registered=true in LoginForm.
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('intent');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+        }
+      } catch (err) {
+        console.warn('[EventDetail 6A.144] intent=register scroll/replaceState failed', err);
+      }
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [event?.id, _hasHydrated, isAuthenticated, searchParams]);
 
   // Category labels
   // Phase 6A.X: Support BOTH numeric and string category keys for API compatibility
@@ -1903,13 +1954,33 @@ export function EventDetailPageInternal({
                   </div>
                 ) : !isFull ? (
                   // Phase 7E.6: mode-aware dispatch
-                  <RsvpFormSection
-                    event={event}
-                    spotsLeft={spotsLeft}
-                    isProcessing={isProcessing}
-                    onSubmit={handleRegistration}
-                    error={error}
-                  />
+                  // Phase 6A.144: For anonymous users on PAID events, show the
+                  // soft auth-encouragement prompt in place of the form. The
+                  // form re-mounts once the user chooses "Continue as Guest"
+                  // (sets sessionStorage flag) or signs in. Recovery flows
+                  // (isAbandoned / isPaymentIncomplete / refund-retry /
+                  // cancellation re-register) are intentionally NOT gated —
+                  // the user is mid-flow and re-prompting would disrupt UX.
+                  <div id="rsvp-section">
+                    {shouldShowAuthNudge({
+                      isAuthenticated,
+                      isFree: !!event.isFree,
+                      guestAcknowledged: guestModeAcknowledged,
+                    }) ? (
+                      <AuthEncouragementPrompt
+                        eventTitle={event.title}
+                        onClick={() => setShowAuthNudge(true)}
+                      />
+                    ) : (
+                      <RsvpFormSection
+                        event={event}
+                        spotsLeft={spotsLeft}
+                        isProcessing={isProcessing}
+                        onSubmit={handleRegistration}
+                        error={error}
+                      />
+                    )}
+                  </div>
                 ) : (
                   <>
                     {/* Waitlist Section */}
@@ -2437,6 +2508,31 @@ export function EventDetailPageInternal({
       </div>
 
       <Footer />
+
+      {/* Phase 6A.144: Auth Encouragement Modal — fires only for anonymous
+          users on PAID events (gated by shouldShowAuthNudge in the render
+          path above). "Continue as Guest" sets a per-event sessionStorage
+          flag so the prompt doesn't re-appear on subsequent clicks within
+          the same session. */}
+      {event && (
+        <AuthEncouragementModal
+          open={showAuthNudge}
+          onOpenChange={setShowAuthNudge}
+          context="event-paid"
+          redirectTo={`/events/${event.id}?intent=register`}
+          onContinueAsGuest={() => {
+            try {
+              if (typeof window !== 'undefined') {
+                window.sessionStorage.setItem(guestAckStorageKey(event.id), '1');
+              }
+            } catch (err) {
+              console.warn('[EventDetail 6A.144] sessionStorage write failed for guest-ack', err);
+            }
+            setGuestModeAcknowledged(true);
+            setShowAuthNudge(false);
+          }}
+        />
+      )}
 
       {/* Phase 6A.14: Edit Registration Modal */}
       {/* Issue #51: Pass maxAttendeesPerRegistration to EditRegistrationModal */}

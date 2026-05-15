@@ -8,6 +8,10 @@ namespace LankaConnect.Domain.Events.ValueObjects;
 ///
 /// IMPORTANT (C5 Guard): This VO uses flat primitive types only — no nested Money
 /// value objects — to avoid EF Core OwnsOne(ToJson) nested entity issues.
+///
+/// Phase 6A.145 — Reverted Phase 6A.143's banner-on-config design. Per-sponsor
+/// images now live on the <see cref="Sponsor"/> aggregate; this VO carries only
+/// the organizer-set threshold (<see cref="MinAmountForSponsorImage"/>).
 /// </summary>
 public class SponsorConfiguration : ValueObject
 {
@@ -46,18 +50,13 @@ public class SponsorConfiguration : ValueObject
     public bool ShowSponsorList { get; private set; }
 
     /// <summary>
-    /// Phase 6A.143 — public URL of the sponsor banner image displayed on the event
-    /// details page above the sponsor form. Null when no banner uploaded. Always set
-    /// together with <see cref="SponsorImageBlobName"/>.
+    /// Phase 6A.145 — opt-in threshold for sponsor image uploads. When null, sponsor
+    /// images are DISABLED for this event. When set, sponsors whose contribution
+    /// reaches this value can upload an image displayed on the event details page.
+    /// For money sponsors the threshold gates on amount; for item sponsors it gates
+    /// on <c>EstimatedValue</c> (item sponsors with no EstimatedValue are denied).
     /// </summary>
-    public string? SponsorImageUrl { get; private set; }
-
-    /// <summary>
-    /// Phase 6A.143 — Azure blob name (not URL) used by the upload handler to delete
-    /// the old blob on replace, or to clear the blob on remove. Always set together
-    /// with <see cref="SponsorImageUrl"/>.
-    /// </summary>
-    public string? SponsorImageBlobName { get; private set; }
+    public decimal? MinAmountForSponsorImage { get; private set; }
 
     // EF Core constructor
     private SponsorConfiguration()
@@ -71,8 +70,7 @@ public class SponsorConfiguration : ValueObject
         decimal? minSponsorAmount,
         string? sponsorMessage,
         bool showSponsorList,
-        string? sponsorImageUrl = null,
-        string? sponsorImageBlobName = null)
+        decimal? minAmountForSponsorImage = null)
     {
         IsEnabled = isEnabled;
         AcceptMoneySponsors = acceptMoneySponsors;
@@ -80,13 +78,11 @@ public class SponsorConfiguration : ValueObject
         MinSponsorAmount = minSponsorAmount;
         SponsorMessage = sponsorMessage;
         ShowSponsorList = showSponsorList;
-        SponsorImageUrl = sponsorImageUrl;
-        SponsorImageBlobName = sponsorImageBlobName;
+        MinAmountForSponsorImage = minAmountForSponsorImage;
     }
 
     /// <summary>
-    /// Creates a sponsor configuration with validation. Phase 6A.143 added optional
-    /// banner image fields — defaulting to null preserves all existing callers.
+    /// Creates a sponsor configuration with validation.
     /// </summary>
     public static Result<SponsorConfiguration> Create(
         bool isEnabled,
@@ -95,8 +91,7 @@ public class SponsorConfiguration : ValueObject
         decimal? minSponsorAmount,
         string? sponsorMessage,
         bool showSponsorList = false,
-        string? sponsorImageUrl = null,
-        string? sponsorImageBlobName = null)
+        decimal? minAmountForSponsorImage = null)
     {
         if (!isEnabled)
             return Result<SponsorConfiguration>.Success(Disabled());
@@ -123,13 +118,10 @@ public class SponsorConfiguration : ValueObject
             return Result<SponsorConfiguration>.Failure(
                 $"Sponsor message cannot exceed {MAX_MESSAGE_LENGTH} characters");
 
-        // Phase 6A.143 — image url + blob name must be set together. Either both null
-        // or both non-empty. Partial set is invalid (would orphan the blob).
-        var urlSet = !string.IsNullOrWhiteSpace(sponsorImageUrl);
-        var blobSet = !string.IsNullOrWhiteSpace(sponsorImageBlobName);
-        if (urlSet != blobSet)
+        // Phase 6A.145 — image threshold must be ≥ system minimum when set
+        if (minAmountForSponsorImage.HasValue && minAmountForSponsorImage.Value < MINIMUM_SPONSOR_AMOUNT)
             return Result<SponsorConfiguration>.Failure(
-                "Sponsor image URL and blob name must be set together");
+                $"Sponsor image threshold must be at least {MINIMUM_SPONSOR_AMOUNT:C}");
 
         return Result<SponsorConfiguration>.Success(new SponsorConfiguration(
             true,
@@ -138,8 +130,7 @@ public class SponsorConfiguration : ValueObject
             minSponsorAmount,
             sponsorMessage?.Trim(),
             showSponsorList,
-            urlSet ? sponsorImageUrl!.Trim() : null,
-            blobSet ? sponsorImageBlobName!.Trim() : null));
+            minAmountForSponsorImage));
     }
 
     /// <summary>
@@ -147,37 +138,7 @@ public class SponsorConfiguration : ValueObject
     /// </summary>
     public static SponsorConfiguration Disabled()
     {
-        return new SponsorConfiguration(false, false, false, null, null, false, null, null);
-    }
-
-    /// <summary>
-    /// Phase 6A.143 — returns a new SponsorConfiguration with the banner image set,
-    /// preserving all other fields. Used by the SetSponsorConfigImage handler so the
-    /// Event aggregate can swap in the updated VO without touching unrelated fields.
-    /// </summary>
-    public Result<SponsorConfiguration> WithImage(string url, string blobName)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-            return Result<SponsorConfiguration>.Failure("Image URL is required");
-        if (string.IsNullOrWhiteSpace(blobName))
-            return Result<SponsorConfiguration>.Failure("Image blob name is required");
-
-        return Result<SponsorConfiguration>.Success(new SponsorConfiguration(
-            IsEnabled, AcceptMoneySponsors, AcceptItemSponsors,
-            MinSponsorAmount, SponsorMessage, ShowSponsorList,
-            url.Trim(), blobName.Trim()));
-    }
-
-    /// <summary>
-    /// Phase 6A.143 — returns a new SponsorConfiguration with the banner image cleared,
-    /// preserving all other fields. Handler is responsible for deleting the blob.
-    /// </summary>
-    public SponsorConfiguration WithoutImage()
-    {
-        return new SponsorConfiguration(
-            IsEnabled, AcceptMoneySponsors, AcceptItemSponsors,
-            MinSponsorAmount, SponsorMessage, ShowSponsorList,
-            null, null);
+        return new SponsorConfiguration(false, false, false, null, null, false, null);
     }
 
     /// <summary>
@@ -200,6 +161,18 @@ public class SponsorConfiguration : ValueObject
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.145 — checks whether the given contribution amount qualifies the
+    /// sponsor for image upload per <see cref="MinAmountForSponsorImage"/>. Returns
+    /// false when the feature is disabled (threshold null) or the amount is null.
+    /// </summary>
+    public bool QualifiesForImage(decimal? contributionAmount)
+    {
+        if (!MinAmountForSponsorImage.HasValue) return false;
+        if (!contributionAmount.HasValue) return false;
+        return contributionAmount.Value >= MinAmountForSponsorImage.Value;
+    }
+
     public override IEnumerable<object> GetEqualityComponents()
     {
         yield return IsEnabled;
@@ -208,10 +181,6 @@ public class SponsorConfiguration : ValueObject
         yield return MinSponsorAmount ?? 0m;
         yield return SponsorMessage ?? string.Empty;
         yield return ShowSponsorList;
-        // Phase 6A.143 — image fields MUST participate in equality so EF change-tracking
-        // detects updates when only the banner is set/cleared. Without this, the
-        // aggregate save would silently skip the JSONB write (per architect F13).
-        yield return SponsorImageUrl ?? string.Empty;
-        yield return SponsorImageBlobName ?? string.Empty;
+        yield return MinAmountForSponsorImage ?? 0m;
     }
 }

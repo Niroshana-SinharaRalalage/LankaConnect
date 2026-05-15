@@ -2349,10 +2349,10 @@ export interface SponsorConfigurationDto {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
-  // Phase 6A.143 — optional sponsor banner image (rendered above the form on event details).
-  // Always either both set or both null. Editing flows through dedicated upload/delete endpoints.
-  sponsorImageUrl?: string | null;
-  sponsorImageBlobName?: string | null;
+  // Phase 6A.145 — opt-in threshold for per-sponsor image uploads.
+  // Null = feature OFF. When set, sponsors whose amount (money or item EstimatedValue)
+  // reaches this threshold can attach an image displayed on the event details page.
+  minAmountForSponsorImage?: number | null;
 }
 
 export interface SponsorDto {
@@ -2566,6 +2566,8 @@ export interface UpdateSponsorConfigRequest {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  // Phase 6A.145 — opt-in threshold for per-sponsor image uploads.
+  minAmountForSponsorImage?: number | null;
 }
 
 export interface UpdateAddOnConfigRequest {

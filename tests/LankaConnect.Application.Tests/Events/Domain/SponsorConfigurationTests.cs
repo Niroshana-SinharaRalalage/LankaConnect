@@ -334,173 +334,103 @@ public class SponsorConfigurationTests
 
     #endregion
 
-    #region Phase 6A.143 — Sponsor banner image fields (WithImage / WithoutImage)
+    #region Phase 6A.145 — MinAmountForSponsorImage threshold
 
     [Fact]
-    public void Create_WithoutImageParams_LeavesImageFieldsNull()
+    public void Create_WithoutThreshold_LeavesFieldNull_FeatureDisabled()
     {
         var config = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null).Value;
 
-        config.SponsorImageUrl.Should().BeNull();
-        config.SponsorImageBlobName.Should().BeNull();
+        config.MinAmountForSponsorImage.Should().BeNull(
+            "default null = sponsor-image feature OFF for this event");
     }
 
     [Fact]
-    public void Create_WithImageUrlAndBlob_PopulatesBoth()
+    public void Create_WithThreshold_PopulatesField()
     {
         var config = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://blob.example.com/sponsors/banner.png",
-            sponsorImageBlobName: "banner_abc.png").Value;
+            minAmountForSponsorImage: 100m).Value;
 
-        config.SponsorImageUrl.Should().Be("https://blob.example.com/sponsors/banner.png");
-        config.SponsorImageBlobName.Should().Be("banner_abc.png");
+        config.MinAmountForSponsorImage.Should().Be(100m);
     }
 
     [Fact]
-    public void Create_WithUrlButNoBlob_Fails()
+    public void Create_WithThresholdBelowSystemMinimum_Fails()
     {
         var result = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://blob.example.com/x.png",
-            sponsorImageBlobName: null);
+            minAmountForSponsorImage: 0.50m);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("together");
+        result.Error.Should().Contain("at least");
     }
 
-    [Fact]
-    public void Create_WithBlobButNoUrl_Fails()
+    [Theory]
+    [InlineData(100.0, 100.0, true)]   // exactly at threshold qualifies
+    [InlineData(100.0, 150.0, true)]   // above threshold qualifies
+    [InlineData(100.0, 99.99, false)]  // just below threshold denied
+    [InlineData(100.0, null, false)]   // null amount denied
+    public void QualifiesForImage_AppliesThreshold(double threshold, double? contribution, bool expected)
     {
-        var result = SponsorConfiguration.Create(
+        var config = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: null,
-            sponsorImageBlobName: "x.png");
+            minAmountForSponsorImage: (decimal)threshold).Value;
 
-        result.IsFailure.Should().BeTrue();
+        var contributionDecimal = contribution.HasValue ? (decimal?)((decimal)contribution.Value) : null;
+        config.QualifiesForImage(contributionDecimal).Should().Be(expected);
     }
 
     [Fact]
-    public void WithImage_ReturnsNewVoWithImageSet_PreservesOtherFields()
-    {
-        var original = SponsorConfiguration.Create(
-            isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
-            minSponsorAmount: 25m, sponsorMessage: "Sponsor message",
-            showSponsorList: true).Value;
-
-        var result = original.WithImage(
-            "https://blob.example.com/sponsors/new.png",
-            "new_banner.png");
-
-        result.IsSuccess.Should().BeTrue();
-        var updated = result.Value;
-        updated.SponsorImageUrl.Should().Be("https://blob.example.com/sponsors/new.png");
-        updated.SponsorImageBlobName.Should().Be("new_banner.png");
-        updated.IsEnabled.Should().BeTrue();
-        updated.AcceptMoneySponsors.Should().BeTrue();
-        updated.MinSponsorAmount.Should().Be(25m);
-        updated.SponsorMessage.Should().Be("Sponsor message");
-        updated.ShowSponsorList.Should().BeTrue();
-        original.SponsorImageUrl.Should().BeNull("VO immutability — original unchanged");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void WithImage_RejectsEmptyUrl(string? badUrl)
+    public void QualifiesForImage_WhenThresholdNull_AlwaysFalse()
     {
         var config = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null).Value;
 
-        var result = config.WithImage(badUrl!, "blob.png");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("URL");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void WithImage_RejectsEmptyBlobName(string? badBlob)
-    {
-        var config = SponsorConfiguration.Create(
-            isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
-            minSponsorAmount: null, sponsorMessage: null).Value;
-
-        var result = config.WithImage("https://blob.example.com/x.png", badBlob!);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("blob");
+        config.QualifiesForImage(100_000m).Should().BeFalse(
+            "feature is OFF until organizer sets a threshold");
     }
 
     [Fact]
-    public void WithoutImage_ReturnsNewVoWithImageCleared_PreservesOtherFields()
+    public void Equality_IncludesThreshold_ChangesWhenThresholdDiffers()
     {
-        var withImage = SponsorConfiguration.Create(
-            isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
-            minSponsorAmount: 25m, sponsorMessage: "Sponsor msg",
-            showSponsorList: true,
-            sponsorImageUrl: "https://blob.example.com/banner.png",
-            sponsorImageBlobName: "banner.png").Value;
-
-        var cleared = withImage.WithoutImage();
-
-        cleared.SponsorImageUrl.Should().BeNull();
-        cleared.SponsorImageBlobName.Should().BeNull();
-        cleared.MinSponsorAmount.Should().Be(25m);
-        cleared.SponsorMessage.Should().Be("Sponsor msg");
-        cleared.ShowSponsorList.Should().BeTrue();
-        withImage.SponsorImageUrl.Should().NotBeNull("VO immutability — original unchanged");
-    }
-
-    [Fact]
-    public void Equality_IncludesImageFields_ChangesWhenImageDiffers()
-    {
-        // Architect F13: image fields must participate in equality or EF change-tracking
-        // silently misses banner updates.
         var configA = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://a.example.com/x.png",
-            sponsorImageBlobName: "a.png").Value;
+            minAmountForSponsorImage: 100m).Value;
         var configB = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://b.example.com/y.png",
-            sponsorImageBlobName: "b.png").Value;
+            minAmountForSponsorImage: 250m).Value;
 
         configA.Equals(configB).Should().BeFalse(
-            "different image URLs must produce non-equal VOs so EF detects the change");
+            "EF change-tracking must detect threshold updates");
     }
 
     [Fact]
-    public void Equality_SameImageFields_AreEqual()
+    public void Equality_SameThreshold_AreEqual()
     {
         var configA = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://x.example.com/x.png",
-            sponsorImageBlobName: "x.png").Value;
+            minAmountForSponsorImage: 100m).Value;
         var configB = SponsorConfiguration.Create(
             isEnabled: true, acceptMoneySponsors: true, acceptItemSponsors: false,
             minSponsorAmount: null, sponsorMessage: null,
             showSponsorList: false,
-            sponsorImageUrl: "https://x.example.com/x.png",
-            sponsorImageBlobName: "x.png").Value;
+            minAmountForSponsorImage: 100m).Value;
 
         configA.Equals(configB).Should().BeTrue();
     }

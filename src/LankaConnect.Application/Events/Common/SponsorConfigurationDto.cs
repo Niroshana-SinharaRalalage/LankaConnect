@@ -8,8 +8,8 @@ public record SponsorConfigurationDto
     public decimal? MinSponsorAmount { get; init; }
     public string? SponsorMessage { get; init; }
     public bool ShowSponsorList { get; init; }
-    // Phase 6A.143 — optional sponsor banner image rendered above the form on the
-    // event details page. Both fields are either both set or both null.
-    public string? SponsorImageUrl { get; init; }
-    public string? SponsorImageBlobName { get; init; }
+    // Phase 6A.145 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
+    // When set, sponsors whose money amount (or item EstimatedValue) meets this threshold
+    // can attach an image displayed on the event details page.
+    public decimal? MinAmountForSponsorImage { get; init; }
 }

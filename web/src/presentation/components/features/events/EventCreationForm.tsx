@@ -133,6 +133,8 @@ export function EventCreationForm() {
   const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(null);
   const [sponsorMessage, setSponsorMessage] = useState('');
   const [showSponsorList, setShowSponsorList] = useState(false);
+  // Phase 6A.144 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
+  const [minAmountForSponsorImage, setMinAmountForSponsorImage] = useState<number | null>(null);
 
   // Add-On configuration state
   const [addOnsEnabled, setAddOnsEnabled] = useState(false);
@@ -1835,6 +1837,8 @@ export function EventCreationForm() {
             onSponsorMessageChange={setSponsorMessage}
             showSponsorList={showSponsorList}
             onShowSponsorListChange={setShowSponsorList}
+            minAmountForSponsorImage={minAmountForSponsorImage}
+            onMinAmountForSponsorImageChange={setMinAmountForSponsorImage}
           />
         </CollapsibleSection>
       </div>

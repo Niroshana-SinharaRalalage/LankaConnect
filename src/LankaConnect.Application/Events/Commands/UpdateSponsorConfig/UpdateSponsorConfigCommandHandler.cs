@@ -55,7 +55,8 @@ public class UpdateSponsorConfigCommandHandler : ICommandHandler<UpdateSponsorCo
                         request.AcceptItemSponsors,
                         request.MinSponsorAmount,
                         request.SponsorMessage,
-                        request.ShowSponsorList);
+                        request.ShowSponsorList,
+                        request.MinAmountForSponsorImage);
 
                     if (configResult.IsFailure)
                         return Result.Failure(configResult.Error);

@@ -144,19 +144,6 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
               </div>
               {sponsorConfig.isEnabled && (
                 <>
-                  {/* Phase 6A.143 — banner preview in management view so organizer
-                      sees what visitors see. Spans full row when present. */}
-                  {sponsorConfig.sponsorImageUrl && (
-                    <div className="sm:col-span-2 lg:col-span-3">
-                      <p className="text-xs text-neutral-500 mb-1">Sponsor banner</p>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={sponsorConfig.sponsorImageUrl}
-                        alt="Sponsor banner"
-                        className="max-h-32 w-auto rounded border border-neutral-200 object-cover"
-                      />
-                    </div>
-                  )}
                   <div className="flex items-center gap-2">
                     {sponsorConfig.acceptMoneySponsors ? (
                       <CheckCircle className="h-4 w-4 text-emerald-500" />

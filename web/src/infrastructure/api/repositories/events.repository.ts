@@ -1890,28 +1890,6 @@ export class EventsRepository {
     await apiClient.delete(`${this.basePath}/${eventId}/add-ons/${definitionId}/image`);
   }
 
-  /**
-   * Phase 6A.143 — upload (or replace) the sponsor banner image for an event.
-   * Requires sponsor config to exist + be enabled. Organizer only.
-   */
-  async uploadSponsorImage(
-    eventId: string,
-    file: File
-  ): Promise<import('../types/events.types').ImageUploadResultDto> {
-    const formData = new FormData();
-    formData.append('image', file);
-    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
-      `${this.basePath}/${eventId}/sponsor-config/image`,
-      formData
-    );
-  }
-
-  /**
-   * Phase 6A.143 — clear the sponsor banner image. Idempotent.
-   */
-  async deleteSponsorImage(eventId: string): Promise<void> {
-    await apiClient.delete(`${this.basePath}/${eventId}/sponsor-config/image`);
-  }
 
   async purchaseAddOn(eventId: string, definitionId: string, request: import('../types/events.types').PurchaseAddOnRequest): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);

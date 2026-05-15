@@ -2374,8 +2374,37 @@ export interface SponsorDto {
   stripeFeeAmount?: number | null;
   platformCommissionAmount?: number | null;
   organizerPayoutAmount?: number | null;
+  // Phase 6A.145 — optional sponsor logo/image gated by SponsorConfiguration.minAmountForSponsorImage.
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
   createdAt: string;
   paymentCompletedAt?: string | null;
+}
+
+// Phase 6A.145 — organizer-add-off-platform-sponsor (POST /sponsors/off-platform).
+// Multipart on the wire — file rides alongside the form fields. The repository
+// layer assembles a FormData; this interface documents the typed payload.
+export interface CreateOffPlatformSponsorRequest {
+  type: 'Money' | 'Item';
+  sponsorName: string;
+  sponsorEmail: string;
+  sponsorPhone?: string | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+  // Money branch
+  amount?: number | null;
+  currency?: string | null;
+  // Item branch
+  itemName?: string | null;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+  // Optional image file
+  image?: File | null;
+}
+
+export interface CreateOffPlatformSponsorResult {
+  sponsorId: string;
+  imageUrl?: string | null;
 }
 
 export interface SponsorSummaryDto {

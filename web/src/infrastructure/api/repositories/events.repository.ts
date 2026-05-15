@@ -1827,6 +1827,58 @@ export class EventsRepository {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/item`, request);
   }
 
+  /**
+   * Phase 6A.145 — uploads (or replaces) a sponsor's image. Threshold-gated server-side.
+   * Public callers must meet the event's MinAmountForSponsorImage; organizer auth bypasses.
+   */
+  async uploadSponsorImage(
+    eventId: string,
+    sponsorId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}/image`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.145 — clears a sponsor's image. Organizer-only. Idempotent.
+   */
+  async deleteSponsorImage(eventId: string, sponsorId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsors/${sponsorId}/image`);
+  }
+
+  /**
+   * Phase 6A.145 — organizer records an off-platform sponsorship (cash collected
+   * outside the platform, or in-kind item donated directly to the organizer).
+   * Multipart so an optional image file rides alongside the form fields.
+   */
+  async createOffPlatformSponsor(
+    eventId: string,
+    request: import('../types/events.types').CreateOffPlatformSponsorRequest
+  ): Promise<import('../types/events.types').CreateOffPlatformSponsorResult> {
+    const formData = new FormData();
+    formData.append('Type', request.type);
+    formData.append('SponsorName', request.sponsorName);
+    formData.append('SponsorEmail', request.sponsorEmail);
+    if (request.sponsorPhone) formData.append('SponsorPhone', request.sponsorPhone);
+    if (request.sponsorOrganization) formData.append('SponsorOrganization', request.sponsorOrganization);
+    if (request.sponsorNotes) formData.append('SponsorNotes', request.sponsorNotes);
+    if (request.amount != null) formData.append('Amount', String(request.amount));
+    if (request.currency) formData.append('Currency', request.currency);
+    if (request.itemName) formData.append('ItemName', request.itemName);
+    if (request.itemDescription) formData.append('ItemDescription', request.itemDescription);
+    if (request.estimatedValue != null) formData.append('EstimatedValue', String(request.estimatedValue));
+    if (request.image) formData.append('Image', request.image);
+    return await apiClient.postMultipart<import('../types/events.types').CreateOffPlatformSponsorResult>(
+      `${this.basePath}/${eventId}/sponsors/off-platform`,
+      formData
+    );
+  }
+
   async getEventSponsors(eventId: string): Promise<import('../types/events.types').EventSponsorsResponse> {
     return await apiClient.get<import('../types/events.types').EventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors`);
   }

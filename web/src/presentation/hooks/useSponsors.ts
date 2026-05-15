@@ -8,6 +8,7 @@ import type {
   SponsorDto,
   CreateMoneySponsorRequest,
   CreateItemSponsorRequest,
+  CreateOffPlatformSponsorRequest,
 } from '@/infrastructure/api/types/events.types';
 
 export const sponsorKeys = {
@@ -66,6 +67,57 @@ export function useCreateItemSponsor() {
   return useMutation({
     mutationFn: (data: { eventId: string; request: CreateItemSponsorRequest }) =>
       eventsRepository.createItemSponsor(data.eventId, data.request),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.145 — upload (or replace) a sponsor's image. Threshold-gated on the server;
+ * public callers must meet MinAmountForSponsorImage. Invalidates sponsor list + summary
+ * + the user's own-sponsors query so the new thumbnail surfaces everywhere.
+ */
+export function useUploadSponsorImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; sponsorId: string; file: File }) =>
+      eventsRepository.uploadSponsorImage(data.eventId, data.sponsorId, data.file),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.mine(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.145 — clear a sponsor's image (organizer-only). Idempotent.
+ */
+export function useDeleteSponsorImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; sponsorId: string }) =>
+      eventsRepository.deleteSponsorImage(data.eventId, data.sponsorId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.mine(variables.eventId) });
+    },
+  });
+}
+
+/**
+ * Phase 6A.145 — organizer records an off-platform sponsorship (cash money or in-kind
+ * item collected outside the platform). Bypasses Stripe entirely; the resulting Sponsor
+ * is immediately Completed (money) or RecordedItem (item). Optional image upload.
+ */
+export function useCreateOffPlatformSponsor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { eventId: string; request: CreateOffPlatformSponsorRequest }) =>
+      eventsRepository.createOffPlatformSponsor(data.eventId, data.request),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
       queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });

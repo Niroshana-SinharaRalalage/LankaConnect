@@ -55,6 +55,7 @@ import type {
   EventFormDetailDto,
   FormResponseDto,
   FormResponsesPagedDto,
+  PublicFormResponsesDto,  // Phase 6A.146
   CreateEventFormRequest,
   UpdateEventFormRequest,
   AddFormQuestionRequest,
@@ -1640,6 +1641,28 @@ export class EventsRepository {
     return await apiClient.get<FormResponsesPagedDto>(
       `${this.basePath}/${eventId}/forms/${formId}/responses?page=${page}&pageSize=${pageSize}`
     );
+  }
+
+  /**
+   * Phase 6A.146 — fetch the public, PII-redacted form responses.
+   * Maps to GET /api/events/{eventId}/forms/{formId}/responses/public (AllowAnonymous).
+   * Returns null when the backend responds 404 (form not found OR flag off OR
+   * Draft/Archived — the backend intentionally collapses all denial cases into
+   * a single 404 so the toggle's state isn't leaked). Other errors propagate.
+   */
+  async getPublicFormResponses(
+    eventId: string,
+    formId: string
+  ): Promise<PublicFormResponsesDto | null> {
+    try {
+      return await apiClient.get<PublicFormResponsesDto>(
+        `${this.basePath}/${eventId}/forms/${formId}/responses/public`
+      );
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.status;
+      if (status === 404) return null;
+      throw err;
+    }
   }
 
   /**

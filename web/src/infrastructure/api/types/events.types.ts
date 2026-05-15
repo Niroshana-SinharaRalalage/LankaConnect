@@ -1985,6 +1985,13 @@ export interface EventFormDto {
   responseCount: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Phase 6A.146 — organizer-controlled toggle. When true, the
+   * PublicFormResponsesSection renders on the event detail page (subject
+   * to status ∈ {Active, Closed}) and the /responses/public endpoint
+   * returns PII-redacted DTOs.
+   */
+  allowAttendeesToViewResponses: boolean;
 }
 
 /**
@@ -2031,6 +2038,46 @@ export interface FormResponsesPagedDto {
   pageSize: number;
 }
 
+// ==================== Phase 6A.146 — Public Form Responses (PII-redacted) ====================
+
+/**
+ * Phase 6A.146 — public answer DTO matching backend PublicFormAnswerDto.
+ * Question text + answer values are preserved verbatim; organizer is
+ * responsible for not asking PII-revealing questions when the toggle is on.
+ */
+export interface PublicFormAnswerDto {
+  questionId: string;
+  questionTextSnapshot: string;
+  textValue?: string | null;
+  selectedOptionTextSnapshots: string[];
+  booleanValue?: boolean | null;
+}
+
+/**
+ * Phase 6A.146 — public response DTO. PII fields (name/email/userId) are
+ * INTENTIONALLY ABSENT from this type — the backend DTO does not include
+ * them and the frontend type mirrors that. Adding any of these fields here
+ * would be a regression.
+ */
+export interface PublicFormResponseDto {
+  id: string;
+  /** "Respondent 1", "Respondent 2", ... assigned by SubmittedAt ASC. */
+  respondentLabel: string;
+  /** ISO date string "YYYY-MM-DD" (DateOnly on the wire — no time-of-day). */
+  submittedOn: string;
+  answers: PublicFormAnswerDto[];
+}
+
+/**
+ * Phase 6A.146 — top-level payload for GET /forms/{formId}/responses/public.
+ */
+export interface PublicFormResponsesDto {
+  formId: string;
+  formTitle: string;
+  totalCount: number;
+  responses: PublicFormResponseDto[];
+}
+
 // ==================== Custom Forms - Request DTOs ====================
 
 /**
@@ -2056,6 +2103,8 @@ export interface CreateEventFormRequest {
   responseDeadline?: string | null;
   maxResponses?: number | null;
   questions: CreateFormQuestionItem[];
+  /** Phase 6A.146 — optional, defaults false on the server when omitted. */
+  allowAttendeesToViewResponses?: boolean;
 }
 
 /**
@@ -2068,6 +2117,12 @@ export interface UpdateEventFormRequest {
   allowMultipleResponses: boolean;
   responseDeadline?: string | null;
   maxResponses?: number | null;
+  /**
+   * Phase 6A.146 — nullable/undefined means "leave the flag unchanged"
+   * on the server (the domain interprets the backend null the same way).
+   * UI sends the explicit boolean when the toggle changes.
+   */
+  allowAttendeesToViewResponses?: boolean | null;
 }
 
 /**

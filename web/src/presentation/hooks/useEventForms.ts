@@ -29,6 +29,7 @@ import type {
   EventFormDetailDto,
   FormResponseDto,
   FormResponsesPagedDto,
+  PublicFormResponsesDto,  // Phase 6A.146
   CreateEventFormRequest,
   UpdateEventFormRequest,
   AddFormQuestionRequest,
@@ -55,6 +56,9 @@ export const formKeys = {
   responses: () => [...formKeys.all, 'responses'] as const,
   responsesList: (eventId: string, formId: string) =>
     [...formKeys.responses(), eventId, formId] as const,
+  // Phase 6A.146 — public responses key (anonymous view).
+  publicResponses: (eventId: string, formId: string) =>
+    [...formKeys.responses(), 'public', eventId, formId] as const,
   myResponse: (eventId: string, formId: string, token: string) =>
     [...formKeys.responses(), 'mine', eventId, formId, token] as const,
 };
@@ -162,6 +166,36 @@ export function useFormResponses(
     staleTime: 2 * 60 * 1000, // 2 minutes (frequently changing data)
     refetchOnWindowFocus: true,
     retry: 1,
+    ...options,
+  });
+}
+
+/**
+ * Phase 6A.146 — usePublicFormResponses Hook
+ *
+ * Fetches the public, PII-redacted form responses. Returns `null` (not an
+ * error) when the backend responds 404 — that's how the organizer's
+ * `allowAttendeesToViewResponses` toggle being off is expressed on the wire,
+ * and we don't want the UI to flash an error banner for the most common path
+ * (toggle off). The repository swallows the 404 → null mapping so this hook
+ * just lets the data be `null | undefined` while the section renders nothing.
+ *
+ * @param eventId - Event ID
+ * @param formId - Form ID
+ * @param options - React Query options (retry/disable/etc.)
+ */
+export function usePublicFormResponses(
+  eventId: string | undefined,
+  formId: string | undefined,
+  options?: Omit<UseQueryOptions<PublicFormResponsesDto | null, ApiError>, 'queryKey' | 'queryFn'>
+) {
+  return useQuery({
+    queryKey: formKeys.publicResponses(eventId || '', formId || ''),
+    queryFn: () => eventsRepository.getPublicFormResponses(eventId!, formId!),
+    enabled: !!eventId && !!formId,
+    staleTime: 60 * 1000, // 1 minute — public view doesn't need to be real-time
+    refetchOnWindowFocus: false,
+    retry: 0,  // 404 is intentional — no point retrying
     ...options,
   });
 }

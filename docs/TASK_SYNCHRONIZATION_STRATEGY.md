@@ -3,7 +3,25 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.144 Paid-Event Auth-Encouragement Modal
+## 🚀 CURRENT SESSION STATUS — Phase 6A.146 Public Form Responses with PII Redaction
+**Date**: 2026-05-15
+**Session**: Closes the "only organizers can see form responses" gap with an opt-in toggle. Architect-class RCA classified this as **feature-missing** spanning Domain + Infrastructure + Application + API + UI — Custom Forms were originally modeled as one-way data collection so the platform had no vocabulary for "show this, hide that" until now. Architect rejected the first draft with 6 corrections, all folded in before code touched the tree (C1 extend UpdateDetails not separate method; C2 no status guard on toggle; C3 reuse existing repos; C4 lowercase `event_forms` table name; C5 validators unchanged; C6 pre-flight grep for live mount file).
+**Progress**: ✅ **BACKEND + UI STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.
+- Branch: `feat/phase-6a-141-ticket-checkin` (user authorized staying on current branch — 6A.141 + 6A.144 + 6A.146 all ride together)
+- Backend deploy: run `25941566751` SUCCESS — migration `Phase6A146_AddResponseVisibilityToEventForms` auto-applied; existing rows defaulted to `false`
+- UI deploy: run `25946197280` dispatched on SHA `b9e6bbf6`
+- Backend smoke matrix 4/4 GREEN: (1) flag-off public anon → 404 generic "Form not found"; (2) organizer endpoint unchanged + full PII preserved; (3) PUT `allowAttendeesToViewResponses:true` → 200 + persisted; (4) flag-on public anon → 200 with `respondentLabel` / `submittedOn` / answers, NO PII in payload
+- Files: 4 new backend (query + handler + 2 DTO additions) + 6 modified backend (EventForm aggregate, EF config, migration, 2 commands, 2 handlers, mappers, controller, request DTOs) + 4 new frontend (PublicFormResponsesSection + test + 3 DTO interfaces) + 4 modified frontend (events.types.ts, events.repository.ts, useEventForms.ts, create-form/page.tsx, FormManagementSection.tsx, events/[id]/page.tsx)
+- TypeScript: `tsc --noEmit` clean for all new files (one pre-existing EventEditForm error from 6A.143 sponsor work, unrelated)
+**Tests**: 6 EventForm domain tests + 14 GetPublicFormResponses application tests + 3 reflection-asserted PII guards on PublicFormResponseDto + 7 PublicFormResponsesSection RTL tests. Full Application suite 2701/2707 GREEN (6 skipped), Domain 750/752 GREEN (2 pre-existing FormResponseTests + DonationConfigurationTests failures unrelated, documented in prior phase entries).
+**Phase numbering**: 6A.142 was anonymous-sign-up follow-ups; 6A.143 was add-on/sponsor images; 6A.145 sponsor banner work mid-flight (separate); next free was **6A.146**, recorded in `PHASE_6A_MASTER_INDEX.md` BEFORE code touched the tree per CLAUDE.md rule.
+**12 commits**: `1728cf5d` test RED EventForm visibility → `ea3bd6b5` feat GREEN domain → `e3152b01` chore EF migration → `738f8748` feat commands → `329b01f0` test RED public query → `0137af08` feat GREEN public query+DTOs+handler → `8bcc9328` feat API endpoint → `9c262270` feat frontend types+hook → `ece4d449` test RED PublicFormResponsesSection → `0d346d6e` feat GREEN section → `a0b8e4b7` feat create+manage toggles → `b9e6bbf6` feat event-detail mount.
+**Operator UAT pending — 7 cells**: (1) anon + flag-off → no section; (2) flag-on Draft → no section (status gate); (3) flag-on Active no responses → empty state; (4) flag-on Active with responses → ordinal labels and dates visible, Chrome DevTools find-`@` returns zero in section; (5) flag-on Closed → still shows; (6) organizer responses page unchanged; (7) mobile 375px breakpoint readable.
+**Deploy order**: Backend deployed first (migration auto-applies on container startup), then UI. Production deploy after operator UAT signs off.
+
+---
+
+## Earlier Session — Phase 6A.144 Paid-Event Auth-Encouragement Modal
 **Date**: 2026-05-14
 **Session**: Soft-conversion gap on paid-event registration. Anonymous users could already register for paid events end-to-end since Phase 6A.44, but they lose post-purchase management (tickets, refunds, add-ons) because the registration has no account anchor. Architect-class RCA classified the issue as **UI/feature-missing** — backend & domain were complete; only the conversion funnel on the public event detail page was absent. Plan + 4 architect corrections folded in before code touched the tree (A1 focus trap via ref not sentinels, A3 reuse existing searchParams + strip `?intent=register` via replaceState, A5/A6 stronger same-origin guard with pre-screen for backslash + encoded bypass, B-Phase-4 hydration smoke on register page). Approach: friendly modal with three explicit exits (Sign In / Sign Up / Continue as Guest); existing anonymous flow preserved for Guest.
 **Progress**: ✅ **STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.

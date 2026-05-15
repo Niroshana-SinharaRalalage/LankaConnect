@@ -367,6 +367,8 @@ public class SponsorsController : BaseController<SponsorsController>
                 ItemName = s.ItemName,
                 ItemDescription = s.ItemDescription,
                 EstimatedValue = s.EstimatedValue,
+                ImageUrl = s.ImageUrl,
+                ImageBlobName = s.ImageBlobName,
                 CreatedAt = s.CreatedAt,
                 PaymentCompletedAt = s.PaymentCompletedAt,
             }).ToList();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { ShoppingBag, RefreshCw, ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, Clock } from 'lucide-react';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
@@ -46,15 +46,11 @@ export function AddOnSelector({ eventId, addOnConfig, myAddOnPurchases }: AddOnS
     [definitions]
   );
 
-  // Phase 6A.143 — auto-expand the section when any active add-on has an image so
-  // the new visuals get exposure on first load. Controlled state required because
-  // defaultOpen is read once at mount (definitions haven't loaded yet).
+  // Phase 6A.145 Commit 6 — section is default-collapsed like all other event-page
+  // collapsibles. The top-of-page <AddOnsPreviewStrip> now surfaces the add-ons
+  // prominently, so the bottom full-detail card is just a "Show details" target
+  // for the pill navigation (architect H-1 + user UAT R6 request).
   const [sectionOpen, setSectionOpen] = useState(false);
-  useEffect(() => {
-    if (activeDefinitions.some((d) => !!d.imageUrl)) {
-      setSectionOpen(true);
-    }
-  }, [activeDefinitions]);
 
   // Filter to only show completed/pending purchases (not abandoned/failed)
   const visiblePurchases = useMemo(() => {

@@ -44,24 +44,24 @@ export function AddOnsPreviewStrip({ eventId, addOnConfig }: AddOnsPreviewStripP
     <section
       aria-label="Event add-ons preview"
       data-testid="addons-preview-strip"
-      className="my-6"
+      className="mt-6 pt-6 border-t border-neutral-200"
     >
-      <div className="flex items-center gap-2 mb-3">
-        <ShoppingBag className="h-5 w-5 text-emerald-600" />
-        <h3 className="text-base font-semibold text-neutral-800">Event Add-Ons</h3>
-        <span className="text-xs text-neutral-500">({activeDefinitions.length})</span>
+      <div className="flex items-center gap-2 mb-4">
+        <ShoppingBag className="h-6 w-6 text-emerald-600" />
+        <h3 className="text-xl font-semibold text-neutral-900">Event Add-Ons</h3>
+        <span className="text-sm text-neutral-500 font-medium">({activeDefinitions.length})</span>
         <button
           type="button"
           onClick={handleCardClick}
-          className="ml-auto text-xs text-emerald-700 hover:underline flex items-center gap-1"
+          className="ml-auto text-sm text-emerald-700 hover:underline flex items-center gap-1 font-medium"
         >
           Browse all
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
       <div
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1"
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 px-1 [justify-content:safe_center]"
         role="region"
         aria-label="Add-ons scroller"
       >

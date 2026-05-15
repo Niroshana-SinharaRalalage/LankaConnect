@@ -59,24 +59,24 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
     <section
       aria-label="Event sponsors preview"
       data-testid="sponsors-preview-strip"
-      className="my-6"
+      className="mt-6 pt-6 border-t border-neutral-200"
     >
-      <div className="flex items-center gap-2 mb-3">
-        <Handshake className="h-5 w-5 text-indigo-600" />
-        <h3 className="text-base font-semibold text-neutral-800">Sponsors</h3>
-        <span className="text-xs text-neutral-500">({eligibleSponsors.length})</span>
+      <div className="flex items-center gap-2 mb-4">
+        <Handshake className="h-6 w-6 text-indigo-600" />
+        <h3 className="text-xl font-semibold text-neutral-900">Sponsors</h3>
+        <span className="text-sm text-neutral-500 font-medium">({eligibleSponsors.length})</span>
         <button
           type="button"
           onClick={handleCardClick}
-          className="ml-auto text-xs text-indigo-700 hover:underline flex items-center gap-1"
+          className="ml-auto text-sm text-indigo-700 hover:underline flex items-center gap-1 font-medium"
         >
           Sponsor this event
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-4 w-4" />
         </button>
       </div>
 
       <div
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1"
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 px-1 [justify-content:safe_center]"
         role="region"
         aria-label="Sponsors scroller"
       >

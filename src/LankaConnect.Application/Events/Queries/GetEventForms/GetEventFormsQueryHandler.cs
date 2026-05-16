@@ -68,7 +68,8 @@ public class GetEventFormsQueryHandler : IQueryHandler<GetEventFormsQuery, List<
                         QuestionCount = form.Questions.Count,
                         ResponseCount = responseCount,
                         CreatedAt = form.CreatedAt,
-                        UpdatedAt = form.UpdatedAt
+                        UpdatedAt = form.UpdatedAt,
+                        AllowAttendeesToViewResponses = form.AllowAttendeesToViewResponses  // Phase 6A.146
                     });
                 }
 

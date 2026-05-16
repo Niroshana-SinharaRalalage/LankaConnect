@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Award,
   Download,
@@ -14,17 +14,116 @@ import {
   Settings,
   CheckCircle,
   XCircle,
+  Plus,
+  ImagePlus,
+  X,
 } from 'lucide-react';
+import {
+  useEventSponsors,
+  useUploadSponsorImage,
+  useDeleteSponsorImage,
+} from '@/presentation/hooks/useSponsors';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
-import { useEventSponsors } from '@/presentation/hooks/useSponsors';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { SponsorDto, SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
+import { AddOffPlatformSponsorModal } from './AddOffPlatformSponsorModal';
 
 interface SponsorsManagementTabProps {
   eventId: string;
   sponsorConfig?: SponsorConfigurationDto | null;
+}
+
+/**
+ * Phase 6A.145 — image cell for the sponsor list tables. Organizer-only,
+ * threshold bypass via organizer auth on the backend. Shows a thumbnail when
+ * the sponsor has an image; otherwise a "+ Add" file picker. Inline remove
+ * button when image present.
+ */
+function SponsorImageCell({
+  eventId,
+  sponsor,
+}: {
+  eventId: string;
+  sponsor: SponsorDto;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const upload = useUploadSponsorImage();
+  const remove = useDeleteSponsorImage();
+  const isBusy = upload.isPending || remove.isPending;
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image too large (max 5MB).');
+      return;
+    }
+    try {
+      await upload.mutateAsync({ eventId, sponsorId: sponsor.id, file });
+    } catch (err) {
+      console.error('Sponsor image upload failed:', err);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!confirm('Remove this sponsor image?')) return;
+    try {
+      await remove.mutateAsync({ eventId, sponsorId: sponsor.id });
+    } catch (err) {
+      console.error('Sponsor image delete failed:', err);
+      alert('Failed to remove image. Please try again.');
+    }
+  };
+
+  if (sponsor.imageUrl) {
+    return (
+      <div className="flex items-center gap-1">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={sponsor.imageUrl}
+          alt={sponsor.sponsorName}
+          className="h-10 w-10 rounded border border-neutral-200 object-cover bg-white"
+        />
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={isBusy}
+          className="text-red-500 hover:text-red-700"
+          aria-label="Remove image"
+          title="Remove image"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+        disabled={isBusy}
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={isBusy}
+        className="flex h-10 w-10 items-center justify-center rounded border border-dashed border-neutral-300 bg-neutral-50 text-neutral-400 hover:border-neutral-400 hover:text-neutral-600"
+        aria-label="Add image"
+        title="Add image"
+      >
+        <ImagePlus className="h-4 w-4" />
+      </button>
+    </>
+  );
 }
 
 function getSponsorStatusColor(status: string): string {
@@ -54,6 +153,8 @@ function getSponsorStatusColor(status: string): string {
  */
 export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManagementTabProps) {
   const [isExporting, setIsExporting] = useState(false);
+  // Phase 6A.145 — Add Off-Platform Sponsor modal trigger.
+  const [showOffPlatformModal, setShowOffPlatformModal] = useState(false);
 
   const isEnabled = sponsorConfig?.isEnabled === true;
   const { data: sponsorsData, isLoading, error, refetch } = useEventSponsors(eventId, isEnabled);
@@ -292,11 +393,22 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
       )}
 
       {/* Actions Row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="text-sm font-semibold text-neutral-700">
           All Sponsors ({sponsors.length})
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {isEnabled && (
+            <Button
+              size="sm"
+              onClick={() => setShowOffPlatformModal(true)}
+              style={{ background: '#FF7900' }}
+              data-testid="add-off-platform-sponsor-button"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Off-Platform Sponsor
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -347,6 +459,7 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <th className="text-left px-4 py-3 font-medium text-neutral-600 w-16">Logo</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Sponsor</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Organization</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Contact</th>
@@ -358,6 +471,9 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
               <tbody>
                 {moneySponsors.map((sponsor: SponsorDto) => (
                   <tr key={sponsor.id} className="border-b border-neutral-100 hover:bg-neutral-50">
+                    <td className="px-4 py-3">
+                      <SponsorImageCell eventId={eventId} sponsor={sponsor} />
+                    </td>
                     <td className="px-4 py-3">
                       <span className="font-medium text-neutral-800">{sponsor.sponsorName}</span>
                     </td>
@@ -420,6 +536,7 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200">
+                  <th className="text-left px-4 py-3 font-medium text-neutral-600 w-16">Logo</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Sponsor</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Organization</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Item Name</th>
@@ -431,6 +548,9 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
               <tbody>
                 {itemSponsors.map((sponsor: SponsorDto) => (
                   <tr key={sponsor.id} className="border-b border-neutral-100 hover:bg-neutral-50">
+                    <td className="px-4 py-3">
+                      <SponsorImageCell eventId={eventId} sponsor={sponsor} />
+                    </td>
                     <td className="px-4 py-3">
                       <span className="font-medium text-neutral-800">{sponsor.sponsorName}</span>
                     </td>
@@ -465,6 +585,15 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
           </div>
         </>
       )}
+
+      {/* Phase 6A.145 — Add Off-Platform Sponsor modal */}
+      <AddOffPlatformSponsorModal
+        eventId={eventId}
+        sponsorConfig={sponsorConfig}
+        open={showOffPlatformModal}
+        onClose={() => setShowOffPlatformModal(false)}
+        onCreated={() => refetch()}
+      />
     </div>
   );
 }

@@ -156,6 +156,22 @@ jobs:
 
       - name: Update Container App
         run: |
+          # Phase 6A.141 F6 PRE-FLIGHT: ensure the Container App has a secret named
+          # ticket-qr-signing-key that references the Key Vault secret
+          # TICKET-QR-SIGNING-KEY. Idempotent — noop if already configured.
+          # MUST run BEFORE the env-var update because the env var references this
+          # secret by name; otherwise the update fails with "secret not found".
+          # Uses the system-assigned managed identity already wired up for KV access.
+          # SEV-1 SAFETY RAIL: without this binding the API silently falls back to
+          # the dev-only base64 key checked into appsettings.json line 205 —
+          # production QRs would be forgeable by anyone who can read the repo.
+          az containerapp secret set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "ticket-qr-signing-key=keyvaultref:https://${{ env.KEY_VAULT_NAME }}.vault.azure.net/secrets/TICKET-QR-SIGNING-KEY,identityref:system" \
+            > /dev/null
+          echo "✓ Container App secret ticket-qr-signing-key wired (Phase 6A.141 F6)"
+
           echo "Deploying new image to production..."
 
           az containerapp update \
@@ -212,7 +228,8 @@ jobs:
               WhatsAppSettings__TwilioContentSids__event_approved=HX81ec1d4f558447d762ab15e451b6325b \
               WhatsAppSettings__TwilioContentSids__newsletter_broadcast=HX17b7b6276a4cd5e9967bff89bf145c22 \
               WhatsAppSettings__TwilioContentSids__event_ticket_confirmation=HXb161bc8eb956f4637ab4f961d4d08ca4 \
-              WhatsAppSettings__TwilioContentSids__photo_album_published=HXcbb9d987a5953d9e7465f994f0d72dd5
+              WhatsAppSettings__TwilioContentSids__photo_album_published=HXcbb9d987a5953d9e7465f994f0d72dd5 \
+              Tickets__QrSigningKey=secretref:ticket-qr-signing-key
 
           # Ensure ingress is configured for port 5000
           az containerapp ingress update \

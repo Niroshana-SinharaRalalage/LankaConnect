@@ -112,4 +112,31 @@ public abstract class BaseController<T> : ControllerBase where T : class
             })
         };
     }
+
+    /// <summary>
+    /// Phase 6A.141 F3 — extract the requesting client IP, preferring the first hop in
+    /// <c>X-Forwarded-For</c> when present (Azure Front Door / Container Apps ingress fronts
+    /// the API, so <see cref="HttpContext.Connection"/>.RemoteIpAddress would return the
+    /// load balancer's internal IP — useless for forensics).
+    ///
+    /// Lifted from AuthController where it lived as a private helper. Reused now by the
+    /// ticket-scan endpoint to populate the audit log's <c>client_ip</c> column. Other
+    /// controllers can adopt it too.
+    /// </summary>
+    protected string? GetClientIpAddress()
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Forwarded chain: first hop is the originating client (per RFC 7239 conventions).
+        if (Request.Headers.ContainsKey("X-Forwarded-For"))
+        {
+            var forwardedIps = Request.Headers["X-Forwarded-For"].ToString().Split(',');
+            if (forwardedIps.Length > 0 && !string.IsNullOrWhiteSpace(forwardedIps[0]))
+            {
+                ipAddress = forwardedIps[0].Trim();
+            }
+        }
+
+        return ipAddress;
+    }
 }

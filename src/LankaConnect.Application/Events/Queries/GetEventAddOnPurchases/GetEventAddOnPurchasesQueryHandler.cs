@@ -70,6 +70,8 @@ public class GetEventAddOnPurchasesQueryHandler : IQueryHandler<GetEventAddOnPur
                     RemainingStock = d.RemainingStock,
                     IsActive = d.IsActive,
                     SortOrder = d.SortOrder,
+                    ImageUrl = d.ImageUrl,
+                    ImageBlobName = d.ImageBlobName,
                     CreatedAt = d.CreatedAt,
                     UpdatedAt = d.UpdatedAt
                 }).ToList();

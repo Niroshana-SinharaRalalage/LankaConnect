@@ -1970,6 +1970,14 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("event_id");
 
+                    b.Property<string>("ImageBlobName")
+                        .HasColumnType("text")
+                        .HasColumnName("image_blob_name");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -2485,6 +2493,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("AllowAttendeesToViewResponses")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("allow_attendees_to_view_responses");
 
                     b.Property<bool>("AllowMultipleResponses")
                         .ValueGeneratedOnAdd()
@@ -3492,6 +3506,88 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("tickets", "events");
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketScanLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClientIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("client_ip");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EntryMethod")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("entry_method");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<string>("ScanResult")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("scan_result");
+
+                    b.Property<string>("ScannerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scanner_name");
+
+                    b.Property<Guid>("ScannerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("scanner_user_id");
+
+                    b.Property<string>("TicketCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("ticket_code");
+
+                    b.Property<Guid?>("TicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("user_agent");
+
+                    b.Property<bool>("VerifiedWithPreviousKey")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("verified_with_previous_key");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId")
+                        .HasDatabaseName("IX_TicketScanLogs_TicketId");
+
+                    b.HasIndex("EventId", "CreatedAt")
+                        .HasDatabaseName("IX_TicketScanLogs_EventId_CreatedAt");
+
+                    b.HasIndex("ScannerUserId", "CreatedAt")
+                        .HasDatabaseName("IX_TicketScanLogs_ScannerUserId_CreatedAt");
+
+                    b.ToTable("TicketScanLogs", (string)null);
                 });
 
             modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketTier", b =>
@@ -4597,6 +4693,14 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("failed_at");
 
+                    b.Property<string>("ImageBlobName")
+                        .HasColumnType("text")
+                        .HasColumnName("image_blob_name");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
                     b.Property<string>("ItemDescription")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -4843,7 +4947,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("31f73d61-6c12-1252-f5ab-10d9d47eba46"),
                             Code = "Religious",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(728),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5304),
                             DisplayOrder = 1,
                             EnumType = "EventCategory",
                             IntValue = 0,
@@ -4855,7 +4959,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("80cd50b4-7630-f5d0-1f9a-a7c480347dcf"),
                             Code = "Cultural",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(798),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5332),
                             DisplayOrder = 2,
                             EnumType = "EventCategory",
                             IntValue = 1,
@@ -4867,7 +4971,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("0b9effc0-322f-8026-85c6-747e381b41e6"),
                             Code = "Community",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(832),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5348),
                             DisplayOrder = 3,
                             EnumType = "EventCategory",
                             IntValue = 2,
@@ -4879,7 +4983,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("70ab7cff-d677-f4bd-b331-f02908ee3347"),
                             Code = "Educational",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(862),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5361),
                             DisplayOrder = 4,
                             EnumType = "EventCategory",
                             IntValue = 3,
@@ -4891,7 +4995,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4de1eacb-273a-ab85-e811-d60addb4ae30"),
                             Code = "Social",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(892),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5375),
                             DisplayOrder = 5,
                             EnumType = "EventCategory",
                             IntValue = 4,
@@ -4903,7 +5007,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("4e57a1be-7a76-833e-003f-b2e3182f29f0"),
                             Code = "Business",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(921),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5389),
                             DisplayOrder = 6,
                             EnumType = "EventCategory",
                             IntValue = 5,
@@ -4915,7 +5019,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("2d87836d-9322-d4b1-b4ec-b5b73eca9ad9"),
                             Code = "Charity",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(972),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5401),
                             DisplayOrder = 7,
                             EnumType = "EventCategory",
                             IntValue = 6,
@@ -4927,7 +5031,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("cdaa97c0-e68f-2819-984e-63bb9dcf35a6"),
                             Code = "Entertainment",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(1138),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5414),
                             DisplayOrder = 8,
                             EnumType = "EventCategory",
                             IntValue = 7,
@@ -4939,7 +5043,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("c5735376-4831-c12b-a01e-672efee6c8e3"),
                             Code = "Workshop",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(1180),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5426),
                             DisplayOrder = 9,
                             EnumType = "EventCategory",
                             IntValue = 8,
@@ -4951,7 +5055,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("9b07d22a-d0bf-ad27-01bf-0c8410d4b9e1"),
                             Code = "Festival",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(1208),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5438),
                             DisplayOrder = 10,
                             EnumType = "EventCategory",
                             IntValue = 9,
@@ -4963,7 +5067,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("e1d5afac-09d6-ef55-a529-f5bf473ef103"),
                             Code = "Ceremony",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(1237),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5449),
                             DisplayOrder = 11,
                             EnumType = "EventCategory",
                             IntValue = 10,
@@ -4975,7 +5079,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         {
                             Id = new Guid("6313b249-2620-3e97-c1bd-f1d50814156d"),
                             Code = "Celebration",
-                            CreatedAt = new DateTime(2026, 5, 8, 21, 38, 28, 100, DateTimeKind.Utc).AddTicks(1265),
+                            CreatedAt = new DateTime(2026, 5, 15, 20, 43, 2, 167, DateTimeKind.Utc).AddTicks(5461),
                             DisplayOrder = 12,
                             EnumType = "EventCategory",
                             IntValue = 11,
@@ -6797,6 +6901,26 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.HasOne("LankaConnect.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.TicketScanLog", b =>
+                {
+                    b.HasOne("LankaConnect.Domain.Events.Event", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LankaConnect.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("ScannerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LankaConnect.Domain.Events.Entities.Ticket", null)
+                        .WithMany()
+                        .HasForeignKey("TicketId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 

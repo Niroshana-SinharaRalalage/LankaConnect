@@ -100,6 +100,7 @@ using LankaConnect.Application.Events.Commands.DeleteFormResponse;
 using LankaConnect.Application.Events.Queries.GetEventForms;
 using LankaConnect.Application.Events.Queries.GetEventFormDetail;
 using LankaConnect.Application.Events.Queries.GetFormResponses;
+using LankaConnect.Application.Events.Queries.GetPublicFormResponses;  // Phase 6A.146
 using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
@@ -109,6 +110,7 @@ using LankaConnect.Application.Events.Commands.UpdateTicketTier;
 using LankaConnect.Application.Events.Commands.RemoveTicketTier;
 using LankaConnect.Application.Events.Commands.SetTicketingMode;
 using LankaConnect.Application.Events.Commands.SetSeatingMode;
+using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
@@ -774,6 +776,144 @@ public class EventsController : BaseController<EventsController>
             return StatusCode(StatusCodes.Status403Forbidden, new { error = result.Errors.First() });
         }
 
+        return HandleResult(result);
+    }
+
+    // ============================================================
+    // Phase 6A.141: Paid-Event Ticket Check-in / QR Scanner endpoints
+    //
+    // Two endpoints, one ScanTicketCommand backing both:
+    //   POST .../tickets/scan          — QR-scan path (body: { qrPayload })
+    //   POST .../tickets/scan-by-code  — Manual-entry fallback (body: { ticketCode })
+    // Authorization is enforced inside the handler via Event.IsOrganizer(scannerUserId) —
+    // see Phase 6A.133 organizer-link pattern. The handler returns Result.Forbidden which
+    // BaseController.BuildProblem maps to HTTP 403.
+    //
+    // F3: client_ip extracted via BaseController.GetClientIpAddress (X-Forwarded-For aware).
+    // ============================================================
+
+    /// <summary>
+    /// Scan a QR-encoded ticket payload at the event gate. Returns accepted with attendee
+    /// + tier details, or rejected with a reason code (already_scanned, invalid_signature,
+    /// expired, invalidated, ticket_not_found, wrong_event, malformed_payload).
+    /// Both accepted and rejected business outcomes are HTTP 200 with the outcome on the
+    /// body — HTTP 4xx is reserved for protocol/auth failures (per Plan-agent D5).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicket(
+        Guid eventId,
+        [FromBody] ScanTicketQrRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        // Phase 6A.116-style cache-prevention: scan endpoints must never be cached.
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (QR) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, PayloadLength={Length}",
+            eventId, userId, request.QrPayload?.Length ?? 0);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: request.QrPayload,
+            TicketCode: null,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Manual-entry fallback for the gate scanner — staff types in the LC-YYYY-XXXXXX
+    /// ticket code when the QR can't be scanned (e.g. damaged print, dead phone). No
+    /// signature verification (trust comes from organizer auth).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan-by-code")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicketByCode(
+        Guid eventId,
+        [FromBody] ScanTicketByCodeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (manual) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, TicketCode={TicketCode}",
+            eventId, userId, request.TicketCode);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: null,
+            TicketCode: request.TicketCode,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.141 admin override — reverses a prior accepted scan. AdminOnly policy
+    /// (event organizers do not have unmark privilege by default to limit abuse during
+    /// disputes). Writes a new TicketScanLog row with scan_result='unmarked' carrying
+    /// the admin's stated reason; the original accepted-scan row stays for forensic
+    /// completeness.
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/{ticketCode}/unmark-scanned")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(UnmarkScannedResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnmarkScanned(
+        Guid eventId,
+        string ticketCode,
+        [FromBody] UnmarkScannedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var adminName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Logger.LogInformation(
+            "UnmarkScanned endpoint: EventId={EventId}, TicketCode={TicketCode}, AdminUserId={AdminUserId}",
+            eventId, ticketCode, userId);
+
+        var command = new UnmarkScannedCommand(
+            EventId: eventId,
+            TicketCode: ticketCode,
+            AdminUserId: userId,
+            AdminName: adminName,
+            Reason: request.Reason,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
         return HandleResult(result);
     }
 
@@ -2506,7 +2646,8 @@ public class EventsController : BaseController<EventsController>
             request.AllowMultipleResponses,
             request.ResponseDeadline,
             request.MaxResponses,
-            questions);
+            questions,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146
 
         var result = await Mediator.Send(command);
 
@@ -2531,7 +2672,8 @@ public class EventsController : BaseController<EventsController>
             request.Description,
             request.AllowMultipleResponses,
             request.ResponseDeadline,
-            request.MaxResponses);
+            request.MaxResponses,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146 (nullable; null = leave unchanged)
 
         var result = await Mediator.Send(command);
 
@@ -2909,6 +3051,31 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Getting responses for form {FormId} event {EventId}, page {Page}", formId, id, page);
 
         var query = new GetFormResponsesQuery(id, formId, page, pageSize);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.146 — public, PII-redacted form responses. Visible to any
+    /// event visitor when the organizer has flipped AllowAttendeesToViewResponses
+    /// to true AND the form is in Active or Closed status. Returns 404 for every
+    /// denial case (form not found / wrong event / flag off / Draft / Archived)
+    /// to avoid leaking the toggle's state.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="formId">Form ID</param>
+    /// <returns>PII-redacted response list (ordinal labels + DateOnly submitted dates)</returns>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/public")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicFormResponsesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicFormResponses(Guid id, Guid formId)
+    {
+        Logger.LogInformation(
+            "GetPublicFormResponses START: EventId={EventId}, FormId={FormId}", id, formId);
+
+        var query = new GetPublicFormResponsesQuery(id, formId);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -3703,6 +3870,11 @@ public record CreateSignUpListRequest(
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
 
+// Phase 6A.141: Paid-event ticket scanner request DTOs
+public record ScanTicketQrRequest(string QrPayload);
+public record ScanTicketByCodeRequest(string TicketCode);
+public record UnmarkScannedRequest(string Reason);
+
 public record UpdateSignUpListRequest(
     string Category,
     string Description,
@@ -3899,7 +4071,10 @@ public record CreateEventFormRequest(
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
     int? MaxResponses,
-    List<CreateFormQuestionRequest>? Questions);
+    List<CreateFormQuestionRequest>? Questions,
+    // Phase 6A.146: organizer-controlled toggle for public response visibility.
+    // Optional with default false so existing clients/Swagger requests unchanged.
+    bool AllowAttendeesToViewResponses = false);
 
 public record CreateFormQuestionRequest(
     string QuestionText,
@@ -3919,7 +4094,10 @@ public record UpdateEventFormRequest(
     string? Description,
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
-    int? MaxResponses);
+    int? MaxResponses,
+    // Phase 6A.146: nullable so a request that omits the field leaves the
+    // domain flag unchanged. UI sends the explicit user choice.
+    bool? AllowAttendeesToViewResponses = null);
 
 /// <summary>
 /// Request to add a question to a form

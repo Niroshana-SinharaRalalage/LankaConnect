@@ -2,7 +2,10 @@
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
+// Phase 6A.147 — `ResizableImage` extends the base @tiptap/extension-image with
+// a persisted `width` attribute and a React NodeView that draws a corner drag
+// handle. Drop-in replacement; same `.configure({...})` API.
+import { ResizableImage } from './editor/ResizableImage';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
@@ -152,7 +155,7 @@ export function RichTextEditor({
       TableRow,
       TableHeader,
       TableCell,
-      Image.configure({
+      ResizableImage.configure({
         inline: true,
         allowBase64: false,
       }),
@@ -609,6 +612,45 @@ export function RichTextEditor({
           height: auto;
           border-radius: 8px;
           margin: 1em 0;
+        }
+
+        /* Phase 6A.147 — resizable image NodeView wrapper + corner handle.
+           The wrapper is inline so the image flows with surrounding text;
+           the handle is only visible when the image node is selected
+           (ProseMirror adds .is-selected via the NodeView). */
+        .ProseMirror .resizable-image-wrapper {
+          display: inline-block;
+          position: relative;
+          line-height: 0;
+          max-width: 100%;
+        }
+
+        .ProseMirror .resizable-image-wrapper.is-selected img {
+          outline: 2px solid #FF7900;
+          outline-offset: 2px;
+        }
+
+        .ProseMirror .resizable-image-wrapper .resize-handle {
+          position: absolute;
+          width: 12px;
+          height: 12px;
+          background-color: #FF7900;
+          border: 2px solid #ffffff;
+          border-radius: 50%;
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+          cursor: nwse-resize;
+          touch-action: none;
+          z-index: 5;
+        }
+
+        .ProseMirror .resizable-image-wrapper .resize-handle-se {
+          right: -6px;
+          bottom: -6px;
+        }
+
+        .ProseMirror .resizable-image-wrapper .resize-handle:focus-visible {
+          outline: 2px solid #2563EB;
+          outline-offset: 2px;
         }
 
         .ProseMirror a {

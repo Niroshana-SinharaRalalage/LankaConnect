@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { RegisterForm } from '@/presentation/components/features/auth/RegisterForm';
@@ -98,7 +99,12 @@ export default function RegisterPage() {
             <OfficialLogo size="sm" linkTo="/" />
           </div>
 
-          <RegisterForm />
+          {/* Phase 6A.144: RegisterForm now reads useSearchParams() to honor
+              `?redirect=` for the auth-encouragement flow; that hook requires
+              a Suspense boundary in Next 13+. Mirrors the login page pattern. */}
+          <Suspense fallback={<div className="text-center py-4">Loading...</div>}>
+            <RegisterForm />
+          </Suspense>
         </div>
       </div>
     </div>

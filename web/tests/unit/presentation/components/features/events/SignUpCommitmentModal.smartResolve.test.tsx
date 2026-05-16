@@ -44,7 +44,7 @@ const quantityItem: QuantityBasedItemDto = {
   isFullyCommitted: false,
   isOpenItem: false,
   targetQuantity: 10,
-  totalCommitted: 0,
+  committedQuantity: 0,
   remainingQuantity: 10,
 };
 

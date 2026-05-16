@@ -5,13 +5,17 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Events.ValueObjects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Infrastructure.Services.Tickets;
 
 /// <summary>
-/// Phase 6A.24: Orchestration service for ticket generation workflow
+/// Phase 6A.24: Orchestration service for ticket generation workflow.
+/// Phase 6A.141: now constructs a v1 HMAC-signed QR payload via
+/// <see cref="ITicketSignatureService"/> and passes it into <see cref="Ticket.Create"/>.
+/// Domain entity is no longer responsible for the secret-dependent encoding.
 /// </summary>
 public class TicketService : ITicketService
 {
@@ -20,6 +24,7 @@ public class TicketService : ITicketService
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IQrCodeService _qrCodeService;
     private readonly IPdfTicketService _pdfTicketService;
+    private readonly ITicketSignatureService _signatureService;
     private readonly BlobServiceClient _blobServiceClient;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<TicketService> _logger;
@@ -31,6 +36,7 @@ public class TicketService : ITicketService
         IRegistrationRepository registrationRepository,
         IQrCodeService qrCodeService,
         IPdfTicketService pdfTicketService,
+        ITicketSignatureService signatureService,
         BlobServiceClient blobServiceClient,
         IUnitOfWork unitOfWork,
         IConfiguration configuration,
@@ -41,10 +47,27 @@ public class TicketService : ITicketService
         _registrationRepository = registrationRepository;
         _qrCodeService = qrCodeService;
         _pdfTicketService = pdfTicketService;
+        _signatureService = signatureService;
         _blobServiceClient = blobServiceClient;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _containerName = configuration["AzureStorage:TicketsContainer"] ?? "tickets";
+    }
+
+    /// <summary>
+    /// Phase 6A.141: builds a v1 HMAC-signed QR payload using the configured signature
+    /// service. The returned string is what gets encoded into the QR image and persisted
+    /// on the <c>Ticket</c> entity. The body includes a <c>ticketCode</c> placeholder that
+    /// the caller (<see cref="Ticket.Create"/>) does NOT use — the resolved <c>TicketCode</c>
+    /// on the entity is the canonical one. We sign once with the post-collision ticket
+    /// code (caller passes it here).
+    /// </summary>
+    private string BuildSignedQrPayload(string ticketCode, Guid eventId, Guid registrationId)
+    {
+        var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var payload = TicketSignedPayload.CreateV1(ticketCode, eventId, registrationId, nowUnix);
+        var signature = _signatureService.Sign(payload.BodyToSign);
+        return payload.EncodeWithSignature(signature);
     }
 
     /// <inheritdoc />
@@ -94,14 +117,47 @@ public class TicketService : ITicketService
                 }
             }
 
-            // Create ticket entity
+            // Phase 6A.141: resolve a collision-free ticket code BEFORE building the
+            // signed QR payload — the v1 signature binds to the final code, so we have to
+            // know the final code first. Previously this loop called Ticket.Create
+            // repeatedly (each call regenerated a code internally); now we generate the
+            // code explicitly, then build the signed payload around it, then call Create.
+            var ticketCode = Ticket.GenerateTicketCode();
+            while (await _ticketRepository.TicketCodeExistsAsync(ticketCode, cancellationToken))
+            {
+                _logger.LogInformation(
+                    "Ticket code collision detected for code {TicketCode}; regenerating",
+                    ticketCode);
+                ticketCode = Ticket.GenerateTicketCode();
+            }
+
+            // Phase 6A.141: build the v1 HMAC-signed QR payload using the resolved code.
+            // The signature service reads the secret from Key Vault; if it's misconfigured
+            // (or the rotation runbook wasn't followed for this environment), DI would
+            // have failed at startup, so by the time we're here the secret is known good.
+            string signedQrPayload;
+            try
+            {
+                signedQrPayload = BuildSignedQrPayload(ticketCode, eventId, registrationId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to build signed QR payload for ticket code {TicketCode}, registration {RegistrationId}. Likely a Key Vault / signature-service misconfiguration. Aborting ticket generation.",
+                    ticketCode, registrationId);
+                return Result<TicketResult>.Failure($"Failed to build signed QR payload: {ex.Message}");
+            }
+
+            // Create ticket entity with caller-supplied code + signed QR data.
             // Phase 8YA-2 TODO: tickets only created during paid registration which is blocked
             // on TBD events (Q2=A); GetValueOrDefault keeps the build green.
             var ticketResult = Ticket.Create(
                 registrationId,
                 eventId,
                 registration.UserId,
-                @event.EndDate.GetValueOrDefault());
+                @event.EndDate.GetValueOrDefault(),
+                ticketCode: ticketCode,
+                qrCodeData: signedQrPayload);
 
             if (ticketResult.IsFailure)
             {
@@ -109,18 +165,6 @@ public class TicketService : ITicketService
             }
 
             var ticket = ticketResult.Value;
-
-            // Ensure unique ticket code
-            while (await _ticketRepository.TicketCodeExistsAsync(ticket.TicketCode, cancellationToken))
-            {
-                // Regenerate if collision (very rare)
-                ticketResult = Ticket.Create(registrationId, eventId, registration.UserId, @event.EndDate.GetValueOrDefault());
-                if (ticketResult.IsFailure)
-                {
-                    return Result<TicketResult>.Failure(ticketResult.Error);
-                }
-                ticket = ticketResult.Value;
-            }
 
             // Generate QR code
             var qrCodeBase64 = _qrCodeService.GenerateQrCodeBase64(ticket.QrCodeData);

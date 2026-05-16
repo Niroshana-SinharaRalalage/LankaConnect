@@ -56,14 +56,17 @@ public class CreateEventFormCommandHandler : ICommandHandler<CreateEventFormComm
                     return Result<Guid>.Failure($"Event with ID {request.EventId} not found");
                 }
 
-                // Create EventForm aggregate
+                // Create EventForm aggregate.
+                // Phase 6A.146: pass AllowAttendeesToViewResponses through to the
+                // factory so the create-time toggle (default false) is honored.
                 var formResult = EventForm.Create(
                     request.EventId,
                     request.Title,
                     request.Description,
                     request.AllowMultipleResponses,
                     request.ResponseDeadline,
-                    request.MaxResponses);
+                    request.MaxResponses,
+                    request.AllowAttendeesToViewResponses);
 
                 if (formResult.IsFailure)
                 {

@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart, ChevronDown, ChevronUp } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -11,9 +11,14 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { useEventById, useRsvpToEvent, useUserRsvpForEvent, useUserRegistrationDetails, useUpdateRegistrationDetails } from '@/presentation/hooks/useEvents';
 import { useEventForms, useDeleteFormResponse, useUserFormResponses } from '@/presentation/hooks/useEventForms';
 import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/components/features/events/SignUpManagementSection';
+// Phase 6A.146: public form responses section
+import { PublicFormResponsesSection } from '@/presentation/components/features/events/PublicFormResponsesSection';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
+// Phase 6A.145 Commit 5 — top-of-page preview strips for add-ons + sponsors.
+import { AddOnsPreviewStrip } from '@/presentation/components/features/events/AddOnsPreviewStrip';
+import { SponsorsPreviewStrip } from '@/presentation/components/features/events/SponsorsPreviewStrip';
 import { EditRegistrationModal, type EditRegistrationData } from '@/presentation/components/features/events/EditRegistrationModal';
 import { AddAttendeesModal } from '@/presentation/components/features/events/AddAttendeesModal';
 import { AddHeadCountModal } from '@/presentation/components/features/events/AddHeadCountModal';
@@ -24,6 +29,10 @@ import { CheckoutCountdownTimer } from '@/presentation/components/features/event
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/presentation/components/ui/Dialog';
 import { ConfirmDialog } from '@/presentation/components/ui/ConfirmDialog';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
+// Phase 6A.144: Auth-encouragement gate for paid events
+import { AuthEncouragementModal } from '@/presentation/components/features/auth/AuthEncouragementModal';
+import { AuthEncouragementPrompt } from '@/presentation/components/features/auth/AuthEncouragementPrompt';
+import { shouldShowAuthNudge, guestAckStorageKey } from '@/presentation/components/features/auth/authNudgePolicy';
 import { EventCategory, EventStatus, RegistrationStatus, PaymentStatus, AgeCategory, Gender, EventFormStatus, SignUpKind, RegistrationMode, EventPaymentMode, type AnonymousRegistrationRequest, type RsvpRequest } from '@/infrastructure/api/types/events.types';
 import { paymentsRepository } from '@/infrastructure/api/repositories/payments.repository';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -154,6 +163,23 @@ export function EventDetailPageInternal({
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
+  // Phase 6A.144: Auth-encouragement gate state. The nudge fires for anonymous
+  // users on PAID events only. `guestModeAcknowledged` is hydrated from
+  // sessionStorage so a refresh doesn't re-prompt the user mid-flow, but a new
+  // session re-asks (per architect — we don't want to train dismissal).
+  const [showAuthNudge, setShowAuthNudge] = useState(false);
+  const [guestModeAcknowledged, setGuestModeAcknowledged] = useState(false);
+  // Phase 6A.146 (2026-05-15 UAT correction): inline Show/Hide responses per
+  // form card. Set of formIds whose public-response panel is currently expanded.
+  const [expandedResponseFormIds, setExpandedResponseFormIds] = useState<Set<string>>(new Set());
+  const toggleResponsesExpanded = (formId: string) => {
+    setExpandedResponseFormIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(formId)) next.delete(formId);
+      else next.add(formId);
+      return next;
+    });
+  };
   // GitHub Issue #31: Replace native confirm()/alert() with styled dialogs
   const [showWithdrawRefundDialog, setShowWithdrawRefundDialog] = useState(false);
   const [showCancelPendingDialog, setShowCancelPendingDialog] = useState(false);
@@ -408,6 +434,47 @@ export function EventDetailPageInternal({
 
     return () => clearTimeout(timeoutId);
   }, [event, isLoading, _hasHydrated]);
+
+  // Phase 6A.144: Hydrate the per-event guest acknowledgement flag from
+  // sessionStorage. Wrapped in try/catch because private/Safari modes can throw.
+  useEffect(() => {
+    if (!event?.id) return;
+    try {
+      if (typeof window === 'undefined') return;
+      const ack = window.sessionStorage.getItem(guestAckStorageKey(event.id));
+      if (ack === '1') {
+        setGuestModeAcknowledged(true);
+      }
+    } catch (err) {
+      console.warn('[EventDetail 6A.144] sessionStorage read failed for guest-ack', err);
+    }
+  }, [event?.id]);
+
+  // Phase 6A.144: When the user returns from sign-in/sign-up via the auth
+  // encouragement modal, the deep link carries `?intent=register`. Once the
+  // event has loaded and the user is authenticated, scroll to the RSVP section
+  // and strip the param so back-button / re-render doesn't re-fire the scroll.
+  useEffect(() => {
+    if (!event?.id || !_hasHydrated) return;
+    if (!isAuthenticated) return;
+    const intent = searchParams.get('intent');
+    if (intent !== 'register') return;
+    const id = window.requestAnimationFrame(() => {
+      try {
+        document.getElementById('rsvp-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Strip ?intent=register from the URL — mirrors the existing
+        // history.replaceState patterns for ?registered=true in LoginForm.
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('intent');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
+        }
+      } catch (err) {
+        console.warn('[EventDetail 6A.144] intent=register scroll/replaceState failed', err);
+      }
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [event?.id, _hasHydrated, isAuthenticated, searchParams]);
 
   // Category labels
   // Phase 6A.X: Support BOTH numeric and string category keys for API compatibility
@@ -755,7 +822,7 @@ export function EventDetailPageInternal({
       )}
 
       {/* Back Button and Organizer Actions */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
@@ -786,7 +853,7 @@ export function EventDetailPageInternal({
       </div>
 
       {/* Event Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         <Card className="overflow-hidden">
           {/* Phase 8YB.1 — Option C: contained hero (responsive aspect-ratio + object-contain).
               Only renders on the default route. The /v2 route uses fullWidth above instead. */}
@@ -1033,15 +1100,34 @@ export function EventDetailPageInternal({
               </div>
             </div>
 
-            {/* Media Gallery */}
-            {((event.images && event.images.length > 0) || (event.videos && event.videos.length > 0)) && (
-              <div className="mb-8">
-                <MediaGallery images={event.images} videos={event.videos} />
-              </div>
-            )}
+            {/* Phase 6A.145 Commit 5 — top-of-page preview strips. Render add-ons
+                first (always visible if any active add-ons), then sponsors-with-images.
+                Both replace where the MediaGallery used to live so the prominent
+                slot goes to the items the operator most cares about. MediaGallery
+                moves to its own collapsible "Event Media" section below the card. */}
+            <AddOnsPreviewStrip eventId={event.id} addOnConfig={event.addOnConfig} />
+            <SponsorsPreviewStrip eventId={event.id} sponsorConfig={event.sponsorConfig} />
 
           </CardContent>
         </Card>
+
+        {/* Phase 6A.145 Commit 5 — Event Media section, default-collapsed. The
+            photos+videos previously lived inside the main event-details card; the
+            operator wanted that space reserved for add-ons/sponsors instead. */}
+        {((event.images && event.images.length > 0) || (event.videos && event.videos.length > 0)) && (
+          <div id="event-media" className="mt-8">
+            <CollapsibleSection
+              title="Event Media"
+              description={`${event.images?.length ?? 0} photo${event.images?.length === 1 ? '' : 's'}${
+                event.videos?.length ? ` and ${event.videos.length} video${event.videos.length === 1 ? '' : 's'}` : ''
+              }`}
+              icon={<Camera className="h-5 w-5 text-neutral-500" />}
+              defaultOpen={false}
+            >
+              <MediaGallery images={event.images} videos={event.videos} />
+            </CollapsibleSection>
+          </div>
+        )}
 
         {/* Registration Section — outside Event Details card */}
         <div id="registration" className="mt-8">
@@ -1903,13 +1989,33 @@ export function EventDetailPageInternal({
                   </div>
                 ) : !isFull ? (
                   // Phase 7E.6: mode-aware dispatch
-                  <RsvpFormSection
-                    event={event}
-                    spotsLeft={spotsLeft}
-                    isProcessing={isProcessing}
-                    onSubmit={handleRegistration}
-                    error={error}
-                  />
+                  // Phase 6A.144: For anonymous users on PAID events, show the
+                  // soft auth-encouragement prompt in place of the form. The
+                  // form re-mounts once the user chooses "Continue as Guest"
+                  // (sets sessionStorage flag) or signs in. Recovery flows
+                  // (isAbandoned / isPaymentIncomplete / refund-retry /
+                  // cancellation re-register) are intentionally NOT gated —
+                  // the user is mid-flow and re-prompting would disrupt UX.
+                  <div id="rsvp-section">
+                    {shouldShowAuthNudge({
+                      isAuthenticated,
+                      isFree: !!event.isFree,
+                      guestAcknowledged: guestModeAcknowledged,
+                    }) ? (
+                      <AuthEncouragementPrompt
+                        eventTitle={event.title}
+                        onClick={() => setShowAuthNudge(true)}
+                      />
+                    ) : (
+                      <RsvpFormSection
+                        event={event}
+                        spotsLeft={spotsLeft}
+                        isProcessing={isProcessing}
+                        onSubmit={handleRegistration}
+                        error={error}
+                      />
+                    )}
+                  </div>
                 ) : (
                   <>
                     {/* Waitlist Section */}
@@ -2421,6 +2527,49 @@ export function EventDetailPageInternal({
                             )}
                           </div>
                         </div>
+
+                        {/* Phase 6A.146 (2026-05-15 UAT correction): inline
+                            Show/Hide responses toggle. Visible only when the
+                            organizer has enabled public visibility for this
+                            form AND it has at least one response. Status gate
+                            (Active/Closed only) is enforced inside the embedded
+                            section component, so we can safely render the
+                            button for Active forms here (forms in #signup-forms
+                            are already filtered to Active by activeForms). */}
+                        {form.allowAttendeesToViewResponses && form.responseCount > 0 && (
+                          <>
+                            <div className="mt-4 flex justify-start">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleResponsesExpanded(form.id)}
+                                aria-expanded={expandedResponseFormIds.has(form.id)}
+                                aria-controls={`public-responses-${form.id}`}
+                              >
+                                {expandedResponseFormIds.has(form.id) ? (
+                                  <>
+                                    <ChevronUp className="h-4 w-4 mr-1" />
+                                    Hide responses
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-4 w-4 mr-1" />
+                                    Show responses ({form.responseCount})
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            {expandedResponseFormIds.has(form.id) && (
+                              <div id={`public-responses-${form.id}`}>
+                                <PublicFormResponsesSection
+                                  eventId={id}
+                                  form={form}
+                                  embedded
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -2434,9 +2583,39 @@ export function EventDetailPageInternal({
           </CollapsibleSection>
         </div>
         )}
+
+        {/* Phase 6A.146 — Public form responses are rendered INLINE inside
+            each form card within the #signup-forms section above. The earlier
+            separate #public-form-responses section duplicated the form title
+            and was removed on 2026-05-15 after UAT feedback. */}
       </div>
 
       <Footer />
+
+      {/* Phase 6A.144: Auth Encouragement Modal — fires only for anonymous
+          users on PAID events (gated by shouldShowAuthNudge in the render
+          path above). "Continue as Guest" sets a per-event sessionStorage
+          flag so the prompt doesn't re-appear on subsequent clicks within
+          the same session. */}
+      {event && (
+        <AuthEncouragementModal
+          open={showAuthNudge}
+          onOpenChange={setShowAuthNudge}
+          context="event-paid"
+          redirectTo={`/events/${event.id}?intent=register`}
+          onContinueAsGuest={() => {
+            try {
+              if (typeof window !== 'undefined') {
+                window.sessionStorage.setItem(guestAckStorageKey(event.id), '1');
+              }
+            } catch (err) {
+              console.warn('[EventDetail 6A.144] sessionStorage write failed for guest-ack', err);
+            }
+            setGuestModeAcknowledged(true);
+            setShowAuthNudge(false);
+          }}
+        />
+      )}
 
       {/* Phase 6A.14: Edit Registration Modal */}
       {/* Issue #51: Pass maxAttendeesPerRegistration to EditRegistrationModal */}

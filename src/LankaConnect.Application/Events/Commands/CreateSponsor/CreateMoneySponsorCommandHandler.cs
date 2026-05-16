@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Events.Commands.CreateSponsor;
 /// Flow: validate event + sponsors enabled + money sponsors accepted -> validate amount ->
 /// create Sponsor entity -> create Stripe Checkout -> set session -> calculate revenue -> save -> return checkout URL
 /// </summary>
-public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySponsorCommand, string>
+public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySponsorCommand, CreateMoneySponsorResult>
 {
     private readonly IEventRepository _eventRepository;
     private readonly ISponsorRepository _sponsorRepository;
@@ -41,7 +41,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
         _logger = logger;
     }
 
-    public async Task<Result<string>> Handle(CreateMoneySponsorCommand request, CancellationToken cancellationToken)
+    public async Task<Result<CreateMoneySponsorResult>> Handle(CreateMoneySponsorCommand request, CancellationToken cancellationToken)
     {
         using (LogContext.PushProperty("Operation", "CreateMoneySponsor"))
         using (LogContext.PushProperty("EntityType", "Sponsor"))
@@ -58,35 +58,35 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
                 // 1. Validate event exists and is published
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
                 if (@event == null)
-                    return Result<string>.Failure("Event not found");
+                    return Result<CreateMoneySponsorResult>.Failure("Event not found");
 
                 // 2. Validate event is Published
                 if (@event.Status != Domain.Events.Enums.EventStatus.Published)
-                    return Result<string>.Failure("Sponsorships are only available for published events");
+                    return Result<CreateMoneySponsorResult>.Failure("Sponsorships are only available for published events");
 
                 // 3. Validate sponsors are enabled AND money sponsors are accepted
                 if (!@event.AreSponsorsEnabled())
-                    return Result<string>.Failure("Sponsorships are not enabled for this event");
+                    return Result<CreateMoneySponsorResult>.Failure("Sponsorships are not enabled for this event");
 
                 if (!@event.SponsorConfig!.AcceptMoneySponsors)
-                    return Result<string>.Failure("Money sponsorships are not accepted for this event");
+                    return Result<CreateMoneySponsorResult>.Failure("Money sponsorships are not accepted for this event");
 
                 // 4. Validate sponsor amount (C3 Guard: always check > 0)
                 if (request.Amount <= 0)
-                    return Result<string>.Failure("Sponsorship amount must be greater than zero");
+                    return Result<CreateMoneySponsorResult>.Failure("Sponsorship amount must be greater than zero");
 
                 var validateAmountResult = @event.SponsorConfig.ValidateMoneyAmount(request.Amount);
                 if (validateAmountResult.IsFailure)
-                    return Result<string>.Failure(validateAmountResult.Error);
+                    return Result<CreateMoneySponsorResult>.Failure(validateAmountResult.Error);
 
                 // 5. Parse currency
                 if (!Enum.TryParse<Currency>(request.Currency, true, out var currency))
-                    return Result<string>.Failure($"Invalid currency: {request.Currency}");
+                    return Result<CreateMoneySponsorResult>.Failure($"Invalid currency: {request.Currency}");
 
                 // 6. Create Money and Sponsor entity
                 var amountResult = Money.Create(request.Amount, currency);
                 if (amountResult.IsFailure)
-                    return Result<string>.Failure(amountResult.Error);
+                    return Result<CreateMoneySponsorResult>.Failure(amountResult.Error);
 
                 var sponsorResult = Sponsor.CreateMoneySponsor(
                     request.EventId,
@@ -99,7 +99,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
                     amountResult.Value);
 
                 if (sponsorResult.IsFailure)
-                    return Result<string>.Failure(sponsorResult.Error);
+                    return Result<CreateMoneySponsorResult>.Failure(sponsorResult.Error);
 
                 var sponsor = sponsorResult.Value;
 
@@ -125,14 +125,14 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
 
                 var checkoutResult = await _stripePaymentService.CreateSponsorCheckoutSessionAsync(checkoutRequest, cancellationToken);
                 if (checkoutResult.IsFailure)
-                    return Result<string>.Failure($"Failed to create payment session: {checkoutResult.Error}");
+                    return Result<CreateMoneySponsorResult>.Failure($"Failed to create payment session: {checkoutResult.Error}");
 
                 // 8. Set Stripe session on sponsor
                 var setSessionResult = sponsor.SetStripeCheckoutSession(
                     checkoutResult.Value.SessionId,
                     checkoutResult.Value.ExpiresAt);
                 if (setSessionResult.IsFailure)
-                    return Result<string>.Failure(setSessionResult.Error);
+                    return Result<CreateMoneySponsorResult>.Failure(setSessionResult.Error);
 
                 // 9. Calculate and store revenue breakdown
                 try
@@ -180,7 +180,8 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
                     "CreateMoneySponsor COMPLETE: SponsorId={SponsorId}, EventId={EventId}, Amount={Amount}, Duration={ElapsedMs}ms",
                     sponsor.Id, request.EventId, request.Amount, stopwatch.ElapsedMilliseconds);
 
-                return Result<string>.Success(checkoutResult.Value.CheckoutUrl);
+                return Result<CreateMoneySponsorResult>.Success(
+                    new CreateMoneySponsorResult(checkoutResult.Value.CheckoutUrl, sponsor.Id));
             }
             catch (Exception ex)
             {
@@ -190,7 +191,7 @@ public class CreateMoneySponsorCommandHandler : ICommandHandler<CreateMoneySpons
                     "CreateMoneySponsor FAILED: EventId={EventId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
                     request.EventId, stopwatch.ElapsedMilliseconds, ex.Message);
 
-                return Result<string>.Failure($"Money sponsorship creation failed: {ex.Message}");
+                return Result<CreateMoneySponsorResult>.Failure($"Money sponsorship creation failed: {ex.Message}");
             }
         }
     }

@@ -133,6 +133,7 @@ export function EventCreationForm() {
   const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(null);
   const [sponsorMessage, setSponsorMessage] = useState('');
   const [showSponsorList, setShowSponsorList] = useState(false);
+  // Phase 6A.144 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
 
   // Add-On configuration state
   const [addOnsEnabled, setAddOnsEnabled] = useState(false);

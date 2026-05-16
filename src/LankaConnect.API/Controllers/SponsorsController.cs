@@ -1,11 +1,16 @@
 using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.ClearSponsorImage;
+using LankaConnect.Application.Events.Commands.CreateOffPlatformSponsor;
 using LankaConnect.Application.Events.Commands.CreateSponsor;
+using LankaConnect.Application.Events.Commands.SetSponsorImage;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportSponsors;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsors;
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Shared.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,7 +47,7 @@ public class SponsorsController : BaseController<SponsorsController>
     /// </summary>
     [HttpPost("money")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CreateMoneySponsorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateMoneySponsor(
         Guid eventId,
@@ -106,6 +111,127 @@ public class SponsorsController : BaseController<SponsorsController>
             ItemDescription: request.ItemDescription,
             EstimatedValue: request.EstimatedValue,
             UserId: userId);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.145 Commit 6 — uploads (or replaces) a sponsor's image. Any sponsor
+    /// can attach an image regardless of amount (threshold gate removed per UAT).
+    /// Public access by sponsor-id knowledge (the sponsor ID was just returned to the
+    /// caller from CreateMoneySponsor or CreateItemSponsor); organizer auth not required.
+    /// </summary>
+    [HttpPost("{sponsorId:guid}/image")]
+    [AllowAnonymous]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SetSponsorImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSponsorImage(
+        Guid eventId,
+        Guid sponsorId,
+        IFormFile image)
+    {
+        Logger.LogInformation(
+            "SetSponsorImage: EventId={EventId}, SponsorId={SponsorId}, FileName={FileName}, Size={Size}",
+            eventId, sponsorId, image?.FileName, image?.Length);
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        using var ms = new MemoryStream();
+        await image.CopyToAsync(ms);
+
+        var command = new SetSponsorImageCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+            ImageData = ms.ToArray(),
+            FileName = image.FileName,
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — clears a sponsor's image. Idempotent.
+    /// Authorization: organizer-only.
+    /// </summary>
+    [HttpDelete("{sponsorId:guid}/image")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSponsorImage(Guid eventId, Guid sponsorId)
+    {
+        Logger.LogInformation(
+            "ClearSponsorImage: EventId={EventId}, SponsorId={SponsorId}", eventId, sponsorId);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var result = await Mediator.Send(new ClearSponsorImageCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+        });
+        return result.IsSuccess ? NoContent() : HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — organizer records an off-platform sponsorship (cash money or
+    /// in-kind item collected outside the platform). Bypasses Stripe entirely.
+    /// Money sponsors are marked Completed immediately; Item sponsors RecordedItem.
+    /// Optional image upload — threshold is bypassed since the organizer is recording
+    /// on behalf of the sponsor (architect E-1 organizer override).
+    /// Authorization: organizer-only.
+    /// </summary>
+    [HttpPost("off-platform")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(CreateOffPlatformSponsorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateOffPlatformSponsor(
+        Guid eventId,
+        [FromForm] CreateOffPlatformSponsorRequest request)
+    {
+        Logger.LogInformation(
+            "CreateOffPlatformSponsor: EventId={EventId}, Type={Type}, Email={Email}, HasImage={HasImage}",
+            eventId, request.Type, request.SponsorEmail, request.Image?.Length > 0);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        byte[]? imageData = null;
+        string? imageFileName = null;
+        if (request.Image is not null && request.Image.Length > 0)
+        {
+            using var ms = new MemoryStream();
+            await request.Image.CopyToAsync(ms);
+            imageData = ms.ToArray();
+            imageFileName = request.Image.FileName;
+        }
+
+        var command = new CreateOffPlatformSponsorCommand
+        {
+            EventId = eventId,
+            Type = request.Type,
+            SponsorName = request.SponsorName,
+            SponsorEmail = request.SponsorEmail,
+            SponsorPhone = request.SponsorPhone,
+            SponsorOrganization = request.SponsorOrganization,
+            SponsorNotes = request.SponsorNotes,
+            Amount = request.Amount,
+            Currency = request.Currency,
+            ItemName = request.ItemName,
+            ItemDescription = request.ItemDescription,
+            EstimatedValue = request.EstimatedValue,
+            ImageData = imageData,
+            ImageFileName = imageFileName,
+        };
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
@@ -232,6 +358,8 @@ public class SponsorsController : BaseController<SponsorsController>
                 ItemName = s.ItemName,
                 ItemDescription = s.ItemDescription,
                 EstimatedValue = s.EstimatedValue,
+                ImageUrl = s.ImageUrl,
+                ImageBlobName = s.ImageBlobName,
                 CreatedAt = s.CreatedAt,
                 PaymentCompletedAt = s.PaymentCompletedAt,
             }).ToList();
@@ -309,4 +437,29 @@ public class CreateItemSponsorRequest
     public required string ItemName { get; init; }
     public string? ItemDescription { get; init; }
     public decimal? EstimatedValue { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.145 — request body for the organizer-add-off-platform-sponsor endpoint
+/// (POST /sponsors/off-platform). Multipart so an optional image file can ride
+/// alongside the form fields. Type discriminates between Money + Item branches —
+/// Money requires Amount + Currency; Item requires ItemName.
+/// </summary>
+public class CreateOffPlatformSponsorRequest
+{
+    public SponsorType Type { get; init; }
+    public string SponsorName { get; init; } = string.Empty;
+    public string SponsorEmail { get; init; } = string.Empty;
+    public string? SponsorPhone { get; init; }
+    public string? SponsorOrganization { get; init; }
+    public string? SponsorNotes { get; init; }
+    // Money branch
+    public decimal? Amount { get; init; }
+    public Currency? Currency { get; init; }
+    // Item branch
+    public string? ItemName { get; init; }
+    public string? ItemDescription { get; init; }
+    public decimal? EstimatedValue { get; init; }
+    // Optional image
+    public IFormFile? Image { get; init; }
 }

@@ -1985,6 +1985,13 @@ export interface EventFormDto {
   responseCount: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Phase 6A.146 — organizer-controlled toggle. When true, the
+   * PublicFormResponsesSection renders on the event detail page (subject
+   * to status ∈ {Active, Closed}) and the /responses/public endpoint
+   * returns PII-redacted DTOs.
+   */
+  allowAttendeesToViewResponses: boolean;
 }
 
 /**
@@ -2031,6 +2038,54 @@ export interface FormResponsesPagedDto {
   pageSize: number;
 }
 
+// ==================== Phase 6A.146 — Public Form Responses (PII-redacted) ====================
+
+/**
+ * Phase 6A.146 — public answer DTO matching backend PublicFormAnswerDto.
+ * Question text + answer values are preserved verbatim; organizer is
+ * responsible for not asking PII-revealing questions when the toggle is on.
+ */
+export interface PublicFormAnswerDto {
+  questionId: string;
+  questionTextSnapshot: string;
+  textValue?: string | null;
+  selectedOptionTextSnapshots: string[];
+  booleanValue?: boolean | null;
+}
+
+/**
+ * Phase 6A.146 — public response DTO.
+ *
+ * 2026-05-15 product correction: surface the respondent's NAME when provided
+ * (attribution like "Niro K · bringing biriyani" is normal in sign-up contexts).
+ * Email and userId are still hidden — those are the actual contact-method PII
+ * that the toggle's privacy promise covers. The backend DTO physically lacks
+ * those two fields and this interface mirrors that exclusion.
+ */
+export interface PublicFormResponseDto {
+  id: string;
+  /**
+   * Respondent's self-supplied name. Null when the respondent skipped the
+   * optional name field — UI must fall back to `respondentLabel` in that case.
+   */
+  respondentName?: string | null;
+  /** "Respondent 1", "Respondent 2", ... assigned by SubmittedAt ASC. */
+  respondentLabel: string;
+  /** ISO date string "YYYY-MM-DD" (DateOnly on the wire — no time-of-day). */
+  submittedOn: string;
+  answers: PublicFormAnswerDto[];
+}
+
+/**
+ * Phase 6A.146 — top-level payload for GET /forms/{formId}/responses/public.
+ */
+export interface PublicFormResponsesDto {
+  formId: string;
+  formTitle: string;
+  totalCount: number;
+  responses: PublicFormResponseDto[];
+}
+
 // ==================== Custom Forms - Request DTOs ====================
 
 /**
@@ -2056,6 +2111,8 @@ export interface CreateEventFormRequest {
   responseDeadline?: string | null;
   maxResponses?: number | null;
   questions: CreateFormQuestionItem[];
+  /** Phase 6A.146 — optional, defaults false on the server when omitted. */
+  allowAttendeesToViewResponses?: boolean;
 }
 
 /**
@@ -2068,6 +2125,12 @@ export interface UpdateEventFormRequest {
   allowMultipleResponses: boolean;
   responseDeadline?: string | null;
   maxResponses?: number | null;
+  /**
+   * Phase 6A.146 — nullable/undefined means "leave the flag unchanged"
+   * on the server (the domain interprets the backend null the same way).
+   * UI sends the explicit boolean when the toggle changes.
+   */
+  allowAttendeesToViewResponses?: boolean | null;
 }
 
 /**
@@ -2370,8 +2433,45 @@ export interface SponsorDto {
   stripeFeeAmount?: number | null;
   platformCommissionAmount?: number | null;
   organizerPayoutAmount?: number | null;
+  // Phase 6A.145 — optional sponsor logo/image gated by SponsorConfiguration.minAmountForSponsorImage.
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
   createdAt: string;
   paymentCompletedAt?: string | null;
+}
+
+// Phase 6A.145 Commit 7 — Money sponsor create endpoint now returns both the
+// Stripe checkout URL AND the newly-created Sponsor ID. The FE uses the ID to
+// attach an optional image to the Pending sponsor BEFORE the Stripe redirect.
+export interface CreateMoneySponsorResult {
+  checkoutUrl: string;
+  sponsorId: string;
+}
+
+// Phase 6A.145 — organizer-add-off-platform-sponsor (POST /sponsors/off-platform).
+// Multipart on the wire — file rides alongside the form fields. The repository
+// layer assembles a FormData; this interface documents the typed payload.
+export interface CreateOffPlatformSponsorRequest {
+  type: 'Money' | 'Item';
+  sponsorName: string;
+  sponsorEmail: string;
+  sponsorPhone?: string | null;
+  sponsorOrganization?: string | null;
+  sponsorNotes?: string | null;
+  // Money branch
+  amount?: number | null;
+  currency?: string | null;
+  // Item branch
+  itemName?: string | null;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+  // Optional image file
+  image?: File | null;
+}
+
+export interface CreateOffPlatformSponsorResult {
+  sponsorId: string;
+  imageUrl?: string | null;
 }
 
 export interface SponsorSummaryDto {
@@ -2445,8 +2545,18 @@ export interface AddOnDefinitionDto {
   remainingStock?: number | null;
   isActive: boolean;
   sortOrder: number;
+  // Phase 6A.143 — optional add-on image (rendered as a thumbnail in AddOnSelector + manage tab).
+  // Always either both set or both null. Editing flows through dedicated upload/delete endpoints.
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
   createdAt: string;
   updatedAt?: string | null;
+}
+
+// Phase 6A.143 — response from image-upload endpoints (Set commands).
+export interface ImageUploadResultDto {
+  imageUrl: string;
+  imageBlobName: string;
 }
 
 export interface AddOnPurchaseDto {
@@ -3382,4 +3492,89 @@ export interface InitiateAddHeadCountRequest {
   headCountDelta: HeadCountDto;
   successUrl: string;
   cancelUrl: string;
+}
+
+// ============================================================
+// Phase 6A.141: Paid-event ticket check-in / QR scanner DTOs
+// ============================================================
+
+export interface TierBreakdownEntry {
+  tier: string;
+  count: number;
+}
+
+/**
+ * Outcome of a ticket-scan attempt. Mirrors the server-side ScanTicketResult.
+ * Most fields are nullable because the shape covers both accepted (green panel)
+ * and rejected (red panel) outcomes via a single discriminator (`result`).
+ */
+export interface ScanTicketResult {
+  result: 'accepted' | 'rejected';
+  reason?: string | null;
+  reasonMessage?: string | null;
+  ticketCode?: string | null;
+  attendeeName?: string | null;
+  tier?: string | null;
+  attendeeCount?: number | null;
+  tierBreakdown?: TierBreakdownEntry[] | null;
+  scannedAt?: string | null;        // ISO 8601 from server
+  scannedBy?: string | null;
+  usedPreviousKey: boolean;
+  wrongEventTitle?: string | null;  // populated only on wrong_event rejection
+  // UAT R2 Issue A — populated on already_scanned (and other ticket-resolved rejections).
+  previousScanCount?: number | null;
+  previousScannedBy?: string | null;
+  // UAT R3 — full per-attendee detail. Null/empty for head-count tickets and
+  // pre-MultiAttendee registrations; UI falls back to legacy aggregates above.
+  attendees?: AttendeeDetail[] | null;
+  // UAT R4 — confirmed-bundled add-ons (filter: Completed AND RegistrationId match).
+  // Null when the registration has no qualifying add-ons; UI omits the section.
+  addOns?: AddOnSummary[] | null;
+}
+
+/**
+ * UAT R4 — one confirmed add-on purchase bundled with the scanned ticket.
+ * Mirrors LankaConnect.Application.Events.Commands.ScanTicket.AddOnSummary.
+ */
+export interface AddOnSummary {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalAmount: number;
+  currency: string;        // ISO code e.g. "USD"
+}
+
+/**
+ * UAT R3 — single attendee on a ticket as projected by the scan endpoint.
+ * Mirrors the server-side LankaConnect.Application.Events.Commands.ScanTicket.AttendeeDetail.
+ * Stringified enums for AgeCategory and Gender keep the wire stable across schema changes.
+ */
+export interface AttendeeDetail {
+  name: string;
+  ageCategory: string;          // "Adult" | "Child"
+  gender?: string | null;       // "Male" | "Female" | "Other" | null
+  ticketTierName?: string | null;
+  priceAmount?: number | null;  // decimal from server; null when tier was deleted post-registration
+  priceCurrency?: string | null; // ISO code e.g. "USD", "LKR"
+  seatLabel?: string | null;
+}
+
+/**
+ * Canonical rejection reason codes shared with the server's ReasonCode constants
+ * and the audit log's `rejection_reason` column. Adding a new code requires
+ * matching server-side updates.
+ */
+export type ScanRejectionReason =
+  | 'invalid_signature'
+  | 'malformed_payload'
+  | 'ticket_not_found'
+  | 'wrong_event'
+  | 'expired'
+  | 'invalidated'
+  | 'already_scanned'
+  | 'malformed_request';
+
+export interface UnmarkScannedResult {
+  ticketCode: string;
+  unmarkedAt: string;
 }

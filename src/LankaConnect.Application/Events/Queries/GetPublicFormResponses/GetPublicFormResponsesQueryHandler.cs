@@ -113,7 +113,11 @@ public class GetPublicFormResponsesQueryHandler : IQueryHandler<GetPublicFormRes
                 var publicResponses = ordered.Select((r, index) => new PublicFormResponseDto
                 {
                     Id = r.Id,
-                    RespondentLabel = $"Respondent {index + 1}",  // 1-based
+                    // 2026-05-15 product correction: surface the respondent's name when
+                    // provided. UI falls back to RespondentLabel when null. Email + UserId
+                    // remain off the wire entirely (DTO doesn't carry those fields).
+                    RespondentName = r.RespondentName,
+                    RespondentLabel = $"Respondent {index + 1}",  // 1-based fallback
                     SubmittedOn = DateOnly.FromDateTime(r.SubmittedAt),
                     Answers = r.Answers
                         .OrderBy(a => a.Id)  // stable but deterministic order

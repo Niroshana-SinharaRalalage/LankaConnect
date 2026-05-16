@@ -108,7 +108,7 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
           </span>
         </CardTitle>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Respondent names and contact details are hidden for privacy.
+          Respondent emails and contact details are hidden for privacy.
         </p>
       </CardHeader>
       <CardContent>
@@ -125,7 +125,14 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
               >
                 <div className="mb-2 flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
                   <MessageSquare className="h-4 w-4 text-orange-600" aria-hidden="true" />
-                  <span>{r.respondentLabel}</span>
+                  {/*
+                    2026-05-15 product correction: surface respondent name when
+                    provided (attribution is normal in sign-up contexts); fall
+                    back to the ordinal label for anonymous respondents who
+                    skipped the optional name field. Email + userId remain off
+                    the wire entirely.
+                  */}
+                  <span>{r.respondentName?.trim() || r.respondentLabel}</span>
                   <span className="text-neutral-400">·</span>
                   <span className="text-neutral-500">{formatSubmittedOn(r.submittedOn)}</span>
                 </div>

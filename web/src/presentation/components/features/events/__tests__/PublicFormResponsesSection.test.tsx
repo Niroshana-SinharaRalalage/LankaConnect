@@ -86,7 +86,9 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     expect(screen.getByText(/no responses yet/i)).toBeInTheDocument();
   });
 
-  it('renders response cards with "Respondent N · {date}" labels', () => {
+  it('renders response cards with "Respondent N · {date}" labels when name is null', () => {
+    // Anonymous respondents who skipped the optional name field should fall
+    // back to the ordinal label so visitors still see SOMETHING.
     const payload: PublicFormResponsesDto = {
       formId: 'form-1',
       formTitle: 'Potluck signup',
@@ -94,6 +96,7 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
       responses: [
         {
           id: 'r1',
+          respondentName: null,
           respondentLabel: 'Respondent 1',
           submittedOn: '2026-05-10',
           answers: [
@@ -102,6 +105,7 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
         },
         {
           id: 'r2',
+          respondentName: null,
           respondentLabel: 'Respondent 2',
           submittedOn: '2026-05-11',
           answers: [
@@ -121,6 +125,45 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     // nodes) rather than getByText (per-node matcher) so any rendering style
     // works.
     expect(container.textContent).toContain('2026');
+  });
+
+  it('surfaces respondent name when provided (2026-05-15 product correction)', () => {
+    // When the respondent supplied a name, the section shows it instead of
+    // the ordinal label. Email and userId remain off the wire entirely.
+    const payload: PublicFormResponsesDto = {
+      formId: 'form-1',
+      formTitle: 'Potluck signup',
+      totalCount: 2,
+      responses: [
+        {
+          id: 'r1',
+          respondentName: 'Niro K',
+          respondentLabel: 'Respondent 1',
+          submittedOn: '2026-05-10',
+          answers: [
+            { questionId: 'q1', questionTextSnapshot: 'Bringing?', textValue: 'biriyani', selectedOptionTextSnapshots: [], booleanValue: null },
+          ],
+        },
+        {
+          id: 'r2',
+          respondentName: '',  // empty string should fall back to ordinal
+          respondentLabel: 'Respondent 2',
+          submittedOn: '2026-05-11',
+          answers: [
+            { questionId: 'q1', questionTextSnapshot: 'Bringing?', textValue: 'kottu', selectedOptionTextSnapshots: [], booleanValue: null },
+          ],
+        },
+      ],
+    };
+    usePublicFormResponsesMock.mockReturnValue({ data: payload, isLoading: false });
+
+    render(<PublicFormResponsesSection eventId="event-1" form={makeForm()} />);
+
+    expect(screen.getByText(/niro k/i)).toBeInTheDocument();
+    // Empty/whitespace name falls back to ordinal — Respondent 2 must still appear.
+    expect(screen.getByText(/respondent 2/i)).toBeInTheDocument();
+    // r1 has a real name, so its ordinal label should NOT be visible.
+    expect(screen.queryByText(/respondent 1/i)).not.toBeInTheDocument();
   });
 
   it('renders question → answer pairs verbatim', () => {
@@ -150,10 +193,11 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     expect(screen.getByText(/^4$/)).toBeInTheDocument();
   });
 
-  it('does NOT render any respondent PII (no email, no name, no phone-shaped strings)', () => {
-    // Even though the backend strips PII, the section MUST also not invent it
-    // from any other field. This is a defense-in-depth assertion against future
-    // edits that might accidentally surface upstream PII fields.
+  it('does NOT render email or userId PII even when name is shown (2026-05-15: name allowed, email/userId forbidden)', () => {
+    // Defense-in-depth: even though the backend DTO physically excludes email
+    // and userId, the section must not surface them via any other channel.
+    // Name IS allowed (product correction — attribution is normal in sign-up
+    // contexts). The probe asserts the policy boundary.
     const payload: PublicFormResponsesDto = {
       formId: 'form-1',
       formTitle: 'Potluck signup',
@@ -161,6 +205,7 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
       responses: [
         {
           id: 'r1',
+          respondentName: 'Niro K',  // allowed
           respondentLabel: 'Respondent 1',
           submittedOn: '2026-05-10',
           answers: [
@@ -177,7 +222,8 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
 
     // No '@' character anywhere — covers any rendered email.
     expect(container.textContent).not.toContain('@');
-    // Component must NOT render the literal property names of PII fields.
-    expect(container.textContent).not.toMatch(/respondentEmail|respondentName|respondentUserId/i);
+    // Component must NOT render the literal property names of email/userId
+    // PII fields. (Name surfacing is now part of the contract.)
+    expect(container.textContent).not.toMatch(/respondentEmail|respondentUserId/i);
   });
 });

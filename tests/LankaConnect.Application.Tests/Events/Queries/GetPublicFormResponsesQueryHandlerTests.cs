@@ -215,24 +215,77 @@ public class GetPublicFormResponsesQueryHandlerTests
     }
 
     [Fact]
-    public void PublicFormResponseDto_DoesNotExpose_RespondentName()
+    public void PublicFormResponseDto_Surfaces_RespondentName()
     {
-        // Compile-time guarantee: PublicFormResponseDto must not have a RespondentName
-        // property at all. Reflection assertion ensures any future regression that
-        // re-adds the property will fail this test.
-        typeof(PublicFormResponseDto).GetProperty("RespondentName").Should().BeNull();
+        // 2026-05-15 product correction: respondent NAME is shown publicly when
+        // provided. Names in a sign-up context (e.g., "Niro K bringing biriyani")
+        // are normal attribution, not personal contact info. Email + userId are
+        // still hidden — those are the actual contact-method PII.
+        typeof(PublicFormResponseDto).GetProperty("RespondentName").Should().NotBeNull();
     }
 
     [Fact]
     public void PublicFormResponseDto_DoesNotExpose_RespondentEmail()
     {
+        // Email is the contact-method PII we hide. Compile-time guarantee.
         typeof(PublicFormResponseDto).GetProperty("RespondentEmail").Should().BeNull();
     }
 
     [Fact]
     public void PublicFormResponseDto_DoesNotExpose_RespondentUserId()
     {
+        // UserId would let anyone correlate a response back to a member profile
+        // page. Kept hidden so the surfaced name doesn't act as a profile link.
         typeof(PublicFormResponseDto).GetProperty("RespondentUserId").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_VisibilityOn_SurfacesRespondentName_WhenProvided()
+    {
+        _formRepository
+            .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+
+        _responseRepository
+            .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<FormResponse>)new List<FormResponse>
+            {
+                BuildResponse(_formId, _eventId, new DateTime(2026, 5, 10, 9, 0, 0, DateTimeKind.Utc),
+                    respondentName: "Niro K"),
+            }, 1));
+
+        var result = await CreateHandler().Handle(
+            new GetPublicFormResponsesQuery(_eventId, _formId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Responses[0].RespondentName.Should().Be("Niro K");
+        // Ordinal label remains so the UI can fall back when name is null.
+        result.Value.Responses[0].RespondentLabel.Should().Be("Respondent 1");
+    }
+
+    [Fact]
+    public async Task Handle_VisibilityOn_RespondentName_IsNull_WhenNotProvided()
+    {
+        // Anonymous respondent who skipped the optional name field — UI is
+        // expected to fall back to the ordinal label.
+        _formRepository
+            .Setup(r => r.GetByIdAsync(_formId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(BuildForm(_eventId, allowAttendeesToViewResponses: true, EventFormStatus.Active));
+
+        _responseRepository
+            .Setup(r => r.GetPaginatedAsync(_formId, 1, It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(((IReadOnlyList<FormResponse>)new List<FormResponse>
+            {
+                BuildResponse(_formId, _eventId, new DateTime(2026, 5, 10, 9, 0, 0, DateTimeKind.Utc),
+                    respondentName: null),
+            }, 1));
+
+        var result = await CreateHandler().Handle(
+            new GetPublicFormResponsesQuery(_eventId, _formId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Responses[0].RespondentName.Should().BeNull();
+        result.Value.Responses[0].RespondentLabel.Should().Be("Respondent 1");
     }
 
     [Fact]

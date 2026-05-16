@@ -2054,13 +2054,21 @@ export interface PublicFormAnswerDto {
 }
 
 /**
- * Phase 6A.146 — public response DTO. PII fields (name/email/userId) are
- * INTENTIONALLY ABSENT from this type — the backend DTO does not include
- * them and the frontend type mirrors that. Adding any of these fields here
- * would be a regression.
+ * Phase 6A.146 — public response DTO.
+ *
+ * 2026-05-15 product correction: surface the respondent's NAME when provided
+ * (attribution like "Niro K · bringing biriyani" is normal in sign-up contexts).
+ * Email and userId are still hidden — those are the actual contact-method PII
+ * that the toggle's privacy promise covers. The backend DTO physically lacks
+ * those two fields and this interface mirrors that exclusion.
  */
 export interface PublicFormResponseDto {
   id: string;
+  /**
+   * Respondent's self-supplied name. Null when the respondent skipped the
+   * optional name field — UI must fall back to `respondentLabel` in that case.
+   */
+  respondentName?: string | null;
   /** "Respondent 1", "Respondent 2", ... assigned by SubmittedAt ASC. */
   respondentLabel: string;
   /** ISO date string "YYYY-MM-DD" (DateOnly on the wire — no time-of-day). */

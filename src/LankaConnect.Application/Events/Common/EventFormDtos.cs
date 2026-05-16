@@ -129,15 +129,29 @@ public record FormResponsesPagedDto
 // pin that contract.
 
 /// <summary>
-/// Public, PII-redacted DTO for a single form response.
+/// Public form-response DTO. Surfaces the respondent's name (when provided)
+/// because in a sign-up / RSVP context attribution is normal — "Niro K is
+/// bringing biriyani" is not a privacy violation. Email and user-id are
+/// still hidden: those are the actual contact-method PII whose exposure
+/// the toggle's privacy promise covers.
+///
+/// Compile-time guarantee: <c>RespondentEmail</c> and <c>RespondentUserId</c>
+/// are physically absent from this record. Reflection-asserted in the test
+/// fixture so any future re-addition fails at runtime.
 /// </summary>
 public record PublicFormResponseDto
 {
     public Guid Id { get; init; }
     /// <summary>
+    /// Respondent's self-supplied name, surfaced verbatim. Null when the
+    /// respondent (typically anonymous) skipped the optional name field;
+    /// the UI falls back to <see cref="RespondentLabel"/> in that case.
+    /// </summary>
+    public string? RespondentName { get; init; }
+    /// <summary>
     /// Ordinal label assigned by the handler ("Respondent 1", "Respondent 2", …)
-    /// based on <c>SubmittedAt</c> ascending. Lets readers correlate answers
-    /// across questions for the same respondent without leaking identity.
+    /// based on <c>SubmittedAt</c> ascending. Always present so the UI has a
+    /// stable fallback when <see cref="RespondentName"/> is null.
     /// </summary>
     public string RespondentLabel { get; init; } = string.Empty;
     /// <summary>

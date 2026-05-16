@@ -434,9 +434,10 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
                   </span>
                   <span className="mt-1 block text-xs text-neutral-600 dark:text-neutral-400">
                     When enabled, anyone viewing the event can see all responses.
-                    Respondent names, emails, and identities are always hidden.
-                    Make sure your questions don&apos;t ask for personal information
-                    (phone numbers, addresses, etc.) if you turn this on.
+                    Respondent names appear as submitted; emails and account
+                    identities stay hidden. Make sure your questions don&apos;t
+                    ask for personal information (phone numbers, addresses,
+                    etc.) if you turn this on.
                   </span>
                 </span>
               </label>

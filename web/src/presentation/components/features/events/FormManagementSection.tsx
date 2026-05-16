@@ -242,7 +242,7 @@ export function FormManagementSection({ eventId, forms }: FormManagementSectionP
                       Allow event visitors to see responses
                     </span>
                     <span className="block text-xs text-neutral-500 dark:text-neutral-400">
-                      Names and emails are always hidden.
+                      Names appear as submitted; emails are hidden.
                     </span>
                   </span>
                 </label>

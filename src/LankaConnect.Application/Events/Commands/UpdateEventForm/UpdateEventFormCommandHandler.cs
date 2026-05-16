@@ -58,12 +58,16 @@ public class UpdateEventFormCommandHandler : ICommandHandler<UpdateEventFormComm
                     return Result.Failure("Form does not belong to the specified event");
                 }
 
+                // Phase 6A.146: AllowAttendeesToViewResponses is nullable here so
+                // legacy callers pass null and the domain leaves the flag alone.
+                // UI explicitly sends true or false when the toggle changes.
                 var updateResult = form.UpdateDetails(
                     request.Title,
                     request.Description,
                     request.AllowMultipleResponses,
                     request.ResponseDeadline,
-                    request.MaxResponses);
+                    request.MaxResponses,
+                    request.AllowAttendeesToViewResponses);
 
                 if (updateResult.IsFailure)
                 {

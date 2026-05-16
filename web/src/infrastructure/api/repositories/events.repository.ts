@@ -55,6 +55,7 @@ import type {
   EventFormDetailDto,
   FormResponseDto,
   FormResponsesPagedDto,
+  PublicFormResponsesDto,  // Phase 6A.146
   CreateEventFormRequest,
   UpdateEventFormRequest,
   AddFormQuestionRequest,
@@ -84,6 +85,9 @@ import type {
   ConvertRegistrationModeResult,
   // Phase 7F-D: paid Mode-B add-attendees with delta payment
   InitiateAddHeadCountRequest,
+  // Phase 6A.141: ticket scanner
+  ScanTicketResult,
+  UnmarkScannedResult,
 } from '../types/events.types';
 import type { PagedResult } from '../types/common.types';
 
@@ -1640,6 +1644,28 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.146 — fetch the public, PII-redacted form responses.
+   * Maps to GET /api/events/{eventId}/forms/{formId}/responses/public (AllowAnonymous).
+   * Returns null when the backend responds 404 (form not found OR flag off OR
+   * Draft/Archived — the backend intentionally collapses all denial cases into
+   * a single 404 so the toggle's state isn't leaked). Other errors propagate.
+   */
+  async getPublicFormResponses(
+    eventId: string,
+    formId: string
+  ): Promise<PublicFormResponsesDto | null> {
+    try {
+      return await apiClient.get<PublicFormResponsesDto>(
+        `${this.basePath}/${eventId}/forms/${formId}/responses/public`
+      );
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.status;
+      if (status === 404) return null;
+      throw err;
+    }
+  }
+
+  /**
    * Delete a form response
    * Phase 6A.106: Supports both organizer and user deletion
    * - Organizer: Authenticated, no token required
@@ -1816,12 +1842,69 @@ export class EventsRepository {
 
   // ==================== SPONSORS ====================
 
-  async createMoneySponsor(eventId: string, request: import('../types/events.types').CreateMoneySponsorRequest): Promise<string> {
-    return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/money`, request);
+  async createMoneySponsor(
+    eventId: string,
+    request: import('../types/events.types').CreateMoneySponsorRequest
+  ): Promise<import('../types/events.types').CreateMoneySponsorResult> {
+    return await apiClient.post<import('../types/events.types').CreateMoneySponsorResult>(
+      `${this.basePath}/${eventId}/sponsors/money`, request
+    );
   }
 
   async createItemSponsor(eventId: string, request: import('../types/events.types').CreateItemSponsorRequest): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/sponsors/item`, request);
+  }
+
+  /**
+   * Phase 6A.145 — uploads (or replaces) a sponsor's image. Threshold-gated server-side.
+   * Public callers must meet the event's MinAmountForSponsorImage; organizer auth bypasses.
+   */
+  async uploadSponsorImage(
+    eventId: string,
+    sponsorId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}/image`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.145 — clears a sponsor's image. Organizer-only. Idempotent.
+   */
+  async deleteSponsorImage(eventId: string, sponsorId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsors/${sponsorId}/image`);
+  }
+
+  /**
+   * Phase 6A.145 — organizer records an off-platform sponsorship (cash collected
+   * outside the platform, or in-kind item donated directly to the organizer).
+   * Multipart so an optional image file rides alongside the form fields.
+   */
+  async createOffPlatformSponsor(
+    eventId: string,
+    request: import('../types/events.types').CreateOffPlatformSponsorRequest
+  ): Promise<import('../types/events.types').CreateOffPlatformSponsorResult> {
+    const formData = new FormData();
+    formData.append('Type', request.type);
+    formData.append('SponsorName', request.sponsorName);
+    formData.append('SponsorEmail', request.sponsorEmail);
+    if (request.sponsorPhone) formData.append('SponsorPhone', request.sponsorPhone);
+    if (request.sponsorOrganization) formData.append('SponsorOrganization', request.sponsorOrganization);
+    if (request.sponsorNotes) formData.append('SponsorNotes', request.sponsorNotes);
+    if (request.amount != null) formData.append('Amount', String(request.amount));
+    if (request.currency) formData.append('Currency', request.currency);
+    if (request.itemName) formData.append('ItemName', request.itemName);
+    if (request.itemDescription) formData.append('ItemDescription', request.itemDescription);
+    if (request.estimatedValue != null) formData.append('EstimatedValue', String(request.estimatedValue));
+    if (request.image) formData.append('Image', request.image);
+    return await apiClient.postMultipart<import('../types/events.types').CreateOffPlatformSponsorResult>(
+      `${this.basePath}/${eventId}/sponsors/off-platform`,
+      formData
+    );
   }
 
   async getEventSponsors(eventId: string): Promise<import('../types/events.types').EventSponsorsResponse> {
@@ -1860,6 +1943,33 @@ export class EventsRepository {
   async updateAddOnDefinition(eventId: string, definitionId: string, request: import('../types/events.types').UpdateAddOnDefinitionRequest): Promise<void> {
     return await apiClient.put<void>(`${this.basePath}/${eventId}/add-ons/${definitionId}`, request);
   }
+
+  /**
+   * Phase 6A.143 — upload (or replace) the display image for an add-on definition.
+   * Organizer only (server-side enforced). Returns the new public URL + blob name.
+   * If an image was previously set, the server deletes the old blob best-effort.
+   */
+  async uploadAddOnImage(
+    eventId: string,
+    definitionId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/add-ons/${definitionId}/image`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.143 — clear the display image from an add-on definition. Idempotent.
+   * Server deletes the blob best-effort. 204 NoContent on success.
+   */
+  async deleteAddOnImage(eventId: string, definitionId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/add-ons/${definitionId}/image`);
+  }
+
 
   async purchaseAddOn(eventId: string, definitionId: string, request: import('../types/events.types').PurchaseAddOnRequest): Promise<string> {
     return await apiClient.post<string>(`${this.basePath}/${eventId}/add-ons/${definitionId}/purchase`, request);
@@ -1984,6 +2094,46 @@ export class EventsRepository {
     await apiClient.delete<void>(`/events/${eventId}/ticket-tiers/${tierId}`);
   }
 
+  // ============================================================
+  // Phase 6A.141: Paid-event ticket check-in / QR scanner
+  // ============================================================
+
+  /**
+   * Scans a QR-encoded ticket payload at the event gate.
+   * Returns accepted with attendee + tier details, OR rejected with a reason code.
+   * Both outcomes are HTTP 200 — the body's `result` field distinguishes them.
+   * Only HTTP 4xx for protocol/auth failures (401 unauth, 403 not-organizer, 404 event-missing).
+   */
+  async scanTicket(eventId: string, qrPayload: string): Promise<ScanTicketResult> {
+    return await apiClient.post<ScanTicketResult>(
+      `${this.basePath}/${eventId}/tickets/scan`,
+      { qrPayload }
+    );
+  }
+
+  /**
+   * Manual-entry fallback for the scanner — gate staff types in the LC-YYYY-XXXXXX
+   * code when the QR can't be scanned (damaged print, dead phone). No signature
+   * verification (trust comes from organizer auth).
+   */
+  async scanTicketByCode(eventId: string, ticketCode: string): Promise<ScanTicketResult> {
+    return await apiClient.post<ScanTicketResult>(
+      `${this.basePath}/${eventId}/tickets/scan-by-code`,
+      { ticketCode }
+    );
+  }
+
+  /**
+   * Admin-only — reverses a wrongly-scanned ticket so the attendee can re-scan
+   * and walk in. Writes a new `ticket_scan_log` row with `scan_result='unmarked'`
+   * carrying the admin's stated reason. The original accepted row stays.
+   */
+  async unmarkScanned(eventId: string, ticketCode: string, reason: string): Promise<UnmarkScannedResult> {
+    return await apiClient.post<UnmarkScannedResult>(
+      `${this.basePath}/${eventId}/tickets/${ticketCode}/unmark-scanned`,
+      { reason }
+    );
+  }
 }
 
 /**

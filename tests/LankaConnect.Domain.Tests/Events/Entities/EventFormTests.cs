@@ -422,6 +422,94 @@ public class EventFormTests
 
     #endregion
 
+    #region Phase 6A.146 — Response Visibility Toggle
+
+    [Fact]
+    public void Create_Should_Default_AllowAttendeesToViewResponses_To_False()
+    {
+        var result = EventForm.Create(_eventId, "Test Form");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AllowAttendeesToViewResponses.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_WithExplicitVisibilityTrue_Should_Set_Property()
+    {
+        var result = EventForm.Create(
+            _eventId, "Public Survey", description: null,
+            allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
+            allowAttendeesToViewResponses: true);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.AllowAttendeesToViewResponses.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateDetails_WithVisibilityTrue_Should_Update_Property()
+    {
+        var form = EventForm.Create(_eventId, "Survey").Value;
+        form.AllowAttendeesToViewResponses.Should().BeFalse(); // pre-condition
+
+        var result = form.UpdateDetails(
+            "Survey", null, false, null, null,
+            allowAttendeesToViewResponses: true);
+
+        result.IsSuccess.Should().BeTrue();
+        form.AllowAttendeesToViewResponses.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateDetails_FromTrueToFalse_Should_Update_Property()
+    {
+        // Phase 6A.146 — organizer must be able to retract the public toggle.
+        var form = EventForm.Create(
+            _eventId, "Survey", description: null,
+            allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
+            allowAttendeesToViewResponses: true).Value;
+
+        var result = form.UpdateDetails("Survey", null, false, null, null,
+            allowAttendeesToViewResponses: false);
+
+        result.IsSuccess.Should().BeTrue();
+        form.AllowAttendeesToViewResponses.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UpdateDetails_PositionalCall_DoesNotChangeVisibility_BackwardCompatible()
+    {
+        // Architect's correction C1: the new parameter is OPTIONAL at the END so
+        // every existing caller (UpdateEventFormCommandHandler, integration tests,
+        // ~30+ positional callers) keeps compiling and keeps its prior semantics.
+        var form = EventForm.Create(
+            _eventId, "Survey", description: null,
+            allowMultipleResponses: false, responseDeadline: null, maxResponses: null,
+            allowAttendeesToViewResponses: true).Value;
+
+        // Legacy call without the new parameter — visibility must NOT be flipped.
+        var result = form.UpdateDetails("Updated", null, false, null, null);
+
+        result.IsSuccess.Should().BeTrue();
+        form.AllowAttendeesToViewResponses.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateDetails_CanToggle_OnAnyNonArchivedStatus()
+    {
+        // Architect's correction C2: NO status guard on the toggle itself. The
+        // public endpoint gates visibility on Active/Closed separately. This lets
+        // an organizer configure the toggle before publishing the form.
+        var form = EventForm.Create(_eventId, "Survey").Value;
+        form.Status.Should().Be(EventFormStatus.Draft);
+
+        // Toggle on Draft
+        form.UpdateDetails("Survey", null, false, null, null, allowAttendeesToViewResponses: true)
+            .IsSuccess.Should().BeTrue();
+        form.AllowAttendeesToViewResponses.Should().BeTrue();
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private EventForm CreateActiveForm()

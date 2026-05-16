@@ -72,6 +72,8 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
   const [allowMultipleResponses, setAllowMultipleResponses] = useState(false);
   const [responseDeadline, setResponseDeadline] = useState('');
   const [maxResponses, setMaxResponses] = useState('');
+  // Phase 6A.146 — public response visibility toggle. Defaults OFF (opt-in).
+  const [allowAttendeesToViewResponses, setAllowAttendeesToViewResponses] = useState(false);
 
   // Questions array
   const [questions, setQuestions] = useState<QuestionDraft[]>([]);
@@ -244,6 +246,7 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
       responseDeadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
       maxResponses: maxResponses ? parseInt(maxResponses, 10) : null,
       questions: questionsPayload,
+      allowAttendeesToViewResponses,  // Phase 6A.146
     };
 
     // Submit
@@ -413,6 +416,31 @@ export default function CreateFormPage({ params }: { params: Promise<{ id: strin
                   min="1"
                 />
               </div>
+            </div>
+
+            {/* Phase 6A.146 — Response Visibility Toggle */}
+            <div className="mt-4 rounded-md border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/40">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={allowAttendeesToViewResponses}
+                  onChange={(e) => setAllowAttendeesToViewResponses(e.target.checked)}
+                  data-testid="allow-attendees-toggle"
+                  className="mt-1 h-4 w-4 rounded border-neutral-300 text-orange-600 focus:ring-orange-500"
+                />
+                <span className="flex-1">
+                  <span className="block text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    Allow event visitors to see responses
+                  </span>
+                  <span className="mt-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                    When enabled, anyone viewing the event can see all responses.
+                    Respondent names appear as submitted; emails and account
+                    identities stay hidden. Make sure your questions don&apos;t
+                    ask for personal information (phone numbers, addresses,
+                    etc.) if you turn this on.
+                  </span>
+                </span>
+              </label>
             </div>
           </CardContent>
         </Card>

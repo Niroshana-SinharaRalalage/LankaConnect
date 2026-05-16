@@ -1,5 +1,7 @@
 using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.ClearAddOnDefinitionImage;
 using LankaConnect.Application.Events.Commands.CreateAddOnDefinition;
+using LankaConnect.Application.Events.Commands.SetAddOnDefinitionImage;
 using LankaConnect.Application.Events.Commands.UpdateAddOnDefinition;
 using LankaConnect.Application.Events.Commands.PurchaseAddOn;
 using LankaConnect.Application.Events.Commands.PurchaseAddOnCart;
@@ -132,6 +134,77 @@ public class AddOnsController : BaseController<AddOnsController>
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Phase 6A.143 — Add-on image upload (organizer only)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Phase 6A.143 — uploads (or replaces) the display image for a single
+    /// add-on definition. Returns the new image URL + blob name.
+    /// </summary>
+    [HttpPost("{definitionId}/image")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SetAddOnDefinitionImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetAddOnImage(
+        Guid eventId,
+        Guid definitionId,
+        IFormFile image)
+    {
+        Logger.LogInformation(
+            "SetAddOnImage: EventId={EventId}, DefinitionId={DefinitionId}, FileName={FileName}, Size={Size}",
+            eventId, definitionId, image?.FileName, image?.Length);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        using var ms = new MemoryStream();
+        await image.CopyToAsync(ms);
+
+        var command = new SetAddOnDefinitionImageCommand
+        {
+            EventId = eventId,
+            DefinitionId = definitionId,
+            ImageData = ms.ToArray(),
+            FileName = image.FileName
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.143 — clears the display image from a single add-on definition.
+    /// Idempotent.
+    /// </summary>
+    [HttpDelete("{definitionId}/image")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearAddOnImage(Guid eventId, Guid definitionId)
+    {
+        Logger.LogInformation(
+            "ClearAddOnImage: EventId={EventId}, DefinitionId={DefinitionId}",
+            eventId, definitionId);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        var result = await Mediator.Send(new ClearAddOnDefinitionImageCommand
+        {
+            EventId = eventId,
+            DefinitionId = definitionId
+        });
+        return result.IsSuccess ? NoContent() : HandleResult(result);
     }
 
     // ──────────────────────────────────────────────

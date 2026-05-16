@@ -390,6 +390,26 @@ export default function EventManagePage({ params }: { params: Promise<{ id: stri
           </Button>
 
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Phase 6A.141: Scan Tickets button for paid-event gate check-in.
+                Visible only for paid events (OnPlatformPaid) that aren't in Draft or
+                Cancelled state — tickets only exist for paid registrations and there's
+                no point scanning at the door for an event that isn't running.
+                Routes to /events/{id}/manage/scan which has the camera scanner + manual
+                entry fallback + accepted/rejected/network-loss/server-error panels. */}
+            {event?.paymentMode === 'OnPlatformPaid' &&
+              event?.status !== 'Draft' &&
+              event?.status !== 'Cancelled' && (
+                <Button
+                  onClick={() => router.push(`/events/${id}/manage/scan`)}
+                  className="flex items-center gap-2 text-white"
+                  style={{ background: '#3B82F6', color: 'white' }}
+                  data-testid="scan-tickets-button"
+                >
+                  <Camera className="h-4 w-4" />
+                  Scan Tickets
+                </Button>
+              )}
+
             {/* Publish Button — Phase 8YB.5 (D1=A): Planning events (TBD-dates) can
                 publish directly alongside Draft events. The domain Publish() method
                 accepts both Draft and Planning per Phase 8YA.1. Listing/detail pages

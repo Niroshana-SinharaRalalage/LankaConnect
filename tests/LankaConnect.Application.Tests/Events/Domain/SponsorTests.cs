@@ -1065,4 +1065,168 @@ public class SponsorTests
     }
 
     #endregion
+
+    #region Phase 6A.145 — Image methods (SetImage / ClearImage)
+
+    [Fact]
+    public void NewSponsor_HasNullImageFields()
+    {
+        var moneySponsor = CreateValidMoneySponsor();
+        moneySponsor.ImageUrl.Should().BeNull();
+        moneySponsor.ImageBlobName.Should().BeNull();
+
+        var itemSponsor = CreateValidItemSponsor();
+        itemSponsor.ImageUrl.Should().BeNull();
+        itemSponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_WithValidUrlAndBlobName_Succeeds_OnMoneySponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage(
+            "https://blob.example.com/sponsors/abc.png",
+            "abc_papa-johns-logo.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/sponsors/abc.png");
+        sponsor.ImageBlobName.Should().Be("abc_papa-johns-logo.png");
+    }
+
+    [Fact]
+    public void SetImage_WithValidUrlAndBlobName_Succeeds_OnItemSponsor()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.SetImage(
+            "https://blob.example.com/sponsors/item.png",
+            "item_logo.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/sponsors/item.png");
+        sponsor.ImageBlobName.Should().Be("item_logo.png");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyUrl_Fails(string? badUrl)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage(badUrl!, "blob.png");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("URL");
+        sponsor.ImageUrl.Should().BeNull("rejected SetImage must NOT mutate the entity");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyBlobName_Fails(string? badBlobName)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", badBlobName!);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("blob");
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_ReplacingExisting_OverwritesBoth()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/old.png", "old_pic.png");
+
+        sponsor.SetImage("https://blob.example.com/new.png", "new_pic.png");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/new.png");
+        sponsor.ImageBlobName.Should().Be("new_pic.png");
+    }
+
+    [Fact]
+    public void SetImage_TrimsWhitespaceFromBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        sponsor.SetImage("  https://blob.example.com/x.png  ", "  x_blob.png  ");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/x.png");
+        sponsor.ImageBlobName.Should().Be("x_blob.png");
+    }
+
+    [Fact]
+    public void SetImage_PreservesOtherFields_OnMoneySponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        var originalAmount = sponsor.Amount;
+        var originalName = sponsor.SponsorName;
+        var originalStatus = sponsor.Status;
+
+        sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        sponsor.Amount.Should().Be(originalAmount);
+        sponsor.SponsorName.Should().Be(originalName);
+        sponsor.Status.Should().Be(originalStatus);
+    }
+
+    [Fact]
+    public void ClearImage_RemovesBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        var result = sponsor.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ClearImage_WhenNoImage_IsIdempotent()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.ImageUrl.Should().BeNull();
+
+        var result = sponsor.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_OnPendingMoneySponsor_Succeeds()
+    {
+        // Architect F-decision: image upload is allowed BEFORE Stripe checkout for
+        // money sponsors. Orphan-blob cleanup hooks fire on MarkAsFailed/Abandoned.
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.Status.Should().Be(SponsorStatus.Pending);
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void SetImage_OnCompletedMoneySponsor_Succeeds()
+    {
+        // Organizer override: image can be set even after Stripe completion.
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().NotBeNull();
+    }
+
+    #endregion
 }

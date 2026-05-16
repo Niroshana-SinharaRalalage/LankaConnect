@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Package,
   Plus,
@@ -9,12 +9,20 @@ import {
   ToggleLeft,
   ToggleRight,
   RefreshCw,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
 import { Button } from '@/presentation/components/ui/Button';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { Input } from '@/presentation/components/ui/Input';
-import { useAddOnDefinitions, useCreateAddOnDefinition, useUpdateAddOnDefinition } from '@/presentation/hooks/useAddOns';
+import {
+  useAddOnDefinitions,
+  useCreateAddOnDefinition,
+  useUpdateAddOnDefinition,
+  useUploadAddOnImage,
+  useDeleteAddOnImage,
+} from '@/presentation/hooks/useAddOns';
 import type { AddOnDefinitionDto } from '@/infrastructure/api/types/events.types';
 
 /**
@@ -48,6 +56,113 @@ function formatCurrency(amount: number, currency: string = 'USD'): string {
 }
 
 /**
+ * Phase 6A.143 — image upload widget for a single add-on definition.
+ * Live mode only — requires an existing definitionId to attach the blob to.
+ * Shows thumbnail preview + upload/replace/remove controls. Validation + size
+ * enforcement happen server-side; client-side cap is enforced via accept attr
+ * and a soft 5MB pre-flight check that matches the server's IImageService limit.
+ */
+function AddOnImageField({
+  eventId,
+  definitionId,
+  imageUrl,
+}: {
+  eventId: string;
+  definitionId: string;
+  imageUrl: string | null | undefined;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const uploadMutation = useUploadAddOnImage();
+  const deleteMutation = useDeleteAddOnImage();
+
+  const isBusy = uploadMutation.isPending || deleteMutation.isPending;
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    setError(null);
+    // Soft client-side 5MB check mirrors the server's IImageService cap; final
+    // validation is server-side anyway.
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image too large (max 5MB).');
+      return;
+    }
+    try {
+      await uploadMutation.mutateAsync({ eventId, definitionId, file });
+    } catch (err: any) {
+      console.error('AddOn image upload failed:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Upload failed. Please try again.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemove = async () => {
+    setError(null);
+    try {
+      await deleteMutation.mutateAsync({ eventId, definitionId });
+    } catch (err: any) {
+      console.error('AddOn image delete failed:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Delete failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-neutral-600">Add-on image (optional)</label>
+      <div className="flex items-center gap-3">
+        {imageUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={imageUrl}
+            alt="Add-on"
+            className="h-16 w-16 rounded border border-neutral-200 object-cover"
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded border border-dashed border-neutral-300 bg-neutral-50 text-neutral-400">
+            <Package className="h-6 w-6" />
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+            disabled={isBusy}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isBusy}
+          >
+            <ImagePlus className="h-4 w-4 mr-1" />
+            {imageUrl ? 'Replace' : 'Upload Image'}
+          </Button>
+          {imageUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleRemove}
+              disabled={isBusy}
+            >
+              <X className="h-4 w-4 mr-1 text-red-500" />
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="text-[10px] text-neutral-400">JPG / PNG / WebP / GIF, max 5MB.</p>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+/**
  * Shared Add-On Definition editor supporting two modes:
  * - Live mode (eventId provided): CRUD via API hooks
  * - Local mode (eventId undefined): manages PendingAddOnDefinition[] in parent state
@@ -78,7 +193,7 @@ export function AddOnDefinitionEditor({
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Unified definitions list
-  const definitions: Array<{ id: string; name: string; description?: string | null; price: number; currency: string; quantityLimit?: number | null; quantitySold?: number; remainingStock?: number | null; sortOrder: number; isActive: boolean }> = isLiveMode
+  const definitions: Array<{ id: string; name: string; description?: string | null; price: number; currency: string; quantityLimit?: number | null; quantitySold?: number; remainingStock?: number | null; sortOrder: number; isActive: boolean; imageUrl?: string | null }> = isLiveMode
     ? liveDefinitions.map((d: AddOnDefinitionDto) => ({
         id: d.id,
         name: d.name,
@@ -90,6 +205,7 @@ export function AddOnDefinitionEditor({
         remainingStock: d.remainingStock,
         sortOrder: d.sortOrder,
         isActive: d.isActive,
+        imageUrl: d.imageUrl,
       }))
     : (pendingDefinitions || []).map((d) => ({
         id: d.localId,
@@ -100,6 +216,7 @@ export function AddOnDefinitionEditor({
         quantityLimit: d.quantityLimit,
         sortOrder: d.sortOrder,
         isActive: d.isActive,
+        imageUrl: null,
       }));
 
   const resetForm = () => {
@@ -397,6 +514,23 @@ export function AddOnDefinitionEditor({
               </div>
             </div>
 
+            {/* Phase 6A.143 — image upload section. Available only when editing an
+                existing definition in live mode (we need a definitionId for the upload
+                endpoint). New-definition flow: save first, then image upload becomes
+                available on next edit. */}
+            {isLiveMode && editingId && (
+              <AddOnImageField
+                eventId={eventId!}
+                definitionId={editingId}
+                imageUrl={liveDefinitions.find((d) => d.id === editingId)?.imageUrl ?? null}
+              />
+            )}
+            {isLiveMode && !editingId && (
+              <p className="text-xs text-neutral-500 italic">
+                Save this add-on first — you can upload an image on the next edit.
+              </p>
+            )}
+
             {formError && (
               <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-600">
                 {formError}
@@ -454,13 +588,27 @@ export function AddOnDefinitionEditor({
                 {definitions.map((def) => (
                   <tr key={def.id} className="border-b border-neutral-100 hover:bg-neutral-50">
                     <td className="px-4 py-3">
-                      <div>
-                        <span className="font-medium text-neutral-800">{def.name}</span>
-                        {def.description && (
-                          <p className="text-xs text-neutral-500 mt-0.5 max-w-[250px] truncate">
-                            {def.description}
-                          </p>
+                      <div className="flex items-center gap-3">
+                        {def.imageUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={def.imageUrl}
+                            alt={def.name}
+                            className="h-10 w-10 flex-shrink-0 rounded border border-neutral-200 object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded border border-dashed border-neutral-200 bg-neutral-50 text-neutral-300">
+                            <Package className="h-4 w-4" />
+                          </div>
                         )}
+                        <div className="min-w-0">
+                          <span className="font-medium text-neutral-800">{def.name}</span>
+                          {def.description && (
+                            <p className="text-xs text-neutral-500 mt-0.5 max-w-[250px] truncate">
+                              {def.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">

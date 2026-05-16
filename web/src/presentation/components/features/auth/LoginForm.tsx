@@ -11,6 +11,7 @@ import { loginSchema, type LoginFormData } from '@/presentation/lib/validators/a
 import { authRepository } from '@/infrastructure/api/repositories/auth.repository';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { ApiError } from '@/infrastructure/api/client/api-errors';
+import { resolveSafeRedirect } from '@/presentation/lib/utils/safe-redirect';
 import type { AuthTokens } from '@/infrastructure/api/types/auth.types';
 
 /**
@@ -70,9 +71,12 @@ export function LoginForm() {
       };
       setAuth(response.user, tokens);
 
-      // Phase 6A.8: Redirect to landing page after login
-      // Users can access dashboard via menu or profile settings
-      router.push('/');
+      // Phase 6A.144: honor ?redirect= when present (same-origin guard via
+      // resolveSafeRedirect). Falls back to '/' for unsafe or missing values.
+      // Enables the auth-encouragement modal to return the user to the event
+      // detail page (or any same-origin surface) after sign-in.
+      const target = resolveSafeRedirect(searchParams.get('redirect'), '/');
+      router.push(target);
     } catch (error) {
       if (error instanceof ApiError) {
         setApiError(error.message);

@@ -13,6 +13,9 @@ on:
     branches:
       - main
   workflow_dispatch:
+  # Reusable trigger so deploy-production-with-approval.yml can call this
+  # workflow via `uses: ./.github/workflows/deploy-ui-production.yml`.
+  workflow_call:
 
 # Run name surfaces the trigger SHA + event so the Actions list reads e.g.
 # "UI prod · 85aa3a71 · push" — makes it trivial to reconstruct whether a run

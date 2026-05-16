@@ -73,6 +73,20 @@ public class Sponsor : BaseEntity
     /// </summary>
     public DateTime? RecordedAt { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.145 — optional public URL of the sponsor's logo/image displayed on the
+    /// event details page. Any sponsor can attach an image (no threshold gate as of
+    /// Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
+    /// </summary>
+    public string? ImageUrl { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.145 — Azure blob name (not URL) used by the upload handler to delete
+    /// the old blob when the image is replaced or cleared. Always set together with
+    /// <see cref="ImageUrl"/>.
+    /// </summary>
+    public string? ImageBlobName { get; private set; }
+
     // EF Core constructor
     private Sponsor()
     {
@@ -352,6 +366,82 @@ public class Sponsor : BaseEntity
 
         if (string.IsNullOrWhiteSpace(sponsorEmail))
             return Result.Failure("Sponsor email is required");
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — set or replace the sponsor's image. Both URL and blob name are
+    /// required and set atomically. Any sponsor can attach an image (Commit 6 removed
+    /// the threshold gate). Handler is responsible for uploading the new blob first
+    /// and deleting any prior blob on replace.
+    /// </summary>
+    public Result SetImage(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Image URL is required");
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Image blob name is required");
+
+        ImageUrl = url.Trim();
+        ImageBlobName = blobName.Trim();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — clear the sponsor's image. Idempotent — succeeds when no image
+    /// is set today. Handler is responsible for deleting the blob from storage.
+    /// </summary>
+    public Result ClearImage()
+    {
+        ImageUrl = null;
+        ImageBlobName = null;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — completes a money sponsor as off-platform (cash collected by the
+    /// organizer directly, bypassing Stripe). Used by the organizer-add-sponsor flow
+    /// in <see cref="CreateOffPlatformSponsor"/>. Sets Status=Completed +
+    /// PaymentCompletedAt=now. Skips StripeCheckoutSessionId / StripePaymentIntentId /
+    /// revenue-breakdown fields (no Stripe payment to account for).
+    ///
+    /// Architect E-3: cash sponsors are excluded from Stripe-payout totals because
+    /// money never went through Stripe; a separate "Off-platform collected" tile in
+    /// SponsorsManagementTab surfaces them. Implicit discriminator: a Completed Money
+    /// sponsor with StripeCheckoutSessionId == null is "off-platform".
+    /// </summary>
+    public Result CompleteAsOrganizerCash()
+    {
+        if (Type != SponsorType.Money)
+            return Result.Failure("CompleteAsOrganizerCash applies only to money sponsors");
+
+        if (Status != SponsorStatus.Pending)
+            return Result.Failure($"Cannot complete off-platform when status is {Status}. Must be Pending.");
+
+        Status = SponsorStatus.Completed;
+        PaymentCompletedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+
+        // Reuse SponsorPaymentCompletedEvent so existing email/notification pipelines
+        // fire for off-platform sponsors the same way they do for Stripe ones. The
+        // PaymentIntentId slot carries a sentinel "off-platform" marker so subscribers
+        // can distinguish if needed.
+        RaiseDomainEvent(new SponsorPaymentCompletedEvent(
+            EventId,
+            Id,
+            SponsorUserId,
+            SponsorName,
+            SponsorEmail,
+            SponsorOrganization,
+            PaymentIntentId: "off-platform",
+            Amount!.Amount,
+            Amount.Currency.ToString(),
+            PaymentCompletedAt.Value));
 
         return Result.Success();
     }

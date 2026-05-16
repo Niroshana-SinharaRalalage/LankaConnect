@@ -73,6 +73,18 @@ public class AddOnDefinitionEntityConfiguration : IEntityTypeConfiguration<AddOn
             .IsRequired()
             .HasDefaultValue(0);
 
+        // Phase 6A.143 — optional add-on image. Both columns nullable; either both
+        // populated together or both null. Handler enforces atomic set/clear.
+        builder.Property(a => a.ImageUrl)
+            .HasColumnName("image_url")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(a => a.ImageBlobName)
+            .HasColumnName("image_blob_name")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         // Audit fields
         builder.Property(a => a.CreatedAt)
             .HasColumnName("created_at")

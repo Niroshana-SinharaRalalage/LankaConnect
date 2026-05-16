@@ -40,6 +40,17 @@ public class EventForm : BaseEntity
     public bool HasResponses { get; private set; }
 
     /// <summary>
+    /// Phase 6A.146 — when true, anonymous event visitors can view a PII-redacted
+    /// list of all submitted responses on the public event detail page. Personal
+    /// fields (respondent name, email, user id) are ALWAYS stripped at the
+    /// projection layer; question/answer values are preserved verbatim. Default
+    /// false (existing rows in DB get false via column default). The public
+    /// endpoint additionally gates on Status ∈ {Active, Closed} so Draft and
+    /// Archived forms never leak responses even when the flag is true.
+    /// </summary>
+    public bool AllowAttendeesToViewResponses { get; private set; }
+
+    /// <summary>
     /// Questions belonging to this form, ordered by SortOrder.
     /// </summary>
     public IReadOnlyList<FormQuestion> Questions => _questions.AsReadOnly();
@@ -55,7 +66,8 @@ public class EventForm : BaseEntity
         string? description,
         bool allowMultipleResponses,
         DateTime? responseDeadline,
-        int? maxResponses)
+        int? maxResponses,
+        bool allowAttendeesToViewResponses)
     {
         EventId = eventId;
         Title = title;
@@ -65,10 +77,14 @@ public class EventForm : BaseEntity
         ResponseDeadline = responseDeadline;
         MaxResponses = maxResponses;
         HasResponses = false;
+        AllowAttendeesToViewResponses = allowAttendeesToViewResponses;
     }
 
     /// <summary>
     /// Creates a new EventForm in Draft status.
+    /// Phase 6A.146: <paramref name="allowAttendeesToViewResponses"/> is appended at the
+    /// END of the signature as an optional parameter so positional callers (including
+    /// the integration test suite) continue compiling unchanged.
     /// </summary>
     public static Result<EventForm> Create(
         Guid eventId,
@@ -76,7 +92,8 @@ public class EventForm : BaseEntity
         string? description = null,
         bool allowMultipleResponses = false,
         DateTime? responseDeadline = null,
-        int? maxResponses = null)
+        int? maxResponses = null,
+        bool allowAttendeesToViewResponses = false)
     {
         if (eventId == Guid.Empty)
             return Result<EventForm>.Failure("Event ID cannot be empty");
@@ -104,7 +121,7 @@ public class EventForm : BaseEntity
         if (responseDeadline.HasValue && responseDeadline.Value.Kind != DateTimeKind.Utc)
             responseDeadline = DateTime.SpecifyKind(responseDeadline.Value, DateTimeKind.Utc);
 
-        var form = new EventForm(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses);
+        var form = new EventForm(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses, allowAttendeesToViewResponses);
 
         form.RaiseDomainEvent(new EventFormCreatedEvent(eventId, form.Id, title, DateTime.UtcNow));
 
@@ -221,13 +238,20 @@ public class EventForm : BaseEntity
 
     /// <summary>
     /// Updates form metadata (title, description, settings).
+    /// Phase 6A.146: <paramref name="allowAttendeesToViewResponses"/> is appended at
+    /// the END of the signature as a NULLABLE optional parameter — null means "leave
+    /// the visibility flag unchanged", preserving exact behavior for all existing
+    /// positional callers (architect's correction C1). Per architect's correction C2,
+    /// there is no status guard here: the flag can be toggled in Draft, Active, or
+    /// Closed states — the public endpoint enforces the Active/Closed gate separately.
     /// </summary>
     public Result UpdateDetails(
         string title,
         string? description,
         bool allowMultipleResponses,
         DateTime? responseDeadline,
-        int? maxResponses)
+        int? maxResponses,
+        bool? allowAttendeesToViewResponses = null)
     {
         if (string.IsNullOrWhiteSpace(title))
             return Result.Failure("Form title cannot be empty");
@@ -257,6 +281,8 @@ public class EventForm : BaseEntity
         AllowMultipleResponses = allowMultipleResponses;
         ResponseDeadline = responseDeadline;
         MaxResponses = maxResponses;
+        if (allowAttendeesToViewResponses.HasValue)
+            AllowAttendeesToViewResponses = allowAttendeesToViewResponses.Value;
         MarkAsUpdated();
 
         return Result.Success();

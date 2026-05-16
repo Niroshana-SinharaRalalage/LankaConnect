@@ -25,7 +25,8 @@ interface SponsorConfigFormProps {
 
 /**
  * Sponsor configuration section for event create/edit forms.
- * Follows the DonationConfigForm pattern.
+ * Phase 6A.145: replaced the banner-on-config concept (rolled back) with a
+ * threshold field gating per-sponsor image uploads.
  */
 export function SponsorConfigForm({
   isEnabled,

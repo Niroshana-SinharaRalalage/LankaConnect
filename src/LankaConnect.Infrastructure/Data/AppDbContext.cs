@@ -90,6 +90,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Ticket Entity Sets
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
     public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
+    public DbSet<TicketScanLog> TicketScanLogs => Set<TicketScanLog>(); // Phase 6A.141: paid-event check-in audit log
     public DbSet<TierAssignment> TierAssignments => Set<TierAssignment>(); // Slice 4 Release N: polymorphic tier→zone/table mapping
 
     // Venue Seating Entity Sets (Phase 2: Seat Booking)
@@ -207,6 +208,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Ticket entity configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new TicketConfiguration());
+
+        // Phase 6A.141: Ticket scan audit log
+        modelBuilder.ApplyConfiguration(new TicketScanLogConfiguration());
 
         // Venue Seating entity configurations (Phase 2: Seat Booking + Slice 2+3A expansion)
         modelBuilder.ApplyConfiguration(new VenueLayoutConfiguration());
@@ -406,6 +410,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EventViewRecord), // Epic 2 Phase 3
             typeof(Notification), // Phase 6A.6
             typeof(Ticket), // Phase 6A.24
+            typeof(TicketScanLog), // Phase 6A.141: paid-event check-in audit log
             typeof(RegistrationAddition), // Add-Only Attendees Feature
             typeof(RegistrationPayment), // Add-Only Attendees Feature
             typeof(Badge), // Phase 6A.25

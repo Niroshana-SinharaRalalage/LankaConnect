@@ -193,6 +193,43 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     expect(screen.getByText(/^4$/)).toBeInTheDocument();
   });
 
+  it('embedded variant: skips the outer Card + title and uses the data-testid sentinel', () => {
+    // 2026-05-15 UAT correction: the embedded variant is what the event detail
+    // page mounts inside each form card so the form title isn't duplicated.
+    // Standalone mode is kept for any future surface that wants a stand-alone
+    // card — both must continue to work.
+    const payload: PublicFormResponsesDto = {
+      formId: 'form-1',
+      formTitle: 'Potluck signup',
+      totalCount: 1,
+      responses: [
+        {
+          id: 'r1',
+          respondentName: 'Niro K',
+          respondentLabel: 'Respondent 1',
+          submittedOn: '2026-05-10',
+          answers: [
+            { questionId: 'q1', questionTextSnapshot: 'Dish', textValue: 'biriyani', selectedOptionTextSnapshots: [], booleanValue: null },
+          ],
+        },
+      ],
+    };
+    usePublicFormResponsesMock.mockReturnValue({ data: payload, isLoading: false });
+
+    const { container } = render(
+      <PublicFormResponsesSection eventId="event-1" form={makeForm()} embedded />,
+    );
+
+    // The embedded sentinel must be present.
+    expect(screen.getByTestId('public-responses-embedded')).toBeInTheDocument();
+    // The duplicate title heading present in the standalone variant must NOT
+    // render here — the parent form card is expected to provide the title.
+    expect(container.querySelectorAll('h2, h3').length).toBe(0);
+    // The privacy note + response still render.
+    expect(screen.getByText(/respondent emails and contact details are hidden/i)).toBeInTheDocument();
+    expect(screen.getByText(/niro k/i)).toBeInTheDocument();
+  });
+
   it('does NOT render email or userId PII even when name is shown (2026-05-15: name allowed, email/userId forbidden)', () => {
     // Defense-in-depth: even though the backend DTO physically excludes email
     // and userId, the section must not surface them via any other channel.

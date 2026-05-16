@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart, ChevronDown, ChevronUp } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/presentation/components/ui/Card';
@@ -169,6 +169,17 @@ export function EventDetailPageInternal({
   // session re-asks (per architect — we don't want to train dismissal).
   const [showAuthNudge, setShowAuthNudge] = useState(false);
   const [guestModeAcknowledged, setGuestModeAcknowledged] = useState(false);
+  // Phase 6A.146 (2026-05-15 UAT correction): inline Show/Hide responses per
+  // form card. Set of formIds whose public-response panel is currently expanded.
+  const [expandedResponseFormIds, setExpandedResponseFormIds] = useState<Set<string>>(new Set());
+  const toggleResponsesExpanded = (formId: string) => {
+    setExpandedResponseFormIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(formId)) next.delete(formId);
+      else next.add(formId);
+      return next;
+    });
+  };
   // GitHub Issue #31: Replace native confirm()/alert() with styled dialogs
   const [showWithdrawRefundDialog, setShowWithdrawRefundDialog] = useState(false);
   const [showCancelPendingDialog, setShowCancelPendingDialog] = useState(false);
@@ -2516,6 +2527,49 @@ export function EventDetailPageInternal({
                             )}
                           </div>
                         </div>
+
+                        {/* Phase 6A.146 (2026-05-15 UAT correction): inline
+                            Show/Hide responses toggle. Visible only when the
+                            organizer has enabled public visibility for this
+                            form AND it has at least one response. Status gate
+                            (Active/Closed only) is enforced inside the embedded
+                            section component, so we can safely render the
+                            button for Active forms here (forms in #signup-forms
+                            are already filtered to Active by activeForms). */}
+                        {form.allowAttendeesToViewResponses && form.responseCount > 0 && (
+                          <>
+                            <div className="mt-4 flex justify-start">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleResponsesExpanded(form.id)}
+                                aria-expanded={expandedResponseFormIds.has(form.id)}
+                                aria-controls={`public-responses-${form.id}`}
+                              >
+                                {expandedResponseFormIds.has(form.id) ? (
+                                  <>
+                                    <ChevronUp className="h-4 w-4 mr-1" />
+                                    Hide responses
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="h-4 w-4 mr-1" />
+                                    Show responses ({form.responseCount})
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            {expandedResponseFormIds.has(form.id) && (
+                              <div id={`public-responses-${form.id}`}>
+                                <PublicFormResponsesSection
+                                  eventId={id}
+                                  form={form}
+                                  embedded
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -2530,26 +2584,10 @@ export function EventDetailPageInternal({
         </div>
         )}
 
-        {/* Phase 6A.146 — Public Form Responses Section.
-            Renders one card per form whose organizer has enabled the
-            response-visibility toggle. The section component self-gates on
-            both the flag AND the status (Active or Closed only), so we can
-            iterate every form here unconditionally and let the section decide
-            whether to render. The hook also self-gates so disabled forms
-            don't generate network traffic. */}
-        {!isLoadingForms && eventForms && eventForms.length > 0 && (
-          <div id="public-form-responses" className="mt-8">
-            {eventForms
-              .filter((f) => f.allowAttendeesToViewResponses)
-              .map((form) => (
-                <PublicFormResponsesSection
-                  key={form.id}
-                  eventId={id}
-                  form={form}
-                />
-              ))}
-          </div>
-        )}
+        {/* Phase 6A.146 — Public form responses are rendered INLINE inside
+            each form card within the #signup-forms section above. The earlier
+            separate #public-form-responses section duplicated the form title
+            and was removed on 2026-05-15 after UAT feedback. */}
       </div>
 
       <Footer />

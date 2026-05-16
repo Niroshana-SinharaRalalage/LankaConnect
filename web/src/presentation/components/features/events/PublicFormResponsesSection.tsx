@@ -28,6 +28,14 @@ import {
 interface PublicFormResponsesSectionProps {
   eventId: string;
   form: EventFormDto;
+  /**
+   * 2026-05-15 UAT correction: when `embedded` is true the section drops its
+   * own outer Card wrapper and the duplicate title header — the parent form
+   * card already shows the title and a toggle button, so showing them again
+   * is just visual noise. The standalone (non-embedded) variant is kept for
+   * any future surface that wants to render the responses in isolation.
+   */
+  embedded?: boolean;
 }
 
 function isStatusEligible(status: EventFormDto['status']): boolean {
@@ -59,7 +67,7 @@ function formatSubmittedOn(submittedOn: string): string {
   }
 }
 
-export function PublicFormResponsesSection({ eventId, form }: PublicFormResponsesSectionProps) {
+export function PublicFormResponsesSection({ eventId, form, embedded = false }: PublicFormResponsesSectionProps) {
   // Self-gate: bail before issuing a network call when the form isn't eligible.
   // Reflects the same defense-in-depth that the backend handler enforces, so
   // even if a stale cache surfaces an ineligible form briefly we won't render.
@@ -73,6 +81,13 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
   if (!enabled) return null;
 
   if (isLoading) {
+    const skeleton = (
+      <div className="animate-pulse space-y-2 py-2">
+        <div className="h-4 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
+        <div className="h-4 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800" />
+      </div>
+    );
+    if (embedded) return <div data-testid="public-responses-loading">{skeleton}</div>;
     return (
       <Card className="my-4">
         <CardHeader>
@@ -81,12 +96,7 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
             {form.title}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 w-1/2 rounded bg-neutral-200 dark:bg-neutral-800" />
-            <div className="h-4 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800" />
-          </div>
-        </CardContent>
+        <CardContent>{skeleton}</CardContent>
       </Card>
     );
   }
@@ -97,6 +107,80 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
 
   const responses = data.responses ?? [];
 
+  // Privacy note + response list — same content, two outer chrome variants.
+  const body = (
+    <>
+      <p className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">
+        Respondent emails and contact details are hidden for privacy.
+      </p>
+      {responses.length === 0 ? (
+        <div className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-400">
+          No responses yet — be the first to submit.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {responses.map((r) => (
+            <li
+              key={r.id}
+              className="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                <MessageSquare className="h-4 w-4 text-orange-600" aria-hidden="true" />
+                {/*
+                  2026-05-15 product correction: surface respondent name when
+                  provided (attribution is normal in sign-up contexts); fall
+                  back to the ordinal label for anonymous respondents who
+                  skipped the optional name field. Email + userId remain off
+                  the wire entirely.
+                */}
+                <span>{r.respondentName?.trim() || r.respondentLabel}</span>
+                <span className="text-neutral-400">·</span>
+                <span className="text-neutral-500">{formatSubmittedOn(r.submittedOn)}</span>
+              </div>
+              <dl className="space-y-1 text-sm">
+                {r.answers.map((a) => {
+                  const display =
+                    a.textValue ??
+                    (a.selectedOptionTextSnapshots && a.selectedOptionTextSnapshots.length > 0
+                      ? a.selectedOptionTextSnapshots.join(', ')
+                      : a.booleanValue == null
+                        ? '—'
+                        : a.booleanValue
+                          ? 'Yes'
+                          : 'No');
+                  return (
+                    <div key={a.questionId} className="flex flex-col sm:flex-row sm:gap-2">
+                      <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                        {a.questionTextSnapshot}
+                      </dt>
+                      <dd className="text-neutral-600 dark:text-neutral-400">{display}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    // Parent (the Signup Forms form card) already shows the title and owns the
+    // Show/Hide toggle. Render only the privacy note + responses, separated
+    // from the form info above by a subtle top border.
+    return (
+      <div
+        data-testid="public-responses-embedded"
+        className="mt-4 border-t border-neutral-200 pt-4 dark:border-neutral-800"
+      >
+        {body}
+      </div>
+    );
+  }
+
+  // Standalone variant — keeps the original outer Card + title for any
+  // surface that mounts the section independently of a form card.
   return (
     <Card className="my-4 border-emerald-200/60 dark:border-emerald-900/40">
       <CardHeader>
@@ -107,61 +191,8 @@ export function PublicFormResponsesSection({ eventId, form }: PublicFormResponse
             {data.totalCount} {data.totalCount === 1 ? 'response' : 'responses'}
           </span>
         </CardTitle>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          Respondent emails and contact details are hidden for privacy.
-        </p>
       </CardHeader>
-      <CardContent>
-        {responses.length === 0 ? (
-          <div className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-400">
-            No responses yet — be the first to submit.
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {responses.map((r) => (
-              <li
-                key={r.id}
-                className="rounded-md border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900"
-              >
-                <div className="mb-2 flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  <MessageSquare className="h-4 w-4 text-orange-600" aria-hidden="true" />
-                  {/*
-                    2026-05-15 product correction: surface respondent name when
-                    provided (attribution is normal in sign-up contexts); fall
-                    back to the ordinal label for anonymous respondents who
-                    skipped the optional name field. Email + userId remain off
-                    the wire entirely.
-                  */}
-                  <span>{r.respondentName?.trim() || r.respondentLabel}</span>
-                  <span className="text-neutral-400">·</span>
-                  <span className="text-neutral-500">{formatSubmittedOn(r.submittedOn)}</span>
-                </div>
-                <dl className="space-y-1 text-sm">
-                  {r.answers.map((a) => {
-                    const display =
-                      a.textValue ??
-                      (a.selectedOptionTextSnapshots && a.selectedOptionTextSnapshots.length > 0
-                        ? a.selectedOptionTextSnapshots.join(', ')
-                        : a.booleanValue == null
-                          ? '—'
-                          : a.booleanValue
-                            ? 'Yes'
-                            : 'No');
-                    return (
-                      <div key={a.questionId} className="flex flex-col sm:flex-row sm:gap-2">
-                        <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                          {a.questionTextSnapshot}
-                        </dt>
-                        <dd className="text-neutral-600 dark:text-neutral-400">{display}</dd>
-                      </div>
-                    );
-                  })}
-                </dl>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 }

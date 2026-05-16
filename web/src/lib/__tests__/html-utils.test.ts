@@ -107,6 +107,17 @@ describe('HTML Utils', () => {
       expect(output).toContain('height="400"');
     });
 
+    // Phase 6A.147 — image resize in the RichTextEditor persists the resized
+    // size as an integer pixel value on the `width` HTML attribute. This test
+    // guards the sanitizer from anyone narrowing the allowlist and breaking
+    // resized images. Pairs with RichTextEditor.image-resize.test.tsx.
+    it('should preserve integer width attribute on <img> for resize (Phase 6A.147)', () => {
+      const input = '<p><img src="https://cdn.test/a.png" alt="" width="320" /></p>';
+      const output = sanitizeHtml(input);
+      expect(output).toContain('src="https://cdn.test/a.png"');
+      expect(output).toMatch(/width="320"/);
+    });
+
     it('should strip dangerous attributes from img tags (onerror XSS)', () => {
       const input = '<img src="x" onerror="alert(\'XSS\')">';
       const output = sanitizeHtml(input);

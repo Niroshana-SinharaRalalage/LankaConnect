@@ -10,6 +10,11 @@ on:
         description: 'Skip tests (emergency deployment only)'
         required: false
         default: 'false'
+  # Reusable trigger so deploy-production-with-approval.yml can call this
+  # workflow via `uses: ./.github/workflows/deploy-production.yml`. Without
+  # this trigger, the wrapper dispatch fails with "workflow is not reusable
+  # as it is missing a `on.workflow_call` trigger".
+  workflow_call:
 
 env:
   AZURE_CONTAINER_REGISTRY: lankaconnectprod

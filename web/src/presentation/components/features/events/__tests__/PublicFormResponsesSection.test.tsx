@@ -166,6 +166,45 @@ describe('PublicFormResponsesSection — Phase 6A.146', () => {
     expect(screen.queryByText(/respondent 1/i)).not.toBeInTheDocument();
   });
 
+  it('appends a colon between question and answer (but not when question already ends with punctuation)', () => {
+    // 2026-05-15 UAT correction: questions like "Number of Attendee" need a
+    // visible separator before the answer; questions like "Are you coming?"
+    // already have one. Helper should add ":" only when needed.
+    const payload: PublicFormResponsesDto = {
+      formId: 'form-1',
+      formTitle: 'Test form 2',
+      totalCount: 1,
+      responses: [
+        {
+          id: 'r1',
+          respondentName: 'Niroshana',
+          respondentLabel: 'Respondent 1',
+          submittedOn: '2026-05-16',
+          answers: [
+            // No trailing punctuation — colon MUST be appended
+            { questionId: 'q1', questionTextSnapshot: 'Number of Attendee', textValue: '5', selectedOptionTextSnapshots: [], booleanValue: null },
+            // Already ends with '?' — no extra colon
+            { questionId: 'q2', questionTextSnapshot: 'Are you coming?', textValue: 'Yes', selectedOptionTextSnapshots: [], booleanValue: null },
+            // Already ends with ':' — no doubled colon
+            { questionId: 'q3', questionTextSnapshot: 'Arrival time:', textValue: '9.00AM', selectedOptionTextSnapshots: [], booleanValue: null },
+          ],
+        },
+      ],
+    };
+    usePublicFormResponsesMock.mockReturnValue({ data: payload, isLoading: false });
+
+    render(<PublicFormResponsesSection eventId="event-1" form={makeForm()} embedded />);
+
+    // Bare label gets ":" appended.
+    expect(screen.getByText('Number of Attendee:')).toBeInTheDocument();
+    // Question ending in '?' stays as-is — no "?:"
+    expect(screen.getByText('Are you coming?')).toBeInTheDocument();
+    expect(screen.queryByText(/Are you coming\?:/)).not.toBeInTheDocument();
+    // Question already ending in ':' stays as-is — no "::"
+    expect(screen.getByText('Arrival time:')).toBeInTheDocument();
+    expect(screen.queryByText(/Arrival time::/)).not.toBeInTheDocument();
+  });
+
   it('renders question → answer pairs verbatim', () => {
     const payload: PublicFormResponsesDto = {
       formId: 'form-1',

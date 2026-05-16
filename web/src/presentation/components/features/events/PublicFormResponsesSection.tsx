@@ -49,6 +49,18 @@ function isStatusEligible(status: EventFormDto['status']): boolean {
   );
 }
 
+function formatQuestionLabel(question: string): string {
+  // 2026-05-15 UAT correction: organizers don't always end questions with
+  // a punctuation mark. Append a colon so the question/answer separator is
+  // visible ("Number of Attendee: 5"), but skip it when the question already
+  // ends with sentence-terminating punctuation so we don't get "your name?:".
+  const trimmed = (question ?? '').trim();
+  if (!trimmed) return '';
+  const last = trimmed[trimmed.length - 1];
+  if (last === '?' || last === ':' || last === '.' || last === '!') return trimmed;
+  return `${trimmed}:`;
+}
+
 function formatSubmittedOn(submittedOn: string): string {
   // Backend sends DateOnly as "YYYY-MM-DD" (architect-locked decision to drop
   // time-of-day for timing-correlation mitigation). Render in the user's
@@ -151,7 +163,7 @@ export function PublicFormResponsesSection({ eventId, form, embedded = false }: 
                   return (
                     <div key={a.questionId} className="flex flex-col sm:flex-row sm:gap-2">
                       <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                        {a.questionTextSnapshot}
+                        {formatQuestionLabel(a.questionTextSnapshot)}
                       </dt>
                       <dd className="text-neutral-600 dark:text-neutral-400">{display}</dd>
                     </div>

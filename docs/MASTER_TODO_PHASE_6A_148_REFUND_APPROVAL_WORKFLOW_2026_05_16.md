@@ -621,8 +621,52 @@ Stop refunds from happening on their own when an attendee clicks "Cancel & Refun
 
 ---
 
-## Status
+## Status (live — updated 2026-05-17)
 
-📋 **Master TODO READY** — awaiting user approval before code changes begin.
+**Branch**: `feat/phase-6a-148-refund-approval-workflow` (off `main`)
+**5 commits**: `e5b0a566` → `1c9f7da8` → `0427bd0e` → `ac16b3eb` → `569e1e12`
+**Staging deploy**: ✅ run `25981719368` succeeded
+**Backend smoke**: ✅ verified — feature flag ON, migration applied, endpoints respond cleanly
 
-Next action when approved: start Phase 1.A (TDD for new enums).
+### Phase progress
+
+| Phase | Status | Detail |
+|---|---|---|
+| Pre-flight | ✅ | 6A.148 reserved in PHASE_6A_MASTER_INDEX.md; branch off main |
+| 1. Domain | ✅ `e5b0a566` | 74 tests GREEN — RefundRequest, RefundRequestLineItem, Registration.CreateRefundRequest, all 12 architect must-fix items folded in |
+| 2. Infrastructure | ✅ `1c9f7da8` | EF configs + IRefundRequestRepository + EF migration (xmin token, events schema, FK RESTRICT). Trap caught: `IgnoreUnconfiguredEntities` allowlist had to be extended |
+| 3. Application | ✅ `0427bd0e` | 5 command handlers + 2 query handlers + RefundExecutionService + RefundReconciliationService extension. Feature flag config in appsettings |
+| 4. API | ✅ `ac16b3eb` | 7 new endpoints on EventsController, all gated by feature flag |
+| 5. Backend deploy + smoke | ✅ | Token via password `1qaz!QAZ` (NOT `12!@qwASzx` — plan-file discrepancy noted). T-A/T-B/T-C below pass. |
+| 6. Frontend | 🔧 PARTIAL `569e1e12` | DONE: TypeScript types + 7 repository methods (typecheck clean). REMAINING: 6 React components + page rewrites |
+| 7. Frontend deploy + UAT | ⏳ | Blocked on Phase 6 UI completion |
+| 8. Docs + PR | ⏳ | Blocked on completion |
+
+### Smoke test evidence (Phase 5 captured)
+
+```
+T-A GET /api/events/{guid.empty}/refund-requests/me  → HTTP 204 (null result, endpoint hit)
+T-B GET /api/events/{guid.empty}/refund-requests     → HTTP 404 "Event not found"
+T-C POST /api/events/{guid.empty}/refund-requests    → HTTP 404 "Registration not found for this event"
+```
+
+Proves: (a) feature flag is ON in staging, (b) new tables exist (no EF "table doesn't exist" exception), (c) handlers reach the validation cascade and return clean Problem Details. Container logs show `xmin` column being SELECTed against `registrations` (confirms `UseXminAsConcurrencyToken` is active).
+
+Full E2E tests (T1, T7-T20 from plan §11.4) require a confirmed paid registration in staging with add-on/collection/sponsor purchases — operator setup, not blocked on code.
+
+### Architect items deferred to follow-ups (non-blocking for current deploy)
+
+| Item | Why deferred | Recovery path |
+|---|---|---|
+| **F4 — Webhook idempotency for line items** | Existing 4 webhook handlers don't know about `RefundRequestLineItem`. For now, the inline "succeeded" Stripe-status response path in `RefundExecutionService` immediately marks line items Refunded, so test-mode smoke passes without webhook changes. | Update IRegistrationWebhookHandler + 3 sibling handlers to find line items by StripeRefundId and call `MarkRefunded`. Idempotency guard already enforced inside the domain entity. |
+| **F5 — Legacy CancelRsvp paid-refund branch gating** | Requires careful surgery on a large handler with many entangled paths. New flow is additive — users on the new "Request Refund" UI go to the new endpoint. Legacy callers (none today since frontend hasn't been updated) still work. | Add flag check at the paid-refund branch in `CancelRsvpCommandHandler.cs`; return 410 Gone pointing to new endpoint. |
+
+### Next-session resumption checklist
+
+1. Create the 6 React components per §7.3 of the plan
+2. Update [page.tsx](web/src/app/events/[id]/page.tsx) lines 1339–1476 area to use the new flow
+3. Add Refund Requests sub-tab + Initiate-Refund action to [AttendeeManagementTab.tsx](web/src/presentation/components/features/events/AttendeeManagementTab.tsx)
+4. Deploy frontend via `deploy-ui-staging.yml`
+5. Browser UAT for the golden paths (T1, T7-T9, T11 from plan §11.4)
+6. Open PR with smoke evidence + screenshots in body
+7. Address F4 + F5 follow-ups in a separate PR after the main flow has shipped

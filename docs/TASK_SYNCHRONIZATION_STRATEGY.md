@@ -1,9 +1,24 @@
 # Task Synchronization Strategy
 *Single source of truth for phase numbers, documentation, and synchronization protocol*
 
-**⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
+**⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules. **Phase-number availability requires a FOUR-source check**: master index + git log --grep + branch names + `find docs -name "MASTER_TODO_PHASE_*"`. Memory `feedback_phase_number_check.md` enforces this after a 2026-05-16 incident where I declared 6A.148 "free" without the fourth check, missed the sibling agent's `MASTER_TODO_PHASE_6A_148_REFUND_APPROVAL_WORKFLOW_2026_05_16.md` reservation doc, and had to back out and renumber to 6A.149.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.146 Public Form Responses with PII Redaction
+## 🚀 CURRENT SESSION STATUS — Phase 6A.149 `/events` Discover Page UI Refactor
+**Date**: 2026-05-16
+**Session**: UI-only refactor of the public `/events` page. No backend / DB / API changes. RCA framing: v1 treated `/events` as a forward-looking registration funnel — completed events lived as organizer-side history with no community-memory layer; the gradient "Discover Events" banner was pure decorative chrome with zero functional payload.
+**Progress**: ✅ **STAGING-DEPLOY-DISPATCHED, awaiting operator UAT (7 cells)**.
+- Shared branch with sibling agent's 6A.148: `feat/phase-6a-148-refund-approval-workflow` (per user direction — both phases bundle into one PR; staging surgical by path)
+- UI deploy: `deploy-ui-staging.yml` run `25978356053` on SHA `9af5e39d`
+- Files: `web/src/app/events/page.tsx` (refactored) + `web/src/app/events/__tests__/events-page-6a-149.test.tsx` (new, 13 tests) + `docs/PHASE_6A_MASTER_INDEX.md` (row added)
+- Type-check: `tsc --noEmit` clean (one pre-existing EventEditForm error from 6A.143 work, unrelated)
+**Changes**: (a) gradient banner removed (~12rem reclaimed); (b) `<h2>Upcoming Events</h2>` + `<h2>Completed Events</h2>` in brand burgundy; (c) `max-h-[1500px] overflow-y-auto` scroll containers with bottom fade-mask; (d) per-section Filters via `CollapsibleSection` with `defaultOpen={false}`; (e) each section has its own state for search/category/location, date applies to Upcoming only; (f) second `useEvents({ statusFilter: Inactive })` call + client-side filter to Completed; (g) Completed section hides entirely when 0 results; (h) Event Status dropdown removed.
+**Tests**: 13/13 GREEN. Test infra: page mounts `LankaEventsHeader` which calls `useQueryClient` — tests use `renderWithClient(ui)` helper wrapping in `QueryClientProvider` with `retry:false, gcTime:0`.
+**Phase numbering**: Initially claimed 6A.148, renumbered to 6A.149 after discovering sibling agent's reservation. Feedback memory saved for future four-source phase-availability check.
+**Operator UAT pending — 7 cells**: (1) banner gone; (2) Upcoming `<h2>` visible; (3) Filters collapsed by default; (4) scroll inside grid after 3 rows with fade-mask; (5) Completed section appears when ≥1 completed event; (6) Completed has its OWN collapsed Filters; (7) no Event Status dropdown.
+
+---
+
+## Earlier Session — Phase 6A.146 Public Form Responses with PII Redaction
 **Date**: 2026-05-15
 **Session**: Closes the "only organizers can see form responses" gap with an opt-in toggle. Architect-class RCA classified this as **feature-missing** spanning Domain + Infrastructure + Application + API + UI — Custom Forms were originally modeled as one-way data collection so the platform had no vocabulary for "show this, hide that" until now. Architect rejected the first draft with 6 corrections, all folded in before code touched the tree (C1 extend UpdateDetails not separate method; C2 no status guard on toggle; C3 reuse existing repos; C4 lowercase `event_forms` table name; C5 validators unchanged; C6 pre-flight grep for live mount file).
 **Progress**: ✅ **BACKEND + UI STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.

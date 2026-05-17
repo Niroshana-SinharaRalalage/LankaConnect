@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import React, { use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign, Clock, AlertCircle, List, ClipboardList, CheckCircle, Trash2, Heart, Camera, Download, Loader2, Wallet, Award, ShoppingBag, HandHeart, ChevronDown, ChevronUp } from 'lucide-react';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
@@ -16,6 +16,8 @@ import { PublicFormResponsesSection } from '@/presentation/components/features/e
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
+import { RefundRequestStatusBanner } from '@/presentation/components/features/events/RefundRequestStatusBanner';
+import { RequestRefundDialog } from '@/presentation/components/features/events/RequestRefundDialog';
 // Phase 6A.145 Commit 5 — top-of-page preview strips for add-ons + sponsors.
 import { AddOnsPreviewStrip } from '@/presentation/components/features/events/AddOnsPreviewStrip';
 import { SponsorsPreviewStrip } from '@/presentation/components/features/events/SponsorsPreviewStrip';
@@ -194,6 +196,12 @@ export function EventDetailPageInternal({
   const [deletingFormId, setDeletingFormId] = useState<string | null>(null);
   const [showFormDeleteConfirm, setShowFormDeleteConfirm] = useState(false);
 
+  // Phase 6A.148 — Refund approval workflow state
+  const [myRefundRequest, setMyRefundRequest] =
+    useState<import('@/infrastructure/api/types/refund-request.types').AttendeeRefundRequestDto | null>(null);
+  const [showRequestRefundDialog, setShowRequestRefundDialog] = useState(false);
+  const [isWithdrawingV2, setIsWithdrawingV2] = useState(false);
+
   // Phase 6A.113: Tab navigation removed — signup lists and forms are now separate
   // CollapsibleSections with id anchors. Hash-based scrolling handled by the
   // existing useEffect at line ~318 (scrolls to any element by id from URL hash).
@@ -307,6 +315,41 @@ export function EventDetailPageInternal({
 
   // Phase 6A.91: Check if this was a paid registration (for button text)
   const isPaidRegistration = registrationDetails?.paymentStatus === 'Completed';
+
+  // Phase 6A.148: Load this user's most recent refund request for the event. The
+  // backend endpoint is feature-flag-gated and returns null when the flag is OFF,
+  // so this is safe to call always — no behavior change when flag is OFF.
+  React.useEffect(() => {
+    if (!isPaidRegistration || !id) {
+      setMyRefundRequest(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await eventsRepository.getMyRefundRequest(id);
+        if (!cancelled) setMyRefundRequest(data);
+      } catch (err) {
+        // 404 means flag is off — silently ignore. Other errors logged.
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!/not found|404/i.test(msg)) {
+            console.warn('[6A.148] getMyRefundRequest failed:', err);
+          }
+          setMyRefundRequest(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isPaidRegistration, registrationDetails?.status]);
+
+  const hasActiveRefundRequest =
+    myRefundRequest !== null &&
+    (myRefundRequest.status === 'Pending' ||
+      myRefundRequest.status === 'Approved' ||
+      myRefundRequest.status === 'Processing');
 
   // Phase 6A.79 Part 3: Enhanced logging to debug registration status display
   console.log('[EventDetail] 🔍 Registration state debug:', {
@@ -1392,6 +1435,49 @@ export function EventDetailPageInternal({
                             </p>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Phase 6A.148 — Refund approval workflow integration.
+                        Banner shown when a refund request exists (active or terminal).
+                        Withdrawn requests render nothing (component returns null). */}
+                    {myRefundRequest && (
+                      <RefundRequestStatusBanner
+                        refundRequest={myRefundRequest}
+                        isWithdrawing={isWithdrawingV2}
+                        onWithdraw={async () => {
+                          if (!id) return;
+                          setIsWithdrawingV2(true);
+                          try {
+                            await eventsRepository.withdrawMyRefundRequest(id);
+                            const refreshed = await eventsRepository.getMyRefundRequest(id);
+                            setMyRefundRequest(refreshed);
+                            // Registration query will refresh on next refetch tick; the
+                            // local banner state already reflects the change.
+                          } catch (err) {
+                            console.error('[6A.148] withdraw failed:', err);
+                          } finally {
+                            setIsWithdrawingV2(false);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* Phase 6A.148 — "Request Refund" button alongside legacy Cancel.
+                        Only shown when: paid registration, no active refund request,
+                        backend feature flag enabled (myRefundRequest can still be null
+                        with flag on if no request exists; the click handler will surface
+                        backend 404 if the flag is off). */}
+                    {isPaidRegistration && !hasActiveRefundRequest && !hasStarted && (
+                      <div className="mb-3">
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          style={{ borderColor: '#2563EB', color: '#2563EB' }}
+                          onClick={() => setShowRequestRefundDialog(true)}
+                        >
+                          Request Refund
+                        </Button>
                       </div>
                     )}
 
@@ -2591,6 +2677,43 @@ export function EventDetailPageInternal({
       </div>
 
       <Footer />
+
+      {/* Phase 6A.148 — Request Refund dialog (attendee path).
+          For MVP, the only refundable line offered is the ticket payment itself —
+          the attendee's add-ons / collections / sponsorships are visible in the
+          attendee dashboard but are out of scope for this dialog. The organizer
+          can still approve a partial amount in their approval dialog. */}
+      {id && isPaidRegistration && registrationDetails && (
+        <RequestRefundDialog
+          open={showRequestRefundDialog}
+          eventId={id}
+          availableLines={(() => {
+            // MVP: a single Ticket line valued at the registration's total. The
+            // backend RegistrationPayment.Id is the ReferenceId, but the FE doesn't
+            // currently surface it. We pass the registration ID as a stand-in; the
+            // backend validates the actual payment lookup at request-creation time.
+            // (Per-line add-on/collection/sponsor selection is a Phase B enhancement.)
+            const total = registrationDetails.totalPriceAmount;
+            const currency = (registrationDetails.totalPriceCurrency ?? 'USD') as
+              import('@/infrastructure/api/types/refund-request.types').RefundCurrency;
+            if (!total || total <= 0) return [];
+            return [
+              {
+                type: 'Ticket' as const,
+                referenceId: registrationDetails.id ?? id,
+                requestedAmount: total,
+                currency,
+              },
+            ];
+          })()}
+          onClose={() => setShowRequestRefundDialog(false)}
+          onSubmitted={async () => {
+            if (!id) return;
+            const refreshed = await eventsRepository.getMyRefundRequest(id);
+            setMyRefundRequest(refreshed);
+          }}
+        />
+      )}
 
       {/* Phase 6A.144: Auth Encouragement Modal — fires only for anonymous
           users on PAID events (gated by shouldShowAuthNudge in the render

@@ -502,6 +502,96 @@ export class EventsRepository {
     );
   }
 
+  // ============================================================================
+  // Phase 6A.148: Refund approval workflow
+  // ============================================================================
+
+  /**
+   * Attendee creates a Pending refund request. Goes to organizer review queue —
+   * no Stripe call happens until the organizer approves.
+   */
+  async createRefundRequest(
+    eventId: string,
+    payload: import('../types/refund-request.types').CreateRefundRequestPayload,
+  ): Promise<import('../types/refund-request.types').CreateRefundRequestResult> {
+    return apiClient.post(`${this.basePath}/${eventId}/refund-requests`, payload);
+  }
+
+  /**
+   * Attendee fetches their own current/most-recent refund request for this event,
+   * or null. Backend excludes `organizerNotes` from this projection (privacy).
+   */
+  async getMyRefundRequest(
+    eventId: string,
+  ): Promise<import('../types/refund-request.types').AttendeeRefundRequestDto | null> {
+    return apiClient.get(`${this.basePath}/${eventId}/refund-requests/me`);
+  }
+
+  /**
+   * Attendee withdraws their own Pending refund request. Returns the registration
+   * to Confirmed.
+   */
+  async withdrawMyRefundRequest(eventId: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/refund-requests/me/withdraw`);
+  }
+
+  /**
+   * Organizer queue listing. `status` filter is optional.
+   */
+  async listEventRefundRequests(
+    eventId: string,
+    status?: import('../types/refund-request.types').RefundRequestStatus,
+  ): Promise<import('../types/refund-request.types').OrganizerRefundRequestDto[]> {
+    const url = status
+      ? `${this.basePath}/${eventId}/refund-requests?status=${encodeURIComponent(status)}`
+      : `${this.basePath}/${eventId}/refund-requests`;
+    return apiClient.get(url);
+  }
+
+  /**
+   * Organizer initiates a refund on behalf of an attendee. Skips Pending — request
+   * is created in Approved and Stripe dispatch happens immediately.
+   */
+  async createOrganizerInitiatedRefund(
+    eventId: string,
+    payload: import('../types/refund-request.types').CreateOrganizerInitiatedRefundPayload,
+  ): Promise<import('../types/refund-request.types').CreateRefundRequestResult> {
+    return apiClient.post(
+      `${this.basePath}/${eventId}/refund-requests/organizer-initiated`,
+      payload,
+    );
+  }
+
+  /**
+   * Organizer approves a pending refund request with per-line amounts. 409 Conflict
+   * indicates another organizer approved first — refresh and retry.
+   */
+  async approveRefundRequest(
+    eventId: string,
+    refundRequestId: string,
+    payload: import('../types/refund-request.types').ApproveRefundRequestPayload,
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/refund-requests/${refundRequestId}/approve`,
+      payload,
+    );
+  }
+
+  /**
+   * Organizer declines a pending refund request. Reason is mandatory and is sent
+   * to the attendee in the rejection email.
+   */
+  async rejectRefundRequest(
+    eventId: string,
+    refundRequestId: string,
+    payload: import('../types/refund-request.types').RejectRefundRequestPayload,
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/refund-requests/${refundRequestId}/reject`,
+      payload,
+    );
+  }
+
   /**
    * Update RSVP quantity
    * Changes number of attendees for registration

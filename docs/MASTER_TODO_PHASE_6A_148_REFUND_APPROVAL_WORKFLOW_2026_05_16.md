@@ -638,9 +638,9 @@ Stop refunds from happening on their own when an attendee clicks "Cancel & Refun
 | 3. Application | ✅ `0427bd0e` | 5 command handlers + 2 query handlers + RefundExecutionService + RefundReconciliationService extension. Feature flag config in appsettings |
 | 4. API | ✅ `ac16b3eb` | 7 new endpoints on EventsController, all gated by feature flag |
 | 5. Backend deploy + smoke | ✅ | Token via password `1qaz!QAZ` (NOT `12!@qwASzx` — plan-file discrepancy noted). T-A/T-B/T-C below pass. |
-| 6. Frontend | 🔧 PARTIAL `569e1e12` | DONE: TypeScript types + 7 repository methods (typecheck clean). REMAINING: 6 React components + page rewrites |
-| 7. Frontend deploy + UAT | ⏳ | Blocked on Phase 6 UI completion |
-| 8. Docs + PR | ⏳ | Blocked on completion |
+| 6. Frontend | ✅ `569e1e12`, `1709b2b1` | Types + 7 repository methods + 5 UI components (RefundRequestStatusBanner, RequestRefundDialog, RefundRejectDialog, RefundApprovalDialog, RefundRequestsTab) + page integrations (event detail page + AttendeeManagementTab). OrganizerInitiatedRefundDialog deferred to follow-up. Typecheck + production build clean. |
+| 7. Frontend deploy | ✅ run `25992724203` succeeded on SHA `1709b2b1`; staging UI returns HTTP 200 | Operator UAT pending — requires a confirmed paid registration in staging |
+| 8. Docs + PR | 🔧 in progress | PROGRESS_TRACKER + master index updated; PR open pending |
 
 ### Smoke test evidence (Phase 5 captured)
 

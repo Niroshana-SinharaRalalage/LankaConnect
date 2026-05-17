@@ -69,20 +69,23 @@ public class RefundRequestRepository : IRefundRequestRepository
     {
         try
         {
-            // Find the registration for this attendee on this event, then load their
-            // most-recent refund request. Untracked — caller is rendering for /me.
-            var registrationId = await _context.Registrations
+            // Find ALL registration IDs for this attendee on this event. A user can
+            // have multiple historical registrations (cancelled + re-registered, etc.),
+            // so we don't pick "the" registration here — we go straight to the refund
+            // requests across any of them and return the most recent by RequestedAt.
+            // Untracked — caller is rendering for /me.
+            var registrationIds = await _context.Registrations
                 .AsNoTracking()
                 .Where(r => r.EventId == eventId && r.UserId == userId)
                 .Select(r => r.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+                .ToListAsync(cancellationToken);
 
-            if (registrationId == Guid.Empty) return null;
+            if (registrationIds.Count == 0) return null;
 
             return await _context.RefundRequests
                 .AsNoTracking()
                 .Include(r => r.LineItems)
-                .Where(r => r.RegistrationId == registrationId)
+                .Where(r => registrationIds.Contains(r.RegistrationId))
                 .OrderByDescending(r => r.RequestedAt)
                 .FirstOrDefaultAsync(cancellationToken);
         }

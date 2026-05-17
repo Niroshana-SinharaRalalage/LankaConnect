@@ -43,6 +43,11 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
                 var result = await _dbSet
                     .Include(r => r.Attendees)
                     .Include(r => r.Contact)
+                    // Phase 6A.148: include refund requests + their line items so the approval-
+                    // workflow handlers can mutate them in the same tracked load without a
+                    // second round-trip. Typical refund_requests per registration: 0-1.
+                    .Include(r => r.RefundRequests)
+                        .ThenInclude(rr => rr.LineItems)
                     .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
                 stopwatch.Stop();

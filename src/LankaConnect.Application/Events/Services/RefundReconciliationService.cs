@@ -30,17 +30,89 @@ public class RefundReconciliationService : IRefundReconciliationService
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RefundReconciliationService> _logger;
+    // Phase 6A.148 (architect F11): for stuck-Approved reconciliation.
+    private readonly LankaConnect.Domain.Events.Repositories.IRefundRequestRepository? _refundRequestRepository;
+    private readonly IRefundExecutionService? _refundExecutionService;
 
     public RefundReconciliationService(
         IRegistrationRepository registrationRepository,
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
-        ILogger<RefundReconciliationService> logger)
+        ILogger<RefundReconciliationService> logger,
+        LankaConnect.Domain.Events.Repositories.IRefundRequestRepository? refundRequestRepository = null,
+        IRefundExecutionService? refundExecutionService = null)
     {
         _registrationRepository = registrationRepository;
         _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _refundRequestRepository = refundRequestRepository;
+        _refundExecutionService = refundExecutionService;
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<int>> ReconcileStuckApprovedRefundRequestsAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_refundRequestRepository is null || _refundExecutionService is null)
+        {
+            _logger.LogWarning(
+                "[6A.148 RECON] Stuck-Approved reconciliation skipped: refund request repository / execution service not registered");
+            return Result<int>.Success(0);
+        }
+
+        var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
+        var olderThanUtc = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
+
+        try
+        {
+            var stuck = await _refundRequestRepository.ListStuckApprovedAsync(
+                olderThanUtc, cancellationToken);
+
+            if (stuck.Count == 0)
+            {
+                _logger.LogDebug(
+                    "[6A.148 RECON] No stuck Approved refund requests older than {Threshold:o}", olderThanUtc);
+                return Result<int>.Success(0);
+            }
+
+            _logger.LogInformation(
+                "[6A.148 RECON] Found {Count} stuck Approved refund requests; re-dispatching",
+                stuck.Count);
+
+            var redispatched = 0;
+            foreach (var req in stuck)
+            {
+                try
+                {
+                    var dispatchResult = await _refundExecutionService.DispatchAsync(
+                        req.Id, cancellationToken);
+                    if (dispatchResult.IsSuccess)
+                        redispatched++;
+                    else
+                        _logger.LogWarning(
+                            "[6A.148 RECON] Re-dispatch failed for RrId={RrId} Error={Error}",
+                            req.Id, dispatchResult.Error);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "[6A.148 RECON] Re-dispatch EXCEPTION for RrId={RrId}", req.Id);
+                }
+            }
+
+            _logger.LogInformation(
+                "[6A.148 RECON] Stuck-Approved pass COMPLETE: re-dispatched {Count} of {Total}",
+                redispatched, stuck.Count);
+            return Result<int>.Success(redispatched);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148 RECON] ReconcileStuckApprovedRefundRequestsAsync EXCEPTION");
+            throw;
+        }
     }
 
     public async Task<Result<RefundReconciliationResult>> ReconcileStuckRefundsAsync(

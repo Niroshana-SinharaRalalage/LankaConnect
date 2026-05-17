@@ -55,6 +55,24 @@ public interface IRefundReconciliationService
         int? batchSize = null,
         int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148 (architect F11): re-dispatches refund requests that are stuck in
+    /// <see cref="LankaConnect.Domain.Events.Enums.RefundRequestStatus.Approved"/>.
+    /// This state happens when the approve transaction commits but the post-commit
+    /// <c>RefundExecutionService.DispatchAsync</c> call crashed before any line item
+    /// reached Stripe (process restart, container OOM, etc.).
+    ///
+    /// Idempotent — dispatch skips line items not in Approved. Safe to call repeatedly
+    /// from the same background tick.
+    /// </summary>
+    /// <param name="ageThresholdMinutes">
+    /// Grace period before a row is considered stuck. Default 10 minutes to give the
+    /// inline dispatch a fair chance to complete.
+    /// </param>
+    Task<Result<int>> ReconcileStuckApprovedRefundRequestsAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

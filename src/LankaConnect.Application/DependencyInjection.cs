@@ -64,6 +64,10 @@ public static class DependencyInjection
         // Cancellation enhancement: Register add-on refund service
         services.AddScoped<IAddOnRefundService, AddOnRefundService>();
 
+        // Phase 6A.148: Refund approval workflow — execution service dispatches Stripe
+        // AFTER the approve transaction commits (architect F10).
+        services.AddScoped<IRefundExecutionService, RefundExecutionService>();
+
         // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
         services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
 

@@ -34,6 +34,15 @@ public interface ITicketRepository : IRepository<Ticket>
     Task<bool> TicketCodeExistsAsync(string ticketCode, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Phase 6A.148 — fast scan-guard check for the refund approval workflow.
+    /// Returns true if any ticket on this registration has been scanned
+    /// (<c>ValidatedAt != null</c>). Used by <c>CreateRefundRequestCommandHandler</c>
+    /// to compute the boolean passed to <c>Registration.CreateRefundRequest</c>.
+    /// </summary>
+    Task<bool> AnyValidatedTicketForRegistrationAsync(
+        Guid registrationId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Phase 6A.141 F1 — race-safe atomic mark-as-scanned.
     ///
     /// Executes a single UPDATE statement of the form:

@@ -3,7 +3,24 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules. **Phase-number availability requires a FOUR-source check**: master index + git log --grep + branch names + `find docs -name "MASTER_TODO_PHASE_*"`. Memory `feedback_phase_number_check.md` enforces this after a 2026-05-16 incident where I declared 6A.148 "free" without the fourth check, missed the sibling agent's `MASTER_TODO_PHASE_6A_148_REFUND_APPROVAL_WORKFLOW_2026_05_16.md` reservation doc, and had to back out and renumber to 6A.149.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.149 `/events` Discover Page UI Refactor
+## 🚀 CURRENT SESSION STATUS — Phase 6A.150 Hotfix: paid-event detail redirects anonymous users to /login
+**Date**: 2026-05-17
+**Session**: Production hotfix triggered by user-reported bug on `https://lankaconnect.app/events/7dd899c9-…`. Empirical RCA via user-supplied DevTools console logs traced the exact failure chain: `useEventSponsors` (no isAuth gate) → `GET /sponsors` 401 → `POST /Auth/refresh` (hasRefreshToken:false) → 400 → `AuthProvider.onUnauthorized` → `router.push('/login')`. Two near-misses in the RCA process: (1) my first proposal would have leaked sponsor PII by flipping `[Authorize]` to `[AllowAnonymous]` on the existing endpoint — caught by re-reading Phase 6A.145's own architect note that anticipated this exact bug; (2) my initial framing was "production-only env-var difference" — wrong, the bug is event-data-specific (any event with `sponsorConfig.isEnabled=true` reproduces in any env).
+**Progress**: ✅ **BACKEND STAGING-DEPLOYED + API SMOKE 3/3 GREEN; UI STAGING-DEPLOY DISPATCHED, awaiting browser smoke**.
+- Shared branch: `feat/phase-6a-148-refund-approval-workflow` (per user direction — surgical staging by path, sibling agent's refund work untouched)
+- Backend deploy: run `25999781764` SUCCESS on SHA `60fa61c9`
+- UI deploy: run `26000440450` dispatched on SHA `5d66328d`
+- Three-layer fix (Path B, architect-approved):
+  - **Layer 1** — NEW `[AllowAnonymous] GET /api/events/{eventId}/sponsors/public` returning `PublicSponsorDto` with 16 PII/financial/internal fields PHYSICALLY ABSENT (per-field reflection-asserted). Original organizer endpoint stays `[Authorize]`. Both `SponsorsPreviewStrip` and `SponsorSection` switched to `usePublicEventSponsors`.
+  - **Layer 2** — api-client records `_hadAuthAtRequestTime` on the request config; 401 response handler short-circuits when false (no `POST /Auth/refresh`, no `onUnauthorized`).
+  - **Layer 3** — AuthProvider replaces forced `router.push('/login')` with `clearAuth()` + react-hot-toast (stable id `'session-expired'`). Governs authenticated-user session-expiry path only.
+- Tests: 22 backend RED→GREEN in `SponsorsControllerPublicEndpointTests`; frontend `tsc --noEmit` clean.
+- API smoke: anon `/sponsors/public` → 200; anon `/sponsors` → 401; non-organizer authed `/sponsors` → 403.
+**Browser UAT pending**: incognito on staging-ui → sponsor-enabled event → no /login redirect; DevTools shows `/sponsors/public` 200 + NO `/Auth/refresh` POST; sponsor logos visible.
+
+---
+
+## Earlier Session — Phase 6A.149 `/events` Discover Page UI Refactor
 **Date**: 2026-05-16
 **Session**: UI-only refactor of the public `/events` page. No backend / DB / API changes. RCA framing: v1 treated `/events` as a forward-looking registration funnel — completed events lived as organizer-side history with no community-memory layer; the gradient "Discover Events" banner was pure decorative chrome with zero functional payload.
 **Progress**: ✅ **STAGING-DEPLOY-DISPATCHED, awaiting operator UAT (7 cells)**.

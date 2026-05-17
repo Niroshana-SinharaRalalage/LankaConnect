@@ -89,6 +89,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     // Ticket Entity Sets
     public DbSet<Ticket> Tickets => Set<Ticket>(); // Phase 6A.24: Event tickets with QR codes
+
+    // Phase 6A.148: refund approval workflow tables. RefundRequest is aggregate-internal
+    // but exposed as a DbSet so the organizer queue repository can use AsNoTracking
+    // projections without round-tripping through Registration.
+    public DbSet<RefundRequest> RefundRequests => Set<RefundRequest>();
+    public DbSet<RefundRequestLineItem> RefundRequestLineItems => Set<RefundRequestLineItem>();
     public DbSet<TicketTier> TicketTiers => Set<TicketTier>(); // Multi-tier ticketing
     public DbSet<TicketScanLog> TicketScanLogs => Set<TicketScanLog>(); // Phase 6A.141: paid-event check-in audit log
     public DbSet<TierAssignment> TierAssignments => Set<TierAssignment>(); // Slice 4 Release N: polymorphic tier→zone/table mapping
@@ -171,6 +177,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EventConfiguration());
         modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
+
+        // Phase 6A.148: Refund approval workflow — MUST apply BEFORE RegistrationConfiguration
+        // (which calls HasMany(r => r.RefundRequests)). If RegistrationConfiguration runs first,
+        // EF auto-derives RefundRequest as a dependent entity and then ignores the explicit
+        // configuration when it's applied later ("first mapped explicitly and then ignored").
+        modelBuilder.ApplyConfiguration(new RefundRequestConfiguration());
+        modelBuilder.ApplyConfiguration(new RefundRequestLineItemConfiguration());
+
         modelBuilder.ApplyConfiguration(new RegistrationConfiguration());
         // Phase 7F-B: registration-mode conversion audit (architect-approved 2026-04-30)
         modelBuilder.ApplyConfiguration(new RegistrationModeConversionConfiguration());
@@ -211,6 +225,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         // Phase 6A.141: Ticket scan audit log
         modelBuilder.ApplyConfiguration(new TicketScanLogConfiguration());
+
+        // Phase 6A.148 refund configurations are applied earlier (before RegistrationConfiguration)
+        // to avoid the "first mapped explicitly and then ignored" trap.
 
         // Venue Seating entity configurations (Phase 2: Seat Booking + Slice 2+3A expansion)
         modelBuilder.ApplyConfiguration(new VenueLayoutConfiguration());
@@ -343,6 +360,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tickets schema (Phase 6A.24)
         modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
 
+        // Phase 6A.148: refund approval workflow tables — events schema (matches Registration)
+        modelBuilder.Entity<RefundRequest>().ToTable("refund_requests", "events");
+        modelBuilder.Entity<RefundRequestLineItem>().ToTable("refund_request_line_items", "events");
+
         // Venue Seating tables (Phase 2: Seat Booking + Slice 2+3A)
         modelBuilder.Entity<VenueLayout>().ToTable("venue_layouts", "events");
         modelBuilder.Entity<VenueZone>().ToTable("venue_zones", "events");
@@ -448,7 +469,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(SeatReservation), // Phase 2: Seat Booking
             typeof(TierAssignment), // Slice 4 Release N: polymorphic tier→zone/table mapping
             typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion), // Phase 7F-B: mode-conversion audit
-            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow) // Phase 7F-B: per-row audit detail
+            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow), // Phase 7F-B: per-row audit detail
+            typeof(RefundRequest), // Phase 6A.148: refund approval workflow aggregate-internal entity
+            typeof(RefundRequestLineItem) // Phase 6A.148: per-bucket refund line item
         };
 
         // Get all types from Domain assembly that aren't in our configured list

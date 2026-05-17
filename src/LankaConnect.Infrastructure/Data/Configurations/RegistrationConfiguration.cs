@@ -327,6 +327,19 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         builder.UseXminAsConcurrencyToken();
 #pragma warning restore CS0618
 
+        // Phase 6A.148: refund_requests navigation. Private backing field on the aggregate;
+        // FK ON DELETE RESTRICT so a registration with any refund request (even rejected/
+        // withdrawn — kept for audit) cannot be hard-deleted. RefundRequestConfiguration
+        // sets the FK column + concurrency token.
+        builder.HasMany(r => r.RefundRequests)
+            .WithOne()
+            .HasForeignKey("RegistrationId")
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Navigation(r => r.RefundRequests)
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasField("_refundRequests");
+
         // Configure indexes
         builder.HasIndex(r => r.EventId)
             .HasDatabaseName("ix_registrations_event_id");

@@ -509,6 +509,10 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Domain.Events.Repositories.ITicketScanLogRepository,
             LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
 
+        // Phase 6A.148: Refund approval workflow repository.
+        services.AddScoped<LankaConnect.Domain.Events.Repositories.IRefundRequestRepository,
+            LankaConnect.Infrastructure.Data.Repositories.RefundRequestRepository>();
+
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();
         services.AddScoped<ICsvExportService, LankaConnect.Infrastructure.Services.Export.CsvExportService>();

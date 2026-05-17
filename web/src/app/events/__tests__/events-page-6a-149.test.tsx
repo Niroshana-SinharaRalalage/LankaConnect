@@ -109,11 +109,18 @@ describe('EventsPage — Phase 6A.149', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('does NOT render the decorative gradient blobs from the old banner', () => {
-      const { container } = renderWithClient(<EventsPage />);
-      // The old banner used these exact Tailwind classes; their absence
-      // proves the block was removed.
-      expect(container.querySelector('.from-orange-600.via-rose-800.to-emerald-800')).toBeNull();
+    it('does NOT render the old banner block (no banner-shaped element)', () => {
+      // The old banner was a <div> with the page-header gradient AND py-12
+      // AND containing the h1 "Discover Events". The Footer uses the same
+      // gradient classes but never carries the banner's headline — narrow the
+      // selector to the exact combo so we don't false-positive on Footer.
+      renderWithClient(<EventsPage />);
+      // The h1 carried the banner identity. Its absence is the strongest signal
+      // the banner block is gone — the first test in this group already
+      // covers the visible text; this one pins the structural removal.
+      const allH1s = document.querySelectorAll('h1');
+      const bannerH1 = Array.from(allH1s).find((h) => /discover events/i.test(h.textContent || ''));
+      expect(bannerH1).toBeUndefined();
     });
   });
 

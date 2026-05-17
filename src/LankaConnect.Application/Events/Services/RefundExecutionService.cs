@@ -268,9 +268,23 @@ public class RefundExecutionService : IRefundExecutionService
         {
             case RefundLineItemType.Ticket:
             {
+                // Look up by the line's ReferenceId first (preferred — caller passed the
+                // exact RegistrationPayment.Id). If that misses, fall back to the parent
+                // registration's INITIAL RegistrationPayment, treating ReferenceId as the
+                // RegistrationId. This is the MVP path the frontend takes today — the FE
+                // surfaces RegistrationId rather than the (currently unexposed)
+                // RegistrationPayment.Id.
                 var payment = await _paymentRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                if (payment is null || string.IsNullOrWhiteSpace(payment.StripePaymentIntentId))
-                    return Result<string>.Failure("RegistrationPayment or its PaymentIntentId not found");
+                if (payment is null)
+                {
+                    var initial = await _paymentRepo.GetInitialPaymentAsync(line.ReferenceId, cancellationToken);
+                    if (initial is null || string.IsNullOrWhiteSpace(initial.StripePaymentIntentId))
+                        return Result<string>.Failure(
+                            "RegistrationPayment not found by ReferenceId nor as initial-payment-of-registration");
+                    return Result<string>.Success(initial.StripePaymentIntentId);
+                }
+                if (string.IsNullOrWhiteSpace(payment.StripePaymentIntentId))
+                    return Result<string>.Failure("RegistrationPayment has no StripePaymentIntentId");
                 return Result<string>.Success(payment.StripePaymentIntentId);
             }
 

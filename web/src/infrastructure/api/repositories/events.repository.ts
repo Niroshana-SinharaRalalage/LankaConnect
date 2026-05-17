@@ -2001,6 +2001,17 @@ export class EventsRepository {
     return await apiClient.get<import('../types/events.types').EventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors`);
   }
 
+  /**
+   * Phase 6A.150 — public sponsors view (anonymous-allowed).
+   * Returns sponsors-with-logos in a PII-redacted shape so the public event
+   * page can render SponsorsPreviewStrip / SponsorSection without triggering
+   * the auth-redirect chain. The full-PII variant (getEventSponsors) remains
+   * gated to organizers.
+   */
+  async getPublicEventSponsors(eventId: string): Promise<import('../types/events.types').PublicEventSponsorsResponse> {
+    return await apiClient.get<import('../types/events.types').PublicEventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors/public`);
+  }
+
   async getSponsorSummary(eventId: string): Promise<import('../types/events.types').SponsorSummaryDto> {
     return await apiClient.get<import('../types/events.types').SponsorSummaryDto>(`${this.basePath}/${eventId}/sponsors/summary`);
   }

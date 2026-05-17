@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type {
   EventSponsorsResponse,
+  PublicEventSponsorsResponse,
   SponsorSummaryDto,
   SponsorDto,
   CreateMoneySponsorRequest,
@@ -14,6 +15,8 @@ import type {
 export const sponsorKeys = {
   all: ['sponsors'] as const,
   byEvent: (eventId: string) => [...sponsorKeys.all, 'event', eventId] as const,
+  // Phase 6A.150: anonymous public read path.
+  publicByEvent: (eventId: string) => [...sponsorKeys.all, 'public', eventId] as const,
   summary: (eventId: string) => [...sponsorKeys.all, 'summary', eventId] as const,
   mine: (eventId: string) => [...sponsorKeys.all, 'mine', eventId] as const,
 };
@@ -25,6 +28,34 @@ export function useEventSponsors(eventId: string | undefined, enabled = true) {
     enabled: !!eventId && enabled,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Phase 6A.150 — fetches the PII-redacted public sponsor list for an event.
+ *
+ * Used by `SponsorsPreviewStrip` and `SponsorSection` on the public event
+ * detail page. Returns only the fields the public preview displays
+ * (organization name, sponsor name, item label, image URL, sponsorType).
+ * Backend pre-filters to sponsors-with-images and confirmed states and
+ * pre-sorts by contribution magnitude. The magnitude itself is not in the
+ * response.
+ *
+ * Replaces the previous flow where the components called `useEventSponsors`
+ * directly, hit the [Authorize] organizer endpoint, got 401, and triggered
+ * the auth-redirect chain (the 6A.150 bug).
+ */
+export function usePublicEventSponsors(eventId: string | undefined, enabled = true) {
+  return useQuery<PublicEventSponsorsResponse>({
+    queryKey: sponsorKeys.publicByEvent(eventId || ''),
+    queryFn: () => eventsRepository.getPublicEventSponsors(eventId!),
+    enabled: !!eventId && enabled,
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    // 401 from this endpoint shouldn't happen (it's AllowAnonymous) — if it
+    // does, the public components hide gracefully via the data-shape filter
+    // already in the components, so we don't retry on a hard failure.
+    retry: 0,
   });
 }
 

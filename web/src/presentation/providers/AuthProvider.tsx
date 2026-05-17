@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/infrastructure/api/client/api-client';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useTokenRefresh } from '@/presentation/hooks/useTokenRefresh';
@@ -10,17 +10,24 @@ import { useTokenRefresh } from '@/presentation/hooks/useTokenRefresh';
  * AuthProvider Component
  * Sets up global authentication features:
  *
- * 1. Global 401 error handling for automatic logout on token expiration
+ * 1. Global 401 error handling for authenticated-user session expiry
  * 2. Proactive token refresh - automatically refreshes token before expiration
  *
- * This component:
- * - Registers a callback with the API client to handle 401 Unauthorized errors
- * - Sets up proactive token refresh timer (refreshes 5 minutes before expiry)
- * - When a 401 occurs (token expired), it clears auth and redirects to login
- * - Prevents multiple redirects with a flag
+ * **Phase 6A.150 update (Layer 3, defense-in-depth)**:
+ * - The unauthorized callback is invoked ONLY when the original request
+ *   carried an access token (the `hadAuthAtRequestTime` flag in
+ *   `api-client.ts`'s response interceptor). Anonymous-user 401s
+ *   short-circuit BEFORE reaching this callback (Layer 2), so we never
+ *   redirect them to /login.
+ * - The legacy `router.push('/login')` is replaced by `clearAuth()` plus
+ *   a toast notification. The user stays on the current page (which may
+ *   be a public page they were viewing while authed) and can choose to
+ *   sign in from the header. This avoids the "hard bounce" UX where a
+ *   user reading a public event suddenly lands on /login.
+ * - `isHandling401` debounce is preserved so toast doesn't spam during
+ *   concurrent 401s.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
   // Phase AUTH-IMPROVEMENT: Proactive token refresh
@@ -30,33 +37,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isHandling401 = false;
 
-    // Set up 401 error handler
+    // Set up 401 error handler. Only invoked by api-client when a request
+    // that carried an access token gets 401 AND the refresh attempt fails.
+    // Anonymous 401s never reach here after Phase 6A.150 Layer 2.
     apiClient.setUnauthorizedCallback(() => {
-      console.log('🔍 [AUTH PROVIDER] onUnauthorized callback triggered');
-      console.log('🔍 [AUTH PROVIDER] isHandling401:', isHandling401);
+      console.log('[AUTH PROVIDER] onUnauthorized callback triggered (session expired for authed user)');
 
-      // Prevent multiple simultaneous logout/redirect calls
+      // Prevent multiple simultaneous toast/clear calls during concurrent 401s.
       if (isHandling401) {
-        console.log('🔍 [AUTH PROVIDER] Already handling 401, skipping');
+        console.log('[AUTH PROVIDER] Already handling 401, skipping');
         return;
       }
       isHandling401 = true;
 
-      console.log('🔍 [AUTH PROVIDER] Calling clearAuth()');
-      // Clear authentication state
-      clearAuth();
+      try {
+        console.log('[AUTH PROVIDER] Calling clearAuth() (no forced redirect — Phase 6A.150 Layer 3)');
+        clearAuth();
 
-      console.log('🔍 [AUTH PROVIDER] Redirecting to /login');
-      // Redirect to login page
-      router.push('/login');
-
-      // Reset flag after redirect
-      setTimeout(() => {
-        isHandling401 = false;
-        console.log('🔍 [AUTH PROVIDER] Reset isHandling401 flag');
-      }, 1000);
+        // Soft, non-blocking notification. The user stays on the current
+        // page; they can sign in via the header when ready.
+        toast(
+          'Your session expired. Please sign in again to access personalized features.',
+          {
+            duration: 6000,
+            id: 'session-expired',  // de-dupe key for concurrent triggers
+          },
+        );
+      } catch (err) {
+        console.error('[AUTH PROVIDER] Failed to handle 401 callback:', err);
+      } finally {
+        // Reset flag after the toast's idle window so a later session-death
+        // can re-trigger the notification.
+        setTimeout(() => {
+          isHandling401 = false;
+        }, 1000);
+      }
     });
-  }, [router, clearAuth]);
+  }, [clearAuth]);
 
   return <>{children}</>;
 }

@@ -8,11 +8,15 @@ import { Input } from '@/presentation/components/ui/Input';
 import {
   useCreateMoneySponsor,
   useCreateItemSponsor,
-  useEventSponsors,
+  usePublicEventSponsors,  // Phase 6A.150: PII-free public read for the in-section sponsor wall
   useUploadSponsorImage,
 } from '@/presentation/hooks/useSponsors';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
-import type { SponsorConfigurationDto, SponsorDto } from '@/infrastructure/api/types/events.types';
+import type {
+  SponsorConfigurationDto,
+  SponsorDto,
+  PublicSponsorDto,  // Phase 6A.150
+} from '@/infrastructure/api/types/events.types';
 
 type SponsorMode = 'money' | 'item';
 
@@ -61,26 +65,13 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Phase 6A.145 Commit 8 — render existing sponsors-with-images inside this
-  // section so visitors see who already sponsored. Uses the same query as the
-  // top preview strip. Public event details viewers may 403 on this endpoint;
-  // when that happens, we just hide the block.
-  const { data: sponsorsResponse } = useEventSponsors(eventId, sponsorConfig.isEnabled === true);
-  const sponsorsWithImages = useMemo(() => {
-    const sponsors = sponsorsResponse?.sponsors ?? [];
-    return sponsors
-      .filter((s: SponsorDto) => {
-        if (!s.imageUrl) return false;
-        if (s.sponsorType === 'Money') return s.status === 'Completed';
-        if (s.sponsorType === 'Item') return s.status === 'RecordedItem';
-        return false;
-      })
-      .sort((a: SponsorDto, b: SponsorDto) => {
-        const av = a.amount ?? a.estimatedValue ?? 0;
-        const bv = b.amount ?? b.estimatedValue ?? 0;
-        if (bv !== av) return bv - av;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [sponsorsResponse]);
+  // section so visitors see who already sponsored.
+  // Phase 6A.150 — switched from useEventSponsors (auth-required) to
+  // usePublicEventSponsors (anonymous-allowed, PII-free). The backend handler
+  // already filters to image-bearing confirmed sponsors and pre-sorts by
+  // contribution magnitude — the response is exactly what we want to render.
+  const { data: sponsorsResponse } = usePublicEventSponsors(eventId, sponsorConfig.isEnabled === true);
+  const sponsorsWithImages: PublicSponsorDto[] = sponsorsResponse?.sponsors ?? [];
 
   const parsedAmount = parseFloat(amount) || 0;
   const isPending = createMoneySponsor.isPending || createItemSponsor.isPending || uploadImage.isPending;

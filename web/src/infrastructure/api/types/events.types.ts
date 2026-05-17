@@ -2493,6 +2493,33 @@ export interface EventSponsorsResponse {
   summary: SponsorSummaryDto;
 }
 
+/**
+ * Phase 6A.150 — sanitized public sponsor DTO returned by
+ * GET /api/events/{eventId}/sponsors/public ([AllowAnonymous]).
+ *
+ * Fields are limited to what SponsorsPreviewStrip and SponsorSection
+ * actually display publicly: logo + name + organization + item label.
+ * PII fields (email, phone, notes, amount, estimated value, Stripe fee
+ * detail, internal blob name, etc.) are PHYSICALLY ABSENT from this
+ * interface and from the wire response — the backend handler strips
+ * them at projection time. If a future edit adds a property here, the
+ * backend reflection-asserted PII guard test must be updated too.
+ */
+export interface PublicSponsorDto {
+  id: string;
+  sponsorOrganization?: string | null;
+  sponsorName: string;
+  itemName?: string | null;
+  imageUrl?: string | null;
+  /** "Money" or "Item" — drives the Item-name caption rendering. */
+  sponsorType: string;
+}
+
+export interface PublicEventSponsorsResponse {
+  eventId: string;
+  sponsors: PublicSponsorDto[];
+}
+
 export interface CreateMoneySponsorRequest {
   sponsorName: string;
   sponsorEmail: string;

@@ -1,9 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Handshake, ChevronRight } from 'lucide-react';
-import { useEventSponsors } from '@/presentation/hooks/useSponsors';
-import type { SponsorConfigurationDto, SponsorDto } from '@/infrastructure/api/types/events.types';
+// Phase 6A.150 — switched from useEventSponsors (auth-required, returns full
+// PII) to usePublicEventSponsors. The new public endpoint is [AllowAnonymous]
+// and returns a sanitized DTO so anonymous visitors don't trigger the
+// auth-redirect chain. Backend already filters to sponsors-with-images +
+// confirmed status and pre-sorts by contribution magnitude.
+import { usePublicEventSponsors } from '@/presentation/hooks/useSponsors';
+import type { SponsorConfigurationDto, PublicSponsorDto } from '@/infrastructure/api/types/events.types';
 
 interface SponsorsPreviewStripProps {
   eventId: string;
@@ -15,39 +19,26 @@ interface SponsorsPreviewStripProps {
  * Renders right AFTER the AddOnsPreviewStrip (per user's R2 layout request).
  *
  * Architectural decisions (locked):
- * - Sponsors are shown ONLY when they have an imageUrl AND are in a confirmed state
- *   (Completed for money, RecordedItem for item). This is the user's R2 intent —
- *   sponsors who paid past the threshold get their logo displayed.
- * - Sort: descending by amount/estValue (largest contributors first). Item sponsors
- *   without estValue sort last by createdAt desc.
+ * - Sponsors are shown ONLY when they have an imageUrl AND are in a confirmed state.
+ * - Sort: descending by amount/estValue (largest contributors first).
  * - Click → scrolls to the full `<SponsorSection>` at the bottom (id="sponsors").
  * - Section hidden when no eligible sponsors.
- * - Endpoint requires organizer auth (`GET /sponsors`) so this strip only renders
- *   data for users who can already see the full management view. For anonymous
- *   visitors, the query 403s and we hide the strip gracefully (architect H-1
- *   "independent hide"). A future commit can add a public sponsors-with-images
- *   endpoint if anonymous visibility is needed.
+ *
+ * **Phase 6A.150 update**: this strip now consumes the new
+ * `[AllowAnonymous] GET /api/events/{id}/sponsors/public` endpoint via
+ * `usePublicEventSponsors`. The endpoint pre-filters to image-bearing
+ * confirmed sponsors AND pre-sorts by contribution magnitude server-side,
+ * so the client-side filter + sort that previously lived here is gone —
+ * the response already contains exactly the rows we want, in the order we
+ * want. The full-PII variant (useEventSponsors → /sponsors) remains for
+ * the organizer-only management view. Fixes the production redirect-to-login
+ * bug where anonymous visitors hit the [Authorize] endpoint, got 401, and
+ * the api-client + AuthProvider chain pushed them to /login.
  */
 export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreviewStripProps) {
   const enabled = sponsorConfig?.isEnabled === true;
-  const { data: sponsorsResponse } = useEventSponsors(eventId, enabled);
-
-  const eligibleSponsors = useMemo(() => {
-    const sponsors = sponsorsResponse?.sponsors ?? [];
-    return sponsors
-      .filter((s: SponsorDto) => {
-        if (!s.imageUrl) return false;
-        if (s.sponsorType === 'Money') return s.status === 'Completed';
-        if (s.sponsorType === 'Item') return s.status === 'RecordedItem';
-        return false;
-      })
-      .sort((a: SponsorDto, b: SponsorDto) => {
-        const aValue = a.amount ?? a.estimatedValue ?? 0;
-        const bValue = b.amount ?? b.estimatedValue ?? 0;
-        if (bValue !== aValue) return bValue - aValue;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [sponsorsResponse]);
+  const { data: sponsorsResponse } = usePublicEventSponsors(eventId, enabled);
+  const eligibleSponsors = sponsorsResponse?.sponsors ?? [];
 
   if (!enabled || eligibleSponsors.length === 0) return null;
 
@@ -80,7 +71,7 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
         role="region"
         aria-label="Sponsors scroller"
       >
-        {eligibleSponsors.map((s: SponsorDto) => (
+        {eligibleSponsors.map((s: PublicSponsorDto) => (
           <button
             key={s.id}
             type="button"

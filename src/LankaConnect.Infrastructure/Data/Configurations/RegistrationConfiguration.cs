@@ -274,7 +274,9 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         // Default value was overriding domain logic (Preliminary → Confirmed)
         builder.Property(r => r.Status)
             .HasConversion<string>()
-            .HasMaxLength(20)
+            // Phase 6A.148: bumped from 20 to 32 to fit "PendingRefundApproval" (21 chars).
+            // Postgres column widening is a no-op rewrite; existing rows are unaffected.
+            .HasMaxLength(32)
             .IsRequired();
 
         // Phase 6A.81 FIX: Configure PaymentStatus without default value

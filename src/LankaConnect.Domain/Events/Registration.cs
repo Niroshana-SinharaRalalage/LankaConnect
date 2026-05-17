@@ -1,5 +1,6 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Domain.Shared.ValueObjects;
@@ -96,6 +97,20 @@ public class Registration : BaseEntity
     /// Used for reconciliation and customer support.
     /// </summary>
     public string? StripeRefundId { get; private set; }
+
+    // Phase 6A.148: Refund approval workflow — collection of refund requests against this
+    // registration. Aggregate invariants enforced in CreateRefundRequest(). Multiple requests
+    // can co-exist (one active + multiple historical Rejected/Withdrawn for audit trail).
+    private readonly List<RefundRequest> _refundRequests = new();
+    public IReadOnlyList<RefundRequest> RefundRequests => _refundRequests.AsReadOnly();
+
+    /// <summary>
+    /// Phase 6A.148: True when this registration has a non-terminal refund request
+    /// (Pending, Approved, or Processing). Used by the aggregate's single-active-request
+    /// guard (architect F1) and by the application layer to prevent hard-deletion while
+    /// money is in flight.
+    /// </summary>
+    public bool HasActiveRefundRequest => _refundRequests.Any(r => r.IsActive);
 
     // Phase 6A.X: Revenue breakdown components for reporting and reconciliation
     public Money? SalesTaxAmount { get; private set; }
@@ -929,6 +944,188 @@ public class Registration : BaseEntity
             EventId, Id, "refund_completed"));
 
         return Result.Success();
+    }
+
+    // =====================================================================================
+    // Phase 6A.148 — Refund Approval Workflow entry points
+    //
+    // Replaces the legacy "user clicks Cancel-and-Refund → Stripe is called immediately"
+    // path. New flow: CreateRefundRequest persists a domain entity in PendingRefundApproval
+    // status (or Approved on the organizer-initiated path); RefundExecutionService later
+    // dispatches Stripe OUTSIDE the approve transaction (architect F10) and calls
+    // MoveToRefundRequestedFromApproval. Webhook completion path is unchanged from 6A.91.
+    // =====================================================================================
+
+    /// <summary>
+    /// Phase 6A.148: Creates a refund request against this registration. Two paths:
+    ///
+    /// - <b>Attendee path</b> (<paramref name="isOrganizerInitiated"/> = false): request is
+    ///   created in <see cref="RefundRequestStatus.Pending"/>; an organizer must approve.
+    /// - <b>Organizer path</b> (<paramref name="isOrganizerInitiated"/> = true): request is
+    ///   created directly in <see cref="RefundRequestStatus.Approved"/>; RefundExecutionService
+    ///   queues Stripe dispatch.
+    ///
+    /// Validation (architect F1, F7, F9):
+    /// - No other active refund request (Pending|Approved|Processing).
+    /// - Registration must be <see cref="RegistrationStatus.Confirmed"/> and
+    ///   <see cref="PaymentStatus.Completed"/>, with a non-null StripePaymentIntentId.
+    /// - Scan guard: if <paramref name="anyTicketsScanned"/> is true, the attendee path is
+    ///   blocked; organizer path is blocked unless <paramref name="overrideScanGuard"/> is
+    ///   true (and <paramref name="organizerNotes"/> is non-empty — enforced by the entity).
+    /// - Line items must be non-empty and unique per (Type, ReferenceId).
+    ///
+    /// On success: Registration.Status transitions Confirmed → PendingRefundApproval; the
+    /// returned <see cref="RefundRequest"/> is added to <see cref="RefundRequests"/>.
+    /// </summary>
+    public Result<RefundRequest> CreateRefundRequest(
+        Guid requestedByUserId,
+        bool isOrganizerInitiated,
+        string? requesterReason,
+        string? organizerNotes,
+        bool overrideScanGuard,
+        bool anyTicketsScanned,
+        IReadOnlyList<RefundRequestLineItemInput> lineItems)
+    {
+        // Architect F1 ordering: check active-request guard BEFORE status so the more
+        // specific user-facing message fires when both would trip (e.g. Status=
+        // PendingRefundApproval + active Pending request — they always co-occur).
+        if (HasActiveRefundRequest)
+            return Result<RefundRequest>.Failure(
+                "There is already an active refund request for this registration. " +
+                "Wait for it to be resolved or withdraw it first.");
+
+        if (Status != RegistrationStatus.Confirmed)
+            return Result<RefundRequest>.Failure(
+                $"Cannot create refund request: Registration must be Confirmed (current: {Status}). " +
+                $"RegistrationId={Id}");
+
+        if (PaymentStatus != PaymentStatus.Completed)
+            return Result<RefundRequest>.Failure(
+                $"Cannot create refund request: PaymentStatus must be Completed (current: {PaymentStatus}). " +
+                $"RegistrationId={Id}");
+
+        if (string.IsNullOrWhiteSpace(StripePaymentIntentId))
+            return Result<RefundRequest>.Failure(
+                $"Cannot create refund request: StripePaymentIntentId is missing. " +
+                $"RegistrationId={Id}");
+
+        // Scan guard. Attendee path: always blocked when any ticket scanned.
+        // Organizer path: blocked unless explicitly overridden.
+        if (anyTicketsScanned)
+        {
+            if (!isOrganizerInitiated)
+                return Result<RefundRequest>.Failure(
+                    "Cannot request refund: one or more tickets have been scanned and used. " +
+                    "Contact the event organizer if you believe this is in error.");
+
+            if (!overrideScanGuard)
+                return Result<RefundRequest>.Failure(
+                    "Cannot initiate refund: one or more tickets have been scanned. " +
+                    "Use the override option with a justification note to proceed.");
+        }
+
+        if (lineItems is null || lineItems.Count == 0)
+            return Result<RefundRequest>.Failure("Refund request must include at least one line item");
+
+        // Architect F9: uniqueness per (Type, ReferenceId).
+        var duplicateKey = lineItems
+            .GroupBy(li => new { li.Type, li.ReferenceId })
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicateKey is not null)
+            return Result<RefundRequest>.Failure(
+                $"Refund request contains duplicate line item for " +
+                $"(Type={duplicateKey.Key.Type}, ReferenceId={duplicateKey.Key.ReferenceId}). " +
+                $"Each charge can be referenced at most once.");
+
+        // Delegate to entity factories. The entity owns line-item construction + own validation.
+        var requestResult = isOrganizerInitiated
+            ? RefundRequest.CreateOrganizerInitiated(Id, requestedByUserId, organizerNotes,
+                overrideScanGuard && anyTicketsScanned, lineItems)
+            : RefundRequest.CreatePending(Id, requestedByUserId, requesterReason, lineItems);
+
+        if (requestResult.IsFailure)
+            return Result<RefundRequest>.Failure(requestResult.Errors);
+
+        var req = requestResult.Value;
+        _refundRequests.Add(req);
+
+        // Aggregate transition: Confirmed → PendingRefundApproval.
+        Status = RegistrationStatus.PendingRefundApproval;
+        MarkAsUpdated();
+
+        // The entity raised its own creation event with EventId=Empty (it doesn't know it).
+        // Re-raise from the aggregate with the real EventId so handlers can route by event.
+        ReplaceLastRequestEventWithEventId(req);
+
+        return Result<RefundRequest>.Success(req);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Application-layer hook called by ApproveRefundRequestCommandHandler
+    /// or by RefundExecutionService when dispatching Stripe begins. Transitions
+    /// Registration.Status: PendingRefundApproval → RefundRequested so the legacy webhook
+    /// completion path + ForceCancelStuckRefund recovery operate exactly as today.
+    /// </summary>
+    public Result MoveToRefundRequestedFromApproval()
+    {
+        if (Status != RegistrationStatus.PendingRefundApproval)
+            return Result.Failure(
+                $"Cannot move to RefundRequested: current status is {Status} " +
+                $"(expected PendingRefundApproval). RegistrationId={Id}");
+
+        Status = RegistrationStatus.RefundRequested;
+        RefundRequestedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Application-layer hook called when a refund request is rejected by
+    /// the organizer or withdrawn by the attendee. Returns Registration to Confirmed
+    /// so the attendee retains their seat / capacity slot.
+    /// </summary>
+    public Result MoveToConfirmedFromApproval()
+    {
+        if (Status != RegistrationStatus.PendingRefundApproval)
+            return Result.Failure(
+                $"Cannot move to Confirmed: current status is {Status} " +
+                $"(expected PendingRefundApproval). RegistrationId={Id}");
+
+        Status = RegistrationStatus.Confirmed;
+        RefundWithdrawnAt = DateTime.UtcNow;
+        MarkAsUpdated();
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Internal helper — the entity factory raised a creation event with EventId=Empty
+    /// because it doesn't know the EventId. Re-raise from the aggregate with the populated
+    /// EventId so downstream handlers (which listen on Registration.DomainEvents) can
+    /// route by event.
+    /// </summary>
+    private void ReplaceLastRequestEventWithEventId(RefundRequest req)
+    {
+        if (req.IsOrganizerInitiated)
+        {
+            RaiseDomainEvent(new OrganizerInitiatedRefundCreatedEvent(
+                EventId: EventId,
+                RegistrationId: Id,
+                RefundRequestId: req.Id,
+                OrganizerUserId: req.RequestedByUserId,
+                OrganizerNotes: req.OrganizerNotes,
+                ScanGuardOverridden: req.ScanGuardOverridden,
+                CreatedAt: req.RequestedAt));
+        }
+        else
+        {
+            RaiseDomainEvent(new RefundRequestCreatedEvent(
+                EventId: EventId,
+                RegistrationId: Id,
+                RefundRequestId: req.Id,
+                RequestedByUserId: req.RequestedByUserId,
+                RequesterReason: req.RequesterReason,
+                RequestedAt: req.RequestedAt));
+        }
     }
 
     /// <summary>

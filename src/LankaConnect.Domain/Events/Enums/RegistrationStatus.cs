@@ -63,6 +63,23 @@ public enum RegistrationStatus
     /// - User can withdraw request to return to Confirmed status
     /// - Transitions to Refunded once Stripe webhook confirms completion
     /// - Cannot be cancelled after event start time
+    ///
+    /// IMPORTANT: As of Phase 6A.148 this value strictly means "Stripe refund is in flight,
+    /// awaiting charge.refunded webhook." The new approval-gated flow uses
+    /// <see cref="PendingRefundApproval"/> for the "user asked, organizer hasn't decided" state.
+    /// Existing in-flight rows continue to use this value; do not repurpose.
     /// </summary>
-    RefundRequested = 9
+    RefundRequested = 9,
+
+    /// <summary>
+    /// Phase 6A.148: NEW - Refund has been requested but is awaiting organizer approval
+    /// (or has been organizer-approved but Stripe dispatch hasn't happened yet).
+    /// - Consumes event capacity until decision (matches legacy RefundRequested semantics)
+    /// - Backed by a <c>RefundRequest</c> entity in <see cref="RefundRequestStatus.Pending"/>
+    ///   or <see cref="RefundRequestStatus.Approved"/>
+    /// - NO Stripe call has been made
+    /// - Transitions to <see cref="RefundRequested"/> when the approval handler dispatches
+    ///   the Stripe refund(s); transitions back to <see cref="Confirmed"/> on reject/withdraw
+    /// </summary>
+    PendingRefundApproval = 10
 }

@@ -8,6 +8,7 @@ using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportSponsors;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsors;
+using LankaConnect.Application.Events.Queries.GetPublicEventSponsors;  // Phase 6A.150
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
@@ -234,6 +235,26 @@ public class SponsorsController : BaseController<SponsorsController>
         };
 
         var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.150 — public, PII-redacted sponsor list for the event detail page.
+    /// Returns ONLY confirmed sponsors with images (Money/Completed + Item/RecordedItem),
+    /// sorted server-side by contribution magnitude (the magnitudes themselves are
+    /// NOT exposed). Used by <c>SponsorsPreviewStrip</c> and <c>SponsorSection</c> on
+    /// the anonymous-accessible event detail page. The full-PII organizer-only
+    /// variant remains at <see cref="GetEventSponsors"/>.
+    /// </summary>
+    [HttpGet("public")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicEventSponsorsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicEventSponsors(Guid eventId)
+    {
+        Logger.LogInformation("GetPublicEventSponsors: EventId={EventId}", eventId);
+        var query = new GetPublicEventSponsorsQuery(eventId);
+        var result = await Mediator.Send(query);
         return HandleResult(result);
     }
 

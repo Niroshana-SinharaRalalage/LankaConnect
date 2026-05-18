@@ -125,16 +125,13 @@ public class RefundExecutionService : IRefundExecutionService
                             "[6A.148 EXEC] BeginProcessing failed for RrId={RrId}: {Error}",
                             refundRequestId, begin.Error);
 
-                    // Transition registration: PendingRefundApproval → RefundRequested
-                    // (only if still in PendingRefundApproval — idempotent).
-                    if (registration.Status == RegistrationStatus.PendingRefundApproval)
-                    {
-                        var move = registration.MoveToRefundRequestedFromApproval();
-                        if (move.IsFailure)
-                            _logger.LogWarning(
-                                "[6A.148 EXEC] Registration MoveToRefundRequestedFromApproval failed: {Error}",
-                                move.Error);
-                    }
+                    // Phase 6A.148 post-rework: cancellation and refund are DECOUPLED.
+                    // The registration's lifecycle is owned by Cancel/Confirm/Refund methods
+                    // independently of the refund request. RefundExecutionService no longer
+                    // mutates Registration.Status — it just dispatches Stripe per line.
+                    // Registration is already in its terminal lifecycle state (Cancelled
+                    // for attendee-cancel-and-refund path, Confirmed for standalone refund
+                    // or organizer-initiated path) by the time we get here.
 
                     // If every line settled synchronously (Stripe returned "succeeded"
                     // for all of them), the request can roll to Completed immediately —

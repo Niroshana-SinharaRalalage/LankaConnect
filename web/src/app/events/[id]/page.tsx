@@ -157,11 +157,14 @@ export function EventDetailPageInternal({
   const [deleteSignUpCommitments, setDeleteSignUpCommitments] = useState(false);
   // Cancellation enhancement: User choice for deleting form responses
   const [deleteFormResponses, setDeleteFormResponses] = useState(false);
-  // Cancellation enhancement: User choice for refunding add-on purchases
-  const [refundAddOnPurchases, setRefundAddOnPurchases] = useState(false);
-  // Phase 6A.137F: User choice for refunding collections and sponsors
-  const [refundCollections, setRefundCollections] = useState(false);
-  const [refundSponsors, setRefundSponsors] = useState(false);
+  // Phase 6A.148: User choice for refund buckets. Default to ALL CHECKED for paid
+  // event cancellation (the most common case — most attendees want everything refunded
+  // they paid for). Attendees can uncheck items they want to forfeit (e.g. keep a
+  // donation as a contribution). Per product decision Q2.
+  const [refundTicket, setRefundTicket] = useState(true);
+  const [refundAddOnPurchases, setRefundAddOnPurchases] = useState(true);
+  const [refundCollections, setRefundCollections] = useState(true);
+  const [refundSponsors, setRefundSponsors] = useState(true);
   // Phase 6A.80: Success dialog for anonymous registration
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [successEmail, setSuccessEmail] = useState<string>('');
@@ -1242,6 +1245,38 @@ export function EventDetailPageInternal({
                 ) : registrationDetails?.status === 'Cancelled' ? (
                   // Show cancelled status with option to re-register
                   <div className="space-y-6">
+                    {/* Phase 6A.148 — When a refund request exists on a cancelled registration
+                        (compound cancel+refund path), surface the pending/approved/rejected
+                        status banner ABOVE the "Registration Cancelled" panel so the attendee
+                        sees both the cancel state AND the refund state. The banner also offers
+                        the Withdraw button (with the spot-stays-cancelled warning per Q3). */}
+                    {myRefundRequest && (
+                      <RefundRequestStatusBanner
+                        refundRequest={myRefundRequest}
+                        isWithdrawing={isWithdrawingV2}
+                        onWithdraw={async () => {
+                          if (!id) return;
+                          const ok = window.confirm(
+                            "Heads up: your registration is already cancelled. " +
+                            "Withdrawing this refund request will NOT restore your spot. " +
+                            "Your spot stays cancelled and no money will be refunded. " +
+                            "Continue?"
+                          );
+                          if (!ok) return;
+                          setIsWithdrawingV2(true);
+                          try {
+                            await eventsRepository.withdrawMyRefundRequest(id);
+                            const refreshed = await eventsRepository.getMyRefundRequest(id);
+                            setMyRefundRequest(refreshed);
+                          } catch (err) {
+                            console.error('[6A.148] withdraw failed (cancelled-path):', err);
+                          } finally {
+                            setIsWithdrawingV2(false);
+                          }
+                        }}
+                      />
+                    )}
+
                     <div className="p-4 bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg">
                       <div className="flex items-center gap-2 mb-3">
                         <svg
@@ -1447,6 +1482,20 @@ export function EventDetailPageInternal({
                         isWithdrawing={isWithdrawingV2}
                         onWithdraw={async () => {
                           if (!id) return;
+                          // Phase 6A.148 — per product decision Q3: if the registration is
+                          // already Cancelled (cancel+refund compound path), withdrawing the
+                          // refund does NOT restore the spot and means NO money is returned.
+                          // Confirm explicitly so the attendee can't lose both.
+                          const regCancelled = registrationDetails?.status === 'Cancelled';
+                          if (regCancelled) {
+                            const ok = window.confirm(
+                              "Heads up: your registration is already cancelled. " +
+                              "Withdrawing this refund request will NOT restore your spot. " +
+                              "Your spot stays cancelled and no money will be refunded. " +
+                              "Continue?"
+                            );
+                            if (!ok) return;
+                          }
                           setIsWithdrawingV2(true);
                           try {
                             await eventsRepository.withdrawMyRefundRequest(id);
@@ -1463,12 +1512,17 @@ export function EventDetailPageInternal({
                       />
                     )}
 
-                    {/* Phase 6A.148 — "Request Refund" button alongside legacy Cancel.
-                        Only shown when: paid registration, no active refund request,
-                        backend feature flag enabled (myRefundRequest can still be null
-                        with flag on if no request exists; the click handler will surface
-                        backend 404 if the flag is off). */}
-                    {isPaidRegistration && !hasActiveRefundRequest && !hasStarted && (
+                    {/* Phase 6A.148 — Standalone "Request Refund" button (per product decision Q1).
+                        Lets attendee request a refund WITHOUT cancelling — e.g. "I'm still coming
+                        but the add-on shouldn't have been charged." Separate flow from the
+                        "Cancel Registration and Refund" button below (which decouples cancel
+                        from refund: cancel happens immediately, refund needs approval).
+                        Visibility: paid registration + active (not Cancelled — banner shows
+                        instead) + no in-flight refund request + event hasn't started. */}
+                    {isPaidRegistration &&
+                      registrationDetails?.status === 'Confirmed' &&
+                      !hasActiveRefundRequest &&
+                      !hasStarted && (
                       <div className="mb-3">
                         <Button
                           variant="outline"
@@ -1476,7 +1530,7 @@ export function EventDetailPageInternal({
                           style={{ borderColor: '#2563EB', color: '#2563EB' }}
                           onClick={() => setShowRequestRefundDialog(true)}
                         >
-                          Request Refund
+                          Request Refund (keep registration)
                         </Button>
                       </div>
                     )}
@@ -1519,6 +1573,48 @@ export function EventDetailPageInternal({
                         </div>
                       ) : (
                         <div className="flex-1 space-y-3">
+                          {/* Phase 6A.148 — Paid cancellation warning copy.
+                              Per product requirement: "warn them that he will lose the
+                              spot and refund is subject to organizer approval." */}
+                          {isPaidRegistration && (
+                            <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                              <p className="text-sm font-semibold text-amber-900 mb-1">
+                                ⚠ Before you cancel
+                              </p>
+                              <p className="text-xs text-amber-800">
+                                You will lose your spot immediately. Refunds for ticket,
+                                add-ons, contributions and sponsorship are subject to organizer
+                                approval and may take several days to process. The organizer may
+                                approve all, some, or none of the items below.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Phase 6A.148 — Ticket refund checkbox (paid registrations only).
+                              Defaults to checked (most common case). */}
+                          {isPaidRegistration && (registrationDetails?.totalPriceAmount ?? 0) > 0 && (
+                            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={refundTicket}
+                                  onChange={(e) => setRefundTicket(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    Request ticket refund (${(registrationDetails?.totalPriceAmount ?? 0).toFixed(2)})
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-1">
+                                    {refundTicket
+                                      ? "Your ticket payment will be included in the refund request."
+                                      : "You will forfeit your ticket payment. Only the items below (if any) will be requested."}
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+
                           {/* Phase 6A.28: User choice for signup commitments */}
                           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <label className="flex items-start gap-3 cursor-pointer">
@@ -1741,6 +1837,8 @@ export function EventDetailPageInternal({
                                     refundAddOnPurchases,
                                     refundCollections,
                                     refundSponsors,
+                                    // Phase 6A.148: new bucket — Ticket refund toggle (paid only).
+                                    refundTicket,
                                   });
                                   console.log('[CancelRsvp] Successfully cancelled registration', cancelResult);
 

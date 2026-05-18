@@ -463,6 +463,10 @@ export class EventsRepository {
       // Phase 6A.137F: Collection and sponsor refund options
       refundCollections?: boolean;
       refundSponsors?: boolean;
+      // Phase 6A.148: Ticket refund bucket toggle (paid registrations only). Default
+      // true so existing call sites that don't specify still request a ticket refund.
+      refundTicket?: boolean;
+      requesterReason?: string | null;
     } = {}
   ): Promise<CancelRsvpResult | null> {
     const params = new URLSearchParams();
@@ -471,6 +475,10 @@ export class EventsRepository {
     if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
     if (options.refundCollections) params.append('refundCollections', 'true');
     if (options.refundSponsors) params.append('refundSponsors', 'true');
+    // Phase 6A.148: only send refundTicket=false explicitly when attendee opted out;
+    // omitting it lets the backend default to true (legacy-compatible).
+    if (options.refundTicket === false) params.append('refundTicket', 'false');
+    if (options.requesterReason) params.append('requesterReason', options.requesterReason);
     const queryString = params.toString();
     return await apiClient.delete<CancelRsvpResult | null>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }

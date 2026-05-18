@@ -91,16 +91,13 @@ public class WithdrawRefundRequestV2CommandHandler : ICommandHandler<WithdrawRef
                     return Result.Failure(withdrawResult.Error);
                 }
 
-                // Transition Registration: PendingRefundApproval → Confirmed.
-                var moveResult = tracked.MoveToConfirmedFromApproval();
-                if (moveResult.IsFailure)
-                {
-                    sw.Stop();
-                    _logger.LogError(
-                        "[6A.148] WithdrawRefundRequestV2 FAILED: Registration state transition failed - RegId={RegId} Error={Error}",
-                        tracked.Id, moveResult.Error);
-                    return Result.Failure(moveResult.Error);
-                }
+                // Phase 6A.148 post-rework: cancel + refund are decoupled. Withdraw
+                // marks the RefundRequest as Withdrawn but does NOT mutate the registration.
+                // - Standalone-refund path: registration was Confirmed and stays Confirmed.
+                // - Cancel+refund compound path: registration was Cancelled and stays Cancelled
+                //   per product decision Q3 ("withdraw does NOT restore the seat; cancellation
+                //   is final and no refund is issued"). The FE displays a clear warning before
+                //   the user confirms the withdraw action.
 
                 _registrationRepo.Update(tracked);
                 await _uow.CommitAsync(cancellationToken);

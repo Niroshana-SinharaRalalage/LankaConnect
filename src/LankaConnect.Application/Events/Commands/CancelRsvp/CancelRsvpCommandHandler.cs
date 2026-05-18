@@ -7,6 +7,7 @@ using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -25,6 +26,11 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CancelRsvpCommandHandler> _logger;
+    // Phase 6A.148: Refund approval workflow integration
+    private readonly LankaConnect.Domain.Events.Repositories.ITicketRepository _ticketRepository;
+    private readonly LankaConnect.Domain.Events.Repositories.IAddOnPurchaseRepository _addOnPurchaseRepository;
+    private readonly IRegistrationPaymentRepository _registrationPaymentRepository;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
     public CancelRsvpCommandHandler(
         IEventRepository eventRepository,
@@ -37,7 +43,12 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         ISponsorRepository sponsorRepository,
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
-        ILogger<CancelRsvpCommandHandler> logger)
+        ILogger<CancelRsvpCommandHandler> logger,
+        // Phase 6A.148: Refund approval workflow integration
+        LankaConnect.Domain.Events.Repositories.ITicketRepository ticketRepository,
+        LankaConnect.Domain.Events.Repositories.IAddOnPurchaseRepository addOnPurchaseRepository,
+        IRegistrationPaymentRepository registrationPaymentRepository,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _eventRepository = eventRepository;
         _registrationRepository = registrationRepository;
@@ -49,6 +60,10 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
         _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _ticketRepository = ticketRepository;
+        _addOnPurchaseRepository = addOnPurchaseRepository;
+        _registrationPaymentRepository = registrationPaymentRepository;
+        _configuration = configuration;
     }
 
     public async Task<Result<CancelRsvpResult>> Handle(CancelRsvpCommand request, CancellationToken cancellationToken)
@@ -137,6 +152,37 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                         registrationReadOnly.Id, stopwatch.ElapsedMilliseconds);
 
                     return Result<CancelRsvpResult>.Failure("Failed to cancel registration");
+                }
+
+                // =====================================================================
+                // Phase 6A.148 — paid-cancel + refund-request compound flow (NEW path)
+                //
+                // When BOTH conditions hold:
+                //   (a) the approval workflow feature flag is ON
+                //   (b) this is a paid confirmed registration
+                //       (registration.Status == Confirmed && PaymentStatus.Completed)
+                //
+                // We follow the architect-approved decoupled lifecycle:
+                //   1. Validate scan guard (block if any ticket already validated).
+                //   2. Build line items from the four bucket selections (Ticket / AddOn
+                //      / Collection / Sponsor) based on what the attendee actually paid.
+                //   3. Atomically: create a Pending RefundRequest + transition the
+                //      registration to Cancelled (releases the seat NOW) + raise
+                //      RegistrationCancelledEvent (existing email path).
+                //   4. NO Stripe call. NO RegistrationRefundService. NO AddOnRefundService.
+                //      The organizer reviews the Pending RefundRequest later and
+                //      RefundExecutionService dispatches Stripe at that time.
+                //
+                // For all other cases (flag OFF, free events, Preliminary, etc.), the
+                // legacy bucket-by-bucket flow below runs unchanged.
+                // =====================================================================
+                var approvalFlagOn = _configuration.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
+                var isPaidConfirmed = registration.Status == RegistrationStatus.Confirmed &&
+                                      registration.PaymentStatus == PaymentStatus.Completed;
+                if (approvalFlagOn && isPaidConfirmed)
+                {
+                    return await HandlePaidCancelViaApprovalWorkflowAsync(
+                        request, @event, registration, stopwatch, cancellationToken);
                 }
 
                 using (LogContext.PushProperty("RegistrationId", registration.Id))
@@ -259,6 +305,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                                 "requested_by_customer",
                                 addOnMetadata,
                                 registration.Id,
+                                isPreApproved: false, // Phase 6A.148: legacy path only runs when flag OFF
                                 cancellationToken);
 
                             if (addOnRefundResult.IsFailure)
@@ -489,12 +536,15 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                             sponsorRefundProcessed == true ? sponsorRefundAmount ?? 0m : 0m,
                             totalAdditionalRefund);
 
-                        // Use shared refund service - handles Stripe call and RequestRefund() transition
+                        // Use shared refund service - handles Stripe call and RequestRefund() transition.
+                        // Phase 6A.148: legacy path; only reached when feature flag is OFF (otherwise
+                        // HandlePaidCancelViaApprovalWorkflowAsync took the early branch above).
                         var refundResult = await _refundService.ProcessRefundAsync(
                             registration,
                             "requested_by_customer",
                             metadata,
                             totalAdditionalRefund,
+                            isPreApproved: false,
                             cancellationToken);
 
                         if (refundResult.IsFailure)
@@ -585,6 +635,192 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                     request.EventId, request.UserId, stopwatch.ElapsedMilliseconds, ex.Message);
 
                 throw; // Re-throw to let MediatR/API handle
+            }
+        }
+    }
+
+    // ====================================================================================
+    // Phase 6A.148 — paid-cancel + refund-request compound flow.
+    //
+    // Cancels the registration immediately (releases the seat) AND atomically creates a
+    // Pending RefundRequest with the four bucket selections as line items. NO Stripe call.
+    // The organizer reviews via the new approval endpoints; RefundExecutionService
+    // dispatches Stripe at that time.
+    //
+    // Only invoked when: flag is ON AND registration is Confirmed + PaymentCompleted.
+    // ====================================================================================
+    private async Task<Result<CancelRsvpResult>> HandlePaidCancelViaApprovalWorkflowAsync(
+        CancelRsvpCommand request,
+        Event @event,
+        Registration registration,
+        System.Diagnostics.Stopwatch stopwatch,
+        CancellationToken cancellationToken)
+    {
+        using (LogContext.PushProperty("RegistrationId", registration.Id))
+        using (LogContext.PushProperty("ApprovalWorkflow", "Phase6A148"))
+        {
+            _logger.LogInformation(
+                "[6A.148] HandlePaidCancelViaApprovalWorkflow START: RegId={RegId} EventId={EventId} UserId={UserId} " +
+                "RefundTicket={RT} RefundAddOns={RA} RefundCollections={RC} RefundSponsors={RS}",
+                registration.Id, request.EventId, request.UserId,
+                request.RefundTicket, request.RefundAddOnPurchases, request.RefundCollections, request.RefundSponsors);
+
+            try
+            {
+                // Scan guard — block attendee-initiated refund if any ticket is already
+                // scanned/validated (architect rule #2). Organizer-initiated override is
+                // handled by a different endpoint, not this handler.
+                var anyTicketsScanned = await _ticketRepository
+                    .AnyValidatedTicketForRegistrationAsync(registration.Id, cancellationToken);
+                if (anyTicketsScanned)
+                {
+                    stopwatch.Stop();
+                    _logger.LogWarning(
+                        "[6A.148] HandlePaidCancelViaApprovalWorkflow REJECTED: ticket scanned — RegId={RegId}",
+                        registration.Id);
+                    return Result<CancelRsvpResult>.Failure(
+                        "Cannot cancel and refund: one or more tickets have been scanned and used. " +
+                        "Contact the event organizer if you believe this is in error.");
+                }
+
+                // Build line items from bucket selections.
+                var lineItems = new List<LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput>();
+
+                if (request.RefundTicket)
+                {
+                    var initialPayment = await _registrationPaymentRepository
+                        .GetInitialPaymentAsync(registration.Id, cancellationToken);
+                    if (initialPayment is not null && initialPayment.Amount is not null && initialPayment.Amount.Amount > 0)
+                    {
+                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket,
+                            initialPayment.Id,
+                            initialPayment.Amount));
+                    }
+                }
+
+                if (request.RefundAddOnPurchases)
+                {
+                    var purchases = await _addOnPurchaseRepository.GetByUserIdAndEventIdAsync(
+                        request.UserId, request.EventId, cancellationToken);
+                    foreach (var p in purchases.Where(p =>
+                        p.Status == LankaConnect.Domain.Events.Enums.AddOnPurchaseStatus.Completed &&
+                        !string.IsNullOrWhiteSpace(p.StripePaymentIntentId) &&
+                        p.TotalAmount is not null &&
+                        p.TotalAmount.Amount > 0 &&
+                        (p.RegistrationId == null || p.RegistrationId == registration.Id)))
+                    {
+                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Domain.Events.Enums.RefundLineItemType.AddOn,
+                            p.Id,
+                            p.TotalAmount));
+                    }
+                }
+
+                if (request.RefundCollections)
+                {
+                    var collections = await _collectionRepository.GetByUserIdAndEventIdAsync(
+                        request.UserId, request.EventId, cancellationToken);
+                    foreach (var c in collections.Where(c =>
+                        c.Status == LankaConnect.Domain.Events.Enums.CollectionStatus.Completed &&
+                        !string.IsNullOrWhiteSpace(c.StripePaymentIntentId) &&
+                        c.Amount is not null &&
+                        c.Amount.Amount > 0))
+                    {
+                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Collection,
+                            c.Id,
+                            c.Amount));
+                    }
+                }
+
+                if (request.RefundSponsors)
+                {
+                    var sponsors = await _sponsorRepository.GetByUserIdAndEventIdAsync(
+                        request.UserId, request.EventId, cancellationToken);
+                    foreach (var s in sponsors.Where(s =>
+                        s.Status == LankaConnect.Domain.Events.Enums.SponsorStatus.Completed &&
+                        !string.IsNullOrWhiteSpace(s.StripePaymentIntentId) &&
+                        s.Amount is not null &&
+                        s.Amount.Amount > 0))
+                    {
+                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Sponsor,
+                            s.Id,
+                            s.Amount!));
+                    }
+                }
+
+                _logger.LogInformation(
+                    "[6A.148] Built {Count} refund line items: {Breakdown}",
+                    lineItems.Count,
+                    string.Join(", ", lineItems.Select(li => $"{li.Type}=${li.RequestedAmount.Amount}")));
+
+                // Atomically:
+                //   1. Cancel the registration (Status -> Cancelled, seat released)
+                //   2. If buckets were selected: create the Pending RefundRequest
+                //   3. Raise RegistrationCancelledEvent so the existing email pipeline fires
+                //   4. Save
+                //
+                // The architect-decoupled domain (Phase 6A.148 post-rework) allows
+                // CreateRefundRequest to operate on a Cancelled registration.
+                registration.Cancel();
+
+                Guid? refundRequestId = null;
+                if (lineItems.Count > 0)
+                {
+                    var rrResult = registration.CreateRefundRequest(
+                        requestedByUserId: request.UserId,
+                        isOrganizerInitiated: false,
+                        requesterReason: request.RequesterReason,
+                        organizerNotes: null,
+                        overrideScanGuard: false,
+                        anyTicketsScanned: false, // we already gated above
+                        lineItems: lineItems);
+                    if (rrResult.IsFailure)
+                    {
+                        // CreateRefundRequest failed AFTER Cancel() succeeded — bad. Roll back
+                        // by returning failure and letting the DbContext drop pending changes.
+                        // (UnitOfWork hasn't committed yet, so no DB state has changed.)
+                        stopwatch.Stop();
+                        _logger.LogError(
+                            "[6A.148] HandlePaidCancelViaApprovalWorkflow CreateRefundRequest FAILED post-cancel: RegId={RegId} Error={Error}",
+                            registration.Id, rrResult.Error);
+                        return Result<CancelRsvpResult>.Failure(
+                            $"Cancel-and-refund failed at refund creation: {rrResult.Error}");
+                    }
+                    refundRequestId = rrResult.Value.Id;
+                }
+
+                @event.RaiseRegistrationCancelledEvent(request.UserId);
+                _registrationRepository.Update(registration);
+                _eventRepository.Update(@event);
+                await _unitOfWork.CommitAsync(cancellationToken);
+
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[6A.148] HandlePaidCancelViaApprovalWorkflow COMPLETE: RegId={RegId} RefundRequestId={RrId} LineCount={Count} Duration={ElapsedMs}ms",
+                    registration.Id, refundRequestId, lineItems.Count, stopwatch.ElapsedMilliseconds);
+
+                return Result<CancelRsvpResult>.Success(new CancelRsvpResult(
+                    RegistrationCancelled: true,
+                    CommitmentsDeleted: null,
+                    FormResponsesDeleted: null,
+                    FormResponsesDeletedCount: null,
+                    AddOnRefundsProcessed: null,
+                    AddOnRefundedCount: null,
+                    AddOnFailedCount: null,
+                    AddOnRefundTotal: null,
+                    Warnings: null,
+                    RefundRequestId: refundRequestId));
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex,
+                    "[6A.148] HandlePaidCancelViaApprovalWorkflow EXCEPTION: RegId={RegId} Duration={ElapsedMs}ms",
+                    registration.Id, stopwatch.ElapsedMilliseconds);
+                throw;
             }
         }
     }

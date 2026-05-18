@@ -83,9 +83,11 @@ public class RejectRefundRequestCommandHandler : ICommandHandler<RejectRefundReq
                     return Result.Failure(rejectResult.Error);
                 }
 
-                var moveResult = tracked.MoveToConfirmedFromApproval();
-                if (moveResult.IsFailure)
-                    return Result.Failure(moveResult.Error);
+                // Phase 6A.148 post-rework: cancel + refund are decoupled. Rejection
+                // marks the RefundRequest as Rejected but does NOT mutate the registration.
+                // - If registration was Confirmed (standalone refund path), it stays Confirmed.
+                // - If registration was Cancelled (cancel+refund compound path), it stays
+                //   Cancelled — per product decision: rejection does not restore the seat.
 
                 _registrationRepo.Update(tracked);
                 await _uow.CommitAsync(cancellationToken);

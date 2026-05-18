@@ -4,6 +4,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace LankaConnect.Application.Events.Services;
@@ -25,15 +26,18 @@ public class RegistrationRefundService : IRegistrationRefundService
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IRegistrationPaymentRepository _paymentRepository;
     private readonly ILogger<RegistrationRefundService> _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
     public RegistrationRefundService(
         IStripePaymentService stripePaymentService,
         IRegistrationPaymentRepository paymentRepository,
-        ILogger<RegistrationRefundService> logger)
+        ILogger<RegistrationRefundService> logger,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _stripePaymentService = stripePaymentService;
         _paymentRepository = paymentRepository;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<Result<RefundResult>> ProcessRefundAsync(
@@ -41,16 +45,35 @@ public class RegistrationRefundService : IRegistrationRefundService
         string reason,
         Dictionary<string, string> metadata,
         decimal additionalRefundAmount = 0m,
+        bool isPreApproved = false,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
 
+        // Phase 6A.148 ring-2 interlock (architect F5 defense-in-depth): if the approval
+        // workflow flag is ON and the caller did NOT route through approval first, refuse
+        // the refund. This guarantees the GATE holds even against future code that calls
+        // this service directly.
+        var approvalFlagOn = _configuration.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
+        if (approvalFlagOn && !isPreApproved)
+        {
+            _logger.LogWarning(
+                "[6A.148 INTERLOCK] BLOCKED ProcessRefundAsync called without isPreApproved while approval workflow is ON. " +
+                "RegId={RegId} Caller must route via RefundExecutionService (organizer Approve) or pre-approve via ApprovedAuto.",
+                registration.Id);
+            return Result<RefundResult>.Failure(
+                "Refund-approval workflow is enabled. Direct refunds are blocked — go through " +
+                "the approval workflow (POST /api/events/{id}/refund-requests).");
+        }
+
         // Phase 6A.94: Enhanced logging for refund observability
         _logger.LogInformation(
             "[RefundService] START ProcessRefundAsync - RegId={RegId}, CurrentStatus={Status}, " +
-            "PaymentStatus={PaymentStatus}, LegacyPaymentIntentId={PaymentIntentId}, Amount=${Amount}, Reason={Reason}",
+            "PaymentStatus={PaymentStatus}, LegacyPaymentIntentId={PaymentIntentId}, Amount=${Amount}, " +
+            "Reason={Reason}, IsPreApproved={IsPreApproved}",
             registration.Id, registration.Status, registration.PaymentStatus,
-            registration.StripePaymentIntentId ?? "NULL", registration.TotalPrice?.Amount ?? 0, reason);
+            registration.StripePaymentIntentId ?? "NULL", registration.TotalPrice?.Amount ?? 0,
+            reason, isPreApproved);
 
         try
         {

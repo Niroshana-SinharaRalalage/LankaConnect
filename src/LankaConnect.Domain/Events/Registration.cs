@@ -949,11 +949,12 @@ public class Registration : BaseEntity
     // =====================================================================================
     // Phase 6A.148 — Refund Approval Workflow entry points
     //
-    // Replaces the legacy "user clicks Cancel-and-Refund → Stripe is called immediately"
-    // path. New flow: CreateRefundRequest persists a domain entity in PendingRefundApproval
-    // status (or Approved on the organizer-initiated path); RefundExecutionService later
-    // dispatches Stripe OUTSIDE the approve transaction (architect F10) and calls
-    // MoveToRefundRequestedFromApproval. Webhook completion path is unchanged from 6A.91.
+    // NEW MODEL (post operator-feedback rework): cancellation and refund are DECOUPLED.
+    // The registration's lifecycle is owned by Cancel / Confirm / Refund methods; the
+    // refund money lifecycle is owned by the RefundRequest aggregate. CreateRefundRequest
+    // no longer mutates Registration.Status — it only attaches a Pending RefundRequest.
+    // Callers (CancelRsvpCommandHandler.PaidBranch, organizer-initiated handler, standalone
+    // refund-request handler) decide independently whether to also cancel the registration.
     // =====================================================================================
 
     /// <summary>
@@ -961,21 +962,24 @@ public class Registration : BaseEntity
     ///
     /// - <b>Attendee path</b> (<paramref name="isOrganizerInitiated"/> = false): request is
     ///   created in <see cref="RefundRequestStatus.Pending"/>; an organizer must approve.
+    ///   Accepts both Confirmed (standalone-refund use case) and Cancelled (cancel+refund
+    ///   compound use case — registration is already Cancelled before this is called).
     /// - <b>Organizer path</b> (<paramref name="isOrganizerInitiated"/> = true): request is
     ///   created directly in <see cref="RefundRequestStatus.Approved"/>; RefundExecutionService
-    ///   queues Stripe dispatch.
+    ///   queues Stripe dispatch. Always operates on Confirmed registrations.
     ///
     /// Validation (architect F1, F7, F9):
     /// - No other active refund request (Pending|Approved|Processing).
-    /// - Registration must be <see cref="RegistrationStatus.Confirmed"/> and
-    ///   <see cref="PaymentStatus.Completed"/>, with a non-null StripePaymentIntentId.
+    /// - Registration must be <see cref="RegistrationStatus.Confirmed"/> OR (attendee path
+    ///   only) <see cref="RegistrationStatus.Cancelled"/>; PaymentStatus must be Completed;
+    ///   StripePaymentIntentId must be present.
     /// - Scan guard: if <paramref name="anyTicketsScanned"/> is true, the attendee path is
     ///   blocked; organizer path is blocked unless <paramref name="overrideScanGuard"/> is
     ///   true (and <paramref name="organizerNotes"/> is non-empty — enforced by the entity).
     /// - Line items must be non-empty and unique per (Type, ReferenceId).
     ///
-    /// On success: Registration.Status transitions Confirmed → PendingRefundApproval; the
-    /// returned <see cref="RefundRequest"/> is added to <see cref="RefundRequests"/>.
+    /// On success: a Pending RefundRequest is appended to <see cref="RefundRequests"/>.
+    /// Registration.Status is NOT mutated by this method (decoupled lifecycles).
     /// </summary>
     public Result<RefundRequest> CreateRefundRequest(
         Guid requestedByUserId,
@@ -987,16 +991,22 @@ public class Registration : BaseEntity
         IReadOnlyList<RefundRequestLineItemInput> lineItems)
     {
         // Architect F1 ordering: check active-request guard BEFORE status so the more
-        // specific user-facing message fires when both would trip (e.g. Status=
-        // PendingRefundApproval + active Pending request — they always co-occur).
+        // specific user-facing message fires when both would trip.
         if (HasActiveRefundRequest)
             return Result<RefundRequest>.Failure(
                 "There is already an active refund request for this registration. " +
                 "Wait for it to be resolved or withdraw it first.");
 
-        if (Status != RegistrationStatus.Confirmed)
+        // Allowed registration states:
+        //   - Confirmed: standalone refund (attendee or organizer) OR organizer-initiated
+        //   - Cancelled: only attendee compound cancel+refund path
+        // Anything else (Preliminary, Abandoned, Refunded, etc.) is rejected.
+        var allowedFromCancelled = !isOrganizerInitiated && Status == RegistrationStatus.Cancelled;
+        var allowedFromConfirmed = Status == RegistrationStatus.Confirmed;
+        if (!allowedFromConfirmed && !allowedFromCancelled)
             return Result<RefundRequest>.Failure(
-                $"Cannot create refund request: Registration must be Confirmed (current: {Status}). " +
+                $"Cannot create refund request: Registration status {Status} is not eligible. " +
+                $"Allowed: Confirmed (or Cancelled for attendee-initiated cancel-and-refund). " +
                 $"RegistrationId={Id}");
 
         if (PaymentStatus != PaymentStatus.Completed)
@@ -1048,9 +1058,6 @@ public class Registration : BaseEntity
 
         var req = requestResult.Value;
         _refundRequests.Add(req);
-
-        // Aggregate transition: Confirmed → PendingRefundApproval.
-        Status = RegistrationStatus.PendingRefundApproval;
         MarkAsUpdated();
 
         // The entity raised its own creation event with EventId=Empty (it doesn't know it).

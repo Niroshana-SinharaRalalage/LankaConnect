@@ -3,6 +3,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -19,17 +20,20 @@ public class AddOnRefundService : IAddOnRefundService
     private readonly IAddOnDefinitionRepository _definitionRepository;
     private readonly IStripePaymentService _stripePaymentService;
     private readonly ILogger<AddOnRefundService> _logger;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
     public AddOnRefundService(
         IAddOnPurchaseRepository purchaseRepository,
         IAddOnDefinitionRepository definitionRepository,
         IStripePaymentService stripePaymentService,
-        ILogger<AddOnRefundService> logger)
+        ILogger<AddOnRefundService> logger,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _purchaseRepository = purchaseRepository;
         _definitionRepository = definitionRepository;
         _stripePaymentService = stripePaymentService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<Result<AddOnRefundResult>> RefundUserPurchasesAsync(
@@ -38,6 +42,7 @@ public class AddOnRefundService : IAddOnRefundService
         string reason,
         Dictionary<string, string> metadata,
         Guid? registrationId = null,
+        bool isPreApproved = false,
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "RefundUserAddOnPurchases"))
@@ -46,9 +51,21 @@ public class AddOnRefundService : IAddOnRefundService
         {
             var stopwatch = Stopwatch.StartNew();
 
+            // Phase 6A.148 ring-2 interlock (architect F5 defense-in-depth).
+            var approvalFlagOn = _configuration.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
+            if (approvalFlagOn && !isPreApproved)
+            {
+                _logger.LogWarning(
+                    "[6A.148 INTERLOCK] BLOCKED RefundUserPurchasesAsync called without isPreApproved while approval workflow is ON. " +
+                    "UserId={UserId} EventId={EventId} — caller must route via RefundExecutionService.",
+                    userId, eventId);
+                return Result<AddOnRefundResult>.Failure(
+                    "Refund-approval workflow is enabled. Direct add-on refunds are blocked.");
+            }
+
             _logger.LogInformation(
-                "AddOnRefundService START: UserId={UserId}, EventId={EventId}",
-                userId, eventId);
+                "AddOnRefundService START: UserId={UserId}, EventId={EventId}, IsPreApproved={IsPreApproved}",
+                userId, eventId, isPreApproved);
 
             try
             {

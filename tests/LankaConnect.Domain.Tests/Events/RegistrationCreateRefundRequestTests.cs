@@ -61,8 +61,11 @@ public class RegistrationCreateRefundRequestTests
     // ============================================================
 
     [Fact]
-    public void CreateRefundRequest_AttendeePath_HappyPath_FlipsRegistrationToPendingRefundApproval()
+    public void CreateRefundRequest_AttendeePath_HappyPath_LeavesRegistrationConfirmed()
     {
+        // Post-rework: cancel and refund are decoupled. CreateRefundRequest no longer
+        // mutates Registration.Status — the registration stays in whatever lifecycle
+        // state it was in (Confirmed for standalone refund, Cancelled for cancel+refund).
         var reg = BuildPaidConfirmedRegistration();
 
         var result = reg.CreateRefundRequest(
@@ -75,10 +78,46 @@ public class RegistrationCreateRefundRequestTests
             lineItems: TicketOnly());
 
         result.IsSuccess.Should().BeTrue();
-        reg.Status.Should().Be(RegistrationStatus.PendingRefundApproval);
+        reg.Status.Should().Be(RegistrationStatus.Confirmed,
+            "decoupled: refund request creation must NOT mutate Registration.Status");
         reg.RefundRequests.Should().ContainSingle();
         result.Value.Status.Should().Be(RefundRequestStatus.Pending);
         result.Value.LineItems.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void CreateRefundRequest_AttendeePath_OnCancelledRegistration_Succeeds()
+    {
+        // Compound cancel+refund path: caller cancels the registration first (Cancelled),
+        // then creates a Pending refund request on the same row. The aggregate now allows
+        // this combination because the two lifecycles are decoupled.
+        var reg = BuildPaidConfirmedRegistration();
+        reg.Cancel();
+        reg.Status.Should().Be(RegistrationStatus.Cancelled);
+
+        var result = reg.CreateRefundRequest(
+            AttendeeUser, false, "Cannot attend", null, false, false, TicketOnly());
+
+        result.IsSuccess.Should().BeTrue();
+        reg.Status.Should().Be(RegistrationStatus.Cancelled, "cancel state preserved");
+        reg.RefundRequests.Should().ContainSingle();
+        result.Value.Status.Should().Be(RefundRequestStatus.Pending);
+    }
+
+    [Fact]
+    public void CreateRefundRequest_OrganizerPath_OnCancelledRegistration_Fails()
+    {
+        // Only the attendee path is allowed to create a refund on a Cancelled registration
+        // (the cancel+refund compound). Organizer-initiated on a Cancelled registration is
+        // disallowed — organizer should only act on live (Confirmed) registrations.
+        var reg = BuildPaidConfirmedRegistration();
+        reg.Cancel();
+
+        var result = reg.CreateRefundRequest(
+            OrganizerUser, true, null, "notes", false, false, TicketOnly());
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("not eligible");
     }
 
     [Fact]
@@ -101,16 +140,19 @@ public class RegistrationCreateRefundRequestTests
     // ============================================================
 
     [Fact]
-    public void CreateRefundRequest_NotConfirmed_Fails()
+    public void CreateRefundRequest_AttendeePath_OnRefundedRegistration_Fails()
     {
+        // After registration is fully Refunded (terminal money state), no new refund
+        // requests can be created. Allowed states: Confirmed (organizer or attendee
+        // path) and Cancelled (attendee path only).
         var reg = BuildPaidConfirmedRegistration();
-        reg.Cancel();
+        reg.RefundPayment();
 
         var result = reg.CreateRefundRequest(
             AttendeeUser, false, null, null, false, false, TicketOnly());
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("Confirmed");
+        result.Error.Should().Contain("not eligible");
     }
 
     [Fact]
@@ -163,7 +205,8 @@ public class RegistrationCreateRefundRequestTests
             lineItems: TicketOnly());
 
         result.IsSuccess.Should().BeTrue();
-        reg.Status.Should().Be(RegistrationStatus.PendingRefundApproval);
+        reg.Status.Should().Be(RegistrationStatus.Confirmed,
+            "decoupled: refund creation does not mutate Registration.Status");
         result.Value.ScanGuardOverridden.Should().BeTrue();
         result.Value.Status.Should().Be(RefundRequestStatus.Approved);
     }
@@ -220,14 +263,13 @@ public class RegistrationCreateRefundRequestTests
     [Fact]
     public void CreateRefundRequest_SecondRequestAfterRejectedFirst_Succeeds()
     {
+        // Post-rework: Registration.Status is never mutated by CreateRefundRequest,
+        // so the only guard for a second request is HasActiveRefundRequest. Once the
+        // first is Rejected, a second can be created.
         var reg = BuildPaidConfirmedRegistration();
         var first = reg.CreateRefundRequest(
             AttendeeUser, false, null, null, false, false, TicketOnly()).Value;
-        // Simulate rejection cycle
         first.Reject(OrganizerUser, "outside policy");
-        // Caller normally transitions Registration back to Confirmed via MoveToConfirmedFromApproval;
-        // do that here so this test isolates the "active request" check, not status.
-        reg.MoveToConfirmedFromApproval().IsSuccess.Should().BeTrue();
 
         var second = reg.CreateRefundRequest(
             AttendeeUser, false, null, null, false, false, TicketOnly());
@@ -289,43 +331,8 @@ public class RegistrationCreateRefundRequestTests
     }
 
     // ============================================================
-    // Internal state transitions
+    // HasActiveRefundRequest invariant
     // ============================================================
-
-    [Fact]
-    public void MoveToRefundRequestedFromApproval_FromPendingRefundApproval_TransitionsToRefundRequested()
-    {
-        var reg = BuildPaidConfirmedRegistration();
-        reg.CreateRefundRequest(AttendeeUser, false, null, null, false, false, TicketOnly());
-        reg.Status.Should().Be(RegistrationStatus.PendingRefundApproval);
-
-        var result = reg.MoveToRefundRequestedFromApproval();
-
-        result.IsSuccess.Should().BeTrue();
-        reg.Status.Should().Be(RegistrationStatus.RefundRequested);
-    }
-
-    [Fact]
-    public void MoveToConfirmedFromApproval_FromPendingRefundApproval_TransitionsToConfirmed()
-    {
-        var reg = BuildPaidConfirmedRegistration();
-        reg.CreateRefundRequest(AttendeeUser, false, null, null, false, false, TicketOnly());
-
-        var result = reg.MoveToConfirmedFromApproval();
-
-        result.IsSuccess.Should().BeTrue();
-        reg.Status.Should().Be(RegistrationStatus.Confirmed);
-    }
-
-    [Fact]
-    public void MoveToRefundRequestedFromApproval_FromConfirmed_Fails()
-    {
-        var reg = BuildPaidConfirmedRegistration();
-
-        var result = reg.MoveToRefundRequestedFromApproval();
-
-        result.IsFailure.Should().BeTrue();
-    }
 
     [Fact]
     public void HasActiveRefundRequest_TrueWhenPending()
@@ -343,8 +350,14 @@ public class RegistrationCreateRefundRequestTests
         var req = reg.CreateRefundRequest(
             AttendeeUser, false, null, null, false, false, TicketOnly()).Value;
         req.Reject(OrganizerUser, "outside policy");
-        reg.MoveToConfirmedFromApproval();
 
         reg.HasActiveRefundRequest.Should().BeFalse();
     }
+
+    // ============================================================
+    // Vestigial helpers — MoveToRefundRequestedFromApproval and MoveToConfirmedFromApproval
+    // are no longer called by the new decoupled flow. The methods remain in the aggregate
+    // for safety (in case any in-flight staging row needs them) but their preconditions
+    // are unreachable under the current flow. They are NOT tested here intentionally.
+    // ============================================================
 }

@@ -20,7 +20,15 @@ public record CancelRsvpCommand(
     bool RefundAddOnPurchases = false,
     // Phase 6A.137F: Collection and sponsor refund flags
     bool RefundCollections = false,
-    bool RefundSponsors = false
+    bool RefundSponsors = false,
+    // Phase 6A.148: Refund the ticket itself (default true to preserve legacy behavior
+    // where paid registration cancellation always refunded the ticket). When the
+    // approval workflow flag is ON, this signals whether to add a Ticket line item to
+    // the RefundRequest. Attendees can opt out by unchecking the Ticket bucket.
+    bool RefundTicket = true,
+    // Phase 6A.148: Optional attendee-supplied reason for the refund request (shown
+    // to the organizer at approval time). Empty/null is fine.
+    string? RequesterReason = null
 ) : ICommand<CancelRsvpResult>;
 
 /// <summary>
@@ -41,5 +49,9 @@ public record CancelRsvpResult(
     decimal? CollectionRefundAmount = null,
     bool? SponsorRefundProcessed = null,
     decimal? SponsorRefundAmount = null,
-    List<string>? Warnings = null
+    List<string>? Warnings = null,
+    // Phase 6A.148: When the approval workflow flag is ON and the registration was
+    // paid, a Pending RefundRequest is created instead of inline Stripe calls; this
+    // is its ID so the FE can deep-link to the status banner.
+    Guid? RefundRequestId = null
 );

@@ -519,11 +519,19 @@ public class EventCancellationEmailJob
 
                 // Use shared refund service - it handles Stripe call and RequestRefund() transition
                 // The charge.refunded webhook will complete the transition to Refunded
+                //
+                // Phase 6A.148 (B6): pass isPreApproved=true. The organizer's act of
+                // cancelling the entire event IS the approval for every consequent
+                // refund — forcing them to also click Approve on a queue of hundreds is
+                // hostile UX. A follow-up will additionally materialise ApprovedAuto
+                // RefundRequest rows so the audit trail goes through the same aggregate;
+                // for now Stripe metadata + this comment carry the audit context.
                 var refundResult = await _refundService.ProcessRefundAsync(
                     registration,
                     "event_cancelled",
                     metadata,
                     additionalRefundAmount: 0m,
+                    isPreApproved: true,
                     CancellationToken.None);
 
                 singleRefundStopwatch.Stop();

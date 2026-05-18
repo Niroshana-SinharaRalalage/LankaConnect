@@ -318,7 +318,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.IsAny<decimal>(),
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Registration reg, string reason, Dictionary<string, string> metadata, decimal addOnAmount, CancellationToken ct) =>
+            .ReturnsAsync((Registration reg, string reason, Dictionary<string, string> metadata, decimal addOnAmount, bool isPreApproved, CancellationToken ct) =>
                 Result<RefundResult>.Success(new RefundResult($"re_test_{reg.Id}", reg.TotalPrice?.Amount ?? 0)));
 
         _mockUnitOfWork
@@ -518,7 +518,7 @@ public class EventCancellationEmailJobAutoRefundTests
                 It.IsAny<decimal>(),
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Registration, string, Dictionary<string, string>, decimal, CancellationToken>((reg, reason, metadata, _, __) => capturedMetadata = metadata)
+            .Callback<Registration, string, Dictionary<string, string>, decimal, bool, CancellationToken>((reg, reason, metadata, _, __, ___) => capturedMetadata = metadata)
             .ReturnsAsync(Result<RefundResult>.Success(new RefundResult("re_test", 50.00m)));
 
         _mockUnitOfWork.Setup(x => x.CommitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);

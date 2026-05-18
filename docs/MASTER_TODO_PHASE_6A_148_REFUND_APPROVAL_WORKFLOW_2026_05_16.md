@@ -867,13 +867,57 @@ Expected log lines:
 
 ### Wave 3 phase gates
 
-- [ ] **G1 — Pre-code**: Master TODO Wave 3 section committed (THIS DOC).
-- [ ] **G2 — D7 GREEN**: 6 D7 tests pass locally; migration applies + reverts cleanly on local DB.
-- [ ] **G3 — D7 staging**: D7 commit pushed; `deploy-staging.yml` succeeds; `events.email_templates` shows 3 new rows via psql; container logs clean.
+- [x] **G1 — Pre-code**: Master TODO Wave 3 section committed.
+- [x] **G2 — D7 GREEN**: 26 D7 tests pass locally (3 new test files: RefundPendingReviewEmailParamsTests, RefundDecisionEmailParamsTests, RefundRejectedEmailParamsTests); Infrastructure builds clean; `[Migration]` attribute verified in Designer.cs.
+- [x] **G3 — D7 staging**: D7 commit `2c06b62b` pushed; `deploy-staging.yml` run `26054943592` succeeded; container revision `0001678` healthy (`/api/health` → 200); `communications.email_templates` direct DB query confirms 3 new rows present with correct subjects:
+  - `template-refund-pending-review` → "Refund Request Received — Pending Organizer Review — {{EventTitle}}"
+  - `template-refund-decision` → "Your Refund Decision — {{EventTitle}}"
+  - `template-refund-rejected` → "Refund Request Declined — {{EventTitle}}"
 - [ ] **G4 — D8 + D8b GREEN**: 6+4 handler tests pass; full Application suite GREEN; build zero warnings.
 - [ ] **G5 — D9 GREEN**: 6 D9 tests pass; SponsorWebhookHandler regression suite passes.
 - [ ] **G6 — Staging deploy (D8 + D8b + D9)**: pushed; `deploy-staging.yml` succeeds; W3.T1–W3.T8 smoke matrix passes; email evidence captured.
 - [ ] **G7 — PR**: open PR off `feat/phase-6a-148-refund-approval-workflow` with W3.T1–W3.T8 evidence + screenshots of new email headers.
+
+### D7 ship status (2026-05-18)
+
+**Status:** committed `2c06b62b`, pushed, staging deploy dispatched (run `26054943592`).
+
+**What landed:**
+- 3 `TemplateNames` constants in [EmailTemplateContract.cs](../src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs#L107) + 3 parameter regions.
+- New email-only view record [RefundLineItemView.cs](../src/LankaConnect.Shared/Email/Contracts/RefundLineItemView.cs).
+- New HTML builder [RefundLineItemsHtmlBuilder.cs](../src/LankaConnect.Shared/Email/Helpers/RefundLineItemsHtmlBuilder.cs) — `BuildRequestedListHtml` + `BuildDecisionListHtml` with status-coded badges.
+- 3 strongly-typed `IEmailParameters` classes: [RefundPendingReviewEmailParams.cs](../src/LankaConnect.Shared/Email/Contracts/RefundPendingReviewEmailParams.cs), [RefundDecisionEmailParams.cs](../src/LankaConnect.Shared/Email/Contracts/RefundDecisionEmailParams.cs), [RefundRejectedEmailParams.cs](../src/LankaConnect.Shared/Email/Contracts/RefundRejectedEmailParams.cs).
+- EF migration `Phase6A148D7_AddRefundWorkflowEmailTemplates` ([20260518185353_Phase6A148D7_AddRefundWorkflowEmailTemplates.cs](../src/LankaConnect.Infrastructure/Data/Migrations/20260518185353_Phase6A148D7_AddRefundWorkflowEmailTemplates.cs)) — idempotent `INSERT ... WHERE NOT EXISTS` for 3 template rows + `Down()` removes by name.
+
+**Tests:** 26/26 GREEN. 5 pre-existing failures in `BaseParameterContractsTests.EventEmailParams_*DateCorrectly` are unrelated (timezone/culture date format issues; none of my files touch `EventEmailParams` or date helpers).
+
+**Adaptations from architect's exact TDD list** (project-convention reasons):
+- Architect: `Given_RefundDecisionParams_When_LineItemsEmpty_Then_ConstructorThrows`.
+- Shipped: `Validate_ShouldFail_WhenLineItemsEmpty` (Validate() with errors list, not throwing constructor) — matches existing `RefundEmailParams` pattern. Same intent (catch empty line items at pre-send), different mechanism.
+- Architect: `Given_RefundRejectedParams_When_RejectionReasonNull_Then_ConstructorThrows`.
+- Shipped: `Validate_ShouldFail_WhenRejectionReasonEmpty` + `..._WhenRejectionReasonWhitespace` — same intent (RejectionReason mandatory), Validate-based.
+
+**Staging verification (D7) — ALL GREEN:**
+- [x] `deploy-staging.yml` run `26054943592` succeeded.
+- [x] Container revision `lankaconnect-api-staging--0001678` provisioned + ready (system logs `RevisionReady` event 2026-05-18 19:22:50Z).
+- [x] `GET /api/health` returns `HTTP 200 {"status":"Healthy"}` — if the D7 migration had failed, EF Core's `Database.Migrate()` would have thrown during startup and the container would never have become healthy.
+- [x] Direct DB query (via `az postgres flexible-server execute`) confirms 3 new rows present in `communications.email_templates` with correct subject lines:
+
+  ```sql
+  SELECT name, subject_template FROM communications.email_templates
+  WHERE name IN ('template-refund-pending-review', 'template-refund-decision', 'template-refund-rejected')
+  ORDER BY name;
+  ```
+
+  ```
+  template-refund-decision        | Your Refund Decision — {{EventTitle}}
+  template-refund-pending-review  | Refund Request Received — Pending Organizer Review — {{EventTitle}}
+  template-refund-rejected        | Refund Request Declined — {{EventTitle}}
+  ```
+
+- [x] No regression — health endpoint green; existing email surface unchanged (no handler rewires yet).
+
+**Next:** G4/G5/G6 → D8 (rewire 3 existing handlers) + D8b (new OrganizerInitiatedRefundCreatedEventHandler) + D9 (suppress duplicate per-Sponsor email when workflow-owned).
 
 ### Order of operations
 

@@ -670,3 +670,216 @@ Full E2E tests (T1, T7-T20 from plan §11.4) require a confirmed paid registrati
 5. Browser UAT for the golden paths (T1, T7-T9, T11 from plan §11.4)
 6. Open PR with smoke evidence + screenshots in body
 7. Address F4 + F5 follow-ups in a separate PR after the main flow has shipped
+
+---
+
+## Wave 3 — Email surface fix (D7 / D8 / D8b / D9)
+
+**Opened:** 2026-05-18
+**Trigger:** Operator UAT defects E1/E2/E3 — refund emails fire with misleading "Refund In Progress" header, no dedicated pending-review email, duplicate per-Sponsor email competes with consolidated decision email.
+**Architect validation:** ✅ Paired-validated 2026-05-18 (Plan agent acting as system-architect, two passes).
+
+### The 3 defects (operator-verbatim)
+
+| ID | Defect | Root cause |
+|---|---|---|
+| E1 | "Refund email arrived BEFORE organizer approved." | [RefundRequestCreatedEventHandler.cs:112](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandler.cs#L112) reuses `template-refund-requested` → header reads "Refund In Progress" (legacy 6A.92 vocab). |
+| E2 | "No 'request initiated, waiting for approval' email." | Same handler — no dedicated `template-refund-pending-review` exists; "Pending review" is smuggled into `refundReason` body, but visible subject + header stay legacy. |
+| E3 | "$255 requested, $125 confirmation email." | After consolidated decision email fires, [SponsorWebhookHandler.cs:225](../src/LankaConnect.Infrastructure/Payments/Services/SponsorWebhookHandler.cs#L225) ALSO fires per-Sponsor "Sponsorship Refund Confirmation" (6A.137 legacy) → operator reads $125 standalone as authoritative. |
+
+### Locked defaults (decided 2026-05-18 under user delegation — no further questions)
+
+| # | Default |
+|---|---|
+| W3.D1 | **Subjects**: "Refund Request Received — Pending Organizer Review — {EventTitle}" / "Your Refund Decision — {EventTitle}" / "Refund Request Declined — {EventTitle}". |
+| W3.D2 | **Organizer-initiated path**: SKIP pending email; send ONE decision email with body copy "Initiated by organizer on your behalf." |
+| W3.D3 | **WhatsApp parallel**: defer to a separate ticket — out of scope for Wave 3. |
+| W3.D4 | **Standalone (non-workflow) Sponsor refund**: keep existing per-Sponsor email behaviour unchanged. |
+| W3.D5 | **D9 detection mechanism**: query `IRefundRequestRepository` (lowest coupling — no schema changes to `Sponsor`). Fail-OPEN on exception (default to sending standalone email if lookup throws). |
+
+### D7 — Templates + contracts (migration MUST land first)
+
+- [ ] Generate migration `Phase6A148d_AddRefundWorkflowEmailTemplates` — INSERTs three rows into `events.email_templates`:
+  - `template-refund-pending-review` — subject `"Refund Request Received — Pending Organizer Review — {{EventTitle}}"`; header "Refund Request Received"; body lists per-line items as a structured table; CTA "View on LankaConnect" links to event details.
+  - `template-refund-decision` — subject `"Your Refund Decision — {{EventTitle}}"`; header "Refund Decision"; body lists per-line decisions (approved $X / declined / processing) with totals.
+  - `template-refund-rejected` — subject `"Refund Request Declined — {{EventTitle}}"`; header "Refund Request Declined"; dedicated `{{RejectionReason}}` placeholder (no body-stuffing).
+  - Verify `[Migration("...")]` attribute present in `.Designer.cs` (project rule #8).
+  - Test up + down locally on clean DB.
+- [ ] Add 3 new constants to `EmailTemplateContract.TemplateNames` in [EmailTemplateContract.cs:104](../src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs#L104):
+  - `RefundPendingReview = "template-refund-pending-review"`
+  - `RefundDecision = "template-refund-decision"`
+  - `RefundRejected = "template-refund-rejected"`
+- [ ] New strongly-typed param classes under `src/LankaConnect.Shared/Email/Contracts/`:
+  - `RefundPendingReviewEmailParams.cs` — `LineItems: IReadOnlyList<RefundLineItemView>`, `RequesterReason: string?`, `OrganizerContacts: IReadOnlyList<OrganizerContactInfo>?`.
+  - `RefundDecisionEmailParams.cs` — `LineItems` (each row carries `Status`, `RequestedAmount`, `ApprovedAmount`), `ApprovedTotal`, `RequestedTotal`, `IsOrganizerInitiated: bool` (drives body copy variant).
+  - `RefundRejectedEmailParams.cs` — `LineItems`, `RejectionReason` (mandatory, top-level field), `RequestedTotal`.
+- [ ] **TDD list (D7):**
+  - `Given_TemplateNamesRegistered_When_ResolvingPendingReview_Then_ReturnsDbRow`
+  - `Given_RefundPendingReviewParams_When_ToDictionary_Then_AllPlaceholdersResolved`
+  - `Given_RefundDecisionParams_When_LineItemsEmpty_Then_ConstructorThrows`
+  - `Given_RefundDecisionParams_When_MixedApprovedRejected_Then_LineItemsHtmlContainsBothBadges`
+  - `Given_RefundRejectedParams_When_RejectionReasonNull_Then_ConstructorThrows` (rejection reason is mandatory)
+  - `Given_Migration_When_AppliedAndReverted_Then_Idempotent`
+- [ ] **Gate:** D7 migration must be applied to staging BEFORE merging D8 — handler code referencing missing template rows fail-silent (handlers swallow exceptions per existing pattern), so attendees would get NO email.
+
+### D8 — Rewire the three new handlers
+
+- [ ] [RefundRequestCreatedEventHandler.cs:112](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandler.cs#L112) — replace `RefundEmailParams.CreateRequest(...)` with `RefundPendingReviewEmailParams.Create(...)`. Remove the prose-stuffed `reasonWithBreakdown`; pass structured `LineItems` instead.
+- [ ] [RefundRequestApprovedEventHandler.cs:133](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandler.cs#L133) — replace with `RefundDecisionEmailParams.Create(...)`. `IsOrganizerInitiated = false` here (this handler only fires on attendee-initiated → organizer-approved path).
+- [ ] [RefundRequestRejectedEventHandler.cs:94](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestRejectedEventHandler.cs#L94) — replace with `RefundRejectedEmailParams.Create(...)`. Reason becomes top-level field, not body smush.
+- [ ] Legacy [RefundRequestedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequestedEventHandler.cs) — leave intact (only fires on 6A.148 flag OFF branch). Add comment: `// Legacy 6A.92 — only fires when Refund:ApprovalWorkflow:Enabled = false. Remove after 148 ramps to 100%.`
+- [ ] **TDD list (D8):**
+  - `Given_AttendeeInitiatedRequest_When_Created_Then_SendsPendingReviewTemplate_NotRefundRequested`
+  - `Given_OrganizerInitiatedRequest_When_Created_Then_PendingReviewHandlerNotInvoked` (covered by MediatR routing — no shared event type)
+  - `Given_ApprovedRequest_When_Handled_Then_SendsRefundDecisionTemplate_WithPerLineBreakdown`
+  - `Given_RejectedRequest_When_Handled_Then_SendsRefundRejectedTemplate_WithReasonInBody`
+  - `Given_TemplateMissing_When_HandlerRuns_Then_LogsErrorAndDoesNotThrow` (fail-silent guard)
+  - `Given_OrganizerContactsPresent_When_PendingReviewEmailSent_Then_OrganizerContactsRenderedInBody`
+
+### D8b — NEW: OrganizerInitiatedRefundCreatedEventHandler
+
+**Why this exists:** `Registration.CreateRefundRequest` with `isOrganizerInitiated=true` raises `OrganizerInitiatedRefundCreatedEvent` ([Registration.cs:1117](../src/LankaConnect.Domain/Events/Registration.cs#L1117)), NOT `RefundRequestCreatedEvent`. Currently nothing subscribes → attendees on the organizer path get zero notification.
+
+- [ ] Create [OrganizerInitiatedRefundCreatedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/OrganizerInitiatedRefundCreatedEventHandler.cs) — mirrors `RefundRequestApprovedEventHandler` structure (attendee resolution, event resolution, organizer-contact attachment).
+- [ ] Uses `RefundDecisionEmailParams.Create(..., IsOrganizerInitiated: true, ...)` — body copy variant: "Your organizer has initiated a refund on your behalf. {Per-line breakdown}. Stripe is now processing; you'll receive another email when funds land."
+- [ ] **TDD list (D8b):**
+  - `Given_OrganizerInitiatedRequest_When_Handled_Then_SendsDecisionEmailWithInitiatedByOrganizerCopy`
+  - `Given_OrganizerInitiatedRequest_When_AttendeeNotFound_Then_LogsWarningAndFailsSilent`
+  - `Given_OrganizerInitiatedRequest_When_OrganizerContactsPresent_Then_AttachedToEmail`
+  - `Given_OrganizerInitiatedRequest_When_NoApprovedLines_Then_DoesNotSendEmail` (defensive — shouldn't happen but assert)
+
+### D9 — Suppress duplicate per-Sponsor email when workflow-owned
+
+- [ ] Add method to [IRefundRequestRepository.cs:60](../src/LankaConnect.Domain/Events/Repositories/IRefundRequestRepository.cs#L60):
+  ```csharp
+  Task<bool> ExistsWorkflowLineItemForSponsorAsync(
+      Guid sponsorId, string stripeRefundId, CancellationToken ct);
+  ```
+  Predicate: `Type == Sponsor && ReferenceId == sponsorId && StripeRefundId == stripeRefundId`. `AsNoTracking().AnyAsync()`.
+- [ ] EF implementation in `RefundRequestRepository.cs`.
+- [ ] Inject `IRefundRequestRepository` into [SponsorWebhookHandler.cs](../src/LankaConnect.Infrastructure/Payments/Services/SponsorWebhookHandler.cs#L225).
+- [ ] At line 225 (fire-and-forget email block), add guard:
+  ```csharp
+  try
+  {
+      var isWorkflowOwned = await _refundRequestRepository
+          .ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundEvent.RefundId, ct);
+      if (isWorkflowOwned)
+      {
+          _logger.LogInformation(
+              "[6A.148.D9] Sponsor refund email suppressed — workflow-owned. SponsorId={SponsorId} RefundId={RefundId}",
+              sponsor.Id, refundEvent.RefundId);
+          return;
+      }
+  }
+  catch (Exception ex)
+  {
+      // FAIL-OPEN: if lookup fails, default to sending the legacy email
+      _logger.LogWarning(ex,
+          "[6A.148.D9] Workflow-owned lookup threw; defaulting to send standalone email. SponsorId={SponsorId}",
+          sponsor.Id);
+  }
+  // ... existing email-send block continues
+  ```
+- [ ] **TDD list (D9):**
+  - `Given_SponsorRefund_WithMatchingWorkflowLineItem_When_WebhookHandled_Then_StandaloneEmailSkipped`
+  - `Given_SponsorRefund_WithNoWorkflowLineItem_When_WebhookHandled_Then_StandaloneEmailSent` (legacy path preserved — REGRESSION GUARD)
+  - `Given_SponsorRefund_WhenWorkflowLookupThrows_Then_DefaultsToSendingEmail_AndLogsWarning` (fail-open guardrail)
+  - `Given_TwoSponsorsRefundedInOneWorkflow_When_BothWebhooksFire_Then_BothStandaloneEmailsSkipped`
+  - `Given_SponsorRefund_WithDifferentStripeRefundId_Then_StandaloneEmailSent` (no false positive on cross-RR collision)
+  - `Given_RepositoryReturnsTrue_When_SkipLogged_Then_LogIncludesRefundRequestId` (observability)
+
+### API smoke matrix (post-staging-deploy verification)
+
+Token via password `1qaz!QAZ` (NOT `12!@qwASzx`, per memory `reference_staging_creds.md`).
+
+```bash
+TOKEN=$(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"niroshhh@gmail.com","password":"1qaz!QAZ","rememberMe":true,"ipAddress":"string"}' \
+  | jq -r '.token')
+```
+
+| ID | Action | Expected email | Must NOT receive |
+|---|---|---|---|
+| W3.T1 | Attendee `POST /api/events/{id}/refund-requests` (Ticket+Sponsor+2 AddOns) | Subject: **"Refund Request Received — Pending Organizer Review — {ET}"** | Any email with "Refund In Progress" |
+| W3.T2 | Organizer `POST /api/events/{id}/refund-requests/{rrId}/approve` (mixed: 1 sponsor approved $125, 2 AddOns declined, 1 AddOn approved $15) | Subject: **"Your Refund Decision — {ET}"** (ONE email, per-line table shows $125+$15 approved, $14 declined) | Standalone "Sponsorship Refund $125" email (D9 must suppress) |
+| W3.T3 | Organizer `POST /api/events/{id}/refund-requests/{rrId}/reject` | Subject: **"Refund Request Declined — {ET}"**, body has dedicated rejection-reason field | "Refund In Progress" / "Your Refund Decision" |
+| W3.T4 | Organizer `POST /api/events/{id}/refund-requests/organizer-initiated` (full refund) | Subject: **"Your Refund Decision — {ET}"** (body copy: "Initiated by organizer on your behalf") | "Pending Organizer Review" |
+| W3.T5 | Trigger a standalone sponsor refund via Stripe dashboard (sponsor NOT in any RefundRequest) | Subject: "Your Sponsorship Refund - {ET}" (legacy path preserved — REGRESSION GUARD) | Any Wave 3 workflow email |
+| W3.T6 | Complete a workflow approval; Stripe webhook `charge.refunded` fires for sponsor line | Existing "Refund Completed" money-landed email (unchanged — fires once per `Processing → Completed` transition) | Duplicate "Sponsorship Refund $X" standalone |
+| W3.T7 | `POST /approve` with all-zero approvedAmounts | (HTTP 400, no email) | Any refund email |
+| W3.T8 | Attendee `POST .../refund-requests/me/withdraw` | (no email — confirm silence; current handler nonexistent) | "Refund Request Declined" |
+
+For each test:
+1. Fire the curl command.
+2. Check operator inbox at `niroshhh@gmail.com` within 60s.
+3. Capture subject + first 200 chars of body.
+4. Document outcome in PR description.
+
+### Container log audit (post-deploy)
+
+```bash
+az containerapp logs show --name lankaconnect-api-staging --tail 500 \
+  | Select-String -Pattern '6A.148.c EMAIL|6A.148.D9|template-refund'
+```
+
+Expected log lines:
+- `[6A.148.c EMAIL] RefundRequestCreated email sent: RrId={...} Email={...}` (D8 rewire confirmed)
+- `[6A.148.D9] Sponsor refund email suppressed — workflow-owned. SponsorId={...}` (D9 suppression confirmed for W3.T2)
+- No `EXCEPTION` lines outside expected validation paths.
+
+### Risk register
+
+| Risk | Probability | Guardrail |
+|---|---|---|
+| **D9 false-positive** (legacy standalone sponsor refund suppressed → sponsor receives no email at all) | Medium | Fail-OPEN on lookup exception + W3.T5 regression guard test. |
+| **D7 migration fails to land on staging before D8 merges** → all 4 handlers fail-silent, attendees get zero emails. | Medium | Gate: D8 PR must check migration applied at top of CI; staging deploy of D7 must precede D8 merge. Document in PR description. |
+| **Subject-line copy regression** if downstream email service caches the old `template-refund-requested` rendering | Low | Old template stays in DB; the 3 new rows are additive. No risk of overwriting. |
+| **In-flight Pending rows at deploy time** receive new decision/rejected email on next state change — behaviour change for users mid-flight | Acceptable | Improvement, not regression. No data migration. |
+| Test password drift between docs and reality | Low (already burned us once) | Master TODO explicitly says `1qaz!QAZ` per memory `reference_staging_creds.md`. |
+
+### Files to touch — final list
+
+**Backend (new + edit):**
+- NEW: `src/LankaConnect.Infrastructure/Data/Migrations/2026MMDDhhmmss_Phase6A148d_AddRefundWorkflowEmailTemplates.cs` (+ `.Designer.cs`)
+- NEW: `src/LankaConnect.Shared/Email/Contracts/RefundPendingReviewEmailParams.cs`
+- NEW: `src/LankaConnect.Shared/Email/Contracts/RefundDecisionEmailParams.cs`
+- NEW: `src/LankaConnect.Shared/Email/Contracts/RefundRejectedEmailParams.cs`
+- NEW: `src/LankaConnect.Application/Events/EventHandlers/RefundRequests/OrganizerInitiatedRefundCreatedEventHandler.cs`
+- EDIT: [src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs:104](../src/LankaConnect.Shared/Email/Contracts/EmailTemplateContract.cs#L104) — 3 new `TemplateNames` constants
+- EDIT: [src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandler.cs:112](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandler.cs#L112)
+- EDIT: [src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandler.cs:133](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandler.cs#L133)
+- EDIT: [src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestRejectedEventHandler.cs:94](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestRejectedEventHandler.cs#L94)
+- EDIT: [src/LankaConnect.Domain/Events/Repositories/IRefundRequestRepository.cs:60](../src/LankaConnect.Domain/Events/Repositories/IRefundRequestRepository.cs#L60) — add `ExistsWorkflowLineItemForSponsorAsync`
+- EDIT: `src/LankaConnect.Infrastructure/Data/Repositories/RefundRequestRepository.cs` — implement new method
+- EDIT: [src/LankaConnect.Infrastructure/Payments/Services/SponsorWebhookHandler.cs:225](../src/LankaConnect.Infrastructure/Payments/Services/SponsorWebhookHandler.cs#L225) — inject repo + add D9 guard
+
+**Tests (new):**
+- `tests/LankaConnect.Application.Tests/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandlerTests.cs` (extend)
+- `tests/LankaConnect.Application.Tests/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandlerTests.cs` (extend)
+- `tests/LankaConnect.Application.Tests/Events/EventHandlers/RefundRequests/RefundRequestRejectedEventHandlerTests.cs` (extend)
+- NEW: `tests/LankaConnect.Application.Tests/Events/EventHandlers/RefundRequests/OrganizerInitiatedRefundCreatedEventHandlerTests.cs`
+- NEW: `tests/LankaConnect.Application.Tests/Shared/Email/Contracts/RefundPendingReviewEmailParamsTests.cs`
+- NEW: `tests/LankaConnect.Application.Tests/Shared/Email/Contracts/RefundDecisionEmailParamsTests.cs`
+- NEW: `tests/LankaConnect.Application.Tests/Shared/Email/Contracts/RefundRejectedEmailParamsTests.cs`
+- EXTEND: `tests/LankaConnect.IntegrationTests/Payments/SponsorWebhookHandlerTests.cs` (add D9 guard tests)
+
+### Wave 3 phase gates
+
+- [ ] **G1 — Pre-code**: Master TODO Wave 3 section committed (THIS DOC).
+- [ ] **G2 — D7 GREEN**: 6 D7 tests pass locally; migration applies + reverts cleanly on local DB.
+- [ ] **G3 — D7 staging**: D7 commit pushed; `deploy-staging.yml` succeeds; `events.email_templates` shows 3 new rows via psql; container logs clean.
+- [ ] **G4 — D8 + D8b GREEN**: 6+4 handler tests pass; full Application suite GREEN; build zero warnings.
+- [ ] **G5 — D9 GREEN**: 6 D9 tests pass; SponsorWebhookHandler regression suite passes.
+- [ ] **G6 — Staging deploy (D8 + D8b + D9)**: pushed; `deploy-staging.yml` succeeds; W3.T1–W3.T8 smoke matrix passes; email evidence captured.
+- [ ] **G7 — PR**: open PR off `feat/phase-6a-148-refund-approval-workflow` with W3.T1–W3.T8 evidence + screenshots of new email headers.
+
+### Order of operations
+
+1. D7 (templates + contracts + params) → commit → deploy to staging → verify migration applied.
+2. D8 + D8b in one commit (handler rewires share the same param contracts and ship together — testing simpler).
+3. D9 in a separate commit (touches a different file; isolates risk).
+4. Run W3.T1–W3.T8 against staging.
+5. Update [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [STREAMLINED_ACTION_PLAN.md](./STREAMLINED_ACTION_PLAN.md), [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md).
+6. Open PR.

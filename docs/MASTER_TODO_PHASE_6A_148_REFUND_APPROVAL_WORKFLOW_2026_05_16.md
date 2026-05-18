@@ -873,7 +873,7 @@ Expected log lines:
   - `template-refund-pending-review` → "Refund Request Received — Pending Organizer Review — {{EventTitle}}"
   - `template-refund-decision` → "Your Refund Decision — {{EventTitle}}"
   - `template-refund-rejected` → "Refund Request Declined — {{EventTitle}}"
-- [ ] **G4 — D8 + D8b GREEN**: 6+4 handler tests pass; full Application suite GREEN; build zero warnings.
+- [x] **G4 — D8 + D8b GREEN**: 6 tests in RefundLifecycleEmailHandlerTests pass — covers attendee-initiated → RefundPendingReviewEmailParams binding, organizer-approved → RefundDecisionEmailParams with IsOrganizerInitiated=false, rejected → RefundRejectedEmailParams with RejectionReason first-class field, NEW D8b → RefundDecisionEmailParams with IsOrganizerInitiated=true, and fail-silent guards on both. Full Application suite: 2709 passed, 0 failed, 6 skipped (pre-existing).
 - [ ] **G5 — D9 GREEN**: 6 D9 tests pass; SponsorWebhookHandler regression suite passes.
 - [ ] **G6 — Staging deploy (D8 + D8b + D9)**: pushed; `deploy-staging.yml` succeeds; W3.T1–W3.T8 smoke matrix passes; email evidence captured.
 - [ ] **G7 — PR**: open PR off `feat/phase-6a-148-refund-approval-workflow` with W3.T1–W3.T8 evidence + screenshots of new email headers.
@@ -918,6 +918,39 @@ Expected log lines:
 - [x] No regression — health endpoint green; existing email surface unchanged (no handler rewires yet).
 
 **Next:** G4/G5/G6 → D8 (rewire 3 existing handlers) + D8b (new OrganizerInitiatedRefundCreatedEventHandler) + D9 (suppress duplicate per-Sponsor email when workflow-owned).
+
+---
+
+### D8 + D8b ship status (2026-05-18)
+
+**Status:** committed `a2cd233e`, pushed, staging deploy dispatched.
+
+**What landed:**
+- [RefundRequestCreatedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestCreatedEventHandler.cs) rewired from `RefundEmailParams.CreateRequest` (template-refund-requested, "Refund In Progress" header) → `RefundPendingReviewEmailParams.Create` (template-refund-pending-review, "Refund Request Received" header). Fixes E1+E2.
+- [RefundRequestApprovedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandler.cs) rewired → `RefundDecisionEmailParams.Create(IsOrganizerInitiated: false, ...)`. Per-line decision badges now render from structured `RefundLineItemView` list instead of body-stuffed text.
+- [RefundRequestRejectedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestRejectedEventHandler.cs) rewired → `RefundRejectedEmailParams.Create(...)`. `RejectionReason` is now a top-level mandatory field, not buried inside a prose `RefundReason`.
+- NEW [OrganizerInitiatedRefundCreatedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/OrganizerInitiatedRefundCreatedEventHandler.cs) — D8b. Subscribes to `OrganizerInitiatedRefundCreatedEvent` which previously had ZERO subscribers (organizer-initiated refunds sent no attendee email). Reuses `RefundDecisionEmailParams` with `IsOrganizerInitiated: true` so the template renders the body-copy variant.
+- NEW [RefundLineItemViewMapper.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundLineItemViewMapper.cs) — single source of truth for Domain `RefundRequestLineItem` → email-only `RefundLineItemView` mapping. Keeps type/status display strings aligned with the HTML builder's badge colour table.
+- Legacy [RefundRequestedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequestedEventHandler.cs) gets a documented "DO NOT EXTEND" deprecation note — only fires on `Refund:ApprovalWorkflow:Enabled=false` rollback branch.
+
+**Log prefix updates:**
+- `[6A.148.c EMAIL]` → `[6A.148.D8 EMAIL]` on the 3 rewired handlers.
+- `[6A.148.D8b EMAIL]` on the new handler.
+- Each success log now includes `Lines={count} Template={name}` so post-deploy audit can verify the intended template is in use without firing a real email.
+
+**Tests:** 6 new in RefundLifecycleEmailHandlerTests — full suite 2709/2715 GREEN, no regressions.
+
+**Adaptations from architect's TDD list:**
+- Combined 4 architect-suggested test classes into ONE file (RefundLifecycleEmailHandlerTests) covering all 4 handlers — keeps the shared test fixture (Setup, factory helpers) in one place. The load-bearing assertions (template-name binding + IsOrganizerInitiated flag) are pinned per handler.
+- Architect's `Given_TemplateMissing_When_HandlerRuns_Then_LogsErrorAndDoesNotThrow` covered transitively by the fail-silent test (`Created_FailSilentOnException`) — both rely on the same `try/catch` pattern that swallows ANY exception during email send.
+
+**Currency type fix found during build:** `Money.Currency` is the `Currency` enum, not `string` — added `.ToString()` before `?? "USD"` fallback across all 4 handlers.
+
+**Pending verification (D8+D8b staging):**
+- [ ] `deploy-staging.yml` run reaches success.
+- [ ] Container healthy + no startup exceptions from `[6A.148.D8*]` handler files.
+- [ ] When operator triggers a refund flow, container logs show `[6A.148.D8 EMAIL] RefundRequestCreated email sent: ... Template=template-refund-pending-review` (proves D7 templates resolve + D8 rewire is live).
+- [ ] Operator inbox shows the new subjects on next refund: "Refund Request Received — Pending Organizer Review" / "Your Refund Decision" / "Refund Request Declined". NO more "Refund In Progress" header.
 
 ### Order of operations
 

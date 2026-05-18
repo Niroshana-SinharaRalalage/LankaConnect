@@ -58,4 +58,22 @@ public interface IRefundRequestRepository
     Task<IReadOnlyList<RefundRequest>> ListStuckApprovedAsync(
         DateTime olderThanUtc,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.D9: returns true when the given Stripe sponsor refund was dispatched
+    /// through the approval workflow (i.e. there exists a <see cref="RefundRequestLineItem"/>
+    /// of type <see cref="RefundLineItemType.Sponsor"/> whose <c>ReferenceId</c> matches
+    /// <paramref name="sponsorId"/> AND whose <c>StripeRefundId</c> matches
+    /// <paramref name="stripeRefundId"/>).
+    ///
+    /// Used by <c>SponsorWebhookHandler</c> to suppress the legacy per-Sponsor "Sponsorship
+    /// Refund Confirmation" email when the consolidated D8 decision email has already
+    /// covered the attendee (operator UAT defect E3).
+    ///
+    /// Untracked AnyAsync — single index hit on (Type, ReferenceId, StripeRefundId).
+    /// </summary>
+    Task<bool> ExistsWorkflowLineItemForSponsorAsync(
+        Guid sponsorId,
+        string stripeRefundId,
+        CancellationToken cancellationToken = default);
 }

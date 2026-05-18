@@ -153,4 +153,32 @@ public class RefundRequestRepository : IRefundRequestRepository
             throw;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsWorkflowLineItemForSponsorAsync(
+        Guid sponsorId, string stripeRefundId, CancellationToken cancellationToken = default)
+    {
+        // Defensive: a null/empty stripeRefundId cannot match a stored line, so don't
+        // even hit the DB — return false so the caller falls back to the legacy email.
+        if (string.IsNullOrWhiteSpace(stripeRefundId))
+            return false;
+
+        try
+        {
+            return await _context.RefundRequestLineItems
+                .AsNoTracking()
+                .AnyAsync(li =>
+                    li.Type == RefundLineItemType.Sponsor &&
+                    li.ReferenceId == sponsorId &&
+                    li.StripeRefundId == stripeRefundId,
+                    cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[RefundRequestRepository] ExistsWorkflowLineItemForSponsorAsync failed for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
+                sponsorId, stripeRefundId);
+            throw;
+        }
+    }
 }

@@ -16,23 +16,30 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// Follows DonationWebhookHandler pattern.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (sponsor stays Pending; expiry cleanup handles it).
 /// Phase 6A.137B2: Added refund email notification via fire-and-forget.
+/// Phase 6A.148.D9: Suppresses the per-Sponsor "Sponsorship Refund Confirmation" email when
+/// the refund originated from the new approval workflow (D8's consolidated decision email
+/// already covered the attendee). Detection via <c>IRefundRequestRepository.ExistsWorkflowLineItemForSponsorAsync</c>;
+/// fail-OPEN on lookup exception so a transient DB error never silences a legitimate legacy email.
 /// </summary>
 public class SponsorWebhookHandler : ISponsorWebhookHandler
 {
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IRefundRequestRepository _refundRequestRepository;
     private readonly ILogger<SponsorWebhookHandler> _logger;
 
     public SponsorWebhookHandler(
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
         IServiceScopeFactory scopeFactory,
+        IRefundRequestRepository refundRequestRepository,
         ILogger<SponsorWebhookHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
         _scopeFactory = scopeFactory;
+        _refundRequestRepository = refundRequestRepository;
         _logger = logger;
     }
 
@@ -209,6 +216,32 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
             _logger.LogInformation(
                 "[Phase 6A.136E] [Webhook-Sponsor-Refund-SUCCESS] Sponsor marked as refunded - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                 correlationId, sponsor.Id, refundId);
+
+            // Phase 6A.148.D9: Suppress the per-Sponsor legacy email when this refund came
+            // through the new approval workflow — the consolidated D8 decision email already
+            // covered the attendee (operator UAT defect E3). Fail-OPEN: if the lookup throws
+            // we default to sending the legacy email so a transient DB issue never silences
+            // a legitimate notification.
+            var isWorkflowOwnedRefund = false;
+            try
+            {
+                isWorkflowOwnedRefund = await _refundRequestRepository
+                    .ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundId, ct);
+            }
+            catch (Exception lookupEx)
+            {
+                _logger.LogWarning(lookupEx,
+                    "[Phase 6A.148.D9] Workflow-owned lookup threw — defaulting to send standalone sponsor email. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                    correlationId, sponsor.Id, refundId);
+            }
+
+            if (isWorkflowOwnedRefund)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.148.D9] Sponsor refund standalone email SUPPRESSED — workflow-owned. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                    correlationId, sponsor.Id, refundId);
+                return;
+            }
 
             // Phase 6A.137B2: Fire-and-forget refund notification email
             var capturedSponsorName = sponsor.SponsorName;

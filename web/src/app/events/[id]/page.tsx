@@ -17,7 +17,8 @@ import { RsvpFormSection } from '@/presentation/components/features/events/RsvpF
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { RefundRequestStatusBanner } from '@/presentation/components/features/events/RefundRequestStatusBanner';
-import { RequestRefundDialog } from '@/presentation/components/features/events/RequestRefundDialog';
+// Phase 6A.148.c (D1+D2): standalone RequestRefundDialog removed per product decision Q1.
+// import { RequestRefundDialog } from '@/presentation/components/features/events/RequestRefundDialog';
 // Phase 6A.145 Commit 5 — top-of-page preview strips for add-ons + sponsors.
 import { AddOnsPreviewStrip } from '@/presentation/components/features/events/AddOnsPreviewStrip';
 import { SponsorsPreviewStrip } from '@/presentation/components/features/events/SponsorsPreviewStrip';
@@ -202,7 +203,8 @@ export function EventDetailPageInternal({
   // Phase 6A.148 — Refund approval workflow state
   const [myRefundRequest, setMyRefundRequest] =
     useState<import('@/infrastructure/api/types/refund-request.types').AttendeeRefundRequestDto | null>(null);
-  const [showRequestRefundDialog, setShowRequestRefundDialog] = useState(false);
+  // Phase 6A.148.c (D1+D2): standalone Request Refund button removed per product decision Q1.
+  // const [showRequestRefundDialog, setShowRequestRefundDialog] = useState(false);
   const [isWithdrawingV2, setIsWithdrawingV2] = useState(false);
 
   // Phase 6A.113: Tab navigation removed — signup lists and forms are now separate
@@ -1520,28 +1522,13 @@ export function EventDetailPageInternal({
                       />
                     )}
 
-                    {/* Phase 6A.148 — Standalone "Request Refund" button (per product decision Q1).
-                        Lets attendee request a refund WITHOUT cancelling — e.g. "I'm still coming
-                        but the add-on shouldn't have been charged." Separate flow from the
-                        "Cancel Registration and Refund" button below (which decouples cancel
-                        from refund: cancel happens immediately, refund needs approval).
-                        Visibility: paid registration + active (not Cancelled — banner shows
-                        instead) + no in-flight refund request + event hasn't started. */}
-                    {isPaidRegistration &&
-                      registrationDetails?.status === 'Confirmed' &&
-                      !hasActiveRefundRequest &&
-                      !hasStarted && (
-                      <div className="mb-3">
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          style={{ borderColor: '#2563EB', color: '#2563EB' }}
-                          onClick={() => setShowRequestRefundDialog(true)}
-                        >
-                          Request Refund (keep registration)
-                        </Button>
-                      </div>
-                    )}
+                    {/* Phase 6A.148.c (D1+D2 fix): the standalone "Request Refund (keep
+                        registration)" button was removed per product decision Q1. All refund
+                        flows go through "Cancel Registration and Refund" below — the
+                        bucket-checkbox UI in that dialog already covers every refundable
+                        item (ticket + add-ons + collections + sponsors). Removing this
+                        button eliminates the semantic contradiction of "refund the ticket
+                        but keep the registration" (D2) and the divergent bucket list (D1). */}
 
                     {/* Edit and Cancel buttons */}
                     <div className="flex gap-3">
@@ -2792,42 +2779,13 @@ export function EventDetailPageInternal({
 
       <Footer />
 
-      {/* Phase 6A.148 — Request Refund dialog (attendee path).
-          For MVP, the only refundable line offered is the ticket payment itself —
-          the attendee's add-ons / collections / sponsorships are visible in the
-          attendee dashboard but are out of scope for this dialog. The organizer
-          can still approve a partial amount in their approval dialog. */}
-      {id && isPaidRegistration && registrationDetails && (
-        <RequestRefundDialog
-          open={showRequestRefundDialog}
-          eventId={id}
-          availableLines={(() => {
-            // MVP: a single Ticket line valued at the registration's total. The
-            // backend RegistrationPayment.Id is the ReferenceId, but the FE doesn't
-            // currently surface it. We pass the registration ID as a stand-in; the
-            // backend validates the actual payment lookup at request-creation time.
-            // (Per-line add-on/collection/sponsor selection is a Phase B enhancement.)
-            const total = registrationDetails.totalPriceAmount;
-            const currency = (registrationDetails.totalPriceCurrency ?? 'USD') as
-              import('@/infrastructure/api/types/refund-request.types').RefundCurrency;
-            if (!total || total <= 0) return [];
-            return [
-              {
-                type: 'Ticket' as const,
-                referenceId: registrationDetails.id ?? id,
-                requestedAmount: total,
-                currency,
-              },
-            ];
-          })()}
-          onClose={() => setShowRequestRefundDialog(false)}
-          onSubmitted={async () => {
-            if (!id) return;
-            const refreshed = await eventsRepository.getMyRefundRequest(id);
-            setMyRefundRequest(refreshed);
-          }}
-        />
-      )}
+      {/* Phase 6A.148.c (D1+D2 fix): the standalone RequestRefundDialog was removed
+          per product decision Q1. All refund flows go through the Cancel-and-Refund
+          dialog whose bucket checkboxes cover ticket + add-ons + collections + sponsors.
+          The dialog component file (RequestRefundDialog.tsx) and backend endpoint
+          (POST /api/events/{id}/refund-requests) remain in place — the latter is still
+          used by the organizer-initiated path and as a future API surface — but no
+          attendee-facing UI calls them from this page anymore. */}
 
       {/* Phase 6A.144: Auth Encouragement Modal — fires only for anonymous
           users on PAID events (gated by shouldShowAuthNudge in the render

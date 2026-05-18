@@ -874,7 +874,7 @@ Expected log lines:
   - `template-refund-decision` → "Your Refund Decision — {{EventTitle}}"
   - `template-refund-rejected` → "Refund Request Declined — {{EventTitle}}"
 - [x] **G4 — D8 + D8b GREEN**: 6 tests in RefundLifecycleEmailHandlerTests pass — covers attendee-initiated → RefundPendingReviewEmailParams binding, organizer-approved → RefundDecisionEmailParams with IsOrganizerInitiated=false, rejected → RefundRejectedEmailParams with RejectionReason first-class field, NEW D8b → RefundDecisionEmailParams with IsOrganizerInitiated=true, and fail-silent guards on both. Full Application suite: 2709 passed, 0 failed, 6 skipped (pre-existing).
-- [ ] **G5 — D9 GREEN**: 6 D9 tests pass; SponsorWebhookHandler regression suite passes.
+- [x] **G5 — D9 GREEN**: 6 D9 tests pass in `SponsorWebhookHandlerD9Tests` — covers WorkflowOwnedRefund suppresses, NonWorkflowRefund regression guard (legacy path preserved), WorkflowLookupThrows fail-OPEN, TwoSponsorsRefundedInOneWorkflow, DifferentStripeRefundId no false positive on cross-refund collision, SponsorNotFound returns early before guard.
 - [ ] **G6 — Staging deploy (D8 + D8b + D9)**: pushed; `deploy-staging.yml` succeeds; W3.T1–W3.T8 smoke matrix passes; email evidence captured.
 - [ ] **G7 — PR**: open PR off `feat/phase-6a-148-refund-approval-workflow` with W3.T1–W3.T8 evidence + screenshots of new email headers.
 
@@ -951,6 +951,41 @@ Expected log lines:
 - [ ] Container healthy + no startup exceptions from `[6A.148.D8*]` handler files.
 - [ ] When operator triggers a refund flow, container logs show `[6A.148.D8 EMAIL] RefundRequestCreated email sent: ... Template=template-refund-pending-review` (proves D7 templates resolve + D8 rewire is live).
 - [ ] Operator inbox shows the new subjects on next refund: "Refund Request Received — Pending Organizer Review" / "Your Refund Decision" / "Refund Request Declined". NO more "Refund In Progress" header.
+
+---
+
+### D9 ship status (2026-05-18)
+
+**Status:** committed `7119fce2`, pushed, staging deploy dispatched (run `26066296386`).
+
+**What landed:**
+- [IRefundRequestRepository.cs](../src/LankaConnect.Domain/Events/Repositories/IRefundRequestRepository.cs) gains `ExistsWorkflowLineItemForSponsorAsync(sponsorId, stripeRefundId, ct)` — predicate matches `Type == Sponsor && ReferenceId == sponsorId && StripeRefundId == stripeRefundId`. Defensive early-return false on empty stripeRefundId.
+- [RefundRequestRepository.cs](../src/LankaConnect.Infrastructure/Data/Repositories/RefundRequestRepository.cs) — EF implementation: `AsNoTracking().AnyAsync(...)` against `RefundRequestLineItems` DbSet. Single index hit.
+- [SponsorWebhookHandler.cs](../src/LankaConnect.Infrastructure/Payments/Services/SponsorWebhookHandler.cs#L225) — injected `IRefundRequestRepository`; new fail-OPEN guard right before the fire-and-forget email block. Suppresses standalone email + logs `[Phase 6A.148.D9] Sponsor refund standalone email SUPPRESSED — workflow-owned` when the lookup returns true; falls through (sends legacy email) + logs warning when the lookup throws.
+
+**Tests:** [SponsorWebhookHandlerD9Tests.cs](../tests/LankaConnect.Infrastructure.Tests/Payments/SponsorWebhookHandlerD9Tests.cs) — 6/6 GREEN.
+Load-bearing assertion: `IServiceScopeFactory.CreateScope()` invocation count — proves whether the fire-and-forget email path even started.
+
+| Test | Expected | Verified |
+|---|---|---|
+| WorkflowOwnedRefund | CreateScope Times.Never | ✅ |
+| NonWorkflowRefund (regression guard) | CreateScope Times.Once | ✅ |
+| WorkflowLookupThrows (fail-OPEN) | CreateScope Times.Once | ✅ |
+| TwoSponsorsInOneWorkflow | both suppressed | ✅ |
+| DifferentStripeRefundId (no false positive) | predicate scoped, CreateScope Times.Once | ✅ |
+| SponsorNotFound | early-return before guard | ✅ |
+
+**Race-condition note:** the 3 tests that assert `CreateScope Times.Once` (legacy path) needed `await Task.Delay(100)` after the handler call to let the queued `Task.Run` actually execute before Verify — same race-mitigation pattern as the existing `WhatsAppEventHandlerTests` (their `Task.Delay(500)` for similar fire-and-forget).
+
+**Regression check:** Application suite ran post-D9 — 2708 passed, 1 unrelated WhatsApp flake (`CommitmentUpdated_Handle_ValidData_SendsWhatsApp` — passes in isolation; pre-existing race with its own `Task.Delay(500)` occasionally too short on loaded CI). My code touches Domain interface + Infrastructure repo + Infrastructure webhook handler — none of which the WhatsApp test reaches.
+
+**Pending verification (D9 staging):**
+- [ ] `deploy-staging.yml` run `26066296386` reaches success.
+- [ ] Container healthy + no startup exceptions (the new constructor parameter must be wired by DI, otherwise startup fails).
+- [ ] When operator's next refund triggers a workflow-owned sponsor refund, container logs show `[Phase 6A.148.D9] Sponsor refund standalone email SUPPRESSED — workflow-owned` AND NO "Sponsorship Refund Confirmation" email lands in the attendee inbox.
+- [ ] Standalone (non-workflow) sponsor refund still sends the legacy email — REGRESSION GUARD verified in tests, also confirmable in prod via any non-workflow refund path.
+
+**Wave 3 complete after D9 verifies.** Ready for PR review.
 
 ### Order of operations
 

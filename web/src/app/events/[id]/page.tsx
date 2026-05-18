@@ -319,11 +319,19 @@ export function EventDetailPageInternal({
   // Phase 6A.91: Check if this was a paid registration (for button text)
   const isPaidRegistration = registrationDetails?.paymentStatus === 'Completed';
 
-  // Phase 6A.148: Load this user's most recent refund request for the event. The
-  // backend endpoint is feature-flag-gated and returns null when the flag is OFF,
-  // so this is safe to call always — no behavior change when flag is OFF.
+  // Phase 6A.148.c (D4a fix): Load this user's most recent refund request for the
+  // event whenever they're authenticated for it. The PRIOR gate on `isPaidRegistration`
+  // (paymentStatus === 'Completed') caused the banner to vanish after a successful
+  // cancel-and-refund — at that point the registration becomes Cancelled and the
+  // GetByEventAndUserAsync read-side filter hides it, so `registrationDetails` goes
+  // null, `isPaidRegistration` flips false, and the useEffect reset the request to
+  // null. The banner data was lost even though the request still existed on the
+  // backend.
+  //
+  // The endpoint itself is feature-flag-gated and returns null when off or when no
+  // request exists for this user/event, so calling it always is safe.
   React.useEffect(() => {
-    if (!isPaidRegistration || !id) {
+    if (!user?.userId || !id) {
       setMyRefundRequest(null);
       return;
     }
@@ -346,7 +354,7 @@ export function EventDetailPageInternal({
     return () => {
       cancelled = true;
     };
-  }, [id, isPaidRegistration, registrationDetails?.status]);
+  }, [id, user?.userId, registrationDetails?.status]);
 
   const hasActiveRefundRequest =
     myRefundRequest !== null &&
@@ -1663,8 +1671,16 @@ export function EventDetailPageInternal({
 
                           {/* Cancellation enhancement: User choice for add-on purchase refund */}
                           {(() => {
-                            // Phase 6A.137F-Fix4: Scope to current registration only — excludes orphaned purchases from previous registrations
-                            const completedAddOnPurchases = myAddOnPurchases?.filter((p: any) => p.status === 'Completed' && p.registrationId === registrationDetails?.id) || [];
+                            // Phase 6A.148.c (D3 fix): match the backend tolerance in
+                            // CancelRsvpCommandHandler.HandlePaidCancelViaApprovalWorkflowAsync —
+                            // accept add-ons attached to the current registration AND orphaned
+                            // purchases (registrationId === null). Without this, attendees with
+                            // legacy / orphaned add-on rows saw NO checkbox here even though the
+                            // backend filter would have included those rows in the refund request.
+                            const completedAddOnPurchases = myAddOnPurchases?.filter(
+                              (p: any) => p.status === 'Completed' &&
+                                          (p.registrationId == null || p.registrationId === registrationDetails?.id)
+                            ) || [];
                             if (completedAddOnPurchases.length === 0) return null;
                             const totalAddOnAmount = completedAddOnPurchases.reduce((sum: number, p: any) => sum + (p.totalAmount ?? 0), 0);
                             return (

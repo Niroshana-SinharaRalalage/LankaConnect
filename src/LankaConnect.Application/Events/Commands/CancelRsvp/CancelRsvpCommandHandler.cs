@@ -697,6 +697,28 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                             initialPayment.Id,
                             initialPayment.Amount));
                     }
+                    else if (!string.IsNullOrWhiteSpace(registration.StripePaymentIntentId)
+                             && registration.TotalPrice is not null
+                             && registration.TotalPrice.Amount > 0)
+                    {
+                        // Phase 6A.148.c (D5 fix): legacy-registration fallback. Some pre-
+                        // Add-Only-Attendees registrations have NO row in registration_payments
+                        // — their Stripe charge lives on Registration.StripePaymentIntentId
+                        // directly. Without this fallback, GetInitialPaymentAsync returns null
+                        // and the Ticket bucket silently drops from the refund request even
+                        // though the attendee checked it. Mirrors the dispatch-time fallback
+                        // already present in RefundExecutionService.ResolvePaymentIntentAsync.
+                        // ReferenceId = registration.Id is the convention the downstream
+                        // resolver understands.
+                        _logger.LogInformation(
+                            "[6A.148.c] Ticket line via legacy fallback (no RegistrationPayment row): " +
+                            "RegId={RegId} StripePaymentIntentId={Pii} Amount=${Amount}",
+                            registration.Id, registration.StripePaymentIntentId, registration.TotalPrice.Amount);
+                        lineItems.Add(new LankaConnect.Domain.Events.ValueObjects.RefundRequestLineItemInput(
+                            LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket,
+                            registration.Id,
+                            registration.TotalPrice));
+                    }
                 }
 
                 if (request.RefundAddOnPurchases)

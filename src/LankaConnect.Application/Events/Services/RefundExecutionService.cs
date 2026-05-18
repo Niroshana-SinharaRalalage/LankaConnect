@@ -271,14 +271,34 @@ public class RefundExecutionService : IRefundExecutionService
                 // RegistrationId. This is the MVP path the frontend takes today — the FE
                 // surfaces RegistrationId rather than the (currently unexposed)
                 // RegistrationPayment.Id.
+                //
+                // Phase 6A.148.c (D5 fix): legacy-registration fallback. Pre-Add-Only-
+                // Attendees registrations have NO row in registration_payments — the Stripe
+                // charge lives on Registration.StripePaymentIntentId directly. CancelRsvp's
+                // ticket-line builder uses the same fallback to synthesise the line with
+                // ReferenceId=registration.Id; this resolver completes the loop so dispatch
+                // can actually call Stripe instead of marking the line Failed.
                 var payment = await _paymentRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
                 if (payment is null)
                 {
                     var initial = await _paymentRepo.GetInitialPaymentAsync(line.ReferenceId, cancellationToken);
-                    if (initial is null || string.IsNullOrWhiteSpace(initial.StripePaymentIntentId))
-                        return Result<string>.Failure(
-                            "RegistrationPayment not found by ReferenceId nor as initial-payment-of-registration");
-                    return Result<string>.Success(initial.StripePaymentIntentId);
+                    if (initial is not null && !string.IsNullOrWhiteSpace(initial.StripePaymentIntentId))
+                        return Result<string>.Success(initial.StripePaymentIntentId);
+
+                    // Final fallback: ReferenceId may be a Registration.Id (legacy registration
+                    // path). Read the registration's own StripePaymentIntentId.
+                    var registration = await _registrationRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
+                    if (registration is not null && !string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
+                    {
+                        _logger.LogInformation(
+                            "[6A.148.c EXEC] Ticket line resolved via Registration.StripePaymentIntentId (legacy fallback): " +
+                            "RegId={RegId} Pii={Pii}",
+                            registration.Id, registration.StripePaymentIntentId);
+                        return Result<string>.Success(registration.StripePaymentIntentId);
+                    }
+
+                    return Result<string>.Failure(
+                        "Ticket line: no RegistrationPayment found and no Registration.StripePaymentIntentId fallback available");
                 }
                 if (string.IsNullOrWhiteSpace(payment.StripePaymentIntentId))
                     return Result<string>.Failure("RegistrationPayment has no StripePaymentIntentId");

@@ -15,15 +15,20 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
 
 /// <summary>
-/// Phase 6A.148.c (D4b fix): Sends the "your refund request is pending organizer
-/// approval" email to the attendee when they submit a refund request via the
-/// approval workflow (typically by cancelling a paid registration).
+/// Phase 6A.148.D8 (Wave 3 rewire): Sends the "your refund request is pending organizer
+/// review" email to the attendee when they submit a refund request via the approval
+/// workflow (typically by cancelling a paid registration).
 ///
-/// This closes the gap the operator surfaced in UAT: cancellation email fired but
-/// nothing told the attendee their refund was now in an organizer queue. Reuses
-/// the existing template-refund-requested template; per-line breakdown is injected
-/// into the refundReason field so it shows in the email body. A bespoke per-line
-/// table template can replace this in a future cleanup (Wave 3).
+/// Now binds to the dedicated <c>template-refund-pending-review</c> via
+/// <see cref="RefundPendingReviewEmailParams"/> — header "Refund Request Received".
+/// The legacy <c>template-refund-requested</c> reuse from 148.c (header "Refund In
+/// Progress") was misleading operators (E1/E2 UAT) by suggesting Stripe was already
+/// running money before organizer approval.
+///
+/// LineItems are passed as a structured list (not body-stuffed text) so the email
+/// can render a per-item table with amount columns. Operator-supplied reason flows
+/// through as a first-class field with a HasRequesterReason boolean for conditional
+/// rendering.
 ///
 /// Fail-silent — mirrors RefundRequestedEventHandler (Phase 6A.92) pattern.
 /// </summary>
@@ -65,7 +70,7 @@ public class RefundRequestCreatedEventHandler
         {
             var sw = Stopwatch.StartNew();
             _logger.LogInformation(
-                "[6A.148.c EMAIL] RefundRequestCreated START: RefundRequestId={RrId} EventId={EventId} UserId={UserId}",
+                "[6A.148.D8 EMAIL] RefundRequestCreated START: RefundRequestId={RrId} EventId={EventId} UserId={UserId}",
                 domainEvent.RefundRequestId, domainEvent.EventId, domainEvent.RequestedByUserId);
 
             try
@@ -76,7 +81,7 @@ public class RefundRequestCreatedEventHandler
                 if (@event == null)
                 {
                     _logger.LogWarning(
-                        "[6A.148.c EMAIL] RefundRequestCreated: event not found EventId={EventId}",
+                        "[6A.148.D8 EMAIL] RefundRequestCreated: event not found EventId={EventId}",
                         domainEvent.EventId);
                     return;
                 }
@@ -85,7 +90,7 @@ public class RefundRequestCreatedEventHandler
                 if (user == null)
                 {
                     _logger.LogWarning(
-                        "[6A.148.c EMAIL] RefundRequestCreated: user not found UserId={UserId}",
+                        "[6A.148.D8 EMAIL] RefundRequestCreated: user not found UserId={UserId}",
                         domainEvent.RequestedByUserId);
                     return;
                 }
@@ -95,36 +100,30 @@ public class RefundRequestCreatedEventHandler
                 if (refundRequest == null)
                 {
                     _logger.LogWarning(
-                        "[6A.148.c EMAIL] RefundRequestCreated: refund request not found RrId={RrId}",
+                        "[6A.148.D8 EMAIL] RefundRequestCreated: refund request not found RrId={RrId}",
                         domainEvent.RefundRequestId);
                     return;
                 }
 
-                // Per-line summary text — injected into RefundReason which the existing
-                // template-refund-requested template renders in the body.
-                var lineBreakdown = string.Join("; ", refundRequest.LineItems
-                    .Select(li => $"{li.Type} ${li.RequestedAmount.Amount:N2}"));
-                var totalRequested = refundRequest.LineItems.Sum(li => li.RequestedAmount.Amount);
-                var reasonWithBreakdown = string.IsNullOrWhiteSpace(domainEvent.RequesterReason)
-                    ? $"Pending organizer review — items: {lineBreakdown}. You'll receive another email when the organizer approves or declines."
-                    : $"Pending organizer review — items: {lineBreakdown}. Your reason: \"{domainEvent.RequesterReason}\". You'll receive another email when the organizer approves or declines.";
+                // Wave 3 D8: structured line items + dedicated template — no more body-stuffing.
+                var lineViews = refundRequest.LineItems.Select(li => li.ToView()).ToList();
+                var currency = refundRequest.LineItems.FirstOrDefault()?.RequestedAmount.Currency.ToString() ?? "USD";
 
-                var emailParams = RefundEmailParams.CreateRequest(
+                var emailParams = RefundPendingReviewEmailParams.Create(
                     userId: user.Id,
                     userName: $"{user.FirstName} {user.LastName}",
                     userEmail: user.Email.Value,
                     registrationId: domainEvent.RegistrationId,
-                    refundId: domainEvent.RefundRequestId,
+                    refundRequestId: domainEvent.RefundRequestId,
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate.GetValueOrDefault(),
                     timeZoneId: @event.TimeZoneId,
-                    refundAmount: totalRequested,
-                    originalAmount: totalRequested,
-                    refundReason: reasonWithBreakdown,
+                    lineItems: lineViews,
+                    currency: currency,
+                    requesterReason: domainEvent.RequesterReason,
                     requestedAt: domainEvent.RequestedAt,
-                    paymentIntentId: null);
-                emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id));
 
                 if (@event.HasOrganizerContact())
                 {
@@ -140,18 +139,18 @@ public class RefundRequestCreatedEventHandler
 
                 if (!result.Success)
                     _logger.LogError(
-                        "[6A.148.c EMAIL] RefundRequestCreated FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
+                        "[6A.148.D8 EMAIL] RefundRequestCreated FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
                         domainEvent.RefundRequestId, user.Email.Value, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
                 else
                     _logger.LogInformation(
-                        "[6A.148.c EMAIL] RefundRequestCreated email sent: RrId={RrId} Email={Email} Total=${Total} Duration={Ms}ms",
-                        domainEvent.RefundRequestId, user.Email.Value, totalRequested, sw.ElapsedMilliseconds);
+                        "[6A.148.D8 EMAIL] RefundRequestCreated email sent: RrId={RrId} Email={Email} Lines={LineCount} Template={Template} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, user.Email.Value, lineViews.Count, emailParams.TemplateName, sw.ElapsedMilliseconds);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 sw.Stop();
                 _logger.LogWarning(
-                    "[6A.148.c EMAIL] RefundRequestCreated CANCELED: RrId={RrId} Duration={Ms}ms",
+                    "[6A.148.D8 EMAIL] RefundRequestCreated CANCELED: RrId={RrId} Duration={Ms}ms",
                     domainEvent.RefundRequestId, sw.ElapsedMilliseconds);
                 throw;
             }
@@ -160,7 +159,7 @@ public class RefundRequestCreatedEventHandler
                 sw.Stop();
                 // Fail-silent: log but don't throw (matches RefundRequestedEventHandler pattern).
                 _logger.LogError(ex,
-                    "[6A.148.c EMAIL] RefundRequestCreated EXCEPTION: RrId={RrId} Duration={Ms}ms",
+                    "[6A.148.D8 EMAIL] RefundRequestCreated EXCEPTION: RrId={RrId} Duration={Ms}ms",
                     domainEvent.RefundRequestId, sw.ElapsedMilliseconds);
             }
         }

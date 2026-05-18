@@ -2,7 +2,6 @@ using System.Diagnostics;
 using LankaConnect.Application.Common;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
-using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Shared.Email.Contracts;
@@ -16,27 +15,29 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
 
 /// <summary>
-/// Phase 6A.148.D8 (Wave 3 rewire): Sends the "your refund has been reviewed" email
-/// to the attendee when the organizer approves a refund request.
+/// Phase 6A.148.D8b: Sends the "your organizer has initiated a refund on your behalf"
+/// email to the attendee when an organizer creates a refund request on the attendee's
+/// behalf. The organizer-initiated path skips Pending and lands directly in Approved,
+/// so the attendee should NOT receive the pending-review email — only this decision
+/// email.
 ///
-/// Now binds to the dedicated <c>template-refund-decision</c> via
-/// <see cref="RefundDecisionEmailParams"/> — header "Refund Decision". The email
-/// body renders a per-line decision table from the structured
-/// <see cref="RefundLineItemView"/> list (approved $X / declined / processing
-/// badges) instead of body-stuffing it as text into <c>RefundReason</c>.
+/// Before D8b, this event had NO subscribers — organizer-initiated refunds sent zero
+/// emails to attendees. Architect's Wave 3 plan called this out as a silent gap.
 ///
-/// IsOrganizerInitiated is false here — this handler fires for the attendee-initiated
-/// path only. The parallel D8b handler (<c>OrganizerInitiatedRefundCreatedEventHandler</c>)
-/// reuses <see cref="RefundDecisionEmailParams"/> with IsOrganizerInitiated=true
-/// when the organizer creates a refund on behalf of an attendee.
+/// Uses the same <see cref="RefundDecisionEmailParams"/> + template-refund-decision
+/// surface as <see cref="RefundRequestApprovedEventHandler"/>, but passes
+/// <c>IsOrganizerInitiated=true</c> so the template renders the body copy variant
+/// ("Your organizer has initiated a refund on your behalf" instead of "Your organizer
+/// has decided on your refund request").
 ///
-/// Lifecycle: this email fires at the moment of organizer Approve. The legacy
-/// <c>RefundCompletedEvent</c> email STILL fires later when Stripe confirms the
-/// money movement (per product decision Q4 — keep both). The two emails describe
-/// different facts: "organizer decided" vs "money landed".
+/// Lifecycle: this email fires once at organizer-initiated request creation. The
+/// legacy <c>RefundCompletedEvent</c> email STILL fires later when Stripe confirms
+/// the money movement (parity with the attendee-initiated path).
+///
+/// Fail-silent — mirrors <see cref="RefundRequestApprovedEventHandler"/> pattern.
 /// </summary>
-public class RefundRequestApprovedEventHandler
-    : INotificationHandler<DomainEventNotification<RefundRequestApprovedEvent>>
+public class OrganizerInitiatedRefundCreatedEventHandler
+    : INotificationHandler<DomainEventNotification<OrganizerInitiatedRefundCreatedEvent>>
 {
     private readonly ITypedEmailService _typedEmailService;
     private readonly IUserRepository _userRepository;
@@ -44,16 +45,16 @@ public class RefundRequestApprovedEventHandler
     private readonly IRefundRequestRepository _refundRequestRepository;
     private readonly IRegistrationRepository _registrationRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
-    private readonly ILogger<RefundRequestApprovedEventHandler> _logger;
+    private readonly ILogger<OrganizerInitiatedRefundCreatedEventHandler> _logger;
 
-    public RefundRequestApprovedEventHandler(
+    public OrganizerInitiatedRefundCreatedEventHandler(
         ITypedEmailService typedEmailService,
         IUserRepository userRepository,
         IEventRepository eventRepository,
         IRefundRequestRepository refundRequestRepository,
         IRegistrationRepository registrationRepository,
         IEmailUrlHelper emailUrlHelper,
-        ILogger<RefundRequestApprovedEventHandler> logger)
+        ILogger<OrganizerInitiatedRefundCreatedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
         _userRepository = userRepository;
@@ -65,19 +66,20 @@ public class RefundRequestApprovedEventHandler
     }
 
     public async Task Handle(
-        DomainEventNotification<RefundRequestApprovedEvent> notification,
+        DomainEventNotification<OrganizerInitiatedRefundCreatedEvent> notification,
         CancellationToken cancellationToken)
     {
         var domainEvent = notification.DomainEvent;
 
-        using (LogContext.PushProperty("Operation", "RefundRequestApproved"))
+        using (LogContext.PushProperty("Operation", "OrganizerInitiatedRefundCreated"))
         using (LogContext.PushProperty("EventId", domainEvent.EventId))
         using (LogContext.PushProperty("RefundRequestId", domainEvent.RefundRequestId))
+        using (LogContext.PushProperty("OrganizerUserId", domainEvent.OrganizerUserId))
         {
             var sw = Stopwatch.StartNew();
             _logger.LogInformation(
-                "[6A.148.D8 EMAIL] RefundRequestApproved START: RrId={RrId} EventId={EventId} OrganizerUserId={OrgId}",
-                domainEvent.RefundRequestId, domainEvent.EventId, domainEvent.OrganizerUserId);
+                "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated START: RrId={RrId} EventId={EventId} OrganizerUserId={OrgId} ScanGuardOverridden={Override}",
+                domainEvent.RefundRequestId, domainEvent.EventId, domainEvent.OrganizerUserId, domainEvent.ScanGuardOverridden);
 
             try
             {
@@ -88,32 +90,50 @@ public class RefundRequestApprovedEventHandler
                 if (refundRequest == null)
                 {
                     _logger.LogWarning(
-                        "[6A.148.D8 EMAIL] RefundRequestApproved: refund request not found RrId={RrId}",
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated: refund request not found RrId={RrId}",
                         domainEvent.RefundRequestId);
                     return;
                 }
 
-                // The attendee is the registration's UserId (NOT the organizer who approved).
+                if (refundRequest.LineItems.Count == 0)
+                {
+                    // Defensive — shouldn't happen because domain CreateRefundRequest enforces line-items
+                    // presence, but if it did the email would have no payload to render.
+                    _logger.LogWarning(
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated: refund request has no line items, skipping email RrId={RrId}",
+                        domainEvent.RefundRequestId);
+                    return;
+                }
+
+                // The attendee is the registration's UserId (NOT the organizer who initiated).
                 var registration = await _registrationRepository.GetByIdAsync(
                     refundRequest.RegistrationId, cancellationToken);
                 if (registration == null || registration.UserId == null)
                 {
                     _logger.LogWarning(
-                        "[6A.148.D8 EMAIL] RefundRequestApproved: registration or attendee not found RegId={RegId}",
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated: registration or attendee not found RegId={RegId}",
                         refundRequest.RegistrationId);
                     return;
                 }
 
                 var attendee = await _userRepository.GetByIdAsync(registration.UserId.Value, cancellationToken);
-                if (attendee == null) return;
+                if (attendee == null)
+                {
+                    _logger.LogWarning(
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated: attendee user not found UserId={UserId}",
+                        registration.UserId.Value);
+                    return;
+                }
 
                 var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
-                if (@event == null) return;
+                if (@event == null)
+                {
+                    _logger.LogWarning(
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated: event not found EventId={EventId}",
+                        domainEvent.EventId);
+                    return;
+                }
 
-                // Wave 3 D8: structured line items → per-line decision table rendered by
-                // template-refund-decision (no more body-stuffed text). Status badges
-                // (approved / declined / processing) come from the status string on
-                // each RefundLineItemView via RefundLineItemsHtmlBuilder.BuildDecisionListHtml.
                 var lineViews = refundRequest.LineItems.Select(li => li.ToView()).ToList();
                 var currency = refundRequest.LineItems.FirstOrDefault()?.RequestedAmount.Currency.ToString() ?? "USD";
 
@@ -129,8 +149,8 @@ public class RefundRequestApprovedEventHandler
                     timeZoneId: @event.TimeZoneId,
                     lineItems: lineViews,
                     currency: currency,
-                    isOrganizerInitiated: false, // attendee-initiated path — D8b handles the organizer-initiated case
-                    decidedAt: domainEvent.ApprovedAt,
+                    isOrganizerInitiated: true, // drives template body-copy variant
+                    decidedAt: domainEvent.CreatedAt,
                     eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id));
 
                 if (@event.HasOrganizerContact())
@@ -147,18 +167,18 @@ public class RefundRequestApprovedEventHandler
 
                 if (!result.Success)
                     _logger.LogError(
-                        "[6A.148.D8 EMAIL] RefundRequestApproved FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
                         domainEvent.RefundRequestId, attendee.Email.Value, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
                 else
                     _logger.LogInformation(
-                        "[6A.148.D8 EMAIL] RefundRequestApproved email sent: RrId={RrId} Email={Email} Approved=${Approved} of ${Requested} Lines={LineCount} Template={Template} Duration={Ms}ms",
+                        "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated email sent: RrId={RrId} Email={Email} Approved=${Approved} of ${Requested} Lines={LineCount} Template={Template} Duration={Ms}ms",
                         domainEvent.RefundRequestId, attendee.Email.Value, emailParams.ApprovedTotal, emailParams.RequestedTotal, lineViews.Count, emailParams.TemplateName, sw.ElapsedMilliseconds);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 sw.Stop();
                 _logger.LogWarning(
-                    "[6A.148.D8 EMAIL] RefundRequestApproved CANCELED: RrId={RrId} Duration={Ms}ms",
+                    "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated CANCELED: RrId={RrId} Duration={Ms}ms",
                     domainEvent.RefundRequestId, sw.ElapsedMilliseconds);
                 throw;
             }
@@ -166,7 +186,7 @@ public class RefundRequestApprovedEventHandler
             {
                 sw.Stop();
                 _logger.LogError(ex,
-                    "[6A.148.D8 EMAIL] RefundRequestApproved EXCEPTION: RrId={RrId} Duration={Ms}ms",
+                    "[6A.148.D8b EMAIL] OrganizerInitiatedRefundCreated EXCEPTION: RrId={RrId} Duration={Ms}ms",
                     domainEvent.RefundRequestId, sw.ElapsedMilliseconds);
             }
         }

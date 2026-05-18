@@ -15,12 +15,18 @@ using Serilog.Context;
 namespace LankaConnect.Application.Events.EventHandlers.RefundRequests;
 
 /// <summary>
-/// Phase 6A.148.c (D4b fix): Sends the rejection email to the attendee when the
-/// organizer declines a refund request. The customer-facing RejectionReason is
-/// the primary body text.
+/// Phase 6A.148.D8 (Wave 3 rewire): Sends the rejection email to the attendee when
+/// the organizer declines a refund request.
+///
+/// Now binds to the dedicated <c>template-refund-rejected</c> via
+/// <see cref="RefundRejectedEmailParams"/> — header "Refund Request Declined". The
+/// customer-facing <see cref="RefundRejectedEmailParams.RejectionReason"/> is a
+/// top-level mandatory field (no body-stuffing). Line items still render as a
+/// reference table so the attendee can confirm what was originally requested.
 ///
 /// Per product decision Q4, this is the end state — no "Contact Organizer" button
-/// or escalation path. If the attendee disputes, they reach out manually.
+/// or escalation path. The organizer-contact block still renders so attendees who
+/// want to dispute can reach out manually.
 /// </summary>
 public class RefundRequestRejectedEventHandler
     : INotificationHandler<DomainEventNotification<RefundRequestRejectedEvent>>
@@ -63,7 +69,7 @@ public class RefundRequestRejectedEventHandler
         {
             var sw = Stopwatch.StartNew();
             _logger.LogInformation(
-                "[6A.148.c EMAIL] RefundRequestRejected START: RrId={RrId} EventId={EventId}",
+                "[6A.148.D8 EMAIL] RefundRequestRejected START: RrId={RrId} EventId={EventId}",
                 domainEvent.RefundRequestId, domainEvent.EventId);
 
             try
@@ -84,29 +90,26 @@ public class RefundRequestRejectedEventHandler
                 var @event = await _eventRepository.GetByIdAsync(domainEvent.EventId, cancellationToken);
                 if (@event == null) return;
 
-                var requestedTotal = refundRequest.LineItems.Sum(li => li.RequestedAmount.Amount);
-                var lineBreakdown = string.Join("; ", refundRequest.LineItems
-                    .Select(li => $"{li.Type} ${li.RequestedAmount.Amount:N2}"));
-                var reason = $"Refund request declined by organizer. Reason: \"{domainEvent.RejectionReason}\". " +
-                             $"Requested items: {lineBreakdown} (total ${requestedTotal:N2}). " +
-                             "If you have questions, please contact the organizer directly.";
+                // Wave 3 D8: structured line items + dedicated template-refund-rejected.
+                // RejectionReason is a top-level mandatory field (Validate() rejects empty).
+                var lineViews = refundRequest.LineItems.Select(li => li.ToView()).ToList();
+                var currency = refundRequest.LineItems.FirstOrDefault()?.RequestedAmount.Currency.ToString() ?? "USD";
 
-                var emailParams = RefundEmailParams.CreateRequest(
+                var emailParams = RefundRejectedEmailParams.Create(
                     userId: attendee.Id,
                     userName: $"{attendee.FirstName} {attendee.LastName}",
                     userEmail: attendee.Email.Value,
                     registrationId: refundRequest.RegistrationId,
-                    refundId: refundRequest.Id,
+                    refundRequestId: refundRequest.Id,
                     eventId: @event.Id,
                     eventTitle: @event.Title?.Value ?? "Event",
                     eventStartDate: @event.StartDate.GetValueOrDefault(),
                     timeZoneId: @event.TimeZoneId,
-                    refundAmount: 0m, // nothing approved
-                    originalAmount: requestedTotal,
-                    refundReason: reason,
-                    requestedAt: domainEvent.RejectedAt,
-                    paymentIntentId: null);
-                emailParams.EventDetailsUrl = _emailUrlHelper.BuildEventDetailsUrl(@event.Id);
+                    lineItems: lineViews,
+                    currency: currency,
+                    rejectionReason: domainEvent.RejectionReason,
+                    rejectedAt: domainEvent.RejectedAt,
+                    eventDetailsUrl: _emailUrlHelper.BuildEventDetailsUrl(@event.Id));
 
                 if (@event.HasOrganizerContact())
                 {
@@ -122,12 +125,12 @@ public class RefundRequestRejectedEventHandler
 
                 if (!result.Success)
                     _logger.LogError(
-                        "[6A.148.c EMAIL] RefundRequestRejected FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
+                        "[6A.148.D8 EMAIL] RefundRequestRejected FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
                         domainEvent.RefundRequestId, attendee.Email.Value, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
                 else
                     _logger.LogInformation(
-                        "[6A.148.c EMAIL] RefundRequestRejected email sent: RrId={RrId} Email={Email} Duration={Ms}ms",
-                        domainEvent.RefundRequestId, attendee.Email.Value, sw.ElapsedMilliseconds);
+                        "[6A.148.D8 EMAIL] RefundRequestRejected email sent: RrId={RrId} Email={Email} Lines={LineCount} Template={Template} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, attendee.Email.Value, lineViews.Count, emailParams.TemplateName, sw.ElapsedMilliseconds);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -138,7 +141,7 @@ public class RefundRequestRejectedEventHandler
             {
                 sw.Stop();
                 _logger.LogError(ex,
-                    "[6A.148.c EMAIL] RefundRequestRejected EXCEPTION: RrId={RrId} Duration={Ms}ms",
+                    "[6A.148.D8 EMAIL] RefundRequestRejected EXCEPTION: RrId={RrId} Duration={Ms}ms",
                     domainEvent.RefundRequestId, sw.ElapsedMilliseconds);
             }
         }

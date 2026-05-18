@@ -18,7 +18,17 @@ namespace LankaConnect.Application.Events.EventHandlers;
 /// <summary>
 /// Phase 6A.92: Handles RefundRequestedEvent to send refund notification email to user.
 /// Triggered when a refund is initiated (either by user cancellation or event cancellation).
-/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support
+/// Phase 6A.87: Migrated to ITypedEmailService for hybrid email support.
+///
+/// LEGACY HANDLER — DO NOT EXTEND.
+/// Phase 6A.148 introduced an approval-workflow refund path with its own dedicated
+/// lifecycle handlers (RefundRequestCreated / RefundRequestApproved / RefundRequestRejected /
+/// OrganizerInitiatedRefundCreated under <c>Events.EventHandlers.RefundRequests</c>) and
+/// dedicated lifecycle templates (Wave 3 D7). This handler now only fires on the
+/// <c>Refund:ApprovalWorkflow:Enabled=false</c> code path, which exists for rollback
+/// safety only. Remove this handler + the RefundRequestedEvent itself after the
+/// feature flag has ramped to 100% in production AND the legacy paths in
+/// <c>CancelRsvpCommandHandler</c> + <c>EventCancellationEmailJob</c> have been removed.
 /// </summary>
 public class RefundRequestedEventHandler : INotificationHandler<DomainEventNotification<RefundRequestedEvent>>
 {

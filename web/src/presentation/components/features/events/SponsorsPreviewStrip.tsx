@@ -86,7 +86,7 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
                 src={s.imageUrl!}
                 alt={s.sponsorOrganization || s.sponsorName}
                 loading="lazy"
-                className="h-full w-full object-contain p-2"
+                className="h-full w-full object-contain"
               />
             </div>
             <div className="p-3">

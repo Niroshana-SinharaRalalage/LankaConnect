@@ -87,6 +87,25 @@ public class Sponsor : BaseEntity
     /// </summary>
     public string? ImageBlobName { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.151 — timestamp of the last human-initiated content edit
+    /// (UpdateContactFields / UpdateAmount / UpdateItemDetails / UpdateName / image
+    /// changes via SetImage / ClearImage when invoked from the edit surface).
+    ///
+    /// Distinct from <see cref="BaseEntity.UpdatedAt"/> which also fires on lifecycle
+    /// transitions (CompletePayment, MarkAsFailed, etc.). A consumer wanting to
+    /// answer "what did a human change recently?" should read LastEditedAt, not
+    /// UpdatedAt.
+    /// </summary>
+    public DateTime? LastEditedAt { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.151 — user ID of the last human actor to edit content fields.
+    /// Null when only lifecycle transitions have run (no content edit has happened).
+    /// Set in tandem with <see cref="LastEditedAt"/>.
+    /// </summary>
+    public Guid? LastEditedBy { get; private set; }
+
     // EF Core constructor
     private Sponsor()
     {
@@ -444,5 +463,184 @@ public class Sponsor : BaseEntity
             PaymentCompletedAt.Value));
 
         return Result.Success();
+    }
+
+    // =========================================================================
+    // Phase 6A.151 — Content-edit mutators
+    //
+    // State-edit matrix (final, post-architect-stress-test):
+    //                            | Notes | Org | Amount | Item* | Image | Name |
+    //   Pending Money            |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
+    //   Completed Stripe         |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
+    //   Completed off-platform   |  ✅   |  ✅ |   👤   |  n/a  |  ✅   |  ✅  |
+    //   RecordedItem             |  ✅   |  ✅ |  n/a   |  ✅   |  ✅   |  ✅  |
+    //   Failed/Abandoned/Refunded|👤notes|  🚫 |   🚫   |  🚫   |  🚫   |  🚫  |
+    //   (✅ both / 👤 organizer-only / 🚫 disallowed)
+    //
+    // Image edits flow through the existing SetImage/ClearImage methods plus the
+    // POST/DELETE /sponsors/{id}/image endpoints whose authz is extended in
+    // C3 to allow non-anonymous sponsor-self edits.
+    // =========================================================================
+
+    /// <summary>
+    /// Phase 6A.151 — terminal lifecycle states where most content edits are
+    /// disallowed. Failed / Abandoned / Refunded permit only organizer-driven
+    /// notes annotations (e.g. "card declined, sponsor moved to off-platform").
+    /// </summary>
+    private bool IsTerminalState =>
+        Status == SponsorStatus.Failed
+        || Status == SponsorStatus.Abandoned
+        || Status == SponsorStatus.Refunded;
+
+    /// <summary>
+    /// Phase 6A.151 — implicit discriminator: a Completed money sponsor with no
+    /// Stripe checkout session ID was recorded via the off-platform organizer
+    /// flow (CompleteAsOrganizerCash). Only off-platform money sponsors permit
+    /// organizer-only amount edits — Stripe-completed sponsors are hard-blocked
+    /// v1 because we cannot reach back into Stripe to top-up or partial-refund
+    /// the existing PaymentIntent (deferred to v2).
+    /// </summary>
+    private bool IsOffPlatformCompleted =>
+        Type == SponsorType.Money
+        && Status == SponsorStatus.Completed
+        && StripeCheckoutSessionId == null;
+
+    /// <summary>
+    /// Phase 6A.151 — updates the sponsor's notes and/or organization. PATCH
+    /// semantics: null = leave unchanged. Allowed across non-terminal states
+    /// regardless of actor (sponsor-self or organizer). On terminal states
+    /// (Failed/Abandoned/Refunded), only an organizer can annotate notes;
+    /// organization changes are 🚫 because the transaction is dead.
+    /// </summary>
+    public Result UpdateContactFields(
+        string? notes,
+        string? organization,
+        Guid actorUserId,
+        bool actorIsOrganizer)
+    {
+        if (IsTerminalState)
+        {
+            if (!actorIsOrganizer)
+                return Result.Failure($"Cannot edit a {Status} sponsor as a non-organizer");
+
+            if (organization != null)
+                return Result.Failure($"Cannot change organization on a {Status} sponsor — notes-only edits allowed for organizers");
+        }
+
+        if (notes != null)
+            SponsorNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+        if (organization != null)
+            SponsorOrganization = string.IsNullOrWhiteSpace(organization) ? null : organization.Trim();
+
+        MarkEdited(actorUserId);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — updates the sponsor's display name. Allowed across
+    /// non-terminal states regardless of actor. On terminal states the entry is
+    /// frozen — name changes muddy historical receipts.
+    /// </summary>
+    public Result UpdateName(string newName, Guid actorUserId, bool actorIsOrganizer)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            return Result.Failure("Sponsor name cannot be empty");
+
+        if (IsTerminalState)
+            return Result.Failure($"Cannot change name on a {Status} sponsor");
+
+        SponsorName = newName.Trim();
+        MarkEdited(actorUserId);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — updates the sponsor's contribution amount. Hard rules:
+    ///   - Item sponsors have no amount field → always Failure
+    ///   - Pending Money → Failure (Stripe checkout session would be stale)
+    ///   - Completed Money via Stripe → Failure v1 (Stripe top-up/partial-refund
+    ///     deferred to v2; we cannot reach back into the existing PaymentIntent)
+    ///   - Completed Money off-platform → organizer-only (revenue impact)
+    ///   - Failed/Abandoned/Refunded → Failure (terminal)
+    /// New amount must be strictly positive.
+    /// </summary>
+    public Result UpdateAmount(
+        Money newAmount,
+        Guid actorUserId,
+        bool actorIsOrganizer)
+    {
+        if (newAmount == null || newAmount.Amount <= 0)
+            return Result.Failure("Sponsorship amount must be greater than zero");
+
+        if (Type == SponsorType.Item)
+            return Result.Failure("Cannot update amount on an item sponsor");
+
+        if (Status == SponsorStatus.Pending)
+            return Result.Failure("Cannot update amount on a Pending money sponsor — the Stripe checkout session would be stale");
+
+        if (Status == SponsorStatus.Completed && !IsOffPlatformCompleted)
+            return Result.Failure("Cannot update amount on a Stripe-completed sponsor — top-up / partial-refund flow is deferred to a future release");
+
+        if (IsOffPlatformCompleted && !actorIsOrganizer)
+            return Result.Failure("Only an organizer can change the amount on an off-platform sponsor (revenue impact)");
+
+        if (IsTerminalState)
+            return Result.Failure($"Cannot update amount on a {Status} sponsor");
+
+        Amount = newAmount;
+        MarkEdited(actorUserId);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — updates the item-sponsor fields. Item sponsors only.
+    /// PATCH semantics: null = leave unchanged. itemName cannot be set to empty
+    /// when provided; estimatedValue cannot be negative when provided.
+    /// </summary>
+    public Result UpdateItemDetails(
+        string? itemName,
+        string? itemDescription,
+        decimal? estimatedValue,
+        Guid actorUserId)
+    {
+        if (Type != SponsorType.Item)
+            return Result.Failure("Cannot update item details on a money sponsor — this is for item sponsors only");
+
+        if (IsTerminalState)
+            return Result.Failure($"Cannot update item details on a {Status} sponsor");
+
+        if (itemName != null && string.IsNullOrWhiteSpace(itemName))
+            return Result.Failure("Item name cannot be empty when provided");
+
+        if (estimatedValue.HasValue && estimatedValue.Value < 0)
+            return Result.Failure("Estimated value cannot be negative");
+
+        if (itemName != null)
+            ItemName = itemName.Trim();
+
+        if (itemDescription != null)
+            ItemDescription = string.IsNullOrWhiteSpace(itemDescription) ? null : itemDescription.Trim();
+
+        if (estimatedValue.HasValue)
+            EstimatedValue = estimatedValue.Value;
+
+        MarkEdited(actorUserId);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — sets the audit-trail fields LastEditedAt + LastEditedBy
+    /// and bumps the generic UpdatedAt timestamp. Called from every successful
+    /// content-edit mutator above. Lifecycle transitions (CompletePayment,
+    /// MarkAsFailed, etc.) intentionally do NOT call this — they call only
+    /// MarkAsUpdated() so consumers can distinguish system-driven changes from
+    /// human edits.
+    /// </summary>
+    private void MarkEdited(Guid actorUserId)
+    {
+        LastEditedAt = DateTime.UtcNow;
+        LastEditedBy = actorUserId;
+        MarkAsUpdated();
     }
 }

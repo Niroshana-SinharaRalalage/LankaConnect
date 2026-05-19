@@ -142,13 +142,28 @@ public class RefundRequestApprovedEventHandler
                             .ToList());
                 }
 
+                // Phase 6A.148.D10: validate before send so a silent template-binding gap
+                // surfaces in logs instead of falling through to a no-op SendEmailAsync.
+                if (!emailParams.Validate(out var validationErrors))
+                {
+                    sw.Stop();
+                    _logger.LogError(
+                        "[6A.148.D10 VALIDATE] RefundRequestApproved: email params FAILED validation, NOT sending. RrId={RrId} Email={Email} Template={Template} Errors={Errors} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, attendee.Email.Value, emailParams.TemplateName, string.Join("; ", validationErrors), sw.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "[6A.148.D10 EMAIL] RefundRequestApproved invoking SendEmailAsync: RrId={RrId} Email={Email} Template={Template} Lines={LineCount} Approved=${Approved}",
+                    domainEvent.RefundRequestId, attendee.Email.Value, emailParams.TemplateName, lineViews.Count, emailParams.ApprovedTotal);
+
                 var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
                 sw.Stop();
 
                 if (!result.Success)
                     _logger.LogError(
-                        "[6A.148.D8 EMAIL] RefundRequestApproved FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
-                        domainEvent.RefundRequestId, attendee.Email.Value, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
+                        "[6A.148.D8 EMAIL] RefundRequestApproved FAILED to send: RrId={RrId} Email={Email} Template={Template} Errors={Errors} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, attendee.Email.Value, emailParams.TemplateName, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
                 else
                     _logger.LogInformation(
                         "[6A.148.D8 EMAIL] RefundRequestApproved email sent: RrId={RrId} Email={Email} Approved=${Approved} of ${Requested} Lines={LineCount} Template={Template} Duration={Ms}ms",

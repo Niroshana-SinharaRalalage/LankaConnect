@@ -134,13 +134,27 @@ public class RefundRequestCreatedEventHandler
                             .ToList());
                 }
 
+                // Phase 6A.148.D10: validate before send (see RefundRequestApprovedEventHandler for rationale).
+                if (!emailParams.Validate(out var validationErrors))
+                {
+                    sw.Stop();
+                    _logger.LogError(
+                        "[6A.148.D10 VALIDATE] RefundRequestCreated: email params FAILED validation, NOT sending. RrId={RrId} Email={Email} Template={Template} Errors={Errors} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, user.Email.Value, emailParams.TemplateName, string.Join("; ", validationErrors), sw.ElapsedMilliseconds);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "[6A.148.D10 EMAIL] RefundRequestCreated invoking SendEmailAsync: RrId={RrId} Email={Email} Template={Template} Lines={LineCount}",
+                    domainEvent.RefundRequestId, user.Email.Value, emailParams.TemplateName, lineViews.Count);
+
                 var result = await _typedEmailService.SendEmailAsync(emailParams, cancellationToken);
                 sw.Stop();
 
                 if (!result.Success)
                     _logger.LogError(
-                        "[6A.148.D8 EMAIL] RefundRequestCreated FAILED to send: RrId={RrId} Email={Email} Errors={Errors} Duration={Ms}ms",
-                        domainEvent.RefundRequestId, user.Email.Value, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
+                        "[6A.148.D8 EMAIL] RefundRequestCreated FAILED to send: RrId={RrId} Email={Email} Template={Template} Errors={Errors} Duration={Ms}ms",
+                        domainEvent.RefundRequestId, user.Email.Value, emailParams.TemplateName, string.Join(", ", result.Errors), sw.ElapsedMilliseconds);
                 else
                     _logger.LogInformation(
                         "[6A.148.D8 EMAIL] RefundRequestCreated email sent: RrId={RrId} Email={Email} Lines={LineCount} Template={Template} Duration={Ms}ms",

@@ -101,6 +101,18 @@ public class ApproveRefundRequestCommandHandler : ICommandHandler<ApproveRefundR
                     return Result.Failure(approveResult.Error);
                 }
 
+                // Phase 6A.148.D10: pre-commit event audit — surfaces whether the
+                // RefundRequestApprovedEvent is queued on the Registration root (which the
+                // DomainEventDispatcher pulls from) versus only on the RefundRequest child
+                // entity (which the dispatcher might skip). F1 hypothesis G3 in Wave 4 plan.
+                _logger.LogInformation(
+                    "[6A.148.D10 EVENTS] ApproveRefundRequest pre-commit event audit: RrId={RrId} RegistrationEvents={RegCount} RegistrationEventTypes=[{RegTypes}] RefundRequestEvents={RrCount} RefundRequestEventTypes=[{RrTypes}]",
+                    request.RefundRequestId,
+                    tracked.DomainEvents.Count,
+                    string.Join(",", tracked.DomainEvents.Select(e => e.GetType().Name)),
+                    trackedRequest.DomainEvents.Count,
+                    string.Join(",", trackedRequest.DomainEvents.Select(e => e.GetType().Name)));
+
                 _registrationRepo.Update(tracked);
 
                 try

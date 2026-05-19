@@ -995,3 +995,189 @@ Load-bearing assertion: `IServiceScopeFactory.CreateScope()` invocation count �
 4. Run W3.T1–W3.T8 against staging.
 5. Update [PROGRESS_TRACKER.md](./PROGRESS_TRACKER.md), [STREAMLINED_ACTION_PLAN.md](./STREAMLINED_ACTION_PLAN.md), [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md).
 6. Open PR.
+
+---
+
+## Wave 4 — End-to-End Architecture Review + Gap Closure
+
+**Opened:** 2026-05-19
+**Trigger:** Operator UAT after Wave 3 surfaced two new defects (F1: no decision/completion email after Approve; F2: AddOnPurchase entities still show Completed status after workflow refund completes). User asked for full end-to-end review of all 5 checkout + refund paths rather than narrow F1/F2 RCA.
+**Architect validation:** Plan agent (system-architect role) reviewed full architectural map from Explore agent + live staging DB evidence + screenshots; 10 gaps identified.
+
+### Empirical evidence (live staging, 2026-05-19)
+
+Event `ad8903c4-e98e-49dd-b44e-d89f916c49dc`, RefundRequest `98712d40-ef05-42c5-9566-1bd2f82edff1` (operator scenario, $198 across 1 Ticket + 6 Add-Ons):
+- `RefundRequest.status = 3 (Completed)`, `reviewed_at = 2026-05-19 01:40:49Z` — organizer DID approve
+- All 7 `RefundRequestLineItem` rows: `status = 4 (Refunded)`, `stripe_refund_id` populated, `processed_at` set — Stripe DID process
+- 6 underlying `AddOnPurchase` rows: `status = "Completed"`, `refunded_at = null` — **F2 EMPIRICALLY CONFIRMED**
+- 2 May-14 AddOnPurchase rows refunded via legacy path: `status = "Refunded"`, `refunded_at` set — legacy path works; only new workflow path broken
+- `communications.email_messages` empty for refund template names — email audit gap (cannot confirm/deny F1 from this table alone)
+
+### ASCII flow diagrams
+
+**Diagram A — Checkout (any of 5 categories):**
+
+```
+ USER (browser)                       API                          STRIPE
+  |  POST /events/{id}/{category}     |                              |
+  |---------------------------------->|                              |
+  |                                   |  CreateCheckoutSession        |
+  |                                   |  + metadata.payment_type      |
+  |                                   |----------------------------->|
+  |<--303 Redirect to session URL ----|                              |
+  |---------------- pay --------------+----------------------------->|
+  |<--302 success_url-----------------+----------------------------->|
+  |                                                                  |
+  |                          checkout.session.completed              |
+  |<-----------------------------------+----------------------------|
+                                       v
+   +-----------------+ +------------------+ +-----------------+ +----------------+ +-----------------+
+   | Registration WH | | AddOnPurchase WH | | Sponsor WH      | | Collection WH  | | Donation WH     |
+   +--------+--------+ +---------+--------+ +--------+--------+ +-------+--------+ +-------+---------+
+            v                    v                   v                  v                  v
+       Registration.        AddOnPurchase.      Sponsor.          Collection.       Donation.
+       MarkAsConfirmed()    CompletePayment()   CompletePayment() MarkAsPaid()      MarkAsCompleted()
+            |                    |                   |                  |                  |
+            v                    v                   v                  v                  v
+       RegistrationConfirmed AddOnPurchase       SponsorPayment     Collection         Donation
+       Event --> email       CompletedEvent      CompletedEvent     CompletedEvent     CompletedEvent
+                             --> email           --> email          --> email          --> email
+```
+
+All 5 checkout paths healthy in production.
+
+**Diagram B — Refund (6A.148 approval workflow + legacy):**
+
+```
+ATTENDEE or ORGANIZER                  API                            STRIPE
+ | POST /events/{id}/refunds            |                                |
+ |------------------------------------->|                                |
+ |                                      | CreateRefundRequestCommand     |
+ |                                      | RefundRequest created          |
+ |                                      | raise RefundRequestCreatedEvent|
+ |                                      |        (or OrganizerInitiated) |
+ |                                      v                                |
+ |                              D7 "pending-review" email                |
+ |
+ | (organizer side) POST /refund-requests/{id}/approve                   |
+ |--------------------------------------|                                |
+ |                                      | ApproveRefundRequestCommand    |
+ |                                      | RefundRequest.Approve()        |
+ |                                      | raise RefundRequestApprovedEvt |
+ |                                      |   -> D8 decision email <-- F1 NOT ARRIVING (G3)
+ |                                      |                                |
+ |                                      | RefundExecutionService         |
+ |                                      | per line: Stripe.CreateRefund  |
+ |                                      |------------------------------->|
+ |                                                  charge.refunded      |
+ |                                      |<-------------------------------|
+ |                                      v
+ |                              PaymentsController.HandleChargeRefunded
+ |                              switch(refund_type | payment_type):
+ |          +----- "registration" -> RegistrationWebhookHandler  (no D9 dedupe — G4)
+ |          +----- "sponsor" ------> SponsorWebhookHandler        (D9 dedupe shipped)
+ |          +----- "collection" ---> CollectionWebhookHandler    (no D9 dedupe — G4)
+ |          +----- "add_on_*" -----> ** NO-OP RETURN (PaymentsController:647-654) ** <-- F2 / G1
+ |                   AddOnPurchase entity NEVER transitions Refunded
+ |                   No domain event raised, no money-landed email
+ |
+ | (Reject) RefundRequest.Reject()   -> D7 rejected email
+ | (Withdraw) RefundRequest.Withdraw() -> ** NO HANDLER ** <-- G2
+ |
+ | (legacy flag-OFF) AddOnRefundService DOES call MarkAsRefunded()
+```
+
+### Gap inventory (10 gaps)
+
+| ID | Name | Class | Sev | Location | Root cause |
+|----|------|-------|-----|----------|------------|
+| G1 | AddOnPurchase `charge.refunded` NO-OP | Backend | CRITICAL | [PaymentsController.cs:647-654](../src/LankaConnect.API/Controllers/PaymentsController.cs#L647) | 6A.136 comment claims AddOnRefundService handles inline; 6A.148 RefundExecutionService bypasses it; webhook is the only signal and it's dropped |
+| G2 | RefundRequestWithdrawnEvent has no handler | Email | HIGH | event raised in Domain, no handler file | Handler never authored in Wave 3 scope |
+| G3 | F1: D8 decision email not arriving on Approve | Email | CRITICAL | [RefundRequestApprovedEventHandler.cs:145](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/RefundRequestApprovedEventHandler.cs#L145) | Possible: domain event dispatch issue, or email service Success=false swallowed, or Validate throws on edge case. Needs instrumentation. |
+| G4 | D9-style dedupe missing on Registration / Collection / AddOn handlers | Email | HIGH | RegistrationWebhookHandler / CollectionWebhookHandler / new G1 handler | Wave 3 D9 was scoped to sponsor only |
+| G5 | Per-category "money landed" template overlap | Email | MEDIUM | `template-refund-completed` (legacy) + `template-refund-decision` (D8) | D8 added in parallel, not replacing legacy |
+| G6 | OrganizerInitiatedRefundCreatedEvent may also miss decision email | Email | MEDIUM | [OrganizerInitiatedRefundCreatedEventHandler.cs](../src/LankaConnect.Application/Events/EventHandlers/RefundRequests/OrganizerInitiatedRefundCreatedEventHandler.cs) | Same dispatch path as G3 |
+| G7 | ExistsWorkflowLineItemForSponsorAsync re-throws instead of fail-OPEN | Backend | LOW | [RefundRequestRepository.cs:181](../src/LankaConnect.Infrastructure/Data/Repositories/RefundRequestRepository.cs#L181) | Contract drift — caller catches, but defensive doubling |
+| G8 | Idempotency of re-fired `charge.refunded` not asserted | Backend | MEDIUM | All four `HandleChargeRefundedAsync` methods | No `stripe_webhook_events` deduper table |
+| G9 | UI ignores `RefundRequestLineItem.Status` when rendering add-ons tab | UI | HIGH | `web/src/app/events/[id]/manage/attendees/*` | Same root as G1 — UI reads entity status which never updates |
+| G10 | RefundCompletedEvent aggregates `Registration.AddOnRefundAmount` not line items | Backend | MEDIUM | [RefundCompletedEventHandler.cs:93](../src/LankaConnect.Application/Events/EventHandlers/RefundCompletedEventHandler.cs#L93) | 6A.135 predates 6A.148 line-item model |
+
+### Wave 4 fix plan (ordered — strict dependencies)
+
+Each step ships behind feature-flag `RefundWorkflow_Wave4_<letter>` for instant rollback.
+
+| Step | Effort | Title | Closes | Depends |
+|---|---|---|---|---|
+| W4.D10 | 1d | G3/G6 instrumentation — WARN on email-failure, ERROR on Validate-failure, event-count log on Approve commit | G3, G6 | — |
+| W4.D11 | 2d | G1 AddOnPurchase webhook handler — new `HandleChargeRefundedAsync` + PaymentsController dispatch + `AddOnPurchaseRefundedEvent` | G1 | D10 |
+| W4.D11b | 0.5d | G9 UI sync — defensive secondary check on `RefundRequestLineItem.Status` | G9 | D11 |
+| W4.D12 | 2d | G4 generalised dedupe — rename to `ExistsWorkflowLineItemAsync(type, refId, refundId)`, apply at all 4 handlers | G4 | D11 |
+| W4.D13 | 1d | G2 `RefundRequestWithdrawnEventHandler` + new `template-refund-withdrawn` | G2 | D12 |
+| W4.D14 | 1d | G5 product decision — keep both emails with distinct subjects; suppress per-category duplicates via G4 | G5 | D12, Q1 user sign-off |
+| W4.D15 | 1.5d | G8 webhook idempotency — new `stripe_webhook_events` deduper table + middleware | G8 | D14 |
+| W4.D16 | 0.5d | G10 RefundCompletedEvent payload — sum from line items not Registration field | G10 | D15 |
+| W4.D17 | 0.25d | G7 repo fail-OPEN — replace `throw` with `return false` | G7 | any time |
+
+**Total effort:** ~10 working days.
+
+### API test matrix (Wave 4 — W4.T1–W4.T15)
+
+Token via password `1qaz!QAZ`. JSON body shapes are illustrative.
+
+| # | Scenario | Expected DB / Log / Email |
+|---|---|---|
+| W4.T1 | Registration-only refund happy path | refund_requests.status=3, line=4, registration=Refunded; D8 decision + legacy completion email |
+| W4.T2 | **AddOn-only refund (F2 verification)** | **add_on_purchases.status='Refunded', refunded_at NOT NULL** ← F2 fix verifier |
+| W4.T3 | Collection-only refund | collections.status='Refunded'; one dedupe-passed email |
+| W4.T4 | Sponsor-only refund (D9 regression guard) | sponsors.status='Refunded'; D9 SUPPRESSED log; exactly one email |
+| W4.T5 | Mixed Ticket+6×AddOn (UAT scenario replay) | all line items + entities Refunded; exactly the expected emails |
+| W4.T6 | Reject path | status=4 (Rejected); no Stripe call; "Refund Request Declined" email |
+| W4.T7 | **Withdraw path (G2 new handler)** | status=5 (Withdrawn); "Your refund request was withdrawn" email |
+| W4.T8 | Organizer-initiated refund | rr created in Approved; "Refund Decision" with IsOrganizerInitiated=true variant |
+| W4.T9 | Idempotency — same stripe_event_id twice | second hit logs `[Webhook-Idempotent-Skip]`; exactly one email |
+| W4.T10 | Distinct event-ids same charge | both process; one email (dedupe by stripe_refund_id) |
+| W4.T11 | Approve with all-zero approved lines | flips to Rejected; no Stripe |
+| W4.T12 | Partial approval (3 of 5 lines) | 3 Stripe calls; one D8 email summarising approved+declined |
+| W4.T13 | Webhook race (refund A during dispatch of B) | no cross-talk; both refunds Completed |
+| W4.T14 | Legacy `/rsvp/withdraw-refund` (flag-OFF regression) | inline `AddOnRefundService` runs; add_on_purchases Refunded via legacy path |
+| W4.T15 | Lookup repo exception (fail-OPEN) | legacy email arrives; entity still transitions; warning log |
+
+### Risk register
+
+1. **Duplicate emails after G1 lands alone.** Must merge G1 (D11) and G4 dedupe (D12) under the same flag — never G1 without G4.
+2. **Idempotency race during webhook retry mid-flight.** Wrap entity transition in `Result.Failure` tolerance for already-Refunded.
+3. **Regressing legacy flag-OFF path during G4 rename.** Keep old method name as shim. T14 protects.
+4. **Webhook ordering with inline `MarkCompletedIfAllSettled`.** RefundExecutionService may roll Completed BEFORE webhooks arrive; entity transitions still must process.
+5. **F1 may be transport-layer (SendGrid/SMTP), not dispatch.** If D10 reveals `result.Success=false` with no exception → D10b spike on transport health.
+
+### Open product questions
+
+| # | Question | Default |
+|---|---|---|
+| Q1 | Email semantics: keep both "Refund Decision" + "Refund Completed" OR collapse? | Keep both — distinct facts, distinct timestamps |
+| Q2 | Organizer notification on attendee Withdraw — courtesy note OR silent? | Silent |
+| Q3 | Partial-approval UX — one consolidated email OR per-line? | Consolidated (current D8) |
+| Q4 | G7 fail-OPEN contract — keep duplicates on lookup failure OR circuit breaker? | Keep fail-OPEN; alert on WARN frequency |
+
+### Q1-Q4 — answers locked (user-confirmed 2026-05-19)
+
+| # | Answer |
+|---|---|
+| Q1 | Both emails — "Your Refund Decision" at Approve + legacy "Refund Completed" at money-landed. Distinct facts, distinct timestamps. |
+| Q2 | Silent withdraw notification to organizer. **Verified:** withdraw button exists in FE (`RefundRequestStatusBanner.tsx:106-114`) and is wired into [page.tsx](../web/src/app/events/[id]/page.tsx#L1264). Visible only during Pending state — operator missed it because their own 60-second approval closed the Pending window. Not a gap. |
+| Q3 | ONE consolidated email with full per-line table (current D8). |
+| Q4 | Fail-OPEN + alert on WARN frequency in Azure Application Insights. |
+
+### Wave 4 phase gates
+
+- [x] **G0** — User approval of plan + Q1-Q4 defaults
+- [ ] **G1** — D10 instrumentation deployed; replay UAT against staging; structured logs pinpoint F1 root cause
+- [ ] **G2** — D11 AddOnPurchase handler GREEN + D11b UI sync; staged together behind flag
+- [ ] **G3** — D11+D11b staging-verified: W4.T2 confirms `add_on_purchases.status='Refunded'` after workflow refund
+- [ ] **G4** — D12 generalised dedupe GREEN; W4.T1, T3, T4 confirm exactly one email per category
+- [ ] **G5** — D13 Withdrawn handler GREEN; W4.T7 verifies email
+- [ ] **G6** — D14 product decision committed; W4.T5 mixed-line refund delivers exactly the expected emails
+- [ ] **G7** — D15 idempotency table + middleware; W4.T9/T10 GREEN
+- [ ] **G8** — D16+D17 cleanup
+- [ ] **G9** — Operator browser UAT confirms F1+F2 closed
+- [ ] **G10** — PR opened with full Wave 4 evidence

@@ -3,6 +3,7 @@ using LankaConnect.Application.Events.Commands.ClearSponsorImage;
 using LankaConnect.Application.Events.Commands.CreateOffPlatformSponsor;
 using LankaConnect.Application.Events.Commands.CreateSponsor;
 using LankaConnect.Application.Events.Commands.SetSponsorImage;
+using LankaConnect.Application.Events.Commands.UpdateSponsor;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportSponsors;
@@ -158,7 +159,10 @@ public class SponsorsController : BaseController<SponsorsController>
 
     /// <summary>
     /// Phase 6A.145 — clears a sponsor's image. Idempotent.
-    /// Authorization: organizer-only.
+    /// Phase 6A.151 H9 — authorization extended: allowed if caller is the
+    /// sponsor's owner (non-anonymous, JWT subject matches Sponsor.SponsorUserId)
+    /// OR an organizer of the parent event. Anonymous sponsors remain
+    /// organizer-only (claim-by-email magic-link deferred to a separate phase).
     /// </summary>
     [HttpDelete("{sponsorId:guid}/image")]
     [Authorize]
@@ -170,8 +174,24 @@ public class SponsorsController : BaseController<SponsorsController>
         Logger.LogInformation(
             "ClearSponsorImage: EventId={EventId}, SponsorId={SponsorId}", eventId, sponsorId);
 
-        var authResult = await VerifyOrganizerAsync(eventId);
-        if (authResult != null) return authResult;
+        // Phase 6A.151 H9 — sponsor-self pre-check before falling through to organizer auth.
+        // Allows a non-anonymous sponsor to clear their own image without organizer rights.
+        var currentUserId = User.TryGetUserId();
+        var sponsor = await _sponsorRepository.GetByIdAsync(sponsorId);
+        if (sponsor != null && sponsor.EventId == eventId
+            && sponsor.SponsorUserId.HasValue
+            && currentUserId.HasValue
+            && sponsor.SponsorUserId.Value == currentUserId.Value)
+        {
+            Logger.LogInformation(
+                "ClearSponsorImage: sponsor-self path — SponsorUserId={SponsorUserId}",
+                sponsor.SponsorUserId);
+        }
+        else
+        {
+            var authResult = await VerifyOrganizerAsync(eventId);
+            if (authResult != null) return authResult;
+        }
 
         var result = await Mediator.Send(new ClearSponsorImageCommand
         {
@@ -180,6 +200,72 @@ public class SponsorsController : BaseController<SponsorsController>
         });
         return result.IsSuccess ? NoContent() : HandleResult(result);
     }
+
+    /// <summary>
+    /// Phase 6A.151 — updates content fields on an existing sponsor (PATCH).
+    /// Authorization: organizer of the parent event OR the sponsor themselves
+    /// (non-anonymous JWT subject matching Sponsor.SponsorUserId). Both checks
+    /// run inside the handler; the controller just requires `[Authorize]`.
+    ///
+    /// PATCH semantics: every field is optional; null = leave unchanged. The
+    /// domain layer enforces the state-edit matrix per-field — see
+    /// <see cref="LankaConnect.Domain.Events.Sponsor"/> for the cell-by-cell
+    /// rules. Image edits flow through the existing POST/DELETE
+    /// `/sponsors/{id}/image` endpoints (DELETE authz was extended in H9 above).
+    /// </summary>
+    [HttpPatch("{sponsorId:guid}")]
+    [Authorize]
+    [ProducesResponseType(typeof(SponsorDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSponsor(
+        Guid eventId,
+        Guid sponsorId,
+        [FromBody] UpdateSponsorRequest request)
+    {
+        var actingUserId = User.TryGetUserId();
+        if (actingUserId is null)
+        {
+            Logger.LogWarning(
+                "UpdateSponsor: missing user id on authenticated request — SponsorId={SponsorId}",
+                sponsorId);
+            return Unauthorized();
+        }
+
+        Logger.LogInformation(
+            "UpdateSponsor: EventId={EventId}, SponsorId={SponsorId}, ActorUserId={ActorUserId}",
+            eventId, sponsorId, actingUserId);
+
+        var command = new UpdateSponsorCommand(
+            EventId: eventId,
+            SponsorId: sponsorId,
+            ActingUserId: actingUserId.Value,
+            Name: request.Name,
+            Notes: request.Notes,
+            Organization: request.Organization,
+            Amount: request.Amount,
+            Currency: request.Currency,
+            ItemName: request.ItemName,
+            ItemDescription: request.ItemDescription,
+            EstimatedValue: request.EstimatedValue);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — request body for PATCH /sponsors/{id}. All fields nullable.
+    /// </summary>
+    public record UpdateSponsorRequest(
+        string? Name,
+        string? Notes,
+        string? Organization,
+        decimal? Amount,
+        string? Currency,
+        string? ItemName,
+        string? ItemDescription,
+        decimal? EstimatedValue);
 
     /// <summary>
     /// Phase 6A.145 — organizer records an off-platform sponsorship (cash money or

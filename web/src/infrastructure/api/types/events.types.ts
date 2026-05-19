@@ -2440,6 +2440,22 @@ export interface SponsorDto {
   paymentCompletedAt?: string | null;
 }
 
+/**
+ * Phase 6A.151 — PATCH /events/{eventId}/sponsors/{sponsorId} request body.
+ * All fields optional; null/undefined = leave unchanged. Server enforces the
+ * state-edit matrix per-field (see Sponsor.UpdateXxx domain methods).
+ */
+export interface UpdateSponsorRequest {
+  name?: string | null;
+  notes?: string | null;
+  organization?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  itemName?: string | null;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+}
+
 // Phase 6A.145 Commit 7 — Money sponsor create endpoint now returns both the
 // Stripe checkout URL AND the newly-created Sponsor ID. The FE uses the ID to
 // attach an optional image to the Pending sponsor BEFORE the Stripe redirect.

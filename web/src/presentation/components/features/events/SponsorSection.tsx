@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Award, ImagePlus, X, Handshake } from 'lucide-react';
+import { Award, ImagePlus, X, Handshake, Pencil } from 'lucide-react';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -17,6 +17,7 @@ import type {
   SponsorDto,
   PublicSponsorDto,  // Phase 6A.150
 } from '@/infrastructure/api/types/events.types';
+import { EditSponsorModal } from './EditSponsorModal';
 
 type SponsorMode = 'money' | 'item';
 
@@ -35,6 +36,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   const showToggle = sponsorConfig.acceptMoneySponsors && sponsorConfig.acceptItemSponsors;
 
   const [mode, setMode] = useState<SponsorMode>(defaultMode);
+  // Phase 6A.151 — sponsor self-edit modal state.
+  const [editingMySponsor, setEditingMySponsor] = useState<SponsorDto | null>(null);
 
   // Common fields
   const [sponsorName, setSponsorName] = useState('');
@@ -532,12 +535,34 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   <span className="text-xs text-neutral-500">
                     {new Date(sponsor.createdAt).toLocaleDateString()}
                   </span>
+                  {/* Phase 6A.151 — self-edit. Anonymous sponsors have no sponsorUserId
+                      so they never reach this list (mySponsors is JWT-scoped). The
+                      backend re-checks authz and the modal disables fields per matrix. */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingMySponsor(sponsor)}
+                    className="inline-flex items-center justify-center h-7 w-7 rounded text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50"
+                    aria-label={`Edit sponsorship from ${sponsor.sponsorName}`}
+                    title="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Phase 6A.151 — sponsor self-edit modal */}
+      <EditSponsorModal
+        eventId={eventId}
+        sponsor={editingMySponsor}
+        isOrganizer={false}
+        open={editingMySponsor !== null}
+        onClose={() => setEditingMySponsor(null)}
+        onSaved={() => setEditingMySponsor(null)}
+      />
     </CollapsibleSection>
   );
 }

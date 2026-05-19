@@ -140,6 +140,29 @@ export function useDeleteSponsorImage() {
 }
 
 /**
+ * Phase 6A.151 — PATCH /sponsors/{id} to edit content fields on an existing
+ * sponsor. Used by both the organizer Edit modal (SponsorsManagementTab) and
+ * the sponsor self-edit modal (Your Sponsorships in SponsorSection).
+ * Invalidates the same query keys as the create + image hooks so the UI
+ * reflects edits without a manual refresh.
+ */
+export function useUpdateSponsor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      eventId: string;
+      sponsorId: string;
+      request: import('@/infrastructure/api/types/events.types').UpdateSponsorRequest;
+    }) => eventsRepository.updateSponsor(data.eventId, data.sponsorId, data.request),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.byEvent(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.summary(variables.eventId) });
+      queryClient.invalidateQueries({ queryKey: sponsorKeys.mine(variables.eventId) });
+    },
+  });
+}
+
+/**
  * Phase 6A.145 — organizer records an off-platform sponsorship (cash money or in-kind
  * item collected outside the platform). Bypasses Stripe entirely; the resulting Sponsor
  * is immediately Completed (money) or RecordedItem (item). Optional image upload.

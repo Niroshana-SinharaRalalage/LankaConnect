@@ -17,6 +17,7 @@ import {
   Plus,
   ImagePlus,
   X,
+  Pencil,
 } from 'lucide-react';
 import {
   useEventSponsors,
@@ -29,6 +30,7 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { SponsorDto, SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
 import { AddOffPlatformSponsorModal } from './AddOffPlatformSponsorModal';
+import { EditSponsorModal } from './EditSponsorModal';
 
 interface SponsorsManagementTabProps {
   eventId: string;
@@ -153,6 +155,8 @@ function getSponsorStatusColor(status: string): string {
  */
 export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManagementTabProps) {
   const [isExporting, setIsExporting] = useState(false);
+  // Phase 6A.151 — organizer edit modal (row-action). Null when closed.
+  const [editingSponsor, setEditingSponsor] = useState<SponsorDto | null>(null);
   // Phase 6A.145 — Add Off-Platform Sponsor modal trigger.
   const [showOffPlatformModal, setShowOffPlatformModal] = useState(false);
 
@@ -466,6 +470,7 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
                   <th className="text-right px-4 py-3 font-medium text-neutral-600">Amount</th>
                   <th className="text-center px-4 py-3 font-medium text-neutral-600">Status</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Date</th>
+                  <th className="text-right px-4 py-3 font-medium text-neutral-600 w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -517,6 +522,18 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
                         </span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      {/* Phase 6A.151 — row-action Edit. Backend enforces the state matrix. */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingSponsor(sponsor)}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50"
+                        aria-label={`Edit sponsorship from ${sponsor.sponsorName}`}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -543,6 +560,7 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Description</th>
                   <th className="text-right px-4 py-3 font-medium text-neutral-600">Est. Value</th>
                   <th className="text-left px-4 py-3 font-medium text-neutral-600">Date</th>
+                  <th className="text-right px-4 py-3 font-medium text-neutral-600 w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -578,6 +596,17 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
                         <span>{new Date(sponsor.createdAt).toLocaleDateString()}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setEditingSponsor(sponsor)}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50"
+                        aria-label={`Edit sponsorship from ${sponsor.sponsorName}`}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -593,6 +622,19 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
         open={showOffPlatformModal}
         onClose={() => setShowOffPlatformModal(false)}
         onCreated={() => refetch()}
+      />
+
+      {/* Phase 6A.151 — Edit Sponsor modal (organizer surface) */}
+      <EditSponsorModal
+        eventId={eventId}
+        sponsor={editingSponsor}
+        isOrganizer={true}
+        open={editingSponsor !== null}
+        onClose={() => setEditingSponsor(null)}
+        onSaved={() => {
+          setEditingSponsor(null);
+          refetch();
+        }}
       />
     </div>
   );

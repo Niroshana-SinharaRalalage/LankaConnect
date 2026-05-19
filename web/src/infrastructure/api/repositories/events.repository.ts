@@ -1978,6 +1978,24 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.151 — PATCH content fields on an existing sponsor. PATCH semantics:
+   * any field left undefined (or null) is preserved server-side. The server
+   * enforces the state-edit matrix per-field; rejections surface as 400 with
+   * a descriptive detail. 403 when the actor is neither the sponsor owner
+   * (non-anonymous) nor an organizer of the event.
+   */
+  async updateSponsor(
+    eventId: string,
+    sponsorId: string,
+    request: import('../types/events.types').UpdateSponsorRequest
+  ): Promise<import('../types/events.types').SponsorDto> {
+    return await apiClient.patch<import('../types/events.types').SponsorDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}`,
+      request
+    );
+  }
+
+  /**
    * Phase 6A.145 — organizer records an off-platform sponsorship (cash collected
    * outside the platform, or in-kind item donated directly to the organizer).
    * Multipart so an optional image file rides alongside the form fields.

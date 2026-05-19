@@ -112,6 +112,13 @@ public static class EmailTemplateContract
         public const string RefundPendingReview = "template-refund-pending-review";
         public const string RefundDecision = "template-refund-decision";
         public const string RefundRejected = "template-refund-rejected";
+
+        // Phase 6A.148.W4.D13: closes the silent "withdraw has no email" gap (G2 in
+        // Wave 4 gap inventory). Fires when an attendee withdraws their own pending
+        // refund request; confirms to them that the registration is back to Confirmed
+        // and no money moved. Per Q2 user decision, organizer is NOT notified
+        // (the row simply disappears from their pending queue).
+        public const string RefundWithdrawn = "template-refund-withdrawn";
     }
 
     #endregion
@@ -1238,6 +1245,30 @@ public static class EmailTemplateContract
 
         /// <summary>Formatted decision timestamp.</summary>
         public const string DecidedAt = "DecidedAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13: Parameters for the "you withdrew your refund request" email.
+    /// Template: template-refund-withdrawn (header: "Refund Request Withdrawn").
+    ///
+    /// Fires once when an attendee uses the in-app withdraw button on the pending-review
+    /// status banner. Confirms to them the request was withdrawn, the registration is
+    /// back to Confirmed, and no money moved. Per Q2 user decision, organizer is NOT
+    /// notified (queue item just disappears).
+    /// </summary>
+    public static class RefundWithdrawn
+    {
+        /// <summary>Pre-formatted HTML table listing each line item that was in the withdrawn request. Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total amount that was in the withdrawn request (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code (e.g., "USD").</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Formatted withdrawn-at timestamp (e.g., "May 19, 2026 3:42 PM").</summary>
+        public const string WithdrawnAt = "WithdrawnAt";
     }
 
     /// <summary>

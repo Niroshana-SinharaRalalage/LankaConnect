@@ -189,6 +189,66 @@ public class RefundLifecycleEmailHandlerTests
     }
 
     // =========================================================================
+    // RefundRequestWithdrawnEventHandler (W4.D13 — NEW)
+    // =========================================================================
+
+    [Fact]
+    public async Task Withdrawn_SendsRefundWithdrawnParams_WithLineItems()
+    {
+        var (refundRequest, registration, attendee, @event) = SetupHappyPath();
+        _refundRequestRepository.Setup(r => r.GetByIdAsync(refundRequest.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(refundRequest);
+        _userRepository.Setup(u => u.GetByIdAsync(attendee.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(attendee);
+        _eventRepository.Setup(e => e.GetByIdAsync(@event.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(@event);
+
+        var handler = new RefundRequestWithdrawnEventHandler(
+            _emailService.Object, _userRepository.Object, _eventRepository.Object,
+            _refundRequestRepository.Object, _emailUrlHelper.Object,
+            Mock.Of<ILogger<RefundRequestWithdrawnEventHandler>>());
+
+        var notification = new DomainEventNotification<RefundRequestWithdrawnEvent>(
+            new RefundRequestWithdrawnEvent(
+                @event.Id, registration.Id, refundRequest.Id,
+                WithdrawnByUserId: attendee.Id,
+                WithdrawnAt: DateTime.UtcNow));
+
+        await handler.Handle(notification, CancellationToken.None);
+
+        _emailService.Verify(x => x.SendEmailAsync(
+            It.Is<RefundWithdrawnEmailParams>(p =>
+                p.TemplateName == EmailTemplateContract.TemplateNames.RefundWithdrawn &&
+                p.UserEmail == attendee.Email.Value &&
+                p.LineItems.Count == 2 &&
+                p.RequestedTotal == 60m),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Withdrawn_WhenRefundRequestNotFound_DoesNotInvokeEmail()
+    {
+        _refundRequestRepository.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RefundRequest?)null);
+
+        var handler = new RefundRequestWithdrawnEventHandler(
+            _emailService.Object, _userRepository.Object, _eventRepository.Object,
+            _refundRequestRepository.Object, _emailUrlHelper.Object,
+            Mock.Of<ILogger<RefundRequestWithdrawnEventHandler>>());
+
+        var notification = new DomainEventNotification<RefundRequestWithdrawnEvent>(
+            new RefundRequestWithdrawnEvent(
+                Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+                WithdrawnByUserId: Guid.NewGuid(),
+                WithdrawnAt: DateTime.UtcNow));
+
+        await handler.Handle(notification, CancellationToken.None);
+
+        _emailService.Verify(x => x.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    // =========================================================================
     // OrganizerInitiatedRefundCreatedEventHandler (D8b — NEW)
     // =========================================================================
 

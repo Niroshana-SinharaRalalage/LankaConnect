@@ -13,9 +13,11 @@ using LankaConnect.Application.Events.Queries.GetPublicEventSponsors;  // Phase 
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LankaConnect.API.Controllers;
 
@@ -266,6 +268,108 @@ public class SponsorsController : BaseController<SponsorsController>
         string? ItemName,
         string? ItemDescription,
         decimal? EstimatedValue);
+
+    /// <summary>
+    /// Phase 6A.151 — staging-blob endpoint for the registration-form inline
+    /// sponsor panel image upload. Inline panel submits via the parent
+    /// registration command which creates the Stripe Checkout session
+    /// server-side, so a Sponsor row doesn't exist pre-Stripe to attach a
+    /// blob to. Workflow:
+    ///   1. FE picks image → POST here → receives {correlationId, blobName, blobUrl}
+    ///   2. FE submits registration with sponsorStagingBlob carried in payload
+    ///   3. Registration handler creates Sponsor in-tx with ticket purchase,
+    ///      calls Sponsor.SetImage(blobUrl, blobName)
+    ///   4. Janitor sweeps unclaimed blobs >6h old (deferred; see TODO)
+    ///
+    /// Hardening (architect H1):
+    ///   - [AllowAnonymous] because registration is anon (Phase 6A.44)
+    ///   - 5 MB cap (rejected if exceeded — matches existing image-upload limit)
+    ///   - MIME allowlist: jpeg / png / webp only
+    ///   - Per-IP rate limit 10/hour via [EnableRateLimiting("sponsor-staging-upload")]
+    ///   - SERVER-generated correlation GUID (single-use; never client-chosen).
+    ///     This kills the "different user submits with stolen ID" race.
+    /// </summary>
+    [HttpPost("staging-image")]
+    [AllowAnonymous]
+    [EnableRateLimiting("sponsor-staging-upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SponsorStagingImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> UploadSponsorStagingImage(
+        Guid eventId,
+        IFormFile image,
+        [FromServices] IAzureBlobStorageService blobStorage,
+        CancellationToken cancellationToken)
+    {
+        const long MaxBytes = 5L * 1024 * 1024; // 5 MB
+        var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        if (image.Length > MaxBytes)
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Image is too large.",
+                Detail = $"Maximum size is {MaxBytes / 1024 / 1024} MB."
+            });
+
+        var contentType = image.ContentType?.ToLowerInvariant() ?? string.Empty;
+        if (!allowedContentTypes.Contains(contentType))
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Unsupported image type.",
+                Detail = $"Allowed types: {string.Join(", ", allowedContentTypes)}."
+            });
+
+        try
+        {
+            // Server-generated correlation GUID. Single-use. The registration
+            // handler will look up the blob by this GUID's blobName.
+            var correlationId = Guid.NewGuid();
+            var ext = Path.GetExtension(image.FileName);
+            if (string.IsNullOrEmpty(ext))
+                ext = contentType switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/webp" => ".webp",
+                    _ => ".bin"
+                };
+            var fileName = $"sponsors-staging/{correlationId}{ext}";
+
+            await using var stream = image.OpenReadStream();
+            var (blobName, blobUrl) = await blobStorage.UploadFileAsync(
+                fileName: fileName,
+                fileStream: stream,
+                contentType: contentType,
+                containerName: null, // default container "event-media"
+                cancellationToken: cancellationToken);
+
+            Logger.LogInformation(
+                "UploadSponsorStagingImage OK: EventId={EventId}, CorrelationId={CorrelationId}, Size={Size}, BlobName={BlobName}",
+                eventId, correlationId, image.Length, blobName);
+
+            return Ok(new SponsorStagingImageResult(correlationId, blobName, blobUrl));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "UploadSponsorStagingImage FAILED: EventId={EventId}, Size={Size}",
+                eventId, image.Length);
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Failed to stage image.",
+                Detail = "Please retry shortly."
+            });
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — return shape for POST /sponsors/staging-image.
+    /// </summary>
+    public record SponsorStagingImageResult(Guid CorrelationId, string BlobName, string BlobUrl);
 
     /// <summary>
     /// Phase 6A.145 — organizer records an off-platform sponsorship (cash money or

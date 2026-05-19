@@ -181,4 +181,34 @@ public class RefundRequestRepository : IRefundRequestRepository
             throw;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<Guid?> GetWorkflowLineReferenceIdAsync(
+        RefundLineItemType type, string stripeRefundId, CancellationToken cancellationToken = default)
+    {
+        // Defensive: a null/empty stripeRefundId cannot match a stored line; return null
+        // so the caller falls back to legacy semantics (refund-all-on-PI for AddOn cart;
+        // send-legacy-email for Sponsor/Collection).
+        if (string.IsNullOrWhiteSpace(stripeRefundId))
+            return null;
+
+        try
+        {
+            // Untracked single-row projection. (Type, StripeRefundId) is unique by
+            // construction — Stripe refund IDs are globally unique and each workflow
+            // line owns at most one Stripe refund.
+            return await _context.RefundRequestLineItems
+                .AsNoTracking()
+                .Where(li => li.Type == type && li.StripeRefundId == stripeRefundId)
+                .Select(li => (Guid?)li.ReferenceId)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[RefundRequestRepository] GetWorkflowLineReferenceIdAsync failed for Type={Type} StripeRefundId={StripeRefundId}",
+                type, stripeRefundId);
+            throw;
+        }
+    }
 }

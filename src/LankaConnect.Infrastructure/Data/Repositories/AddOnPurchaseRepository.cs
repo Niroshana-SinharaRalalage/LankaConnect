@@ -71,6 +71,50 @@ public class AddOnPurchaseRepository : Repository<AddOnPurchase>, IAddOnPurchase
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<AddOnPurchase>> GetAllByStripePaymentIntentIdAsync(
+        string paymentIntentId,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetAllByStripePaymentIntentId"))
+        using (LogContext.PushProperty("EntityType", "AddOnPurchase"))
+        using (LogContext.PushProperty("PaymentIntentId", paymentIntentId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetAllByStripePaymentIntentIdAsync START: PaymentIntentId={PaymentIntentId}",
+                paymentIntentId);
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(paymentIntentId))
+                    return Array.Empty<AddOnPurchase>();
+
+                // Tracked — webhook will mutate Status; caller commits via _unitOfWork.
+                var purchases = await _dbSet
+                    .Where(p => p.StripePaymentIntentId == paymentIntentId)
+                    .ToListAsync(cancellationToken);
+
+                stopwatch.Stop();
+
+                _repoLogger.LogInformation(
+                    "GetAllByStripePaymentIntentIdAsync COMPLETE: PaymentIntentId={PaymentIntentId}, Count={Count}, Duration={ElapsedMs}ms",
+                    paymentIntentId, purchases.Count, stopwatch.ElapsedMilliseconds);
+
+                return purchases;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "GetAllByStripePaymentIntentIdAsync FAILED: PaymentIntentId={PaymentIntentId}, Duration={ElapsedMs}ms, Error={ErrorMessage}",
+                    paymentIntentId, stopwatch.ElapsedMilliseconds, ex.Message);
+                throw;
+            }
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AddOnPurchase>> GetAllByCheckoutSessionIdAsync(
         string sessionId,
         CancellationToken cancellationToken = default)

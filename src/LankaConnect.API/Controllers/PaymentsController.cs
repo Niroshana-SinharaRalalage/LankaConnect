@@ -646,11 +646,17 @@ public class PaymentsController : ControllerBase
                 {
                     case "add_on_cancellation":
                     case "add_on_purchase":
-                        // Add-on refunds are handled inline by AddOnRefundService (marks entity as refunded).
-                        // The webhook arriving here is expected — log and acknowledge.
-                        _logger.LogInformation(
-                            "[Phase 6A.136] [Webhook-Refund-AddOn] Add-on refund acknowledged - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, RefundId: {RefundId}",
-                            correlationId, charge.Id, latestRefund.Id);
+                        // Phase 6A.148.W4.D11 (G1 fix): previously a NO-OP `return;` because the
+                        // legacy `AddOnRefundService` was expected to mark entities Refunded inline
+                        // BEFORE the webhook arrived. That assumption broke under the 6A.148 approval
+                        // workflow — `RefundExecutionService` dispatches the Stripe refund directly
+                        // without touching the inline service, so this webhook IS the only signal
+                        // and dropping it left AddOnPurchase rows stuck in Completed (operator UAT F2).
+                        // Now dispatched to the dedicated handler which is workflow-aware (matches
+                        // the specific row via the workflow line's ReferenceId) and falls back to
+                        // legacy cart-refund semantics when no workflow line is found.
+                        await _addOnPurchaseWebhookHandler.HandleChargeRefundedAsync(
+                            charge.PaymentIntentId, latestRefund.Id, correlationId);
                         return;
 
                     case "donation":

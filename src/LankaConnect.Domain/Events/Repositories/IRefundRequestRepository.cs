@@ -71,9 +71,34 @@ public interface IRefundRequestRepository
     /// covered the attendee (operator UAT defect E3).
     ///
     /// Untracked AnyAsync — single index hit on (Type, ReferenceId, StripeRefundId).
+    ///
+    /// W4.D12 NOTE: superseded by the more general <see cref="GetWorkflowLineReferenceIdAsync"/>
+    /// (which works for the AddOnPurchase cart case where the entity ID is not known
+    /// until the lookup returns). Sponsor + Collection handlers may continue using this
+    /// boolean shim, or migrate to the new method.
     /// </summary>
     Task<bool> ExistsWorkflowLineItemForSponsorAsync(
         Guid sponsorId,
+        string stripeRefundId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W4.D12 (G4 generalised dedupe): given a Stripe refund ID and a line
+    /// item type, returns the <c>ReferenceId</c> of the workflow line that owns the
+    /// refund, or <c>null</c> if no workflow line is found.
+    ///
+    /// Use cases:
+    /// - <b>AddOnPurchase webhook</b>: for cart purchases where N AddOnPurchase rows
+    ///   share one PaymentIntent, this narrows the webhook to the exact row.
+    /// - <b>Sponsor / Collection / Registration webhooks</b>: dedupe guard — if the
+    ///   returned ID matches the entity the handler is processing, the refund is
+    ///   workflow-owned and the legacy per-entity email should be suppressed.
+    ///
+    /// Untracked single-row projection. The (Type, StripeRefundId) tuple is unique by
+    /// construction (Stripe refund IDs are globally unique; one workflow line per refund).
+    /// </summary>
+    Task<Guid?> GetWorkflowLineReferenceIdAsync(
+        RefundLineItemType type,
         string stripeRefundId,
         CancellationToken cancellationToken = default);
 }

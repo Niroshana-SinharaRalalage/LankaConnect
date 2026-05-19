@@ -77,10 +77,10 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
             type="button"
             onClick={handleCardClick}
             data-testid={`sponsor-preview-card-${s.id}`}
-            className="flex-none w-56 snap-start rounded-lg border border-neutral-200 bg-white text-left transition-shadow hover:shadow-md hover:border-indigo-300"
+            className="flex-none w-64 snap-start rounded-lg border border-neutral-200 bg-white text-left transition-shadow hover:shadow-md hover:border-indigo-300"
             aria-label={`Sponsor: ${s.sponsorOrganization || s.sponsorName}`}
           >
-            <div className="aspect-[16/9] w-full overflow-hidden rounded-t-lg bg-neutral-50 flex items-center justify-center">
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-t-lg bg-neutral-50 flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={s.imageUrl!}

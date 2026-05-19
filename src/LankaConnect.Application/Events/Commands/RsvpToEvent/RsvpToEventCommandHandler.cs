@@ -585,6 +585,40 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                     {
                         bundledSponsor = sponsorResult.Value;
 
+                        // Phase 6A.151 C5 — attach a pre-staged sponsor image
+                        // when the FE supplied {SponsorStagingBlobName, SponsorStagingBlobUrl}.
+                        // Best-effort: if SetImage rejects (defensive), the sponsor
+                        // row is still created without an image so the registration
+                        // doesn't fail because of a bad logo upload.
+                        if (!string.IsNullOrWhiteSpace(request.SponsorStagingBlobUrl)
+                            && !string.IsNullOrWhiteSpace(request.SponsorStagingBlobName))
+                        {
+                            try
+                            {
+                                var imgResult = bundledSponsor.SetImage(
+                                    request.SponsorStagingBlobUrl,
+                                    request.SponsorStagingBlobName);
+                                if (imgResult.IsFailure)
+                                {
+                                    _logger.LogWarning(
+                                        "Bundled sponsor SetImage rejected — SponsorId={SponsorId}, Error={Error}",
+                                        bundledSponsor.Id, imgResult.Error);
+                                }
+                                else
+                                {
+                                    _logger.LogInformation(
+                                        "Bundled sponsor image attached — SponsorId={SponsorId}, BlobName={BlobName}",
+                                        bundledSponsor.Id, request.SponsorStagingBlobName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Bundled sponsor SetImage threw — SponsorId={SponsorId}. Sponsor row will be created without image.",
+                                    bundledSponsor.Id);
+                            }
+                        }
+
                         // Calculate revenue breakdown
                         try
                         {

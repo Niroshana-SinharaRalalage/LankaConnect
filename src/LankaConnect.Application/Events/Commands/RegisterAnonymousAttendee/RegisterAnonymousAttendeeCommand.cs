@@ -44,6 +44,12 @@ public record RegisterAnonymousAttendeeCommand(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.151 C5 — optional sponsor logo from POST /sponsors/staging-image.
+    // Anonymous registration flow: same semantics as RsvpToEventCommand. Both
+    // fields supplied together or both null. Handler calls Sponsor.SetImage
+    // in-tx with the Sponsor row create.
+    string? SponsorStagingBlobName = null,
+    string? SponsorStagingBlobUrl = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events. Mutually exclusive with Attendees;

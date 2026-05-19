@@ -626,6 +626,38 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     {
                         bundledSponsor = sponsorResult.Value;
 
+                        // Phase 6A.151 C5 — attach a pre-staged sponsor image when
+                        // FE supplied {SponsorStagingBlobName, SponsorStagingBlobUrl}.
+                        // Best-effort: failure does not break registration.
+                        if (!string.IsNullOrWhiteSpace(request.SponsorStagingBlobUrl)
+                            && !string.IsNullOrWhiteSpace(request.SponsorStagingBlobName))
+                        {
+                            try
+                            {
+                                var imgResult = bundledSponsor.SetImage(
+                                    request.SponsorStagingBlobUrl,
+                                    request.SponsorStagingBlobName);
+                                if (imgResult.IsFailure)
+                                {
+                                    _logger.LogWarning(
+                                        "Anonymous bundled sponsor SetImage rejected — SponsorId={SponsorId}, Error={Error}",
+                                        bundledSponsor.Id, imgResult.Error);
+                                }
+                                else
+                                {
+                                    _logger.LogInformation(
+                                        "Anonymous bundled sponsor image attached — SponsorId={SponsorId}, BlobName={BlobName}",
+                                        bundledSponsor.Id, request.SponsorStagingBlobName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Anonymous bundled sponsor SetImage threw — SponsorId={SponsorId}. Sponsor row created without image.",
+                                    bundledSponsor.Id);
+                            }
+                        }
+
                         try
                         {
                             var breakdown = await _revenueCalculatorService.CalculateBreakdownAsync(

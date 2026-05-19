@@ -727,6 +727,9 @@ public class EventsController : BaseController<EventsController>
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
+            // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
+            SponsorStagingBlobName: request.SponsorStagingBlobName,
+            SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode events
@@ -970,6 +973,9 @@ public class EventsController : BaseController<EventsController>
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
+            // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
+            SponsorStagingBlobName: request.SponsorStagingBlobName,
+            SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
@@ -3962,6 +3968,9 @@ public record RsvpRequest(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
+    string? SponsorStagingBlobName = null,
+    string? SponsorStagingBlobUrl = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
@@ -4010,6 +4019,9 @@ public record AnonymousRegistrationRequest(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
+    string? SponsorStagingBlobName = null,
+    string? SponsorStagingBlobUrl = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).

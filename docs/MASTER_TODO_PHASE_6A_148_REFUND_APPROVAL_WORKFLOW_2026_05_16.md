@@ -1171,7 +1171,9 @@ Token via password `1qaz!QAZ`. JSON body shapes are illustrative.
 ### Wave 4 phase gates
 
 - [x] **G0** — User approval of plan + Q1-Q4 defaults
-- [ ] **G1** — D10 instrumentation deployed; replay UAT against staging; structured logs pinpoint F1 root cause
+- [x] **G1** — D10 instrumentation deployed (commit `fbafe550`, deploy `26118274603` GREEN); next operator refund will produce diagnostic logs to pinpoint F1
+- [x] **G2** — D11 AddOnPurchase webhook handler + D12 generalized dedupe shipped in one bundle (commit `296026d4`, deploy `26120329599` GREEN; container health 200; 9/9 D11+D12 tests pass); see W4.D11+D12 ship status below
+- [ ] **G3** — D11+D12 staging-verified end-to-end: next operator refund involving AddOn rows → DB query confirms `add_on_purchases.status='Refunded', refunded_at NOT NULL`
 - [ ] **G2** — D11 AddOnPurchase handler GREEN + D11b UI sync; staged together behind flag
 - [ ] **G3** — D11+D11b staging-verified: W4.T2 confirms `add_on_purchases.status='Refunded'` after workflow refund
 - [ ] **G4** — D12 generalised dedupe GREEN; W4.T1, T3, T4 confirm exactly one email per category

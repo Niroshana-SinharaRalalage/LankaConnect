@@ -4,11 +4,16 @@ import { useEffect, useState } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
-import { useUpdateSponsor } from '@/presentation/hooks/useSponsors';
+import {
+  useUpdateSponsor,
+  useUploadSponsorImage,
+  useDeleteSponsorImage,
+} from '@/presentation/hooks/useSponsors';
 import type {
   SponsorDto,
   UpdateSponsorRequest,
 } from '@/infrastructure/api/types/events.types';
+import { SponsorImagePicker } from './SponsorImagePicker';
 
 interface EditSponsorModalProps {
   eventId: string;
@@ -56,10 +61,19 @@ export function EditSponsorModal({
   const [itemName, setItemName] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [estimatedValue, setEstimatedValue] = useState('');
+  // Phase 6A.151 C6 — image edit state. `imageFile` is a NEW file the user
+  // queued (will POST /image on Save). `removeExisting` is a flag set when
+  // the user clicked "Remove" on the existing server-side image (will DELETE
+  // /image on Save). They are mutually exclusive — picking a file after a
+  // remove cancels the remove.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const updateSponsor = useUpdateSponsor();
+  const uploadImage = useUploadSponsorImage();
+  const deleteImage = useDeleteSponsorImage();
 
   // Reset form when sponsor changes / modal opens
   useEffect(() => {
@@ -71,8 +85,21 @@ export function EditSponsorModal({
     setItemName(sponsor.itemName ?? '');
     setItemDescription(sponsor.itemDescription ?? '');
     setEstimatedValue(sponsor.estimatedValue != null ? String(sponsor.estimatedValue) : '');
+    setImageFile(null);
+    setRemoveExistingImage(false);
     setError(null);
   }, [sponsor?.id, open]);
+
+  // Mutual-exclusion: picking a new file cancels a pending remove-existing.
+  const handleImageChange = (file: File | null) => {
+    setImageFile(file);
+    if (file !== null) setRemoveExistingImage(false);
+  };
+
+  const handleRemoveExisting = () => {
+    setRemoveExistingImage(true);
+    setImageFile(null);
+  };
 
   if (!open || !sponsor) return null;
 
@@ -97,6 +124,9 @@ export function EditSponsorModal({
   const canEditAmount = isOffPlatformCompleted && isOrganizer;
   // Item details: RecordedItem only.
   const canEditItemDetails = isRecordedItem;
+  // Image: editable on every state EXCEPT terminal. Existing image stays visible
+  // in read-only mode on terminal so organizers can see what was there.
+  const canEditImage = !isTerminal;
 
   const handleSave = async () => {
     setError(null);
@@ -135,17 +165,57 @@ export function EditSponsorModal({
         }
       }
 
-      if (Object.keys(patch).length === 0) {
+      const hasImageChange = canEditImage && (imageFile !== null || removeExistingImage);
+      if (Object.keys(patch).length === 0 && !hasImageChange) {
         setError('No changes to save');
         setSaving(false);
         return;
       }
 
-      const updated = await updateSponsor.mutateAsync({
-        eventId,
-        sponsorId: sponsor.id,
-        request: patch,
-      });
+      // Phase 6A.151 C6 — sequential save: PATCH text first, then image
+      // upload/delete. Each step has its own network call so a failure
+      // doesn't strand the other. React Query invalidation in the hooks
+      // refreshes the table after the chain completes.
+      let updated: SponsorDto = sponsor;
+      if (Object.keys(patch).length > 0) {
+        updated = await updateSponsor.mutateAsync({
+          eventId,
+          sponsorId: sponsor.id,
+          request: patch,
+        });
+      }
+
+      if (hasImageChange) {
+        if (imageFile) {
+          try {
+            await uploadImage.mutateAsync({
+              eventId,
+              sponsorId: sponsor.id,
+              file: imageFile,
+            });
+          } catch (imgErr) {
+            // eslint-disable-next-line no-console
+            console.error('[EditSponsorModal] image upload failed:', imgErr);
+            setError('Saved text fields, but the image upload failed. Try again.');
+            setSaving(false);
+            return;
+          }
+        } else if (removeExistingImage) {
+          try {
+            await deleteImage.mutateAsync({
+              eventId,
+              sponsorId: sponsor.id,
+            });
+          } catch (imgErr) {
+            // eslint-disable-next-line no-console
+            console.error('[EditSponsorModal] image delete failed:', imgErr);
+            setError('Saved text fields, but the image remove failed. Try again.');
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
       onSaved?.(updated);
       onClose();
     } catch (err: unknown) {
@@ -220,6 +290,40 @@ export function EditSponsorModal({
               disabled={!canEditOrganization || saving}
             />
           </div>
+
+          {/* Phase 6A.151 C6 — image upload / replace / remove.
+              Hidden on terminal states (Failed/Abandoned/Refunded) since the
+              image is tied to the original transaction. */}
+          {canEditImage && (
+            <SponsorImagePicker
+              value={imageFile}
+              onChange={handleImageChange}
+              existingImageUrl={removeExistingImage ? null : sponsor.imageUrl}
+              onRemoveExisting={sponsor.imageUrl && !removeExistingImage ? handleRemoveExisting : undefined}
+              disabled={saving}
+              helperText={
+                removeExistingImage
+                  ? 'Existing image will be removed when you click Save changes.'
+                  : imageFile
+                    ? 'New image will be uploaded when you click Save changes.'
+                    : undefined
+              }
+            />
+          )}
+          {!canEditImage && sponsor.imageUrl && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 mb-1">Current logo</label>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={sponsor.imageUrl}
+                alt="Sponsor logo"
+                className="h-16 w-16 rounded object-contain bg-white border border-neutral-200"
+              />
+              <p className="text-xs text-neutral-500 mt-1">
+                Image is locked because this sponsorship is in a terminal state.
+              </p>
+            </div>
+          )}
 
           {/* Notes */}
           <div>

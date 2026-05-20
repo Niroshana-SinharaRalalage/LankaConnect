@@ -1,27 +1,74 @@
 'use client';
 
 import { useState } from 'react';
-import { Award } from 'lucide-react';
+import { Award, Loader2 } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type { SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
+import { SponsorImagePicker } from './SponsorImagePicker';
 
 interface SponsorOptionInFormProps {
+  eventId: string;
   sponsorConfig: SponsorConfigurationDto;
   onSponsorChange: (amount: number | null, organization: string | null, notes: string | null) => void;
+  /**
+   * Phase 6A.151 C7 — emitted after the user picks a logo and the file
+   * successfully pre-uploads to the staging-blob endpoint. Both args null
+   * when the user clears the picker or the upload fails.
+   */
+  onStagingBlobChange?: (blobName: string | null, blobUrl: string | null) => void;
 }
 
 /**
  * Lightweight money sponsorship option shown inside the registration form.
  * Allows attendees to add a monetary sponsorship during event registration (combined checkout).
  * Phase 6A.137E: Follows the DonationOptionInForm pattern.
+ * Phase 6A.151 C7: Optional logo upload — file is pre-staged to the backend
+ *   on file-pick (since the registration submit triggers a Stripe Checkout
+ *   redirect, there is no post-submit window to upload). Handler attaches
+ *   the staged blob to the Sponsor row in-tx with ticket purchase.
  * Note: Only money sponsors can be bundled. Item sponsors remain standalone.
  */
-export function SponsorOptionInForm({ sponsorConfig, onSponsorChange }: SponsorOptionInFormProps) {
+export function SponsorOptionInForm({
+  eventId,
+  sponsorConfig,
+  onSponsorChange,
+  onStagingBlobChange,
+}: SponsorOptionInFormProps) {
   const [amount, setAmount] = useState('');
   const [organization, setOrganization] = useState('');
   const [notes, setNotes] = useState('');
   // Phase 6A.137F: Visible validation error instead of silent nulling (Bug 2)
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Phase 6A.151 C7 — image pre-staging state.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  const handleImageChange = async (file: File | null) => {
+    setImageError(null);
+    if (file === null) {
+      setImageFile(null);
+      onStagingBlobChange?.(null, null);
+      return;
+    }
+    setImageFile(file);
+    setUploadingImage(true);
+    try {
+      const result = await eventsRepository.uploadSponsorStagingImage(eventId, file);
+      onStagingBlobChange?.(result.blobName, result.blobUrl);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Logo upload failed';
+      // eslint-disable-next-line no-console
+      console.error('[SponsorOptionInForm] staging-image upload failed:', err);
+      setImageError(`${msg}. Registration will continue without a logo.`);
+      // Clear so the form doesn't submit a stale staged file
+      setImageFile(null);
+      onStagingBlobChange?.(null, null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleAmountChange = (value: string) => {
     setAmount(value);
@@ -104,6 +151,30 @@ export function SponsorOptionInForm({ sponsorConfig, onSponsorChange }: SponsorO
           className="text-sm h-9"
           maxLength={200}
         />
+
+        {/* Phase 6A.151 C7 — optional logo upload */}
+        <div className="pt-2">
+          <SponsorImagePicker
+            value={imageFile}
+            onChange={handleImageChange}
+            disabled={uploadingImage}
+            label="Sponsor logo (optional)"
+            helperText={
+              uploadingImage
+                ? undefined
+                : imageFile
+                  ? 'Logo will be attached when payment completes.'
+                  : 'Upload your organization logo. JPEG/PNG/WebP, max 5 MB.'
+            }
+          />
+          {uploadingImage && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-amber-700">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Uploading logo…
+            </p>
+          )}
+          {imageError && <p className="mt-1 text-xs text-red-600">{imageError}</p>}
+        </div>
       </div>
     </div>
   );

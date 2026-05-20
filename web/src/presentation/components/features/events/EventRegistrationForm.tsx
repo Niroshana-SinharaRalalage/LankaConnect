@@ -108,6 +108,11 @@ export function EventRegistrationForm({
   const [sponsorAmount, setSponsorAmount] = useState<number | null>(null);
   const [sponsorOrganization, setSponsorOrganization] = useState<string | null>(null);
   const [sponsorNotes, setSponsorNotes] = useState<string | null>(null);
+  // Phase 6A.151 C7 — pre-staged sponsor logo blob (set by SponsorOptionInForm
+  // after a successful POST /sponsors/staging-image). Both fields populated
+  // together or both null. Threaded into the registration payload at line 419.
+  const [sponsorStagingBlobName, setSponsorStagingBlobName] = useState<string | null>(null);
+  const [sponsorStagingBlobUrl, setSponsorStagingBlobUrl] = useState<string | null>(null);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -420,6 +425,13 @@ export function EventRegistrationForm({
           sponsorAmount,
           sponsorOrganization: sponsorOrganization || undefined,
           sponsorNotes: sponsorNotes || undefined,
+          // Phase 6A.151 C7: pre-staged sponsor logo. Backend Sponsor.SetImage
+          // is invoked in-tx with Sponsor row create. Both fields together or
+          // both omitted; partial = sponsor row created without image.
+          ...(sponsorStagingBlobName && sponsorStagingBlobUrl && {
+            sponsorStagingBlobName,
+            sponsorStagingBlobUrl,
+          }),
         }),
       };
 
@@ -841,11 +853,16 @@ export function EventRegistrationForm({
       {/* Phase 6A.137E: Optional money sponsorship during registration */}
       {sponsorConfig?.isEnabled === true && sponsorConfig?.acceptMoneySponsors === true && (
         <SponsorOptionInForm
+          eventId={eventId}
           sponsorConfig={sponsorConfig}
           onSponsorChange={(amount, org, notes) => {
             setSponsorAmount(amount);
             setSponsorOrganization(org);
             setSponsorNotes(notes);
+          }}
+          onStagingBlobChange={(blobName, blobUrl) => {
+            setSponsorStagingBlobName(blobName);
+            setSponsorStagingBlobUrl(blobUrl);
           }}
         />
       )}

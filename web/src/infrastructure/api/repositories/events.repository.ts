@@ -1978,6 +1978,31 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.151 C4 — pre-upload a sponsor logo to a staging blob path. Used by
+   * the inline registration panel: when the user picks a file, we upload to
+   * staging immediately (file-pick time, not submit time) because the parent
+   * registration submit triggers a Stripe Checkout redirect — there is no
+   * opportunity to upload post-submit. The returned blobName+blobUrl ride in
+   * the registration command payload; the handler calls Sponsor.SetImage
+   * in-tx with the Sponsor row create.
+   *
+   * Endpoint is [AllowAnonymous] (registration flow is anonymous) and
+   * rate-limited 10/hour per IP server-side.
+   */
+  async uploadSponsorStagingImage(
+    eventId: string,
+    file: File
+  ): Promise<{ correlationId: string; blobName: string; blobUrl: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<{
+      correlationId: string;
+      blobName: string;
+      blobUrl: string;
+    }>(`${this.basePath}/${eventId}/sponsors/staging-image`, formData);
+  }
+
+  /**
    * Phase 6A.151 — PATCH content fields on an existing sponsor. PATCH semantics:
    * any field left undefined (or null) is preserved server-side. The server
    * enforces the state-edit matrix per-field; rejections surface as 400 with

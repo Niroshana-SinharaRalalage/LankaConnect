@@ -639,8 +639,11 @@ public class PaymentsController : ControllerBase
             if (!string.IsNullOrEmpty(refundPaymentType))
             {
                 _logger.LogInformation(
-                    "[Phase 6A.136] [Webhook-Refund-Route] Routing charge.refunded by type - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}",
-                    correlationId, refundPaymentType);
+                    "[Phase 6A.136] [Webhook-Refund-Route] Routing charge.refunded by type - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}, ResolvedFrom: {Source}, RefundMetaKeys: [{RefundKeys}], ChargeMetaKeys: [{ChargeKeys}]",
+                    correlationId, refundPaymentType,
+                    refundMetadata != null && refundMetadata.ContainsKey("refund_type") ? "refund.refund_type" : "charge.payment_type",
+                    refundMetadata == null ? "" : string.Join(",", refundMetadata.Keys),
+                    chargeMetadata == null ? "" : string.Join(",", chargeMetadata.Keys));
 
                 switch (refundPaymentType)
                 {
@@ -677,6 +680,19 @@ public class PaymentsController : ControllerBase
                             charge.PaymentIntentId, latestRefund.Id, correlationId);
                         return;
                 }
+            }
+
+            // W4.D14 observability: log when default route is taken WITHOUT an explicit type. This
+            // is the failure mode that left AddOn + Sponsor entities stuck Completed in F2 — the
+            // registration handler doesn't know how to transition non-registration entities, so a
+            // misrouted refund silently does nothing visible to the user.
+            if (string.IsNullOrEmpty(refundPaymentType))
+            {
+                _logger.LogWarning(
+                    "[Phase 6A.148.W4.D14] [Webhook-Refund-Default-Route] charge.refunded falling through to default Registration handler — no refund_type on Refund metadata AND no payment_type on Charge metadata. If this refund is for AddOn/Sponsor/Collection, the underlying entity will NOT transition to Refunded. CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, RefundId: {RefundId}, RefundMetaKeys: [{RefundKeys}], ChargeMetaKeys: [{ChargeKeys}]",
+                    correlationId, charge.Id, latestRefund.Id,
+                    refundMetadata == null ? "" : string.Join(",", refundMetadata.Keys),
+                    chargeMetadata == null ? "" : string.Join(",", chargeMetadata.Keys));
             }
 
             // Default: registration payment refund

@@ -74,7 +74,13 @@ public class RejectRefundRequestCommandHandler : ICommandHandler<RejectRefundReq
                 if (trackedRequest is null)
                     return Result.NotFound("Refund request not found on registration");
 
-                var rejectResult = trackedRequest.Reject(request.CallerUserId, request.RejectionReason);
+                // W4.D13.5: invoke via Registration aggregate so the RefundRequestRejectedEvent
+                // is re-raised with EventId populated (the F1/G3 fix — child entity's event has
+                // EventId=Guid.Empty and downstream handlers fail silently when loading the Event).
+                var rejectResult = tracked.RejectRefundRequest(
+                    refundRequestId: request.RefundRequestId,
+                    organizerUserId: request.CallerUserId,
+                    rejectionReason: request.RejectionReason);
                 if (rejectResult.IsFailure)
                 {
                     _logger.LogWarning(

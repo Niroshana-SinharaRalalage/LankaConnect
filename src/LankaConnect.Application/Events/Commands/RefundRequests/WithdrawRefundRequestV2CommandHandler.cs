@@ -81,7 +81,14 @@ public class WithdrawRefundRequestV2CommandHandler : ICommandHandler<WithdrawRef
                     return Result.Failure("Refund request not loaded with registration");
                 }
 
-                var withdrawResult = trackedRequest.Withdraw(request.CallerUserId);
+                // W4.D13.5: invoke via Registration aggregate so the RefundRequestWithdrawnEvent
+                // is re-raised with EventId populated (the F1/G3 fix). Empirically proven during
+                // W4 API smoke test T7 — previously the handler ran but exited silently with
+                // "event not found EventId=00000000-0000-0000-0000-000000000000" because the
+                // event raised on the child carried EventId=Guid.Empty.
+                var withdrawResult = tracked.WithdrawRefundRequestV2(
+                    refundRequestId: current.Id,
+                    byUserId: request.CallerUserId);
                 if (withdrawResult.IsFailure)
                 {
                     sw.Stop();

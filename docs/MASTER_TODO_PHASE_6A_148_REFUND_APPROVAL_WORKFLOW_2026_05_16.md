@@ -1175,6 +1175,29 @@ Token via password `1qaz!QAZ`. JSON body shapes are illustrative.
 - [x] **G2** — D11 AddOnPurchase webhook handler + D12 generalized dedupe shipped in one bundle (commit `296026d4`, deploy `26120329599` GREEN; container health 200; 9/9 D11+D12 tests pass); see W4.D11+D12 ship status below
 - [ ] **G3** — D11+D12 staging-verified end-to-end: next operator refund involving AddOn rows → DB query confirms `add_on_purchases.status='Refunded', refunded_at NOT NULL`
 - [x] **G4** — D13 RefundRequestWithdrawnEventHandler + template-refund-withdrawn shipped (commit `6fc376ef`, deploy `26126624330` dispatched; 8/8 params tests + 2/2 handler tests pass)
+
+### W4.D13.5 — Registration aggregate re-raises lifecycle events with populated EventId (F1/G3)
+
+**Root cause:** `RefundRequest` child entity raises Approved/Rejected/Withdrawn events with `EventId=Guid.Empty` (it doesn't know its parent's EventId). Downstream email handlers call `_eventRepository.GetByIdAsync(EventId)` → returns null for Guid.Empty → exit silently with `event not found EventId=00000000-0000-0000-0000-000000000000` WARN. Empirically proven during W4 T7 Withdraw smoke test.
+
+**Fix:** Add 3 aggregate-level methods on `Registration` (`ApproveRefundRequest`, `RejectRefundRequest`, `WithdrawRefundRequestV2`) that proxy to the child entity AND re-raise the corresponding domain event from the Registration root with populated `EventId`. 3 command handlers refactored to invoke via the aggregate. Child entity still raises its own EventId=Empty event for backward compat with direct-entity unit tests (acceptable — one WARN line per fire; the root-level event with proper EventId is the one that dispatches the email).
+
+8 new domain tests in `RegistrationApproveRejectWithdrawRefundRequestTests.cs` — 3 happy paths assert `EventId.Should().Be(_eventId).Should().NotBe(Guid.Empty)`, 5 failure modes. ALL GREEN (76/76 Domain tests, 2748/2754 Application tests).
+
+### W4.D14 — Refund webhook routing fix (F2 follow-up — operator UAT escape)
+
+**Root cause exposed by operator UAT (fresh refund `2fb9acbd` post-D11 deploy):** 5 AddOnPurchases + 1 Sponsor stayed `status=Completed, refunded_at=null` despite line items reaching `status=4 Refunded` with `stripe_refund_id` populated. D11+D12 fix was correct but the dispatcher never invoked the AddOn/Sponsor handlers.
+
+**Why:** `RefundExecutionService` set Stripe Refund metadata `["line_type"] = "AddOn"|"Sponsor"|...` but `PaymentsController.HandleChargeRefundedAsync` routes by `refund.Metadata["refund_type"]` OR `charge.Metadata["payment_type"]`. Neither was set for these refunds, so `charge.refunded` fell through to the default `_registrationWebhookHandler.HandleChargeRefundedAsync` — which doesn't know how to transition AddOnPurchase or Sponsor entities. Sponsor handler is unconditional `MarkAsRefunded()`, so the fact that refunded_at stayed null is decisive proof the handler was never invoked.
+
+**Fix:**
+1. `RefundExecutionService.cs` now sets `["refund_type"] = "add_on_purchase" | "sponsor" | "collection" | "registration"` on every workflow refund — matches the strings PaymentsController switches on, guaranteeing correct routing regardless of original charge metadata state.
+2. `PaymentsController.cs` `Webhook-Refund-Route` log now records which metadata key resolved the type and lists the available keys.
+3. New `[Phase 6A.148.W4.D14] [Webhook-Refund-Default-Route]` WARN logs the available metadata keys when the default route is hit without an explicit type — surfaces future regressions immediately.
+
+Build clean; 76/76 Domain tests, 2748/2754 Application tests GREEN.
+
+- [ ] **G3** — D13.5 + D14 staging-verified: fresh refund (mixed Ticket+AddOn+Sponsor) → DB confirms all underlying entities transition to Refunded + D8 decision email received; container logs show `[Webhook-Refund-Route] ResolvedFrom: refund.refund_type` (not default-route WARN)
 - [ ] **G2** — D11 AddOnPurchase handler GREEN + D11b UI sync; staged together behind flag
 - [ ] **G3** — D11+D11b staging-verified: W4.T2 confirms `add_on_purchases.status='Refunded'` after workflow refund
 - [ ] **G4** — D12 generalised dedupe GREEN; W4.T1, T3, T4 confirm exactly one email per category

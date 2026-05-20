@@ -87,7 +87,13 @@ public class ApproveRefundRequestCommandHandler : ICommandHandler<ApproveRefundR
                         li => li.LineItemId,
                         li => new Money(li.ApprovedAmount, li.Currency));
 
-                var approveResult = trackedRequest.Approve(
+                // W4.D13.5: invoke via Registration aggregate (not the child entity directly)
+                // so the RefundRequestApprovedEvent is re-raised with EventId populated.
+                // Calling trackedRequest.Approve(...) directly would only fire the child's
+                // event (EventId=Empty) and downstream handlers fail silently → no decision
+                // email (the F1/G3 bug fix).
+                var approveResult = tracked.ApproveRefundRequest(
+                    refundRequestId: request.RefundRequestId,
                     organizerUserId: request.CallerUserId,
                     organizerNotes: request.OrganizerNotes,
                     perLineApprovedAmounts: perLine);

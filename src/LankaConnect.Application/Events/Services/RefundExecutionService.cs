@@ -188,6 +188,24 @@ public class RefundExecutionService : IRefundExecutionService
         // Stripe amounts are in smallest currency unit (cents). Money.Amount is decimal.
         var amountInCents = (long)Math.Round(line.ApprovedAmount!.Amount * 100m, MidpointRounding.AwayFromZero);
 
+        // W4.D14 (F2 routing fix): set `refund_type` on the Refund metadata so PaymentsController's
+        // charge.refunded dispatcher routes to the correct webhook handler (AddOn / Sponsor /
+        // Collection / Registration). Previously we only set `line_type` and relied on the original
+        // charge's `payment_type` metadata — which is missing on charges created before that key was
+        // added, leaving AddOn + Sponsor refunds falling through to the default Registration handler.
+        // The default handler doesn't know about AddOnPurchase or Sponsor entities, so they stayed
+        // stuck at status=Completed even after Stripe refunded successfully. Operator UAT empirically
+        // proved this for fresh refund 2fb9acbd (post-D11 deploy): 5 AddOnPurchases + 1 Sponsor all
+        // remained Completed despite line items reaching status=Refunded with stripe_refund_id.
+        var refundTypeForRouting = line.Type switch
+        {
+            RefundLineItemType.AddOn => "add_on_purchase",
+            RefundLineItemType.Sponsor => "sponsor",
+            RefundLineItemType.Collection => "collection",
+            RefundLineItemType.Ticket => "registration",
+            _ => "registration"
+        };
+
         var stripeReq = new CreateRefundRequest
         {
             PaymentIntentId = paymentIntentId,
@@ -199,7 +217,8 @@ public class RefundExecutionService : IRefundExecutionService
                 ["refund_request_id"] = line.RefundRequestId.ToString(),
                 ["line_item_id"] = line.Id.ToString(),
                 ["line_type"] = line.Type.ToString(),
-                ["reference_id"] = line.ReferenceId.ToString()
+                ["reference_id"] = line.ReferenceId.ToString(),
+                ["refund_type"] = refundTypeForRouting
             }
         };
 

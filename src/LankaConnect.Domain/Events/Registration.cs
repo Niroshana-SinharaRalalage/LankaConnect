@@ -1135,6 +1135,127 @@ public class Registration : BaseEntity
         }
     }
 
+    // =====================================================================
+    // Phase 6A.148.W4.D13.5 — Approve / Reject / Withdraw aggregate methods
+    // =====================================================================
+    //
+    // These methods proxy to the child RefundRequest entity AND re-raise the
+    // corresponding domain event from the Registration aggregate root with
+    // EventId populated. Mirrors the existing ReplaceLastRequestEventWithEventId
+    // pattern used for the Create events.
+    //
+    // Root cause this fixes (operator UAT defect F1 / G3): the child entity
+    // raises its events with EventId=Guid.Empty (it doesn't know the parent's
+    // EventId). Downstream email handlers call _eventRepository.GetByIdAsync(EventId)
+    // — which returns null for Guid.Empty — and exit silently with a WARN log.
+    // Result: organizer Approves a refund, no decision email arrives. Same for
+    // Reject and Withdraw.
+    //
+    // Empirically proven during W4 API smoke test (T7 Withdraw): the new D13
+    // handler START log showed `EventId=00000000-0000-0000-0000-000000000000`
+    // followed by `[WRN] event not found EventId=00000000-...`.
+    //
+    // The child entity still raises its own event with EventId=Empty for
+    // backward compatibility with existing direct-entity unit tests. That
+    // event dispatches and the handler fails silently (one WARN log line);
+    // the root-level event with proper EventId dispatches and the email
+    // actually sends.
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13.5: Aggregate-level Approve that re-raises the event
+    /// from the Registration root with EventId populated. Preferred over
+    /// calling <see cref="RefundRequest.Approve"/> directly from command handlers.
+    /// </summary>
+    public Result ApproveRefundRequest(
+        Guid refundRequestId,
+        Guid organizerUserId,
+        string? organizerNotes,
+        IReadOnlyDictionary<Guid, Money> perLineApprovedAmounts)
+    {
+        var req = _refundRequests.FirstOrDefault(r => r.Id == refundRequestId);
+        if (req is null)
+            return Result.Failure(
+                $"Refund request {refundRequestId} not found on registration {Id}");
+
+        var result = req.Approve(organizerUserId, organizerNotes, perLineApprovedAmounts);
+        if (result.IsFailure) return result;
+
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new RefundRequestApprovedEvent(
+            EventId: EventId,
+            RegistrationId: Id,
+            RefundRequestId: req.Id,
+            OrganizerUserId: organizerUserId,
+            OrganizerNotes: organizerNotes,
+            ApprovedAt: req.ReviewedAt!.Value));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13.5: Aggregate-level Reject that re-raises the event
+    /// from the Registration root with EventId populated.
+    /// </summary>
+    public Result RejectRefundRequest(
+        Guid refundRequestId,
+        Guid organizerUserId,
+        string rejectionReason)
+    {
+        var req = _refundRequests.FirstOrDefault(r => r.Id == refundRequestId);
+        if (req is null)
+            return Result.Failure(
+                $"Refund request {refundRequestId} not found on registration {Id}");
+
+        var result = req.Reject(organizerUserId, rejectionReason);
+        if (result.IsFailure) return result;
+
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new RefundRequestRejectedEvent(
+            EventId: EventId,
+            RegistrationId: Id,
+            RefundRequestId: req.Id,
+            OrganizerUserId: organizerUserId,
+            RejectionReason: rejectionReason,
+            RejectedAt: req.ReviewedAt!.Value));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13.5: Aggregate-level Withdraw that re-raises the event
+    /// from the Registration root with EventId populated. Note: distinct from the
+    /// legacy <c>WithdrawRefundRequest</c> (no params) used by the 6A.92 flag-OFF
+    /// path on the Registration entity itself.
+    /// </summary>
+    public Result WithdrawRefundRequestV2(
+        Guid refundRequestId,
+        Guid byUserId)
+    {
+        var req = _refundRequests.FirstOrDefault(r => r.Id == refundRequestId);
+        if (req is null)
+            return Result.Failure(
+                $"Refund request {refundRequestId} not found on registration {Id}");
+
+        var result = req.Withdraw(byUserId);
+        if (result.IsFailure) return result;
+
+        MarkAsUpdated();
+
+        // WithdrawnAt is captured by child as DateTime.UtcNow at the moment of
+        // Withdraw(); root re-raise uses UtcNow too — drift is sub-ms and the
+        // child's event fails silently so only this value reaches the email.
+        RaiseDomainEvent(new RefundRequestWithdrawnEvent(
+            EventId: EventId,
+            RegistrationId: Id,
+            RefundRequestId: req.Id,
+            WithdrawnByUserId: byUserId,
+            WithdrawnAt: DateTime.UtcNow));
+
+        return Result.Success();
+    }
+
     /// <summary>
     /// Phase 6A.81: Marks registration as Abandoned when Stripe checkout expires or user cancels.
     /// This is part of the Three-State Lifecycle to prevent payment bypass.

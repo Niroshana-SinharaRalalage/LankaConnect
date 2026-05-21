@@ -206,12 +206,22 @@ public class RefundExecutionService : IRefundExecutionService
             _ => "registration"
         };
 
+        // W5.D1: per-line Stripe IdempotencyKey. Stable across re-dispatch — if `_uow.CommitAsync`
+        // later rolls back (W5.D7 root cause: xmin clash with concurrent Cancel flow), the
+        // RefundReconciliationService can safely re-invoke DispatchAsync and Stripe will return
+        // the EXACT same prior refund object rather than charging a second time. Same line +
+        // same key = at-most-one successful refund (Stripe 24h guarantee). Format: line.Id
+        // formatted as "N" (32 hex chars, no dashes) keeps the key under Stripe's 255-char
+        // limit and avoids special characters.
+        var idempotencyKey = $"refund_line_{line.Id:N}";
+
         var stripeReq = new CreateRefundRequest
         {
             PaymentIntentId = paymentIntentId,
             RegistrationId = registration.Id,
             AmountInCents = amountInCents,
             Reason = "requested_by_customer",
+            IdempotencyKey = idempotencyKey,
             Metadata = new Dictionary<string, string>
             {
                 ["refund_request_id"] = line.RefundRequestId.ToString(),

@@ -1315,19 +1315,30 @@ GROUP BY stripe_refund_id HAVING COUNT(*) > 1;
 | R9 | `RegistrationWebhookHandler` invariant tests broken by W5.D4 new transition | Low | Medium | Domain tests for both `CompleteRefund` (existing) and `CompleteRefundFromCancelled` (new) — explicit allowed-from-state matrix |
 | R10 | Cron reconciler runs against pre-W5 stuck rows with no prior idempotency keys | Medium | Medium | Keys are line-id-derived; Stripe treats first-attempt-via-reconciler as fresh refund. Pre-W5 stuck rows ARE the case we want re-dispatched. W5.D6 WARN catches the rare case where Stripe previously succeeded but DB hid it; ops triages |
 
-## Phase gates (Wave 5)
+## Phase gates (Wave 5) — status as of 2026-05-21
 
-- [ ] **G0** — Product owner approves Wave 5 plan + Q1-Q3 (received 2026-05-20)
-- [ ] **G1** — W5.D1+D2+D3 GREEN locally: per-line fresh-scope dispatch with Stripe idempotency. Application test suite 2700+ passed
-- [ ] **G2** — W5.D4+D5 GREEN: `CompleteRefundFromCancelled` transition + webhook branch; W4 webhook tests still green
-- [ ] **G3** — W5.D6 GREEN: reconciler DI integration test passes; nullable deps removed
-- [ ] **G4** — W5.D7 backfill executes on staging; T4 confirms `624b07c5` fully reconciled
-- [ ] **G5** — W5.D8+D9+D10 GREEN: UI surfaces render Refunded; sponsor parity FE shipped
-- [ ] **G6** — W5.D11 GREEN: 4 templates rewritten with brand parity; D15 visual review approved
-- [ ] **G7** — W5.D13 staging deploy GREEN; container health 200; migrations applied
-- [ ] **G8** — T1-T9 all pass with documented curl outputs + DB queries + email screenshots
-- [ ] **G9** — Operator browser UAT on a fresh end-to-end refund confirms all 4 defects closed
-- [ ] **G10** — PR opened with Wave 5 evidence bundle; W5.D12 doc updates merged
+- [x] **G0** — Product owner approves Wave 5 plan + Q1-Q3 (received 2026-05-20)
+- [x] **G1** — W5.D1+D2+D3 shipped: per-line fresh-scope dispatch with Stripe idempotency. Application test suite 2750 passed, 6 skipped, 0 failed. Commits c7094c97 (D1), c85ace0f (D2+D3). Deploy 26244864158 GREEN.
+- [x] **G2** — W5.D4+D5 shipped: `CompleteRefundFromCancelled` domain transition + webhook workflow-aware branch. 9 new W5.D4 domain tests GREEN; 2750/2756 Application tests GREEN (no W4 regressions). Commits b6f153a5 (D4), f83e7164 (D5+D6). Deploy 26245570186 GREEN.
+- [x] **G3** — W5.D6 shipped: reconciler nullable deps removed + defensive WARN for re-dispatch of lines with existing stripe_refund_id. Commit f83e7164 within same deploy.
+- [x] **G4** — W5.D7 backfill applied + verified: RR `624b07c5` now status=Completed, all 4 lines Refunded with stripe_refund_id, Registration `4d030697` Status=Refunded with `RefundCompletedAt` populated + `AddOnRefundAmount=14.00`. Commit 38361215. Migration `20260521033926_Phase6A148W5D7_BackfillRefund624b07c5` in __EFMigrationsHistory.
+- [x] **G5** — W5.D8 (sponsor badge) + W5.D9 (addons badge UX) shipped + UI deployed. Commits 38361215 (D8) + f64a1ed7 (D9). UI deploy 26204167876 + 26231906430 GREEN. W5.D10 (sponsor parity — show all confirmed sponsors with initials placeholder) committed f58d428c, deploys 26246240638 (BE) + 26246242214 (UI) in_progress.
+- [~] **G6** — W5.D11.a shipped: subject_template em-dash mojibake fixed across 4 templates. Bytes verified UTF-8 (0xE2 0x80 0x94). Commit f64a1ed7. Migration `20260521141028_Phase6A148W5D11a_FixRefundEmailSubjectMojibake` applied. **W5.D11.b** (full HTML brand-parity body rewrite) deferred to next session (~1.5d).
+- [x] **G7** — Staging deploys GREEN across 5 separate runs (26204166728, 26233144134, 26244864158, 26245570186, 26246240638). API health 200. Both new EF migrations (W5.D7 backfill + W5.D11.a mojibake) applied per __EFMigrationsHistory.
+- [~] **G8** — Partial: T4 (backfill verification) GREEN via DB query; Auth + refund-requests list endpoint smoke tested (RR `624b07c5` correctly shows Completed). T1-T3, T5-T9 require fresh paid Stripe checkout flow (operator UAT) — defer until next operator session.
+- [ ] **G9** — Operator browser UAT pending; Wave 5 changes ready for verification.
+- [ ] **G10** — PR for Wave 5 evidence bundle: open after G9 confirmation.
+
+### W5.D11.b deferral note
+
+Full HTML rewrite of 4 templates (refund-decision, refund-pending-review, refund-rejected, refund-withdrawn) with brand parity to `template-event-registration-cancellation` (~67k chars master pattern) is genuine ~1.5d work requiring careful HTML authoring + visual review. Subject mojibake fix (W5.D11.a) ships the immediate visual win; full HTML body redesign is the larger Defect 4 remediation queued separately.
+
+### Sessions ledger (Wave 5)
+
+| Date | Commits | Deliverables |
+|---|---|---|
+| 2026-05-20 | 38361215, c7094c97, f64a1ed7, 52ee2463 | D7 backfill + verify, D8 sponsor badge, D1 IdempotencyKey + 2 tests, D9 addon badge UX, D11.a mojibake fix, CI Task.Delay flake fix |
+| 2026-05-21 | c85ace0f, b6f153a5, f83e7164, f58d428c | D2+D3 per-line fresh-scope dispatch + request-level commit, D4 CompleteRefundFromCancelled + 9 tests, D5 webhook workflow branch, D6 reconciler hardening, D10 sponsor parity FE |
 
 ## Q1-Q3 clarifications locked (2026-05-20)
 

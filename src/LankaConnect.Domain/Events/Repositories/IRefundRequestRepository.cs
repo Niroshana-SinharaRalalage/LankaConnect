@@ -101,4 +101,22 @@ public interface IRefundRequestRepository
         RefundLineItemType type,
         string stripeRefundId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W5.D2: load a single <see cref="RefundRequestLineItem"/> by Id without
+    /// the parent <see cref="RefundRequest"/> aggregate.
+    ///
+    /// Used by <c>IRefundLineDispatcher</c> to update one line in a fresh scope without
+    /// triggering EF's aggregate-wide change tracking on the Registration root. This is
+    /// the core mechanism by which per-line Stripe dispatch survives concurrent
+    /// Registration writes (the W5.D7 xmin clash root cause) — only the
+    /// refund_request_line_items row is touched, no Registration / RefundRequest row
+    /// writes, no xmin conflict surface.
+    ///
+    /// Tracked because the caller will mutate (MarkProcessing / MarkRefunded /
+    /// MarkFailed) and SaveChangesAsync within the same scope.
+    /// </summary>
+    Task<RefundRequestLineItem?> GetLineItemByIdAsync(
+        Guid lineItemId,
+        CancellationToken cancellationToken = default);
 }

@@ -211,4 +211,28 @@ public class RefundRequestRepository : IRefundRequestRepository
             throw;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<RefundRequestLineItem?> GetLineItemByIdAsync(
+        Guid lineItemId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Tracked load — caller mutates within the same scope and calls SaveChangesAsync.
+            // No Include() on RefundRequest navigation: we deliberately want only this line's
+            // row touched so EF doesn't pick up changes to a stale-loaded parent aggregate
+            // (the W5.D7 xmin clash root cause). RefundRequestLineItem table has no xmin
+            // concurrency token (verified RefundRequestLineItemConfiguration.cs), so per-line
+            // saves never conflict with concurrent Registration writes.
+            return await _context.RefundRequestLineItems
+                .FirstOrDefaultAsync(li => li.Id == lineItemId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[RefundRequestRepository] GetLineItemByIdAsync failed for LineItemId={LineItemId}",
+                lineItemId);
+            throw;
+        }
+    }
 }

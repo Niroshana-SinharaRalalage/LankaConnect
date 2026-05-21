@@ -68,6 +68,13 @@ public static class DependencyInjection
         // AFTER the approve transaction commits (architect F10).
         services.AddScoped<IRefundExecutionService, RefundExecutionService>();
 
+        // Phase 6A.148.W5.D2: Per-line dispatcher used by RefundExecutionService.
+        // Each call creates its own IServiceScopeFactory scope so per-line saves never
+        // share a DbContext with the parent Registration aggregate — eliminates the
+        // xmin clash that caused the W5.D7 stuck-refund incident. Singleton because
+        // the scope factory is captured once and the dispatcher is stateless.
+        services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
+
         // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
         services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
 

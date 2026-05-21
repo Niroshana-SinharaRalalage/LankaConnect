@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events;
-using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
@@ -13,48 +12,39 @@ namespace LankaConnect.Application.Events.Services;
 /// <summary>
 /// Phase 6A.148: Dispatches Stripe refund calls for an approved RefundRequest.
 ///
-/// Invoked AFTER the approve transaction commits (architect F10). Iterates each line
-/// item in <see cref="RefundLineItemStatus.Approved"/>, resolves the StripePaymentIntentId
-/// from the corresponding underlying entity (RegistrationPayment / AddOnPurchase /
-/// Collection / Sponsor), and calls <see cref="IStripePaymentService.CreateRefundAsync"/>
-/// with the per-line ApprovedAmount.
+/// W5.D2 restructure: the per-line Stripe + DB save logic moved to
+/// <see cref="IRefundLineDispatcher"/>. This service is now the orchestrator —
+/// it loads the request, snapshots the list of Approved line IDs, delegates each
+/// to the line dispatcher (which runs in its own fresh DI scope), then transitions
+/// the request itself in a separate fresh scope.
 ///
-/// Line-item state transitions: Approved → Processing on Stripe success,
-/// Approved → Failed on Stripe failure. The webhook handlers (architect F4) later
-/// transition Processing → Refunded. Idempotent at the line-item level — re-dispatch
-/// from <c>RefundReconciliationService</c> (architect F11) skips lines not in Approved.
+/// Architect-mandated design (closes W5.D7 stuck-refund root cause): no single
+/// DbContext spans both the parent Registration aggregate AND per-line dispatches.
+/// Per-line saves only mutate <c>refund_request_line_items</c> rows, which carry
+/// no xmin token, so concurrent Registration mutations (e.g. an attendee Cancel
+/// flow) cannot roll back successful Stripe refunds.
+///
+/// Idempotency:
+/// - Stripe-side: W5.D1 per-line idempotency key
+/// - DB-side: line + RR state-machine guards refuse Refunded → Refunded etc.
+/// - Re-dispatch from W5.D6 reconciler is automatically safe.
 /// </summary>
 public class RefundExecutionService : IRefundExecutionService
 {
     private readonly IRefundRequestRepository _refundRepo;
-    private readonly IRegistrationRepository _registrationRepo;
-    private readonly IRegistrationPaymentRepository _paymentRepo;
-    private readonly IAddOnPurchaseRepository _addOnRepo;
-    private readonly ICollectionRepository _collectionRepo;
-    private readonly ISponsorRepository _sponsorRepo;
-    private readonly IStripePaymentService _stripe;
-    private readonly IUnitOfWork _uow;
+    private readonly IRefundLineDispatcher _lineDispatcher;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<RefundExecutionService> _logger;
 
     public RefundExecutionService(
         IRefundRequestRepository refundRepo,
-        IRegistrationRepository registrationRepo,
-        IRegistrationPaymentRepository paymentRepo,
-        IAddOnPurchaseRepository addOnRepo,
-        ICollectionRepository collectionRepo,
-        ISponsorRepository sponsorRepo,
-        IStripePaymentService stripe,
-        IUnitOfWork uow,
+        IRefundLineDispatcher lineDispatcher,
+        IServiceScopeFactory scopeFactory,
         ILogger<RefundExecutionService> logger)
     {
         _refundRepo = refundRepo;
-        _registrationRepo = registrationRepo;
-        _paymentRepo = paymentRepo;
-        _addOnRepo = addOnRepo;
-        _collectionRepo = collectionRepo;
-        _sponsorRepo = sponsorRepo;
-        _stripe = stripe;
-        _uow = uow;
+        _lineDispatcher = lineDispatcher;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -70,7 +60,7 @@ public class RefundExecutionService : IRefundExecutionService
 
             try
             {
-                // Load tracked refund request with line items.
+                // Outer read of the request — snapshots which lines to dispatch.
                 var req = await _refundRepo.GetByIdAsync(refundRequestId, cancellationToken);
                 if (req is null)
                 {
@@ -87,71 +77,59 @@ public class RefundExecutionService : IRefundExecutionService
                     return Result.Success();
                 }
 
-                // Load parent registration tracked so we can advance its status.
-                var registration = await _registrationRepo.GetByIdAsync(
-                    req.RegistrationId, cancellationToken);
-                if (registration is null)
-                {
-                    _logger.LogError(
-                        "[6A.148 EXEC] Parent registration {RegId} not found for RrId={RrId}",
-                        req.RegistrationId, refundRequestId);
-                    return Result.Failure("Parent registration not found");
-                }
+                // Capture line IDs by snapshot — each dispatcher call may mutate state in its
+                // own scope, but we drive iteration off this initial Approved-set list.
+                var registrationId = req.RegistrationId;
+                var lineIdsToDispatch = req.LineItems
+                    .Where(l => l.Status == RefundLineItemStatus.Approved
+                                && l.ApprovedAmount is not null
+                                && l.ApprovedAmount.Amount > 0)
+                    .Select(l => l.Id)
+                    .ToList();
 
-                var trackedRequest = registration.RefundRequests.FirstOrDefault(r => r.Id == refundRequestId)
-                    ?? req;
+                _logger.LogInformation(
+                    "[6A.148 EXEC] Dispatching {Count} line(s) for RrId={RrId} RegistrationId={RegId}",
+                    lineIdsToDispatch.Count, refundRequestId, registrationId);
 
-                // Iterate each Approved line item and dispatch Stripe.
                 var dispatchedAny = false;
                 var firstError = (string?)null;
-
-                foreach (var line in trackedRequest.LineItems
-                             .Where(l => l.Status == RefundLineItemStatus.Approved && l.ApprovedAmount is not null && l.ApprovedAmount.Amount > 0)
-                             .ToList())
+                foreach (var lineId in lineIdsToDispatch)
                 {
-                    var dispatchResult = await DispatchLineAsync(line, registration, cancellationToken);
-                    if (dispatchResult.IsSuccess)
-                        dispatchedAny = true;
-                    else
-                        firstError ??= dispatchResult.Error;
+                    try
+                    {
+                        var dispatchResult = await _lineDispatcher.DispatchAsync(
+                            lineId, registrationId, cancellationToken);
+                        if (dispatchResult.IsSuccess)
+                            dispatchedAny = true;
+                        else
+                            firstError ??= dispatchResult.Error;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Line-dispatcher exceptions are isolated by the per-line scope.
+                        // Continue with remaining lines; reconciler will retry the failed one.
+                        _logger.LogError(ex,
+                            "[6A.148 EXEC] Line dispatch threw for LineId={LineId} RrId={RrId}; " +
+                            "continuing with remaining lines (reconciler will retry)",
+                            lineId, refundRequestId);
+                        firstError ??= ex.Message;
+                    }
                 }
 
+                // Request-level transition in a SEPARATE fresh scope. The per-line dispatches
+                // already committed their line state — we reload the RR here to see those
+                // committed states and decide whether to flip Approved → Processing and/or
+                // Processing → Completed.
                 if (dispatchedAny)
                 {
-                    // Transition request: Approved → Processing (idempotent).
-                    var begin = trackedRequest.BeginProcessing();
-                    if (begin.IsFailure)
-                        _logger.LogWarning(
-                            "[6A.148 EXEC] BeginProcessing failed for RrId={RrId}: {Error}",
-                            refundRequestId, begin.Error);
-
-                    // Phase 6A.148 post-rework: cancellation and refund are DECOUPLED.
-                    // The registration's lifecycle is owned by Cancel/Confirm/Refund methods
-                    // independently of the refund request. RefundExecutionService no longer
-                    // mutates Registration.Status — it just dispatches Stripe per line.
-                    // Registration is already in its terminal lifecycle state (Cancelled
-                    // for attendee-cancel-and-refund path, Confirmed for standalone refund
-                    // or organizer-initiated path) by the time we get here.
-
-                    // If every line settled synchronously (Stripe returned "succeeded"
-                    // for all of them), the request can roll to Completed immediately —
-                    // no need to wait for webhook delivery.
-                    var allLinesTerminal = trackedRequest.LineItems.All(l =>
-                        l.Status == RefundLineItemStatus.Refunded ||
-                        l.Status == RefundLineItemStatus.Failed ||
-                        l.Status == RefundLineItemStatus.Rejected);
-                    if (allLinesTerminal)
-                        trackedRequest.MarkCompletedIfAllSettled();
-
-                    _registrationRepo.Update(registration);
+                    await TransitionRequestInOwnScopeAsync(refundRequestId, cancellationToken);
                 }
-
-                await _uow.CommitAsync(cancellationToken);
 
                 sw.Stop();
                 _logger.LogInformation(
-                    "[6A.148 EXEC] DispatchAsync COMPLETE: RrId={RrId} DispatchedAny={Dispatched} Duration={ElapsedMs}ms",
-                    refundRequestId, dispatchedAny, sw.ElapsedMilliseconds);
+                    "[6A.148 EXEC] DispatchAsync COMPLETE: RrId={RrId} LinesDispatched={Dispatched} " +
+                    "FirstError={Error} Duration={ElapsedMs}ms",
+                    refundRequestId, dispatchedAny, firstError ?? "none", sw.ElapsedMilliseconds);
 
                 if (!dispatchedAny && firstError is not null)
                     return Result.Failure(firstError);
@@ -169,197 +147,69 @@ public class RefundExecutionService : IRefundExecutionService
         }
     }
 
-    private async Task<Result> DispatchLineAsync(
-        RefundRequestLineItem line, Registration registration, CancellationToken cancellationToken)
+    /// <summary>
+    /// W5.D3: Open a fresh DI scope to handle the request-level state transition.
+    /// Reads the committed line states (from the per-line dispatcher's saves) and
+    /// transitions the RR Approved → Processing → Completed as appropriate. The
+    /// xmin token on refund_requests is fine here — concurrent Approve/Reject on
+    /// the same RR doesn't happen in practice (organizer UI prevents it), and if
+    /// it ever does, the loser's CommitAsync throws DbUpdateConcurrencyException
+    /// which is propagated to the caller (which is the post-commit dispatch hook
+    /// that already swallows exceptions safely).
+    /// </summary>
+    private async Task TransitionRequestInOwnScopeAsync(
+        Guid refundRequestId, CancellationToken cancellationToken)
     {
-        var paymentIntentLookup = await ResolvePaymentIntentAsync(line, cancellationToken);
-        if (paymentIntentLookup.IsFailure)
-        {
-            _logger.LogError(
-                "[6A.148 EXEC] Line {LineId} Type={Type} Ref={Ref}: PaymentIntent lookup failed: {Error}",
-                line.Id, line.Type, line.ReferenceId, paymentIntentLookup.Error);
-            line.MarkProcessing("pending_resolution", null);
-            line.MarkFailed($"Unable to resolve Stripe charge: {paymentIntentLookup.Error}");
-            return Result.Failure(paymentIntentLookup.Error);
-        }
-
-        var paymentIntentId = paymentIntentLookup.Value;
-
-        // Stripe amounts are in smallest currency unit (cents). Money.Amount is decimal.
-        var amountInCents = (long)Math.Round(line.ApprovedAmount!.Amount * 100m, MidpointRounding.AwayFromZero);
-
-        // W4.D14 (F2 routing fix): set `refund_type` on the Refund metadata so PaymentsController's
-        // charge.refunded dispatcher routes to the correct webhook handler (AddOn / Sponsor /
-        // Collection / Registration). Previously we only set `line_type` and relied on the original
-        // charge's `payment_type` metadata — which is missing on charges created before that key was
-        // added, leaving AddOn + Sponsor refunds falling through to the default Registration handler.
-        // The default handler doesn't know about AddOnPurchase or Sponsor entities, so they stayed
-        // stuck at status=Completed even after Stripe refunded successfully. Operator UAT empirically
-        // proved this for fresh refund 2fb9acbd (post-D11 deploy): 5 AddOnPurchases + 1 Sponsor all
-        // remained Completed despite line items reaching status=Refunded with stripe_refund_id.
-        var refundTypeForRouting = line.Type switch
-        {
-            RefundLineItemType.AddOn => "add_on_purchase",
-            RefundLineItemType.Sponsor => "sponsor",
-            RefundLineItemType.Collection => "collection",
-            RefundLineItemType.Ticket => "registration",
-            _ => "registration"
-        };
-
-        // W5.D1: per-line Stripe IdempotencyKey. Stable across re-dispatch — if `_uow.CommitAsync`
-        // later rolls back (W5.D7 root cause: xmin clash with concurrent Cancel flow), the
-        // RefundReconciliationService can safely re-invoke DispatchAsync and Stripe will return
-        // the EXACT same prior refund object rather than charging a second time. Same line +
-        // same key = at-most-one successful refund (Stripe 24h guarantee). Format: line.Id
-        // formatted as "N" (32 hex chars, no dashes) keeps the key under Stripe's 255-char
-        // limit and avoids special characters.
-        var idempotencyKey = $"refund_line_{line.Id:N}";
-
-        var stripeReq = new CreateRefundRequest
-        {
-            PaymentIntentId = paymentIntentId,
-            RegistrationId = registration.Id,
-            AmountInCents = amountInCents,
-            Reason = "requested_by_customer",
-            IdempotencyKey = idempotencyKey,
-            Metadata = new Dictionary<string, string>
-            {
-                ["refund_request_id"] = line.RefundRequestId.ToString(),
-                ["line_item_id"] = line.Id.ToString(),
-                ["line_type"] = line.Type.ToString(),
-                ["reference_id"] = line.ReferenceId.ToString(),
-                ["refund_type"] = refundTypeForRouting
-            }
-        };
-
         try
         {
-            var stripeResult = await _stripe.CreateRefundAsync(stripeReq, cancellationToken);
-            if (stripeResult.IsFailure)
+            using var scope = _scopeFactory.CreateScope();
+            var sp = scope.ServiceProvider;
+            var freshRefundRepo = sp.GetRequiredService<IRefundRequestRepository>();
+            var freshUow = sp.GetRequiredService<IUnitOfWork>();
+
+            var freshReq = await freshRefundRepo.GetByIdAsync(refundRequestId, cancellationToken);
+            if (freshReq is null)
             {
                 _logger.LogWarning(
-                    "[6A.148 EXEC] Stripe CreateRefund failed for Line {LineId}: {Error}",
-                    line.Id, stripeResult.Error);
-                // Mark Processing first (required by state machine), then Failed.
-                line.MarkProcessing($"failed_dispatch_{Guid.NewGuid():N}", null);
-                line.MarkFailed(stripeResult.Error);
-                return Result.Failure(stripeResult.Error);
+                    "[6A.148 EXEC.D3] Fresh load of RrId={RrId} returned null; skipping request-level transition",
+                    refundRequestId);
+                return;
             }
 
-            var processingResult = line.MarkProcessing(
-                stripeResult.Value.RefundId, paymentIntentId);
-            if (processingResult.IsFailure)
+            if (freshReq.Status == RefundRequestStatus.Approved)
             {
-                _logger.LogWarning(
-                    "[6A.148 EXEC] MarkProcessing failed for Line {LineId}: {Error}",
-                    line.Id, processingResult.Error);
-                return Result.Failure(processingResult.Error);
+                var beginResult = freshReq.BeginProcessing();
+                if (beginResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "[6A.148 EXEC.D3] BeginProcessing failed for RrId={RrId}: {Error}",
+                        refundRequestId, beginResult.Error);
+                }
             }
 
-            // Stripe often returns "succeeded" inline for test-mode and many real refunds.
-            // Mark Refunded immediately so the request can roll to Completed without
-            // depending on the webhook (which we still listen to as the authoritative
-            // source). Idempotent — webhook delivery later is a no-op.
-            if (string.Equals(stripeResult.Value.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            var allLinesTerminal = freshReq.LineItems.All(l =>
+                l.Status == RefundLineItemStatus.Refunded ||
+                l.Status == RefundLineItemStatus.Failed ||
+                l.Status == RefundLineItemStatus.Rejected);
+            if (allLinesTerminal)
             {
-                line.MarkRefunded(DateTime.UtcNow);
+                freshReq.MarkCompletedIfAllSettled();
             }
+
+            await freshUow.CommitAsync(cancellationToken);
 
             _logger.LogInformation(
-                "[6A.148 EXEC] Line {LineId} Type={Type} dispatched: StripeRefundId={Sri} StripeStatus={Status} AmountInCents={Amt}",
-                line.Id, line.Type, stripeResult.Value.RefundId, stripeResult.Value.Status, amountInCents);
-
-            return Result.Success();
+                "[6A.148 EXEC.D3] Request-level transition committed for RrId={RrId} " +
+                "FinalStatus={Status} AllLinesTerminal={AllTerminal}",
+                refundRequestId, freshReq.Status, allLinesTerminal);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
-                "[6A.148 EXEC] Line {LineId} dispatch EXCEPTION: PaymentIntentId={Pii}",
-                line.Id, paymentIntentId);
-            line.MarkProcessing($"exception_{Guid.NewGuid():N}", null);
-            line.MarkFailed($"Exception during dispatch: {ex.Message}");
-            return Result.Failure(ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Look up the Stripe PaymentIntent ID for a given line item based on its Type +
-    /// ReferenceId. Each line maps to ONE underlying Stripe charge (architect F9 — no
-    /// aggregation by type).
-    /// </summary>
-    private async Task<Result<string>> ResolvePaymentIntentAsync(
-        RefundRequestLineItem line, CancellationToken cancellationToken)
-    {
-        switch (line.Type)
-        {
-            case RefundLineItemType.Ticket:
-            {
-                // Look up by the line's ReferenceId first (preferred — caller passed the
-                // exact RegistrationPayment.Id). If that misses, fall back to the parent
-                // registration's INITIAL RegistrationPayment, treating ReferenceId as the
-                // RegistrationId. This is the MVP path the frontend takes today — the FE
-                // surfaces RegistrationId rather than the (currently unexposed)
-                // RegistrationPayment.Id.
-                //
-                // Phase 6A.148.c (D5 fix): legacy-registration fallback. Pre-Add-Only-
-                // Attendees registrations have NO row in registration_payments — the Stripe
-                // charge lives on Registration.StripePaymentIntentId directly. CancelRsvp's
-                // ticket-line builder uses the same fallback to synthesise the line with
-                // ReferenceId=registration.Id; this resolver completes the loop so dispatch
-                // can actually call Stripe instead of marking the line Failed.
-                var payment = await _paymentRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                if (payment is null)
-                {
-                    var initial = await _paymentRepo.GetInitialPaymentAsync(line.ReferenceId, cancellationToken);
-                    if (initial is not null && !string.IsNullOrWhiteSpace(initial.StripePaymentIntentId))
-                        return Result<string>.Success(initial.StripePaymentIntentId);
-
-                    // Final fallback: ReferenceId may be a Registration.Id (legacy registration
-                    // path). Read the registration's own StripePaymentIntentId.
-                    var registration = await _registrationRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                    if (registration is not null && !string.IsNullOrWhiteSpace(registration.StripePaymentIntentId))
-                    {
-                        _logger.LogInformation(
-                            "[6A.148.c EXEC] Ticket line resolved via Registration.StripePaymentIntentId (legacy fallback): " +
-                            "RegId={RegId} Pii={Pii}",
-                            registration.Id, registration.StripePaymentIntentId);
-                        return Result<string>.Success(registration.StripePaymentIntentId);
-                    }
-
-                    return Result<string>.Failure(
-                        "Ticket line: no RegistrationPayment found and no Registration.StripePaymentIntentId fallback available");
-                }
-                if (string.IsNullOrWhiteSpace(payment.StripePaymentIntentId))
-                    return Result<string>.Failure("RegistrationPayment has no StripePaymentIntentId");
-                return Result<string>.Success(payment.StripePaymentIntentId);
-            }
-
-            case RefundLineItemType.AddOn:
-            {
-                var purchase = await _addOnRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                if (purchase is null || string.IsNullOrWhiteSpace(purchase.StripePaymentIntentId))
-                    return Result<string>.Failure("AddOnPurchase or its PaymentIntentId not found");
-                return Result<string>.Success(purchase.StripePaymentIntentId);
-            }
-
-            case RefundLineItemType.Collection:
-            {
-                var collection = await _collectionRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                if (collection is null || string.IsNullOrWhiteSpace(collection.StripePaymentIntentId))
-                    return Result<string>.Failure("Collection or its PaymentIntentId not found");
-                return Result<string>.Success(collection.StripePaymentIntentId);
-            }
-
-            case RefundLineItemType.Sponsor:
-            {
-                var sponsor = await _sponsorRepo.GetByIdAsync(line.ReferenceId, cancellationToken);
-                if (sponsor is null || string.IsNullOrWhiteSpace(sponsor.StripePaymentIntentId))
-                    return Result<string>.Failure("Sponsor or its PaymentIntentId not found");
-                return Result<string>.Success(sponsor.StripePaymentIntentId);
-            }
-
-            default:
-                return Result<string>.Failure($"Unsupported line item type: {line.Type}");
+                "[6A.148 EXEC.D3] Request-level transition EXCEPTION for RrId={RrId}; " +
+                "lines are already committed individually, reconciler will close out the RR",
+                refundRequestId);
+            // Swallow — the per-line state is durable; reconciler picks this up.
         }
     }
 }

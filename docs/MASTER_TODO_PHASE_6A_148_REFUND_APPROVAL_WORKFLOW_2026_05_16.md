@@ -1207,3 +1207,132 @@ Build clean; 76/76 Domain tests, 2748/2754 Application tests GREEN.
 - [ ] **G8** — D16+D17 cleanup
 - [ ] **G9** — Operator browser UAT confirms F1+F2 closed
 - [ ] **G10** — PR opened with full Wave 4 evidence
+
+---
+
+# Wave 5 — Post-UAT Hardening (2026-05-20)
+
+**Trigger:** Operator UAT on event `ad8903c4-e98e-49dd-b44e-d89f916c49dc` (registration `4d030697`, refund request `624b07c5`) surfaced 4 defects that survived Wave 4. RCA reviewed with Plan agent; G0 product-owner approval received 2026-05-20 with Q1-Q3 clarified.
+
+## RCA summary (verified against DB)
+
+**Defect 2 — refund stuck Approved (CRITICAL):** RR `624b07c5` approved at 03:35:28.935 UTC. ALL 4 line items still status=1 (Approved) with NO `stripe_refund_id`, NO `processed_at`. Yet 3 of 4 underlying entities are `Refunded` (entity-level webhooks routed correctly via W4.D14). The $100 ticket portion never refunded. Root cause: `RefundExecutionService.DispatchAsync` runs Stripe successfully per line + sets `line.MarkProcessing(refundId)` / `MarkRefunded` in memory, then terminal `_uow.CommitAsync()` at [RefundExecutionService.cs:149](../src/LankaConnect.Application/Events/Services/RefundExecutionService.cs#L149) throws `DbUpdateConcurrencyException` on the Registration row (xmin clash with concurrent Cancel flow). All in-memory changes roll back. `ApproveRefundRequestCommandHandler.cs:159` silently swallows the exception with vacuous "reconciler will retry" comment — but `RefundReconciliationService` (Phase 7G) only scans `RegistrationStatus.RefundRequested`, never `RefundRequest.Status=Approved` workflow rows.
+
+**Defect 1 — bundled-at-registration sponsor missing from public strip (Q1 clarified — user wants ALL sponsors uniform):** DB query confirms $120 sponsor `110ffdef` (bundled) has `image_url=NULL`; $150 sponsor `20f16aa8` (standalone) has image_url + blob_name populated. [GetPublicEventSponsorsQueryHandler.cs:75-87](../src/LankaConnect.Application/Events/Queries/GetPublicEventSponsors/GetPublicEventSponsorsQueryHandler.cs#L75) requires `ImageUrl IS NOT NULL`. Backend [RsvpToEventCommandHandler.cs:598](../src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs#L598) CAN attach an image via `SponsorStagingBlobUrl` but FE registration-time sponsor flow doesn't capture/pre-upload one. Per user (Q1): "Whichever the way, they are sponsorships and should display in all the highlighted locations (including a and b)" — fix is FE parity (add image upload to registration-time sponsor flow).
+
+**Defect 3 — Add-Ons "active" despite refunded (Q3 clarified):** Surface = My Dashboard → event manage → Attendees and Finance → Add-Ons → [AddOnsManagementTab.tsx](../web/src/presentation/components/features/events/AddOnsManagementTab.tsx). The `getPurchaseStatusColor()` switch at line 31-45 DOES handle `'Refunded'`. Hypothesis: DTO mapping returns the enum integer (`4`) instead of the string `"Refunded"`, hitting the `default` neutral-gray case. To verify in W5.D9 by inspecting `AddOnPurchaseDto.Status` mapping + an actual API response payload.
+
+**Defect 4 — Refund email templates lack brand parity:** DB confirms 4 workflow templates are 6-7KB each (no header/logo/CTA/footer) vs 67-109KB for established templates. Subject_template fields have UTF-8 mojibake (em-dash → `?`). Fix via EF migration that rewrites `html_template` + `subject_template` using `template-event-registration-cancellation` skeleton.
+
+## Architect's RCA corrections to original engineer's plan
+
+| Original proposal | Architect verdict | Why |
+|---|---|---|
+| Per-line **inner commit** mid-loop | REJECTED | Inner commits flush in-progress `BeginProcessing`/`MarkCompletedIfAllSettled` AND refresh xmin on Registration row → makes concurrency *worse* |
+| Just extend reconciler | Incomplete | Reconciler today re-calls Stripe with NO idempotency key → duplicate refund risk. Foundation must be Stripe-native `IdempotencyKey` first |
+| Webhook auto-marks Registration Refunded | Fragile | `CompleteRefund` requires `Status=RefundRequested`. After Cancel-then-Refund flow Registration is `Cancelled` — needs new domain transition `CompleteRefundFromCancelled` |
+| One-off SQL backfill | Wrong shape | Should be versioned EF migration with `[Migration(...)]` attribute, idempotent, ops-traceable |
+| FE per-attendee tab fix | Wrong surface | `AddOnsManagementTab.tsx` IS correct. Real bug is likely DTO mapping. Audit step needed |
+| Just edit template HTML | Insufficient | Mojibake needs byte-level UTF-8 verification in migration source (use `—` literal) |
+
+## Wave 5 deliverables (W5.D1–W5.D15)
+
+| ID | Effort | Title | Closes | Depends |
+|----|--------|-------|--------|---------|
+| **W5.D1** | 0.5d | TDD: Stripe `IdempotencyKey = $"refund_line_{line.Id:N}_{attempt}"` on every `CreateRefundAsync`. Failing test → add key → test passes | D2 foundation | — |
+| **W5.D2** | 1d | TDD: Per-line **fresh-scope** dispatch via new `IRefundLineDispatcher`. Per call: `IServiceScopeFactory.CreateScope()` → fresh UoW + new `IRefundRequestLineItemRepository` → load tracked line → Stripe (W5.D1 key) → MarkProcessing/MarkRefunded → commit. Touches ONE child row, no Registration write, no xmin clash. Concurrency test: two parallel dispatches → one commits, one no-ops via state guard | D2 | D1 |
+| **W5.D3** | 0.5d | TDD: Request-level commit in own fresh scope. After loop, re-load tracked `RefundRequest`, evaluate `MarkCompletedIfAllSettled()` from freshly-committed line states, commit | D2 | D2 |
+| **W5.D4** | 0.5d | TDD: Domain — new `Registration.CompleteRefundFromCancelled(refundId)` transition. Allowed from `{RefundRequested, Cancelled}` when `RefundCompletedAt IS NULL`. Idempotent | D2.D | — |
+| **W5.D5** | 0.5d | Webhook — `RegistrationWebhookHandler.HandleChargeRefundedAsync` workflow-aware branch. When `refund_type=registration` metadata AND matching `RefundRequestLineItem` exists → route to `CompleteRefundFromCancelled`. Legacy path unchanged. Idempotency guard via W4.D12 lookup | D2.D | D4 |
+| **W5.D6** | 0.5d | Reconciler hardening — remove nullable deps in `RefundReconciliationService`; add startup DI integration test; WARN log when re-dispatching a line with existing `stripe_refund_id` (defensive — W5.D1 idempotency makes it safe but logs the situation) | D2 defence | D2 |
+| **W5.D7** | 1d | **EF migration** `Phase6A148W5_BackfillRefund624b07c5`. Idempotent. Pre-flight Stripe balance check on PI `pi_3TZ0fsLv...`; out-of-band refund the $100 ticket (or mark Failed with audit if insufficient balance). UPDATE lines to status=4 + processed_at + stripe_refund_id; UPDATE RR to status=3; UPDATE registration to status=Refunded + refund_completed_at. **Verify `[Migration]` attribute in `.Designer.cs`** | D2 data fix | D1, D5 |
+| **W5.D8** | 0.5d | TDD + UI: `SponsorSection.tsx:527` — add explicit `'Refunded'` branch with red strikethrough badge. Unit test mocks `mySponsors` with `status='Refunded'` and asserts visible "Refunded" badge | D3 (sponsor) | — |
+| **W5.D9** | 0.5d | TDD + Audit: capture actual API response from `useEventAddOnPurchases` (DTO `purchase.status` value). If it's enum int (`4`) instead of string `"Refunded"`, fix the DTO mapping in `AddOnPurchaseDto` projection. If string is correct, find the alternate surface that fails | D3 (addon) | — |
+| **W5.D10** | 1.5d | **Sponsor parity (Q1 expanded)** — FE: add image upload UI to registration-time sponsor checkout flow with same component as standalone path (`EditSponsorModal`-style). Plumb staging blob URL/name through `RsvpToEventCommand` payload (already supported backend-side per [RsvpToEventCommandHandler.cs:598](../src/LankaConnect.Application/Events/Commands/RsvpToEvent/RsvpToEventCommandHandler.cs#L598)). Verify `/api/events/{id}/sponsors/public` returns all sponsors uniformly regardless of creation path (it already does per [GetPublicEventSponsorsQueryHandler.cs:75-87](../src/LankaConnect.Application/Events/Queries/GetPublicEventSponsors/GetPublicEventSponsorsQueryHandler.cs#L75) — no creation-path filter). Add E2E test covering: create registration with bundled sponsor + image → assert sponsor appears in `/sponsors/public` response | D1 | — |
+| **W5.D11** | 1.5d | **EF migration** `Phase6A148W5_RewriteRefundEmailTemplatesWithBrandParity` — rewrite 4 templates (refund-decision, refund-pending-review, refund-rejected, refund-withdrawn) using `template-event-registration-cancellation` skeleton (67k chars: header + logo + CTA + footer). Em-dash as `—` literal in C# source. Verify byte-level UTF-8 in generated SQL. **Verify `[Migration]` attribute**. Idempotent UPDATE (running twice produces same row). Roundtrip unit test asserts placeholders interpolate correctly | D4 | — |
+| **W5.D12** | 0.25d | Doc updates — append Wave 5 summary to `docs/PROGRESS_TRACKER.md`, `docs/STREAMLINED_ACTION_PLAN.md`, `docs/TASK_SYNCHRONIZATION_STRATEGY.md` | governance | all D1-D11 |
+| **W5.D13** | 1d | Azure staging deploy (`deploy-staging.yml` for backend, `deploy-ui-staging.yml` for FE). Monitor both runs. Run W5.T1-T9 API verification using token from rule 10 (`password: 1qaz!QAZ`) | governance | D1-D11 |
+| **W5.D14** | 0.5d | Post-deploy DB verification queries via `az postgres flexible-server execute`. Confirm RR + line + entity + registration states converged for T1-T4 scenarios | governance | D13 |
+| **W5.D15** | 0.5d | Email visual review — operator screenshots all 4 refund emails. Confirms header/logo/CTA/footer parity. Em-dash renders correctly | D4 | D11, D13 |
+
+**Total Wave 5 effort:** ~9 working days
+
+## API test matrix W5.T1–W5.T9
+
+Token (rule 10):
+```bash
+TOKEN=$(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"niroshhh@gmail.com","password":"1qaz!QAZ","rememberMe":true,"ipAddress":"string"}' | jq -r '.token')
+```
+
+| # | Scenario | Pass criterion (DB / log / email) |
+|---|---|---|
+| **W5.T1** | Workflow approve happy path — fresh registration with Ticket+AddOn+Sponsor+Collection lines | RR.status=3 Completed; all 4 lines status=4 Refunded with non-null `stripe_refund_id` + `processed_at`; all 4 entities Refunded; registration Refunded with `refund_completed_at`. Logs: `[6A.148 EXEC] Line {id} dispatched` x4; `[Webhook-Refund-Route] ResolvedFrom: refund.refund_type` x4; no default-route WARN. Email: one decision + one completion |
+| **W5.T2** | Approve where 1 line's Stripe call fails (force via $0.50 below min) | 3 lines Refunded, 1 Failed; RR=Processing; reconciler picks up after 10min via W5.D6 + W5.D1 idempotency key (no duplicate Stripe refund). One decision email sent once; reconciler does NOT re-email |
+| **W5.T3** | Concurrent xmin clash (two parallel approves) | First wins; second returns 409 Conflict; Stripe dashboard shows ONE refund per line (no duplicates) |
+| **W5.T4** | Backfill of `624b07c5` — run W5.D7 migration | RR=Completed; all 4 lines status=4; registration Refunded with refund_completed_at + stripe_refund_id. Second migration run = no-op |
+| **W5.T5** | Bundled-sponsor + ticket shared-PI refund (regression guard for W5.D5) | Both lines (Ticket + bundled-Sponsor) have DIFFERENT stripe_refund_id; both webhooks route correctly; exactly one decision email + one completion email |
+| **W5.T6** | `SponsorSection.tsx` Refunded badge visual | Refunded sponsor sees red strikethrough "Refunded" badge with explicit text (not neutral gray) |
+| **W5.T7** | Dashboard Add-Ons Refunded badge visual (Q3 surface) | Refunded add-on shows Indigo "Refunded" badge in `AddOnsManagementTab` Purchase History |
+| **W5.T8** | Email visual review — 4 emails | LankaConnect header + logo + CTA + footer; em-dash renders correctly in subject; placeholders interpolate |
+| **W5.T9** | Reconciler startup DI integration test | `IServiceProvider.GetRequiredService<IRefundReconciliationService>()` returns non-null; both deps bound; integration suite GREEN |
+
+**Post-deploy DB verification queries (W5.D14)** — run via `az postgres flexible-server execute`:
+
+```sql
+-- Per RR: lines + RR state
+SELECT rr."Id", rr.status AS rr_status,
+       COUNT(*) FILTER (WHERE li.status = 4) AS refunded_lines,
+       COUNT(*) FILTER (WHERE li.status IN (1,3)) AS in_flight_lines,
+       COUNT(*) FILTER (WHERE li.stripe_refund_id IS NULL AND li.status = 4) AS missing_refund_id
+FROM events.refund_requests rr
+JOIN events.refund_request_line_items li ON li.refund_request_id = rr."Id"
+WHERE rr."Id" = '<RR_ID>'::uuid
+GROUP BY rr."Id";
+
+-- Registration converged
+SELECT "Id", "Status", "RefundCompletedAt", "StripeRefundId" FROM events.registrations WHERE "Id" = '<REG_ID>'::uuid;
+
+-- Stripe double-spend canary
+SELECT stripe_refund_id, COUNT(*) FROM events.refund_request_line_items
+WHERE stripe_refund_id IS NOT NULL
+GROUP BY stripe_refund_id HAVING COUNT(*) > 1;
+```
+
+## Risks register (Wave 5)
+
+| # | Risk | Likelihood | Impact | Mitigation |
+|---|------|------------|--------|------------|
+| R1 | `IdempotencyKey` collision on operator-retry of Failed line | Low | High | Key format `refund_line_{lineId:N}_{attemptCounter}` — counter incremented on `MarkFailed` |
+| R2 | Per-line fresh scopes inflate DB connections under burst | Medium | Medium | Each scope releases connection on dispose; pool sized for it. Prometheus counter on dispatcher scope checkouts; alert if exceeds expected |
+| R3 | W5.D5 webhook change regresses non-workflow legacy refunds | Medium | High | New branch CONDITIONAL on `refund_type=registration` metadata + matching workflow line. Legacy path (no metadata) executes existing `CompleteRefund`. W4.T14 protects |
+| R4 | W5.D7 backfill — Stripe charge insufficient refundable balance for $100 ticket | Low | Medium | Pre-flight inspects `charge.amount_refunded` vs `charge.amount`. If gap < $100, refund gap + mark line Failed with audit. Do NOT block migration |
+| R5 | Email template HTML rewrite breaks variable interpolation | Medium | High | Placeholder names preserved verbatim; D11 includes roundtrip unit test asserting interpolated output contains expected substrings |
+| R6 | Reconciler picks up RR in-flight (race) | Low | Medium | `ListStuckApprovedAsync` filters by `updated_at < now - 10min`. Lines being dispatched update within seconds. Belt-and-braces: `SELECT ... FOR UPDATE SKIP LOCKED` on the RR row |
+| R7 | Sponsor parity (D10) FE changes break existing standalone sponsor flow | Low | Medium | Reuse existing `EditSponsorModal` image-picker component (proven in standalone). Standalone path unchanged. New unit test covers bundled-sponsor-with-image creation |
+| R8 | Mojibake fix re-introduces on dev machine with CP-1252 editor | Medium | Medium | `.editorconfig` already enforces UTF-8 BOM for `*.cs`. PR review checklist item. Post-migration DB query asserts subject_template bytes contain `\xe2\x80\x94` (em-dash UTF-8) |
+| R9 | `RegistrationWebhookHandler` invariant tests broken by W5.D4 new transition | Low | Medium | Domain tests for both `CompleteRefund` (existing) and `CompleteRefundFromCancelled` (new) — explicit allowed-from-state matrix |
+| R10 | Cron reconciler runs against pre-W5 stuck rows with no prior idempotency keys | Medium | Medium | Keys are line-id-derived; Stripe treats first-attempt-via-reconciler as fresh refund. Pre-W5 stuck rows ARE the case we want re-dispatched. W5.D6 WARN catches the rare case where Stripe previously succeeded but DB hid it; ops triages |
+
+## Phase gates (Wave 5)
+
+- [ ] **G0** — Product owner approves Wave 5 plan + Q1-Q3 (received 2026-05-20)
+- [ ] **G1** — W5.D1+D2+D3 GREEN locally: per-line fresh-scope dispatch with Stripe idempotency. Application test suite 2700+ passed
+- [ ] **G2** — W5.D4+D5 GREEN: `CompleteRefundFromCancelled` transition + webhook branch; W4 webhook tests still green
+- [ ] **G3** — W5.D6 GREEN: reconciler DI integration test passes; nullable deps removed
+- [ ] **G4** — W5.D7 backfill executes on staging; T4 confirms `624b07c5` fully reconciled
+- [ ] **G5** — W5.D8+D9+D10 GREEN: UI surfaces render Refunded; sponsor parity FE shipped
+- [ ] **G6** — W5.D11 GREEN: 4 templates rewritten with brand parity; D15 visual review approved
+- [ ] **G7** — W5.D13 staging deploy GREEN; container health 200; migrations applied
+- [ ] **G8** — T1-T9 all pass with documented curl outputs + DB queries + email screenshots
+- [ ] **G9** — Operator browser UAT on a fresh end-to-end refund confirms all 4 defects closed
+- [ ] **G10** — PR opened with Wave 5 evidence bundle; W5.D12 doc updates merged
+
+## Q1-Q3 clarifications locked (2026-05-20)
+
+| # | Answer |
+|---|--------|
+| **Q1** | All sponsors — regardless of creation path (organizer-added, real-sponsor-via-event-section, real-sponsor-bundled-at-ticket-checkout) — treated uniformly. Display in BOTH (a) top public Sponsors strip AND (b) "Sponsor This Event" form-section logos. Backend `GetPublicEventSponsorsQueryHandler` already does NOT filter by creation path — fix is FE: add image upload to registration-time sponsor flow (parity with standalone) |
+| **Q2** | Approved — run EF migration to backfill refund `624b07c5` including out-of-band Stripe API call for the $100 ticket against PI `pi_3TZ0fsLv...` with pre-flight balance check |
+| **Q3** | Surface = "My Dashboard → Attendees and Finance → Add-Ons" = `AttendeesAndFinanceTab.tsx` → `AddOnsManagementTab.tsx`. Code handles `Refunded` correctly per Explore audit; likely DTO mapping issue (enum int vs string). Verify in W5.D9 |

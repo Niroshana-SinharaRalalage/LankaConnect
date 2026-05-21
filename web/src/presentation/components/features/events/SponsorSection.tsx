@@ -528,6 +528,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                       ? 'bg-green-100 text-green-700'
                       : sponsor.status === 'Pending'
                       ? 'bg-yellow-100 text-yellow-700'
+                      : sponsor.status === 'Refunded'
+                      ? 'bg-rose-100 text-rose-700 line-through'
                       : 'bg-neutral-100 text-neutral-600'
                   }`}>
                     {sponsor.status === 'RecordedItem' ? 'Recorded' : sponsor.status}

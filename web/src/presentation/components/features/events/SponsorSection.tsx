@@ -218,8 +218,11 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
       description={sponsorConfig.sponsorMessage || undefined}
       defaultOpen={false}
     >
-      {/* Phase 6A.145 Commit 8 — sponsors with images, shown inside this section
-          so visitors see who has already sponsored before adding their own. */}
+      {/* Phase 6A.145 Commit 8 — confirmed sponsors shown inside this section so
+          visitors see who has already sponsored before adding their own.
+          Phase 6A.148.W5.D10 — variable name kept (sponsorsWithImages) but the
+          backend filter no longer requires ImageUrl. Missing-logo sponsors get
+          an initials placeholder so the layout stays consistent. */}
       {sponsorsWithImages.length > 0 && (
         <div className="mb-4">
           <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
@@ -227,23 +230,42 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
             Sponsors
           </h4>
           <div className="flex flex-wrap gap-3">
-            {sponsorsWithImages.map((s) => (
-              <div
-                key={s.id}
-                className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2"
-                title={s.sponsorOrganization || s.sponsorName}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.imageUrl!}
-                  alt={s.sponsorOrganization || s.sponsorName}
-                  className="h-12 w-12 object-contain"
-                />
-                <span className="mt-1 w-full truncate text-center text-xs text-neutral-600">
-                  {s.sponsorOrganization || s.sponsorName}
-                </span>
-              </div>
-            ))}
+            {sponsorsWithImages.map((s) => {
+              const displayName = s.sponsorOrganization || s.sponsorName;
+              const words = displayName.trim().split(/\s+/).filter(Boolean);
+              const initials = words.length === 0
+                ? '?'
+                : words.length === 1
+                  ? words[0]!.slice(0, 2).toUpperCase()
+                  : (words[0]![0]! + words[1]![0]!).toUpperCase();
+
+              return (
+                <div
+                  key={s.id}
+                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2"
+                  title={displayName}
+                >
+                  {s.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.imageUrl}
+                      alt={displayName}
+                      className="h-12 w-12 object-contain"
+                    />
+                  ) : (
+                    <div
+                      className="h-12 w-12 flex items-center justify-center rounded bg-gradient-to-br from-indigo-100 to-amber-100"
+                      aria-hidden="true"
+                    >
+                      <span className="text-sm font-semibold text-indigo-700">{initials}</span>
+                    </div>
+                  )}
+                  <span className="mt-1 w-full truncate text-center text-xs text-neutral-600">
+                    {displayName}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

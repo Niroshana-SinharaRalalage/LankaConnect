@@ -74,14 +74,25 @@ public class GetPublicEventSponsorsQueryHandler
 
                 var sponsors = await _sponsorRepository.GetByEventIdAsync(request.EventId, cancellationToken);
 
-                // Phase 6A.150 mirrors the existing client-side filter so the public view
-                // exposes the EXACT same eligibility envelope as the legacy authed flow
-                // already filtered down to — only confirmed sponsors with logos.
+                // Phase 6A.148.W5.D10 — operator UAT feedback: ALL sponsorships should appear
+                // in public surfaces uniformly regardless of creation path (organizer-added,
+                // standalone via event sponsor section, or bundled at registration-checkout
+                // time). Previously the filter required ImageUrl so bundled-at-registration
+                // sponsorships (which often skip the optional image upload) were silently
+                // hidden — operator's $120 sponsor 110ffdef sat refunded with no public
+                // visibility because no image was uploaded at checkout.
+                //
+                // Filter retained: only confirmed sponsors (Money/Completed, Item/RecordedItem)
+                // are exposed publicly. Pending/Abandoned/Refunded/Failed stay hidden
+                // (those are mid-flight or terminal states that should never be advertised).
+                //
+                // FE (SponsorsPreviewStrip.tsx) handles the missing-ImageUrl case with a
+                // placeholder card that shows the sponsor name + initials so the design
+                // doesn't break on text-only entries.
                 var eligible = sponsors
                     .Where(s =>
-                        !string.IsNullOrEmpty(s.ImageUrl) &&
-                        ((s.Type == SponsorType.Money && s.Status == SponsorStatus.Completed) ||
-                         (s.Type == SponsorType.Item && s.Status == SponsorStatus.RecordedItem)))
+                        (s.Type == SponsorType.Money && s.Status == SponsorStatus.Completed) ||
+                        (s.Type == SponsorType.Item && s.Status == SponsorStatus.RecordedItem))
                     .OrderByDescending(s => s.Amount?.Amount ?? s.EstimatedValue ?? 0)
                     .ThenByDescending(s => s.CreatedAt)
                     .ToList();

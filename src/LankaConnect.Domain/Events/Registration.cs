@@ -946,6 +946,85 @@ public class Registration : BaseEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Phase 6A.148.W5.D4 — completes refund for a registration that's already in the
+    /// Cancelled (terminal) lifecycle state.
+    ///
+    /// Why this exists: in the 6A.148 decoupled model, an attendee may Cancel their
+    /// registration through <c>CancelRsvpCommandHandler</c> WITHOUT triggering a refund
+    /// (no money moves); the refund flows separately through the workflow (Pending →
+    /// Approved → Processing → Completed). After Stripe webhooks settle the per-line
+    /// refunds, the workflow needs to mark the Registration itself as Refunded so:
+    ///   - Refund-completion emails fire correctly
+    ///   - The "refunded" UI state takes precedence over "cancelled"
+    ///   - Reconciler queries see the registration as terminally-refunded
+    ///
+    /// The existing <see cref="CompleteRefund"/> method requires
+    /// <see cref="RegistrationStatus.RefundRequested"/> — but in this flow, the registration
+    /// is <see cref="RegistrationStatus.Cancelled"/> when the webhook arrives. This method
+    /// is the workflow-aware counterpart: allowed from <c>{RefundRequested, Cancelled}</c>
+    /// when <c>RefundCompletedAt</c> hasn't been set yet, idempotent on repeat calls.
+    ///
+    /// Used by <see cref="LankaConnect.Domain.Events.Registration"/>'s
+    /// <c>RegistrationWebhookHandler</c> workflow-aware branch (W5.D5) when a workflow-owned
+    /// ticket refund's <c>charge.refunded</c> webhook arrives.
+    ///
+    /// Idempotency: returns Success without raising the event when the registration is
+    /// already Refunded with the matching <paramref name="stripeRefundId"/>. Returns
+    /// Failure when the registration is in any other state (Pending, Confirmed,
+    /// Abandoned, PendingRefundApproval) — those paths must use the regular
+    /// <see cref="CompleteRefund"/> or signal a bug.
+    /// </summary>
+    public Result CompleteRefundFromCancelled(string stripeRefundId)
+    {
+        if (string.IsNullOrWhiteSpace(stripeRefundId))
+            return Result.Failure("Stripe Refund ID is required to complete refund");
+
+        // Idempotency — re-firing webhook on an already-completed refund is a no-op.
+        if (Status == RegistrationStatus.Refunded
+            && string.Equals(StripeRefundId, stripeRefundId, StringComparison.Ordinal))
+        {
+            return Result.Success();
+        }
+
+        // Allowed-from-state matrix: this method handles BOTH the legacy
+        // RefundRequested path (defensive — same semantics as CompleteRefund) AND
+        // the new Cancelled-then-Workflow-Refund path.
+        if (Status != RegistrationStatus.RefundRequested && Status != RegistrationStatus.Cancelled)
+        {
+            return Result.Failure(
+                $"Cannot complete refund-from-cancelled for registration with status {Status}. " +
+                $"Only RefundRequested or Cancelled are allowed. RegistrationId={Id}");
+        }
+
+        // State transition
+        Status = RegistrationStatus.Refunded;
+        PaymentStatus = PaymentStatus.Refunded;
+        StripeRefundId = stripeRefundId;
+        RefundCompletedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+
+        // Domain event — drives existing refund-completed email job for parity with
+        // the legacy CompleteRefund path.
+        var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
+        RaiseDomainEvent(new RefundCompletedEvent(
+            EventId,
+            Id,
+            UserId,
+            contactEmail,
+            stripeRefundId,
+            TotalPrice?.Amount ?? 0m,
+            DateTime.UtcNow,
+            AddOnRefundAmount ?? 0m));
+
+        // Release any seat reservations (mirrors CompleteRefund — same physical
+        // consequence regardless of which path got us here).
+        RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
+            EventId, Id, "refund_completed_from_cancelled"));
+
+        return Result.Success();
+    }
+
     // =====================================================================================
     // Phase 6A.148 — Refund Approval Workflow entry points
     //

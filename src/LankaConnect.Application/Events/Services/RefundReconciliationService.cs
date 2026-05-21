@@ -30,17 +30,21 @@ public class RefundReconciliationService : IRefundReconciliationService
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RefundReconciliationService> _logger;
-    // Phase 6A.148 (architect F11): for stuck-Approved reconciliation.
-    private readonly LankaConnect.Domain.Events.Repositories.IRefundRequestRepository? _refundRequestRepository;
-    private readonly IRefundExecutionService? _refundExecutionService;
+    // Phase 6A.148.W5.D6: both required. Previous nullable+default-null pattern hid DI
+    // misconfiguration behind a silent WARN log — operator UAT proved these MUST be wired,
+    // and the prior W5.D7 stuck-Approved refund (RR 624b07c5) sat there for hours undetected
+    // partly because the reconciler couldn't see it without these deps. Non-nullable here
+    // forces the DI container to throw at boot if the registration is missing.
+    private readonly LankaConnect.Domain.Events.Repositories.IRefundRequestRepository _refundRequestRepository;
+    private readonly IRefundExecutionService _refundExecutionService;
 
     public RefundReconciliationService(
         IRegistrationRepository registrationRepository,
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
         ILogger<RefundReconciliationService> logger,
-        LankaConnect.Domain.Events.Repositories.IRefundRequestRepository? refundRequestRepository = null,
-        IRefundExecutionService? refundExecutionService = null)
+        LankaConnect.Domain.Events.Repositories.IRefundRequestRepository refundRequestRepository,
+        IRefundExecutionService refundExecutionService)
     {
         _registrationRepository = registrationRepository;
         _stripePaymentService = stripePaymentService;
@@ -55,13 +59,6 @@ public class RefundReconciliationService : IRefundReconciliationService
         int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default)
     {
-        if (_refundRequestRepository is null || _refundExecutionService is null)
-        {
-            _logger.LogWarning(
-                "[6A.148 RECON] Stuck-Approved reconciliation skipped: refund request repository / execution service not registered");
-            return Result<int>.Success(0);
-        }
-
         var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
         var olderThanUtc = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
 
@@ -84,6 +81,29 @@ public class RefundReconciliationService : IRefundReconciliationService
             var redispatched = 0;
             foreach (var req in stuck)
             {
+                // W5.D6 defensive observability: log when re-dispatch is about to touch a
+                // line that ALREADY has a stripe_refund_id. This indicates either
+                //   (a) Stripe succeeded the FIRST attempt but the DB commit rolled back,
+                //       leaving the partial state behind (W5.D7 root-cause scenario), OR
+                //   (b) a webhook updated stripe_refund_id but the line.status didn't
+                //       advance for some reason.
+                // In both cases the W5.D1 stable IdempotencyKey makes the re-dispatch safe
+                // (Stripe returns the prior refund, no duplicate charge), but the situation
+                // is unusual and operator-visible — we want it surfaced in logs.
+                var linesWithExistingRefundId = req.LineItems
+                    .Where(l => !string.IsNullOrWhiteSpace(l.StripeRefundId))
+                    .ToList();
+                if (linesWithExistingRefundId.Count > 0)
+                {
+                    _logger.LogWarning(
+                        "[6A.148.W5.D6 RECON] Stuck RrId={RrId} has {Count} line(s) with existing " +
+                        "stripe_refund_id (likely prior dispatch's Stripe succeeded but DB " +
+                        "transaction rolled back). W5.D1 idempotency key makes re-dispatch " +
+                        "safe — Stripe returns prior refund, no duplicate charge. Line IDs: [{LineIds}]",
+                        req.Id, linesWithExistingRefundId.Count,
+                        string.Join(",", linesWithExistingRefundId.Select(l => l.Id.ToString("N"))));
+                }
+
                 try
                 {
                     var dispatchResult = await _refundExecutionService.DispatchAsync(

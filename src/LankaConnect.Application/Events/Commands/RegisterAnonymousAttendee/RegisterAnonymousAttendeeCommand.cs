@@ -50,6 +50,12 @@ public record RegisterAnonymousAttendeeCommand(
     // in-tx with the Sponsor row create.
     string? SponsorStagingBlobName = null,
     string? SponsorStagingBlobUrl = null,
+    // Phase 6A.148.W5.D10.c — sponsor-contact override fields (parity with
+    // RsvpToEventCommand). All three optional; blank falls back to the
+    // anonymous registration's own Name + Email + Phone.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events. Mutually exclusive with Attendees;

@@ -612,12 +612,25 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 if (amountResult.IsSuccess)
                 {
                     // Anonymous users don't have a UserId — use Guid.Empty
+                    // W5.D10.c — prefer caller-supplied sponsor contact fields if provided
+                    // (parity with RsvpToEventCommandHandler), fall back to the anonymous
+                    // registration's own Name + Email + Phone when blank.
+                    var sponsorName = !string.IsNullOrWhiteSpace(request.SponsorName)
+                        ? request.SponsorName.Trim()
+                        : (request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Sponsor");
+                    var sponsorEmail = !string.IsNullOrWhiteSpace(request.SponsorEmail)
+                        ? request.SponsorEmail.Trim()
+                        : request.Email;
+                    var sponsorPhone = !string.IsNullOrWhiteSpace(request.SponsorPhone)
+                        ? request.SponsorPhone.Trim()
+                        : request.PhoneNumber;
+
                     var sponsorResult = Sponsor.CreateMoneySponsor(
                         @event.Id,
                         Guid.Empty,
-                        request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Sponsor",
-                        request.Email,
-                        request.PhoneNumber,
+                        sponsorName,
+                        sponsorEmail,
+                        sponsorPhone,
                         request.SponsorOrganization,
                         request.SponsorNotes,
                         amountResult.Value);

@@ -730,6 +730,10 @@ public class EventsController : BaseController<EventsController>
             // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
             SponsorStagingBlobName: request.SponsorStagingBlobName,
             SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
+            // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields
+            SponsorName: request.SponsorName,
+            SponsorEmail: request.SponsorEmail,
+            SponsorPhone: request.SponsorPhone,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode events
@@ -976,6 +980,10 @@ public class EventsController : BaseController<EventsController>
             // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
             SponsorStagingBlobName: request.SponsorStagingBlobName,
             SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
+            // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields
+            SponsorName: request.SponsorName,
+            SponsorEmail: request.SponsorEmail,
+            SponsorPhone: request.SponsorPhone,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
@@ -3971,6 +3979,14 @@ public record RsvpRequest(
     // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
     string? SponsorStagingBlobName = null,
     string? SponsorStagingBlobUrl = null,
+    // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields. When the
+    // bundled-at-registration flow sends these, they override the registering
+    // user's defaults (parity with the standalone /sponsors flow which collects
+    // sponsor name + email + phone explicitly). All three optional — blank fields
+    // fall back to Attendees[0].Name + request.Email + request.PhoneNumber.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
@@ -4022,6 +4038,14 @@ public record AnonymousRegistrationRequest(
     // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
     string? SponsorStagingBlobName = null,
     string? SponsorStagingBlobUrl = null,
+    // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields. When the
+    // bundled-at-registration flow sends these, they override the registering
+    // user's defaults (parity with the standalone /sponsors flow which collects
+    // sponsor name + email + phone explicitly). All three optional — blank fields
+    // fall back to Attendees[0].Name + request.Email + request.PhoneNumber.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).

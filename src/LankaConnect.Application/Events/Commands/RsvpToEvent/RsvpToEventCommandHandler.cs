@@ -571,12 +571,26 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 var amountResult = Money.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
+                    // W5.D10.c — prefer caller-supplied sponsor contact fields when provided
+                    // (parity with the standalone /sponsors flow); fall back to the
+                    // registering user's identity when blank. Trim + null-coalesce so a
+                    // whitespace-only override doesn't accidentally null a real value.
+                    var sponsorName = !string.IsNullOrWhiteSpace(request.SponsorName)
+                        ? request.SponsorName.Trim()
+                        : (request.Attendees?.FirstOrDefault()?.Name ?? "Sponsor");
+                    var sponsorEmail = !string.IsNullOrWhiteSpace(request.SponsorEmail)
+                        ? request.SponsorEmail.Trim()
+                        : request.Email!;
+                    var sponsorPhone = !string.IsNullOrWhiteSpace(request.SponsorPhone)
+                        ? request.SponsorPhone.Trim()
+                        : request.PhoneNumber;
+
                     var sponsorResult = Sponsor.CreateMoneySponsor(
                         @event.Id,
                         request.UserId,
-                        request.Attendees?.FirstOrDefault()?.Name ?? "Sponsor",
-                        request.Email!,
-                        request.PhoneNumber,
+                        sponsorName,
+                        sponsorEmail,
+                        sponsorPhone,
                         request.SponsorOrganization,
                         request.SponsorNotes,
                         amountResult.Value);

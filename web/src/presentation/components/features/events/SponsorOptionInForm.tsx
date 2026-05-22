@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Award, Loader2 } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
@@ -17,6 +17,21 @@ interface SponsorOptionInFormProps {
    * when the user clears the picker or the upload fails.
    */
   onStagingBlobChange?: (blobName: string | null, blobUrl: string | null) => void;
+  /**
+   * Phase 6A.148.W5.D10.b — emitted whenever the logo upload-in-flight state
+   * changes. Parent EventRegistrationForm uses this to disable the submit
+   * button while an upload is pending so the user can't race-submit before
+   * the staging blob URL is captured (the operator-UAT root cause of sponsor
+   * 1763328f being created without an image on 2026-05-21).
+   */
+  onUploadingChange?: (isUploading: boolean) => void;
+  /**
+   * Phase 6A.148.W5.D10.c — emitted whenever the explicit sponsor contact-fields
+   * change. All three are OPTIONAL overrides — when blank, the backend falls
+   * back to the registering user's name/email/phone (parity with the standalone
+   * /sponsors form which collects these explicitly).
+   */
+  onContactChange?: (name: string | null, email: string | null, phone: string | null) => void;
 }
 
 /**
@@ -34,16 +49,40 @@ export function SponsorOptionInForm({
   sponsorConfig,
   onSponsorChange,
   onStagingBlobChange,
+  onUploadingChange,
+  onContactChange,
 }: SponsorOptionInFormProps) {
   const [amount, setAmount] = useState('');
   const [organization, setOrganization] = useState('');
   const [notes, setNotes] = useState('');
+  // W5.D10.c — explicit sponsor contact override fields (parity with standalone
+  // /sponsors flow). All optional; blank fields fall back to the registering
+  // user's identity on the backend.
+  const [sponsorName, setSponsorName] = useState('');
+  const [sponsorEmail, setSponsorEmail] = useState('');
+  const [sponsorPhone, setSponsorPhone] = useState('');
+
+  const emitContact = (n: string, e: string, p: string) => {
+    onContactChange?.(
+      n.trim() || null,
+      e.trim() || null,
+      p.trim() || null
+    );
+  };
   // Phase 6A.137F: Visible validation error instead of silent nulling (Bug 2)
   const [validationError, setValidationError] = useState<string | null>(null);
   // Phase 6A.151 C7 — image pre-staging state.
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // W5.D10.b — propagate upload-in-flight to parent so the submit button can be
+  // disabled while we wait for the staging-blob URL. Without this, the user could
+  // race-submit before the URL is captured and end up with a sponsor row without
+  // a logo (operator UAT: sponsor 1763328f on 2026-05-21).
+  useEffect(() => {
+    onUploadingChange?.(uploadingImage);
+  }, [uploadingImage, onUploadingChange]);
 
   const handleImageChange = async (file: File | null) => {
     setImageError(null);
@@ -131,6 +170,43 @@ export function SponsorOptionInForm({
         {validationError && (
           <p className="text-xs text-red-600 mt-1">{validationError}</p>
         )}
+
+        {/* W5.D10.c — sponsor contact override fields (optional, defaults to
+            registering user's identity on backend). Parity with the standalone
+            /sponsors form which collects name/email/phone explicitly. */}
+        <Input
+          type="text"
+          value={sponsorName}
+          onChange={(e) => {
+            setSponsorName(e.target.value);
+            emitContact(e.target.value, sponsorEmail, sponsorPhone);
+          }}
+          placeholder="Sponsor name (defaults to your name)"
+          className="text-sm h-9"
+          maxLength={200}
+        />
+        <Input
+          type="email"
+          value={sponsorEmail}
+          onChange={(e) => {
+            setSponsorEmail(e.target.value);
+            emitContact(sponsorName, e.target.value, sponsorPhone);
+          }}
+          placeholder="Sponsor email (defaults to your email)"
+          className="text-sm h-9"
+          maxLength={200}
+        />
+        <Input
+          type="tel"
+          value={sponsorPhone}
+          onChange={(e) => {
+            setSponsorPhone(e.target.value);
+            emitContact(sponsorName, sponsorEmail, e.target.value);
+          }}
+          placeholder="Sponsor phone (defaults to your phone)"
+          className="text-sm h-9"
+          maxLength={50}
+        />
 
         {/* Organization (optional) */}
         <Input

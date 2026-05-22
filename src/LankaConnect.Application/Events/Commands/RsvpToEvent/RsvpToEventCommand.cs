@@ -39,6 +39,15 @@ public record RsvpToEventCommand(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.148.W5.D10.c — sponsor contact-detail parity with the standalone
+    // /events/{id}/sponsors form. When the bundled-at-registration flow sends these,
+    // they OVERRIDE the registering user's defaults (so the sponsor row can attribute
+    // to a colleague / company representative whose details differ from the
+    // checkout user). All three are optional — when blank, the handler falls back
+    // to Attendees[0].Name + Email + PhoneNumber as before.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 6A.151 C5: Optional sponsor logo/image staging-blob from POST /sponsors/staging-image.
     // FE pre-uploads the image when the user picks it (since the inline panel
     // submits via the parent registration command which then creates the

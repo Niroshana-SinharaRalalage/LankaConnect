@@ -75,6 +75,12 @@ public static class DependencyInjection
         // the scope factory is captured once and the dispatcher is stateless.
         services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
 
+        // Phase 6A.148.W5.6.A: Handler-side aggregation for the refund completion email.
+        // Sums RefundRequestLineItem.ApprovedAmount across all Refunded lines so the
+        // consolidated email shows the true grand total (operator UAT: $262 was approved
+        // but only $80 displayed because the legacy formula reads Registration columns).
+        services.AddScoped<IRefundTotalCalculator, RefundTotalCalculator>();
+
         // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
         services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
 

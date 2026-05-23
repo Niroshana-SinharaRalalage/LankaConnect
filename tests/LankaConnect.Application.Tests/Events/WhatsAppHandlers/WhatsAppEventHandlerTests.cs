@@ -32,6 +32,10 @@ public class WhatsAppEventHandlerTests
     private readonly Mock<IAddOnDefinitionRepository> _mockAddOnRepo;
     private readonly Mock<IFormResponseRepository> _mockFormResponseRepo;
     private readonly Mock<IEventFormRepository> _mockEventFormRepo;
+    // Phase 6A.148.W5.6.A: WhatsApp RefundCompleted handler now resolves IRefundTotalCalculator
+    // inside its Task.Run scope. Default mock returns the legacy fallback verbatim so existing
+    // tests' expected dollar values stay valid.
+    private readonly Mock<LankaConnect.Application.Events.Services.IRefundTotalCalculator> _mockRefundTotalCalculator;
 
     public WhatsAppEventHandlerTests()
     {
@@ -45,6 +49,11 @@ public class WhatsAppEventHandlerTests
         _mockAddOnRepo = new Mock<IAddOnDefinitionRepository>();
         _mockFormResponseRepo = new Mock<IFormResponseRepository>();
         _mockEventFormRepo = new Mock<IEventFormRepository>();
+        _mockRefundTotalCalculator = new Mock<LankaConnect.Application.Events.Services.IRefundTotalCalculator>();
+        _mockRefundTotalCalculator
+            .Setup(c => c.ComputeAttendeeFacingTotalAsync(
+                It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<CancellationToken>()))
+            .Returns<string, decimal, CancellationToken>((_, fallback, _) => Task.FromResult(fallback));
 
         // Wire scope factory → scope → service provider
         _mockScope.Setup(s => s.ServiceProvider).Returns(_mockServiceProvider.Object);
@@ -72,6 +81,9 @@ public class WhatsAppEventHandlerTests
         _mockServiceProvider
             .Setup(sp => sp.GetService(typeof(IEventFormRepository)))
             .Returns(_mockEventFormRepo.Object);
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(LankaConnect.Application.Events.Services.IRefundTotalCalculator)))
+            .Returns(_mockRefundTotalCalculator.Object);
 
         // Default WhatsApp success responses
         _mockWhatsAppService

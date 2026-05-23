@@ -1347,3 +1347,218 @@ Full HTML rewrite of 4 templates (refund-decision, refund-pending-review, refund
 | **Q1** | All sponsors — regardless of creation path (organizer-added, real-sponsor-via-event-section, real-sponsor-bundled-at-ticket-checkout) — treated uniformly. Display in BOTH (a) top public Sponsors strip AND (b) "Sponsor This Event" form-section logos. Backend `GetPublicEventSponsorsQueryHandler` already does NOT filter by creation path — fix is FE: add image upload to registration-time sponsor flow (parity with standalone) |
 | **Q2** | Approved — run EF migration to backfill refund `624b07c5` including out-of-band Stripe API call for the $100 ticket against PI `pi_3TZ0fsLv...` with pre-flight balance check |
 | **Q3** | Surface = "My Dashboard → Attendees and Finance → Add-Ons" = `AttendeesAndFinanceTab.tsx` → `AddOnsManagementTab.tsx`. Code handles `Refunded` correctly per Explore audit; likely DTO mapping issue (enum int vs string). Verify in W5.D9 |
+
+---
+
+# Wave 5.6.B — Email-completion race (4th-report regression)
+
+**Opened**: 2026-05-23 (after operator UAT showed Refund Complete email displaying $94 when $204 was approved)
+**Architect-locked RCA**: race between Stripe webhook arrival (ticket charge.refunded at 21:04:26.540 firing `Registration.CompleteRefundFromCancelled` → `RefundCompletedEvent`) and the serial per-line dispatcher (Sponsor line still in flight, committed 831ms later at 21:04:27.371). Calculator's `SUM(WHERE Status==Refunded)` excluded the in-flight Sponsor line.
+**Status**: design locked with architect, code not yet started.
+
+## RCA evidence (DB timestamps — reconstructable from `events.refund_request_line_items.processed_at` + `events.registrations.RefundCompletedAt`)
+
+| Time UTC | Event | Sponsor line status at moment |
+|---|---|---|
+| 21:04:25.150 | Dispatcher commits AddOn line ($14) → Refunded | Approved (not started) |
+| 21:04:26.388 | Dispatcher commits Ticket line ($80) → Refunded | Approved (not started) |
+| **21:04:26.540** | **Ticket webhook arrives → `RefundCompletedEvent` raised → calculator returns $94** | **Approved/Processing — STILL IN FLIGHT INSIDE DISPATCHER** |
+| 21:04:27.371 | Dispatcher commits Sponsor line ($110) → Refunded — TOO LATE | Refunded |
+| 21:04:27.382 | RR.Status flips to Completed | n/a |
+
+Architect emission audit confirmed: **only 2 emit sites for `RefundCompletedEvent`** (`Registration.CompleteRefund` line 932, `Registration.CompleteRefundFromCancelled` line 1010). Both reachable only via ticket webhook. The race is the only explanation.
+
+## Hidden gaps surfaced during architect call-site audit
+
+| Gap | What | Files |
+|---|---|---|
+| **G_2.a** | AddOn/Sponsor/Collection webhook handlers DON'T flip `RefundRequestLineItem.Status` to Refunded — only flip entity status. If Stripe ever returns "pending" inline, the line stays Processing indefinitely | `AddOnPurchaseWebhookHandler.cs`, `SponsorWebhookHandler.cs`, `CollectionWebhookHandler.cs` |
+| **G_2.b** | Ticket webhook handler also doesn't invoke `MarkCompletedIfAllSettled` | `RegistrationWebhookHandler.cs` |
+| **G_2.c** | Reconciler stuck-cancelled + 7G sweeps don't invoke `MarkCompletedIfAllSettled` | `RefundReconciliationService.cs` |
+| **G_2.d** | Need to STOP raising `RefundCompletedEvent` from `Registration.CompleteRefundFromCancelled` for workflow refunds (else duplicate emails); KEEP raising for legacy `CompleteRefund` (no RR exists for legacy CancelRsvp path) | `Registration.cs` |
+
+## Call-site completeness matrix (8 sites; architect-verified)
+
+| # | Call site | File | Action |
+|---|---|---|---|
+| 1 | `RefundExecutionService.TransitionRequestInOwnScopeAsync` | `Application/Events/Services/RefundExecutionService.cs:196` | KEEP (already calls `MarkCompletedIfAllSettled`) |
+| 2 | `RegistrationWebhookHandler.HandleChargeRefundedAsync` (ticket) | `Infrastructure/Payments/Services/RegistrationWebhookHandler.cs:737-854` | **ADD**: lookup workflow line, flip Status if Processing, then `MarkCompletedIfAllSettled` |
+| 3 | `AddOnPurchaseWebhookHandler.HandleChargeRefundedAsync` | `.../AddOnPurchaseWebhookHandler.cs:202-309` | **ADD both**: line.Status flip + `MarkCompletedIfAllSettled` |
+| 4 | `SponsorWebhookHandler.HandleChargeRefundedAsync` | `.../SponsorWebhookHandler.cs:181-` | **ADD both** (same as #3) |
+| 5 | `CollectionWebhookHandler.HandleChargeRefundedAsync` | `.../CollectionWebhookHandler.cs:168-` | **ADD both** (same as #3) |
+| 6 | `RefundReconciliationService.ReconcileStuckApprovedRefundRequestsAsync` | `Application/Events/Services/RefundReconciliationService.cs:58` | KEEP (indirect via #1) |
+| 7 | `RefundReconciliationService.ReconcileStuckRefundsAsync` (7G legacy) | same file, line ~207 | **ADD**: after `CompleteRefund`, also `MarkCompletedIfAllSettled` if RR exists |
+| 8 | `RefundReconciliationService.ReconcileStuckCancelledWithRefundedTicketAsync` | same file, line 138-205 | **ADD**: after `CompleteRefundFromCancelled`, also `MarkCompletedIfAllSettled` |
+
+## Wave 5.6.B deliverables
+
+| ID | Effort | Title | Closes-defect | Depends |
+|---|---|---|---|---|
+| **W5.6.B.G0** | 0.25d | Read each of the 8 call sites; confirm architect's audit; report any divergence before coding | — | — |
+| **W5.6.B.G1.1** | 0.5d | Domain: new `RefundRequestCompletedEvent` record (carries EventId, RegistrationId, RefundRequestId, "primary" StripeRefundId from ticket line if present else first Refunded line, total = SUM(Refunded ApprovedAmount), CompletedAt) | RCA | G0 |
+| **W5.6.B.G1.2** | 0.25d | `RefundRequest.MarkCompletedIfAllSettled` raises `RefundRequestCompletedEvent` from inside the method at Status-flip line. Idempotent via existing guard | RCA | G1.1 |
+| **W5.6.B.G1.3** | 0.5d | Gate `Registration.CompleteRefundFromCancelled` and `Registration.CompleteRefund` to NOT raise `RefundCompletedEvent` when the registration's refund originated from a workflow path (lookup test). Legacy direct-Stripe path keeps existing event | G_2.d | G1.2 |
+| **W5.6.B.G2.1** | 0.5d | New `RefundRequestCompletedEventHandler` (mirrors `RefundCompletedEventHandler` body but no fallback needed — total comes from the event payload, not calculator) | RCA | G1.1 |
+| **W5.6.B.G2.2** | 0.25d | New `RefundRequestCompletedWhatsAppHandler` parallel | RCA | G2.1 |
+| **W5.6.B.G2.3** | 0.5d | Add `MarkCompletedIfAllSettled` invocation (in fresh scope) to RegistrationWebhookHandler ticket path | G_2.b | G1.2 |
+| **W5.6.B.G2.4** | 0.5d | Add line.Status flip + `MarkCompletedIfAllSettled` to AddOnPurchaseWebhookHandler | G_2.a | G1.2 |
+| **W5.6.B.G2.5** | 0.5d | Add line.Status flip + `MarkCompletedIfAllSettled` to SponsorWebhookHandler | G_2.a | G1.2 |
+| **W5.6.B.G2.6** | 0.5d | Add line.Status flip + `MarkCompletedIfAllSettled` to CollectionWebhookHandler | G_2.a | G1.2 |
+| **W5.6.B.G2.7** | 0.5d | Add `MarkCompletedIfAllSettled` to reconciler sweeps #7 and #8 | G_2.c | G1.2 |
+| **W5.6.B.G3** | 1d | Tier α tests: 6 domain unit tests on `RefundRequest.MarkCompletedIfAllSettled` event-raising | RCA verify | G1.2 |
+| **W5.6.B.G4** | 2d | Tier β tests: Testcontainers Postgres + real DI + 50-iter randomised webhook race per scenario (6 orderings + duplicate + Failed-line + race) | RCA verify | G2.* |
+| **W5.6.B.G5** | 0.5d | Build clean; all old + new tests GREEN; no regressions | quality | G3, G4 |
+| **W5.6.B.G6** | 0.5d | Deploy to staging | ship | G5 |
+| **W5.6.B.G7** | 0.5d | Tier δ synthetic smoke: internal admin endpoint that publishes `RefundRequestCompletedEvent` for an existing RR; verify email arrives at known mailbox with correct total | wiring/DI sanity on staging | G6 |
+| **W5.6.B.G8** | 0.5d | Operator UAT confirmation (post-fix) — fresh paid registration with Ticket+AddOn+Sponsor, observe email amount matches Decision total | final sign-off | G7 |
+| **W5.6.B.G9** | 0.25d | Docs: update PROGRESS_TRACKER.md, mark W5.6.B section in this master TODO with "shipped + verified" timestamps and commit SHAs | governance | G8 |
+
+**Total effort estimate**: ~9 working days
+
+## API + test matrix (W5.6.B.T1–T11)
+
+Auth pattern (rule 10):
+```bash
+TOKEN=$(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"niroshhh@gmail.com","password":"1qaz!QAZ","rememberMe":true,"ipAddress":"string"}' | jq -r '.accessToken')
+```
+
+| # | Tier | Scenario | Expected pass criterion |
+|---|---|---|---|
+| **W5.6.B.T1** | α | `RefundRequest.MarkCompletedIfAllSettled` raises `RefundRequestCompletedEvent` exactly once after all lines terminal (3 lines, order [Sponsor, AddOn, Ticket]) | event raised once; Status=Completed; payload total = SUM(Refunded.ApprovedAmount) |
+| **W5.6.B.T2** | α | Same as T1 with reverse order [Ticket, AddOn, Sponsor] | same — order-independent |
+| **W5.6.B.T3** | α | Mixed terminal [Refunded, Failed, Rejected] — event raised, total includes Refunded only | total excludes Failed and Rejected lines |
+| **W5.6.B.T4** | α | Idempotency: call `MarkCompletedIfAllSettled` twice — event raised once total | exactly one event |
+| **W5.6.B.T5** | α | Partial: only 2 of 3 lines terminal — event NOT raised, Status unchanged | zero events; Status still Processing |
+| **W5.6.B.T6** | α | Payload assertion: event's "primary StripeRefundId" = ticket line's SRI when ticket exists, else first Refunded line's SRI | correct SRI selected |
+| **W5.6.B.T7** | β | Webhook race simulation — `IStripePaymentService` mock returns "pending" for all 3 lines; webhook handlers invoked via `Task.WhenAll` with microsleeps in randomised orderings; 50 iterations per ordering (6 orderings × 50 = 300 iters) | exactly 1 `RefundRequestCompletedEventHandler` invocation per RR per iteration; total = $204 every time; no duplicate emails |
+| **W5.6.B.T8** | β | Duplicate webhook delivery (Stripe retries) — same webhook fired 2x for one line | exactly 1 event despite 2 webhook calls per line |
+| **W5.6.B.T9** | β | Failed line — Stripe rejects sponsor; webhook arrives with refund.status='failed' | event raised once, total = $94 (Ticket+AddOn only); RR.Status = Completed (Failed counts as terminal) |
+| **W5.6.B.T10** | β | Legacy direct-Stripe regression — pre-6A.148 CancelRsvp refund still receives email via legacy `RefundCompletedEventHandler` with legacy formula | byte-identical email behaviour to pre-W5.6.B |
+| **W5.6.B.T11** | δ | Synthetic staging smoke — POST `/api/internal/refund-test-harness/replay/{rrId}` admin endpoint (gated by admin claim); publishes `RefundRequestCompletedEvent` for RR `86d0a7dc` via `IMediator.Publish` | email arrives at operator's mailbox showing $204 (not $94); container log shows `RefundRequestCompletedEventHandler` ran exactly once |
+
+**Post-deploy DB verification queries**:
+
+```sql
+-- After T11 smoke runs on staging:
+SELECT "Id"::text, "Status", total_price_amount::text
+FROM events.registrations
+WHERE "Id" = 'f0b408fb-2b3a-4ad3-a984-a5c5ff5520c9'::uuid;
+-- expected: Status=Refunded (unchanged); total_price_amount unchanged (legacy column doesn't drive email anymore)
+
+-- Regression scan: no RR should be in Processing for >10min after lines settled
+SELECT rr."Id", rr.status, MAX(li.processed_at) as last_line_settled
+FROM events.refund_requests rr
+JOIN events.refund_request_line_items li ON li.refund_request_id = rr."Id"
+WHERE rr.status = 2  -- Processing
+GROUP BY rr."Id", rr.status
+HAVING MAX(li.processed_at) < NOW() - INTERVAL '10 minutes';
+-- expected: zero rows (all-terminal predicate has flipped them via the new gate)
+```
+
+## Risks register
+
+| # | Risk | Mitigation |
+|---|---|---|
+| RR1 | Duplicate email if legacy handler also fires for workflow path | G1.3 gates `Registration.CompleteRefundFromCancelled` to NOT raise legacy event when an RR exists; T10 + T11 verify no-duplicate |
+| RR2 | `MarkCompletedIfAllSettled` invocation from webhook handler clashes with the inline-success path's invocation from `TransitionRequestInOwnScopeAsync` | Method is already idempotent (existing `if (Status == Completed) return Success` guard at line ~351); multiple convergence paths is the intended design |
+| RR3 | Webhook handler's line.Status flip races with the dispatcher's inline MarkRefunded | First-writer-wins via the state machine guard in MarkRefunded; second caller no-ops |
+| RR4 | New domain event needs MediatR + DI wiring; misconfiguration → silent zero-emails | T11 (δ tier) explicitly smokes the wiring on staging |
+| RR5 | Testcontainers Postgres setup adds CI runtime + flakiness | Existing harness — verify in G0 whether the project already uses Testcontainers; if not, the integration tests use in-memory provider (weaker but acceptable when paired with T11) |
+| RR6 | The fix touches 8 call sites; any one missed leaves a regression window | G0 audit + G2 paired implementation + G4 50-iter β tests across all paths |
+
+## Phase gates (W5.6.B)
+
+- [ ] **G_α** — All 6 W5.6.B.T1-T6 domain tests green (RCA fix mathematically correct)
+- [ ] **G_β** — All 4 W5.6.B.T7-T10 integration tests green across 50-iter race simulation
+- [ ] **G_BUILD** — Build clean; full Application suite GREEN; zero regressions
+- [ ] **G_DEPLOY** — Staging deploy successful; container health 200; migration applied (if any)
+- [ ] **G_δ** — W5.6.B.T11 synthetic smoke: admin endpoint publishes event, email arrives with $204
+- [ ] **G_UAT** — Operator UAT: fresh paid registration with multi-line refund, email matches Decision total
+- [ ] **G_DOC** — PROGRESS_TRACKER.md updated; W5.6.B section here marked shipped with commit SHAs
+
+## Honest accountability — what went wrong on W5.6.A (yesterday)
+
+I shipped W5.6.A claiming verified success based on:
+- 4 unit tests with mocked repo (didn't reproduce the race)
+- 1 SQL query against an ALREADY-Completed RR (no race possible by query time)
+- Deploy green + API health 200 (says nothing about email correctness)
+
+The architect's "ticket fires last" premise was an assumption I anchored on without proof. The DB timing evidence above proves it false. **Wave 5.6.B mandates Tier β (50-iter race simulation) and Tier δ (synthetic admin endpoint smoke) as deploy-blocking gates so this class of false-success cannot recur.**
+
+---
+
+## Mid-flight scope expansion (2026-05-23, after operator-shared 3-email screenshot review)
+
+**Trigger**: operator forwarded 3 emails for RR 86d0a7dc and asked whether "sponsor + ticket+addon refunded separately" is implemented. Architect re-audit:
+
+1. **Screenshot 1 was NOT a refund email** — it was the original "Sponsorship Confirmed" onboarding email from 9:01 PM (3 min before refund), sent to sponsor LankaEvents at `niroshanaks@gmail.com`. Template audit confirms: glyph `✓` (vs refund's `↩`), verb "Thank you for sponsoring" (vs refund's "has been refunded"), timestamp matches `sponsor.payment_completed_at` (vs `refunded_at`). My pattern-match on the word "Sponsorship" failed to discriminate.
+
+2. **D9 suppression worked correctly** for this refund (legacy `template-sponsor-refund` was correctly suppressed because the refund is workflow-owned). But that exposes a NEW correctness defect: **sponsor LankaEvents (`niroshanaks@gmail.com`) is a DIFFERENT person from registration user Niroshana Sinharage (`niroshhh@gmail.com`)**. D9 silently denies them refund notification — they sponsored $110, their card was charged, the refund happened, and nobody told them. Regulatory / chargeback risk.
+
+3. **Observability gap proven** — I couldn't disambiguate screenshot 1 from logs because:
+   - Container app stdout retention is ~25 min (gone for any post-mortem)
+   - `events.email_messages` is **empty** (0 rows in every query this session — the typed-email path bypasses queue persistence)
+   - No Log Analytics workspace wired for container stdout (verified: `ContainerAppConsoleLogs_CL` doesn't exist)
+   - No outbound email audit log anywhere
+
+   Every operator complaint becomes a forensic exercise via screenshots. Unsustainable.
+
+## Wave 5.6.B EXPANDED — ship 3 things in ONE PR
+
+**User mandate**: "Implementing enough logs for diagnosys and retain logs for a longer period is a must." So scope grows to include the observability primitives, not just the race fix.
+
+### Phase 1 — Observability foundation (ships FIRST in the PR; everything else verifies against it)
+
+| ID | Effort | Title |
+|---|---|---|
+| **W5.6.B.OBS1** | 1d | New EF migration `Phase6A148W56B_AddEmailDispatchLog` — schema for `communications.email_dispatch_log` table. Columns: `id uuid PK`, `correlation_id uuid`, `refund_request_id uuid NULL`, `entity_type varchar(40) NULL`, `entity_id uuid NULL`, `template_name varchar(80)`, `recipient_email varchar(255)`, `recipient_name varchar(255)`, `subject_rendered text`, `payload_json jsonb`, `suppressed bool`, `suppression_reason varchar(120) NULL`, `dispatched_at timestamptz`, `provider_message_id varchar(120) NULL`, `provider_status varchar(40) NULL`, `created_at timestamptz`. Indexes on (correlation_id), (refund_request_id), (recipient_email + dispatched_at), (template_name + dispatched_at). `[Migration]` attribute verified in `.Designer.cs` |
+| **W5.6.B.OBS2** | 1d | `ITypedEmailService.SendEmailAsync` impl wraps the existing send with a SYNCHRONOUS dispatch-log write — `suppressed=false` for actual sends, `suppression_reason='...'` when the caller short-circuits (e.g., D9). Provider message id/status updated via callback later. Includes ALL existing typed-email use sites — refund, registration confirmation, donation, sponsor, etc. |
+| **W5.6.B.OBS3** | 0.5d | Refactor D9 suppression branches in `SponsorWebhookHandler` / `CollectionWebhookHandler` to also write a `suppressed=true` row to `email_dispatch_log` (so a SQL query reveals which emails would have been sent and why suppressed) |
+| **W5.6.B.OBS4** | 0.5d | **Container app diagnostic settings → Log Analytics workspace** (`lankaconnect-staging-logs`, customer id `b1d673c4-4467-4022-b666-807690c33729`). Wire `ConsoleLogs` + `SystemLogs` categories. **30-day retention minimum** (Azure default; can extend to 90+ via workspace settings). One-shot ops command via `az monitor diagnostic-settings create`; no app code change. Document the command in `docs/ops/AZURE_LOG_RETENTION.md` |
+| **W5.6.B.OBS5** | 0.25d | Add structured Serilog enrichers in `RefundExecutionService`, `RefundLineDispatcher`, `RegistrationWebhookHandler`, all webhook handlers — push `RefundRequestId`, `RegistrationId`, `StripeRefundId`, `LineItemType`, `CorrelationId` via `LogContext.PushProperty`. Already partial; close the gaps so every refund-flow log line is queryable by RrId |
+
+### Phase 2 — Race fix (the $94 → $204 bug; original W5.6.B scope)
+
+Unchanged from prior section. G0 → G1 → G2 → G3 (α tests) → G4 (β tests).
+
+### Phase 3 — D9 refinement (sponsor-as-separate-person)
+
+| ID | Effort | Title |
+|---|---|---|
+| **W5.6.B.D9R1** | 0.25d | `SponsorWebhookHandler` — change suppression predicate from `isWorkflowOwnedRefund` to `isWorkflowOwnedRefund && SponsorEmailEqualsRegistrationUserEmail(sponsor, registration)` (case-insensitive trim compare). When sponsor's email differs from registration user's, ALWAYS send the per-sponsor refund email — sponsor is a third party and must know their money is coming back |
+| **W5.6.B.D9R2** | 0.25d | TDD: new fact `WorkflowOwnedRefund_SponsorEmailDiffersFromRegistration_StillSendsEmail` in `SponsorWebhookHandlerD9Tests.cs`. Also assert that when emails match (sponsor IS the registration user), the existing suppress-behavior still fires |
+| **W5.6.B.D9R3** | 0.25d | Equivalent refinement check on `CollectionWebhookHandler` — same predicate, same test. Collections likely always equal-emails but add the guard for defense-in-depth |
+
+### Updated API/test matrix additions
+
+| # | Tier | Scenario | Pass criterion |
+|---|---|---|---|
+| **W5.6.B.T12** | OBS | After T11 staging smoke runs, query `SELECT * FROM communications.email_dispatch_log WHERE refund_request_id='<test-rr-id>'`. Returns rows for every email that fired (or was suppressed) | Each row has recipient_email + template_name + suppressed flag. Can reconstruct the flow from SQL alone |
+| **W5.6.B.T13** | OBS | Log Analytics query `ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h) and Log_s contains '<test-rr-id>'` returns log lines from the test refund | Container logs are queryable beyond 25-min container stdout window |
+| **W5.6.B.T14** | D9R | Fresh refund where sponsor email == registration user email → no per-sponsor refund email fires (D9 still suppresses); registration user gets ONE consolidated refund-complete email | One row dispatched (refund-complete), one row suppressed (workflow-owned per-sponsor); registration user inbox = 1 refund email |
+| **W5.6.B.T15** | D9R | Fresh refund where sponsor email differs from registration user → per-sponsor refund email FIRES to sponsor's distinct address; registration user STILL gets consolidated refund-complete email | Two distinct dispatched rows to two distinct recipient_emails |
+| **W5.6.B.T16** | OBS | All existing refund-flow code paths now write to email_dispatch_log (RefundDecision, RefundCompleted (workflow), RefundCompleted (legacy), per-sponsor refund, per-AddOn-refund (none today — confirm null), per-Collection refund) | One dispatch row per outgoing email. Spot-check counts via SQL |
+
+### Updated risks register
+
+| # | Risk | Mitigation |
+|---|---|---|
+| RR7 | `email_dispatch_log` write throws → email never sent (synchronous coupling makes log a blocker) | Wrap log write in try/catch with WARN log; failing to log MUST NOT block send. Email send is still primary; log is best-effort observability not strict audit |
+| RR8 | Container app diagnostic settings to Log Analytics — wrong workspace selected → logs go nowhere | OBS4 explicitly names workspace `lankaconnect-staging-logs` (customerId `b1d673c4-4467-4022-b666-807690c33729`); verify via `az monitor diagnostic-settings show` post-config |
+| RR9 | OBS scope inflation delays the $94 → $204 race fix the user is angry about | Mitigated by single-PR atomic ship: race fix CANNOT regress because OBS gives us SQL verification post-deploy (operator no longer needs to send screenshots to confirm) |
+
+### Updated phase gates (W5.6.B)
+
+- [ ] **G_OBS1** — `email_dispatch_log` table created + EF migration applied to staging; verified via `__EFMigrationsHistory`
+- [ ] **G_OBS2** — `ITypedEmailService` wired to write dispatch rows; smoke test on staging shows one dispatch row per sent email + suppressed flag where applicable
+- [ ] **G_OBS3** — Container app diagnostic setting exported to Log Analytics; `ContainerAppConsoleLogs_CL` returns rows for a test log line
+- [ ] **G_α** — All 6 W5.6.B.T1-T6 domain tests green (race fix mathematically correct)
+- [ ] **G_β** — W5.6.B.T7-T10 integration tests green across 50-iter race simulation
+- [ ] **G_D9R** — W5.6.B.T14 + T15 prove the differing-email path sends to both recipients
+- [ ] **G_BUILD** — Build clean; full Application suite GREEN; zero regressions
+- [ ] **G_DEPLOY** — Staging deploy successful; container health 200; both migrations applied
+- [ ] **G_δ** — W5.6.B.T11 + T12 + T13: synthetic smoke + SQL verification of dispatch rows + Log Analytics query
+- [ ] **G_UAT** — Operator UAT: fresh paid registration with multi-line refund including sponsor-with-different-email; verify (a) refund-complete email matches Decision total, (b) sponsor gets their own refund email at the differing address, (c) all 3 emails visible in `email_dispatch_log` via SQL
+- [ ] **G_DOC** — `PROGRESS_TRACKER.md`, `STREAMLINED_ACTION_PLAN.md`, and `docs/ops/AZURE_LOG_RETENTION.md` updated

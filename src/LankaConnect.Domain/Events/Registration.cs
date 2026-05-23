@@ -997,6 +997,10 @@ public class Registration : BaseEntity
                 $"Only RefundRequested or Cancelled are allowed. RegistrationId={Id}");
         }
 
+        // Snapshot the from-state BEFORE mutation — drives the event-raising decision
+        // below (Phase 6A.148.W5.6.B G1: workflow vs. legacy refund disambiguation).
+        var fromState = Status;
+
         // State transition
         Status = RegistrationStatus.Refunded;
         PaymentStatus = PaymentStatus.Refunded;
@@ -1004,18 +1008,29 @@ public class Registration : BaseEntity
         RefundCompletedAt = DateTime.UtcNow;
         MarkAsUpdated();
 
-        // Domain event — drives existing refund-completed email job for parity with
-        // the legacy CompleteRefund path.
+        // Phase 6A.148.W5.6.B G1 — event-raising gate.
+        //   - fromState == RefundRequested → legacy direct-Stripe path (pre-148 CancelRsvp).
+        //     No RefundRequest exists, so no MarkCompletedIfAllSettled will fire — we MUST
+        //     raise RefundCompletedEvent here to drive the legacy completion email handler.
+        //   - fromState == Cancelled → new workflow path (Cancel decoupled from Refund).
+        //     A RefundRequest exists; its MarkCompletedIfAllSettled (invoked by the webhook
+        //     handler that called us) raises RefundRequestCompletedEvent at the state-machine
+        //     guarantee point, carrying the precomputed final total. Raising the legacy event
+        //     here would produce a SECOND email with a snapshot taken mid-race — exactly the
+        //     $94-vs-$204 bug we are closing. So we SUPPRESS the legacy event for this path.
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
-        RaiseDomainEvent(new RefundCompletedEvent(
-            EventId,
-            Id,
-            UserId,
-            contactEmail,
-            stripeRefundId,
-            TotalPrice?.Amount ?? 0m,
-            DateTime.UtcNow,
-            AddOnRefundAmount ?? 0m));
+        if (fromState == RegistrationStatus.RefundRequested)
+        {
+            RaiseDomainEvent(new RefundCompletedEvent(
+                EventId,
+                Id,
+                UserId,
+                contactEmail,
+                stripeRefundId,
+                TotalPrice?.Amount ?? 0m,
+                DateTime.UtcNow,
+                AddOnRefundAmount ?? 0m));
+        }
 
         // Release any seat reservations (mirrors CompleteRefund — same physical
         // consequence regardless of which path got us here).

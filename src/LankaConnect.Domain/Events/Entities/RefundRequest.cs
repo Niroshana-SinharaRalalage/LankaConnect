@@ -367,6 +367,39 @@ public class RefundRequest : BaseEntity
         Status = RefundRequestStatus.Completed;
         CompletedAt = DateTime.UtcNow;
         MarkAsUpdated();
+
+        // Phase 6A.148.W5.6.B G1 — raise the email-driving event at the EXACT moment Status
+        // flips to Completed. The guard above proves every line is in a terminal state, so
+        // the totals below are final by construction — no race window can produce an
+        // undercount (closes the 4th-report regression: RR 86d0a7dc 21:04:26.540, email
+        // fired $94 while Sponsor line was still 831ms from committing).
+        var refundedLines = _lineItems
+            .Where(l => l.Status == RefundLineItemStatus.Refunded)
+            .ToList();
+
+        var totalRefunded = refundedLines.Sum(l => l.ApprovedAmount?.Amount ?? 0m);
+
+        // Currency: prefer a refunded line; else any line that has an approved amount;
+        // else fall back to the first requested amount (every line has one).
+        var currency = refundedLines.Select(l => l.ApprovedAmount?.Currency)
+            .FirstOrDefault(c => c is not null)
+            ?? _lineItems.Select(l => l.ApprovedAmount?.Currency).FirstOrDefault(c => c is not null)
+            ?? _lineItems[0].RequestedAmount.Currency;
+
+        // Primary stripe refund id: ticket line wins (operator-recognisable as "the
+        // registration refund"); else first refunded line; else null (all-Rejected request).
+        var ticketLine = refundedLines.FirstOrDefault(l => l.Type == RefundLineItemType.Ticket);
+        var primaryStripeRefundId = ticketLine?.StripeRefundId
+            ?? refundedLines.FirstOrDefault()?.StripeRefundId;
+
+        RaiseDomainEvent(new RefundRequestCompletedEvent(
+            RefundRequestId: Id,
+            RegistrationId: RegistrationId,
+            PrimaryStripeRefundId: primaryStripeRefundId,
+            TotalRefundedAmount: totalRefunded,
+            Currency: currency.ToString(),
+            CompletedAt: CompletedAt.Value));
+
         return Result.Success();
     }
 }

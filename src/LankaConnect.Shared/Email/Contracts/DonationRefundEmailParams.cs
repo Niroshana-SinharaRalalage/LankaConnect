@@ -7,12 +7,20 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Template: template-donation-refund
 /// Sent when a donation payment is refunded via Stripe webhook (charge.refunded).
 /// </summary>
-public class DonationRefundEmailParams : IEmailParameters
+public class DonationRefundEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.DonationRefund;
 
     public string RecipientEmail => DonorEmail;
     public string RecipientName => DonorName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading. Donations are NOT part of the
+    // approval workflow today (out-of-scope per plan §13), so RefundRequestId is null,
+    // but logging the entity_id still gives operators a queryable trail.
+    public Guid? DispatchDonationId { get; set; }
+    Guid? IDispatchLoggable.DispatchRefundRequestId => null;
+    string? IDispatchLoggable.DispatchEntityType => DispatchDonationId.HasValue ? "Donation" : null;
+    Guid? IDispatchLoggable.DispatchEntityId => DispatchDonationId;
 
     #region Core Properties
 

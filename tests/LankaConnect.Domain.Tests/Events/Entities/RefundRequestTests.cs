@@ -471,6 +471,175 @@ public class RefundRequestTests
     }
 
     // ============================================================
+    // Phase 6A.148.W5.6.B G3 — RefundRequestCompletedEvent emission
+    //
+    // Pins down the race-fix invariant: the event MUST be raised at the EXACT moment
+    // the state-machine flips Status to Completed, and the payload's TotalRefundedAmount
+    // MUST be the sum of all Refunded lines' ApprovedAmount (no mid-race undercount).
+    //
+    // Background: the 4th-report regression (RR 86d0a7dc, operator UAT 2026-05-23)
+    // sent a $94 refund-completion email when the actual total was $204, because the
+    // legacy email-driving event fired from a webhook handler 831ms before the Sponsor
+    // line committed. Moving the trigger to MarkCompletedIfAllSettled — which is gated
+    // by _lineItems.All(...terminal) — closes the race by construction.
+    // ============================================================
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_OnTransition_RaisesCompletedEventWithFinalTotal()
+    {
+        var req = RefundRequest.CreateOrganizerInitiated(
+            _registrationId, _organizerUserId, "notes", false,
+            new[] { TicketLine(20m), AddOnLine(84m) }).Value;
+        req.BeginProcessing();
+        var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
+        var addOn = req.LineItems.First(l => l.Type == RefundLineItemType.AddOn);
+        ticket.MarkProcessing("re_ticket", "ch_ticket");
+        ticket.MarkRefunded(DateTime.UtcNow);
+        addOn.MarkProcessing("re_addon", "ch_addon");
+        addOn.MarkRefunded(DateTime.UtcNow);
+        // Drain creation events so the assertion only sees what THIS call emits.
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        req.Status.Should().Be(RefundRequestStatus.Completed);
+        var evt = req.DomainEvents.OfType<RefundRequestCompletedEvent>().Single();
+        evt.RefundRequestId.Should().Be(req.Id);
+        evt.RegistrationId.Should().Be(_registrationId);
+        evt.TotalRefundedAmount.Should().Be(104m,
+            "sum of both refunded lines — closes the $94-vs-$204 mid-race undercount bug");
+        evt.Currency.Should().Be("USD");
+        evt.PrimaryStripeRefundId.Should().Be("re_ticket",
+            "ticket line wins primary-refund-id selection — operator-recognisable as 'the registration refund'");
+    }
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_AllLinesRefunded_PrimaryRefundIdIsTicket()
+    {
+        // Adds a Sponsor line so we exercise the ticket-wins rule even when
+        // another line dispatched first chronologically.
+        var sponsorRefId = Guid.NewGuid();
+        var req = RefundRequest.CreateOrganizerInitiated(
+            _registrationId, _organizerUserId, "notes", false,
+            new[]
+            {
+                TicketLine(20m),
+                AddOnLine(84m),
+                new RefundRequestLineItemInput(RefundLineItemType.Sponsor, sponsorRefId, Usd(110m)),
+            }).Value;
+        req.BeginProcessing();
+        var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
+        var addOn = req.LineItems.First(l => l.Type == RefundLineItemType.AddOn);
+        var sponsor = req.LineItems.First(l => l.Type == RefundLineItemType.Sponsor);
+        // Sponsor & AddOn settle BEFORE the ticket — mirrors observed RCA timing
+        // (AddOn 21:04:25.150, Sponsor 21:04:27.371, Ticket 21:04:26.388).
+        addOn.MarkProcessing("re_addon", "ch_addon");
+        addOn.MarkRefunded(DateTime.UtcNow);
+        sponsor.MarkProcessing("re_sponsor", "ch_sponsor");
+        sponsor.MarkRefunded(DateTime.UtcNow);
+        ticket.MarkProcessing("re_ticket", "ch_ticket");
+        ticket.MarkRefunded(DateTime.UtcNow);
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        var evt = req.DomainEvents.OfType<RefundRequestCompletedEvent>().Single();
+        evt.TotalRefundedAmount.Should().Be(214m, "20 + 84 + 110");
+        evt.PrimaryStripeRefundId.Should().Be("re_ticket");
+    }
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_NoTicketLineRefunded_PrimaryRefundIdIsFirstRefunded()
+    {
+        // Ticket line was rejected — picks the first refunded line's id instead.
+        var req = RefundRequest.CreatePending(_registrationId, _attendeeUserId, null,
+            new[] { TicketLine(50m), AddOnLine(10m) }).Value;
+        var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
+        var addOn = req.LineItems.First(l => l.Type == RefundLineItemType.AddOn);
+        req.Approve(_organizerUserId, null, new Dictionary<Guid, Money>
+        {
+            [ticket.Id] = Usd(0m),  // rejected
+            [addOn.Id] = Usd(10m),
+        });
+        req.BeginProcessing();
+        addOn.MarkProcessing("re_addon", "ch_addon");
+        addOn.MarkRefunded(DateTime.UtcNow);
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        var evt = req.DomainEvents.OfType<RefundRequestCompletedEvent>().Single();
+        evt.PrimaryStripeRefundId.Should().Be("re_addon");
+        evt.TotalRefundedAmount.Should().Be(10m);
+    }
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_AllLinesRejected_PrimaryRefundIdIsNullAndTotalIsZero()
+    {
+        var req = RefundRequest.CreatePending(_registrationId, _attendeeUserId, null,
+            new[] { TicketLine(50m), AddOnLine(10m) }).Value;
+        var ticket = req.LineItems.First(l => l.Type == RefundLineItemType.Ticket);
+        var addOn = req.LineItems.First(l => l.Type == RefundLineItemType.AddOn);
+        req.Approve(_organizerUserId, null, new Dictionary<Guid, Money>
+        {
+            [ticket.Id] = Usd(50m),  // can't reject ALL via Approve (architect F2),
+            [addOn.Id] = Usd(10m),
+        });
+        // Force both lines into Rejected post-hoc by failing them — simulates the
+        // all-rejected end state without violating Approve's "sum>0" invariant.
+        req.BeginProcessing();
+        ticket.MarkProcessing("re_t", "ch_t");
+        ticket.MarkFailed("test_card_declined");
+        addOn.MarkProcessing("re_a", "ch_a");
+        addOn.MarkFailed("test_card_declined");
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        var evt = req.DomainEvents.OfType<RefundRequestCompletedEvent>().Single();
+        evt.TotalRefundedAmount.Should().Be(0m, "no Refunded lines = $0 settled");
+        evt.PrimaryStripeRefundId.Should().BeNull();
+    }
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_NotYetSettled_DoesNotRaiseCompletedEvent()
+    {
+        var req = RefundRequest.CreateOrganizerInitiated(
+            _registrationId, _organizerUserId, "notes", false,
+            new[] { TicketLine(), AddOnLine() }).Value;
+        req.BeginProcessing();
+        req.LineItems[0].MarkProcessing("re_a", "ch_a");
+        req.LineItems[0].MarkRefunded(DateTime.UtcNow);
+        req.LineItems[1].MarkProcessing("re_b", "ch_b");
+        // line 1 stays Processing
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        req.Status.Should().Be(RefundRequestStatus.Processing);
+        req.DomainEvents.OfType<RefundRequestCompletedEvent>().Should().BeEmpty(
+            "no Status flip = no email-driving event = no premature mid-race email");
+    }
+
+    [Fact]
+    public void MarkCompletedIfAllSettled_AlreadyCompleted_DoesNotReRaiseEvent()
+    {
+        var req = RefundRequest.CreateOrganizerInitiated(
+            _registrationId, _organizerUserId, "notes", false,
+            new[] { TicketLine() }).Value;
+        req.BeginProcessing();
+        req.LineItems[0].MarkProcessing("re_t", "ch_t");
+        req.LineItems[0].MarkRefunded(DateTime.UtcNow);
+        req.MarkCompletedIfAllSettled();
+        req.ClearDomainEvents();
+
+        req.MarkCompletedIfAllSettled();
+
+        req.DomainEvents.OfType<RefundRequestCompletedEvent>().Should().BeEmpty(
+            "idempotent: re-callers (webhook retries, reconciler sweeps) must not produce duplicate emails");
+    }
+
+    // ============================================================
     // HasAnyApprovedAmount helper
     // ============================================================
 

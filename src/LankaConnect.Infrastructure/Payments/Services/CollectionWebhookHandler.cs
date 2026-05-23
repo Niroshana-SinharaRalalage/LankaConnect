@@ -228,6 +228,31 @@ public class CollectionWebhookHandler : ICollectionWebhookHandler
                 _logger.LogInformation(
                     "[Phase 6A.148.W4.D12] Collection refund standalone email SUPPRESSED — workflow-owned. CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, RefundId: {RefundId}",
                     correlationId, collection.Id, refundId);
+
+                // Phase 6A.148.W5.6.B.OBS3 — durable audit row.
+                try
+                {
+                    using var auditScope = _scopeFactory.CreateScope();
+                    var auditService = auditScope.ServiceProvider
+                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                    await auditService.WriteSuppressionAsync(
+                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.CollectionRefund,
+                        recipientEmail: collection.ContributorEmail,
+                        recipientName: collection.ContributorName,
+                        suppressionReason: "D12: workflow-owned refund — covered by consolidated decision email",
+                        correlationId: correlationId,
+                        refundRequestId: null,
+                        entityType: "Collection",
+                        entityId: collection.Id,
+                        cancellationToken: ct);
+                }
+                catch (Exception auditEx)
+                {
+                    _logger.LogWarning(auditEx,
+                        "[Phase 6A.148.W5.6.B.OBS3] Failed to write collection suppression audit row — continuing. CorrelationId: {CorrelationId}",
+                        correlationId);
+                }
+
                 return;
             }
 

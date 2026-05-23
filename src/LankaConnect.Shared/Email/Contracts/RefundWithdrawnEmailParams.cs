@@ -17,11 +17,16 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// position (request-side, not money-side), so the email body uses the same
 /// requested-items table without an "approved/declined" decision column.
 /// </summary>
-public class RefundWithdrawnEmailParams : IEmailParameters
+public class RefundWithdrawnEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.RefundWithdrawn;
     public string RecipientEmail => UserEmail;
     public string RecipientName => UserName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    Guid? IDispatchLoggable.DispatchRefundRequestId => RefundRequestId == Guid.Empty ? null : RefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => null;
+    Guid? IDispatchLoggable.DispatchEntityId => null;
 
     #region Core Identity
     public Guid UserId { get; set; }

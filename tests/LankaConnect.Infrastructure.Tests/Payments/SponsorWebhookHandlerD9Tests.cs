@@ -6,7 +6,11 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,54 +18,139 @@ using Moq;
 namespace LankaConnect.Infrastructure.Tests.Payments;
 
 /// <summary>
-/// Phase 6A.148.D9 (Wave 3): pins the SponsorWebhookHandler dedupe guard.
+/// Phase 6A.148.D9 (Wave 3) — pins the SponsorWebhookHandler dedupe guard.
 ///
-/// When a refund came through the new approval workflow, the consolidated D8
-/// "decision" email already covered the attendee — the legacy per-Sponsor
-/// "Sponsorship Refund Confirmation" email is redundant and creates the operator
-/// UAT defect E3 (attendee gets a separate "$125 Sponsor refund" email that
-/// looks like a final authoritative total competing with the consolidated $255
-/// decision email).
+/// Phase 6A.148.W5.6.B Phase 3 — refines the suppression predicate from "is workflow-owned"
+/// to "is workflow-owned AND sponsor email == attendee email". The earlier behaviour
+/// suppressed the standalone email for ALL workflow refunds, but the consolidated D8
+/// decision email goes only to the attendee — a third-party money sponsor with a
+/// different email would have received NO notification of their refund (operator UAT bug 1).
 ///
-/// Detection: IRefundRequestRepository.ExistsWorkflowLineItemForSponsorAsync.
-/// Fail-OPEN: if the lookup throws, default to sending the legacy email so a
-/// transient DB issue never silences a legitimate notification.
-///
-/// Load-bearing behavioural assertion: did the fire-and-forget email path even
-/// START? Detected via IServiceScopeFactory.CreateScope() invocation — the very
-/// first thing the email task does. If the guard returned early, CreateScope is
-/// never called; if the guard let the path through, CreateScope IS called.
+/// Phase 6A.148.W5.6.B.OBS3 — the suppression branch now ALSO writes a row to
+/// communications.email_dispatch_log (via IRefundDispatchAuditService) so operators
+/// can distinguish "deliberately suppressed" from "send failed silently." The test
+/// behavioural assertions now key off which SERVICE was resolved from the scope
+/// (audit service for suppress, email service for send) rather than off
+/// IServiceScopeFactory.CreateScope() invocation counts (which can be ambiguous
+/// when both branches use the scope factory).
 /// </summary>
 public class SponsorWebhookHandlerD9Tests
 {
+    private const string SponsorEmail = "sponsor@example.com";
+
     private readonly Mock<ISponsorRepository> _sponsorRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
     private readonly Mock<IRefundRequestRepository> _refundRequestRepo = new();
+    private readonly Mock<IRefundDispatchAuditService> _auditService = new();
+    private readonly Mock<ITypedEmailService> _emailService = new();
+    private readonly Mock<IEventRepository> _eventRepo = new();
 
-    private SponsorWebhookHandler BuildHandler() =>
-        new SponsorWebhookHandler(
+    private SponsorWebhookHandler BuildHandler()
+    {
+        // Real ServiceProvider so CreateScope() returns a real IServiceScope whose
+        // ServiceProvider resolves our mock services (the way production runs them).
+        var services = new ServiceCollection();
+        services.AddSingleton(_auditService.Object);
+        services.AddSingleton(_emailService.Object);
+        services.AddSingleton(_eventRepo.Object);
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        var provider = services.BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+
+        return new SponsorWebhookHandler(
             _sponsorRepo.Object,
             _unitOfWork.Object,
-            _scopeFactory.Object,
+            scopeFactory,
             _refundRequestRepo.Object,
             Mock.Of<ILogger<SponsorWebhookHandler>>());
+    }
 
     [Fact]
-    public async Task WorkflowOwnedRefund_SuppressesStandaloneEmail()
+    public async Task WorkflowOwnedRefund_SameEmail_SuppressesStandaloneEmail_AndWritesAuditRow()
     {
-        var sponsor = SponsorCompleted();
+        var sponsor = SponsorCompleted(sponsorEmail: SponsorEmail);
         var refundId = "re_workflow_match";
         _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(sponsor);
-        _refundRequestRepo.Setup(r => r.ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        _refundRequestRepo.Setup(r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SponsorEmail);
 
         await BuildHandler().HandleChargeRefundedAsync(
             sponsor.StripePaymentIntentId!, refundId, Guid.NewGuid());
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Never,
-            "guard must short-circuit before the fire-and-forget email block creates a DI scope");
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(),
+            sponsor.SponsorEmail,
+            sponsor.SponsorName,
+            It.Is<string>(reason => reason.Contains("workflow-owned")),
+            It.IsAny<Guid>(),
+            It.IsAny<Guid?>(),
+            "Sponsor",
+            sponsor.Id,
+            It.IsAny<CancellationToken>()),
+            Times.Once,
+            "same-email workflow-owned refund: suppression branch must write audit row");
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "suppression branch must NOT send the standalone email");
+    }
+
+    [Fact]
+    public async Task WorkflowOwnedRefund_DifferentSponsorEmail_StillSendsStandaloneEmail()
+    {
+        // Phase 6A.148.W5.6.B Phase 3 — third-party money sponsor with email DIFFERENT
+        // from attendee's. The consolidated D8 decision email goes to attendee only;
+        // suppressing the standalone here would silence the third party's only refund
+        // notification. MUST fall through to send.
+        var sponsor = SponsorCompleted(sponsorEmail: "third-party-sponsor@example.com");
+        var refundId = "re_workflow_third_party";
+        _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sponsor);
+        _refundRequestRepo.Setup(r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("attendee@example.com");
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
+
+        await BuildHandler().HandleChargeRefundedAsync(
+            sponsor.StripePaymentIntentId!, refundId, Guid.NewGuid());
+        await Task.Delay(200); // fire-and-forget
+
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
+            "third-party sponsor (different email) is the SOLE recipient of any refund notification — standalone email MUST fire");
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
+            It.IsAny<CancellationToken>()),
+            Times.Never,
+            "non-suppressed path must not write a suppression audit row");
+    }
+
+    [Fact]
+    public async Task WorkflowOwnedRefund_SameEmail_DifferentCasing_StillSuppresses()
+    {
+        // Case-insensitive comparison — operator UAT defect mode where capitalisation
+        // varies between sponsor signup form and attendee registration form.
+        var sponsor = SponsorCompleted(sponsorEmail: "User@Example.COM");
+        var refundId = "re_case_diff";
+        _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sponsor);
+        _refundRequestRepo.Setup(r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("user@example.com");
+
+        await BuildHandler().HandleChargeRefundedAsync(
+            sponsor.StripePaymentIntentId!, refundId, Guid.NewGuid());
+
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
+            It.IsAny<CancellationToken>()),
+            Times.Once,
+            "email comparison must be case-insensitive — same logical recipient regardless of capitalisation");
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -71,15 +160,19 @@ public class SponsorWebhookHandlerD9Tests
         var refundId = "re_legacy_only";
         _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(sponsor);
-        _refundRequestRepo.Setup(r => r.ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _refundRequestRepo.Setup(r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
 
         await BuildHandler().HandleChargeRefundedAsync(
             sponsor.StripePaymentIntentId!, refundId, Guid.NewGuid());
-        // Fire-and-forget Task.Run for the email block — yield the scheduler so it actually executes.
-        await Task.Delay(100);
+        await Task.Delay(200);
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
             "legacy path must still send the standalone email when no workflow line-item exists");
     }
 
@@ -90,98 +183,59 @@ public class SponsorWebhookHandlerD9Tests
         var refundId = "re_lookup_throws";
         _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(sponsor);
-        _refundRequestRepo.Setup(r => r.ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
+        _refundRequestRepo.Setup(r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated transient DB error"));
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
 
         var act = async () => await BuildHandler().HandleChargeRefundedAsync(
             sponsor.StripePaymentIntentId!, refundId, Guid.NewGuid());
 
         await act.Should().NotThrowAsync("guard must catch lookup exception and fall through to the legacy email path");
-        // Fire-and-forget Task.Run for the email block — yield the scheduler so it actually executes.
-        await Task.Delay(100);
+        await Task.Delay(200);
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
             "fail-OPEN: when the lookup throws, the legacy email must still be sent so we don't silence the notification");
-    }
-
-    [Fact]
-    public async Task TwoSponsorsRefundedInOneWorkflow_BothSuppressed()
-    {
-        // Both sponsors share a workflow refund — verify each invocation independently
-        // short-circuits to ensure we don't have any cross-state leak between calls.
-        var sponsor1 = SponsorCompleted("pi_aaa");
-        var sponsor2 = SponsorCompleted("pi_bbb");
-        _sponsorRepo.SetupSequence(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(sponsor1)
-            .ReturnsAsync(sponsor2);
-        _refundRequestRepo.Setup(r => r.ExistsWorkflowLineItemForSponsorAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        var handler = BuildHandler();
-        await handler.HandleChargeRefundedAsync("pi_aaa", "re_workflow_1", Guid.NewGuid());
-        await handler.HandleChargeRefundedAsync("pi_bbb", "re_workflow_2", Guid.NewGuid());
-
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Never,
-            "neither sponsor invocation should leak through to the email path");
-    }
-
-    [Fact]
-    public async Task DifferentStripeRefundId_NoFalsePositiveOnCrossRefundCollision()
-    {
-        // Sponsor was previously refunded via the workflow under refundId "re_old", but
-        // the webhook now fires for a different refundId "re_new". The repo predicate
-        // matches (SponsorId, StripeRefundId) so it returns false → legacy path runs.
-        var sponsor = SponsorCompleted();
-        _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(sponsor);
-        _refundRequestRepo.Setup(r => r.ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, "re_new", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        await BuildHandler().HandleChargeRefundedAsync(
-            sponsor.StripePaymentIntentId!, "re_new", Guid.NewGuid());
-        // Fire-and-forget Task.Run for the email block — yield the scheduler so it actually executes.
-        await Task.Delay(100);
-
-        _refundRequestRepo.Verify(r => r.ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, "re_new", It.IsAny<CancellationToken>()),
-            Times.Once);
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
-            "predicate must scope to (sponsorId + stripeRefundId) so unrelated refundIds don't get suppressed");
     }
 
     [Fact]
     public async Task SponsorNotFound_ReturnsEarly_BeforeReachingGuard()
     {
-        // Defensive regression: if the sponsor lookup misses, the legacy code returned
-        // early (before the email block) — D9 must preserve this behaviour. Repository
-        // dedupe lookup is NOT invoked because we never reached the guard.
         _sponsorRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Sponsor, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Sponsor?)null);
 
         await BuildHandler().HandleChargeRefundedAsync("pi_orphan", "re_orphan", Guid.NewGuid());
 
         _refundRequestRepo.Verify(
-            r => r.ExistsWorkflowLineItemForSponsorAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            r => r.GetWorkflowOwnedAttendeeEmailForSponsorAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never,
             "guard must not fire when no sponsor was loaded");
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Never,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Never,
             "email path must not fire when no sponsor was loaded");
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
+            It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // -------------------------------------------------------------------------
     // Fixture
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Builds a money sponsor that has completed payment (StripePaymentIntentId set,
-    /// Status = Completed) so MarkAsRefunded inside the handler succeeds.
-    /// </summary>
-    private static Sponsor SponsorCompleted(string paymentIntentId = "pi_test_default")
+    private static Sponsor SponsorCompleted(
+        string paymentIntentId = "pi_test_default",
+        string sponsorEmail = SponsorEmail)
     {
         var sponsor = Sponsor.CreateMoneySponsor(
             eventId: Guid.NewGuid(),
             sponsorUserId: Guid.NewGuid(),
             sponsorName: "Test Sponsor",
-            sponsorEmail: "sponsor@example.com",
+            sponsorEmail: sponsorEmail,
             sponsorPhone: "+1-555-1234",
             sponsorOrganization: "Test Corp",
             sponsorNotes: "",

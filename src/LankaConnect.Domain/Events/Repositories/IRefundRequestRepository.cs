@@ -83,6 +83,24 @@ public interface IRefundRequestRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Phase 6A.148.W5.6.B Phase 3 (D9 refinement): looks up both the workflow-ownership
+    /// fact AND the parent Registration's contact email in a single round-trip.
+    ///
+    /// Returns the attendee's email when a workflow line exists for the given
+    /// (sponsorId, stripeRefundId) tuple, else <c>null</c>. The caller uses the email
+    /// to compare against the sponsor's own email and decide whether to suppress the
+    /// standalone per-Sponsor refund email (operator UAT bug 1: a third-party sponsor
+    /// — different email from the attendee — MUST still receive a refund notification,
+    /// because the consolidated decision email goes only to the attendee).
+    ///
+    /// Untracked, joins refund_request_line_items → refund_requests → registrations.
+    /// </summary>
+    Task<string?> GetWorkflowOwnedAttendeeEmailForSponsorAsync(
+        Guid sponsorId,
+        string stripeRefundId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Phase 6A.148.W4.D12 (G4 generalised dedupe): given a Stripe refund ID and a line
     /// item type, returns the <c>ReferenceId</c> of the workflow line that owns the
     /// refund, or <c>null</c> if no workflow line is found.

@@ -8,12 +8,21 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Sent when a money sponsor payment is refunded via Stripe webhook (charge.refunded).
 /// Only applies to money sponsors (item sponsors cannot be refunded).
 /// </summary>
-public class SponsorRefundEmailParams : IEmailParameters
+public class SponsorRefundEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.SponsorRefund;
 
     public string RecipientEmail => SponsorEmail;
     public string RecipientName => SponsorName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    // Callers (SponsorWebhookHandler, RefundLineDispatcher) populate before send so the
+    // post-mortem query "what did refund X send?" / "did sponsor Y get notified?" works.
+    public Guid? DispatchRefundRequestId { get; set; }
+    public Guid? DispatchSponsorId { get; set; }
+    Guid? IDispatchLoggable.DispatchRefundRequestId => DispatchRefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => DispatchSponsorId.HasValue ? "Sponsor" : null;
+    Guid? IDispatchLoggable.DispatchEntityId => DispatchSponsorId;
 
     #region Core Properties
 

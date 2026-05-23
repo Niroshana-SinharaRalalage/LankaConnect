@@ -67,6 +67,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     // Communications Entity Sets
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailMessage> EmailMessages => Set<LankaConnect.Domain.Communications.Entities.EmailMessage>();
     public DbSet<LankaConnect.Domain.Communications.Entities.EmailTemplate> EmailTemplates => Set<LankaConnect.Domain.Communications.Entities.EmailTemplate>();
+    // Phase 6A.148.W5.6.B.OBS1 — durable email dispatch audit log (operator post-mortem
+    // capability without screenshots; queryable by refund_request_id / recipient / template).
+    public DbSet<LankaConnect.Domain.Communications.Entities.EmailDispatchLog> EmailDispatchLogs => Set<LankaConnect.Domain.Communications.Entities.EmailDispatchLog>();
     public DbSet<LankaConnect.Domain.Communications.Entities.UserEmailPreferences> UserEmailPreferences => Set<LankaConnect.Domain.Communications.Entities.UserEmailPreferences>();
     public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
     public DbSet<Newsletter> Newsletters => Set<Newsletter>(); // Phase 6A.74: Newsletter/News Alert Feature
@@ -205,6 +208,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Communications entity configurations
         modelBuilder.ApplyConfiguration(new EmailMessageConfiguration());
         modelBuilder.ApplyConfiguration(new EmailTemplateConfiguration());
+        modelBuilder.ApplyConfiguration(new EmailDispatchLogConfiguration());
         modelBuilder.ApplyConfiguration(new UserEmailPreferencesConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterSubscriberConfiguration());
         modelBuilder.ApplyConfiguration(new NewsletterConfiguration()); // Phase 6A.74: Newsletter/News Alert Feature
@@ -420,6 +424,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Review),
             typeof(EmailMessage),
             typeof(EmailTemplate),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog), // Phase 6A.148.W5.6.B.OBS1: durable email dispatch audit log
             typeof(UserEmailPreferences),
             typeof(NewsletterSubscriber), // Phase 5
             typeof(Newsletter), // Phase 6A.74: Newsletter/News Alert Feature

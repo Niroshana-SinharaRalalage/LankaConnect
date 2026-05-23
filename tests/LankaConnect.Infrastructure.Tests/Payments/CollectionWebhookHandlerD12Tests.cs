@@ -6,7 +6,11 @@ using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
 using LankaConnect.Domain.Shared.Enums;
 using LankaConnect.Domain.Shared.ValueObjects;
+using LankaConnect.Infrastructure.Email.Services;
 using LankaConnect.Infrastructure.Payments.Services;
+using LankaConnect.Shared.Email.Contracts;
+using LankaConnect.Shared.Email.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -25,19 +29,31 @@ public class CollectionWebhookHandlerD12Tests
 {
     private readonly Mock<ICollectionRepository> _collectionRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
     private readonly Mock<IRefundRequestRepository> _refundRequestRepo = new();
+    private readonly Mock<IRefundDispatchAuditService> _auditService = new();
+    private readonly Mock<ITypedEmailService> _emailService = new();
+    private readonly Mock<IEventRepository> _eventRepo = new();
 
-    private CollectionWebhookHandler BuildHandler() =>
-        new CollectionWebhookHandler(
+    private CollectionWebhookHandler BuildHandler()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(_auditService.Object);
+        services.AddSingleton(_emailService.Object);
+        services.AddSingleton(_eventRepo.Object);
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        var provider = services.BuildServiceProvider();
+        var scopeFactory = provider.GetRequiredService<IServiceScopeFactory>();
+
+        return new CollectionWebhookHandler(
             _collectionRepo.Object,
             _unitOfWork.Object,
-            _scopeFactory.Object,
+            scopeFactory,
             _refundRequestRepo.Object,
             Mock.Of<ILogger<CollectionWebhookHandler>>());
+    }
 
     [Fact]
-    public async Task WorkflowOwnedRefund_SuppressesStandaloneEmail()
+    public async Task WorkflowOwnedRefund_SuppressesStandaloneEmail_AndWritesAuditRow()
     {
         var collection = CompletedCollection();
         _collectionRepo.Setup(r => r.FindFirstAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Collection, bool>>>(), It.IsAny<CancellationToken>()))
@@ -49,8 +65,21 @@ public class CollectionWebhookHandlerD12Tests
         await BuildHandler().HandleChargeRefundedAsync(
             collection.StripePaymentIntentId!, "re_workflow_collection", Guid.NewGuid());
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Never,
-            "workflow-owned refund must short-circuit before the fire-and-forget email block creates a DI scope");
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(),
+            collection.ContributorEmail,
+            collection.ContributorName,
+            It.Is<string>(reason => reason.Contains("workflow-owned")),
+            It.IsAny<Guid>(),
+            It.IsAny<Guid?>(),
+            "Collection",
+            collection.Id,
+            It.IsAny<CancellationToken>()),
+            Times.Once,
+            "workflow-owned collection refund: suppression branch must write audit row");
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Never,
+            "suppression branch must NOT send the standalone email");
     }
 
     [Fact]
@@ -62,12 +91,17 @@ public class CollectionWebhookHandlerD12Tests
         _refundRequestRepo.Setup(r => r.GetWorkflowLineReferenceIdAsync(
                 RefundLineItemType.Collection, "re_legacy", It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid?)null);
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
 
         await BuildHandler().HandleChargeRefundedAsync(
             collection.StripePaymentIntentId!, "re_legacy", Guid.NewGuid());
-        await Task.Delay(150); // let fire-and-forget Task.Run schedule
+        await Task.Delay(200);
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
             "legacy path must send the standalone email when no workflow line-item exists");
     }
 
@@ -80,13 +114,18 @@ public class CollectionWebhookHandlerD12Tests
         _refundRequestRepo.Setup(r => r.GetWorkflowLineReferenceIdAsync(
                 It.IsAny<RefundLineItemType>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("simulated DB error"));
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
 
         var act = async () => await BuildHandler().HandleChargeRefundedAsync(
             collection.StripePaymentIntentId!, "re_throws", Guid.NewGuid());
         await act.Should().NotThrowAsync();
-        await Task.Delay(150);
+        await Task.Delay(200);
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
             "fail-OPEN: lookup exception must not silence the legacy email");
     }
 
@@ -102,13 +141,23 @@ public class CollectionWebhookHandlerD12Tests
         _refundRequestRepo.Setup(r => r.GetWorkflowLineReferenceIdAsync(
                 RefundLineItemType.Collection, "re_other_collection", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Guid.NewGuid()); // a DIFFERENT collection's id
+        _eventRepo.Setup(e => e.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Event?)null);
+        _emailService.Setup(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TypedEmailSendResult.Ok("corr", 1));
 
         await BuildHandler().HandleChargeRefundedAsync(
             collection.StripePaymentIntentId!, "re_other_collection", Guid.NewGuid());
-        await Task.Delay(150);
+        await Task.Delay(200);
 
-        _scopeFactory.Verify(s => s.CreateScope(), Times.Once,
+        _emailService.Verify(e => e.SendEmailAsync(It.IsAny<IEmailParameters>(), It.IsAny<CancellationToken>()),
+            Times.Once,
             "predicate must compare returned ReferenceId to THIS collection's id — unrelated workflow refunds shouldn't suppress");
+        _auditService.Verify(a => a.WriteSuppressionAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid?>(),
+            It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static Collection CompletedCollection()

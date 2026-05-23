@@ -210,6 +210,69 @@ public class RefundRequestRepository : IRefundRequestRepository
     }
 
     /// <inheritdoc />
+    public async Task<string?> GetWorkflowOwnedAttendeeEmailForSponsorAsync(
+        Guid sponsorId, string stripeRefundId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(stripeRefundId))
+            return null;
+
+        // Same bounded-retry pattern as ExistsWorkflowLineItemForSponsorAsync — covers
+        // the race window where the webhook arrives before the dispatcher's per-line
+        // StripeRefundId commit is visible to this scope.
+        int[] backoffMs = { 0, 100, 300, 1000 };
+        for (var i = 0; i < backoffMs.Length; i++)
+        {
+            if (backoffMs[i] > 0)
+                await Task.Delay(backoffMs[i], cancellationToken);
+
+            try
+            {
+                // Join: line → refund_request → registration.contact.email (owned via OwnsOne).
+                // Returns null when no workflow line yet exists for the (sponsor, sri) pair.
+                var attendeeEmail = await _context.RefundRequestLineItems
+                    .AsNoTracking()
+                    .Where(li =>
+                        li.Type == RefundLineItemType.Sponsor &&
+                        li.ReferenceId == sponsorId &&
+                        li.StripeRefundId == stripeRefundId)
+                    .Join(_context.RefundRequests.AsNoTracking(),
+                        li => li.RefundRequestId,
+                        rr => rr.Id,
+                        (li, rr) => rr.RegistrationId)
+                    .Join(_context.Registrations.AsNoTracking(),
+                        regId => regId,
+                        reg => reg.Id,
+                        // Reg.Contact is the RegistrationContact owned value-object — never null
+                        // for a paid registration (set at CreateWithAttendees time), but use
+                        // null-conditional to satisfy nullable analysis on the projection.
+                        (regId, reg) => reg.Contact != null ? reg.Contact.Email : null)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (!string.IsNullOrWhiteSpace(attendeeEmail))
+                {
+                    if (i > 0)
+                        _logger.LogInformation(
+                            "[RefundRequestRepository.W5.6.B] GetWorkflowOwnedAttendeeEmailForSponsorAsync resolved on attempt {Attempt}/{Total} for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
+                            i + 1, backoffMs.Length, sponsorId, stripeRefundId);
+                    return attendeeEmail;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[RefundRequestRepository.W5.6.B] GetWorkflowOwnedAttendeeEmailForSponsorAsync threw on attempt {Attempt}/{Total} for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
+                    i + 1, backoffMs.Length, sponsorId, stripeRefundId);
+                throw;
+            }
+        }
+
+        _logger.LogInformation(
+            "[RefundRequestRepository.W5.6.B] GetWorkflowOwnedAttendeeEmailForSponsorAsync null after all {Total} attempts for SponsorId={SponsorId} StripeRefundId={StripeRefundId} — caller will fall back to legacy email",
+            backoffMs.Length, sponsorId, stripeRefundId);
+        return null;
+    }
+
+    /// <inheritdoc />
     public async Task<Guid?> GetWorkflowLineReferenceIdAsync(
         RefundLineItemType type, string stripeRefundId, CancellationToken cancellationToken = default)
     {

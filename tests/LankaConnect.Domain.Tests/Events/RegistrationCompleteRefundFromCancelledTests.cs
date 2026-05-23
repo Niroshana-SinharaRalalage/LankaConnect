@@ -24,8 +24,13 @@ namespace LankaConnect.Domain.Tests.Events;
 /// - Allowed from {RefundRequested, Cancelled}
 /// - Refused from {Pending, Confirmed, Abandoned, PendingRefundApproval, Refunded-with-different-srid}
 /// - Idempotent — second call with same stripeRefundId on an already-Refunded row is a no-op Success
-/// - Raises RefundCompletedEvent (parity with the legacy path so emails fire)
-/// - Raises SeatReservationsReleasedEvent
+/// - Phase 6A.148.W5.6.B G1 — RefundCompletedEvent is raised ONLY when fromState is
+///   RefundRequested (legacy direct-Stripe CancelRsvp path with no RefundRequest). The
+///   Cancelled-from path (new workflow) MUST NOT raise it — the workflow's
+///   RefundRequest.MarkCompletedIfAllSettled raises RefundRequestCompletedEvent instead,
+///   at the EXACT moment Status flips to Completed. Raising both would produce the
+///   $94-vs-$204 duplicate-email regression we are closing.
+/// - Raises SeatReservationsReleasedEvent in both paths.
 /// </summary>
 public class RegistrationCompleteRefundFromCancelledTests
 {
@@ -69,22 +74,42 @@ public class RegistrationCompleteRefundFromCancelledTests
         reg.PaymentStatus.Should().Be(PaymentStatus.Refunded);
         reg.StripeRefundId.Should().Be(Sri);
         reg.RefundCompletedAt.Should().NotBeNull();
-        reg.DomainEvents.OfType<RefundCompletedEvent>().Should().ContainSingle();
     }
 
     [Fact]
-    public void CompleteRefundFromCancelled_FromRefundRequested_AlsoTransitions()
+    public void CompleteRefundFromCancelled_FromCancelled_DoesNotRaiseLegacyRefundCompletedEvent()
+    {
+        // Phase 6A.148.W5.6.B G1 — the workflow path MUST NOT raise the legacy event.
+        // RefundRequest.MarkCompletedIfAllSettled is the sole email driver for workflow
+        // refunds; raising the legacy event from here too would re-introduce the mid-race
+        // $94 email-undercount regression.
+        var reg = BuildCancelledRegistration();
+
+        reg.CompleteRefundFromCancelled(Sri).IsSuccess.Should().BeTrue();
+
+        reg.DomainEvents.OfType<RefundCompletedEvent>().Should().BeEmpty(
+            "workflow-path completion is driven by RefundRequestCompletedEvent (raised " +
+            "from MarkCompletedIfAllSettled with the precomputed final total); raising " +
+            "the legacy event here too would duplicate the email with a mid-race snapshot");
+    }
+
+    [Fact]
+    public void CompleteRefundFromCancelled_FromRefundRequested_StillRaisesLegacyRefundCompletedEvent()
     {
         // Defensive — the same domain method also works for the legacy RefundRequested
-        // path so callers don't need to branch. (The legacy CompleteRefund still exists
-        // and is preferred for the legacy path, but this method is permissive enough to
-        // serve both.)
+        // path (no RefundRequest aggregate exists for pre-148 direct-Stripe refunds, so
+        // RefundRequestCompletedEvent will never fire there). The legacy
+        // RefundCompletedEvent is the only thing that drives the completion email for
+        // that path — it MUST still raise here.
         var reg = BuildRefundRequestedRegistration();
 
         var result = reg.CompleteRefundFromCancelled(Sri);
 
         result.IsSuccess.Should().BeTrue();
         reg.Status.Should().Be(RegistrationStatus.Refunded);
+        reg.DomainEvents.OfType<RefundCompletedEvent>().Should().ContainSingle(
+            "legacy direct-Stripe path has no RefundRequest aggregate, so the legacy " +
+            "event is the only completion-email driver — must not be suppressed");
     }
 
     [Fact]

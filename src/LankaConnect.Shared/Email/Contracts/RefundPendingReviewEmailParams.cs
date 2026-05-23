@@ -15,11 +15,16 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// email (<see cref="RefundDecisionEmailParams"/>) fires next on approve, OR the rejected
 /// email (<see cref="RefundRejectedEmailParams"/>) fires on reject.
 /// </summary>
-public class RefundPendingReviewEmailParams : IEmailParameters
+public class RefundPendingReviewEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.RefundPendingReview;
     public string RecipientEmail => UserEmail;
     public string RecipientName => UserName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    Guid? IDispatchLoggable.DispatchRefundRequestId => RefundRequestId == Guid.Empty ? null : RefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => null;
+    Guid? IDispatchLoggable.DispatchEntityId => null;
 
     #region Core Identity
     public Guid UserId { get; set; }

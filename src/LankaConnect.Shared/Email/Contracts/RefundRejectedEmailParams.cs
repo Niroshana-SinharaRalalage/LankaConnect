@@ -15,11 +15,16 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// No "Contact Organizer" CTA, no escalation path. Organizer contact block still renders
 /// for cases where the attendee wants to reach out manually.
 /// </summary>
-public class RefundRejectedEmailParams : IEmailParameters
+public class RefundRejectedEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.RefundRejected;
     public string RecipientEmail => UserEmail;
     public string RecipientName => UserName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    Guid? IDispatchLoggable.DispatchRefundRequestId => RefundRequestId == Guid.Empty ? null : RefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => null;
+    Guid? IDispatchLoggable.DispatchEntityId => null;
 
     #region Core Identity
     public Guid UserId { get; set; }

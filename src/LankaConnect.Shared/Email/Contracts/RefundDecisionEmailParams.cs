@@ -15,11 +15,16 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// breakdown so it's unambiguously the authoritative summary; the per-Sponsor standalone email
 /// is suppressed for workflow-owned refunds in D9.
 /// </summary>
-public class RefundDecisionEmailParams : IEmailParameters
+public class RefundDecisionEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.RefundDecision;
     public string RecipientEmail => UserEmail;
     public string RecipientName => UserName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    Guid? IDispatchLoggable.DispatchRefundRequestId => RefundRequestId == Guid.Empty ? null : RefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => null;
+    Guid? IDispatchLoggable.DispatchEntityId => null;
 
     #region Core Identity
     public Guid UserId { get; set; }

@@ -217,29 +217,72 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
                 "[Phase 6A.136E] [Webhook-Sponsor-Refund-SUCCESS] Sponsor marked as refunded - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                 correlationId, sponsor.Id, refundId);
 
-            // Phase 6A.148.D9: Suppress the per-Sponsor legacy email when this refund came
-            // through the new approval workflow — the consolidated D8 decision email already
-            // covered the attendee (operator UAT defect E3). Fail-OPEN: if the lookup throws
-            // we default to sending the legacy email so a transient DB issue never silences
-            // a legitimate notification.
-            var isWorkflowOwnedRefund = false;
+            // Phase 6A.148.D9 (+ W5.6.B Phase 3 refinement): Suppress the per-Sponsor
+            // legacy email ONLY when (a) this refund came through the new approval workflow
+            // AND (b) the sponsor's email address matches the attendee's — meaning the
+            // sponsor IS the attendee, so the consolidated D8 decision email already
+            // notified them. When (b) is false (third-party money sponsor with a different
+            // email), the standalone email is the ONLY notification that third party will
+            // receive — we MUST send it (operator UAT bug 1).
+            //
+            // Fail-OPEN: any lookup throw defaults to sending the legacy email so a
+            // transient DB issue never silences a legitimate notification.
+            string? attendeeEmail = null;
             try
             {
-                isWorkflowOwnedRefund = await _refundRequestRepository
-                    .ExistsWorkflowLineItemForSponsorAsync(sponsor.Id, refundId, ct);
+                attendeeEmail = await _refundRequestRepository
+                    .GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, ct);
             }
             catch (Exception lookupEx)
             {
                 _logger.LogWarning(lookupEx,
-                    "[Phase 6A.148.D9] Workflow-owned lookup threw — defaulting to send standalone sponsor email. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                    "[Phase 6A.148.D9] Workflow-owned attendee-email lookup threw — defaulting to send standalone sponsor email. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                     correlationId, sponsor.Id, refundId);
             }
 
-            if (isWorkflowOwnedRefund)
+            var isWorkflowOwnedRefund = attendeeEmail is not null;
+            var sponsorEmailIsAttendee = isWorkflowOwnedRefund
+                && string.Equals(attendeeEmail, sponsor.SponsorEmail, StringComparison.OrdinalIgnoreCase);
+
+            if (isWorkflowOwnedRefund && !sponsorEmailIsAttendee)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.148.W5.6.B Phase 3] Sponsor refund — workflow-owned but sponsor email differs from attendee email; standalone email WILL fire. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}, SponsorEmail: {SponsorEmail}, AttendeeEmail: {AttendeeEmail}",
+                    correlationId, sponsor.Id, refundId, sponsor.SponsorEmail, attendeeEmail);
+            }
+
+            if (sponsorEmailIsAttendee)
             {
                 _logger.LogInformation(
                     "[Phase 6A.148.D9] Sponsor refund standalone email SUPPRESSED — workflow-owned. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                     correlationId, sponsor.Id, refundId);
+
+                // Phase 6A.148.W5.6.B.OBS3 — durable audit row so operators can
+                // distinguish "deliberately suppressed" from "send failed silently"
+                // long after container stdout retention expires.
+                try
+                {
+                    using var auditScope = _scopeFactory.CreateScope();
+                    var auditService = auditScope.ServiceProvider
+                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                    await auditService.WriteSuppressionAsync(
+                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.SponsorRefund,
+                        recipientEmail: sponsor.SponsorEmail,
+                        recipientName: sponsor.SponsorName,
+                        suppressionReason: "D9: workflow-owned refund — covered by consolidated decision email",
+                        correlationId: correlationId,
+                        refundRequestId: null,
+                        entityType: "Sponsor",
+                        entityId: sponsor.Id,
+                        cancellationToken: ct);
+                }
+                catch (Exception auditEx)
+                {
+                    _logger.LogWarning(auditEx,
+                        "[Phase 6A.148.W5.6.B.OBS3] Failed to write sponsor suppression audit row — continuing. CorrelationId: {CorrelationId}",
+                        correlationId);
+                }
+
                 return;
             }
 

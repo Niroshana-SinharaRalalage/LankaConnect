@@ -135,6 +135,75 @@ public class RefundReconciliationService : IRefundReconciliationService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<Result<int>> ReconcileStuckCancelledWithRefundedTicketAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
+        var processedBefore = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
+
+        try
+        {
+            var stuck = await _registrationRepository
+                .GetStuckCancelledWithRefundedTicketAsync(
+                    processedBefore, DefaultBatchSize, cancellationToken);
+
+            if (stuck.Count == 0)
+            {
+                _logger.LogDebug(
+                    "[6A.148.W5.5.D6.5 RECON] No stuck Cancelled-with-refunded-ticket registrations older than {Threshold:o}",
+                    processedBefore);
+                return Result<int>.Success(0);
+            }
+
+            _logger.LogInformation(
+                "[6A.148.W5.5.D6.5 RECON] Found {Count} stuck Cancelled-with-refunded-ticket registrations; healing",
+                stuck.Count);
+
+            var healed = 0;
+            foreach (var (registration, stripeRefundId) in stuck)
+            {
+                try
+                {
+                    var result = registration.CompleteRefundFromCancelled(stripeRefundId);
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "[6A.148.W5.5.D6.5 RECON] CompleteRefundFromCancelled rejected for RegId={RegId} (already-transitioned race or guard hit): {Error}",
+                            registration.Id, result.Error);
+                        continue;
+                    }
+
+                    _registrationRepository.Update(registration);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+                    healed++;
+
+                    _logger.LogInformation(
+                        "[6A.148.W5.5.D6.5 RECON] Healed stuck Cancelled→Refunded RegId={RegId} StripeRefundId={Sri}",
+                        registration.Id, stripeRefundId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "[6A.148.W5.5.D6.5 RECON] EXCEPTION healing RegId={RegId}; will retry next pass",
+                        registration.Id);
+                }
+            }
+
+            _logger.LogInformation(
+                "[6A.148.W5.5.D6.5 RECON] Pass COMPLETE: healed {Count} of {Total}",
+                healed, stuck.Count);
+            return Result<int>.Success(healed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148.W5.5.D6.5 RECON] ReconcileStuckCancelledWithRefundedTicketAsync EXCEPTION");
+            throw;
+        }
+    }
+
     public async Task<Result<RefundReconciliationResult>> ReconcileStuckRefundsAsync(
         int? batchSize = null,
         int? ageThresholdMinutes = null,

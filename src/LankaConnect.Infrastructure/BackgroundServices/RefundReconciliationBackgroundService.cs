@@ -123,5 +123,40 @@ public class RefundReconciliationBackgroundService : BackgroundService
         {
             _logger.LogWarning("[Phase 7G] {Warning}", w);
         }
+
+        // Phase 6A.148 (architect F11): also sweep stuck-Approved RR rows.
+        try
+        {
+            var approvedResult = await reconciler.ReconcileStuckApprovedRefundRequestsAsync(
+                ageThresholdMinutes: _settings.AgeThresholdMinutes,
+                cancellationToken: cancellationToken);
+            if (approvedResult.IsSuccess && approvedResult.Value > 0)
+                _logger.LogInformation(
+                    "[6A.148 RECON] Re-dispatched {Count} stuck Approved refund requests",
+                    approvedResult.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148 RECON] ReconcileStuckApprovedRefundRequestsAsync threw — swallowed");
+        }
+
+        // Phase 6A.148.W5.5.D6.5: heal stuck Cancelled-with-refunded-ticket registrations
+        // (Bug 1 safety net). Same cadence as the Approved sweep; both are bounded-batch.
+        try
+        {
+            var healedResult = await reconciler.ReconcileStuckCancelledWithRefundedTicketAsync(
+                ageThresholdMinutes: _settings.AgeThresholdMinutes,
+                cancellationToken: cancellationToken);
+            if (healedResult.IsSuccess && healedResult.Value > 0)
+                _logger.LogInformation(
+                    "[6A.148.W5.5.D6.5 RECON] Healed {Count} stuck Cancelled→Refunded registrations",
+                    healedResult.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148.W5.5.D6.5 RECON] ReconcileStuckCancelledWithRefundedTicketAsync threw — swallowed");
+        }
     }
 }

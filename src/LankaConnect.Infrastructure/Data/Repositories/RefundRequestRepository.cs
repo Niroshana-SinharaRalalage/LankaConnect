@@ -163,23 +163,50 @@ public class RefundRequestRepository : IRefundRequestRepository
         if (string.IsNullOrWhiteSpace(stripeRefundId))
             return false;
 
-        try
+        // W5.5.D5: retry until true. The D9 suppression path is the operator-UAT Bug 3 —
+        // the legacy "Sponsorship Refund Confirmed" email leaked through for a workflow
+        // refund because this check ran BEFORE the dispatcher's per-line StripeRefundId
+        // commit was visible to this scope. Bounded retry covers the race window.
+        // Returns false after all retries exhaust → fail-OPEN to legacy email (preferred
+        // to silencing notifications on a transient DB lookup miss).
+        int[] backoffMs = { 0, 100, 300, 1000 };
+        for (var i = 0; i < backoffMs.Length; i++)
         {
-            return await _context.RefundRequestLineItems
-                .AsNoTracking()
-                .AnyAsync(li =>
-                    li.Type == RefundLineItemType.Sponsor &&
-                    li.ReferenceId == sponsorId &&
-                    li.StripeRefundId == stripeRefundId,
-                    cancellationToken);
+            if (backoffMs[i] > 0)
+                await Task.Delay(backoffMs[i], cancellationToken);
+
+            try
+            {
+                var found = await _context.RefundRequestLineItems
+                    .AsNoTracking()
+                    .AnyAsync(li =>
+                        li.Type == RefundLineItemType.Sponsor &&
+                        li.ReferenceId == sponsorId &&
+                        li.StripeRefundId == stripeRefundId,
+                        cancellationToken);
+                if (found)
+                {
+                    if (i > 0)
+                        _logger.LogInformation(
+                            "[RefundRequestRepository.W5.5.D5] ExistsWorkflowLineItemForSponsorAsync succeeded on attempt {Attempt}/{Total} after {DelayMs}ms cumulative backoff for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
+                            i + 1, backoffMs.Length,
+                            backoffMs.Take(i + 1).Sum(), sponsorId, stripeRefundId);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[RefundRequestRepository] ExistsWorkflowLineItemForSponsorAsync threw on attempt {Attempt}/{Total} for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
+                    i + 1, backoffMs.Length, sponsorId, stripeRefundId);
+                throw;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "[RefundRequestRepository] ExistsWorkflowLineItemForSponsorAsync failed for SponsorId={SponsorId} StripeRefundId={StripeRefundId}",
-                sponsorId, stripeRefundId);
-            throw;
-        }
+
+        _logger.LogInformation(
+            "[RefundRequestRepository.W5.5.D5] ExistsWorkflowLineItemForSponsorAsync false after all {Total} attempts for SponsorId={SponsorId} StripeRefundId={StripeRefundId} — caller will fall back to legacy email",
+            backoffMs.Length, sponsorId, stripeRefundId);
+        return false;
     }
 
     /// <inheritdoc />
@@ -234,5 +261,76 @@ public class RefundRequestRepository : IRefundRequestRepository
                 lineItemId);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<RefundRequestLineItem?> GetWorkflowLineByStripeRefundIdAsync(
+        string stripeRefundId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(stripeRefundId))
+            return null;
+
+        // W5.5.D5: retry on null. The dispatcher (RefundLineDispatcher) commits the line's
+        // StripeRefundId in a SEPARATE DI scope from the webhook handler. Stripe fires the
+        // webhook within milliseconds of the dispatcher's Stripe call returning — there's a
+        // tight read-after-write window where the webhook arrives before the dispatcher's
+        // transaction commit is visible to other sessions. Bounded retry covers this window
+        // without adding latency for the common case (first read succeeds).
+        return await RetryUntilNonNullAsync(
+            ct => _context.RefundRequestLineItems
+                .AsNoTracking()
+                .Where(li => li.StripeRefundId == stripeRefundId)
+                .FirstOrDefaultAsync(ct),
+            "GetWorkflowLineByStripeRefundIdAsync",
+            stripeRefundId,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// W5.5.D5: bounded retry helper for read-after-write race against the per-line dispatcher.
+    /// Returns first non-null result, or null after all retries exhaust. Total max delay 1.4s
+    /// (100ms + 300ms + 1000ms) split across 4 attempts. Logs at INFO when retry recovers a
+    /// null read — operator-visible signal that the race is happening, but not an error
+    /// because eventual consistency works.
+    /// </summary>
+    private async Task<RefundRequestLineItem?> RetryUntilNonNullAsync(
+        Func<CancellationToken, Task<RefundRequestLineItem?>> read,
+        string operation,
+        string stripeRefundId,
+        CancellationToken cancellationToken)
+    {
+        // Attempt 0 + 3 backoff retries.
+        int[] backoffMs = { 0, 100, 300, 1000 };
+        for (var i = 0; i < backoffMs.Length; i++)
+        {
+            if (backoffMs[i] > 0)
+                await Task.Delay(backoffMs[i], cancellationToken);
+
+            try
+            {
+                var result = await read(cancellationToken);
+                if (result != null)
+                {
+                    if (i > 0)
+                        _logger.LogInformation(
+                            "[RefundRequestRepository.W5.5.D5] {Operation} succeeded on attempt {Attempt}/{Total} after {DelayMs}ms cumulative backoff for StripeRefundId={StripeRefundId}",
+                            operation, i + 1, backoffMs.Length,
+                            backoffMs.Take(i + 1).Sum(), stripeRefundId);
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "[RefundRequestRepository] {Operation} threw on attempt {Attempt}/{Total} for StripeRefundId={StripeRefundId}",
+                    operation, i + 1, backoffMs.Length, stripeRefundId);
+                throw;
+            }
+        }
+
+        _logger.LogInformation(
+            "[RefundRequestRepository.W5.5.D5] {Operation} returned null after all {Total} attempts for StripeRefundId={StripeRefundId} — caller will fall back to legacy semantics",
+            operation, backoffMs.Length, stripeRefundId);
+        return null;
     }
 }

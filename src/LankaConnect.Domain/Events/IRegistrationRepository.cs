@@ -44,4 +44,24 @@ public interface IRegistrationRepository : IRepository<Registration>
         DateTime requestedBefore,
         int take,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W5.5.D6.5 — returns registrations stuck in
+    /// <see cref="RegistrationStatus.Cancelled"/> whose workflow ticket-line refund
+    /// has settled at Stripe but whose registration row was never transitioned to
+    /// <see cref="RegistrationStatus.Refunded"/>. Operator-UAT pattern:
+    /// <c>r.Status='Cancelled' AND r.RefundCompletedAt IS NULL AND r.StripeRefundId IS NULL</c>
+    /// AND there exists a <c>RefundRequestLineItem</c> for this registration with
+    /// <c>type=Ticket(0), status=Refunded(4), stripe_refund_id NOT NULL,
+    /// processed_at &lt; threshold</c>.
+    ///
+    /// Returns tracked entities + the matching ticket-line <c>StripeRefundId</c>
+    /// so the reconciler can call
+    /// <see cref="Registration.CompleteRefundFromCancelled"/> per row.
+    /// </summary>
+    Task<IReadOnlyList<(Registration Registration, string StripeRefundId)>>
+        GetStuckCancelledWithRefundedTicketAsync(
+            DateTime processedBefore,
+            int take,
+            CancellationToken cancellationToken = default);
 }

@@ -119,4 +119,29 @@ public interface IRefundRequestRepository
     Task<RefundRequestLineItem?> GetLineItemByIdAsync(
         Guid lineItemId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W5.5.D3 — type-agnostic workflow-line lookup by Stripe refund id.
+    ///
+    /// Used by <c>PaymentsController.HandleChargeRefundedAsync</c>'s new
+    /// iterate-all-refunds router (W5.5.D4) to determine which typed webhook handler
+    /// (Registration / AddOnPurchase / Sponsor / Collection) should process each refund
+    /// on a charge. Generalises <see cref="GetWorkflowLineReferenceIdAsync"/> which
+    /// requires the caller to already know the line type — the new router does NOT
+    /// (it has only the Stripe refund object).
+    ///
+    /// Returns the line as an UNTRACKED projection (caller is dispatching, not mutating).
+    /// Type + ReferenceId + RefundRequestId are the load-bearing fields for routing.
+    ///
+    /// Returns null when no workflow line owns the refund — legacy direct-Stripe refunds
+    /// (pre-6A.148 CancelRsvp path) have no workflow line, and the router falls back to
+    /// the metadata-based switch for them. Stripe refund ids are globally unique, so the
+    /// (StripeRefundId) index returns at most one row.
+    ///
+    /// W5.5.D5 hardens this with bounded-retry semantics in the webhook-handler caller
+    /// (not here) so the dispatcher's commit-vs-webhook race window is covered.
+    /// </summary>
+    Task<RefundRequestLineItem?> GetWorkflowLineByStripeRefundIdAsync(
+        string stripeRefundId,
+        CancellationToken cancellationToken = default);
 }

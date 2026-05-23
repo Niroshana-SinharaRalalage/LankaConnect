@@ -102,26 +102,30 @@ public class RefundReconciliationBackgroundService : BackgroundService
             _logger.LogWarning(
                 "[Phase 7G] Reconciliation pass returned failure — Error={Error}",
                 result.Error);
-            return;
+            // Continue to 6A.148 passes anyway — they're independent of the 7G result and
+            // their own try/catch isolates their failures. The W5.5.D6.5 stuck-Cancelled
+            // sweep needs to run on every tick regardless of 7G outcome.
         }
-
-        var r = result.Value;
-        if (r.ScannedCount == 0)
+        else
         {
-            // Quiet path — most passes find nothing stuck.
-            _logger.LogDebug(
-                "[Phase 7G] Reconciliation pass — nothing stuck");
-            return;
-        }
+            var r = result.Value;
+            if (r.ScannedCount > 0)
+            {
+                _logger.LogInformation(
+                    "[Phase 7G] Reconciliation pass — Scanned={Scanned}, Reconciled={Reconciled}, StillPending={Pending}, FailedAtStripe={Failed}, MissingRefundId={Missing}, StripeLookupFailed={LookupFailed}, Warnings={WarningCount}",
+                    r.ScannedCount, r.ReconciledCount, r.StillPendingCount,
+                    r.FailedAtStripeCount, r.MissingRefundIdCount, r.StripeLookupFailedCount, r.Warnings.Count);
 
-        _logger.LogInformation(
-            "[Phase 7G] Reconciliation pass — Scanned={Scanned}, Reconciled={Reconciled}, StillPending={Pending}, FailedAtStripe={Failed}, MissingRefundId={Missing}, StripeLookupFailed={LookupFailed}, Warnings={WarningCount}",
-            r.ScannedCount, r.ReconciledCount, r.StillPendingCount,
-            r.FailedAtStripeCount, r.MissingRefundIdCount, r.StripeLookupFailedCount, r.Warnings.Count);
-
-        foreach (var w in r.Warnings)
-        {
-            _logger.LogWarning("[Phase 7G] {Warning}", w);
+                foreach (var w in r.Warnings)
+                {
+                    _logger.LogWarning("[Phase 7G] {Warning}", w);
+                }
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "[Phase 7G] Reconciliation pass — nothing stuck");
+            }
         }
 
         // Phase 6A.148 (architect F11): also sweep stuck-Approved RR rows.

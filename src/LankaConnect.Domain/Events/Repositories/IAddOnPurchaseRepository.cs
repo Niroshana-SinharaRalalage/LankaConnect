@@ -53,4 +53,14 @@ public interface IAddOnPurchaseRepository : IRepository<AddOnPurchase>
         string buyerEmail,
         Guid eventId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W4.D11: returns ALL purchases sharing the given Stripe PaymentIntent.
+    /// For cart purchases, N AddOnPurchase rows share the same PI; the refund webhook
+    /// uses this lookup to mark every row Refunded (legacy semantics) or to narrow down
+    /// the correct row via the workflow line-item's ReferenceId.
+    /// </summary>
+    Task<IReadOnlyList<AddOnPurchase>> GetAllByStripePaymentIntentIdAsync(
+        string paymentIntentId,
+        CancellationToken cancellationToken = default);
 }

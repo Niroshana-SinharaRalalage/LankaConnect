@@ -99,6 +99,16 @@ export class ApiClient {
       }
     );
 
+    // Phase 6A.150 (Layer 2 + 3): record whether the request carried an auth
+    // token at the time it was sent. The response interceptor uses this flag
+    // to decide whether a 401 is "session expired for an authed user" (legit
+    // refresh case) vs "anonymous user hit an authed endpoint" (the 6A.150
+    // bug case — no refresh possible, no redirect appropriate).
+    this.axiosInstance.interceptors.request.use((config) => {
+      (config as any)._hadAuthAtRequestTime = !!this.authToken;
+      return config;
+    });
+
     // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
@@ -148,6 +158,23 @@ export class ApiClient {
                                   originalRequest.url?.includes('/Auth/refresh');
 
           if (!isAuthEndpoint) {
+            // Phase 6A.150 (Layer 2): if the original request was made without
+            // an access token, this is an anonymous user hitting an
+            // [Authorize] endpoint (the 6A.150 bug class). There is nothing to
+            // refresh — POSTing /Auth/refresh with no refresh token returns
+            // 400, which the legacy code then treated as "auth failed" and
+            // triggered onUnauthorized → AuthProvider → router.push('/login').
+            // Short-circuit here: reject the 401 directly. Consumers (e.g.
+            // public components) handle the failure by hiding their section.
+            const hadAuthAtRequestTime = (originalRequest as any)._hadAuthAtRequestTime === true;
+            if (!hadAuthAtRequestTime) {
+              console.log(
+                '[AUTH INTERCEPTOR] 401 on anonymous request — skipping refresh; no redirect (Phase 6A.150 Layer 2)',
+                { url: originalRequest.url, method: originalRequest.method },
+              );
+              return Promise.reject(error);
+            }
+
             // Mark that we've tried to refresh for this request
             originalRequest._retry = true;
 
@@ -174,7 +201,12 @@ export class ApiClient {
                 const isCrossOrigin = typeof window !== 'undefined' &&
                                      window.location.hostname === 'localhost';
 
-                if (!isCrossOrigin && this.onUnauthorized) {
+                // Phase 6A.150 (Layer 3): defense-in-depth. The Layer 2 guard
+                // above already prevents anonymous-401s from reaching here,
+                // but if a future code path bypasses it, the hadAuth flag is
+                // checked again on the redirect path. Anonymous users
+                // **never** trigger the unauthorized callback.
+                if (!isCrossOrigin && this.onUnauthorized && hadAuthAtRequestTime) {
                   this.onUnauthorized();
                 }
 
@@ -188,7 +220,11 @@ export class ApiClient {
               const isCrossOrigin = typeof window !== 'undefined' &&
                                    window.location.hostname === 'localhost';
 
-              if (!isCrossOrigin && this.onUnauthorized) {
+              // Phase 6A.150 (Layer 3): same hadAuth gate on the refresh-error
+              // path. Anonymous 401s with no token never reach here (Layer 2
+              // short-circuits earlier), but the check is preserved as a
+              // belt-and-suspenders guard.
+              if (!isCrossOrigin && this.onUnauthorized && hadAuthAtRequestTime) {
                 this.onUnauthorized();
               }
 

@@ -2440,6 +2440,22 @@ export interface SponsorDto {
   paymentCompletedAt?: string | null;
 }
 
+/**
+ * Phase 6A.151 — PATCH /events/{eventId}/sponsors/{sponsorId} request body.
+ * All fields optional; null/undefined = leave unchanged. Server enforces the
+ * state-edit matrix per-field (see Sponsor.UpdateXxx domain methods).
+ */
+export interface UpdateSponsorRequest {
+  name?: string | null;
+  notes?: string | null;
+  organization?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  itemName?: string | null;
+  itemDescription?: string | null;
+  estimatedValue?: number | null;
+}
+
 // Phase 6A.145 Commit 7 — Money sponsor create endpoint now returns both the
 // Stripe checkout URL AND the newly-created Sponsor ID. The FE uses the ID to
 // attach an optional image to the Pending sponsor BEFORE the Stripe redirect.
@@ -2491,6 +2507,33 @@ export interface EventSponsorsResponse {
   eventTitle: string;
   sponsors: SponsorDto[];
   summary: SponsorSummaryDto;
+}
+
+/**
+ * Phase 6A.150 — sanitized public sponsor DTO returned by
+ * GET /api/events/{eventId}/sponsors/public ([AllowAnonymous]).
+ *
+ * Fields are limited to what SponsorsPreviewStrip and SponsorSection
+ * actually display publicly: logo + name + organization + item label.
+ * PII fields (email, phone, notes, amount, estimated value, Stripe fee
+ * detail, internal blob name, etc.) are PHYSICALLY ABSENT from this
+ * interface and from the wire response — the backend handler strips
+ * them at projection time. If a future edit adds a property here, the
+ * backend reflection-asserted PII guard test must be updated too.
+ */
+export interface PublicSponsorDto {
+  id: string;
+  sponsorOrganization?: string | null;
+  sponsorName: string;
+  itemName?: string | null;
+  imageUrl?: string | null;
+  /** "Money" or "Item" — drives the Item-name caption rendering. */
+  sponsorType: string;
+}
+
+export interface PublicEventSponsorsResponse {
+  eventId: string;
+  sponsors: PublicSponsorDto[];
 }
 
 export interface CreateMoneySponsorRequest {

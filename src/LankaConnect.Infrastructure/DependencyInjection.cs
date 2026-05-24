@@ -353,6 +353,10 @@ public static class DependencyInjection
         services.AddScoped<LankaConnect.Shared.Email.Services.ITypedEmailService,
             LankaConnect.Infrastructure.Email.Services.InfrastructureTypedEmailService>();
 
+        // Phase 6A.148.W5.6.B.OBS3 — durable suppression-row writer for D9/D12 webhook paths.
+        services.AddScoped<LankaConnect.Infrastructure.Email.Services.IRefundDispatchAuditService,
+            LankaConnect.Infrastructure.Email.Services.RefundDispatchAuditService>();
+
         // Phase 6A.89: Override IEmailMetrics with DatabaseEmailMetrics for persistence
         // This fixes the data loss issue where metrics disappeared after container restart
         // DatabaseEmailMetrics uses hybrid approach: in-memory cache + periodic DB flush
@@ -508,6 +512,10 @@ public static class DependencyInjection
         // Phase 6A.141: Ticket-scan audit log repository.
         services.AddScoped<LankaConnect.Domain.Events.Repositories.ITicketScanLogRepository,
             LankaConnect.Infrastructure.Data.Repositories.TicketScanLogRepository>();
+
+        // Phase 6A.148: Refund approval workflow repository.
+        services.AddScoped<LankaConnect.Domain.Events.Repositories.IRefundRequestRepository,
+            LankaConnect.Infrastructure.Data.Repositories.RefundRequestRepository>();
 
         // Phase 6A.45: Export services for attendee management
         services.AddScoped<IExcelExportService, LankaConnect.Infrastructure.Services.Export.ExcelExportService>();

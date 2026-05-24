@@ -64,6 +64,23 @@ public static class DependencyInjection
         // Cancellation enhancement: Register add-on refund service
         services.AddScoped<IAddOnRefundService, AddOnRefundService>();
 
+        // Phase 6A.148: Refund approval workflow — execution service dispatches Stripe
+        // AFTER the approve transaction commits (architect F10).
+        services.AddScoped<IRefundExecutionService, RefundExecutionService>();
+
+        // Phase 6A.148.W5.D2: Per-line dispatcher used by RefundExecutionService.
+        // Each call creates its own IServiceScopeFactory scope so per-line saves never
+        // share a DbContext with the parent Registration aggregate — eliminates the
+        // xmin clash that caused the W5.D7 stuck-refund incident. Singleton because
+        // the scope factory is captured once and the dispatcher is stateless.
+        services.AddSingleton<IRefundLineDispatcher, RefundLineDispatcher>();
+
+        // Phase 6A.148.W5.6.A: Handler-side aggregation for the refund completion email.
+        // Sums RefundRequestLineItem.ApprovedAmount across all Refunded lines so the
+        // consolidated email shows the true grand total (operator UAT: $262 was approved
+        // but only $80 displayed because the legacy formula reads Registration columns).
+        services.AddScoped<IRefundTotalCalculator, RefundTotalCalculator>();
+
         // Slice 5 Chunk 2: Two-branch authorization for VenueLayout CRUD endpoints.
         services.AddScoped<ILayoutAuthorizationService, LayoutAuthorizationService>();
 

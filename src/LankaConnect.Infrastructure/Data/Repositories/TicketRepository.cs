@@ -239,6 +239,28 @@ public class TicketRepository : Repository<Ticket>, ITicketRepository
     }
 
     /// <inheritdoc />
+    public async Task<bool> AnyValidatedTicketForRegistrationAsync(
+        Guid registrationId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Untracked existence check — cheap, doesn't load full ticket payloads.
+            return await _context.Tickets
+                .AsNoTracking()
+                .AnyAsync(
+                    t => t.RegistrationId == registrationId && t.ValidatedAt != null,
+                    cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _repoLogger.LogError(ex,
+                "AnyValidatedTicketForRegistrationAsync FAILED: RegistrationId={RegistrationId}, Error={ErrorMessage}",
+                registrationId, ex.Message);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<int> TryMarkScannedAsync(
         Guid ticketId,
         DateTime scannedAtUtc,

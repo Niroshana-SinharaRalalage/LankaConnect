@@ -30,17 +30,178 @@ public class RefundReconciliationService : IRefundReconciliationService
     private readonly IStripePaymentService _stripePaymentService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RefundReconciliationService> _logger;
+    // Phase 6A.148.W5.D6: both required. Previous nullable+default-null pattern hid DI
+    // misconfiguration behind a silent WARN log — operator UAT proved these MUST be wired,
+    // and the prior W5.D7 stuck-Approved refund (RR 624b07c5) sat there for hours undetected
+    // partly because the reconciler couldn't see it without these deps. Non-nullable here
+    // forces the DI container to throw at boot if the registration is missing.
+    private readonly LankaConnect.Domain.Events.Repositories.IRefundRequestRepository _refundRequestRepository;
+    private readonly IRefundExecutionService _refundExecutionService;
 
     public RefundReconciliationService(
         IRegistrationRepository registrationRepository,
         IStripePaymentService stripePaymentService,
         IUnitOfWork unitOfWork,
-        ILogger<RefundReconciliationService> logger)
+        ILogger<RefundReconciliationService> logger,
+        LankaConnect.Domain.Events.Repositories.IRefundRequestRepository refundRequestRepository,
+        IRefundExecutionService refundExecutionService)
     {
         _registrationRepository = registrationRepository;
         _stripePaymentService = stripePaymentService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _refundRequestRepository = refundRequestRepository;
+        _refundExecutionService = refundExecutionService;
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<int>> ReconcileStuckApprovedRefundRequestsAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
+        var olderThanUtc = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
+
+        try
+        {
+            var stuck = await _refundRequestRepository.ListStuckApprovedAsync(
+                olderThanUtc, cancellationToken);
+
+            if (stuck.Count == 0)
+            {
+                _logger.LogDebug(
+                    "[6A.148 RECON] No stuck Approved refund requests older than {Threshold:o}", olderThanUtc);
+                return Result<int>.Success(0);
+            }
+
+            _logger.LogInformation(
+                "[6A.148 RECON] Found {Count} stuck Approved refund requests; re-dispatching",
+                stuck.Count);
+
+            var redispatched = 0;
+            foreach (var req in stuck)
+            {
+                // W5.D6 defensive observability: log when re-dispatch is about to touch a
+                // line that ALREADY has a stripe_refund_id. This indicates either
+                //   (a) Stripe succeeded the FIRST attempt but the DB commit rolled back,
+                //       leaving the partial state behind (W5.D7 root-cause scenario), OR
+                //   (b) a webhook updated stripe_refund_id but the line.status didn't
+                //       advance for some reason.
+                // In both cases the W5.D1 stable IdempotencyKey makes the re-dispatch safe
+                // (Stripe returns the prior refund, no duplicate charge), but the situation
+                // is unusual and operator-visible — we want it surfaced in logs.
+                var linesWithExistingRefundId = req.LineItems
+                    .Where(l => !string.IsNullOrWhiteSpace(l.StripeRefundId))
+                    .ToList();
+                if (linesWithExistingRefundId.Count > 0)
+                {
+                    _logger.LogWarning(
+                        "[6A.148.W5.D6 RECON] Stuck RrId={RrId} has {Count} line(s) with existing " +
+                        "stripe_refund_id (likely prior dispatch's Stripe succeeded but DB " +
+                        "transaction rolled back). W5.D1 idempotency key makes re-dispatch " +
+                        "safe — Stripe returns prior refund, no duplicate charge. Line IDs: [{LineIds}]",
+                        req.Id, linesWithExistingRefundId.Count,
+                        string.Join(",", linesWithExistingRefundId.Select(l => l.Id.ToString("N"))));
+                }
+
+                try
+                {
+                    var dispatchResult = await _refundExecutionService.DispatchAsync(
+                        req.Id, cancellationToken);
+                    if (dispatchResult.IsSuccess)
+                        redispatched++;
+                    else
+                        _logger.LogWarning(
+                            "[6A.148 RECON] Re-dispatch failed for RrId={RrId} Error={Error}",
+                            req.Id, dispatchResult.Error);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "[6A.148 RECON] Re-dispatch EXCEPTION for RrId={RrId}", req.Id);
+                }
+            }
+
+            _logger.LogInformation(
+                "[6A.148 RECON] Stuck-Approved pass COMPLETE: re-dispatched {Count} of {Total}",
+                redispatched, stuck.Count);
+            return Result<int>.Success(redispatched);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148 RECON] ReconcileStuckApprovedRefundRequestsAsync EXCEPTION");
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<int>> ReconcileStuckCancelledWithRefundedTicketAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveAgeMinutes = Math.Max(0, ageThresholdMinutes ?? DefaultAgeThresholdMinutes);
+        var processedBefore = DateTime.UtcNow.AddMinutes(-effectiveAgeMinutes);
+
+        try
+        {
+            var stuck = await _registrationRepository
+                .GetStuckCancelledWithRefundedTicketAsync(
+                    processedBefore, DefaultBatchSize, cancellationToken);
+
+            if (stuck.Count == 0)
+            {
+                _logger.LogDebug(
+                    "[6A.148.W5.5.D6.5 RECON] No stuck Cancelled-with-refunded-ticket registrations older than {Threshold:o}",
+                    processedBefore);
+                return Result<int>.Success(0);
+            }
+
+            _logger.LogInformation(
+                "[6A.148.W5.5.D6.5 RECON] Found {Count} stuck Cancelled-with-refunded-ticket registrations; healing",
+                stuck.Count);
+
+            var healed = 0;
+            foreach (var (registration, stripeRefundId) in stuck)
+            {
+                try
+                {
+                    var result = registration.CompleteRefundFromCancelled(stripeRefundId);
+                    if (result.IsFailure)
+                    {
+                        _logger.LogWarning(
+                            "[6A.148.W5.5.D6.5 RECON] CompleteRefundFromCancelled rejected for RegId={RegId} (already-transitioned race or guard hit): {Error}",
+                            registration.Id, result.Error);
+                        continue;
+                    }
+
+                    _registrationRepository.Update(registration);
+                    await _unitOfWork.CommitAsync(cancellationToken);
+                    healed++;
+
+                    _logger.LogInformation(
+                        "[6A.148.W5.5.D6.5 RECON] Healed stuck Cancelled→Refunded RegId={RegId} StripeRefundId={Sri}",
+                        registration.Id, stripeRefundId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "[6A.148.W5.5.D6.5 RECON] EXCEPTION healing RegId={RegId}; will retry next pass",
+                        registration.Id);
+                }
+            }
+
+            _logger.LogInformation(
+                "[6A.148.W5.5.D6.5 RECON] Pass COMPLETE: healed {Count} of {Total}",
+                healed, stuck.Count);
+            return Result<int>.Success(healed);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148.W5.5.D6.5 RECON] ReconcileStuckCancelledWithRefundedTicketAsync EXCEPTION");
+            throw;
+        }
     }
 
     public async Task<Result<RefundReconciliationResult>> ReconcileStuckRefundsAsync(

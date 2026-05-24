@@ -16,23 +16,30 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// Follows DonationWebhookHandler pattern.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (sponsor stays Pending; expiry cleanup handles it).
 /// Phase 6A.137B2: Added refund email notification via fire-and-forget.
+/// Phase 6A.148.D9: Suppresses the per-Sponsor "Sponsorship Refund Confirmation" email when
+/// the refund originated from the new approval workflow (D8's consolidated decision email
+/// already covered the attendee). Detection via <c>IRefundRequestRepository.ExistsWorkflowLineItemForSponsorAsync</c>;
+/// fail-OPEN on lookup exception so a transient DB error never silences a legitimate legacy email.
 /// </summary>
 public class SponsorWebhookHandler : ISponsorWebhookHandler
 {
     private readonly ISponsorRepository _sponsorRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IRefundRequestRepository _refundRequestRepository;
     private readonly ILogger<SponsorWebhookHandler> _logger;
 
     public SponsorWebhookHandler(
         ISponsorRepository sponsorRepository,
         IUnitOfWork unitOfWork,
         IServiceScopeFactory scopeFactory,
+        IRefundRequestRepository refundRequestRepository,
         ILogger<SponsorWebhookHandler> logger)
     {
         _sponsorRepository = sponsorRepository;
         _unitOfWork = unitOfWork;
         _scopeFactory = scopeFactory;
+        _refundRequestRepository = refundRequestRepository;
         _logger = logger;
     }
 
@@ -209,6 +216,75 @@ public class SponsorWebhookHandler : ISponsorWebhookHandler
             _logger.LogInformation(
                 "[Phase 6A.136E] [Webhook-Sponsor-Refund-SUCCESS] Sponsor marked as refunded - CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
                 correlationId, sponsor.Id, refundId);
+
+            // Phase 6A.148.D9 (+ W5.6.B Phase 3 refinement): Suppress the per-Sponsor
+            // legacy email ONLY when (a) this refund came through the new approval workflow
+            // AND (b) the sponsor's email address matches the attendee's — meaning the
+            // sponsor IS the attendee, so the consolidated D8 decision email already
+            // notified them. When (b) is false (third-party money sponsor with a different
+            // email), the standalone email is the ONLY notification that third party will
+            // receive — we MUST send it (operator UAT bug 1).
+            //
+            // Fail-OPEN: any lookup throw defaults to sending the legacy email so a
+            // transient DB issue never silences a legitimate notification.
+            string? attendeeEmail = null;
+            try
+            {
+                attendeeEmail = await _refundRequestRepository
+                    .GetWorkflowOwnedAttendeeEmailForSponsorAsync(sponsor.Id, refundId, ct);
+            }
+            catch (Exception lookupEx)
+            {
+                _logger.LogWarning(lookupEx,
+                    "[Phase 6A.148.D9] Workflow-owned attendee-email lookup threw — defaulting to send standalone sponsor email. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                    correlationId, sponsor.Id, refundId);
+            }
+
+            var isWorkflowOwnedRefund = attendeeEmail is not null;
+            var sponsorEmailIsAttendee = isWorkflowOwnedRefund
+                && string.Equals(attendeeEmail, sponsor.SponsorEmail, StringComparison.OrdinalIgnoreCase);
+
+            if (isWorkflowOwnedRefund && !sponsorEmailIsAttendee)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.148.W5.6.B Phase 3] Sponsor refund — workflow-owned but sponsor email differs from attendee email; standalone email WILL fire. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}, SponsorEmail: {SponsorEmail}, AttendeeEmail: {AttendeeEmail}",
+                    correlationId, sponsor.Id, refundId, sponsor.SponsorEmail, attendeeEmail);
+            }
+
+            if (sponsorEmailIsAttendee)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.148.D9] Sponsor refund standalone email SUPPRESSED — workflow-owned. CorrelationId: {CorrelationId}, SponsorId: {SponsorId}, RefundId: {RefundId}",
+                    correlationId, sponsor.Id, refundId);
+
+                // Phase 6A.148.W5.6.B.OBS3 — durable audit row so operators can
+                // distinguish "deliberately suppressed" from "send failed silently"
+                // long after container stdout retention expires.
+                try
+                {
+                    using var auditScope = _scopeFactory.CreateScope();
+                    var auditService = auditScope.ServiceProvider
+                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                    await auditService.WriteSuppressionAsync(
+                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.SponsorRefund,
+                        recipientEmail: sponsor.SponsorEmail,
+                        recipientName: sponsor.SponsorName,
+                        suppressionReason: "D9: workflow-owned refund — covered by consolidated decision email",
+                        correlationId: correlationId,
+                        refundRequestId: null,
+                        entityType: "Sponsor",
+                        entityId: sponsor.Id,
+                        cancellationToken: ct);
+                }
+                catch (Exception auditEx)
+                {
+                    _logger.LogWarning(auditEx,
+                        "[Phase 6A.148.W5.6.B.OBS3] Failed to write sponsor suppression audit row — continuing. CorrelationId: {CorrelationId}",
+                        correlationId);
+                }
+
+                return;
+            }
 
             // Phase 6A.137B2: Fire-and-forget refund notification email
             var capturedSponsorName = sponsor.SponsorName;

@@ -1,5 +1,6 @@
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -35,11 +36,13 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
         var eventId = domainEvent.EventId;
         var registrationId = domainEvent.RegistrationId;
         var userId = domainEvent.UserId;
-        var refundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+        // Phase 6A.148.W5.6.A — legacy fallback; the WhatsApp Task.Run below will replace
+        // this with the workflow-aggregated total via IRefundTotalCalculator when applicable.
+        var legacyFallbackTotal = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
 
         _logger.LogInformation(
-            "[Phase 7A] WhatsApp RefundCompleted START: EventId={EventId}, RegistrationId={RegistrationId}, Amount={Amount}",
-            eventId, registrationId, refundAmount);
+            "[Phase 7A] WhatsApp RefundCompleted START: EventId={EventId}, RegistrationId={RegistrationId}, LegacyAmount={Amount}",
+            eventId, registrationId, legacyFallbackTotal);
 
         if (!userId.HasValue)
         {
@@ -57,6 +60,11 @@ public class RefundCompletedWhatsAppHandler : INotificationHandler<DomainEventNo
                 var whatsAppService = scope.ServiceProvider.GetRequiredService<IWhatsAppService>();
                 var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
                 var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
+                // Phase 6A.148.W5.6.A — workflow-aware total (parity with email handler).
+                var totalCalculator = scope.ServiceProvider.GetRequiredService<IRefundTotalCalculator>();
+
+                var refundAmount = await totalCalculator.ComputeAttendeeFacingTotalAsync(
+                    domainEvent.StripeRefundId, legacyFallbackTotal, CancellationToken.None);
 
                 var user = await userRepository.GetByIdAsync(capturedUserId, CancellationToken.None);
                 if (user == null)

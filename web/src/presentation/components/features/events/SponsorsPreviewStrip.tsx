@@ -1,9 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
 import { Handshake, ChevronRight } from 'lucide-react';
-import { useEventSponsors } from '@/presentation/hooks/useSponsors';
-import type { SponsorConfigurationDto, SponsorDto } from '@/infrastructure/api/types/events.types';
+// Phase 6A.150 — switched from useEventSponsors (auth-required, returns full
+// PII) to usePublicEventSponsors. The new public endpoint is [AllowAnonymous]
+// and returns a sanitized DTO so anonymous visitors don't trigger the
+// auth-redirect chain. Backend already filters to sponsors-with-images +
+// confirmed status and pre-sorts by contribution magnitude.
+import { usePublicEventSponsors } from '@/presentation/hooks/useSponsors';
+import type { SponsorConfigurationDto, PublicSponsorDto } from '@/infrastructure/api/types/events.types';
 
 interface SponsorsPreviewStripProps {
   eventId: string;
@@ -11,43 +15,50 @@ interface SponsorsPreviewStripProps {
 }
 
 /**
- * Phase 6A.145 Commit 5 — public-page preview strip for sponsors with images.
+ * Phase 6A.145 Commit 5 — public-page preview strip for confirmed sponsors.
  * Renders right AFTER the AddOnsPreviewStrip (per user's R2 layout request).
  *
  * Architectural decisions (locked):
- * - Sponsors are shown ONLY when they have an imageUrl AND are in a confirmed state
- *   (Completed for money, RecordedItem for item). This is the user's R2 intent —
- *   sponsors who paid past the threshold get their logo displayed.
- * - Sort: descending by amount/estValue (largest contributors first). Item sponsors
- *   without estValue sort last by createdAt desc.
+ * - Sponsors are shown when they're in a confirmed state (Money/Completed or
+ *   Item/RecordedItem) regardless of whether they uploaded a logo.
+ * - Missing-logo sponsors render with an initials placeholder card so the
+ *   design stays consistent.
+ * - Sort: descending by amount/estValue (largest contributors first).
  * - Click → scrolls to the full `<SponsorSection>` at the bottom (id="sponsors").
  * - Section hidden when no eligible sponsors.
- * - Endpoint requires organizer auth (`GET /sponsors`) so this strip only renders
- *   data for users who can already see the full management view. For anonymous
- *   visitors, the query 403s and we hide the strip gracefully (architect H-1
- *   "independent hide"). A future commit can add a public sponsors-with-images
- *   endpoint if anonymous visibility is needed.
+ *
+ * **Phase 6A.150 update**: this strip now consumes the new
+ * `[AllowAnonymous] GET /api/events/{id}/sponsors/public` endpoint via
+ * `usePublicEventSponsors`. The endpoint pre-filters to confirmed sponsors
+ * AND pre-sorts by contribution magnitude server-side, so the client-side
+ * filter + sort that previously lived here is gone — the response already
+ * contains exactly the rows we want, in the order we want. The full-PII
+ * variant (useEventSponsors → /sponsors) remains for the organizer-only
+ * management view. Fixes the production redirect-to-login bug where
+ * anonymous visitors hit the [Authorize] endpoint, got 401, and the
+ * api-client + AuthProvider chain pushed them to /login.
+ *
+ * **Phase 6A.148.W5.D10 update**: ImageUrl filter removed. Operator UAT
+ * surfaced that bundled-at-registration sponsorships (which often skip the
+ * optional image upload) were silently hidden. Now ALL confirmed sponsors
+ * appear; missing-logo entries render with an initials placeholder.
  */
+
+/**
+ * Render initials for the sponsor — first letter of organisation, or sponsor name.
+ * Falls back to "?" if both are empty (shouldn't happen, but defensive).
+ */
+function getSponsorInitials(s: PublicSponsorDto): string {
+  const source = s.sponsorOrganization || s.sponsorName || '';
+  const words = source.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
 export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreviewStripProps) {
   const enabled = sponsorConfig?.isEnabled === true;
-  const { data: sponsorsResponse } = useEventSponsors(eventId, enabled);
-
-  const eligibleSponsors = useMemo(() => {
-    const sponsors = sponsorsResponse?.sponsors ?? [];
-    return sponsors
-      .filter((s: SponsorDto) => {
-        if (!s.imageUrl) return false;
-        if (s.sponsorType === 'Money') return s.status === 'Completed';
-        if (s.sponsorType === 'Item') return s.status === 'RecordedItem';
-        return false;
-      })
-      .sort((a: SponsorDto, b: SponsorDto) => {
-        const aValue = a.amount ?? a.estimatedValue ?? 0;
-        const bValue = b.amount ?? b.estimatedValue ?? 0;
-        if (bValue !== aValue) return bValue - aValue;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
-  }, [sponsorsResponse]);
+  const { data: sponsorsResponse } = usePublicEventSponsors(eventId, enabled);
+  const eligibleSponsors = sponsorsResponse?.sponsors ?? [];
 
   if (!enabled || eligibleSponsors.length === 0) return null;
 
@@ -80,23 +91,36 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
         role="region"
         aria-label="Sponsors scroller"
       >
-        {eligibleSponsors.map((s: SponsorDto) => (
+        {eligibleSponsors.map((s: PublicSponsorDto) => (
           <button
             key={s.id}
             type="button"
             onClick={handleCardClick}
             data-testid={`sponsor-preview-card-${s.id}`}
-            className="flex-none w-56 snap-start rounded-lg border border-neutral-200 bg-white text-left transition-shadow hover:shadow-md hover:border-indigo-300"
+            className="flex-none w-64 snap-start rounded-lg border border-neutral-200 bg-white text-left transition-shadow hover:shadow-md hover:border-indigo-300"
             aria-label={`Sponsor: ${s.sponsorOrganization || s.sponsorName}`}
           >
-            <div className="aspect-[16/9] w-full overflow-hidden rounded-t-lg bg-neutral-50 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={s.imageUrl!}
-                alt={s.sponsorOrganization || s.sponsorName}
-                loading="lazy"
-                className="h-full w-full object-contain p-2"
-              />
+            <div className="aspect-[4/3] w-full overflow-hidden rounded-t-lg bg-neutral-50 flex items-center justify-center">
+              {s.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={s.imageUrl}
+                  alt={s.sponsorOrganization || s.sponsorName}
+                  loading="lazy"
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                // W5.D10 placeholder for sponsors without an uploaded logo —
+                // initials on indigo gradient keep the strip visually consistent.
+                <div
+                  className="h-full w-full flex items-center justify-center bg-gradient-to-br from-indigo-100 to-amber-100"
+                  aria-hidden="true"
+                >
+                  <span className="text-2xl font-semibold text-indigo-700">
+                    {getSponsorInitials(s)}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="p-3">
               <p className="font-medium text-sm text-neutral-900 line-clamp-1">

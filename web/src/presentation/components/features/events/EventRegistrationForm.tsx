@@ -108,6 +108,21 @@ export function EventRegistrationForm({
   const [sponsorAmount, setSponsorAmount] = useState<number | null>(null);
   const [sponsorOrganization, setSponsorOrganization] = useState<string | null>(null);
   const [sponsorNotes, setSponsorNotes] = useState<string | null>(null);
+  // Phase 6A.151 C7 — pre-staged sponsor logo blob (set by SponsorOptionInForm
+  // after a successful POST /sponsors/staging-image). Both fields populated
+  // together or both null. Threaded into the registration payload at line 419.
+  const [sponsorStagingBlobName, setSponsorStagingBlobName] = useState<string | null>(null);
+  const [sponsorStagingBlobUrl, setSponsorStagingBlobUrl] = useState<string | null>(null);
+  // W5.D10.b — gate submit while the sponsor logo is uploading so the user
+  // can't race-submit before the staging blob URL is captured (operator UAT:
+  // sponsor 1763328f on 2026-05-21 was created without an image because the
+  // form posted before the in-flight upload had returned the blob URL).
+  const [sponsorImageUploading, setSponsorImageUploading] = useState(false);
+  // W5.D10.c — optional sponsor contact-detail overrides (parity with standalone
+  // /sponsors form). Blank = backend uses registering user's identity.
+  const [sponsorContactName, setSponsorContactName] = useState<string | null>(null);
+  const [sponsorContactEmail, setSponsorContactEmail] = useState<string | null>(null);
+  const [sponsorContactPhone, setSponsorContactPhone] = useState<string | null>(null);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -331,6 +346,14 @@ export function EventRegistrationForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // W5.D10.b defensive guard — even if the submit button's disabled state
+    // was bypassed, refuse to post while a sponsor logo upload is in flight.
+    // Submitting now would silently lose the user's logo selection (the
+    // operator-UAT root cause of sponsor 1763328f having image_url=NULL).
+    if (sponsorImageUploading) {
+      return;
+    }
+
     // Mark all fields as touched for validation
     setTouched({
       address: true,
@@ -420,6 +443,18 @@ export function EventRegistrationForm({
           sponsorAmount,
           sponsorOrganization: sponsorOrganization || undefined,
           sponsorNotes: sponsorNotes || undefined,
+          // Phase 6A.151 C7: pre-staged sponsor logo. Backend Sponsor.SetImage
+          // is invoked in-tx with Sponsor row create. Both fields together or
+          // both omitted; partial = sponsor row created without image.
+          ...(sponsorStagingBlobName && sponsorStagingBlobUrl && {
+            sponsorStagingBlobName,
+            sponsorStagingBlobUrl,
+          }),
+          // W5.D10.c: optional sponsor-contact overrides — backend falls back
+          // to the registering user's identity when these are omitted.
+          ...(sponsorContactName && { sponsorName: sponsorContactName }),
+          ...(sponsorContactEmail && { sponsorEmail: sponsorContactEmail }),
+          ...(sponsorContactPhone && { sponsorPhone: sponsorContactPhone }),
         }),
       };
 
@@ -841,11 +876,22 @@ export function EventRegistrationForm({
       {/* Phase 6A.137E: Optional money sponsorship during registration */}
       {sponsorConfig?.isEnabled === true && sponsorConfig?.acceptMoneySponsors === true && (
         <SponsorOptionInForm
+          eventId={eventId}
           sponsorConfig={sponsorConfig}
           onSponsorChange={(amount, org, notes) => {
             setSponsorAmount(amount);
             setSponsorOrganization(org);
             setSponsorNotes(notes);
+          }}
+          onStagingBlobChange={(blobName, blobUrl) => {
+            setSponsorStagingBlobName(blobName);
+            setSponsorStagingBlobUrl(blobUrl);
+          }}
+          onUploadingChange={setSponsorImageUploading}
+          onContactChange={(name, email, phone) => {
+            setSponsorContactName(name);
+            setSponsorContactEmail(email);
+            setSponsorContactPhone(phone);
           }}
         />
       )}
@@ -965,10 +1011,11 @@ export function EventRegistrationForm({
         </div>
       )}
 
-      {/* Submit Button */}
+      {/* Submit Button — W5.D10.b: gated on sponsor image upload-in-flight so
+          the user can't race-submit before the staging blob URL is captured. */}
       <Button
         type="submit"
-        disabled={isProcessing || !isFormValid}
+        disabled={isProcessing || !isFormValid || sponsorImageUploading}
         className="w-full text-lg py-6"
         style={{ background: '#FF7900' }}
       >
@@ -976,6 +1023,11 @@ export function EventRegistrationForm({
           <>
             <Clock className="h-5 w-5 mr-2 animate-spin" />
             Processing...
+          </>
+        ) : sponsorImageUploading ? (
+          <>
+            <Clock className="h-5 w-5 mr-2 animate-spin" />
+            Uploading sponsor logo&hellip;
           </>
         ) : isFree ? (
           'Register for Free'

@@ -75,6 +75,30 @@ try
     builder.Services.AddCustomAuthorization();
 
     // Add API documentation with JWT support
+    // Phase 6A.151 — built-in .NET 8 RateLimiter for the public sponsor
+    // staging-blob upload endpoint (POST /sponsors/staging-image). 10/hour per
+    // remote IP. Architect H1: this endpoint is [AllowAnonymous] (registration
+    // flow is anonymous) so without a per-IP cap it's a free DoS surface.
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddPolicy("sponsor-staging-upload", httpContext =>
+        {
+            var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+                     ?? httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',').FirstOrDefault()?.Trim()
+                     ?? "anonymous";
+            return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: ip,
+                factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                });
+        });
+    });
+
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
@@ -405,6 +429,11 @@ try
 
     // Authentication & Authorization
     app.UseCustomAuthentication();
+
+    // Phase 6A.151 — RateLimiter must come after auth (so it can read the actor
+    // when policies need it) but before MapControllers so [EnableRateLimiting]
+    // attributes are honored.
+    app.UseRateLimiter();
 
     // Map controllers AFTER authentication middleware
     app.MapControllers();

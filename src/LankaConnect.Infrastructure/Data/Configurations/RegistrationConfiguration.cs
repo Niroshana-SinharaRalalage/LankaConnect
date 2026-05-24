@@ -274,7 +274,9 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
         // Default value was overriding domain logic (Preliminary → Confirmed)
         builder.Property(r => r.Status)
             .HasConversion<string>()
-            .HasMaxLength(20)
+            // Phase 6A.148: bumped from 20 to 32 to fit "PendingRefundApproval" (21 chars).
+            // Postgres column widening is a no-op rewrite; existing rows are unaffected.
+            .HasMaxLength(32)
             .IsRequired();
 
         // Phase 6A.81 FIX: Configure PaymentStatus without default value
@@ -326,6 +328,19 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 #pragma warning disable CS0618 // Type or member is obsolete
         builder.UseXminAsConcurrencyToken();
 #pragma warning restore CS0618
+
+        // Phase 6A.148: refund_requests navigation. Private backing field on the aggregate;
+        // FK ON DELETE RESTRICT so a registration with any refund request (even rejected/
+        // withdrawn — kept for audit) cannot be hard-deleted. RefundRequestConfiguration
+        // sets the FK column + concurrency token.
+        builder.HasMany(r => r.RefundRequests)
+            .WithOne()
+            .HasForeignKey("RegistrationId")
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Navigation(r => r.RefundRequests)
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .HasField("_refundRequests");
 
         // Configure indexes
         builder.HasIndex(r => r.EventId)

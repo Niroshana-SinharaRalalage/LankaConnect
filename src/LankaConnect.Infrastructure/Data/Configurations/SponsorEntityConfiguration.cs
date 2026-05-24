@@ -193,6 +193,21 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Phase 6A.151 — human-edit audit columns. Distinct from UpdatedAt
+        // which also fires on lifecycle transitions (CompletePayment etc.).
+        // Both null until the first content edit (UpdateContactFields /
+        // UpdateAmount / UpdateItemDetails / UpdateName); set together by
+        // Sponsor.MarkEdited().
+        builder.Property(s => s.LastEditedAt)
+            .HasColumnName("last_edited_at")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
+        builder.Property(s => s.LastEditedBy)
+            .HasColumnName("last_edited_by")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
         // Indexes
         builder.HasIndex(s => s.EventId)
             .HasDatabaseName("ix_sponsors_event_id");

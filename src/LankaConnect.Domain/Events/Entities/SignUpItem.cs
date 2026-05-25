@@ -298,7 +298,9 @@ public class SignUpItem : BaseEntity
             PhysicalQuantity: commitQuantity,
             SlotsClaimed: null,
             DateTime.UtcNow,
-            Kind: kind));
+            Kind: kind,
+            ContactEmail: contactEmail,
+            ContactName: contactName));
 
         return Result.Success();
     }
@@ -354,7 +356,9 @@ public class SignUpItem : BaseEntity
             PhysicalQuantity: null,
             SlotsClaimed: slotsClaimed,
             DateTime.UtcNow,
-            Kind: kind));
+            Kind: kind,
+            ContactEmail: contactEmail,
+            ContactName: contactName));
 
         return Result.Success();
     }

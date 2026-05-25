@@ -230,6 +230,15 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     /// <summary>
     /// Issue #36: Resolves EventStatusFilter to an array of EventStatus values.
     /// Maps user-friendly filter groups to actual backend statuses.
+    ///
+    /// Phase 6A.152: <see cref="EventStatusFilter.Active"/> and
+    /// <see cref="EventStatusFilter.Inactive"/> no longer resolve to a status
+    /// array — they bucket by <c>StartDate</c> relative to <c>now</c> instead
+    /// (handled by <see cref="ApplyDateBasedBucketFilter"/>). Returning
+    /// <c>null</c> for those two values means "no status-array filter at this
+    /// stage — date-based bucket logic will run in
+    /// <see cref="ApplyInMemoryFilters"/> (and a pre-filter in
+    /// <see cref="GetFilteredEventsAsync"/>) ".
     /// </summary>
     private static EventStatus[]? ResolveStatusFilter(EventStatusFilter? statusFilter, bool includeAllStatuses)
     {
@@ -238,17 +247,9 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
 
         return statusFilter.Value switch
         {
-            EventStatusFilter.Active => new[]
-            {
-                EventStatus.Published,
-                EventStatus.Active
-            },
-            EventStatusFilter.Inactive => new[]
-            {
-                EventStatus.Completed,
-                EventStatus.Archived,
-                EventStatus.Postponed
-            },
+            // Phase 6A.152: Active + Inactive are now date-based — see ApplyDateBasedBucketFilter.
+            EventStatusFilter.Active => null,
+            EventStatusFilter.Inactive => null,
             EventStatusFilter.Cancelled => new[]
             {
                 EventStatus.Cancelled
@@ -258,6 +259,60 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
                 : Array.Empty<EventStatus>(), // Security: Unpublished requires IncludeAllStatuses
             EventStatusFilter.All => null, // null means no status filter (handled separately)
             _ => null
+        };
+    }
+
+    /// <summary>
+    /// Phase 6A.152: Decides whether <paramref name="statusFilter"/> is a
+    /// date-based bucket (Active/Inactive) that requires
+    /// <see cref="ApplyDateBasedBucketFilter"/> rather than the legacy
+    /// status-array filter.
+    /// </summary>
+    private static bool IsDateBasedBucketFilter(EventStatusFilter? statusFilter) =>
+        statusFilter == EventStatusFilter.Active || statusFilter == EventStatusFilter.Inactive;
+
+    /// <summary>
+    /// Phase 6A.152: Splits events into the Upcoming (Active) and Completed
+    /// (Inactive) buckets by <c>StartDate</c> relative to <c>now</c>, not by
+    /// <see cref="EventStatus"/>.
+    ///
+    /// <para>Rules (locked-in with product owner 2026-05-24):</para>
+    /// <list type="bullet">
+    ///   <item><description>Always exclude <see cref="EventStatus.Cancelled"/>,
+    ///         <see cref="EventStatus.Draft"/>, <see cref="EventStatus.UnderReview"/>
+    ///         from both public buckets.</description></item>
+    ///   <item><description><see cref="EventStatusFilter.Active"/> (Upcoming):
+    ///         <c>StartDate IS NULL</c> (TBD) <c>OR StartDate &gt;= now</c>.</description></item>
+    ///   <item><description><see cref="EventStatusFilter.Inactive"/> (Completed):
+    ///         <c>StartDate.HasValue AND StartDate &lt; now</c>.</description></item>
+    /// </list>
+    ///
+    /// <para>Replaces the status-array semantics from 6A.149. Motivation:
+    /// events do not reliably auto-transition <c>Published → Completed</c>
+    /// (Hangfire's <c>EventStatusUpdateJob</c> only handles the two-hop
+    /// <c>Published → Active → Completed</c> path; events that miss the
+    /// <c>Active</c> hop strand at <c>Published</c> forever). The previous
+    /// status-based split therefore hid past events from the public listing
+    /// entirely. Bucketing by date is correct by construction.</para>
+    /// </summary>
+    private static IEnumerable<Event> ApplyDateBasedBucketFilter(
+        IEnumerable<Event> events,
+        EventStatusFilter bucket,
+        DateTime now)
+    {
+        // Both buckets share the public-visibility exclusions.
+        var publiclyVisible = events.Where(e =>
+            e.Status != EventStatus.Cancelled
+            && e.Status != EventStatus.Draft
+            && e.Status != EventStatus.UnderReview);
+
+        return bucket switch
+        {
+            EventStatusFilter.Active => publiclyVisible.Where(e =>
+                !e.StartDate.HasValue || e.StartDate.Value >= now),
+            EventStatusFilter.Inactive => publiclyVisible.Where(e =>
+                e.StartDate.HasValue && e.StartDate.Value < now),
+            _ => events
         };
     }
 
@@ -275,6 +330,24 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
         // Issue #36: StatusFilter takes precedence over Status when provided
         if (request.StatusFilter.HasValue)
         {
+            // Phase 6A.152: Active/Inactive buckets are date-based, not status-based.
+            // Delegate to ApplyDateBasedBucketFilter; the legacy status-array path
+            // below only handles Cancelled / Unpublished / All.
+            if (IsDateBasedBucketFilter(request.StatusFilter))
+            {
+                var allEventsForBucket = await _eventRepository.GetAllAsync(cancellationToken);
+                var bucketed = ApplyDateBasedBucketFilter(
+                    allEventsForBucket,
+                    request.StatusFilter!.Value,
+                    DateTime.UtcNow).ToList();
+
+                _logger.LogDebug(
+                    "GetFilteredEventsAsync: Date-based bucket filter applied - Bucket={Bucket}, BeforeFilter={BeforeFilter}, AfterFilter={AfterFilter}",
+                    request.StatusFilter.Value, allEventsForBucket.Count, bucketed.Count);
+
+                return bucketed;
+            }
+
             var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
 
             _logger.LogDebug(
@@ -686,13 +759,32 @@ public class GetEventsQueryHandler : IQueryHandler<GetEventsQuery, IReadOnlyList
     {
         var filteredEvents = events.AsEnumerable();
 
-        // Issue #66: Apply status filter for ALL code paths (search + traditional).
-        // When SearchAsync is used, the status filter was previously skipped entirely.
-        // null = no filter (EventStatusFilter.All), empty array = match nothing (unauthorized Unpublished).
-        var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
-        if (resolvedStatuses != null)
+        // Phase 6A.152: Active/Inactive buckets are date-based. Same rule used by
+        // GetFilteredEventsAsync — re-applied here as defense-in-depth on the
+        // SearchAsync path (which returns its own pre-filtered list independent
+        // of GetFilteredEventsAsync).
+        if (IsDateBasedBucketFilter(request.StatusFilter))
         {
-            filteredEvents = filteredEvents.Where(e => resolvedStatuses.Contains(e.Status));
+            var beforeBucket = filteredEvents.Count();
+            filteredEvents = ApplyDateBasedBucketFilter(
+                filteredEvents,
+                request.StatusFilter!.Value,
+                DateTime.UtcNow);
+
+            _logger.LogDebug(
+                "ApplyInMemoryFilters: Date-based bucket filter applied - Bucket={Bucket}, BeforeBucketFilter={BeforeBucketFilter}",
+                request.StatusFilter.Value, beforeBucket);
+        }
+        else
+        {
+            // Issue #66: Apply status filter for ALL code paths (search + traditional).
+            // When SearchAsync is used, the status filter was previously skipped entirely.
+            // null = no filter (EventStatusFilter.All), empty array = match nothing (unauthorized Unpublished).
+            var resolvedStatuses = ResolveStatusFilter(request.StatusFilter, request.IncludeAllStatuses);
+            if (resolvedStatuses != null)
+            {
+                filteredEvents = filteredEvents.Where(e => resolvedStatuses.Contains(e.Status));
+            }
         }
 
         if (request.Category.HasValue)

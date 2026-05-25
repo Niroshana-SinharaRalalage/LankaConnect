@@ -75,6 +75,7 @@ public class GetEventFormDetailQueryHandler : IQueryHandler<GetEventFormDetailQu
                     ResponseCount = responseCount,
                     CreatedAt = form.CreatedAt,
                     UpdatedAt = form.UpdatedAt,
+                    AllowAttendeesToViewResponses = form.AllowAttendeesToViewResponses,  // Phase 6A.146
                     Questions = form.Questions
                         .OrderBy(q => q.SortOrder)
                         .Select(q => new FormQuestionDto

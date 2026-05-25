@@ -4,16 +4,21 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LankaEventsHeader } from '@/presentation/components/layout/LankaEventsHeader';
 import Footer from '@/presentation/components/layout/Footer';
-import { Card, CardHeader, CardTitle, CardContent } from '@/presentation/components/ui/Card';
+import { Card, CardContent } from '@/presentation/components/ui/Card';
 import { Badge } from '@/presentation/components/ui/Badge';
 import { Button } from '@/presentation/components/ui/Button';
 import { TreeDropdown, type TreeNode } from '@/presentation/components/ui/TreeDropdown';
+// Phase 6A.149: per-section filters live inside a CollapsibleSection (defaultOpen={false}).
+import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Calendar, MapPin, Users, DollarSign, Filter, Plus } from 'lucide-react';
 import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
-import { EventCategory, EventDto, EventPaymentMode, EventStatusFilter, EventStatusFilterLabels } from '@/infrastructure/api/types/events.types';
+// Phase 6A.152: EventStatus import removed. The Completed section is now
+// date-based on the backend (StartDate < now), so the client no longer needs
+// to filter by Status. EventStatusFilterLabels was already dropped in 6A.149.
+import { EventCategory, EventDto, EventPaymentMode, EventStatusFilter } from '@/infrastructure/api/types/events.types';
 import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
@@ -54,65 +59,92 @@ export default function EventsPage() {
   // Phase 6A.47: Fetch EventCategory reference data from API
   const { data: categories } = useEventCategories();
 
-  // Filter states
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | undefined>(undefined);
-  const [selectedMetroIds, setSelectedMetroIds] = useState<string[]>([]);
-  const [selectedState, setSelectedState] = useState<string | undefined>(undefined);
-  const [dateRangeOption, setDateRangeOption] = useState<DateRangeOption>('upcoming');
-  const [searchInput, setSearchInput] = useState<string>(''); // Phase 6A.58: Immediate search input (local state)
-  // Issue #36: Status filter state - defaults to Active Events for better UX
-  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>(EventStatusFilter.Active);
+  // Phase 6A.149: Per-section filter state. Upcoming and Completed each maintain
+  // their OWN search / category / location / date so a search inside the
+  // Completed section doesn't disturb the Upcoming view (and vice versa). Date
+  // is only meaningful for Upcoming — Completed is implicitly past-only so the
+  // Completed filter card omits the Date dropdown.
+  const [upcomingSearchInput, setUpcomingSearchInput] = useState<string>('');
+  const [upcomingCategory, setUpcomingCategory] = useState<EventCategory | undefined>(undefined);
+  const [upcomingMetroIds, setUpcomingMetroIds] = useState<string[]>([]);
+  const [upcomingDateRangeOption, setUpcomingDateRangeOption] = useState<DateRangeOption>('upcoming');
 
-  // Phase 6A.72: Debounce search term to avoid excessive API calls
-  // PERFORMANCE FIX: Use 500ms debounce for smoother typing experience (was 300ms)
-  const debouncedSearchTerm = useDebounce(searchInput, 500);
+  const [completedSearchInput, setCompletedSearchInput] = useState<string>('');
+  const [completedCategory, setCompletedCategory] = useState<EventCategory | undefined>(undefined);
+  const [completedMetroIds, setCompletedMetroIds] = useState<string[]>([]);
 
-  // Phase 6A.72: Memoize date range separately to avoid unnecessary recalculations
-  const dateRange = useMemo(() => getDateRangeForOption(dateRangeOption), [dateRangeOption]);
+  // 500ms debounce keeps typing smooth (Phase 6A.72 pattern).
+  const debouncedUpcomingSearch = useDebounce(upcomingSearchInput, 500);
+  const debouncedCompletedSearch = useDebounce(completedSearchInput, 500);
 
-  // Phase 6A.72: Build filters for useEvents hook with optimized dependencies
-  // PERFORMANCE FIX: Stabilize metroAreaIds array reference to prevent unnecessary re-renders
-  const stableMetroIds = useMemo(() =>
-    selectedMetroIds.length > 0 ? selectedMetroIds : undefined,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedMetroIds.length, ...selectedMetroIds]
+  const upcomingDateRange = useMemo(
+    () => getDateRangeForOption(upcomingDateRangeOption),
+    [upcomingDateRangeOption],
   );
 
-  const filters = useMemo(() => {
-    return {
-      searchTerm: debouncedSearchTerm || undefined,
-      category: selectedCategory,
-      // Issue #36: Status filter for user-friendly status grouping
-      statusFilter: statusFilter,
-      userId: user?.userId,
-      latitude: isAnonymous ? latitude ?? undefined : undefined,
-      longitude: isAnonymous ? longitude ?? undefined : undefined,
-      metroAreaIds: stableMetroIds,
-      state: selectedState,
-      ...dateRange,
-    };
-  }, [debouncedSearchTerm, selectedCategory, statusFilter, user?.userId, isAnonymous, latitude, longitude, stableMetroIds, selectedState, dateRange]);
+  // Stabilize metro id arrays so React Query keys don't churn.
+  const stableUpcomingMetros = useMemo(
+    () => (upcomingMetroIds.length > 0 ? upcomingMetroIds : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [upcomingMetroIds.length, ...upcomingMetroIds],
+  );
+  const stableCompletedMetros = useMemo(
+    () => (completedMetroIds.length > 0 ? completedMetroIds : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [completedMetroIds.length, ...completedMetroIds],
+  );
 
-  // Fetch events with location-based sorting and filters
-  const { data: events, isLoading: eventsLoading, error: eventsError } = useEvents(filters);
+  const upcomingFilters = useMemo(() => ({
+    searchTerm: debouncedUpcomingSearch || undefined,
+    category: upcomingCategory,
+    statusFilter: EventStatusFilter.Active,  // Upcoming → Active group
+    userId: user?.userId,
+    latitude: isAnonymous ? latitude ?? undefined : undefined,
+    longitude: isAnonymous ? longitude ?? undefined : undefined,
+    metroAreaIds: stableUpcomingMetros,
+    ...upcomingDateRange,
+  }), [debouncedUpcomingSearch, upcomingCategory, user?.userId, isAnonymous, latitude, longitude, stableUpcomingMetros, upcomingDateRange]);
+
+  const completedFilters = useMemo(() => ({
+    searchTerm: debouncedCompletedSearch || undefined,
+    category: completedCategory,
+    statusFilter: EventStatusFilter.Inactive,  // Inactive group includes Completed
+    userId: user?.userId,
+    latitude: isAnonymous ? latitude ?? undefined : undefined,
+    longitude: isAnonymous ? longitude ?? undefined : undefined,
+    metroAreaIds: stableCompletedMetros,
+    // No startDateFrom/To — Completed is implicitly past; date gating would
+    // zero the section (pinned by Phase 1 RED test
+    // "does NOT pass date range filters into the Inactive (Completed) call").
+  }), [debouncedCompletedSearch, completedCategory, user?.userId, isAnonymous, latitude, longitude, stableCompletedMetros]);
+
+  // Two independent useEvents calls — one per section. React Query caches by
+  // filter args so repeat navigation hits cache when filters are unchanged.
+  const { data: upcomingEvents, isLoading: upcomingLoading, error: upcomingError } = useEvents(upcomingFilters);
+  const { data: completedRawEvents, isLoading: completedLoading } = useEvents(completedFilters);
+
+  // Phase 6A.152: Backend EventStatusFilter.Inactive now returns events where
+  // StartDate < now (date-based), regardless of Status. No client-side Status
+  // filter is needed — the API response is already the correct set for the
+  // public Completed section. Cancelled events are excluded server-side and
+  // never reach this list.
+  const completedEvents = useMemo(
+    () => completedRawEvents ?? [],
+    [completedRawEvents],
+  );
 
   // Phase 6A.46: Bulk fetch user RSVPs for registration status (Issue #2: Not needed anymore - status is on EventDto)
   // Removed: registeredEventIds Set logic - now using event.userRegistrationStatus
 
-  // Convert metro areas to tree structure for TreeDropdown
-  const locationTreeNodes = useMemo<TreeNode[]>(() => {
+  // Phase 6A.149: build tree-node structures per section because each section
+  // tracks its own selected metro ids. Same shape, different `checked` flags.
+  const buildLocationTree = (selectedIds: string[]): TreeNode[] => {
     const nodes: TreeNode[] = [];
-
     US_STATES.forEach((state) => {
       const metrosForState = metroAreasByState.get(state.code) || [];
-
       if (metrosForState.length === 0) return;
-
-      // Only show city-level metros (state checkbox already means "all in state")
       const cityMetros = metrosForState.filter((m) => !m.isStateLevelArea);
-
       if (cityMetros.length === 0) return;
-
       nodes.push({
         id: state.code,
         label: state.name,
@@ -120,45 +152,49 @@ export default function EventsPage() {
         children: cityMetros.map((metro) => ({
           id: metro.id,
           label: metro.name,
-          checked: selectedMetroIds.includes(metro.id),
+          checked: selectedIds.includes(metro.id),
         })),
       });
     });
-
     return nodes;
-  }, [metroAreasByState, selectedMetroIds]);
+  };
+  const upcomingLocationTreeNodes = useMemo<TreeNode[]>(
+    () => buildLocationTree(upcomingMetroIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [metroAreasByState, upcomingMetroIds],
+  );
+  const completedLocationTreeNodes = useMemo<TreeNode[]>(
+    () => buildLocationTree(completedMetroIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [metroAreasByState, completedMetroIds],
+  );
 
-  const handleLocationChange = (newSelectedIds: string[]) => {
-    setSelectedMetroIds(newSelectedIds);
+  // Phase 6A.149: per-section clear handlers. Each section's "Clear All" pill
+  // only resets that section's state — opening Completed filters and clearing
+  // them does not disturb Upcoming and vice versa.
+  const clearUpcomingFilters = () => {
+    setUpcomingSearchInput('');
+    setUpcomingCategory(undefined);
+    setUpcomingMetroIds([]);
+    setUpcomingDateRangeOption('upcoming');
+  };
+  const clearCompletedFilters = () => {
+    setCompletedSearchInput('');
+    setCompletedCategory(undefined);
+    setCompletedMetroIds([]);
   };
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setSelectedCategory(value === '' ? undefined : Number(value) as EventCategory);
-  };
+  const hasUpcomingActiveFilters =
+    upcomingSearchInput !== '' ||
+    upcomingCategory !== undefined ||
+    upcomingMetroIds.length > 0 ||
+    upcomingDateRangeOption !== 'upcoming';
+  const hasCompletedActiveFilters =
+    completedSearchInput !== '' ||
+    completedCategory !== undefined ||
+    completedMetroIds.length > 0;
 
-  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setDateRangeOption(e.target.value as DateRangeOption);
-  };
-
-  // Issue #36: Handle status filter change
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(parseInt(e.target.value, 10) as EventStatusFilter);
-  };
-
-  const clearFilters = () => {
-    setSearchInput(''); // Phase 6A.59: Clear search input (local state)
-    setSelectedCategory(undefined);
-    setSelectedMetroIds([]);
-    setSelectedState(undefined);
-    setDateRangeOption('upcoming');
-    setStatusFilter(EventStatusFilter.Active); // Issue #36: Reset to default Active filter
-  };
-
-  // Issue #36: Updated to include status filter in active filters check
-  const hasActiveFilters = searchInput !== '' || selectedCategory !== undefined || selectedMetroIds.length > 0 || selectedState !== undefined || dateRangeOption !== 'upcoming' || statusFilter !== EventStatusFilter.Active;
-
-  const isLoading = eventsLoading || (isAnonymous && locationLoading) || metrosLoading;
+  const isLoading = upcomingLoading || (isAnonymous && locationLoading) || metrosLoading;
 
   // Phase 6A.47: Convert reference data to dropdown options
   const categoryOptions = useMemo(() => toDropdownOptions(categories), [categories]);
@@ -185,40 +221,121 @@ export default function EventsPage() {
   // Users should create events only from Dashboard
   const canUserCreateEvents = false;
 
+  // Phase 6A.149: shared filter form. Each section passes its own state and
+  // handlers — keeps the form markup in one place while preserving independent
+  // state per section. `showDateFilter` is false for the Completed section
+  // because Completed implies past.
+  const renderFilterForm = (opts: {
+    searchInput: string;
+    onSearchChange: (v: string) => void;
+    category: EventCategory | undefined;
+    onCategoryChange: (v: EventCategory | undefined) => void;
+    showDateFilter: boolean;
+    dateRangeOption?: DateRangeOption;
+    onDateRangeChange?: (v: DateRangeOption) => void;
+    metroIds: string[];
+    onMetroIdsChange: (ids: string[]) => void;
+    treeNodes: TreeNode[];
+    placeholderPrefix: string;
+  }) => (
+    <>
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-neutral-700 mb-2">Search Events</label>
+        <input
+          type="text"
+          value={opts.searchInput}
+          onChange={(e) => opts.onSearchChange(e.target.value)}
+          placeholder={`Search ${opts.placeholderPrefix} by event name, description...`}
+          className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+          disabled={isLoading}
+        />
+      </div>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${opts.showDateFilter ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-4`}>
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">Event Type</label>
+          <select
+            value={opts.category ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              opts.onCategoryChange(v === '' ? undefined : (Number(v) as EventCategory));
+            }}
+            className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            disabled={isLoading}
+          >
+            <option value="">All Types</option>
+            {categoryOptions.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {opts.showDateFilter && opts.dateRangeOption !== undefined && opts.onDateRangeChange && (
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">Event Date</label>
+            <select
+              value={opts.dateRangeOption}
+              onChange={(e) => opts.onDateRangeChange!(e.target.value as DateRangeOption)}
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              disabled={isLoading}
+            >
+              <option value="upcoming">Upcoming Events</option>
+              <option value="thisWeek">This Week</option>
+              <option value="nextWeek">Next Week</option>
+              <option value="nextMonth">Next Month</option>
+              <option value="all">All Events</option>
+            </select>
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-2">
+            Location (State/Metro Area)
+          </label>
+          <TreeDropdown
+            nodes={opts.treeNodes}
+            selectedIds={opts.metroIds}
+            onSelectionChange={opts.onMetroIdsChange}
+            placeholder="Select location"
+            maxSelections={20}
+            disabled={isLoading || metrosLoading}
+            className="w-full"
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  // Loading skeleton shared by both sections.
+  const renderSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <Card key={i} className="animate-pulse">
+          <CardContent className="p-6">
+            <div className="w-full h-48 bg-neutral-200 rounded-lg mb-4"></div>
+            <div className="h-6 bg-neutral-200 rounded w-3/4 mb-2"></div>
+            <div className="h-4 bg-neutral-200 rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-neutral-200 rounded w-full"></div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-neutral-50 to-white">
       <LankaEventsHeader />
 
-      {/* Page Header */}
-      <div className="bg-gradient-to-r from-orange-600 via-rose-800 to-emerald-800 py-12 relative overflow-hidden">
-        {/* Decorative Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          ></div>
-        </div>
+      {/* Phase 6A.149: gradient "Discover Events" banner removed entirely
+          (~12rem reclaimed above the fold). Page identity comes from the nav
+          and the explicit section headers below. */}
 
-        {/* Decorative gradient blobs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-400/10 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold text-white mb-4">
-                Discover Events
-              </h1>
-              <p className="text-lg text-white/90 max-w-2xl">
-                Find cultural, community, and social events relevant to you
-              </p>
-            </div>
-            {/* Create Event Button - Show for EventOrganizer, Admin, AdminManager */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+        {/* ============================ Upcoming Events ============================ */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold" style={{ color: '#8B1538' }}>
+              Upcoming Events
+            </h2>
             {canUserCreateEvents && (
               <Button
                 onClick={() => router.push('/events/create')}
@@ -230,173 +347,175 @@ export default function EventsPage() {
               </Button>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Filters Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5" style={{ color: '#FF7900' }} />
-                <CardTitle style={{ color: '#8B1538' }}>Filters</CardTitle>
-              </div>
-              {hasActiveFilters && (
+          <CollapsibleSection
+            title="Filters"
+            defaultOpen={false}
+            icon={<Filter className="h-5 w-5" style={{ color: '#FF7900' }} />}
+            borderColor="#8B1538"
+            badge={
+              hasUpcomingActiveFilters ? (
                 <button
-                  onClick={clearFilters}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearUpcomingFilters();
+                  }}
                   className="text-sm font-medium hover:underline"
                   style={{ color: '#FF7900' }}
                 >
                   Clear All
                 </button>
+              ) : undefined
+            }
+            className="mb-4"
+          >
+            {renderFilterForm({
+              searchInput: upcomingSearchInput,
+              onSearchChange: setUpcomingSearchInput,
+              category: upcomingCategory,
+              onCategoryChange: setUpcomingCategory,
+              showDateFilter: true,
+              dateRangeOption: upcomingDateRangeOption,
+              onDateRangeChange: setUpcomingDateRangeOption,
+              metroIds: upcomingMetroIds,
+              onMetroIdsChange: setUpcomingMetroIds,
+              treeNodes: upcomingLocationTreeNodes,
+              placeholderPrefix: 'upcoming events',
+            })}
+          </CollapsibleSection>
+
+          {/* Scroll-bounded grid (max-h-[1500px] ≈ 3 rows × ~480px card height) */}
+          <div className="relative">
+            <div
+              data-section="upcoming-grid-scroll"
+              className="max-h-[1500px] overflow-y-auto pr-1"
+            >
+              {isLoading ? (
+                renderSkeleton()
+              ) : !upcomingEvents || upcomingEvents.length === 0 ? (
+                upcomingError ? (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <p className="text-destructive text-lg">
+                        Failed to load events. Please try again later.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-12 text-center">
+                      <Calendar className="h-16 w-16 mx-auto mb-4 text-neutral-400" />
+                      <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                        No Events Found
+                      </h3>
+                      <p className="text-neutral-500">
+                        {hasUpcomingActiveFilters
+                          ? 'Try adjusting your filters to see more events.'
+                          : 'Check back soon for new events!'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {upcomingEvents.map((event) => (
+                    <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
+                  ))}
+                </div>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {/* Phase 6A.59: Search Input with debouncing (matches dashboard behavior) */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                Search Events
-              </label>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search by event name, description..."
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                disabled={isLoading}
-              />
-            </div>
+            {/* Fade-mask telegraphing "more below" — purely decorative + pointer-events-none */}
+            <div
+              data-section="upcoming-grid-fade"
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"
+              aria-hidden="true"
+            />
+          </div>
+        </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Event Type Filter */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Event Type
-                </label>
-                <select
-                  value={selectedCategory ?? ''}
-                  onChange={handleCategoryChange}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={isLoading}
+        {/* ============================ Completed Events ============================
+            Phase 6A.152: heading and filter card always render so the feature is
+            discoverable even when the list is empty (e.g. an event organizer's
+            first month). Empty-state card sits inside the grid when there are
+            no past events to show. Replaces the 6A.149 self-gating behaviour. */}
+        <section>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: '#8B1538' }}>
+            Completed Events
+          </h2>
+
+          <CollapsibleSection
+            title="Filters"
+            defaultOpen={false}
+            icon={<Filter className="h-5 w-5" style={{ color: '#FF7900' }} />}
+            borderColor="#8B1538"
+            badge={
+              hasCompletedActiveFilters ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearCompletedFilters();
+                  }}
+                  className="text-sm font-medium hover:underline"
+                  style={{ color: '#FF7900' }}
                 >
-                  <option value="">All Types</option>
-                  {categoryOptions.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
+                  Clear All
+                </button>
+              ) : undefined
+            }
+            className="mb-4"
+          >
+            {renderFilterForm({
+              searchInput: completedSearchInput,
+              onSearchChange: setCompletedSearchInput,
+              category: completedCategory,
+              onCategoryChange: setCompletedCategory,
+              showDateFilter: false,
+              metroIds: completedMetroIds,
+              onMetroIdsChange: setCompletedMetroIds,
+              treeNodes: completedLocationTreeNodes,
+              placeholderPrefix: 'completed events',
+            })}
+          </CollapsibleSection>
+
+          <div className="relative">
+            <div
+              data-section="completed-grid-scroll"
+              className="max-h-[1500px] overflow-y-auto pr-1"
+            >
+              {completedLoading ? (
+                renderSkeleton()
+              ) : completedEvents.length === 0 ? (
+                /* Phase 6A.152: empty-state replaces "section hidden". Keeps the
+                   feature discoverable for organizers whose first event hasn't
+                   ended yet, and for visitors filtering by criteria that match
+                   nothing in the past bucket. */
+                <div
+                  data-testid="completed-empty-state"
+                  className="text-center py-12 px-4 bg-neutral-50 rounded-lg border border-neutral-200"
+                >
+                  <Calendar className="mx-auto h-10 w-10 text-neutral-400 mb-3" aria-hidden="true" />
+                  <p className="text-base font-medium text-neutral-700">No completed events yet</p>
+                  <p className="text-sm text-neutral-500 mt-1">
+                    {hasCompletedActiveFilters
+                      ? 'Try adjusting your filters above.'
+                      : 'Past events will appear here once they conclude.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedEvents.map((event) => (
+                    <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
                   ))}
-                </select>
-              </div>
-
-              {/* Issue #36: Event Status Filter */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Event Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={handleStatusFilterChange}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={isLoading}
-                >
-                  <option value={EventStatusFilter.All}>{EventStatusFilterLabels[EventStatusFilter.All]}</option>
-                  <option value={EventStatusFilter.Active}>{EventStatusFilterLabels[EventStatusFilter.Active]}</option>
-                  <option value={EventStatusFilter.Inactive}>{EventStatusFilterLabels[EventStatusFilter.Inactive]}</option>
-                  <option value={EventStatusFilter.Cancelled}>{EventStatusFilterLabels[EventStatusFilter.Cancelled]}</option>
-                </select>
-              </div>
-
-              {/* Event Date Filter */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Event Date
-                </label>
-                <select
-                  value={dateRangeOption}
-                  onChange={handleDateRangeChange}
-                  className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  disabled={isLoading}
-                >
-                  <option value="upcoming">Upcoming Events</option>
-                  <option value="thisWeek">This Week</option>
-                  <option value="nextWeek">Next Week</option>
-                  <option value="nextMonth">Next Month</option>
-                  <option value="all">All Events</option>
-                </select>
-              </div>
-
-              {/* Location Filter */}
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Location (State/Metro Area)
-                </label>
-                <TreeDropdown
-                  nodes={locationTreeNodes}
-                  selectedIds={selectedMetroIds}
-                  onSelectionChange={handleLocationChange}
-                  placeholder="Select location"
-                  maxSelections={20}
-                  disabled={isLoading || metrosLoading}
-                  className="w-full"
-                />
-              </div>
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Events Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="w-full h-48 bg-neutral-200 rounded-lg mb-4"></div>
-                  <div className="h-6 bg-neutral-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-neutral-200 rounded w-1/2 mb-4"></div>
-                  <div className="h-4 bg-neutral-200 rounded w-full"></div>
-                </CardContent>
-              </Card>
-            ))}
+            <div
+              data-section="completed-grid-fade"
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"
+              aria-hidden="true"
+            />
           </div>
-        ) : !events || events.length === 0 ? (
-          eventsError ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <p className="text-destructive text-lg">
-                  Failed to load events. Please try again later.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Calendar className="h-16 w-16 mx-auto mb-4 text-neutral-400" />
-                <h3 className="text-xl font-semibold text-neutral-900 mb-2">
-                  No Events Found
-                </h3>
-                <p className="text-neutral-500">
-                  {hasActiveFilters
-                    ? 'Try adjusting your filters to see more events.'
-                    : 'Check back soon for new events!'}
-                </p>
-              </CardContent>
-            </Card>
-          )
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                categoryLabels={categoryLabels}
-              />
-            ))}
-          </div>
-        )}
+        </section>
       </div>
 
       <Footer />

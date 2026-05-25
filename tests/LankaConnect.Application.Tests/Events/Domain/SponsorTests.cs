@@ -1065,4 +1065,706 @@ public class SponsorTests
     }
 
     #endregion
+
+    #region Phase 6A.145 — Image methods (SetImage / ClearImage)
+
+    [Fact]
+    public void NewSponsor_HasNullImageFields()
+    {
+        var moneySponsor = CreateValidMoneySponsor();
+        moneySponsor.ImageUrl.Should().BeNull();
+        moneySponsor.ImageBlobName.Should().BeNull();
+
+        var itemSponsor = CreateValidItemSponsor();
+        itemSponsor.ImageUrl.Should().BeNull();
+        itemSponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_WithValidUrlAndBlobName_Succeeds_OnMoneySponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage(
+            "https://blob.example.com/sponsors/abc.png",
+            "abc_papa-johns-logo.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/sponsors/abc.png");
+        sponsor.ImageBlobName.Should().Be("abc_papa-johns-logo.png");
+    }
+
+    [Fact]
+    public void SetImage_WithValidUrlAndBlobName_Succeeds_OnItemSponsor()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.SetImage(
+            "https://blob.example.com/sponsors/item.png",
+            "item_logo.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/sponsors/item.png");
+        sponsor.ImageBlobName.Should().Be("item_logo.png");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyUrl_Fails(string? badUrl)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage(badUrl!, "blob.png");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("URL");
+        sponsor.ImageUrl.Should().BeNull("rejected SetImage must NOT mutate the entity");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetImage_WithEmptyBlobName_Fails(string? badBlobName)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", badBlobName!);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("blob");
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_ReplacingExisting_OverwritesBoth()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/old.png", "old_pic.png");
+
+        sponsor.SetImage("https://blob.example.com/new.png", "new_pic.png");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/new.png");
+        sponsor.ImageBlobName.Should().Be("new_pic.png");
+    }
+
+    [Fact]
+    public void SetImage_TrimsWhitespaceFromBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        sponsor.SetImage("  https://blob.example.com/x.png  ", "  x_blob.png  ");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/x.png");
+        sponsor.ImageBlobName.Should().Be("x_blob.png");
+    }
+
+    [Fact]
+    public void SetImage_PreservesOtherFields_OnMoneySponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        var originalAmount = sponsor.Amount;
+        var originalName = sponsor.SponsorName;
+        var originalStatus = sponsor.Status;
+
+        sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        sponsor.Amount.Should().Be(originalAmount);
+        sponsor.SponsorName.Should().Be(originalName);
+        sponsor.Status.Should().Be(originalStatus);
+    }
+
+    [Fact]
+    public void ClearImage_RemovesBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        var result = sponsor.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ClearImage_WhenNoImage_IsIdempotent()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.ImageUrl.Should().BeNull();
+
+        var result = sponsor.ClearImage();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.ImageBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetImage_OnPendingMoneySponsor_Succeeds()
+    {
+        // Architect F-decision: image upload is allowed BEFORE Stripe checkout for
+        // money sponsors. Orphan-blob cleanup hooks fire on MarkAsFailed/Abandoned.
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.Status.Should().Be(SponsorStatus.Pending);
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void SetImage_OnCompletedMoneySponsor_Succeeds()
+    {
+        // Organizer override: image can be set even after Stripe completion.
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.SetImage("https://blob.example.com/x.png", "x.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ImageUrl.Should().NotBeNull();
+    }
+
+    #endregion
+
+    #region Phase 6A.151 — Edit Existing Sponsorship (RED tests)
+
+    /// <summary>
+    /// Phase 6A.151 — granular content-edit mutators on the Sponsor aggregate.
+    /// State-matrix enforcement lives inside each mutator. Audit field
+    /// `LastEditedBy` is set on every successful mutation (distinct from
+    /// `UpdatedAt` which fires on every state change including lifecycle).
+    ///
+    /// State matrix (final, post-architect-stress-test):
+    ///                            | Notes | Org | Amount | Item* | Image | Name |
+    ///   Pending Money            |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
+    ///   Completed Stripe         |  ✅   |  ✅ |   🚫   |  n/a  |  ✅   |  ✅  |
+    ///   Completed off-platform   |  ✅   |  ✅ |   👤   |  n/a  |  ✅   |  ✅  |
+    ///   RecordedItem             |  ✅   |  ✅ |  n/a   |  ✅   |  ✅   |  ✅  |
+    ///   Failed/Abandoned/Refunded|👤notes|  🚫 |   🚫   |  🚫   |  🚫   |  🚫  |
+    ///   (✅ both / 👤 organizer-only / 🚫 disallowed)
+    /// </summary>
+
+    private static readonly Guid SponsorActorId = Guid.NewGuid();
+    private static readonly Guid OrganizerActorId = Guid.NewGuid();
+
+    private static Sponsor CreateOffPlatformCompletedSponsor()
+    {
+        // Off-platform money sponsor: Pending → CompleteAsOrganizerCash → Completed
+        // with no StripeCheckoutSessionId (the implicit discriminator).
+        var sponsor = CreateValidMoneySponsor();
+        var result = sponsor.CompleteAsOrganizerCash();
+        result.IsSuccess.Should().BeTrue();
+        return sponsor;
+    }
+
+    private static Sponsor CreateFailedSponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetStripeCheckoutSession("cs_test", DateTime.UtcNow.AddHours(1));
+        sponsor.MarkAsFailed();
+        return sponsor;
+    }
+
+    private static Sponsor CreateAbandonedSponsor()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetStripeCheckoutSession("cs_test", DateTime.UtcNow.AddMinutes(-5));
+        sponsor.MarkAsAbandoned();
+        return sponsor;
+    }
+
+    private static Sponsor CreateRefundedSponsor()
+    {
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+        sponsor.MarkAsRefunded();
+        return sponsor;
+    }
+
+    // ---------- UpdateContactFields ----------
+
+    [Fact]
+    public void UpdateContactFields_OnPendingMoney_BothFields_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "  Updated note  ",
+            organization: "  NewCo  ",
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.SponsorNotes.Should().Be("Updated note");
+        sponsor.SponsorOrganization.Should().Be("NewCo");
+        sponsor.LastEditedBy.Should().Be(SponsorActorId);
+        sponsor.LastEditedAt.Should().NotBeNull();
+        sponsor.UpdatedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnPendingMoney_NotesOnly_OrganizationUnchanged()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        var originalOrg = sponsor.SponsorOrganization;
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Only notes change",
+            organization: null,
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.SponsorNotes.Should().Be("Only notes change");
+        sponsor.SponsorOrganization.Should().Be(originalOrg);
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnCompletedStripe_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.UpdateContactFields(
+            notes: "After payment",
+            organization: "PostPayCo",
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnCompletedOffPlatform_Succeeds()
+    {
+        var sponsor = CreateOffPlatformCompletedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Off-platform note",
+            organization: null,
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnRecordedItem_Succeeds()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Bringing two",
+            organization: null,
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnFailed_OrganizerNotesOnly_Succeeds()
+    {
+        var sponsor = CreateFailedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Card declined; sponsor moved to off-platform",
+            organization: null,
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnFailed_OrganizerWithOrganization_Fails()
+    {
+        var sponsor = CreateFailedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Reason",
+            organization: "Cannot change on failed",
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Failed");
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnFailed_NonOrganizer_Fails()
+    {
+        var sponsor = CreateFailedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Not allowed",
+            organization: null,
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnAbandoned_OrganizerNotesOnly_Succeeds()
+    {
+        var sponsor = CreateAbandonedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Checkout expired",
+            organization: null,
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_OnRefunded_OrganizerNotesOnly_Succeeds()
+    {
+        var sponsor = CreateRefundedSponsor();
+
+        var result = sponsor.UpdateContactFields(
+            notes: "Refunded after event cancel",
+            organization: null,
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateContactFields_BothNull_NoChange_Succeeds()
+    {
+        // PATCH semantics: null/null = no-op, still sets audit fields.
+        var sponsor = CreateValidMoneySponsor();
+        var originalNotes = sponsor.SponsorNotes;
+        var originalOrg = sponsor.SponsorOrganization;
+
+        var result = sponsor.UpdateContactFields(
+            notes: null,
+            organization: null,
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.SponsorNotes.Should().Be(originalNotes);
+        sponsor.SponsorOrganization.Should().Be(originalOrg);
+        sponsor.LastEditedBy.Should().Be(SponsorActorId);
+    }
+
+    // ---------- UpdateAmount ----------
+
+    [Fact]
+    public void UpdateAmount_OnPendingMoney_Fails_StripeSessionStale()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(200m),
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Pending");
+    }
+
+    [Fact]
+    public void UpdateAmount_OnCompletedStripe_Fails_DeferredToV2()
+    {
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(150m),
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Stripe");
+    }
+
+    [Fact]
+    public void UpdateAmount_OnCompletedOffPlatform_Organizer_Succeeds()
+    {
+        var sponsor = CreateOffPlatformCompletedSponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(250m),
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.Amount!.Amount.Should().Be(250m);
+        sponsor.LastEditedBy.Should().Be(OrganizerActorId);
+    }
+
+    [Fact]
+    public void UpdateAmount_OnCompletedOffPlatform_NonOrganizer_Fails()
+    {
+        var sponsor = CreateOffPlatformCompletedSponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(250m),
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("organizer");
+    }
+
+    [Fact]
+    public void UpdateAmount_OnRecordedItem_Fails()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(100m),
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("item");
+    }
+
+    [Fact]
+    public void UpdateAmount_WithZero_Fails()
+    {
+        // Negative amounts are rejected by Money.Create upstream; only zero
+        // reaches the mutator, where its own guard rejects it.
+        var sponsor = CreateOffPlatformCompletedSponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(0m),
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateAmount_OnFailed_Fails()
+    {
+        var sponsor = CreateFailedSponsor();
+
+        var result = sponsor.UpdateAmount(
+            newAmount: CreateMoney(100m),
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    // ---------- UpdateItemDetails ----------
+
+    [Fact]
+    public void UpdateItemDetails_OnRecordedItem_AllFields_Succeeds()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: "  Updated item  ",
+            itemDescription: "  New desc  ",
+            estimatedValue: 750m,
+            actorUserId: SponsorActorId);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ItemName.Should().Be("Updated item");
+        sponsor.ItemDescription.Should().Be("New desc");
+        sponsor.EstimatedValue.Should().Be(750m);
+        sponsor.LastEditedBy.Should().Be(SponsorActorId);
+    }
+
+    [Fact]
+    public void UpdateItemDetails_OnRecordedItem_SubsetFields_Succeeds()
+    {
+        var sponsor = CreateValidItemSponsor();
+        var originalDesc = sponsor.ItemDescription;
+        var originalValue = sponsor.EstimatedValue;
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: "New name only",
+            itemDescription: null,
+            estimatedValue: null,
+            actorUserId: SponsorActorId);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.ItemName.Should().Be("New name only");
+        sponsor.ItemDescription.Should().Be(originalDesc);
+        sponsor.EstimatedValue.Should().Be(originalValue);
+    }
+
+    [Fact]
+    public void UpdateItemDetails_OnMoneySponsor_Fails()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: "Try item on money",
+            itemDescription: null,
+            estimatedValue: null,
+            actorUserId: SponsorActorId);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("item");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void UpdateItemDetails_WithEmptyOrWhitespaceItemName_Fails(string emptyName)
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: emptyName,
+            itemDescription: null,
+            estimatedValue: null,
+            actorUserId: SponsorActorId);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateItemDetails_WithNegativeEstimatedValue_Fails()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: null,
+            itemDescription: null,
+            estimatedValue: -1m,
+            actorUserId: SponsorActorId);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateItemDetails_OnRefundedItem_Fails()
+    {
+        // Item sponsors don't have a "refunded" state in normal flow, but test the
+        // generic terminal-state guard via a hypothetical state. Here we use the
+        // money refunded sponsor and the guard should fire on type mismatch first.
+        var sponsor = CreateRefundedSponsor();
+
+        var result = sponsor.UpdateItemDetails(
+            itemName: "X",
+            itemDescription: null,
+            estimatedValue: null,
+            actorUserId: OrganizerActorId);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    // ---------- UpdateName ----------
+
+    [Fact]
+    public void UpdateName_OnPendingMoney_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.UpdateName(
+            newName: "  Updated Person  ",
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.SponsorName.Should().Be("Updated Person");
+        sponsor.LastEditedBy.Should().Be(SponsorActorId);
+    }
+
+    [Fact]
+    public void UpdateName_OnCompletedStripe_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.UpdateName(
+            newName: "Post-payment fix",
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateName_OnRecordedItem_Succeeds()
+    {
+        var sponsor = CreateValidItemSponsor();
+
+        var result = sponsor.UpdateName(
+            newName: "Item Person",
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UpdateName_OnFailed_Fails()
+    {
+        var sponsor = CreateFailedSponsor();
+
+        var result = sponsor.UpdateName(
+            newName: "Cannot change",
+            actorUserId: OrganizerActorId,
+            actorIsOrganizer: true);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void UpdateName_WithEmptyOrWhitespace_Fails(string invalidName)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.UpdateName(
+            newName: invalidName,
+            actorUserId: SponsorActorId,
+            actorIsOrganizer: false);
+
+        result.IsFailure.Should().BeTrue();
+    }
+
+    // ---------- Audit field semantics ----------
+
+    [Fact]
+    public void Audit_LastEditedBy_IsNull_Initially()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.LastEditedBy.Should().BeNull();
+        sponsor.LastEditedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Audit_LifecycleTransition_DoesNotSetLastEditedBy()
+    {
+        // CompletePayment / MarkAsFailed / etc. are lifecycle, not human edits.
+        // They update UpdatedAt but must NOT touch LastEditedBy / LastEditedAt.
+        var sponsor = CreateValidMoneySponsor(desiredStatus: SponsorStatus.Completed);
+
+        sponsor.LastEditedBy.Should().BeNull();
+        sponsor.LastEditedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void Audit_LastEditedBy_Set_OnEverySuccessfulMutator()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        sponsor.UpdateContactFields("note", null, SponsorActorId, false);
+        sponsor.LastEditedBy.Should().Be(SponsorActorId);
+
+        var firstEditAt = sponsor.LastEditedAt;
+        firstEditAt.Should().NotBeNull();
+
+        // Second edit by a different actor should overwrite the audit fields.
+        sponsor.UpdateName("New", OrganizerActorId, true);
+        sponsor.LastEditedBy.Should().Be(OrganizerActorId);
+        sponsor.LastEditedAt.Should().BeOnOrAfter(firstEditAt!.Value);
+    }
+
+    #endregion
 }

@@ -29,11 +29,21 @@ public interface IRegistrationRefundService
     /// <param name="additionalRefundAmount">Additional refund amount (e.g., add-on purchases) to include in the refund email total</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result containing RefundResult on success, or error message on failure</returns>
+    /// <param name="isPreApproved">
+    /// Phase 6A.148 defense-in-depth (ring 2): when the
+    /// <c>Refund:ApprovalWorkflow:Enabled</c> feature flag is ON, this method MUST be
+    /// called with <c>isPreApproved=true</c> by callers who have already routed through
+    /// the approval workflow (RefundExecutionService, EventCancellationEmailJob's
+    /// ApprovedAuto path). Callers that haven't (legacy CancelRsvpCommandHandler when
+    /// flag is on) will be rejected with a Failure. This guarantees the GATE cannot be
+    /// bypassed by any caller — present or future — even by accident.
+    /// </param>
     Task<Result<RefundResult>> ProcessRefundAsync(
         Registration registration,
         string reason,
         Dictionary<string, string> metadata,
         decimal additionalRefundAmount = 0m,
+        bool isPreApproved = false,
         CancellationToken cancellationToken = default);
 }
 

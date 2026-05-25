@@ -73,11 +73,16 @@ public class CheckEventRegistrationQueryHandler
                     return Result<EventRegistrationCheckResult>.Failure("Email is required");
                 }
 
-                var emailToCheck = request.Email.Trim();
+                // Phase 6A.140: lower-case the input — Email value object normalises every
+                // persisted row via .ToLowerInvariant() (see Email.Create), and Postgres string
+                // comparison is case-sensitive. The prior comment claimed "SQL Server… case-
+                // insensitive" but this codebase runs on Postgres, so "Niro@x.com" used to miss
+                // a row stored as "niro@x.com". The smart-resolution path in the anonymous
+                // commit handlers depends on this being correct.
+                var emailToCheck = request.Email.Trim().ToLowerInvariant();
 
                 // Step 1: Check if email belongs to a LankaConnect member (User account)
                 // Note: u.Email is a Value Object, must use .Value to access underlying string for EF Core translation
-                // SQL Server comparison is case-insensitive by default with default collation
                 var user = await _context.Users
                     .Where(u => u.Email.Value == emailToCheck)
                     .Select(u => new { u.Id })

@@ -20,12 +20,20 @@ public interface IAddOnRefundService
     /// <param name="metadata">Additional metadata for Stripe refund</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Result containing AddOnRefundResult on success</returns>
+    /// <param name="isPreApproved">
+    /// Phase 6A.148 defense-in-depth (ring 2): when the
+    /// <c>Refund:ApprovalWorkflow:Enabled</c> feature flag is ON, this method MUST be
+    /// called with <c>isPreApproved=true</c> by callers that have already routed through
+    /// the approval workflow. Otherwise it returns a Failure. This guarantees the GATE
+    /// cannot be bypassed by any caller — present or future — even by accident.
+    /// </param>
     Task<Result<AddOnRefundResult>> RefundUserPurchasesAsync(
         Guid userId,
         Guid eventId,
         string reason,
         Dictionary<string, string> metadata,
         Guid? registrationId = null,
+        bool isPreApproved = false,
         CancellationToken cancellationToken = default);
 }
 

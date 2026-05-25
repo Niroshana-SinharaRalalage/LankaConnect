@@ -170,6 +170,18 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("recorded_at")
             .HasColumnType("timestamp with time zone");
 
+        // Phase 6A.145 — optional sponsor image. Any sponsor can attach (no threshold).
+        // Both columns nullable; either both populated together or both null. Handler enforces atomicity.
+        builder.Property(s => s.ImageUrl)
+            .HasColumnName("image_url")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(s => s.ImageBlobName)
+            .HasColumnName("image_blob_name")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         // Audit fields
         builder.Property(s => s.CreatedAt)
             .HasColumnName("created_at")
@@ -180,6 +192,21 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
         builder.Property(s => s.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
+
+        // Phase 6A.151 — human-edit audit columns. Distinct from UpdatedAt
+        // which also fires on lifecycle transitions (CompletePayment etc.).
+        // Both null until the first content edit (UpdateContactFields /
+        // UpdateAmount / UpdateItemDetails / UpdateName); set together by
+        // Sponsor.MarkEdited().
+        builder.Property(s => s.LastEditedAt)
+            .HasColumnName("last_edited_at")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
+        builder.Property(s => s.LastEditedBy)
+            .HasColumnName("last_edited_by")
+            .HasColumnType("uuid")
+            .IsRequired(false);
 
         // Indexes
         builder.HasIndex(s => s.EventId)

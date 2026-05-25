@@ -344,16 +344,25 @@ public class StripePaymentService : IStripePaymentService
                 refundOptions.Amount = request.AmountInCents.Value;
             }
 
-            // Phase 6A.135: Use PaymentIntentId as idempotency key to prevent duplicate refunds.
-            // Previously used RegistrationId which caused ALL add-on refunds (RegistrationId=Guid.Empty)
-            // to share the same idempotency key, silently deduplicating at the Stripe API level.
-            // Phase 6A.136C: Include amount to allow partial refunds on the same PaymentIntent
-            // (e.g., refund $10 then refund $5 are distinct operations).
+            // Phase 6A.148.W5.D1: prefer the caller's explicit IdempotencyKey when provided.
+            // The 6A.148 workflow path (RefundExecutionService) sets a per-line key so re-dispatch
+            // from the reconciler is safe even after a partial-success-then-rollback (the W5.D7
+            // root cause: Stripe took the money but DB transaction rolled back, leaving stuck
+            // Approved lines whose retry MUST hit the same Stripe Refund object via the key).
+            //
+            // Legacy fallback for callers that don't set the key (CancelRsvp paid-refund branch,
+            // AddOnRefundService, donation/collection/sponsor refund inline paths):
+            // Phase 6A.135 — Use PaymentIntentId, NOT RegistrationId, because all add-on refunds
+            //                historically used Guid.Empty for RegistrationId causing key collisions.
+            // Phase 6A.136C — Include amount to allow partial refunds on the same PaymentIntent.
+            // Phase 6A.137F — Include RegistrationId to prevent bundled-purchase collisions.
+            var idempotencyKey = !string.IsNullOrWhiteSpace(request.IdempotencyKey)
+                ? request.IdempotencyKey
+                : $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}_{request.RegistrationId}";
+
             var requestOptions = new RequestOptions
             {
-                // Phase 6A.137F: Include RegistrationId to prevent idempotency collisions
-                // for bundled purchases sharing the same PaymentIntent and amount
-                IdempotencyKey = $"refund_{request.PaymentIntentId}_{request.AmountInCents ?? 0}_{request.RegistrationId}"
+                IdempotencyKey = idempotencyKey
             };
 
             // Phase 6A.94: Log just before Stripe API call

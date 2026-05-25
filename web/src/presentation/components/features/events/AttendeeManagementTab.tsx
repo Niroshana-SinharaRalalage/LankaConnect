@@ -42,6 +42,7 @@ import { RegistrationStatus, PaymentStatus, AgeCategory, Gender, RegistrationMod
 import type { EventAttendeeDto } from '@/infrastructure/api/types/events.types';
 import { ResendConfirmationDialog } from './ResendConfirmationDialog';
 import { QRCodeModal } from './QRCodeModal';
+import { RefundRequestsTab } from './RefundRequestsTab';
 
 /**
  * Props for AttendeeManagementTab
@@ -482,6 +483,22 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
         </CardHeader>
 
         <CardContent>
+          {/* Phase 6A.148 — Refund Requests sub-section. Lives inside the Attendees tab
+              per product decision D5 (organizer queue colocated with attendee management).
+              The legacy "Force-cancel stuck refund" action remains on individual rows below
+              for in-flight Stripe rows; this sub-section is the new approval queue. */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Refund Requests</CardTitle>
+              <CardDescription>
+                Review attendee refund requests. No money moves until you approve.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RefundRequestsTab eventId={eventId} />
+            </CardContent>
+          </Card>
+
           {/* Phase 7E.7: Mode C events don't accept registrations — show a permanent
               empty-state explaining why instead of "No Registrations Yet" (which implies
               registrations are coming and would mislead organisers). */}

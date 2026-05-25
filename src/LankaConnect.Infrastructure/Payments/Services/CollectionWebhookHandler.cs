@@ -16,23 +16,30 @@ namespace LankaConnect.Infrastructure.Payments.Services;
 /// Follows DonationWebhookHandler pattern.
 /// Errors are swallowed to prevent HTTP 500 to Stripe (collection stays Pending; expiry cleanup handles it).
 /// Phase 6A.137B2: Added refund email notification via fire-and-forget.
+/// Phase 6A.148.W4.D12 (G4): Added workflow-owned dedupe guard — suppresses the legacy
+/// per-Collection "Refund Confirmation" email when the consolidated D8 decision email
+/// has already covered the attendee. Fail-OPEN on lookup exception (matches the D9
+/// pattern from SponsorWebhookHandler).
 /// </summary>
 public class CollectionWebhookHandler : ICollectionWebhookHandler
 {
     private readonly ICollectionRepository _collectionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IRefundRequestRepository _refundRequestRepository;
     private readonly ILogger<CollectionWebhookHandler> _logger;
 
     public CollectionWebhookHandler(
         ICollectionRepository collectionRepository,
         IUnitOfWork unitOfWork,
         IServiceScopeFactory scopeFactory,
+        IRefundRequestRepository refundRequestRepository,
         ILogger<CollectionWebhookHandler> logger)
     {
         _collectionRepository = collectionRepository;
         _unitOfWork = unitOfWork;
         _scopeFactory = scopeFactory;
+        _refundRequestRepository = refundRequestRepository;
         _logger = logger;
     }
 
@@ -196,6 +203,58 @@ public class CollectionWebhookHandler : ICollectionWebhookHandler
             _logger.LogInformation(
                 "[Phase 6A.136E] [Webhook-Collection-Refund-SUCCESS] Collection marked as refunded - CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, RefundId: {RefundId}",
                 correlationId, collection.Id, refundId);
+
+            // Phase 6A.148.W4.D12 (G4): Suppress the legacy per-Collection email when the
+            // refund came through the approval workflow — the consolidated D8 decision email
+            // already covered the attendee. Fail-OPEN: lookup throws → default to sending the
+            // legacy email rather than silencing a legitimate notification.
+            var isWorkflowOwnedRefund = false;
+            try
+            {
+                var workflowReferenceId = await _refundRequestRepository
+                    .GetWorkflowLineReferenceIdAsync(
+                        Domain.Events.Enums.RefundLineItemType.Collection, refundId, ct);
+                isWorkflowOwnedRefund = workflowReferenceId == collection.Id;
+            }
+            catch (Exception lookupEx)
+            {
+                _logger.LogWarning(lookupEx,
+                    "[Phase 6A.148.W4.D12] Workflow-owned lookup threw — defaulting to send standalone collection email. CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, RefundId: {RefundId}",
+                    correlationId, collection.Id, refundId);
+            }
+
+            if (isWorkflowOwnedRefund)
+            {
+                _logger.LogInformation(
+                    "[Phase 6A.148.W4.D12] Collection refund standalone email SUPPRESSED — workflow-owned. CorrelationId: {CorrelationId}, CollectionId: {CollectionId}, RefundId: {RefundId}",
+                    correlationId, collection.Id, refundId);
+
+                // Phase 6A.148.W5.6.B.OBS3 — durable audit row.
+                try
+                {
+                    using var auditScope = _scopeFactory.CreateScope();
+                    var auditService = auditScope.ServiceProvider
+                        .GetRequiredService<Email.Services.IRefundDispatchAuditService>();
+                    await auditService.WriteSuppressionAsync(
+                        templateName: Shared.Email.Contracts.EmailTemplateContract.TemplateNames.CollectionRefund,
+                        recipientEmail: collection.ContributorEmail,
+                        recipientName: collection.ContributorName,
+                        suppressionReason: "D12: workflow-owned refund — covered by consolidated decision email",
+                        correlationId: correlationId,
+                        refundRequestId: null,
+                        entityType: "Collection",
+                        entityId: collection.Id,
+                        cancellationToken: ct);
+                }
+                catch (Exception auditEx)
+                {
+                    _logger.LogWarning(auditEx,
+                        "[Phase 6A.148.W5.6.B.OBS3] Failed to write collection suppression audit row — continuing. CorrelationId: {CorrelationId}",
+                        correlationId);
+                }
+
+                return;
+            }
 
             // Phase 6A.137B2: Fire-and-forget refund notification email
             var capturedContributorName = collection.ContributorName;

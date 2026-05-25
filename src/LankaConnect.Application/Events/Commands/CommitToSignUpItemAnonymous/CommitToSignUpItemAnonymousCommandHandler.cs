@@ -12,12 +12,12 @@ namespace LankaConnect.Application.Events.Commands.CommitToSignUpItemAnonymous;
 
 /// <summary>
 /// Handler for anonymous sign-up item commitment
-/// Phase 6A.23: Supports anonymous sign-up workflow with proper UX flow
-///
-/// Flow:
-/// 1. Check if email belongs to a member → Reject with "Please log in" message
-/// 2. Check if registered for event → Reject with "Please register first" message
-/// 3. If anonymous + registered → Allow commitment with deterministic UserId
+/// Phase 6A.23: Original — gated on member-account + event-registration.
+/// Phase 6A.140: Gates removed. Any email may commit. Smart UserId resolution:
+///   - Email matches a LankaConnect member → commitment uses that member's real UserId
+///     (they can later log in and manage the commitment from their account).
+///   - Email does not match a member → commitment uses the deterministic anonymous GUID
+///     (same as the prior anonymous path).
 /// </summary>
 public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitToSignUpItemAnonymousCommand, Guid>
 {
@@ -75,7 +75,15 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     "CommitToSignUpItemAnonymous: Email validated - Email={Email}",
                     emailToCheck);
 
-                // Step 1: Check registration status and member status
+                // Phase 6A.140: Smart UserId resolution.
+                // Look the email up in Users. If a member row exists, the commitment is
+                // bound to that member's real UserId (so they can later log in and Update /
+                // Cancel from their account). If no member row exists, fall back to the
+                // existing deterministic anonymous GUID. Both branches succeed — there is no
+                // longer a "please log in" or "register for event first" rejection.
+                // The CheckEventRegistrationQuery (Member + Registration lookup in one call)
+                // is reused so we keep observability (member-status + registration-status are
+                // still logged) without forking the lookup logic.
                 var checkQuery = new CheckEventRegistrationQuery(request.EventId, emailToCheck);
                 var checkHandler = new CheckEventRegistrationQueryHandler(_context, _checkEventRegistrationLogger);
                 var registrationResult = await checkHandler.Handle(checkQuery, cancellationToken);
@@ -92,47 +100,13 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                 }
 
                 var check = registrationResult.Value;
+                var resolvedUserId = check.HasUserAccount && check.UserId.HasValue
+                    ? check.UserId.Value
+                    : GenerateDeterministicGuid(emailToCheck);
 
                 _logger.LogInformation(
-                    "CommitToSignUpItemAnonymous: Registration check complete - ShouldPromptLogin={ShouldPromptLogin}, NeedsEventRegistration={NeedsEventRegistration}, CanCommitAnonymously={CanCommitAnonymously}",
-                    check.ShouldPromptLogin, check.NeedsEventRegistration, check.CanCommitAnonymously);
-
-                // Step 2: Validate based on UX flow
-                if (check.ShouldPromptLogin)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "CommitToSignUpItemAnonymous FAILED: Email belongs to member account - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    // Email belongs to a LankaConnect member - they should log in
-                    return Result<Guid>.Failure("MEMBER_ACCOUNT:This email is associated with a LankaConnect account. Please log in to sign up for items.");
-                }
-
-                if (check.NeedsEventRegistration)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "CommitToSignUpItemAnonymous FAILED: User not registered for event - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    // Not registered for event
-                    return Result<Guid>.Failure("NOT_REGISTERED:You must be registered for this event to sign up for items. Please register for the event first.");
-                }
-
-                // Step 3: User can proceed with anonymous commitment
-                if (!check.CanCommitAnonymously)
-                {
-                    stopwatch.Stop();
-
-                    _logger.LogWarning(
-                        "CommitToSignUpItemAnonymous FAILED: Cannot commit anonymously - EventId={EventId}, Email={Email}, Duration={ElapsedMs}ms",
-                        request.EventId, emailToCheck, stopwatch.ElapsedMilliseconds);
-
-                    return Result<Guid>.Failure("Unable to process commitment. Please try again.");
-                }
+                    "CommitToSignUpItemAnonymous: Smart-resolved UserId - EventId={EventId}, HasUserAccount={HasUserAccount}, IsRegistered={IsRegistered}, ResolvedUserId={ResolvedUserId}",
+                    request.EventId, check.HasUserAccount, check.IsRegisteredForEvent, resolvedUserId);
 
                 // Step 4: Get the event with sign-up lists
                 var @event = await _eventRepository.GetByIdAsync(request.EventId, cancellationToken);
@@ -185,13 +159,9 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     "CommitToSignUpItemAnonymous: Sign-up item loaded - SignUpItemId={SignUpItemId}, ItemCategory={ItemCategory}",
                     signUpItem.Id, signUpItem.ItemCategory);
 
-                // Step 7: Generate deterministic UserId for anonymous user
-                // This ensures the same email always gets the same "virtual" UserId
-                var anonymousUserId = GenerateDeterministicGuid(emailToCheck.ToLowerInvariant());
-
-                _logger.LogInformation(
-                    "CommitToSignUpItemAnonymous: Generated deterministic UserId - AnonymousUserId={AnonymousUserId}",
-                    anonymousUserId);
+                // Phase 6A.140: resolvedUserId was set above (Step 1) based on whether the
+                // email matched a real member or not. Step 7 was the old deterministic-GUID
+                // assignment; it now lives inside the smart-resolution block.
 
                 // Phase 6A.125: Determine effective quantities based on item type
                 var physicalQuantity = request.PhysicalQuantity ?? request.Quantity;
@@ -203,7 +173,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     itemTypeStr, physicalQuantity, slotsClaimed);
 
                 // Step 8: Check if user already has a commitment to this item
-                var existingCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == anonymousUserId);
+                var existingCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == resolvedUserId);
 
                 Result commitResult;
                 Guid commitmentId;
@@ -217,7 +187,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
                     {
                         commitResult = signUpItem.UpdateSlotCommitment(
-                            anonymousUserId,
+                            resolvedUserId,
                             slotsClaimed ?? request.Quantity,
                             request.Notes,
                             request.ContactName,
@@ -227,7 +197,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     else
                     {
                         commitResult = signUpItem.UpdateCommitment(
-                            anonymousUserId,
+                            resolvedUserId,
                             physicalQuantity,
                             request.Notes,
                             request.ContactName,
@@ -245,7 +215,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     if (signUpItem.ItemType == Domain.Events.Enums.SignUpItemType.Slot)
                     {
                         commitResult = signUpItem.AddSlotCommitment(
-                            anonymousUserId,
+                            resolvedUserId,
                             slotsClaimed ?? request.Quantity,
                             request.Notes,
                             request.ContactName,
@@ -256,7 +226,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                     else
                     {
                         commitResult = signUpItem.AddCommitment(
-                            anonymousUserId,
+                            resolvedUserId,
                             physicalQuantity,
                             request.Notes,
                             request.ContactName,
@@ -265,7 +235,7 @@ public class CommitToSignUpItemAnonymousCommandHandler : ICommandHandler<CommitT
                             kind: signUpList.Kind);
                     }
 
-                    var newCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == anonymousUserId);
+                    var newCommitment = signUpItem.Commitments.FirstOrDefault(c => c.UserId == resolvedUserId);
                     commitmentId = newCommitment?.Id ?? Guid.Empty;
 
                     _logger.LogInformation(

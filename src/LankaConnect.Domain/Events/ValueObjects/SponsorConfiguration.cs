@@ -8,6 +8,10 @@ namespace LankaConnect.Domain.Events.ValueObjects;
 ///
 /// IMPORTANT (C5 Guard): This VO uses flat primitive types only — no nested Money
 /// value objects — to avoid EF Core OwnsOne(ToJson) nested entity issues.
+///
+/// Phase 6A.145 Commit 6 — dropped the per-event MinAmountForSponsorImage threshold
+/// per UAT feedback: ANY sponsor can attach an image regardless of amount. Image
+/// upload is now an unconditional capability of the sponsor flow.
 /// </summary>
 public class SponsorConfiguration : ValueObject
 {

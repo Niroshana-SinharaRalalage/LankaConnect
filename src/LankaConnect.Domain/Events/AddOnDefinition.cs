@@ -49,6 +49,20 @@ public class AddOnDefinition : BaseEntity
     /// </summary>
     public int SortOrder { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.143 — public URL of the add-on's display image (rendered as a thumbnail
+    /// in AddOnSelector and the AddOnsManagementTab list). Null when no image uploaded.
+    /// Always set together with <see cref="ImageBlobName"/>.
+    /// </summary>
+    public string? ImageUrl { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.143 — Azure blob name (not URL) used by the upload handler to delete
+    /// the old blob when a new image is uploaded, or to clear the blob on ClearImage.
+    /// Always set together with <see cref="ImageUrl"/>.
+    /// </summary>
+    public string? ImageBlobName { get; private set; }
+
     // EF Core constructor
     private AddOnDefinition()
     {
@@ -187,4 +201,36 @@ public class AddOnDefinition : BaseEntity
     public int? RemainingStock => QuantityLimit.HasValue
         ? QuantityLimit.Value - QuantitySold
         : null;
+
+    /// <summary>
+    /// Phase 6A.143 — set or replace the add-on's image. Both URL and blob name are
+    /// required and set atomically (the handler is responsible for uploading the blob
+    /// first and deleting any prior blob on replace).
+    /// </summary>
+    public Result SetImage(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Image URL is required");
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Image blob name is required");
+
+        ImageUrl = url.Trim();
+        ImageBlobName = blobName.Trim();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.143 — clear the add-on's image. Idempotent — succeeds when no image
+    /// is set today. Handler is responsible for deleting the blob from storage.
+    /// </summary>
+    public Result ClearImage()
+    {
+        ImageUrl = null;
+        ImageBlobName = null;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Events;
+using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using System.Diagnostics;
 using Serilog.Context;
@@ -43,6 +44,11 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
                 var result = await _dbSet
                     .Include(r => r.Attendees)
                     .Include(r => r.Contact)
+                    // Phase 6A.148: include refund requests + their line items so the approval-
+                    // workflow handlers can mutate them in the same tracked load without a
+                    // second round-trip. Typical refund_requests per registration: 0-1.
+                    .Include(r => r.RefundRequests)
+                        .ThenInclude(rr => rr.LineItems)
                     .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
                 stopwatch.Stop();
@@ -342,6 +348,96 @@ public class RegistrationRepository : Repository<Registration>, IRegistrationRep
                     requestedBefore, take, stopwatch.ElapsedMilliseconds, ex.Message,
                     (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
 
+                throw;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<(Registration Registration, string StripeRefundId)>>
+        GetStuckCancelledWithRefundedTicketAsync(
+            DateTime processedBefore,
+            int take,
+            CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetStuckCancelledWithRefundedTicket"))
+        using (LogContext.PushProperty("EntityType", "Registration"))
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            _repoLogger.LogDebug(
+                "GetStuckCancelledWithRefundedTicketAsync START: ProcessedBefore={ProcessedBefore:o}, Take={Take}",
+                processedBefore, take);
+
+            try
+            {
+                // Find registration IDs that match the stuck pattern:
+                //   r.Status='Cancelled' AND r.RefundCompletedAt IS NULL AND r.StripeRefundId IS NULL
+                //   AND some workflow ticket line is already Refunded with stripe_refund_id NOT NULL
+                //   AND that line's processed_at is older than threshold (gives the W5.D5 webhook
+                //   handler a chance to settle the row normally).
+                //
+                // Projection returns (RegistrationId, StripeRefundId) pairs; we then load the
+                // tracked Registration aggregates by Id for the reconciler to mutate.
+                var stuckPairs = await (
+                    from r in _dbSet.AsNoTracking()
+                    where r.Status == RegistrationStatus.Cancelled
+                          && r.RefundCompletedAt == null
+                          && r.StripeRefundId == null
+                    let ticketLine = (
+                        from rr in _context.Set<RefundRequest>().AsNoTracking()
+                        join li in _context.Set<RefundRequestLineItem>().AsNoTracking()
+                            on rr.Id equals li.RefundRequestId
+                        where rr.RegistrationId == r.Id
+                              && li.Type == RefundLineItemType.Ticket
+                              && li.Status == RefundLineItemStatus.Refunded
+                              && li.StripeRefundId != null
+                              && li.ProcessedAt != null
+                              && li.ProcessedAt < processedBefore
+                        orderby li.ProcessedAt
+                        select li.StripeRefundId
+                    ).FirstOrDefault()
+                    where ticketLine != null
+                    select new { RegistrationId = r.Id, StripeRefundId = ticketLine })
+                    .Take(take)
+                    .ToListAsync(cancellationToken);
+
+                if (stuckPairs.Count == 0)
+                {
+                    stopwatch.Stop();
+                    _repoLogger.LogDebug(
+                        "GetStuckCancelledWithRefundedTicketAsync COMPLETE: Count=0, Duration={ElapsedMs}ms",
+                        stopwatch.ElapsedMilliseconds);
+                    return Array.Empty<(Registration, string)>();
+                }
+
+                // Load tracked Registrations by Id so the caller can call
+                // CompleteRefundFromCancelled + IUnitOfWork.CommitAsync.
+                var ids = stuckPairs.Select(p => p.RegistrationId).ToList();
+                var tracked = await _dbSet
+                    .Where(r => ids.Contains(r.Id))
+                    .ToListAsync(cancellationToken);
+                var trackedById = tracked.ToDictionary(r => r.Id);
+
+                var result = stuckPairs
+                    .Where(p => trackedById.ContainsKey(p.RegistrationId))
+                    .Select(p => (trackedById[p.RegistrationId], p.StripeRefundId!))
+                    .ToList();
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "GetStuckCancelledWithRefundedTicketAsync COMPLETE: Count={Count}, ProcessedBefore={ProcessedBefore:o}, Take={Take}, Duration={ElapsedMs}ms",
+                    result.Count, processedBefore, take, stopwatch.ElapsedMilliseconds);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "GetStuckCancelledWithRefundedTicketAsync FAILED: ProcessedBefore={ProcessedBefore:o}, Take={Take}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    processedBefore, take, stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
                 throw;
             }
         }

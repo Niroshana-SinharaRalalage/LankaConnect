@@ -237,4 +237,74 @@ public class TicketRepository : Repository<Ticket>, ITicketRepository
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<bool> AnyValidatedTicketForRegistrationAsync(
+        Guid registrationId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Untracked existence check — cheap, doesn't load full ticket payloads.
+            return await _context.Tickets
+                .AsNoTracking()
+                .AnyAsync(
+                    t => t.RegistrationId == registrationId && t.ValidatedAt != null,
+                    cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _repoLogger.LogError(ex,
+                "AnyValidatedTicketForRegistrationAsync FAILED: RegistrationId={RegistrationId}, Error={ErrorMessage}",
+                registrationId, ex.Message);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> TryMarkScannedAsync(
+        Guid ticketId,
+        DateTime scannedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "TryMarkScanned"))
+        using (LogContext.PushProperty("EntityType", "Ticket"))
+        using (LogContext.PushProperty("TicketId", ticketId))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _repoLogger.LogInformation(
+                "TryMarkScannedAsync START: TicketId={TicketId}, ScannedAtUtc={ScannedAtUtc:o}",
+                ticketId, scannedAtUtc);
+
+            try
+            {
+                // F1: atomic UPDATE with WHERE clause that ensures only one parallel
+                // scan can succeed. ExecuteUpdateAsync bypasses the EF change tracker
+                // and emits a single SQL statement; row count returned by the driver
+                // is the authoritative race winner.
+                var rowsAffected = await _context.Tickets
+                    .Where(t => t.Id == ticketId && t.ValidatedAt == null)
+                    .ExecuteUpdateAsync(
+                        s => s
+                            .SetProperty(t => t.ValidatedAt, scannedAtUtc)
+                            .SetProperty(t => t.UpdatedAt, scannedAtUtc),
+                        cancellationToken);
+
+                stopwatch.Stop();
+                _repoLogger.LogInformation(
+                    "TryMarkScannedAsync COMPLETE: TicketId={TicketId}, RowsAffected={RowsAffected}, RaceWinner={RaceWinner}, Duration={ElapsedMs}ms",
+                    ticketId, rowsAffected, rowsAffected == 1, stopwatch.ElapsedMilliseconds);
+
+                return rowsAffected;
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _repoLogger.LogError(ex,
+                    "TryMarkScannedAsync FAILED: TicketId={TicketId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
+                    ticketId, stopwatch.ElapsedMilliseconds, ex.Message,
+                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+                throw;
+            }
+        }
+    }
 }

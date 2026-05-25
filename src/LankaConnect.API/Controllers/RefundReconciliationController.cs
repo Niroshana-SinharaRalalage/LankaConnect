@@ -69,6 +69,24 @@ public class RefundReconciliationController : ControllerBase
         var result = await _reconciliationService.ReconcileStuckRefundsAsync(
             batchSize, ageThresholdMinutes, cancellationToken);
 
+        // Phase 6A.148 (architect F11): also reconcile stuck Approved refund requests
+        // — rows where the approve transaction committed but the post-commit Stripe
+        // dispatch never advanced any line item (process crash, transient Stripe error).
+        try
+        {
+            var approvedResult = await _reconciliationService
+                .ReconcileStuckApprovedRefundRequestsAsync(ageThresholdMinutes, cancellationToken);
+            if (approvedResult.IsSuccess)
+                _logger.LogInformation(
+                    "[6A.148] Stuck-Approved reconciliation re-dispatched {Count} requests",
+                    approvedResult.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[6A.148] Stuck-Approved reconciliation pass failed (non-fatal — legacy reconciler still ran)");
+        }
+
         if (result.IsFailure)
         {
             _logger.LogError(

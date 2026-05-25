@@ -571,12 +571,26 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                 var amountResult = Money.Create(request.SponsorAmount.Value, currency);
                 if (amountResult.IsSuccess)
                 {
+                    // W5.D10.c — prefer caller-supplied sponsor contact fields when provided
+                    // (parity with the standalone /sponsors flow); fall back to the
+                    // registering user's identity when blank. Trim + null-coalesce so a
+                    // whitespace-only override doesn't accidentally null a real value.
+                    var sponsorName = !string.IsNullOrWhiteSpace(request.SponsorName)
+                        ? request.SponsorName.Trim()
+                        : (request.Attendees?.FirstOrDefault()?.Name ?? "Sponsor");
+                    var sponsorEmail = !string.IsNullOrWhiteSpace(request.SponsorEmail)
+                        ? request.SponsorEmail.Trim()
+                        : request.Email!;
+                    var sponsorPhone = !string.IsNullOrWhiteSpace(request.SponsorPhone)
+                        ? request.SponsorPhone.Trim()
+                        : request.PhoneNumber;
+
                     var sponsorResult = Sponsor.CreateMoneySponsor(
                         @event.Id,
                         request.UserId,
-                        request.Attendees?.FirstOrDefault()?.Name ?? "Sponsor",
-                        request.Email!,
-                        request.PhoneNumber,
+                        sponsorName,
+                        sponsorEmail,
+                        sponsorPhone,
                         request.SponsorOrganization,
                         request.SponsorNotes,
                         amountResult.Value);
@@ -584,6 +598,40 @@ public class RsvpToEventCommandHandler : ICommandHandler<RsvpToEventCommand, str
                     if (sponsorResult.IsSuccess)
                     {
                         bundledSponsor = sponsorResult.Value;
+
+                        // Phase 6A.151 C5 — attach a pre-staged sponsor image
+                        // when the FE supplied {SponsorStagingBlobName, SponsorStagingBlobUrl}.
+                        // Best-effort: if SetImage rejects (defensive), the sponsor
+                        // row is still created without an image so the registration
+                        // doesn't fail because of a bad logo upload.
+                        if (!string.IsNullOrWhiteSpace(request.SponsorStagingBlobUrl)
+                            && !string.IsNullOrWhiteSpace(request.SponsorStagingBlobName))
+                        {
+                            try
+                            {
+                                var imgResult = bundledSponsor.SetImage(
+                                    request.SponsorStagingBlobUrl,
+                                    request.SponsorStagingBlobName);
+                                if (imgResult.IsFailure)
+                                {
+                                    _logger.LogWarning(
+                                        "Bundled sponsor SetImage rejected — SponsorId={SponsorId}, Error={Error}",
+                                        bundledSponsor.Id, imgResult.Error);
+                                }
+                                else
+                                {
+                                    _logger.LogInformation(
+                                        "Bundled sponsor image attached — SponsorId={SponsorId}, BlobName={BlobName}",
+                                        bundledSponsor.Id, request.SponsorStagingBlobName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Bundled sponsor SetImage threw — SponsorId={SponsorId}. Sponsor row will be created without image.",
+                                    bundledSponsor.Id);
+                            }
+                        }
 
                         // Calculate revenue breakdown
                         try

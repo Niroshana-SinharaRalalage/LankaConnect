@@ -32,6 +32,11 @@ public class PaymentsController : ControllerBase
     private readonly ICollectionWebhookHandler _collectionWebhookHandler;
     private readonly ISponsorWebhookHandler _sponsorWebhookHandler;
     private readonly IAddOnPurchaseWebhookHandler _addOnPurchaseWebhookHandler;
+    // Phase 6A.148.W5.5.D4 — workflow-line lookup for iterate-all-refunds router. Without
+    // this the dispatcher uses charge.Refunds.Data.FirstOrDefault() and silently mis-routes
+    // when a single PI carries multiple refunds of different types (Bug 1: ticket+sponsor
+    // on shared PI with operator-UAT registration 8df17ec1 stuck Cancelled).
+    private readonly LankaConnect.Domain.Events.Repositories.IRefundRequestRepository _refundRequestRepository;
     private readonly StripeOptions _stripeOptions;
     private readonly ILogger<PaymentsController> _logger;
 
@@ -46,6 +51,7 @@ public class PaymentsController : ControllerBase
         ICollectionWebhookHandler collectionWebhookHandler,
         ISponsorWebhookHandler sponsorWebhookHandler,
         IAddOnPurchaseWebhookHandler addOnPurchaseWebhookHandler,
+        LankaConnect.Domain.Events.Repositories.IRefundRequestRepository refundRequestRepository,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
     {
@@ -59,6 +65,7 @@ public class PaymentsController : ControllerBase
         _collectionWebhookHandler = collectionWebhookHandler;
         _sponsorWebhookHandler = sponsorWebhookHandler;
         _addOnPurchaseWebhookHandler = addOnPurchaseWebhookHandler;
+        _refundRequestRepository = refundRequestRepository;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
     }
@@ -565,7 +572,28 @@ public class PaymentsController : ControllerBase
 
     /// <summary>
     /// Phase 6A.91: Handles charge.refunded webhook to complete refund workflow.
-    /// Phase 0: Extracts refund info from Stripe objects and delegates to RegistrationWebhookHandler.
+    /// Phase 0: Extracts refund info from Stripe objects and delegates to typed handlers.
+    ///
+    /// Phase 6A.148.W5.5.D4 — REWRITTEN to iterate ALL refunds on the charge and route each
+    /// independently. The prior implementation used <c>charge.Refunds.Data.FirstOrDefault()</c>
+    /// which silently mis-routed when a single PaymentIntent carried multiple refunds of
+    /// different types (e.g., a bundled-at-registration sponsorship + the registration's
+    /// own ticket portion share one PI; W5.D2 per-line dispatcher creates two distinct
+    /// Stripe refunds; both <c>charge.refunded</c> webhooks picked the most-recent refund
+    /// via <c>FirstOrDefault</c> and routed BOTH events to the sponsor handler — the ticket
+    /// refund's registration handler was NEVER invoked, leaving the registration stuck in
+    /// <c>Cancelled</c> with no completion email). Operator UAT proof: registration
+    /// <c>8df17ec1-42b5-41ed-808c-d66914e5699d</c> on event ad8903c4 on 2026-05-22.
+    ///
+    /// Per-refund routing precedence:
+    ///   1. Workflow-line lookup via <see cref="LankaConnect.Domain.Events.Repositories.IRefundRequestRepository.GetWorkflowLineByStripeRefundIdAsync"/>
+    ///      (authoritative for refunds dispatched through the 6A.148 approval workflow).
+    ///   2. Metadata-based switch on <c>refund_type</c> / <c>payment_type</c> (legacy fallback
+    ///      for pre-6A.148 direct-Stripe refunds, donation, etc.).
+    ///
+    /// Idempotency is guaranteed downstream — every typed handler refuses duplicate state
+    /// transitions, and <c>RefundLineDispatcher</c>'s W5.D1 Stripe IdempotencyKey ensures
+    /// no double-charging.
     /// </summary>
     private async Task HandleChargeRefundedAsync(Stripe.Event stripeEvent)
     {
@@ -586,11 +614,11 @@ public class PaymentsController : ControllerBase
                 "[Phase 6A.91] [Webhook-Refund-1] Processing charge.refunded - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, StripeEventId: {StripeEventId}, AmountRefunded: {AmountRefunded}",
                 correlationId, charge.Id, stripeEvent.Id, charge.AmountRefunded);
 
-            // Get the latest refund - try webhook payload first, then fetch from Stripe API
-            Refund? latestRefund = charge.Refunds?.Data?.FirstOrDefault();
-
-            // Phase 6A.X FIX: Webhook payload may not include Refunds collection - fetch from Stripe API
-            if (latestRefund == null)
+            // W5.5.D4 — iterate ALL refunds on the charge. Fallback to Stripe API list when
+            // the webhook payload omits the refunds collection. Limit=100 captures
+            // practical max refunds per charge (operator UAT scenarios are <=10).
+            var refundsOnCharge = charge.Refunds?.Data?.ToList() ?? new List<Refund>();
+            if (refundsOnCharge.Count == 0)
             {
                 _logger.LogInformation(
                     "[Phase 6A.91] [Webhook-Refund-1b] Refunds not in webhook payload, fetching from Stripe API - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
@@ -599,8 +627,9 @@ public class PaymentsController : ControllerBase
                 try
                 {
                     var refundService = new RefundService(_stripeClient);
-                    var refunds = await refundService.ListAsync(new RefundListOptions { Charge = charge.Id, Limit = 1 });
-                    latestRefund = refunds.Data?.FirstOrDefault();
+                    var refunds = await refundService.ListAsync(
+                        new RefundListOptions { Charge = charge.Id, Limit = 100 });
+                    refundsOnCharge = refunds.Data?.ToList() ?? new List<Refund>();
                 }
                 catch (StripeException ex)
                 {
@@ -610,7 +639,7 @@ public class PaymentsController : ControllerBase
                 }
             }
 
-            if (latestRefund == null)
+            if (refundsOnCharge.Count == 0)
             {
                 _logger.LogWarning(
                     "[Phase 6A.91] [Webhook-Refund-WARN] No refunds found on charge - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
@@ -619,68 +648,36 @@ public class PaymentsController : ControllerBase
             }
 
             _logger.LogInformation(
-                "[Phase 6A.91] [Webhook-Refund-2] Refund found - CorrelationId: {CorrelationId}, RefundId: {RefundId}, RefundStatus: {Status}, RefundAmount: {Amount}",
-                correlationId, latestRefund.Id, latestRefund.Status, latestRefund.Amount);
+                "[Phase 6A.148.W5.5.D4] [Webhook-Refund-IterateAll] Iterating {RefundCount} refund(s) on charge - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}",
+                refundsOnCharge.Count, correlationId, charge.Id);
 
-            // Extract primitives and delegate to handler (keeps Stripe SDK dependency out of Application layer)
-            var refundMetadata = latestRefund.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            // Phase 6A.136 Issue #1: Route charge.refunded by payment_type metadata.
-            // Previously ALL refunds went to RegistrationWebhookHandler regardless of payment type.
-            // Check refund metadata first, then charge metadata for payment_type.
             var chargeMetadata = charge.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            string? refundPaymentType = null;
-            refundMetadata?.TryGetValue("refund_type", out refundPaymentType);
-            if (string.IsNullOrEmpty(refundPaymentType))
-            {
-                chargeMetadata?.TryGetValue("payment_type", out refundPaymentType);
-            }
 
-            if (!string.IsNullOrEmpty(refundPaymentType))
+            // Route each refund independently. Failures on one refund must not stop the
+            // others (downstream handlers are idempotent so a partial-success retry is
+            // safe). Each per-refund try/catch isolates failures.
+            foreach (var refund in refundsOnCharge)
             {
-                _logger.LogInformation(
-                    "[Phase 6A.136] [Webhook-Refund-Route] Routing charge.refunded by type - CorrelationId: {CorrelationId}, PaymentType: {PaymentType}",
-                    correlationId, refundPaymentType);
-
-                switch (refundPaymentType)
+                if (!string.Equals(refund.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
                 {
-                    case "add_on_cancellation":
-                    case "add_on_purchase":
-                        // Add-on refunds are handled inline by AddOnRefundService (marks entity as refunded).
-                        // The webhook arriving here is expected — log and acknowledge.
-                        _logger.LogInformation(
-                            "[Phase 6A.136] [Webhook-Refund-AddOn] Add-on refund acknowledged - CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, RefundId: {RefundId}",
-                            correlationId, charge.Id, latestRefund.Id);
-                        return;
+                    _logger.LogInformation(
+                        "[Phase 6A.148.W5.5.D4] [Webhook-Refund-SkipNonSucceeded] Skipping refund - CorrelationId: {CorrelationId}, RefundId: {RefundId}, Status: {Status}",
+                        correlationId, refund.Id, refund.Status);
+                    continue;
+                }
 
-                    case "donation":
-                        // Phase 6A.136E: Route to dedicated donation refund handler
-                        await _donationWebhookHandler.HandleChargeRefundedAsync(
-                            charge.PaymentIntentId, latestRefund.Id, correlationId);
-                        return;
-
-                    case "collection":
-                        // Phase 6A.136E: Route to dedicated collection refund handler
-                        await _collectionWebhookHandler.HandleChargeRefundedAsync(
-                            charge.PaymentIntentId, latestRefund.Id, correlationId);
-                        return;
-
-                    case "sponsor":
-                        // Phase 6A.136E: Route to dedicated sponsor refund handler
-                        await _sponsorWebhookHandler.HandleChargeRefundedAsync(
-                            charge.PaymentIntentId, latestRefund.Id, correlationId);
-                        return;
+                try
+                {
+                    await RouteSingleRefundAsync(charge, refund, chargeMetadata, correlationId);
+                }
+                catch (Exception ex)
+                {
+                    // Isolate per-refund failure; continue with remaining refunds.
+                    _logger.LogError(ex,
+                        "[Phase 6A.148.W5.5.D4] [Webhook-Refund-PerRefundEx] Routing exception for refund (continuing with others) - CorrelationId: {CorrelationId}, RefundId: {RefundId}",
+                        correlationId, refund.Id);
                 }
             }
-
-            // Default: registration payment refund
-            await _registrationWebhookHandler.HandleChargeRefundedAsync(
-                charge.Id,
-                charge.PaymentIntentId,
-                latestRefund.Id,
-                charge.AmountRefunded,
-                refundMetadata,
-                correlationId);
         }
         catch (Exception ex)
         {
@@ -689,6 +686,113 @@ public class PaymentsController : ControllerBase
                 correlationId, ex.GetType().FullName, ex.Message);
             throw; // Re-throw to trigger outer catch block with HTTP 500
         }
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W5.5.D4 — route ONE refund to the correct typed handler.
+    ///
+    /// Decision flow:
+    ///   1. Workflow-line lookup via <c>GetWorkflowLineByStripeRefundIdAsync</c>. If hit,
+    ///      dispatch by <c>line.Type</c> — authoritative for 6A.148 workflow refunds.
+    ///   2. Metadata-based switch on <c>refund_type</c> (refund metadata) or
+    ///      <c>payment_type</c> (charge metadata). Preserves legacy direct-Stripe refunds.
+    ///   3. Final fallback: <c>RegistrationWebhookHandler</c> (the pre-6A.136 default).
+    /// </summary>
+    private async Task RouteSingleRefundAsync(
+        Charge charge,
+        Refund refund,
+        Dictionary<string, string>? chargeMetadata,
+        Guid correlationId)
+    {
+        var refundMetadata = refund.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+        _logger.LogInformation(
+            "[Phase 6A.91] [Webhook-Refund-2] Routing refund - CorrelationId: {CorrelationId}, RefundId: {RefundId}, RefundAmount: {Amount}",
+            correlationId, refund.Id, refund.Amount);
+
+        // ① Workflow-line lookup (authoritative for 6A.148 refunds). Type-agnostic —
+        //    the line itself knows whether it's a Ticket/AddOn/Sponsor/Collection refund.
+        var workflowLine = await _refundRequestRepository
+            .GetWorkflowLineByStripeRefundIdAsync(refund.Id);
+        if (workflowLine != null)
+        {
+            _logger.LogInformation(
+                "[Phase 6A.148.W5.5.D4] [Webhook-Refund-Route-Workflow] Refund matched to workflow line - CorrelationId: {CorrelationId}, RefundId: {RefundId}, LineId: {LineId}, Type: {Type}, RrId: {RrId}",
+                correlationId, refund.Id, workflowLine.Id, workflowLine.Type, workflowLine.RefundRequestId);
+
+            switch (workflowLine.Type)
+            {
+                case LankaConnect.Domain.Events.Enums.RefundLineItemType.AddOn:
+                    await _addOnPurchaseWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+
+                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Sponsor:
+                    await _sponsorWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+
+                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Collection:
+                    await _collectionWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+
+                case LankaConnect.Domain.Events.Enums.RefundLineItemType.Ticket:
+                    await _registrationWebhookHandler.HandleChargeRefundedAsync(
+                        charge.Id, charge.PaymentIntentId, refund.Id,
+                        refund.Amount, refundMetadata, correlationId);
+                    return;
+            }
+        }
+
+        // ② Metadata-based switch (legacy direct-Stripe refunds / non-workflow paths).
+        string? refundPaymentType = null;
+        refundMetadata?.TryGetValue("refund_type", out refundPaymentType);
+        if (string.IsNullOrEmpty(refundPaymentType))
+        {
+            chargeMetadata?.TryGetValue("payment_type", out refundPaymentType);
+        }
+
+        if (!string.IsNullOrEmpty(refundPaymentType))
+        {
+            _logger.LogInformation(
+                "[Phase 6A.136] [Webhook-Refund-Route-Legacy] Routing by metadata (no workflow line matched) - CorrelationId: {CorrelationId}, RefundId: {RefundId}, PaymentType: {PaymentType}",
+                correlationId, refund.Id, refundPaymentType);
+
+            switch (refundPaymentType)
+            {
+                case "add_on_cancellation":
+                case "add_on_purchase":
+                    await _addOnPurchaseWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+                case "donation":
+                    await _donationWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+                case "collection":
+                    await _collectionWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+                case "sponsor":
+                    await _sponsorWebhookHandler.HandleChargeRefundedAsync(
+                        charge.PaymentIntentId, refund.Id, correlationId);
+                    return;
+            }
+        }
+        else
+        {
+            _logger.LogWarning(
+                "[Phase 6A.148.W4.D14] [Webhook-Refund-Default-Route] Refund falling through to default Registration handler — no workflow line match, no refund_type metadata, no charge payment_type. CorrelationId: {CorrelationId}, ChargeId: {ChargeId}, RefundId: {RefundId}, RefundMetaKeys: [{RefundKeys}], ChargeMetaKeys: [{ChargeKeys}]",
+                correlationId, charge.Id, refund.Id,
+                refundMetadata == null ? "" : string.Join(",", refundMetadata.Keys),
+                chargeMetadata == null ? "" : string.Join(",", chargeMetadata.Keys));
+        }
+
+        // ③ Final fallback: registration handler (pre-6A.136 default).
+        await _registrationWebhookHandler.HandleChargeRefundedAsync(
+            charge.Id, charge.PaymentIntentId, refund.Id,
+            refund.Amount, refundMetadata, correlationId);
     }
 
     /// <summary>

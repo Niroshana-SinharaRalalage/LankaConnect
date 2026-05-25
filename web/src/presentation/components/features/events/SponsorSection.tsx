@@ -1,12 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { Award } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Award, ImagePlus, X, Handshake, Pencil } from 'lucide-react';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
-import { useCreateMoneySponsor, useCreateItemSponsor } from '@/presentation/hooks/useSponsors';
-import type { SponsorConfigurationDto, SponsorDto } from '@/infrastructure/api/types/events.types';
+import {
+  useCreateMoneySponsor,
+  useCreateItemSponsor,
+  usePublicEventSponsors,  // Phase 6A.150: PII-free public read for the in-section sponsor wall
+  useUploadSponsorImage,
+} from '@/presentation/hooks/useSponsors';
+import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
+import type {
+  SponsorConfigurationDto,
+  SponsorDto,
+  PublicSponsorDto,  // Phase 6A.150
+} from '@/infrastructure/api/types/events.types';
+import { EditSponsorModal } from './EditSponsorModal';
 
 type SponsorMode = 'money' | 'item';
 
@@ -25,6 +36,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   const showToggle = sponsorConfig.acceptMoneySponsors && sponsorConfig.acceptItemSponsors;
 
   const [mode, setMode] = useState<SponsorMode>(defaultMode);
+  // Phase 6A.151 — sponsor self-edit modal state.
+  const [editingMySponsor, setEditingMySponsor] = useState<SponsorDto | null>(null);
 
   // Common fields
   const [sponsorName, setSponsorName] = useState('');
@@ -46,9 +59,25 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
 
   const createMoneySponsor = useCreateMoneySponsor();
   const createItemSponsor = useCreateItemSponsor();
+  const uploadImage = useUploadSponsorImage();
+
+  // Phase 6A.145 Commit 8 — optional image upload (no threshold gate). User selects
+  // a file; on submit we sequence: create sponsor → upload image to returned ID →
+  // (Money only) redirect to Stripe.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Phase 6A.145 Commit 8 — render existing sponsors-with-images inside this
+  // section so visitors see who already sponsored.
+  // Phase 6A.150 — switched from useEventSponsors (auth-required) to
+  // usePublicEventSponsors (anonymous-allowed, PII-free). The backend handler
+  // already filters to image-bearing confirmed sponsors and pre-sorts by
+  // contribution magnitude — the response is exactly what we want to render.
+  const { data: sponsorsResponse } = usePublicEventSponsors(eventId, sponsorConfig.isEnabled === true);
+  const sponsorsWithImages: PublicSponsorDto[] = sponsorsResponse?.sponsors ?? [];
 
   const parsedAmount = parseFloat(amount) || 0;
-  const isPending = createMoneySponsor.isPending || createItemSponsor.isPending;
+  const isPending = createMoneySponsor.isPending || createItemSponsor.isPending || uploadImage.isPending;
 
   const handleModeChange = (newMode: SponsorMode) => {
     setMode(newMode);
@@ -87,7 +116,7 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
       }
 
       try {
-        const checkoutUrl = await createMoneySponsor.mutateAsync({
+        const result = await createMoneySponsor.mutateAsync({
           eventId,
           request: {
             sponsorName: sponsorName.trim(),
@@ -102,8 +131,21 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
           },
         });
 
-        if (checkoutUrl) {
-          window.location.href = checkoutUrl;
+        // Phase 6A.145 Commit 8 — if user attached an image, upload it to the
+        // Pending sponsor BEFORE redirecting to Stripe. If upload fails we still
+        // proceed to Stripe (don't block the payment); user can email the
+        // organizer the logo as a fallback.
+        if (imageFile && result.sponsorId) {
+          try {
+            await eventsRepository.uploadSponsorImage(eventId, result.sponsorId, imageFile);
+          } catch (imgErr) {
+            console.warn('[SponsorSection] image upload failed before Stripe redirect:', imgErr);
+            // Non-fatal — continue to checkout. Image can be attached later.
+          }
+        }
+
+        if (result.checkoutUrl) {
+          window.location.href = result.checkoutUrl;
         }
       } catch (err: any) {
         setError(err?.response?.data?.detail || 'Failed to process sponsorship. Please try again.');
@@ -116,7 +158,7 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
       }
 
       try {
-        await createItemSponsor.mutateAsync({
+        const sponsorId = await createItemSponsor.mutateAsync({
           eventId,
           request: {
             sponsorName: sponsorName.trim(),
@@ -130,15 +172,43 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
           },
         });
 
+        // Phase 6A.145 Commit 8 — attach image to the just-recorded Item sponsor.
+        if (imageFile && sponsorId) {
+          try {
+            await eventsRepository.uploadSponsorImage(eventId, sponsorId, imageFile);
+          } catch (imgErr) {
+            console.warn('[SponsorSection] image upload failed for item sponsor:', imgErr);
+            // Non-fatal — surface a soft notice but the sponsorship is recorded.
+          }
+        }
+
         setItemSuccess(true);
         // Reset item-specific fields
         setItemName('');
         setItemDescription('');
         setEstimatedValue('');
+        setImageFile(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
       } catch (err: any) {
         setError(err?.response?.data?.detail || 'Failed to submit item sponsorship. Please try again.');
       }
     }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image too large (max 5MB).');
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+  };
+
+  const handleImageClear = () => {
+    setImageFile(null);
+    if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
   return (
@@ -148,6 +218,58 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
       description={sponsorConfig.sponsorMessage || undefined}
       defaultOpen={false}
     >
+      {/* Phase 6A.145 Commit 8 — confirmed sponsors shown inside this section so
+          visitors see who has already sponsored before adding their own.
+          Phase 6A.148.W5.D10 — variable name kept (sponsorsWithImages) but the
+          backend filter no longer requires ImageUrl. Missing-logo sponsors get
+          an initials placeholder so the layout stays consistent. */}
+      {sponsorsWithImages.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">
+            <Handshake className="h-4 w-4 text-indigo-500" />
+            Sponsors
+          </h4>
+          <div className="flex flex-wrap gap-3">
+            {sponsorsWithImages.map((s) => {
+              const displayName = s.sponsorOrganization || s.sponsorName;
+              const words = displayName.trim().split(/\s+/).filter(Boolean);
+              const initials = words.length === 0
+                ? '?'
+                : words.length === 1
+                  ? words[0]!.slice(0, 2).toUpperCase()
+                  : (words[0]![0]! + words[1]![0]!).toUpperCase();
+
+              return (
+                <div
+                  key={s.id}
+                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2"
+                  title={displayName}
+                >
+                  {s.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.imageUrl}
+                      alt={displayName}
+                      className="h-12 w-12 object-contain"
+                    />
+                  ) : (
+                    <div
+                      className="h-12 w-12 flex items-center justify-center rounded bg-gradient-to-br from-indigo-100 to-amber-100"
+                      aria-hidden="true"
+                    >
+                      <span className="text-sm font-semibold text-indigo-700">{initials}</span>
+                    </div>
+                  )}
+                  <span className="mt-1 w-full truncate text-center text-xs text-neutral-600">
+                    {displayName}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Mode Toggle */}
       {showToggle && (
         <div className="mb-4 flex rounded-lg bg-indigo-50 p-1">
@@ -245,6 +367,42 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
               placeholder="Add a note with your sponsorship..."
               className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               rows={2}
+            />
+          </div>
+
+          {/* Phase 6A.145 Commit 8 — optional sponsor logo/image. Any amount qualifies. */}
+          <div>
+            <label htmlFor="sponsorImage" className="block text-sm font-medium text-neutral-700 mb-1">
+              Logo or Image (optional)
+            </label>
+            {imageFile ? (
+              <div className="flex items-center justify-between rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm">
+                <span className="truncate text-neutral-700">{imageFile.name}</span>
+                <button
+                  type="button"
+                  onClick={handleImageClear}
+                  className="ml-2 flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
+                  aria-label="Remove image"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="sponsorImage"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-600 hover:border-indigo-400 hover:text-indigo-600"
+              >
+                <ImagePlus className="h-4 w-4" />
+                <span>Attach a logo or image (max 5MB)</span>
+              </label>
+            )}
+            <input
+              ref={imageInputRef}
+              id="sponsorImage"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+              onChange={handleImageSelect}
             />
           </div>
         </div>
@@ -392,6 +550,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                       ? 'bg-green-100 text-green-700'
                       : sponsor.status === 'Pending'
                       ? 'bg-yellow-100 text-yellow-700'
+                      : sponsor.status === 'Refunded'
+                      ? 'bg-rose-100 text-rose-700 line-through'
                       : 'bg-neutral-100 text-neutral-600'
                   }`}>
                     {sponsor.status === 'RecordedItem' ? 'Recorded' : sponsor.status}
@@ -399,12 +559,34 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   <span className="text-xs text-neutral-500">
                     {new Date(sponsor.createdAt).toLocaleDateString()}
                   </span>
+                  {/* Phase 6A.151 — self-edit. Anonymous sponsors have no sponsorUserId
+                      so they never reach this list (mySponsors is JWT-scoped). The
+                      backend re-checks authz and the modal disables fields per matrix. */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingMySponsor(sponsor)}
+                    className="inline-flex items-center justify-center h-7 w-7 rounded text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50"
+                    aria-label={`Edit sponsorship from ${sponsor.sponsorName}`}
+                    title="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
+      {/* Phase 6A.151 — sponsor self-edit modal */}
+      <EditSponsorModal
+        eventId={eventId}
+        sponsor={editingMySponsor}
+        isOrganizer={false}
+        open={editingMySponsor !== null}
+        onClose={() => setEditingMySponsor(null)}
+        onSaved={() => setEditingMySponsor(null)}
+      />
     </CollapsibleSection>
   );
 }

@@ -455,6 +455,29 @@ public class CreateRefundRequest
     /// Optional metadata to attach to the refund
     /// </summary>
     public Dictionary<string, string>? Metadata { get; init; }
+
+    /// <summary>
+    /// Phase 6A.148.W5.D1: explicit Stripe IdempotencyKey for this refund call.
+    ///
+    /// When set, <see cref="IStripePaymentService.CreateRefundAsync"/> passes this value
+    /// to Stripe verbatim — Stripe guarantees at-most-one successful refund per key for
+    /// 24 hours. This is the foundation of safe re-dispatch from
+    /// <c>RefundReconciliationService</c> AND retries from
+    /// <c>RefundExecutionService.DispatchAsync</c> after a partial-success-then-rollback
+    /// (the W5.D7 root cause).
+    ///
+    /// Callers in the 6A.148 workflow path should use
+    /// <c>$"refund_line_{lineId:N}"</c> (or
+    /// <c>$"refund_line_{lineId:N}_{attemptCounter}"</c> when the line has been
+    /// re-attempted after a <see cref="LankaConnect.Domain.Events.Enums.RefundLineItemStatus.Failed"/>
+    /// state). Stable per-line key means reconciler re-dispatch is automatically safe.
+    ///
+    /// When null, <c>StripePaymentService</c> falls back to its legacy default
+    /// <c>$"refund_{PaymentIntentId}_{AmountInCents}_{RegistrationId}"</c> for
+    /// backward compatibility with legacy callers (CancelRsvp paid-refund branch,
+    /// AddOnRefundService, etc.).
+    /// </summary>
+    public string? IdempotencyKey { get; init; }
 }
 
 /// <summary>

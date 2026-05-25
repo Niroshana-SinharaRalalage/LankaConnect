@@ -15,6 +15,8 @@ using LankaConnect.Application.Events.Commands.RsvpToEvent;
 using LankaConnect.Application.Events.Commands.CancelRsvp;
 using LankaConnect.Application.Events.Commands.WithdrawRefundRequest;
 using LankaConnect.Application.Events.Commands.ForceCancelStuckRefund;
+using LankaConnect.Application.Events.Commands.RefundRequests;
+using LankaConnect.Application.Events.Queries.RefundRequests;
 using LankaConnect.Application.Events.Commands.UpdateRsvp;
 using LankaConnect.Application.Events.Commands.ResendTicketEmail;
 using LankaConnect.Application.Events.Commands.ResendAttendeeConfirmation;
@@ -100,6 +102,7 @@ using LankaConnect.Application.Events.Commands.DeleteFormResponse;
 using LankaConnect.Application.Events.Queries.GetEventForms;
 using LankaConnect.Application.Events.Queries.GetEventFormDetail;
 using LankaConnect.Application.Events.Queries.GetFormResponses;
+using LankaConnect.Application.Events.Queries.GetPublicFormResponses;  // Phase 6A.146
 using LankaConnect.Application.Events.Queries.GetMyFormResponse;
 using LankaConnect.Application.Events.Queries.GetMyFormResponseByUserId;
 using LankaConnect.Application.Events.Commands.InitiateAddAttendees;
@@ -109,6 +112,7 @@ using LankaConnect.Application.Events.Commands.UpdateTicketTier;
 using LankaConnect.Application.Events.Commands.RemoveTicketTier;
 using LankaConnect.Application.Events.Commands.SetTicketingMode;
 using LankaConnect.Application.Events.Commands.SetSeatingMode;
+using LankaConnect.Application.Events.Commands.ScanTicket; // Phase 6A.141
 using LankaConnect.Application.Events.Queries.GetTicketTiers;
 using LankaConnect.API.Extensions;
 using LankaConnect.Domain.Events;
@@ -723,6 +727,13 @@ public class EventsController : BaseController<EventsController>
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
+            // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
+            SponsorStagingBlobName: request.SponsorStagingBlobName,
+            SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
+            // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields
+            SponsorName: request.SponsorName,
+            SponsorEmail: request.SponsorEmail,
+            SponsorPhone: request.SponsorPhone,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode events
@@ -777,6 +788,144 @@ public class EventsController : BaseController<EventsController>
         return HandleResult(result);
     }
 
+    // ============================================================
+    // Phase 6A.141: Paid-Event Ticket Check-in / QR Scanner endpoints
+    //
+    // Two endpoints, one ScanTicketCommand backing both:
+    //   POST .../tickets/scan          — QR-scan path (body: { qrPayload })
+    //   POST .../tickets/scan-by-code  — Manual-entry fallback (body: { ticketCode })
+    // Authorization is enforced inside the handler via Event.IsOrganizer(scannerUserId) —
+    // see Phase 6A.133 organizer-link pattern. The handler returns Result.Forbidden which
+    // BaseController.BuildProblem maps to HTTP 403.
+    //
+    // F3: client_ip extracted via BaseController.GetClientIpAddress (X-Forwarded-For aware).
+    // ============================================================
+
+    /// <summary>
+    /// Scan a QR-encoded ticket payload at the event gate. Returns accepted with attendee
+    /// + tier details, or rejected with a reason code (already_scanned, invalid_signature,
+    /// expired, invalidated, ticket_not_found, wrong_event, malformed_payload).
+    /// Both accepted and rejected business outcomes are HTTP 200 with the outcome on the
+    /// body — HTTP 4xx is reserved for protocol/auth failures (per Plan-agent D5).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicket(
+        Guid eventId,
+        [FromBody] ScanTicketQrRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        // Phase 6A.116-style cache-prevention: scan endpoints must never be cached.
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (QR) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, PayloadLength={Length}",
+            eventId, userId, request.QrPayload?.Length ?? 0);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: request.QrPayload,
+            TicketCode: null,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Manual-entry fallback for the gate scanner — staff types in the LC-YYYY-XXXXXX
+    /// ticket code when the QR can't be scanned (e.g. damaged print, dead phone). No
+    /// signature verification (trust comes from organizer auth).
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/scan-by-code")]
+    [Authorize]
+    [ProducesResponseType(typeof(ScanTicketResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ScanTicketByCode(
+        Guid eventId,
+        [FromBody] ScanTicketByCodeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var scannerName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+        Response.Headers["Pragma"] = "no-cache";
+        Response.Headers["Expires"] = "0";
+
+        Logger.LogInformation(
+            "ScanTicket (manual) endpoint: EventId={EventId}, ScannerUserId={ScannerUserId}, TicketCode={TicketCode}",
+            eventId, userId, request.TicketCode);
+
+        var command = new LankaConnect.Application.Events.Commands.ScanTicket.ScanTicketCommand(
+            EventId: eventId,
+            ScannerUserId: userId,
+            ScannerName: scannerName,
+            QrPayload: null,
+            TicketCode: request.TicketCode,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.141 admin override — reverses a prior accepted scan. AdminOnly policy
+    /// (event organizers do not have unmark privilege by default to limit abuse during
+    /// disputes). Writes a new TicketScanLog row with scan_result='unmarked' carrying
+    /// the admin's stated reason; the original accepted-scan row stays for forensic
+    /// completeness.
+    /// </summary>
+    [HttpPost("{eventId:guid}/tickets/{ticketCode}/unmark-scanned")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(UnmarkScannedResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UnmarkScanned(
+        Guid eventId,
+        string ticketCode,
+        [FromBody] UnmarkScannedRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = User.GetUserId();
+        var adminName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+
+        Logger.LogInformation(
+            "UnmarkScanned endpoint: EventId={EventId}, TicketCode={TicketCode}, AdminUserId={AdminUserId}",
+            eventId, ticketCode, userId);
+
+        var command = new UnmarkScannedCommand(
+            EventId: eventId,
+            TicketCode: ticketCode,
+            AdminUserId: userId,
+            AdminName: adminName,
+            Reason: request.Reason,
+            ClientIp: GetClientIpAddress(),
+            UserAgent: Request.Headers.UserAgent.ToString());
+
+        var result = await Mediator.Send(command, cancellationToken);
+        return HandleResult(result);
+    }
+
     /// <summary>
     /// Register anonymous attendee for an event (No authentication required)
     /// Phase 6A.44: Returns checkout URL for paid events, null for free events
@@ -828,6 +977,13 @@ public class EventsController : BaseController<EventsController>
             SponsorAmount: request.SponsorAmount,
             SponsorOrganization: request.SponsorOrganization,
             SponsorNotes: request.SponsorNotes,
+            // Phase 6A.151 C5: pre-staged sponsor image from POST /sponsors/staging-image
+            SponsorStagingBlobName: request.SponsorStagingBlobName,
+            SponsorStagingBlobUrl: request.SponsorStagingBlobUrl,
+            // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields
+            SponsorName: request.SponsorName,
+            SponsorEmail: request.SponsorEmail,
+            SponsorPhone: request.SponsorPhone,
             // Phase 7A.6D: Pass WhatsApp phone for opt-in
             WhatsAppPhoneNumber: request.WhatsAppPhoneNumber,
             // Phase 7E.3a: Pass head-count payload for B-mode anonymous registrations
@@ -989,6 +1145,220 @@ public class EventsController : BaseController<EventsController>
 
         return HandleResult(result);
     }
+
+    // =====================================================================================
+    // Phase 6A.148 — Refund Approval Workflow endpoints
+    //
+    // Feature-flagged via Refund:ApprovalWorkflow:Enabled (false by default; true in
+    // staging). When disabled all 7 endpoints below return 404. Legacy refund routes
+    // (/rsvp/withdraw-refund, /rsvp/cancel paid-refund branch, force-cancel-stuck-refund)
+    // remain available regardless of the flag for in-flight rows + audit cleanup.
+    //
+    // Authorization model:
+    //   - Attendee endpoints (POST /refund-requests, GET /me, POST /me/withdraw): require
+    //     authenticated user; handler verifies registration ownership.
+    //   - Organizer endpoints (GET, organizer-initiated POST, approve, reject): handler
+    //     verifies Event.IsOrganizer(callerUserId).
+    // =====================================================================================
+
+    private bool RefundApprovalWorkflowEnabled =>
+        HttpContext.RequestServices
+            .GetService(typeof(Microsoft.Extensions.Configuration.IConfiguration))
+            is Microsoft.Extensions.Configuration.IConfiguration cfg &&
+        cfg.GetValue<bool>("Refund:ApprovalWorkflow:Enabled");
+
+    /// <summary>
+    /// Phase 6A.148: Attendee creates a refund request (Pending). An organizer must
+    /// approve it before any Stripe call is made (the GATE — rule #6).
+    /// </summary>
+    [HttpPost("{eventId:guid}/refund-requests")]
+    [Authorize]
+    [ProducesResponseType(typeof(CreateRefundRequestResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateRefundRequest(
+        Guid eventId, [FromBody] CreateRefundRequestPayload payload)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "[6A.148] POST /refund-requests: EventId={EventId} UserId={UserId} LineCount={LineCount}",
+            eventId, userId, payload?.LineItems?.Count ?? 0);
+
+        var command = new CreateRefundRequestCommand(
+            eventId, userId, payload?.RequesterReason, payload?.LineItems ?? Array.Empty<RefundLineItemInputDto>());
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Attendee fetches their own most-recent refund request for an event,
+    /// or null. OrganizerNotes are intentionally excluded from this projection (architect F6).
+    /// </summary>
+    [HttpGet("{eventId:guid}/refund-requests/me")]
+    [Authorize]
+    [ProducesResponseType(typeof(AttendeeRefundRequestDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyRefundRequest(Guid eventId)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        var query = new GetMyRefundRequestQuery(eventId, userId);
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Attendee withdraws their own Pending refund request.
+    /// Distinct from legacy 6A.91 /rsvp/withdraw-refund (which operates on legacy
+    /// RefundRequested registrations — kept available for in-flight Stripe rows).
+    /// </summary>
+    [HttpPost("{eventId:guid}/refund-requests/me/withdraw")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> WithdrawMyRefundRequest(Guid eventId)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "[6A.148] POST /refund-requests/me/withdraw: EventId={EventId} UserId={UserId}",
+            eventId, userId);
+
+        var command = new WithdrawRefundRequestV2Command(eventId, userId);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Organizer lists refund requests for an event, optionally filtered by status.
+    /// </summary>
+    [HttpGet("{eventId:guid}/refund-requests")]
+    [Authorize]
+    [ProducesResponseType(typeof(IReadOnlyList<OrganizerRefundRequestDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListEventRefundRequests(
+        Guid eventId, [FromQuery] LankaConnect.Domain.Events.Enums.RefundRequestStatus? status = null)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        var query = new GetEventRefundRequestsQuery(eventId, userId, status);
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Organizer initiates a refund on behalf of an attendee. Skips
+    /// Pending — request is created directly in Approved and Stripe dispatch is queued.
+    /// </summary>
+    [HttpPost("{eventId:guid}/refund-requests/organizer-initiated")]
+    [Authorize]
+    [ProducesResponseType(typeof(CreateRefundRequestResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateOrganizerInitiatedRefund(
+        Guid eventId, [FromBody] CreateOrganizerInitiatedRefundPayload payload)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "[6A.148] POST /refund-requests/organizer-initiated: EventId={EventId} RegId={RegId} CallerUserId={UserId} Override={Override}",
+            eventId, payload?.RegistrationId, userId, payload?.OverrideScanGuard);
+
+        if (payload is null || payload.RegistrationId == Guid.Empty)
+            return BadRequest(new ProblemDetails { Title = "RegistrationId is required" });
+
+        var command = new CreateOrganizerInitiatedRefundCommand(
+            eventId, payload.RegistrationId, userId,
+            payload.OrganizerNotes, payload.OverrideScanGuard,
+            payload.LineItems ?? Array.Empty<RefundLineItemInputDto>());
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Organizer approves a pending refund request with per-line approved
+    /// amounts. All-zero approvals are rejected (use Reject instead). Concurrency conflicts
+    /// surface as 409 — refresh the queue and try again.
+    /// </summary>
+    [HttpPost("{eventId:guid}/refund-requests/{refundRequestId:guid}/approve")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ApproveRefundRequest(
+        Guid eventId, Guid refundRequestId, [FromBody] ApproveRefundRequestPayload payload)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "[6A.148] POST /refund-requests/{RrId}/approve: EventId={EventId} CallerUserId={UserId} Lines={LineCount}",
+            refundRequestId, eventId, userId, payload?.PerLineApprovedAmounts?.Count ?? 0);
+
+        var command = new ApproveRefundRequestCommand(
+            eventId, refundRequestId, userId,
+            payload?.OrganizerNotes,
+            payload?.PerLineApprovedAmounts ?? Array.Empty<ApproveLineItemInputDto>());
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.148: Organizer declines a pending refund request. Reason is mandatory
+    /// and is sent to the attendee in the rejection email.
+    /// </summary>
+    [HttpPost("{eventId:guid}/refund-requests/{refundRequestId:guid}/reject")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RejectRefundRequest(
+        Guid eventId, Guid refundRequestId, [FromBody] RejectRefundRequestPayload payload)
+    {
+        if (!RefundApprovalWorkflowEnabled) return NotFound();
+        var userId = User.GetUserId();
+        Logger.LogInformation(
+            "[6A.148] POST /refund-requests/{RrId}/reject: EventId={EventId} CallerUserId={UserId}",
+            refundRequestId, eventId, userId);
+
+        if (payload is null || string.IsNullOrWhiteSpace(payload.RejectionReason))
+            return BadRequest(new ProblemDetails { Title = "RejectionReason is required" });
+
+        var command = new RejectRefundRequestCommand(
+            eventId, refundRequestId, userId, payload.RejectionReason);
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    // ============== Phase 6A.148 request payload records ==============
+    public record CreateRefundRequestPayload(
+        string? RequesterReason,
+        IReadOnlyList<RefundLineItemInputDto>? LineItems);
+
+    public record CreateOrganizerInitiatedRefundPayload(
+        Guid RegistrationId,
+        string? OrganizerNotes,
+        bool OverrideScanGuard,
+        IReadOnlyList<RefundLineItemInputDto>? LineItems);
+
+    public record ApproveRefundRequestPayload(
+        string? OrganizerNotes,
+        IReadOnlyList<ApproveLineItemInputDto>? PerLineApprovedAmounts);
+
+    public record RejectRefundRequestPayload(string RejectionReason);
 
     /// <summary>
     /// Update RSVP quantity (Authenticated users)
@@ -2506,7 +2876,8 @@ public class EventsController : BaseController<EventsController>
             request.AllowMultipleResponses,
             request.ResponseDeadline,
             request.MaxResponses,
-            questions);
+            questions,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146
 
         var result = await Mediator.Send(command);
 
@@ -2531,7 +2902,8 @@ public class EventsController : BaseController<EventsController>
             request.Description,
             request.AllowMultipleResponses,
             request.ResponseDeadline,
-            request.MaxResponses);
+            request.MaxResponses,
+            request.AllowAttendeesToViewResponses);  // Phase 6A.146 (nullable; null = leave unchanged)
 
         var result = await Mediator.Send(command);
 
@@ -2909,6 +3281,31 @@ public class EventsController : BaseController<EventsController>
         Logger.LogInformation("Getting responses for form {FormId} event {EventId}, page {Page}", formId, id, page);
 
         var query = new GetFormResponsesQuery(id, formId, page, pageSize);
+        var result = await Mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.146 — public, PII-redacted form responses. Visible to any
+    /// event visitor when the organizer has flipped AllowAttendeesToViewResponses
+    /// to true AND the form is in Active or Closed status. Returns 404 for every
+    /// denial case (form not found / wrong event / flag off / Draft / Archived)
+    /// to avoid leaking the toggle's state.
+    /// </summary>
+    /// <param name="id">Event ID</param>
+    /// <param name="formId">Form ID</param>
+    /// <returns>PII-redacted response list (ordinal labels + DateOnly submitted dates)</returns>
+    [HttpGet("{id:guid}/forms/{formId:guid}/responses/public")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicFormResponsesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicFormResponses(Guid id, Guid formId)
+    {
+        Logger.LogInformation(
+            "GetPublicFormResponses START: EventId={EventId}, FormId={FormId}", id, formId);
+
+        var query = new GetPublicFormResponsesQuery(id, formId);
         var result = await Mediator.Send(query);
 
         return HandleResult(result);
@@ -3579,6 +3976,17 @@ public record RsvpRequest(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
+    string? SponsorStagingBlobName = null,
+    string? SponsorStagingBlobUrl = null,
+    // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields. When the
+    // bundled-at-registration flow sends these, they override the registering
+    // user's defaults (parity with the standalone /sponsors flow which collects
+    // sponsor name + email + phone explicitly). All three optional — blank fields
+    // fall back to Attendees[0].Name + request.Email + request.PhoneNumber.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (mutually exclusive with Attendees;
@@ -3627,6 +4035,17 @@ public record AnonymousRegistrationRequest(
     decimal? SponsorAmount = null,
     string? SponsorOrganization = null,
     string? SponsorNotes = null,
+    // Phase 6A.151 C5: pre-staged sponsor logo from POST /sponsors/staging-image
+    string? SponsorStagingBlobName = null,
+    string? SponsorStagingBlobUrl = null,
+    // Phase 6A.148.W5.D10.c: optional sponsor-contact override fields. When the
+    // bundled-at-registration flow sends these, they override the registering
+    // user's defaults (parity with the standalone /sponsors flow which collects
+    // sponsor name + email + phone explicitly). All three optional — blank fields
+    // fall back to Attendees[0].Name + request.Email + request.PhoneNumber.
+    string? SponsorName = null,
+    string? SponsorEmail = null,
+    string? SponsorPhone = null,
     // Phase 7A.6D: WhatsApp opt-in during registration
     string? WhatsAppPhoneNumber = null,
     // Phase 7E.3a: Head-count payload for B-mode events (anonymous flow).
@@ -3702,6 +4121,11 @@ public record CreateSignUpListRequest(
     SignUpKind Kind = SignUpKind.Items);      // Phase 7D.1: Items (default) or Volunteers
 
 public record CheckRegistrationRequest(string Email); // Phase 6A.15: Email validation for sign-ups
+
+// Phase 6A.141: Paid-event ticket scanner request DTOs
+public record ScanTicketQrRequest(string QrPayload);
+public record ScanTicketByCodeRequest(string TicketCode);
+public record UnmarkScannedRequest(string Reason);
 
 public record UpdateSignUpListRequest(
     string Category,
@@ -3899,7 +4323,10 @@ public record CreateEventFormRequest(
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
     int? MaxResponses,
-    List<CreateFormQuestionRequest>? Questions);
+    List<CreateFormQuestionRequest>? Questions,
+    // Phase 6A.146: organizer-controlled toggle for public response visibility.
+    // Optional with default false so existing clients/Swagger requests unchanged.
+    bool AllowAttendeesToViewResponses = false);
 
 public record CreateFormQuestionRequest(
     string QuestionText,
@@ -3919,7 +4346,10 @@ public record UpdateEventFormRequest(
     string? Description,
     bool AllowMultipleResponses,
     DateTime? ResponseDeadline,
-    int? MaxResponses);
+    int? MaxResponses,
+    // Phase 6A.146: nullable so a request that omits the field leaves the
+    // domain flag unchanged. UI sends the explicit user choice.
+    bool? AllowAttendeesToViewResponses = null);
 
 /// <summary>
 /// Request to add a question to a form

@@ -12,9 +12,14 @@ namespace LankaConnect.Shared.Email.Contracts;
 ///
 /// Phase 6A.87 Fix: Corrected template names and added StripeRefundId parameter.
 /// </summary>
-public class RefundEmailParams : IEmailParameters
+public class RefundEmailParams : IEmailParameters, IDispatchLoggable
 {
     private string _templateName = "template-refund-requested";
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    Guid? IDispatchLoggable.DispatchRefundRequestId => RefundId == Guid.Empty ? null : RefundId;
+    string? IDispatchLoggable.DispatchEntityType => null;
+    Guid? IDispatchLoggable.DispatchEntityId => null;
 
     /// <summary>
     /// The template name for refund email.

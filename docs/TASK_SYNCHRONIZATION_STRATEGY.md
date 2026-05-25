@@ -1,7 +1,107 @@
 # Task Synchronization Strategy
 *Single source of truth for phase numbers, documentation, and synchronization protocol*
 
-**⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules.
+**⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules. **Phase-number availability requires a FOUR-source check**: master index + git log --grep + branch names + `find docs -name "MASTER_TODO_PHASE_*"`. Memory `feedback_phase_number_check.md` enforces this after a 2026-05-16 incident where I declared 6A.148 "free" without the fourth check, missed the sibling agent's `MASTER_TODO_PHASE_6A_148_REFUND_APPROVAL_WORKFLOW_2026_05_16.md` reservation doc, and had to back out and renumber to 6A.149.
+
+## 🚀 CURRENT SESSION STATUS — Phase 6A.150 Hotfix: paid-event detail redirects anonymous users to /login
+**Date**: 2026-05-17
+**Session**: Production hotfix triggered by user-reported bug on `https://lankaconnect.app/events/7dd899c9-…`. Empirical RCA via user-supplied DevTools console logs traced the exact failure chain: `useEventSponsors` (no isAuth gate) → `GET /sponsors` 401 → `POST /Auth/refresh` (hasRefreshToken:false) → 400 → `AuthProvider.onUnauthorized` → `router.push('/login')`. Two near-misses in the RCA process: (1) my first proposal would have leaked sponsor PII by flipping `[Authorize]` to `[AllowAnonymous]` on the existing endpoint — caught by re-reading Phase 6A.145's own architect note that anticipated this exact bug; (2) my initial framing was "production-only env-var difference" — wrong, the bug is event-data-specific (any event with `sponsorConfig.isEnabled=true` reproduces in any env).
+**Progress**: ✅ **BACKEND STAGING-DEPLOYED + API SMOKE 3/3 GREEN; UI STAGING-DEPLOY DISPATCHED, awaiting browser smoke**.
+- Shared branch: `feat/phase-6a-148-refund-approval-workflow` (per user direction — surgical staging by path, sibling agent's refund work untouched)
+- Backend deploy: run `25999781764` SUCCESS on SHA `60fa61c9`
+- UI deploy: run `26000440450` dispatched on SHA `5d66328d`
+- Three-layer fix (Path B, architect-approved):
+  - **Layer 1** — NEW `[AllowAnonymous] GET /api/events/{eventId}/sponsors/public` returning `PublicSponsorDto` with 16 PII/financial/internal fields PHYSICALLY ABSENT (per-field reflection-asserted). Original organizer endpoint stays `[Authorize]`. Both `SponsorsPreviewStrip` and `SponsorSection` switched to `usePublicEventSponsors`.
+  - **Layer 2** — api-client records `_hadAuthAtRequestTime` on the request config; 401 response handler short-circuits when false (no `POST /Auth/refresh`, no `onUnauthorized`).
+  - **Layer 3** — AuthProvider replaces forced `router.push('/login')` with `clearAuth()` + react-hot-toast (stable id `'session-expired'`). Governs authenticated-user session-expiry path only.
+- Tests: 22 backend RED→GREEN in `SponsorsControllerPublicEndpointTests`; frontend `tsc --noEmit` clean.
+- API smoke: anon `/sponsors/public` → 200; anon `/sponsors` → 401; non-organizer authed `/sponsors` → 403.
+**Browser UAT pending**: incognito on staging-ui → sponsor-enabled event → no /login redirect; DevTools shows `/sponsors/public` 200 + NO `/Auth/refresh` POST; sponsor logos visible.
+
+---
+
+## Earlier Session — Phase 6A.149 `/events` Discover Page UI Refactor
+**Date**: 2026-05-16
+**Session**: UI-only refactor of the public `/events` page. No backend / DB / API changes. RCA framing: v1 treated `/events` as a forward-looking registration funnel — completed events lived as organizer-side history with no community-memory layer; the gradient "Discover Events" banner was pure decorative chrome with zero functional payload.
+**Progress**: ✅ **STAGING-DEPLOY-DISPATCHED, awaiting operator UAT (7 cells)**.
+- Shared branch with sibling agent's 6A.148: `feat/phase-6a-148-refund-approval-workflow` (per user direction — both phases bundle into one PR; staging surgical by path)
+- UI deploy: `deploy-ui-staging.yml` run `25978356053` on SHA `9af5e39d`
+- Files: `web/src/app/events/page.tsx` (refactored) + `web/src/app/events/__tests__/events-page-6a-149.test.tsx` (new, 13 tests) + `docs/PHASE_6A_MASTER_INDEX.md` (row added)
+- Type-check: `tsc --noEmit` clean (one pre-existing EventEditForm error from 6A.143 work, unrelated)
+**Changes**: (a) gradient banner removed (~12rem reclaimed); (b) `<h2>Upcoming Events</h2>` + `<h2>Completed Events</h2>` in brand burgundy; (c) `max-h-[1500px] overflow-y-auto` scroll containers with bottom fade-mask; (d) per-section Filters via `CollapsibleSection` with `defaultOpen={false}`; (e) each section has its own state for search/category/location, date applies to Upcoming only; (f) second `useEvents({ statusFilter: Inactive })` call + client-side filter to Completed; (g) Completed section hides entirely when 0 results; (h) Event Status dropdown removed.
+**Tests**: 13/13 GREEN. Test infra: page mounts `LankaEventsHeader` which calls `useQueryClient` — tests use `renderWithClient(ui)` helper wrapping in `QueryClientProvider` with `retry:false, gcTime:0`.
+**Phase numbering**: Initially claimed 6A.148, renumbered to 6A.149 after discovering sibling agent's reservation. Feedback memory saved for future four-source phase-availability check.
+**Operator UAT pending — 7 cells**: (1) banner gone; (2) Upcoming `<h2>` visible; (3) Filters collapsed by default; (4) scroll inside grid after 3 rows with fade-mask; (5) Completed section appears when ≥1 completed event; (6) Completed has its OWN collapsed Filters; (7) no Event Status dropdown.
+
+---
+
+## Earlier Session — Phase 6A.146 Public Form Responses with PII Redaction
+**Date**: 2026-05-15
+**Session**: Closes the "only organizers can see form responses" gap with an opt-in toggle. Architect-class RCA classified this as **feature-missing** spanning Domain + Infrastructure + Application + API + UI — Custom Forms were originally modeled as one-way data collection so the platform had no vocabulary for "show this, hide that" until now. Architect rejected the first draft with 6 corrections, all folded in before code touched the tree (C1 extend UpdateDetails not separate method; C2 no status guard on toggle; C3 reuse existing repos; C4 lowercase `event_forms` table name; C5 validators unchanged; C6 pre-flight grep for live mount file).
+**Progress**: ✅ **BACKEND + UI STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.
+- Branch: `feat/phase-6a-141-ticket-checkin` (user authorized staying on current branch — 6A.141 + 6A.144 + 6A.146 all ride together)
+- Backend deploy: run `25941566751` SUCCESS — migration `Phase6A146_AddResponseVisibilityToEventForms` auto-applied; existing rows defaulted to `false`
+- UI deploy: run `25946197280` dispatched on SHA `b9e6bbf6`
+- Backend smoke matrix 4/4 GREEN: (1) flag-off public anon → 404 generic "Form not found"; (2) organizer endpoint unchanged + full PII preserved; (3) PUT `allowAttendeesToViewResponses:true` → 200 + persisted; (4) flag-on public anon → 200 with `respondentLabel` / `submittedOn` / answers, NO PII in payload
+- Files: 4 new backend (query + handler + 2 DTO additions) + 6 modified backend (EventForm aggregate, EF config, migration, 2 commands, 2 handlers, mappers, controller, request DTOs) + 4 new frontend (PublicFormResponsesSection + test + 3 DTO interfaces) + 4 modified frontend (events.types.ts, events.repository.ts, useEventForms.ts, create-form/page.tsx, FormManagementSection.tsx, events/[id]/page.tsx)
+- TypeScript: `tsc --noEmit` clean for all new files (one pre-existing EventEditForm error from 6A.143 sponsor work, unrelated)
+**Tests**: 6 EventForm domain tests + 14 GetPublicFormResponses application tests + 3 reflection-asserted PII guards on PublicFormResponseDto + 7 PublicFormResponsesSection RTL tests. Full Application suite 2701/2707 GREEN (6 skipped), Domain 750/752 GREEN (2 pre-existing FormResponseTests + DonationConfigurationTests failures unrelated, documented in prior phase entries).
+**Phase numbering**: 6A.142 was anonymous-sign-up follow-ups; 6A.143 was add-on/sponsor images; 6A.145 sponsor banner work mid-flight (separate); next free was **6A.146**, recorded in `PHASE_6A_MASTER_INDEX.md` BEFORE code touched the tree per CLAUDE.md rule.
+**12 commits**: `1728cf5d` test RED EventForm visibility → `ea3bd6b5` feat GREEN domain → `e3152b01` chore EF migration → `738f8748` feat commands → `329b01f0` test RED public query → `0137af08` feat GREEN public query+DTOs+handler → `8bcc9328` feat API endpoint → `9c262270` feat frontend types+hook → `ece4d449` test RED PublicFormResponsesSection → `0d346d6e` feat GREEN section → `a0b8e4b7` feat create+manage toggles → `b9e6bbf6` feat event-detail mount.
+**Operator UAT pending — 7 cells**: (1) anon + flag-off → no section; (2) flag-on Draft → no section (status gate); (3) flag-on Active no responses → empty state; (4) flag-on Active with responses → ordinal labels and dates visible, Chrome DevTools find-`@` returns zero in section; (5) flag-on Closed → still shows; (6) organizer responses page unchanged; (7) mobile 375px breakpoint readable.
+**Deploy order**: Backend deployed first (migration auto-applies on container startup), then UI. Production deploy after operator UAT signs off.
+
+---
+
+## Earlier Session — Phase 6A.144 Paid-Event Auth-Encouragement Modal
+**Date**: 2026-05-14
+**Session**: Soft-conversion gap on paid-event registration. Anonymous users could already register for paid events end-to-end since Phase 6A.44, but they lose post-purchase management (tickets, refunds, add-ons) because the registration has no account anchor. Architect-class RCA classified the issue as **UI/feature-missing** — backend & domain were complete; only the conversion funnel on the public event detail page was absent. Plan + 4 architect corrections folded in before code touched the tree (A1 focus trap via ref not sentinels, A3 reuse existing searchParams + strip `?intent=register` via replaceState, A5/A6 stronger same-origin guard with pre-screen for backslash + encoded bypass, B-Phase-4 hydration smoke on register page). Approach: friendly modal with three explicit exits (Sign In / Sign Up / Continue as Guest); existing anonymous flow preserved for Guest.
+**Progress**: ✅ **STAGING-DEPLOYED, awaiting operator UAT (7 cells)**.
+- Branch: `feat/phase-6a-141-ticket-checkin` (user authorized staying on current branch over cutting new one — 6A.141 ticket-scanner + 6A.144 nudge code ride together to deploy)
+- UI deploy: run `25892924522` SUCCESS in 5m04s on SHA `a65aa8fd` — type-check ✅, unit tests ✅, env validation ✅, Next.js build ✅, standalone verify ✅, Docker push ✅, Container Apps deploy ✅, 3 smoke tests ✅ (health / home / API proxy)
+- Curl smoke after deploy: `/`, `/login`, `/register` all HTTP 200 (`/register` 28.8 KB confirms Suspense wrapper didn't break SSR hydration)
+- Files: 4 new (`AuthEncouragementModal.tsx`, `AuthEncouragementPrompt.tsx`, `authNudgePolicy.ts`, `safe-redirect.ts`) + 4 modified (`events/[id]/page.tsx`, `LoginForm.tsx`, `RegisterForm.tsx`, `(auth)/register/page.tsx`) + 4 new test files
+- TypeScript clean for all new files (`tsc --noEmit`); one pre-existing TS error in `EventEditForm.tsx` (6A.143 sponsor image work, unrelated)
+- Repo lint script broken (Next 16 + ESLint v10 config mismatch — `next lint .` reads `.` as a project subdirectory). Not 6A.144 related.
+**Tests**: 30/30 green across 4 files — `AuthEncouragementModal.test.tsx` (10 unit incl. ARIA + focus restoration), `AuthEncouragementPrompt.test.tsx` (2), `safe-redirect.test.ts` (14 covering null/empty, same-origin happy paths, cross-origin, scheme-relative, backslash bypass, encoded slashes, `javascript:`, `data:`), `authNudge.test.ts` (4 truth-table cells). Strategic pivot mid-implementation: form-level redirect tests dropped in favor of pure-helper unit tests because RegisterForm requires MetroAreasSelector + WhatsAppInlineOptIn + T&C + zod plumbing that's brittle to mock.
+**Phase numbering**: Initially planned as 6A.142 — discovered 6A.142 already assigned to anonymous-sign-up follow-ups from 6A.140, and 6A.143 to Add-On/Sponsor images. Next available was 6A.144, recorded in `PHASE_6A_MASTER_INDEX.md` BEFORE code touched the tree per CLAUDE.md rule.
+**6 commits**: `5ad49f86` test RED modal+prompt → `ab23df6a` feat GREEN modal+prompt → `5fcccb44` test RED safe-redirect → `df6c760e` feat GREEN safe-redirect+login/register → `8cbd3127` test RED nudge-policy → `a65aa8fd` feat GREEN page integration.
+**Operator UAT pending — 7 cells**: (1) anon + FREE → form inline, no modal; (2) anon + PAID + first visit → prompt panel; (3) anon + PAID + click Register → modal opens with focus on title; (4) Continue as Guest → modal closes, form inline, refresh keeps form (sessionStorage `lc:guest-ack:{eventId}` set); (5) Sign In → `/login?redirect=...?intent=register` → returns to event with scroll to `#rsvp-section` + URL stripped of `?intent=register`; (6) authed + PAID → form direct, no modal; (7) mobile 375px buttons stacked.
+**Deploy order**: Frontend-only — no backend/DB changes. `deploy-ui-staging.yml` already shipped via manual workflow_dispatch (auto-trigger is only on push to `develop`). Production deploy after operator UAT signs off.
+
+---
+
+## Earlier Session — Phase 6A.141 Paid-Event Ticket Check-in / QR Scanner
+**Date**: 2026-05-13
+**Session**: End-to-end implementation of the paid-event ticket check-in feature. The QR code printed on every paid-event ticket has been decorative since Phase 6A.24 — generated correctly but never scannable because no scan endpoint, no organizer UI, no HMAC signature. This phase closes that gap with a full backend + frontend implementation, validated by an independent Plan-agent architect review that surfaced 18 findings (6 must-fix-before-Phase-C/F) all incorporated before code touched the tree.
+**Progress**: 🔧 **CODE COMPLETE on branch `feat/phase-6a-141-ticket-checkin`, awaiting Phase I staging deploy + operator UAT**.
+- Branch: `feat/phase-6a-141-ticket-checkin` off `main` (HEAD `c0b5edc9` at branch-time)
+- 9 commits: foundation → master TODO doc → F5 dual-key → Phase C (signed payload generation) → Phase D (audit table + migration) → Phase E (handler) → Phase F.1+F.2 (scan endpoints) → Phase F.3 (admin-unmark) → Phase G (scanner UI)
+- Files: 18 new + 8 modified across Domain / Application / Infrastructure / API / web
+- Tests: 60+ unit tests GREEN across Domain (19 + 9 + 8 = 36 ticket-related), Infrastructure (14 signature-service), Application (5 handler). Frontend page tests skipped at page level — React 19 `use(params)` doesn't play well with vitest microtask flushing; operator UAT is the verification gate.
+- .NET build clean (0 errors, 8 pre-existing AutoMapper/MailKit advisory warnings)
+- TypeScript clean (`tsc --noEmit` passes)
+**Tests**: backend handler tests 5/5 GREEN (happy, invalid-sig, ticket-not-found, wrong-event, race-loser); signature-service tests 14/14 GREEN (8 single-key + 6 dual-key rotation grace); TicketSignedPayload 19/19; TicketScanLog factory 9/9; Ticket.Create regression 8/8.
+**Deploy order**: Phase I — F6 pre-flight `az keyvault secret set --vault-name lankaconnect-kv-staging --name TICKET-QR-SIGNING-KEY --value $(openssl rand -base64 32)` BEFORE API deploy (else DI throws on startup and container won't start), then `deploy-staging.yml` against `feat/phase-6a-141-ticket-checkin`, verify revision SHA matches, query DB for `TicketScanLogs` table existence + indices, run 13-cell smoke matrix, then `deploy-ui-staging.yml`, then hand 10-cell operator UAT checklist to product owner. Phase J (production) only after operator UAT signs off.
+**Master TODO**: [docs/MASTER_TODO_PHASE_6A_141_TICKET_CHECKIN_2026_05_13.md](MASTER_TODO_PHASE_6A_141_TICKET_CHECKIN_2026_05_13.md) — canonical implementation guide with 18 review findings, 13-cell smoke matrix, 10-cell UAT checklist.
+
+---
+
+## Earlier Session — Phase 6A.140 Sign-Up Email Gates Removal + Smart UserId Resolution
+**Date**: 2026-05-11
+**Session**: Architect-refined design after product-owner clarification — server-side smart UserId resolution replaces the prior "drop both gates" plan. Member emails resolve to real UserIds (no orphans); non-member emails fall back to the deterministic anonymous GUID; UI never blocks with "please log in" or "register for event first". Two latent bugs bundled because the main fix exposes them: case-insensitive member-email lookup in `CheckEventRegistrationQueryHandler`, and anonymous-confirmation-email fallback in `UserCommittedToSignUpEventHandler`. Phase 6A.141 follow-ups tracked: orphan-commitment backfill, auth trust-boundary fix in the authenticated commit handler (pre-existing), optional rate limit.
+**Progress**: ✅ **SHIPPED + STAGING-VERIFIED**.
+- Branch: `fix/phase-6a-140-signup-login-modal` (legacy name from the abandoned LoginModal approach; PR title carries the accurate scope)
+- Backend deploy: run 25694120880 GREEN, active Container App revision `0001632` confirmed running image SHA `4da3d87a` (this was the second attempt — the first one was overwritten by a concurrent develop-branch deploy due to missing `concurrency` group on the workflow; tracked as separate small CI ticket)
+- UI deploy: run 25694770267 GREEN
+- API smoke (curl): case-insensitive lookup confirmed — 3 case variants (lowercase, UPPERCASE, Mixed) all resolve to the same UserId `5e782b4d-29ed-4e1d-9039-6c8f698aeea9`; non-member email returns `hasUserAccount:false` as expected
+- Operator UAT (browser): user verified anonymous (non-member) sign-up flow end-to-end — form submits without "please log in" wall, and the confirmation email actually arrived at the form-submitted address (fixes pre-existing silent-skip bug)
+- Files: 7 src + 2 new test files; 13 files changed total including the 4 tracking docs
+**Tests**: Application 2646/2646 GREEN, web modal 13/13 GREEN, 3 new domain-event tests GREEN, 2 pre-existing FormResponseTests failures unrelated to sign-ups.
+
+---
+
+## Earlier Session — Prod-perf-RCA hygiene round 2: ConnectionPoolValidator + INFRASTRUCTURE.md
 
 ## 🚀 CURRENT SESSION STATUS — Phase A W2.4 — BuildingBlocks.Application MediatR pipeline behaviors + 27 tests — ✅ DONE on develop
 **Date**: 2026-05-13

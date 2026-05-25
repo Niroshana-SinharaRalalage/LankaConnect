@@ -1,14 +1,23 @@
 using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.ClearSponsorImage;
+using LankaConnect.Application.Events.Commands.CreateOffPlatformSponsor;
 using LankaConnect.Application.Events.Commands.CreateSponsor;
+using LankaConnect.Application.Events.Commands.SetSponsorImage;
+using LankaConnect.Application.Events.Commands.UpdateSponsor;
 using LankaConnect.Application.Events.Common;
 using LankaConnect.Application.Events.Queries.ExportEventAttendees;
 using LankaConnect.Application.Events.Queries.ExportSponsors;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsors;
+using LankaConnect.Application.Events.Queries.GetPublicEventSponsors;  // Phase 6A.150
+using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.Repositories;
+using LankaConnect.Domain.Shared.Enums;
+using LankaConnect.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LankaConnect.API.Controllers;
 
@@ -42,7 +51,7 @@ public class SponsorsController : BaseController<SponsorsController>
     /// </summary>
     [HttpPost("money")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CreateMoneySponsorResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateMoneySponsor(
         Guid eventId,
@@ -108,6 +117,334 @@ public class SponsorsController : BaseController<SponsorsController>
             UserId: userId);
 
         var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.145 Commit 6 — uploads (or replaces) a sponsor's image. Any sponsor
+    /// can attach an image regardless of amount (threshold gate removed per UAT).
+    /// Public access by sponsor-id knowledge (the sponsor ID was just returned to the
+    /// caller from CreateMoneySponsor or CreateItemSponsor); organizer auth not required.
+    /// </summary>
+    [HttpPost("{sponsorId:guid}/image")]
+    [AllowAnonymous]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SetSponsorImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSponsorImage(
+        Guid eventId,
+        Guid sponsorId,
+        IFormFile image)
+    {
+        Logger.LogInformation(
+            "SetSponsorImage: EventId={EventId}, SponsorId={SponsorId}, FileName={FileName}, Size={Size}",
+            eventId, sponsorId, image?.FileName, image?.Length);
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        using var ms = new MemoryStream();
+        await image.CopyToAsync(ms);
+
+        var command = new SetSponsorImageCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+            ImageData = ms.ToArray(),
+            FileName = image.FileName,
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.145 — clears a sponsor's image. Idempotent.
+    /// Phase 6A.151 H9 — authorization extended: allowed if caller is the
+    /// sponsor's owner (non-anonymous, JWT subject matches Sponsor.SponsorUserId)
+    /// OR an organizer of the parent event. Anonymous sponsors remain
+    /// organizer-only (claim-by-email magic-link deferred to a separate phase).
+    /// </summary>
+    [HttpDelete("{sponsorId:guid}/image")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSponsorImage(Guid eventId, Guid sponsorId)
+    {
+        Logger.LogInformation(
+            "ClearSponsorImage: EventId={EventId}, SponsorId={SponsorId}", eventId, sponsorId);
+
+        // Phase 6A.151 H9 — sponsor-self pre-check before falling through to organizer auth.
+        // Allows a non-anonymous sponsor to clear their own image without organizer rights.
+        var currentUserId = User.TryGetUserId();
+        var sponsor = await _sponsorRepository.GetByIdAsync(sponsorId);
+        if (sponsor != null && sponsor.EventId == eventId
+            && sponsor.SponsorUserId.HasValue
+            && currentUserId.HasValue
+            && sponsor.SponsorUserId.Value == currentUserId.Value)
+        {
+            Logger.LogInformation(
+                "ClearSponsorImage: sponsor-self path — SponsorUserId={SponsorUserId}",
+                sponsor.SponsorUserId);
+        }
+        else
+        {
+            var authResult = await VerifyOrganizerAsync(eventId);
+            if (authResult != null) return authResult;
+        }
+
+        var result = await Mediator.Send(new ClearSponsorImageCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+        });
+        return result.IsSuccess ? NoContent() : HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — updates content fields on an existing sponsor (PATCH).
+    /// Authorization: organizer of the parent event OR the sponsor themselves
+    /// (non-anonymous JWT subject matching Sponsor.SponsorUserId). Both checks
+    /// run inside the handler; the controller just requires `[Authorize]`.
+    ///
+    /// PATCH semantics: every field is optional; null = leave unchanged. The
+    /// domain layer enforces the state-edit matrix per-field — see
+    /// <see cref="LankaConnect.Domain.Events.Sponsor"/> for the cell-by-cell
+    /// rules. Image edits flow through the existing POST/DELETE
+    /// `/sponsors/{id}/image` endpoints (DELETE authz was extended in H9 above).
+    /// </summary>
+    [HttpPatch("{sponsorId:guid}")]
+    [Authorize]
+    [ProducesResponseType(typeof(SponsorDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateSponsor(
+        Guid eventId,
+        Guid sponsorId,
+        [FromBody] UpdateSponsorRequest request)
+    {
+        var actingUserId = User.TryGetUserId();
+        if (actingUserId is null)
+        {
+            Logger.LogWarning(
+                "UpdateSponsor: missing user id on authenticated request — SponsorId={SponsorId}",
+                sponsorId);
+            return Unauthorized();
+        }
+
+        Logger.LogInformation(
+            "UpdateSponsor: EventId={EventId}, SponsorId={SponsorId}, ActorUserId={ActorUserId}",
+            eventId, sponsorId, actingUserId);
+
+        var command = new UpdateSponsorCommand(
+            EventId: eventId,
+            SponsorId: sponsorId,
+            ActingUserId: actingUserId.Value,
+            Name: request.Name,
+            Notes: request.Notes,
+            Organization: request.Organization,
+            Amount: request.Amount,
+            Currency: request.Currency,
+            ItemName: request.ItemName,
+            ItemDescription: request.ItemDescription,
+            EstimatedValue: request.EstimatedValue);
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — request body for PATCH /sponsors/{id}. All fields nullable.
+    /// </summary>
+    public record UpdateSponsorRequest(
+        string? Name,
+        string? Notes,
+        string? Organization,
+        decimal? Amount,
+        string? Currency,
+        string? ItemName,
+        string? ItemDescription,
+        decimal? EstimatedValue);
+
+    /// <summary>
+    /// Phase 6A.151 — staging-blob endpoint for the registration-form inline
+    /// sponsor panel image upload. Inline panel submits via the parent
+    /// registration command which creates the Stripe Checkout session
+    /// server-side, so a Sponsor row doesn't exist pre-Stripe to attach a
+    /// blob to. Workflow:
+    ///   1. FE picks image → POST here → receives {correlationId, blobName, blobUrl}
+    ///   2. FE submits registration with sponsorStagingBlob carried in payload
+    ///   3. Registration handler creates Sponsor in-tx with ticket purchase,
+    ///      calls Sponsor.SetImage(blobUrl, blobName)
+    ///   4. Janitor sweeps unclaimed blobs >6h old (deferred; see TODO)
+    ///
+    /// Hardening (architect H1):
+    ///   - [AllowAnonymous] because registration is anon (Phase 6A.44)
+    ///   - 5 MB cap (rejected if exceeded — matches existing image-upload limit)
+    ///   - MIME allowlist: jpeg / png / webp only
+    ///   - Per-IP rate limit 10/hour via [EnableRateLimiting("sponsor-staging-upload")]
+    ///   - SERVER-generated correlation GUID (single-use; never client-chosen).
+    ///     This kills the "different user submits with stolen ID" race.
+    /// </summary>
+    [HttpPost("staging-image")]
+    [AllowAnonymous]
+    [EnableRateLimiting("sponsor-staging-upload")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SponsorStagingImageResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> UploadSponsorStagingImage(
+        Guid eventId,
+        IFormFile image,
+        [FromServices] IAzureBlobStorageService blobStorage,
+        CancellationToken cancellationToken)
+    {
+        const long MaxBytes = 5L * 1024 * 1024; // 5 MB
+        var allowedContentTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "An image file is required." });
+
+        if (image.Length > MaxBytes)
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Image is too large.",
+                Detail = $"Maximum size is {MaxBytes / 1024 / 1024} MB."
+            });
+
+        var contentType = image.ContentType?.ToLowerInvariant() ?? string.Empty;
+        if (!allowedContentTypes.Contains(contentType))
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Unsupported image type.",
+                Detail = $"Allowed types: {string.Join(", ", allowedContentTypes)}."
+            });
+
+        try
+        {
+            // Server-generated correlation GUID. Single-use. The registration
+            // handler will look up the blob by this GUID's blobName.
+            var correlationId = Guid.NewGuid();
+            var ext = Path.GetExtension(image.FileName);
+            if (string.IsNullOrEmpty(ext))
+                ext = contentType switch
+                {
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/webp" => ".webp",
+                    _ => ".bin"
+                };
+            var fileName = $"sponsors-staging/{correlationId}{ext}";
+
+            await using var stream = image.OpenReadStream();
+            var (blobName, blobUrl) = await blobStorage.UploadFileAsync(
+                fileName: fileName,
+                fileStream: stream,
+                contentType: contentType,
+                containerName: null, // default container "event-media"
+                cancellationToken: cancellationToken);
+
+            Logger.LogInformation(
+                "UploadSponsorStagingImage OK: EventId={EventId}, CorrelationId={CorrelationId}, Size={Size}, BlobName={BlobName}",
+                eventId, correlationId, image.Length, blobName);
+
+            return Ok(new SponsorStagingImageResult(correlationId, blobName, blobUrl));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex,
+                "UploadSponsorStagingImage FAILED: EventId={EventId}, Size={Size}",
+                eventId, image.Length);
+            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
+                Title = "Failed to stage image.",
+                Detail = "Please retry shortly."
+            });
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.151 — return shape for POST /sponsors/staging-image.
+    /// </summary>
+    public record SponsorStagingImageResult(Guid CorrelationId, string BlobName, string BlobUrl);
+
+    /// <summary>
+    /// Phase 6A.145 — organizer records an off-platform sponsorship (cash money or
+    /// in-kind item collected outside the platform). Bypasses Stripe entirely.
+    /// Money sponsors are marked Completed immediately; Item sponsors RecordedItem.
+    /// Optional image upload — threshold is bypassed since the organizer is recording
+    /// on behalf of the sponsor (architect E-1 organizer override).
+    /// Authorization: organizer-only.
+    /// </summary>
+    [HttpPost("off-platform")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(CreateOffPlatformSponsorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateOffPlatformSponsor(
+        Guid eventId,
+        [FromForm] CreateOffPlatformSponsorRequest request)
+    {
+        Logger.LogInformation(
+            "CreateOffPlatformSponsor: EventId={EventId}, Type={Type}, Email={Email}, HasImage={HasImage}",
+            eventId, request.Type, request.SponsorEmail, request.Image?.Length > 0);
+
+        var authResult = await VerifyOrganizerAsync(eventId);
+        if (authResult != null) return authResult;
+
+        byte[]? imageData = null;
+        string? imageFileName = null;
+        if (request.Image is not null && request.Image.Length > 0)
+        {
+            using var ms = new MemoryStream();
+            await request.Image.CopyToAsync(ms);
+            imageData = ms.ToArray();
+            imageFileName = request.Image.FileName;
+        }
+
+        var command = new CreateOffPlatformSponsorCommand
+        {
+            EventId = eventId,
+            Type = request.Type,
+            SponsorName = request.SponsorName,
+            SponsorEmail = request.SponsorEmail,
+            SponsorPhone = request.SponsorPhone,
+            SponsorOrganization = request.SponsorOrganization,
+            SponsorNotes = request.SponsorNotes,
+            Amount = request.Amount,
+            Currency = request.Currency,
+            ItemName = request.ItemName,
+            ItemDescription = request.ItemDescription,
+            EstimatedValue = request.EstimatedValue,
+            ImageData = imageData,
+            ImageFileName = imageFileName,
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.150 — public, PII-redacted sponsor list for the event detail page.
+    /// Returns ONLY confirmed sponsors with images (Money/Completed + Item/RecordedItem),
+    /// sorted server-side by contribution magnitude (the magnitudes themselves are
+    /// NOT exposed). Used by <c>SponsorsPreviewStrip</c> and <c>SponsorSection</c> on
+    /// the anonymous-accessible event detail page. The full-PII organizer-only
+    /// variant remains at <see cref="GetEventSponsors"/>.
+    /// </summary>
+    [HttpGet("public")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(PublicEventSponsorsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPublicEventSponsors(Guid eventId)
+    {
+        Logger.LogInformation("GetPublicEventSponsors: EventId={EventId}", eventId);
+        var query = new GetPublicEventSponsorsQuery(eventId);
+        var result = await Mediator.Send(query);
         return HandleResult(result);
     }
 
@@ -232,6 +569,8 @@ public class SponsorsController : BaseController<SponsorsController>
                 ItemName = s.ItemName,
                 ItemDescription = s.ItemDescription,
                 EstimatedValue = s.EstimatedValue,
+                ImageUrl = s.ImageUrl,
+                ImageBlobName = s.ImageBlobName,
                 CreatedAt = s.CreatedAt,
                 PaymentCompletedAt = s.PaymentCompletedAt,
             }).ToList();
@@ -309,4 +648,29 @@ public class CreateItemSponsorRequest
     public required string ItemName { get; init; }
     public string? ItemDescription { get; init; }
     public decimal? EstimatedValue { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.145 — request body for the organizer-add-off-platform-sponsor endpoint
+/// (POST /sponsors/off-platform). Multipart so an optional image file can ride
+/// alongside the form fields. Type discriminates between Money + Item branches —
+/// Money requires Amount + Currency; Item requires ItemName.
+/// </summary>
+public class CreateOffPlatformSponsorRequest
+{
+    public SponsorType Type { get; init; }
+    public string SponsorName { get; init; } = string.Empty;
+    public string SponsorEmail { get; init; } = string.Empty;
+    public string? SponsorPhone { get; init; }
+    public string? SponsorOrganization { get; init; }
+    public string? SponsorNotes { get; init; }
+    // Money branch
+    public decimal? Amount { get; init; }
+    public Currency? Currency { get; init; }
+    // Item branch
+    public string? ItemName { get; init; }
+    public string? ItemDescription { get; init; }
+    public decimal? EstimatedValue { get; init; }
+    // Optional image
+    public IFormFile? Image { get; init; }
 }

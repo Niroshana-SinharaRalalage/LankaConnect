@@ -47,6 +47,15 @@ public class EventFormConfiguration : IEntityTypeConfiguration<EventForm>
             .HasColumnName("has_responses")
             .HasDefaultValue(false);
 
+        // Phase 6A.146: organizer-controlled toggle that allows event visitors to
+        // view all submitted responses (with respondent PII stripped at the
+        // projection layer). Default false preserves status-quo privacy for all
+        // existing forms.
+        builder.Property(f => f.AllowAttendeesToViewResponses)
+            .HasColumnName("allow_attendees_to_view_responses")
+            .IsRequired()
+            .HasDefaultValue(false);
+
         // Shadow properties for BaseEntity
         builder.Property<DateTime>("CreatedAt")
             .HasColumnName("created_at")

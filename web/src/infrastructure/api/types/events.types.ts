@@ -443,6 +443,22 @@ export interface EventDto {
    */
   registrationModeStatus?: 'active' | 'deferred';
 
+  /**
+   * Phase 6A.153: organizer-controlled registration window (UTC ISO-8601).
+   * `null` / `undefined` = "always open" (legacy backward-compatible default).
+   */
+  registrationOpensAt?: string | null;
+  registrationClosesAt?: string | null;
+
+  /**
+   * Phase 6A.153: computed availability state for the public registration
+   * surface. Distinct from `registrationModeStatus` — answers "can a user
+   * register right now" rather than "is the mode implementable".
+   * Optional + defaults to `'open'` (backward-compatible) so stale React
+   * Query caches that pre-date 6A.153 don't crash the page.
+   */
+  registrationAvailability?: 'open' | 'not-yet-open' | 'closed-by-organizer' | 'closed-event-started';
+
   status: EventStatus;
   category: EventCategory;
   createdAt: string;

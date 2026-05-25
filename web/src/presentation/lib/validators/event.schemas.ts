@@ -83,6 +83,14 @@ export const createEventSchema = z.object({
   // be provided and pass the refines below.
   datesUnknown: z.boolean().optional().default(false),
 
+  // Phase 6A.153: organizer-controlled registration window. Optional —
+  // empty strings interpreted as "no window" (legacy backward-compatible
+  // "always open" behaviour). Domain mutator validates the cross-field
+  // invariants (opens < closes; closes <= start; opens < start) so the
+  // schema here only checks shape, not semantics.
+  registrationOpensAt: z.string().optional().default(''),
+  registrationClosesAt: z.string().optional().default(''),
+
   // Capacity
   capacity: z
     .number()
@@ -628,6 +636,12 @@ const baseEditEventSchema = z.object({
 
   // Phase 8YA.3: TBD-event toggle.
   datesUnknown: z.boolean().optional().default(false),
+
+  // Phase 6A.153: organizer-controlled registration window — same shape as
+  // the create schema. On submission the EditForm computes
+  // updateRegistrationWindow = (opens or closes differ from current event).
+  registrationOpensAt: z.string().optional().default(''),
+  registrationClosesAt: z.string().optional().default(''),
 
   // Capacity
   capacity: z

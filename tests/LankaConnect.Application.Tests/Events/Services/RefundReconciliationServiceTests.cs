@@ -29,6 +29,11 @@ public class RefundReconciliationServiceTests
     private readonly Mock<IRegistrationRepository> _registrationRepo = new();
     private readonly Mock<IStripePaymentService> _stripeService = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    // Phase 6A.148.W5.D6: deps required for stuck-Approved reconciliation. Existing tests
+    // only exercise the stuck-RefundRequested code path, but the constructor now demands
+    // these so DI catches misconfiguration at boot.
+    private readonly Mock<LankaConnect.Domain.Events.Repositories.IRefundRequestRepository> _refundRequestRepo = new();
+    private readonly Mock<IRefundExecutionService> _refundExecutionService = new();
 
     private RefundReconciliationService Build()
     {
@@ -36,7 +41,9 @@ public class RefundReconciliationServiceTests
             _registrationRepo.Object,
             _stripeService.Object,
             _unitOfWork.Object,
-            Mock.Of<ILogger<RefundReconciliationService>>());
+            Mock.Of<ILogger<RefundReconciliationService>>(),
+            _refundRequestRepo.Object,
+            _refundExecutionService.Object);
     }
 
     private static Registration BuildStuckRegistration(

@@ -612,12 +612,25 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                 if (amountResult.IsSuccess)
                 {
                     // Anonymous users don't have a UserId — use Guid.Empty
+                    // W5.D10.c — prefer caller-supplied sponsor contact fields if provided
+                    // (parity with RsvpToEventCommandHandler), fall back to the anonymous
+                    // registration's own Name + Email + Phone when blank.
+                    var sponsorName = !string.IsNullOrWhiteSpace(request.SponsorName)
+                        ? request.SponsorName.Trim()
+                        : (request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Sponsor");
+                    var sponsorEmail = !string.IsNullOrWhiteSpace(request.SponsorEmail)
+                        ? request.SponsorEmail.Trim()
+                        : request.Email;
+                    var sponsorPhone = !string.IsNullOrWhiteSpace(request.SponsorPhone)
+                        ? request.SponsorPhone.Trim()
+                        : request.PhoneNumber;
+
                     var sponsorResult = Sponsor.CreateMoneySponsor(
                         @event.Id,
                         Guid.Empty,
-                        request.Attendees?.FirstOrDefault()?.Name ?? request.Name ?? "Sponsor",
-                        request.Email,
-                        request.PhoneNumber,
+                        sponsorName,
+                        sponsorEmail,
+                        sponsorPhone,
                         request.SponsorOrganization,
                         request.SponsorNotes,
                         amountResult.Value);
@@ -625,6 +638,38 @@ public class RegisterAnonymousAttendeeCommandHandler : ICommandHandler<RegisterA
                     if (sponsorResult.IsSuccess)
                     {
                         bundledSponsor = sponsorResult.Value;
+
+                        // Phase 6A.151 C5 — attach a pre-staged sponsor image when
+                        // FE supplied {SponsorStagingBlobName, SponsorStagingBlobUrl}.
+                        // Best-effort: failure does not break registration.
+                        if (!string.IsNullOrWhiteSpace(request.SponsorStagingBlobUrl)
+                            && !string.IsNullOrWhiteSpace(request.SponsorStagingBlobName))
+                        {
+                            try
+                            {
+                                var imgResult = bundledSponsor.SetImage(
+                                    request.SponsorStagingBlobUrl,
+                                    request.SponsorStagingBlobName);
+                                if (imgResult.IsFailure)
+                                {
+                                    _logger.LogWarning(
+                                        "Anonymous bundled sponsor SetImage rejected — SponsorId={SponsorId}, Error={Error}",
+                                        bundledSponsor.Id, imgResult.Error);
+                                }
+                                else
+                                {
+                                    _logger.LogInformation(
+                                        "Anonymous bundled sponsor image attached — SponsorId={SponsorId}, BlobName={BlobName}",
+                                        bundledSponsor.Id, request.SponsorStagingBlobName);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Anonymous bundled sponsor SetImage threw — SponsorId={SponsorId}. Sponsor row created without image.",
+                                    bundledSponsor.Id);
+                            }
+                        }
 
                         try
                         {

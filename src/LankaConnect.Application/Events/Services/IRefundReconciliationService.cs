@@ -55,6 +55,53 @@ public interface IRefundReconciliationService
         int? batchSize = null,
         int? ageThresholdMinutes = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148 (architect F11): re-dispatches refund requests that are stuck in
+    /// <see cref="LankaConnect.Domain.Events.Enums.RefundRequestStatus.Approved"/>.
+    /// This state happens when the approve transaction commits but the post-commit
+    /// <c>RefundExecutionService.DispatchAsync</c> call crashed before any line item
+    /// reached Stripe (process restart, container OOM, etc.).
+    ///
+    /// Idempotent — dispatch skips line items not in Approved. Safe to call repeatedly
+    /// from the same background tick.
+    /// </summary>
+    /// <param name="ageThresholdMinutes">
+    /// Grace period before a row is considered stuck. Default 10 minutes to give the
+    /// inline dispatch a fair chance to complete.
+    /// </param>
+    Task<Result<int>> ReconcileStuckApprovedRefundRequestsAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 6A.148.W5.5.D6.5 — heals registrations stuck in
+    /// <see cref="LankaConnect.Domain.Events.Enums.RegistrationStatus.Cancelled"/>
+    /// whose workflow ticket-line refund has already settled at Stripe
+    /// (<c>RefundRequestLineItem.Type=Ticket</c>, <c>Status=Refunded</c>,
+    /// <c>StripeRefundId NOT NULL</c>) but whose registration row was never advanced
+    /// to <c>Refunded</c>. The exact stuck pattern the operator UAT surfaced on
+    /// 2026-05-22 (registration <c>8df17ec1</c>): a <c>charge.refunded</c> webhook
+    /// for a multi-refund PI was misrouted (Bug 1) so the ticket refund's typed
+    /// handler never ran, leaving the registration <c>Cancelled</c> with no
+    /// <c>StripeRefundId</c> / <c>RefundCompletedAt</c>.
+    ///
+    /// W5.5.D4 fixes the routing for future webhooks. This method is the durable
+    /// safety net for any rows that slip through despite the fix, AND backfills any
+    /// rows that accumulated during the bug window before deploy. Calls
+    /// <see cref="LankaConnect.Domain.Events.Registration.CompleteRefundFromCancelled"/>
+    /// per stuck row (the W5.D4 domain transition that permits Cancelled → Refunded).
+    /// Idempotent — second runs on already-Refunded rows are no-ops via the domain
+    /// method's same-SRI guard.
+    /// </summary>
+    /// <param name="ageThresholdMinutes">
+    /// Grace period before a row is considered stuck. Default 10 minutes. Stripe
+    /// webhook delivery latency is sub-second under normal conditions; 10 minutes
+    /// generously covers webhook retry windows + dispatcher commit propagation.
+    /// </param>
+    Task<Result<int>> ReconcileStuckCancelledWithRefundedTicketAsync(
+        int? ageThresholdMinutes = null,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

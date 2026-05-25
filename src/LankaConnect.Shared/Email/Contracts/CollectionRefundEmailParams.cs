@@ -7,12 +7,19 @@ namespace LankaConnect.Shared.Email.Contracts;
 /// Template: template-collection-refund
 /// Sent when a collection (event fund) payment is refunded via Stripe webhook (charge.refunded).
 /// </summary>
-public class CollectionRefundEmailParams : IEmailParameters
+public class CollectionRefundEmailParams : IEmailParameters, IDispatchLoggable
 {
     public string TemplateName => EmailTemplateContract.TemplateNames.CollectionRefund;
 
     public string RecipientEmail => ContributorEmail;
     public string RecipientName => ContributorName;
+
+    // Phase 6A.148.W5.6.B.OBS2 — dispatch-log threading.
+    public Guid? DispatchRefundRequestId { get; set; }
+    public Guid? DispatchCollectionId { get; set; }
+    Guid? IDispatchLoggable.DispatchRefundRequestId => DispatchRefundRequestId;
+    string? IDispatchLoggable.DispatchEntityType => DispatchCollectionId.HasValue ? "Collection" : null;
+    Guid? IDispatchLoggable.DispatchEntityId => DispatchCollectionId;
 
     #region Core Properties
 

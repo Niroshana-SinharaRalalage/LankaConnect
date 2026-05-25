@@ -463,6 +463,10 @@ export class EventsRepository {
       // Phase 6A.137F: Collection and sponsor refund options
       refundCollections?: boolean;
       refundSponsors?: boolean;
+      // Phase 6A.148: Ticket refund bucket toggle (paid registrations only). Default
+      // true so existing call sites that don't specify still request a ticket refund.
+      refundTicket?: boolean;
+      requesterReason?: string | null;
     } = {}
   ): Promise<CancelRsvpResult | null> {
     const params = new URLSearchParams();
@@ -471,6 +475,10 @@ export class EventsRepository {
     if (options.refundAddOnPurchases) params.append('refundAddOnPurchases', 'true');
     if (options.refundCollections) params.append('refundCollections', 'true');
     if (options.refundSponsors) params.append('refundSponsors', 'true');
+    // Phase 6A.148: only send refundTicket=false explicitly when attendee opted out;
+    // omitting it lets the backend default to true (legacy-compatible).
+    if (options.refundTicket === false) params.append('refundTicket', 'false');
+    if (options.requesterReason) params.append('requesterReason', options.requesterReason);
     const queryString = params.toString();
     return await apiClient.delete<CancelRsvpResult | null>(`${this.basePath}/${eventId}/rsvp${queryString ? `?${queryString}` : ''}`);
   }
@@ -499,6 +507,96 @@ export class EventsRepository {
   async forceCancelStuckRefund(eventId: string, registrationId: string): Promise<void> {
     await apiClient.post<void>(
       `${this.basePath}/${eventId}/registrations/${registrationId}/force-cancel-stuck-refund`,
+    );
+  }
+
+  // ============================================================================
+  // Phase 6A.148: Refund approval workflow
+  // ============================================================================
+
+  /**
+   * Attendee creates a Pending refund request. Goes to organizer review queue —
+   * no Stripe call happens until the organizer approves.
+   */
+  async createRefundRequest(
+    eventId: string,
+    payload: import('../types/refund-request.types').CreateRefundRequestPayload,
+  ): Promise<import('../types/refund-request.types').CreateRefundRequestResult> {
+    return apiClient.post(`${this.basePath}/${eventId}/refund-requests`, payload);
+  }
+
+  /**
+   * Attendee fetches their own current/most-recent refund request for this event,
+   * or null. Backend excludes `organizerNotes` from this projection (privacy).
+   */
+  async getMyRefundRequest(
+    eventId: string,
+  ): Promise<import('../types/refund-request.types').AttendeeRefundRequestDto | null> {
+    return apiClient.get(`${this.basePath}/${eventId}/refund-requests/me`);
+  }
+
+  /**
+   * Attendee withdraws their own Pending refund request. Returns the registration
+   * to Confirmed.
+   */
+  async withdrawMyRefundRequest(eventId: string): Promise<void> {
+    await apiClient.post<void>(`${this.basePath}/${eventId}/refund-requests/me/withdraw`);
+  }
+
+  /**
+   * Organizer queue listing. `status` filter is optional.
+   */
+  async listEventRefundRequests(
+    eventId: string,
+    status?: import('../types/refund-request.types').RefundRequestStatus,
+  ): Promise<import('../types/refund-request.types').OrganizerRefundRequestDto[]> {
+    const url = status
+      ? `${this.basePath}/${eventId}/refund-requests?status=${encodeURIComponent(status)}`
+      : `${this.basePath}/${eventId}/refund-requests`;
+    return apiClient.get(url);
+  }
+
+  /**
+   * Organizer initiates a refund on behalf of an attendee. Skips Pending — request
+   * is created in Approved and Stripe dispatch happens immediately.
+   */
+  async createOrganizerInitiatedRefund(
+    eventId: string,
+    payload: import('../types/refund-request.types').CreateOrganizerInitiatedRefundPayload,
+  ): Promise<import('../types/refund-request.types').CreateRefundRequestResult> {
+    return apiClient.post(
+      `${this.basePath}/${eventId}/refund-requests/organizer-initiated`,
+      payload,
+    );
+  }
+
+  /**
+   * Organizer approves a pending refund request with per-line amounts. 409 Conflict
+   * indicates another organizer approved first — refresh and retry.
+   */
+  async approveRefundRequest(
+    eventId: string,
+    refundRequestId: string,
+    payload: import('../types/refund-request.types').ApproveRefundRequestPayload,
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/refund-requests/${refundRequestId}/approve`,
+      payload,
+    );
+  }
+
+  /**
+   * Organizer declines a pending refund request. Reason is mandatory and is sent
+   * to the attendee in the rejection email.
+   */
+  async rejectRefundRequest(
+    eventId: string,
+    refundRequestId: string,
+    payload: import('../types/refund-request.types').RejectRefundRequestPayload,
+  ): Promise<void> {
+    await apiClient.post<void>(
+      `${this.basePath}/${eventId}/refund-requests/${refundRequestId}/reject`,
+      payload,
     );
   }
 
@@ -1880,6 +1978,49 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.151 C4 — pre-upload a sponsor logo to a staging blob path. Used by
+   * the inline registration panel: when the user picks a file, we upload to
+   * staging immediately (file-pick time, not submit time) because the parent
+   * registration submit triggers a Stripe Checkout redirect — there is no
+   * opportunity to upload post-submit. The returned blobName+blobUrl ride in
+   * the registration command payload; the handler calls Sponsor.SetImage
+   * in-tx with the Sponsor row create.
+   *
+   * Endpoint is [AllowAnonymous] (registration flow is anonymous) and
+   * rate-limited 10/hour per IP server-side.
+   */
+  async uploadSponsorStagingImage(
+    eventId: string,
+    file: File
+  ): Promise<{ correlationId: string; blobName: string; blobUrl: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<{
+      correlationId: string;
+      blobName: string;
+      blobUrl: string;
+    }>(`${this.basePath}/${eventId}/sponsors/staging-image`, formData);
+  }
+
+  /**
+   * Phase 6A.151 — PATCH content fields on an existing sponsor. PATCH semantics:
+   * any field left undefined (or null) is preserved server-side. The server
+   * enforces the state-edit matrix per-field; rejections surface as 400 with
+   * a descriptive detail. 403 when the actor is neither the sponsor owner
+   * (non-anonymous) nor an organizer of the event.
+   */
+  async updateSponsor(
+    eventId: string,
+    sponsorId: string,
+    request: import('../types/events.types').UpdateSponsorRequest
+  ): Promise<import('../types/events.types').SponsorDto> {
+    return await apiClient.patch<import('../types/events.types').SponsorDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}`,
+      request
+    );
+  }
+
+  /**
    * Phase 6A.145 — organizer records an off-platform sponsorship (cash collected
    * outside the platform, or in-kind item donated directly to the organizer).
    * Multipart so an optional image file rides alongside the form fields.
@@ -1909,6 +2050,17 @@ export class EventsRepository {
 
   async getEventSponsors(eventId: string): Promise<import('../types/events.types').EventSponsorsResponse> {
     return await apiClient.get<import('../types/events.types').EventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors`);
+  }
+
+  /**
+   * Phase 6A.150 — public sponsors view (anonymous-allowed).
+   * Returns sponsors-with-logos in a PII-redacted shape so the public event
+   * page can render SponsorsPreviewStrip / SponsorSection without triggering
+   * the auth-redirect chain. The full-PII variant (getEventSponsors) remains
+   * gated to organizers.
+   */
+  async getPublicEventSponsors(eventId: string): Promise<import('../types/events.types').PublicEventSponsorsResponse> {
+    return await apiClient.get<import('../types/events.types').PublicEventSponsorsResponse>(`${this.basePath}/${eventId}/sponsors/public`);
   }
 
   async getSponsorSummary(eventId: string): Promise<import('../types/events.types').SponsorSummaryDto> {

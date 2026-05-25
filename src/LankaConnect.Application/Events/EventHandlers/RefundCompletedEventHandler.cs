@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common;
+using LankaConnect.Application.Events.Services;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -27,6 +28,10 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
     private readonly IEventRepository _eventRepository;
     private readonly IEventFormRepository _eventFormRepository;
     private readonly IEmailUrlHelper _emailUrlHelper;
+    // Phase 6A.148.W5.6.A — handler-side aggregation for the consolidated refund total.
+    // The event payload carries only Registration.TotalPrice + AddOnRefundAmount (legacy
+    // columns) which undercounts workflow refunds with Sponsor/Collection lines.
+    private readonly IRefundTotalCalculator _refundTotalCalculator;
     private readonly ILogger<RefundCompletedEventHandler> _logger;
 
     public RefundCompletedEventHandler(
@@ -35,6 +40,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
         IEventRepository eventRepository,
         IEventFormRepository eventFormRepository,
         IEmailUrlHelper emailUrlHelper,
+        IRefundTotalCalculator refundTotalCalculator,
         ILogger<RefundCompletedEventHandler> logger)
     {
         _typedEmailService = typedEmailService;
@@ -42,6 +48,7 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
         _eventRepository = eventRepository;
         _eventFormRepository = eventFormRepository;
         _emailUrlHelper = emailUrlHelper;
+        _refundTotalCalculator = refundTotalCalculator;
         _logger = logger;
     }
 
@@ -89,12 +96,22 @@ public class RefundCompletedEventHandler : INotificationHandler<DomainEventNotif
                     }
                 }
 
-                // Phase 6A.135: Calculate combined refund total (ticket + add-ons)
-                var totalRefundAmount = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+                // Phase 6A.135: Legacy formula — ticket + addons from Registration columns.
+                // Correct for the pre-6A.148 direct-Stripe CancelRsvp path; UNDERCOUNTS for
+                // 6A.148 workflow refunds that include Sponsor / Collection lines.
+                var legacyFallbackTotal = domainEvent.RefundAmount + domainEvent.AddOnRefundAmount;
+
+                // Phase 6A.148.W5.6.A — workflow-aware aggregation. If the refund is owned
+                // by a workflow line, the calculator SUMs all Refunded line items'
+                // ApprovedAmount (single source of truth, same column the Decision email
+                // already reads). Returns the legacy total verbatim for legacy refunds.
+                var totalRefundAmount = await _refundTotalCalculator.ComputeAttendeeFacingTotalAsync(
+                    domainEvent.StripeRefundId, legacyFallbackTotal, cancellationToken);
 
                 _logger.LogInformation(
-                    "[Phase 6A.135] RefundCompleted: TicketRefund=${TicketAmount}, AddOnRefund=${AddOnAmount}, TotalRefund=${TotalAmount}",
-                    domainEvent.RefundAmount, domainEvent.AddOnRefundAmount, totalRefundAmount);
+                    "[Phase 6A.148.W5.6.A] RefundCompleted email total: ${TotalAmount} (legacy formula was ${Legacy}; ticket=${TicketAmount} addon=${AddOnAmount}) — StripeRefundId={Sri}",
+                    totalRefundAmount, legacyFallbackTotal, domainEvent.RefundAmount,
+                    domainEvent.AddOnRefundAmount, domainEvent.StripeRefundId);
 
                 // Phase 6A.87: Use typed email parameters for compile-time safety
                 // Phase 6A.87 Fix: Added stripeRefundId parameter required by template

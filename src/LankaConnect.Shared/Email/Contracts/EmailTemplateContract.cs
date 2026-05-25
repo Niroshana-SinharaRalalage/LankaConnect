@@ -102,6 +102,23 @@ public static class EmailTemplateContract
         public const string DonationRefund = "template-donation-refund";
         public const string CollectionRefund = "template-collection-refund";
         public const string SponsorRefund = "template-sponsor-refund";
+
+        // Phase 6A.148.D7: Refund-approval-workflow lifecycle templates.
+        // Each maps to a distinct lifecycle stage so attendees can tell "we got your
+        // request" apart from "Stripe is actually moving money" apart from "declined".
+        // The legacy template-refund-requested ("Refund In Progress") is intentionally
+        // NOT reused — its header is hard-baked legacy 6A.92 vocabulary that confused
+        // operators during 148.c UAT (E1/E2).
+        public const string RefundPendingReview = "template-refund-pending-review";
+        public const string RefundDecision = "template-refund-decision";
+        public const string RefundRejected = "template-refund-rejected";
+
+        // Phase 6A.148.W4.D13: closes the silent "withdraw has no email" gap (G2 in
+        // Wave 4 gap inventory). Fires when an attendee withdraws their own pending
+        // refund request; confirms to them that the registration is back to Confirmed
+        // and no money moved. Per Q2 user decision, organizer is NOT notified
+        // (the row simply disappears from their pending queue).
+        public const string RefundWithdrawn = "template-refund-withdrawn";
     }
 
     #endregion
@@ -1164,6 +1181,119 @@ public static class EmailTemplateContract
         public const string RefundedAt = "RefundedAt";
         public const string PaymentIntentId = "PaymentIntentId";
         public const string EventDetailsUrl = "EventDetailsUrl";
+    }
+
+    #endregion
+
+    #region Phase 6A.148.D7 — Refund Lifecycle Email Parameters
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund request is pending organizer review" email.
+    /// Template: template-refund-pending-review (header: "Refund Request Received").
+    ///
+    /// Fires once at attendee-initiated refund request creation. Operator UAT (E1/E2 in
+    /// MASTER_TODO_PHASE_6A_148) confirmed the previously-reused template-refund-requested
+    /// template's "Refund In Progress" header misled attendees into thinking Stripe was
+    /// already moving money. This dedicated template + params class fixes that.
+    /// </summary>
+    public static class RefundPendingReview
+    {
+        /// <summary>Pre-formatted HTML table listing each requested line (Ticket/AddOn/Collection/Sponsor + amount). Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total requested amount across all line items (no currency symbol — template hard-codes "$").</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code (e.g., "USD").</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Attendee-supplied reason for the refund (optional). Empty string when not supplied.</summary>
+        public const string RequesterReason = "RequesterReason";
+
+        /// <summary>Boolean flag for {{#if HasRequesterReason}} conditional rendering.</summary>
+        public const string HasRequesterReason = "HasRequesterReason";
+
+        /// <summary>Formatted requested-at timestamp (e.g., "May 18, 2026 3:42 PM").</summary>
+        public const string RequestedAt = "RequestedAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund decision" email.
+    /// Template: template-refund-decision (header: "Refund Decision").
+    ///
+    /// Fires after organizer approves (attendee-initiated path) OR at organizer-initiated
+    /// request creation (organizer path). Body lists every line with its decision —
+    /// approved $X / declined / processing — so attendees see exactly what the organizer
+    /// decided per bucket (E3 in MASTER_TODO_PHASE_6A_148).
+    /// </summary>
+    public static class RefundDecision
+    {
+        /// <summary>Pre-formatted HTML table listing each line + decision. Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Sum of approved amounts across the request (no currency symbol).</summary>
+        public const string ApprovedTotal = "ApprovedTotal";
+
+        /// <summary>Sum of originally-requested amounts (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code.</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Boolean flag — true when the organizer initiated the refund on behalf of the attendee. Drives body copy variant.</summary>
+        public const string IsOrganizerInitiated = "IsOrganizerInitiated";
+
+        /// <summary>Formatted decision timestamp.</summary>
+        public const string DecidedAt = "DecidedAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.W4.D13: Parameters for the "you withdrew your refund request" email.
+    /// Template: template-refund-withdrawn (header: "Refund Request Withdrawn").
+    ///
+    /// Fires once when an attendee uses the in-app withdraw button on the pending-review
+    /// status banner. Confirms to them the request was withdrawn, the registration is
+    /// back to Confirmed, and no money moved. Per Q2 user decision, organizer is NOT
+    /// notified (queue item just disappears).
+    /// </summary>
+    public static class RefundWithdrawn
+    {
+        /// <summary>Pre-formatted HTML table listing each line item that was in the withdrawn request. Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total amount that was in the withdrawn request (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code (e.g., "USD").</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Formatted withdrawn-at timestamp (e.g., "May 19, 2026 3:42 PM").</summary>
+        public const string WithdrawnAt = "WithdrawnAt";
+    }
+
+    /// <summary>
+    /// Phase 6A.148.D7: Parameters for the "your refund request was declined" email.
+    /// Template: template-refund-rejected (header: "Refund Request Declined").
+    ///
+    /// Fires when the organizer rejects the entire request. The customer-facing
+    /// RejectionReason is the first-class field in the body — no body-stuffing.
+    /// </summary>
+    public static class RefundRejected
+    {
+        /// <summary>Pre-formatted HTML table listing each requested line (Ticket/AddOn/Collection/Sponsor + amount). Triple-brace token.</summary>
+        public const string LineItemsHtml = "LineItemsHtml";
+
+        /// <summary>Total originally-requested amount (no currency symbol).</summary>
+        public const string RequestedTotal = "RequestedTotal";
+
+        /// <summary>Currency code.</summary>
+        public const string Currency = "Currency";
+
+        /// <summary>Customer-facing rejection reason (mandatory, set by organizer).</summary>
+        public const string RejectionReason = "RejectionReason";
+
+        /// <summary>Formatted rejection timestamp.</summary>
+        public const string RejectedAt = "RejectedAt";
     }
 
     #endregion

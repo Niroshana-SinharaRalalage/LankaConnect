@@ -31,15 +31,18 @@ interface AddOnsManagementTabProps {
 function getPurchaseStatusColor(status: string): string {
   switch (status) {
     case 'Completed':
-      return '#10B981';
+      return '#10B981'; // emerald — money received
     case 'Pending':
-      return '#F59E0B';
+      return '#F59E0B'; // amber — awaiting
     case 'Failed':
-      return '#EF4444';
+      return '#EF4444'; // red — error
     case 'Refunded':
-      return '#6366F1';
+      // W5.D9: rose to match SponsorSection.tsx convention and clearly distinguish
+      // from Completed (operator UAT: previously indigo read as "active-ish" rather
+      // than "money-returned"). Strikethrough applied via Badge className override.
+      return '#E11D48';
     case 'Cancelled':
-      return '#6B7280';
+      return '#6B7280'; // gray — never completed
     default:
       return '#6B7280';
   }
@@ -386,7 +389,10 @@ export function AddOnsManagementTab({ eventId, addOnConfig }: AddOnsManagementTa
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Badge style={{ backgroundColor: getPurchaseStatusColor(purchase.status) }}>
+                    <Badge
+                      style={{ backgroundColor: getPurchaseStatusColor(purchase.status) }}
+                      className={purchase.status === 'Refunded' ? 'line-through' : ''}
+                    >
                       {purchase.status}
                     </Badge>
                   </td>

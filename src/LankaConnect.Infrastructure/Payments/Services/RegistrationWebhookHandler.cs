@@ -785,15 +785,44 @@ public class RegistrationWebhookHandler : IRegistrationWebhookHandler
             "[Phase 6A.91] [Webhook-Refund-4] Registration loaded - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, CurrentPaymentStatus: {PaymentStatus}",
             correlationId, registration.Id, registration.Status, registration.PaymentStatus);
 
-        // Complete refund (RefundRequested -> Refunded)
-        var completeRefundResult = registration.CompleteRefund(refundId);
+        // Phase 6A.148.W5.D5: workflow-aware branch. When refund metadata says `refund_type=registration`
+        // AND the registration is in Cancelled state (because the attendee cancelled separately through
+        // CancelRsvpCommandHandler in the decoupled 6A.148 model, and the workflow refund's per-line
+        // Stripe call is what fired this charge.refunded), the legacy `CompleteRefund` would refuse
+        // (it requires Status=RefundRequested) — leaving the registration stuck in Cancelled forever
+        // even though Stripe has refunded the money. The W5.D4 `CompleteRefundFromCancelled` is the
+        // permissive counterpart that handles {RefundRequested, Cancelled}.
+        //
+        // Why we gate on metadata: pre-6A.148 refunds that hit this handler legitimately require
+        // Status=RefundRequested (CancelRsvp + RegistrationRefundService inline flow). The W5.D5
+        // branch only activates for refunds clearly originating from the workflow path so legacy
+        // semantics are preserved.
+        var isWorkflowRefund = refundMetadata != null
+            && refundMetadata.TryGetValue("refund_type", out var refundType)
+            && string.Equals(refundType, "registration", StringComparison.OrdinalIgnoreCase)
+            && refundMetadata.ContainsKey("refund_request_id");
+
+        Result completeRefundResult;
+        if (isWorkflowRefund)
+        {
+            _logger.LogInformation(
+                "[Phase 6A.148.W5.D5] [Webhook-Refund-Workflow] Workflow-owned ticket refund detected — routing to CompleteRefundFromCancelled - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, RefundRequestId: {RrId}",
+                correlationId, registration.Id, registration.Status,
+                refundMetadata!.TryGetValue("refund_request_id", out var rrId) ? rrId : "unknown");
+            completeRefundResult = registration.CompleteRefundFromCancelled(refundId);
+        }
+        else
+        {
+            // Legacy path — preserved verbatim. Requires Status=RefundRequested.
+            completeRefundResult = registration.CompleteRefund(refundId);
+        }
 
         if (completeRefundResult.IsFailure)
         {
             // This may be expected if refund was already processed (idempotency)
             _logger.LogWarning(
-                "[Phase 6A.91] [Webhook-Refund-INFO] CompleteRefund failed (may be already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, Error: {Error}",
-                correlationId, registration.Id, registration.Status, completeRefundResult.Error);
+                "[Phase 6A.91] [Webhook-Refund-INFO] CompleteRefund failed (may be already processed) - CorrelationId: {CorrelationId}, RegistrationId: {RegistrationId}, CurrentStatus: {Status}, IsWorkflow: {IsWorkflow}, Error: {Error}",
+                correlationId, registration.Id, registration.Status, isWorkflowRefund, completeRefundResult.Error);
             return;
         }
 

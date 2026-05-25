@@ -822,23 +822,259 @@ public class GetEventsQueryHandlerTests
         return @event;
     }
 
-    private Event CreateTestEventOnDate(string title, EventStatus status, DateTime startDate)
+    // CreateTestEventOnDate moved to Phase 6A.152 region below — that helper
+    // also handles past dates via reflection on the StartDate/EndDate backing
+    // fields, which Event.Create rejects by design (domain invariant).
+
+    #endregion
+
+    #region Phase 6A.152 — Date-based Active/Inactive bucket split
+
+    // Phase 6A.152: The /events page splits events into "Upcoming" and "Completed"
+    // sections. The split is now date-based, not status-based, because events do
+    // not reliably auto-transition Published → Completed (Hangfire job only handles
+    // Published → Active → Completed; events that miss the Active hop strand at
+    // Published forever). Rule:
+    //   Active   bucket → Status ∉ {Cancelled, Draft, UnderReview} AND
+    //                     (StartDate IS NULL OR StartDate >= now)
+    //   Inactive bucket → Status ∉ {Cancelled, Draft, UnderReview} AND
+    //                     StartDate.HasValue AND StartDate < now
+
+    [Fact]
+    public async Task Handle_ActiveFilter_FutureDatedPublishedEvent_IsIncluded()
+    {
+        var futureEvent = CreateTestEventOnDate("Future Published", EventStatus.Published, DateTime.UtcNow.AddDays(7));
+        SetupRepository(new List<Event> { futureEvent });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "Future Published");
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFilter_PastDatedPublishedEvent_IsExcluded()
+    {
+        // The stranded-Published case observed in production (event date has passed
+        // but Status never flipped to Completed). Must NOT appear in Active bucket.
+        var pastEvent = CreateTestEventOnDate("Past Published Stranded", EventStatus.Published, DateTime.UtcNow.AddDays(-3));
+        var futureEvent = CreateTestEventOnDate("Future Published", EventStatus.Published, DateTime.UtcNow.AddDays(7));
+        SetupRepository(new List<Event> { pastEvent, futureEvent });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value.Should().Contain(e => e.Title == "Future Published");
+        result.Value.Should().NotContain(e => e.Title == "Past Published Stranded");
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_PastDatedPublishedEvent_IsIncluded()
+    {
+        // Headline regression-guard: the stranded-Published case observed in
+        // production MUST surface in the Completed (Inactive) bucket so users
+        // can scroll to past events.
+        var pastEvent = CreateTestEventOnDate("Past Published Stranded", EventStatus.Published, DateTime.UtcNow.AddDays(-3));
+        var futureEvent = CreateTestEventOnDate("Future Published", EventStatus.Published, DateTime.UtcNow.AddDays(7));
+        SetupRepository(new List<Event> { pastEvent, futureEvent });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value.Should().Contain(e => e.Title == "Past Published Stranded");
+        result.Value.Should().NotContain(e => e.Title == "Future Published");
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_PastDatedCompletedEvent_IsIncluded()
+    {
+        var pastCompleted = CreateTestEventOnDate("Past Completed", EventStatus.Completed, DateTime.UtcNow.AddDays(-30));
+        SetupRepository(new List<Event> { pastCompleted });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "Past Completed");
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFilter_FutureDatedPostponedEvent_IsIncluded()
+    {
+        var futurePostponed = CreateTestEventOnDate("Future Postponed", EventStatus.Postponed, DateTime.UtcNow.AddDays(14));
+        SetupRepository(new List<Event> { futurePostponed });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "Future Postponed");
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_PastDatedPostponedEvent_IsIncluded()
+    {
+        var pastPostponed = CreateTestEventOnDate("Past Postponed", EventStatus.Postponed, DateTime.UtcNow.AddDays(-7));
+        SetupRepository(new List<Event> { pastPostponed });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "Past Postponed");
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFilter_CancelledEvent_IsExcluded()
+    {
+        var futureCancelled = CreateTestEventOnDate("Future Cancelled", EventStatus.Cancelled, DateTime.UtcNow.AddDays(7));
+        var pastCancelled = CreateTestEventOnDate("Past Cancelled", EventStatus.Cancelled, DateTime.UtcNow.AddDays(-7));
+        SetupRepository(new List<Event> { futureCancelled, pastCancelled });
+
+        var activeResult = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        activeResult.IsSuccess.Should().BeTrue();
+        activeResult.Value.Should().BeEmpty("cancelled events never appear in Active/Upcoming bucket");
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_CancelledEvent_IsExcluded()
+    {
+        var pastCancelled = CreateTestEventOnDate("Past Cancelled", EventStatus.Cancelled, DateTime.UtcNow.AddDays(-7));
+        SetupRepository(new List<Event> { pastCancelled });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty("cancelled events never appear in Inactive/Completed bucket either");
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFilter_TbdPublishedEvent_IsIncluded()
+    {
+        // TBD (StartDate = null) Published events appear in Upcoming — they're
+        // events being planned without confirmed dates. Phase 8YA.1 + 6A.152
+        // contract: TBD = Upcoming.
+        var tbd = CreateTbdPublishedEvent("TBD Published");
+        SetupRepository(new List<Event> { tbd });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "TBD Published");
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_TbdPublishedEvent_IsExcluded()
+    {
+        // TBD events have no date — cannot be in the "past" bucket.
+        var tbd = CreateTbdPublishedEvent("TBD Published");
+        SetupRepository(new List<Event> { tbd });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_InactiveFilter_PastDatedActiveStatus_IsIncluded()
+    {
+        // Status=Active (rare — event has started but Hangfire hasn't run Complete yet)
+        // with a past EndDate. Treat as Completed by date.
+        var pastActive = CreateTestEventOnDate("Past Active", EventStatus.Active, DateTime.UtcNow.AddDays(-1));
+        SetupRepository(new List<Event> { pastActive });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Inactive),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle(e => e.Title == "Past Active");
+    }
+
+    [Fact]
+    public async Task Handle_ActiveFilter_DraftAndUnderReview_ExcludedRegardlessOfDate()
+    {
+        var futureDraft = CreateTestEventOnDate("Future Draft", EventStatus.Draft, DateTime.UtcNow.AddDays(7));
+        var futureReview = CreateTestEventOnDate("Future UnderReview", EventStatus.UnderReview, DateTime.UtcNow.AddDays(7));
+        SetupRepository(new List<Event> { futureDraft, futureReview });
+
+        var result = await _handler.Handle(
+            new GetEventsQuery(StatusFilter: EventStatusFilter.Active),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeEmpty("Draft/UnderReview are not publicly visible regardless of bucket");
+    }
+
+    private void SetupRepository(List<Event> events)
+    {
+        _mockEventRepository
+            .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(events);
+
+        _mockMapper
+            .Setup(x => x.Map<EventDto>(It.IsAny<Event>()))
+            .Returns((Event e) => new EventDto
+            {
+                Id = e.Id,
+                Title = e.Title.Value,
+                Status = e.Status,
+                StartDate = e.StartDate
+            });
+    }
+
+    /// <summary>
+    /// Phase 6A.152 helper. <see cref="Event.Create"/> rejects past-dated
+    /// <c>startDate</c> (domain invariant: events cannot be authored in the past).
+    /// For listing-bucket tests we need events whose StartDate is in the past
+    /// or that carry statuses (Cancelled, Active, Completed, Postponed) the
+    /// regular factory does not produce. Solution: build via a safe future
+    /// date, then overwrite <c>StartDate</c> / <c>EndDate</c> / <c>Status</c>
+    /// through the auto-property backing fields. Same reflection pattern the
+    /// existing <c>CreateTestEvent</c> helper uses for Status above.
+    /// </summary>
+    private static Event CreateTestEventOnDate(string title, EventStatus status, DateTime startDate)
     {
         var eventTitle = EventTitle.Create(title).Value;
-        var description = EventDescription.Create("Phase 8YB.5 dated test").Value;
+        var description = EventDescription.Create("Phase 6A.152 bucket test").Value;
 
+        // Create with a safe future date that passes domain validation.
+        var seedStart = DateTime.UtcNow.AddDays(30);
         var @event = Event.Create(
             eventTitle,
             description,
-            startDate,
-            startDate.AddHours(2),
+            seedStart,
+            seedStart.AddHours(2),
             Guid.NewGuid(),
             100
         ).Value;
 
-        var backingField = typeof(Event).GetField("<Status>k__BackingField",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        backingField?.SetValue(@event, status);
+        // Overwrite to the intended date (past or future) via auto-property backing fields.
+        var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        typeof(Event).GetField("<StartDate>k__BackingField", flags)?.SetValue(@event, (DateTime?)startDate);
+        typeof(Event).GetField("<EndDate>k__BackingField", flags)?.SetValue(@event, (DateTime?)startDate.AddHours(2));
+        typeof(Event).GetField("<Status>k__BackingField", flags)?.SetValue(@event, status);
 
         return @event;
     }

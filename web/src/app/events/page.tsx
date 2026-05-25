@@ -15,10 +15,10 @@ import { useEvents, useUserRsvps } from '@/presentation/hooks/useEvents';
 import { useAuthStore } from '@/presentation/store/useAuthStore';
 import { useGeolocation } from '@/presentation/hooks/useGeolocation';
 import { useMetroAreas } from '@/presentation/hooks/useMetroAreas';
-// Phase 6A.149: EventStatus added so we can client-filter the Inactive payload
-// down to Completed-only events for the new Completed section.
-// EventStatusFilterLabels dropped — the standalone Status dropdown is removed.
-import { EventCategory, EventDto, EventPaymentMode, EventStatus, EventStatusFilter } from '@/infrastructure/api/types/events.types';
+// Phase 6A.152: EventStatus import removed. The Completed section is now
+// date-based on the backend (StartDate < now), so the client no longer needs
+// to filter by Status. EventStatusFilterLabels was already dropped in 6A.149.
+import { EventCategory, EventDto, EventPaymentMode, EventStatusFilter } from '@/infrastructure/api/types/events.types';
 import { BadgeOverlayGroup } from '@/presentation/components/features/badges';
 import { RegistrationBadge } from '@/presentation/components/features/events/RegistrationBadge';
 import { US_STATES } from '@/domain/constants/metroAreas.constants';
@@ -123,19 +123,15 @@ export default function EventsPage() {
   const { data: upcomingEvents, isLoading: upcomingLoading, error: upcomingError } = useEvents(upcomingFilters);
   const { data: completedRawEvents, isLoading: completedLoading } = useEvents(completedFilters);
 
-  // EventStatusFilter.Inactive returns Completed + Archived + Postponed.
-  // The public-facing section only surfaces Completed. Client-side filter
-  // pinned by RED test "filters Inactive payload client-side to only
-  // Completed-status events". String compare matches the JsonStringEnumConverter
-  // wire format (event.status === 'Completed').
+  // Phase 6A.152: Backend EventStatusFilter.Inactive now returns events where
+  // StartDate < now (date-based), regardless of Status. No client-side Status
+  // filter is needed — the API response is already the correct set for the
+  // public Completed section. Cancelled events are excluded server-side and
+  // never reach this list.
   const completedEvents = useMemo(
-    // EventDto.status is the string-valued enum EventStatus — single equality
-    // check covers both the enum value and the wire format
-    // (EventStatus.Completed === 'Completed' at runtime).
-    () => (completedRawEvents ?? []).filter((e) => e.status === EventStatus.Completed),
+    () => completedRawEvents ?? [],
     [completedRawEvents],
   );
-  const hasCompletedEvents = completedEvents.length > 0;
 
   // Phase 6A.46: Bulk fetch user RSVPs for registration status (Issue #2: Not needed anymore - status is on EventDto)
   // Removed: registeredEventIds Set logic - now using event.userRegistrationStatus
@@ -438,72 +434,88 @@ export default function EventsPage() {
         </section>
 
         {/* ============================ Completed Events ============================
-            Phase 6A.149: hidden entirely when the filtered Completed payload is empty,
-            so an event with zero past programming doesn't show an empty section.
-            Section component self-gates via hasCompletedEvents below. */}
-        {hasCompletedEvents && (
-          <section>
-            <h2 className="text-2xl font-bold mb-4" style={{ color: '#8B1538' }}>
-              Completed Events
-            </h2>
+            Phase 6A.152: heading and filter card always render so the feature is
+            discoverable even when the list is empty (e.g. an event organizer's
+            first month). Empty-state card sits inside the grid when there are
+            no past events to show. Replaces the 6A.149 self-gating behaviour. */}
+        <section>
+          <h2 className="text-2xl font-bold mb-4" style={{ color: '#8B1538' }}>
+            Completed Events
+          </h2>
 
-            <CollapsibleSection
-              title="Filters"
-              defaultOpen={false}
-              icon={<Filter className="h-5 w-5" style={{ color: '#FF7900' }} />}
-              borderColor="#8B1538"
-              badge={
-                hasCompletedActiveFilters ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearCompletedFilters();
-                    }}
-                    className="text-sm font-medium hover:underline"
-                    style={{ color: '#FF7900' }}
-                  >
-                    Clear All
-                  </button>
-                ) : undefined
-              }
-              className="mb-4"
+          <CollapsibleSection
+            title="Filters"
+            defaultOpen={false}
+            icon={<Filter className="h-5 w-5" style={{ color: '#FF7900' }} />}
+            borderColor="#8B1538"
+            badge={
+              hasCompletedActiveFilters ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearCompletedFilters();
+                  }}
+                  className="text-sm font-medium hover:underline"
+                  style={{ color: '#FF7900' }}
+                >
+                  Clear All
+                </button>
+              ) : undefined
+            }
+            className="mb-4"
+          >
+            {renderFilterForm({
+              searchInput: completedSearchInput,
+              onSearchChange: setCompletedSearchInput,
+              category: completedCategory,
+              onCategoryChange: setCompletedCategory,
+              showDateFilter: false,
+              metroIds: completedMetroIds,
+              onMetroIdsChange: setCompletedMetroIds,
+              treeNodes: completedLocationTreeNodes,
+              placeholderPrefix: 'completed events',
+            })}
+          </CollapsibleSection>
+
+          <div className="relative">
+            <div
+              data-section="completed-grid-scroll"
+              className="max-h-[1500px] overflow-y-auto pr-1"
             >
-              {renderFilterForm({
-                searchInput: completedSearchInput,
-                onSearchChange: setCompletedSearchInput,
-                category: completedCategory,
-                onCategoryChange: setCompletedCategory,
-                showDateFilter: false,
-                metroIds: completedMetroIds,
-                onMetroIdsChange: setCompletedMetroIds,
-                treeNodes: completedLocationTreeNodes,
-                placeholderPrefix: 'completed events',
-              })}
-            </CollapsibleSection>
-
-            <div className="relative">
-              <div
-                data-section="completed-grid-scroll"
-                className="max-h-[1500px] overflow-y-auto pr-1"
-              >
-                {completedLoading ? (
-                  renderSkeleton()
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {completedEvents.map((event) => (
-                      <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div
-                data-section="completed-grid-fade"
-                className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"
-                aria-hidden="true"
-              />
+              {completedLoading ? (
+                renderSkeleton()
+              ) : completedEvents.length === 0 ? (
+                /* Phase 6A.152: empty-state replaces "section hidden". Keeps the
+                   feature discoverable for organizers whose first event hasn't
+                   ended yet, and for visitors filtering by criteria that match
+                   nothing in the past bucket. */
+                <div
+                  data-testid="completed-empty-state"
+                  className="text-center py-12 px-4 bg-neutral-50 rounded-lg border border-neutral-200"
+                >
+                  <Calendar className="mx-auto h-10 w-10 text-neutral-400 mb-3" aria-hidden="true" />
+                  <p className="text-base font-medium text-neutral-700">No completed events yet</p>
+                  <p className="text-sm text-neutral-500 mt-1">
+                    {hasCompletedActiveFilters
+                      ? 'Try adjusting your filters above.'
+                      : 'Past events will appear here once they conclude.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedEvents.map((event) => (
+                    <EventCard key={event.id} event={event} categoryLabels={categoryLabels} />
+                  ))}
+                </div>
+              )}
             </div>
-          </section>
-        )}
+            <div
+              data-section="completed-grid-fade"
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"
+              aria-hidden="true"
+            />
+          </div>
+        </section>
       </div>
 
       <Footer />

@@ -656,6 +656,29 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 location?.Address?.State);
         }
 
+        // Phase 6A.153: organizer-controlled registration window. Skip the
+        // mutator call when both fields are null — that's the legacy "always
+        // open" default and the domain default already matches. Calling the
+        // mutator only when at least one bound is set keeps the diff tight
+        // for events that don't use this feature.
+        if (request.RegistrationOpensAt.HasValue || request.RegistrationClosesAt.HasValue)
+        {
+            var setWindowResult = eventResult.Value.SetRegistrationWindow(
+                request.RegistrationOpensAt,
+                request.RegistrationClosesAt);
+            if (setWindowResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CreateEvent: SetRegistrationWindow domain rejection - EventId={EventId}, OpensAt={OpensAt}, ClosesAt={ClosesAt}, Error={Error}",
+                    eventResult.Value.Id, request.RegistrationOpensAt, request.RegistrationClosesAt, setWindowResult.Error);
+                return Result<Guid>.Failure(setWindowResult.Error);
+            }
+
+            _logger.LogInformation(
+                "CreateEvent: Registration window set - EventId={EventId}, OpensAt={OpensAt}, ClosesAt={ClosesAt}",
+                eventResult.Value.Id, request.RegistrationOpensAt, request.RegistrationClosesAt);
+        }
+
                 // Add EventId to LogContext now that we have it
                 using (LogContext.PushProperty("EventId", eventResult.Value.Id))
                 {

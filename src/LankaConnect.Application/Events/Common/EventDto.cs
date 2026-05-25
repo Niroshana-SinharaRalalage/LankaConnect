@@ -53,6 +53,35 @@ public record EventDto
     /// </summary>
     public string RegistrationModeStatus { get; init; } = "deferred";
 
+    /// <summary>
+    /// Phase 6A.153: raw organizer-controlled "registration opens at" timestamp
+    /// (UTC). Null = no opens-at gate (legacy / default-open behaviour). The FE
+    /// renders this in the event's local timezone using <see cref="TimeZoneId"/>
+    /// in the "registration opens soon" modal.
+    /// </summary>
+    public DateTime? RegistrationOpensAt { get; init; }
+
+    /// <summary>
+    /// Phase 6A.153: raw organizer-controlled "registration closes at" timestamp
+    /// (UTC). Null = open until <see cref="StartDate"/> (legacy behaviour). To
+    /// pause registration immediately the organizer sets this to the current
+    /// time; no separate boolean toggle exists.
+    /// </summary>
+    public DateTime? RegistrationClosesAt { get; init; }
+
+    /// <summary>
+    /// Phase 6A.153: computed availability state for the public registration
+    /// surface. Distinct from <see cref="RegistrationModeStatus"/> (which
+    /// answers "is the mode implementable"); this answers "can a user register
+    /// right now". String union — values are <c>"open"</c>,
+    /// <c>"not-yet-open"</c>, <c>"closed-by-organizer"</c>,
+    /// <c>"closed-event-started"</c>. Default <c>"open"</c> is the
+    /// backward-compatible legacy behaviour: a stale React Query cache
+    /// without this field treats every event as registerable, which matches
+    /// pre-6A.153 reality and avoids breaking the page on cache miss.
+    /// </summary>
+    public string RegistrationAvailability { get; init; } = "open";
+
     public EventStatus Status { get; init; }
     public EventCategory Category { get; init; }
     public DateTime CreatedAt { get; init; }

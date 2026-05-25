@@ -77,7 +77,13 @@ public record CreateEventCommand(
     // Phase 8X — Optional plain-text instructions rendered on the event detail page.
     string? ExternalRegistrationInstructions = null,
     // Phase 8X — Optional vendor name (e.g. "Eventbrite") used in CTA label.
-    string? ExternalRegistrationVendorName = null
+    string? ExternalRegistrationVendorName = null,
+    // Phase 6A.153 — Organizer-controlled registration window. Both nullable;
+    // null = "always open" (legacy backward-compatible behaviour). When set,
+    // the domain `SetRegistrationWindow` mutator enforces invariants
+    // (opens < closes; both must be before StartDate when StartDate is set).
+    DateTime? RegistrationOpensAt = null,
+    DateTime? RegistrationClosesAt = null
 ) : ICommand<Guid>;
 
 /// <summary>

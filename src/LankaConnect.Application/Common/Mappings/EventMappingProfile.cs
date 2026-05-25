@@ -46,6 +46,12 @@ public class EventMappingProfile : Profile
             // panel hangs off "deferred". When 7E.3b ships paid B-mode + Stripe, the validator
             // gate is removed and this mapping starts emitting "active" for paid + B again.
             .ForMember(dest => dest.RegistrationModeStatus, opt => opt.MapFrom(src => ComputeRegistrationModeStatus(src)))
+            // Phase 6A.153: organizer-controlled registration window. Raw UTC
+            // timestamps so the FE can format in event-local timezone using
+            // TimeZoneId; computed string state for the FE state machine.
+            .ForMember(dest => dest.RegistrationOpensAt, opt => opt.MapFrom(src => src.RegistrationOpensAt))
+            .ForMember(dest => dest.RegistrationClosesAt, opt => opt.MapFrom(src => src.RegistrationClosesAt))
+            .ForMember(dest => dest.RegistrationAvailability, opt => opt.MapFrom(src => ComputeRegistrationAvailability(src)))
             // Location mapping (nullable)
             .ForMember(dest => dest.Address, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.Street : null))
             .ForMember(dest => dest.City, opt => opt.MapFrom(src => src.Location != null ? src.Location.Address.City : null))
@@ -223,6 +229,55 @@ public class EventMappingProfile : Profile
             // than letting an event detail GET fail or render a broken form. The exception is
             // already logged at the AutoMapper layer when it bubbles.
             return "deferred";
+        }
+    }
+
+    /// <summary>
+    /// Phase 6A.153: maps the event's current registration-window state to the
+    /// FE-facing string union (<c>"open"</c> / <c>"not-yet-open"</c> /
+    /// <c>"closed-by-organizer"</c> / <c>"closed-event-started"</c>).
+    ///
+    /// Lookup table:
+    /// <list type="bullet">
+    ///   <item><description><c>StartDate &lt;= now</c> (event already started) →
+    ///         <c>"closed-event-started"</c> regardless of window state.</description></item>
+    ///   <item><description><c>OpensAt &gt; now</c> → <c>"not-yet-open"</c>.</description></item>
+    ///   <item><description><c>ClosesAt &lt;= now</c> → <c>"closed-by-organizer"</c>.</description></item>
+    ///   <item><description>Otherwise → <c>"open"</c>.</description></item>
+    /// </list>
+    ///
+    /// Boundary semantics mirror the internal <c>GetRegistrationAvailability</c>
+    /// reader on the domain aggregate (pinned by
+    /// <c>Event_SetRegistrationWindow_Tests</c>) so the public DTO and the
+    /// three <c>Register*</c> domain guards stay in lockstep. Fail-safe
+    /// default <c>"open"</c> matches the legacy pre-6A.153 behaviour for
+    /// any unexpected mapper crash.
+    /// </summary>
+    private static string ComputeRegistrationAvailability(Event src)
+    {
+        try
+        {
+            var now = DateTime.UtcNow;
+
+            if (src.StartDate.HasValue && src.StartDate.Value <= now)
+                return "closed-event-started";
+
+            if (src.RegistrationOpensAt.HasValue && src.RegistrationOpensAt.Value > now)
+                return "not-yet-open";
+
+            if (src.RegistrationClosesAt.HasValue && src.RegistrationClosesAt.Value <= now)
+                return "closed-by-organizer";
+
+            return "open";
+        }
+        catch
+        {
+            // Same fail-safe rationale as ComputeRegistrationModeStatus —
+            // the mapper must not crash on a single event's bad data. Default
+            // to the legacy backward-compatible behaviour ("open"); the FE
+            // backend-guard will still reject window-violating registrations
+            // (defense-in-depth).
+            return "open";
         }
     }
 }

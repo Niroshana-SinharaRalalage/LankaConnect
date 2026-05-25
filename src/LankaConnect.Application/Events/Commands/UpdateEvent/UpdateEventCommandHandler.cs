@@ -325,6 +325,29 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return maxAttendeesResult;
         }
 
+        // Phase 6A.153: Apply registration window only when the organizer
+        // explicitly toggled the update flag. Passing both opens/closes
+        // through (including null/null which clears the window) lets
+        // organizers extend, shorten, or revert the window via the same
+        // endpoint without accidentally touching it on unrelated updates.
+        if (request.UpdateRegistrationWindow)
+        {
+            var setWindowResult = @event.SetRegistrationWindow(
+                request.RegistrationOpensAt,
+                request.RegistrationClosesAt);
+            if (setWindowResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetRegistrationWindow domain rejection - EventId={EventId}, OpensAt={OpensAt}, ClosesAt={ClosesAt}, Error={Error}",
+                    @event.Id, request.RegistrationOpensAt, request.RegistrationClosesAt, setWindowResult.Error);
+                return setWindowResult;
+            }
+
+            _logger.LogInformation(
+                "UpdateEvent: Registration window updated - EventId={EventId}, OpensAt={OpensAt}, ClosesAt={ClosesAt}",
+                @event.Id, request.RegistrationOpensAt, request.RegistrationClosesAt);
+        }
+
         if (request.Category.HasValue)
         {
             var categoryProperty = typeof(Event).GetProperty(nameof(Event.Category));

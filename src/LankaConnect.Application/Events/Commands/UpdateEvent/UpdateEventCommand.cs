@@ -76,5 +76,14 @@ public record UpdateEventCommand(
     EventPaymentMode? PaymentMode = null,
     string? ExternalRegistrationUrl = null,
     string? ExternalRegistrationInstructions = null,
-    string? ExternalRegistrationVendorName = null
+    string? ExternalRegistrationVendorName = null,
+    // Phase 6A.153 — Organizer-controlled registration window. Tri-state design:
+    // <c>UpdateRegistrationWindow = false</c> (default) means "do not touch the
+    // window" — handler skips the mutator. <c>true</c> means "apply the supplied
+    // values" including null/null which clears the window back to legacy
+    // "always open". The flag lets organizers update unrelated fields (e.g.
+    // Title) without accidentally clearing a previously-set window.
+    bool UpdateRegistrationWindow = false,
+    DateTime? RegistrationOpensAt = null,
+    DateTime? RegistrationClosesAt = null
 ) : ICommand;

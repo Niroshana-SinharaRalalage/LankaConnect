@@ -106,6 +106,29 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasColumnType("timestamp with time zone")
             .IsRequired(false); // Nullable for draft events
 
+        // Phase 6A.153: Organizer-controlled registration window. Both nullable;
+        // null = "always open" (legacy behaviour, no backfill needed). UTC by
+        // domain convention. Indexes accelerate future scheduler queries
+        // (e.g. "find events whose RegistrationOpensAt just elapsed") even
+        // though no such query exists today — the columns are cheap to index
+        // and the alternative (re-adding indexes in a later migration once
+        // we DO need them) is a slower rollout for a write-light table.
+        builder.Property(e => e.RegistrationOpensAt)
+            .HasColumnName("registration_opens_at")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
+        builder.Property(e => e.RegistrationClosesAt)
+            .HasColumnName("registration_closes_at")
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
+        builder.HasIndex(e => e.RegistrationOpensAt)
+            .HasDatabaseName("ix_events_registration_opens_at");
+
+        builder.HasIndex(e => e.RegistrationClosesAt)
+            .HasDatabaseName("ix_events_registration_closes_at");
+
         // Configure Category enum (Epic 2 Phase 2)
         builder.Property(e => e.Category)
             .HasConversion<string>()

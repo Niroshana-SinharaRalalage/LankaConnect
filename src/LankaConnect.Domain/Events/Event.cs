@@ -100,6 +100,24 @@ public partial class Event : BaseEntity
     /// </summary>
     public int MaxAttendeesPerRegistration { get; private set; } = 10;
 
+    /// <summary>
+    /// Phase 6A.153: Organizer-controlled registration window — earliest moment
+    /// attendees may register. <c>null</c> = "open immediately" (backward-compatible
+    /// behaviour for the thousands of pre-6A.153 rows; the EF migration leaves it
+    /// null on backfill). Always UTC. Mutated via <see cref="SetRegistrationWindow"/>.
+    /// Surfaced raw on <c>EventDto</c> so the FE can format in event-local timezone.
+    /// </summary>
+    public DateTime? RegistrationOpensAt { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.153: Organizer-controlled registration window — latest moment
+    /// attendees may register. <c>null</c> = "open until <see cref="StartDate"/>"
+    /// (or indefinitely for TBD events where StartDate is itself null). Always
+    /// UTC. To pause registration immediately, set this to <c>DateTime.UtcNow</c>
+    /// via <see cref="SetRegistrationWindow"/> — no separate "paused" toggle.
+    /// </summary>
+    public DateTime? RegistrationClosesAt { get; private set; }
+
     // System-wide maximum for safety (prevents one registration from booking entire large event)
     public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
 
@@ -359,6 +377,19 @@ public partial class Event : BaseEntity
         if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
 
+        // Phase 6A.153: organizer-controlled registration window. Uses the
+        // shared `GetRegistrationAvailability` reader so the boundary
+        // semantics ({Open, NotYetOpen, ClosedByOrganizer, ClosedEventStarted})
+        // are locked down in one place. ClosedEventStarted is handled by the
+        // StartDate guard above, so this branch only needs to translate
+        // NotYetOpen / ClosedByOrganizer into Result.Failure.
+        var availability = GetRegistrationAvailability(DateTime.UtcNow);
+        if (availability == RegistrationAvailabilityState.NotYetOpen)
+            return Result.Failure(
+                $"Registration for this event opens at {RegistrationOpensAt:o}");
+        if (availability == RegistrationAvailabilityState.ClosedByOrganizer)
+            return Result.Failure("Registration for this event has closed");
+
         if (userId == Guid.Empty)
             return Result.Failure("User ID is required");
 
@@ -394,6 +425,16 @@ public partial class Event : BaseEntity
         // regular events for the purpose of accepting RSVPs.
         if (StartDate.HasValue && StartDate.Value <= DateTime.UtcNow)
             return Result.Failure("Cannot register for an event that has already started");
+
+        // Phase 6A.153: same window guard as the authenticated Register path,
+        // applied to anonymous attendees. Shared reader keeps semantics in
+        // lockstep.
+        var availability = GetRegistrationAvailability(DateTime.UtcNow);
+        if (availability == RegistrationAvailabilityState.NotYetOpen)
+            return Result.Failure(
+                $"Registration for this event opens at {RegistrationOpensAt:o}");
+        if (availability == RegistrationAvailabilityState.ClosedByOrganizer)
+            return Result.Failure("Registration for this event has closed");
 
         if (attendeeInfo == null)
             return Result.Failure("Attendee information is required");
@@ -467,6 +508,21 @@ public partial class Event : BaseEntity
         // drift (impossible by construction, but not by hostile API client), reject.
         if (RegistrationMode == RegistrationMode.External)
             return Result.Failure(ExternalRegistrationGuardMessage);
+
+        // Phase 6A.153: organizer-controlled registration window. Placed AFTER
+        // the ExternalPaid + External-mode guards (PaymentMode dominates per
+        // architect decision — external vendor controls availability via its
+        // own URL) and BEFORE the RegistrationMode = NoRegistration check
+        // because window state is more user-actionable feedback than
+        // "registration not required for this event". Shared reader
+        // `GetRegistrationAvailability` keeps boundary semantics in lockstep
+        // with Register() / RegisterAnonymous() / mapper.
+        var availability = GetRegistrationAvailability(DateTime.UtcNow);
+        if (availability == RegistrationAvailabilityState.NotYetOpen)
+            return Result.Failure(
+                $"Registration for this event opens at {RegistrationOpensAt:o}");
+        if (availability == RegistrationAvailabilityState.ClosedByOrganizer)
+            return Result.Failure("Registration for this event has closed");
 
         // Phase 7E.3a: Defensive mode guard — RegisterWithAttendees is the Mode-A path. Calling
         // it on a B-mode event would create a Registration row that contradicts the event's

@@ -130,17 +130,20 @@ describe('EventsPage — Phase 6A.149', () => {
       expect(screen.getByRole('heading', { name: /upcoming events/i })).toBeInTheDocument();
     });
 
-    it('does NOT render "Completed Events" heading when no completed events exist', () => {
-      // Both useEvents calls return empty → Completed section must hide.
+    // Phase 6A.152: The "Completed Events" heading is now rendered
+    // unconditionally so the section is discoverable. The empty-state card
+    // explains "No completed events yet" in place of the events grid when the
+    // API returns no past events. Replaces the 6A.149 hide-when-empty behaviour.
+    it('renders "Completed Events" heading even when no completed events exist (6A.152)', () => {
       renderWithClient(<EventsPage />);
-      expect(screen.queryByRole('heading', { name: /completed events/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /completed events/i })).toBeInTheDocument();
     });
 
-    it('renders "Completed Events" heading when at least one Completed event exists', () => {
+    it('renders "Completed Events" heading when the API returns at least one past event', () => {
       useEventsMock.mockImplementation((filters: { statusFilter?: EventStatusFilter }) => {
         if (filters?.statusFilter === EventStatusFilter.Inactive) {
           return {
-            data: [makeEvent({ status: EventStatus.Completed, title: 'Past Vesak 2025' })],
+            data: [makeEvent({ status: EventStatus.Published, title: 'Past Vesak 2025' })],
             isLoading: false,
             error: undefined,
           };
@@ -151,17 +154,18 @@ describe('EventsPage — Phase 6A.149', () => {
       expect(screen.getByRole('heading', { name: /completed events/i })).toBeInTheDocument();
     });
 
-    it('filters Inactive payload client-side to only Completed-status events', () => {
-      // Inactive enum group includes Completed + Archived + Postponed.
-      // The Completed section must render ONLY the Completed event, hiding
-      // Archived / Postponed from the public view.
+    // Phase 6A.152: Frontend no longer client-filters Inactive payload by
+    // Status. The backend bucket is date-based — every event it returns for
+    // `statusFilter: Inactive` is already a past event (StartDate < now) and
+    // is not Cancelled/Draft/UnderReview. The page renders them all.
+    it('renders every event the API returns for the Inactive bucket (no client-side Status filter) (6A.152)', () => {
       useEventsMock.mockImplementation((filters: { statusFilter?: EventStatusFilter }) => {
         if (filters?.statusFilter === EventStatusFilter.Inactive) {
           return {
             data: [
-              makeEvent({ status: EventStatus.Completed, title: 'Past Vesak 2025' }),
-              makeEvent({ status: EventStatus.Archived, title: 'Archived Event' }),
-              makeEvent({ status: EventStatus.Postponed, title: 'Postponed Event' }),
+              makeEvent({ status: EventStatus.Published, title: 'Past Stranded Published' }),
+              makeEvent({ status: EventStatus.Completed, title: 'Past Marked Completed' }),
+              makeEvent({ status: EventStatus.Postponed, title: 'Past Postponed' }),
             ],
             isLoading: false,
             error: undefined,
@@ -170,9 +174,33 @@ describe('EventsPage — Phase 6A.149', () => {
         return { data: [], isLoading: false, error: undefined };
       });
       renderWithClient(<EventsPage />);
-      expect(screen.getByText('Past Vesak 2025')).toBeInTheDocument();
-      expect(screen.queryByText('Archived Event')).not.toBeInTheDocument();
-      expect(screen.queryByText('Postponed Event')).not.toBeInTheDocument();
+      expect(screen.getByText('Past Stranded Published')).toBeInTheDocument();
+      expect(screen.getByText('Past Marked Completed')).toBeInTheDocument();
+      expect(screen.getByText('Past Postponed')).toBeInTheDocument();
+    });
+  });
+
+  describe('Phase 6A.152 — Completed section empty state', () => {
+    it('shows the "No completed events yet" empty-state card when the API returns no past events', () => {
+      renderWithClient(<EventsPage />);
+      expect(screen.getByTestId('completed-empty-state')).toBeInTheDocument();
+      expect(screen.getByText(/no completed events yet/i)).toBeInTheDocument();
+    });
+
+    it('hides the empty-state card when the API returns at least one past event', () => {
+      useEventsMock.mockImplementation((filters: { statusFilter?: EventStatusFilter }) => {
+        if (filters?.statusFilter === EventStatusFilter.Inactive) {
+          return {
+            data: [makeEvent({ status: EventStatus.Published, title: 'Past Event' })],
+            isLoading: false,
+            error: undefined,
+          };
+        }
+        return { data: [], isLoading: false, error: undefined };
+      });
+      renderWithClient(<EventsPage />);
+      expect(screen.queryByTestId('completed-empty-state')).not.toBeInTheDocument();
+      expect(screen.getByText('Past Event')).toBeInTheDocument();
     });
   });
 
@@ -196,19 +224,10 @@ describe('EventsPage — Phase 6A.149', () => {
       void searchInputs;
     });
 
-    it('renders a SECOND Filters CollapsibleSection for the Completed section when Completed has results', () => {
-      useEventsMock.mockImplementation((filters: { statusFilter?: EventStatusFilter }) => {
-        if (filters?.statusFilter === EventStatusFilter.Inactive) {
-          return {
-            data: [makeEvent({ status: EventStatus.Completed })],
-            isLoading: false,
-            error: undefined,
-          };
-        }
-        return { data: [], isLoading: false, error: undefined };
-      });
+    // Phase 6A.152: Completed Filters card always renders (no longer
+    // result-gated). No mock data needed — section is unconditional.
+    it('renders a SECOND Filters CollapsibleSection for the Completed section even when empty (6A.152)', () => {
       renderWithClient(<EventsPage />);
-      // Two collapsed filter blocks → at least two "Show details" pills.
       const pills = screen.queryAllByRole('button', { name: /show details|show filters|filters/i });
       expect(pills.length).toBeGreaterThanOrEqual(2);
     });

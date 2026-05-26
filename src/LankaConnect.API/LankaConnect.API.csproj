@@ -30,6 +30,8 @@
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
+    <!-- W2.6b — Telemetry extension wires OpenTelemetry + Azure Monitor for staging/prod traces. -->
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

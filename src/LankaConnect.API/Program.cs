@@ -6,6 +6,7 @@ using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.BackgroundJobs;
 using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
+using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -38,6 +39,18 @@ try
 
     // Add Serilog
     builder.Host.UseSerilog();
+
+    // W2.6b Phase A — OpenTelemetry + Azure Monitor (Application Insights) per
+    // ADR-004 architect amendment (observability live before any module work).
+    // Wires AspNetCore + HttpClient + SqlClient auto-instrumentation; when the
+    // App Insights connection string is configured (staging / prod env var
+    // APPLICATIONINSIGHTS_CONNECTION_STRING or config key
+    // ApplicationInsights:ConnectionString), traces / metrics / logs ship to
+    // App Insights. Local dev with no connection string still registers
+    // activity sources for correlation IDs.
+    builder.Services.AddBuildingBlocksTelemetry(
+        builder.Configuration,
+        serviceName: "LankaConnect.API");
 
     // Add services to the container
     builder.Services.AddControllers()

@@ -136,10 +136,14 @@
     <PackageVersion Include="Humanizer.Core" Version="2.14.1" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
-  <!-- Application Insights -->
+  <!-- Application Insights (legacy classic SDK — retained for any prod code that still binds to it) -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+  </ItemGroup>
+  <!-- W2.6b OpenTelemetry + Azure Monitor distro — the future-going observability stack per Phase A architect ADR-004 amendments. -->
+  <ItemGroup>
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.2.0" />
   </ItemGroup>
   <!-- Stripe Payment Integration (Phase 6A.4) -->
   <ItemGroup>

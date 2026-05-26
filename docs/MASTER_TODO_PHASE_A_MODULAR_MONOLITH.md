@@ -696,8 +696,14 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - [x] **W2.6a tests**: new `LankaConnect.BuildingBlocks.Web.Tests` project — 18/18 GREEN
 - [x] **W2.6a ArchTest**: added `BuildingBlocks_Web_DoesNotDependOnLayeredMonolith` (5th rule, anchors on `JwtSettings`) — 5/5 GREEN
 - [x] **W2.6a cleanup**: removed W2.1 AssemblyMarker placeholder
-- [ ] **W2.6b**: OpenTelemetry + Application Insights wiring + smoke API integration + deploy via `deploy-staging.yml` + verify distributed traces visible
-- **Acceptance**: cross-cutting infrastructure ready; observability live before any module work (W2.6a 🟢; W2.6b PENDING)
+- [x] **W2.6b (2026-05-25)**: OpenTelemetry + Azure Monitor distro wired:
+  - Added `Azure.Monitor.OpenTelemetry.AspNetCore` 1.2.0 to Directory.Packages.props
+  - New extension `Telemetry/TelemetryExtensions.cs` — `AddBuildingBlocksTelemetry(IServiceCollection, IConfiguration, string serviceName)`. When `ApplicationInsights:ConnectionString` config or `APPLICATIONINSIGHTS_CONNECTION_STRING` env var is set, uses Azure Monitor distro (full traces+metrics+logs export). When absent, falls back to OTel-only with AspNetCore+HttpClient instrumentation
+  - LankaConnect.API now references BuildingBlocks.Web and calls `AddBuildingBlocksTelemetry(..., serviceName: "LankaConnect.API")` after Serilog wire-up
+  - 4 new unit tests in `tests/LankaConnect.BuildingBlocks.Web.Tests/Telemetry/` — DI registration shape + constant stability (22/22 total Web tests GREEN)
+- [x] **W2.6b staging provisioning**: created `lankaconnect-staging-insights` App Insights resource in `lankaconnect-staging` RG (eastus2); set Container App secret `appinsights-connection-string` and bound `APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string`
+- [ ] **W2.6b staging verification**: deploy via push to develop → confirm traces visible in App Insights for /api/Auth/login + a downstream endpoint
+- **Acceptance**: cross-cutting infrastructure ready; observability live before any module work (W2.6a 🟢; W2.6b code 🟢; staging trace verification PENDING deploy)
 
 ### W2.7 — Extract BuildingBlocks.Contracts
 - [ ] **Action**: Implement `IntegrationEventBase`, `IntegrationEventV1` versioning convention

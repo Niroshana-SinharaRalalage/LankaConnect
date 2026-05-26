@@ -403,6 +403,17 @@ export function EventCreationForm() {
         ? null
         : new Date(data.endDate).toISOString();
 
+      // Phase 6A.153: optional organizer-controlled registration window.
+      // Empty strings (form default) become null on the wire — the backend
+      // treats null/null as "always open" (legacy behaviour). Trim guards
+      // against whitespace-only entries from copy/paste.
+      const registrationOpensAtUtc = data.registrationOpensAt && data.registrationOpensAt.trim()
+        ? new Date(data.registrationOpensAt).toISOString()
+        : null;
+      const registrationClosesAtUtc = data.registrationClosesAt && data.registrationClosesAt.trim()
+        ? new Date(data.registrationClosesAt).toISOString()
+        : null;
+
       const eventData = {
         title: data.title,
         description: data.description,
@@ -410,6 +421,10 @@ export function EventCreationForm() {
         endDate: endDateUtc,
         organizerId: user.userId,
         capacity: data.capacity,
+        // Phase 6A.153: registration window. Backend skips the mutator
+        // when both are null so backward-compatible events unaffected.
+        registrationOpensAt: registrationOpensAtUtc,
+        registrationClosesAt: registrationClosesAtUtc,
         // Issue #51: Max attendees per registration
         maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
         category: data.category,
@@ -864,6 +879,47 @@ export function EventCreationForm() {
                 </div>
               </div>
             )}
+
+            {/* Phase 6A.153: Registration Window (Optional) — lets organizers
+                publish in advance with registration held closed until a date
+                they choose. Both fields optional; leaving them empty preserves
+                the legacy "always open" behaviour. Backend enforces invariants
+                (opens < closes; both before start date when set). */}
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <div className="text-sm font-medium text-neutral-800 mb-1">
+                Registration Window <span className="text-neutral-500 font-normal">(Optional)</span>
+              </div>
+              <p className="text-xs text-neutral-600 mb-3">
+                Control when attendees can register. Leave blank for registration to open immediately on publish.
+                Useful for paid events where you want to publish early but open registration closer to the event.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="registrationOpensAt" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Registration Opens
+                  </label>
+                  <Input
+                    id="registrationOpensAt"
+                    type="datetime-local"
+                    error={!!errors.registrationOpensAt}
+                    {...register('registrationOpensAt')}
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">Empty = open immediately.</p>
+                </div>
+                <div>
+                  <label htmlFor="registrationClosesAt" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Registration Closes
+                  </label>
+                  <Input
+                    id="registrationClosesAt"
+                    type="datetime-local"
+                    error={!!errors.registrationClosesAt}
+                    {...register('registrationClosesAt')}
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">Empty = open until event start.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </CollapsibleSection>
       </div>

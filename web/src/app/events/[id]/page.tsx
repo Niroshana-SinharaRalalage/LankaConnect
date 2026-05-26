@@ -14,6 +14,7 @@ import { SignUpManagementSection, volunteerSectionLabels } from '@/presentation/
 // Phase 6A.146: public form responses section
 import { PublicFormResponsesSection } from '@/presentation/components/features/events/PublicFormResponsesSection';
 import { RsvpFormSection } from '@/presentation/components/features/events/RsvpFormSection';
+import { RegistrationWindowGate } from '@/presentation/components/features/events/RegistrationWindowGate';
 import { ExternalRegistrationCta } from '@/presentation/components/features/events/ExternalRegistrationCta';
 import { MediaGallery } from '@/presentation/components/features/events/MediaGallery';
 import { RefundRequestStatusBanner } from '@/presentation/components/features/events/RefundRequestStatusBanner';
@@ -2194,13 +2195,20 @@ export function EventDetailPageInternal({
                         onClick={() => setShowAuthNudge(true)}
                       />
                     ) : (
-                      <RsvpFormSection
-                        event={event}
-                        spotsLeft={spotsLeft}
-                        isProcessing={isProcessing}
-                        onSubmit={handleRegistration}
-                        error={error}
-                      />
+                      // Phase 6A.153: gate the primary registration mount on the
+                      // organizer-controlled window. Recovery flows (abandoned /
+                      // payment-incomplete / refund-retry / cancellation re-
+                      // register) deliberately skip this gate so users mid-flow
+                      // aren't blocked. New-attempt traffic goes through here.
+                      <RegistrationWindowGate event={event}>
+                        <RsvpFormSection
+                          event={event}
+                          spotsLeft={spotsLeft}
+                          isProcessing={isProcessing}
+                          onSubmit={handleRegistration}
+                          error={error}
+                        />
+                      </RegistrationWindowGate>
                     )}
                   </div>
                 ) : (

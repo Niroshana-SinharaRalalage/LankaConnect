@@ -243,6 +243,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
       // edit form opens in TBD mode for Planning events. Organisers can uncheck to
       // fill in real dates (auto-transitions Planning → Draft on save via SetDates).
       datesUnknown: !event.startDate || !event.endDate,
+      // Phase 6A.153: hydrate the optional registration window so the
+      // pickers display existing values when editing.
+      registrationOpensAt: formatDateForInput(event.registrationOpensAt),
+      registrationClosesAt: formatDateForInput(event.registrationClosesAt),
       capacity: event.capacity,
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
@@ -354,6 +358,10 @@ export function EventEditForm({ event }: EventEditFormProps) {
       endDate: formatDateForInput(event.endDate),
       // Phase 8YA.3: stay in TBD mode if the loaded event has no dates.
       datesUnknown: !event.startDate || !event.endDate,
+      // Phase 6A.153: rehydrate the optional registration window on reset
+      // so React Query cache refreshes don't blank out a previously-set window.
+      registrationOpensAt: formatDateForInput(event.registrationOpensAt),
+      registrationClosesAt: formatDateForInput(event.registrationClosesAt),
       capacity: event.capacity,
       // Issue #51: Max attendees per registration
       maxAttendeesPerRegistration: event.maxAttendeesPerRegistration || 10,
@@ -582,6 +590,28 @@ export function EventEditForm({ event }: EventEditFormProps) {
         ? null
         : new Date(data.endDate).toISOString();
 
+      // Phase 6A.153: registration window. Compute "did the organiser touch
+      // the window fields?" by comparing form-input values against the
+      // event's current state (formatted the same way). Only send
+      // updateRegistrationWindow=true when something actually changed —
+      // otherwise the handler's tri-state design treats every update as a
+      // window-write and would clear unrelated edits.
+      const currentOpensInput = event.registrationOpensAt
+        ? formatDateForInput(event.registrationOpensAt)
+        : '';
+      const currentClosesInput = event.registrationClosesAt
+        ? formatDateForInput(event.registrationClosesAt)
+        : '';
+      const opensChanged = (data.registrationOpensAt ?? '') !== currentOpensInput;
+      const closesChanged = (data.registrationClosesAt ?? '') !== currentClosesInput;
+      const windowTouched = opensChanged || closesChanged;
+      const registrationOpensAtISO = data.registrationOpensAt && data.registrationOpensAt.trim()
+        ? new Date(data.registrationOpensAt).toISOString()
+        : null;
+      const registrationClosesAtISO = data.registrationClosesAt && data.registrationClosesAt.trim()
+        ? new Date(data.registrationClosesAt).toISOString()
+        : null;
+
       // Session 33: Determine pricing mode and build appropriate pricing fields
       const isDualPricing = !data.isFree && data.enableDualPricing;
       const isGroupPricing = !data.isFree && data.enableGroupPricing;
@@ -594,6 +624,15 @@ export function EventEditForm({ event }: EventEditFormProps) {
         description: data.description,
         startDate: startDateISO,
         endDate: endDateISO,
+        // Phase 6A.153: only emit the window fields when the organiser
+        // actually changed them. Spread keeps the request payload minimal
+        // and lets the backend leave the window untouched on unrelated
+        // edits (per UpdateEventCommand tri-state design).
+        ...(windowTouched && {
+          updateRegistrationWindow: true,
+          registrationOpensAt: registrationOpensAtISO,
+          registrationClosesAt: registrationClosesAtISO,
+        }),
         capacity: data.capacity,
         // Issue #51: Max attendees per registration
         maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
@@ -1085,6 +1124,45 @@ export function EventEditForm({ event }: EventEditFormProps) {
                 </div>
               </div>
             )}
+
+            {/* Phase 6A.153: Registration Window (Optional). Mirrors the
+                EventCreationForm field group. Update handler sends
+                updateRegistrationWindow=true with whatever the organizer
+                entered (including blanks to clear). */}
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <div className="text-sm font-medium text-neutral-800 mb-1">
+                Registration Window <span className="text-neutral-500 font-normal">(Optional)</span>
+              </div>
+              <p className="text-xs text-neutral-600 mb-3">
+                Control when attendees can register. Leave blank to keep registration open from now until the event starts.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="registrationOpensAt" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Registration Opens
+                  </label>
+                  <Input
+                    id="registrationOpensAt"
+                    type="datetime-local"
+                    error={!!errors.registrationOpensAt}
+                    {...register('registrationOpensAt')}
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">Empty = open immediately.</p>
+                </div>
+                <div>
+                  <label htmlFor="registrationClosesAt" className="block text-sm font-medium text-neutral-700 mb-2">
+                    Registration Closes
+                  </label>
+                  <Input
+                    id="registrationClosesAt"
+                    type="datetime-local"
+                    error={!!errors.registrationClosesAt}
+                    {...register('registrationClosesAt')}
+                  />
+                  <p className="mt-1 text-xs text-neutral-500">Empty = open until event start.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </CollapsibleSection>
       </div>

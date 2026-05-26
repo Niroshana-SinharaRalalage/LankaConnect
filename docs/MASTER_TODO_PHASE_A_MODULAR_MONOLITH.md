@@ -686,18 +686,18 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - **Acceptance**: persistence primitives ready ✅ (with documented gap on JSONB fix-verification)
 
 ### W2.6 — Extract BuildingBlocks.Web
-- [ ] **Action**: Implement:
-  - JWT authentication middleware (extracted from existing AuthenticationExtensions)
-  - ProblemDetails exception handler
-  - **OpenTelemetry + Application Insights** (NEW — was Week 10 in v1, moved to Week 2 per architect)
-  - Health checks (Postgres, Redis, DbContext)
-  - Rate limiting policies
-  - **API versioning** via `Asp.Versioning` (NEW)
-  - `Microsoft.FeatureManagement` integration
-- [ ] **Verify**: all middleware works in a minimal smoke API
-- [ ] Deploy smoke API to staging via `deploy-staging.yml`
-- [ ] Verify distributed traces visible in Application Insights
-- **Acceptance**: cross-cutting infrastructure ready; observability live before any module work
+- [x] **W2.6a (2026-05-25)**: 6 cross-cutting extensions landed in `src/BuildingBlocks/BuildingBlocks.Web/`:
+  - JwtAuthenticationExtensions (Authentication/) — strongly-typed JwtSettings, throws on missing Key/Issuer/Audience, JwtBearerEvents log via `BuildingBlocks.Web.Jwt`
+  - ProblemDetailsExtensions + GlobalExceptionHandler (ProblemDetails/) — RFC 7807 with PII redaction on 5xx
+  - HealthCheckExtensions (HealthCheckExtensions/) — Postgres/Redis/DbContext, /health + /health/live + /health/ready
+  - RateLimitingExtensions (RateLimiting/) — perip 60/min default + host `configure` callback for app policies
+  - ApiVersioningExtensions (Versioning/) — Asp.Versioning 8.x with URL+query+header readers
+  - FeatureManagementExtensions (FeatureFlags/) — Microsoft.FeatureManagement per ADR-004
+- [x] **W2.6a tests**: new `LankaConnect.BuildingBlocks.Web.Tests` project — 18/18 GREEN
+- [x] **W2.6a ArchTest**: added `BuildingBlocks_Web_DoesNotDependOnLayeredMonolith` (5th rule, anchors on `JwtSettings`) — 5/5 GREEN
+- [x] **W2.6a cleanup**: removed W2.1 AssemblyMarker placeholder
+- [ ] **W2.6b**: OpenTelemetry + Application Insights wiring + smoke API integration + deploy via `deploy-staging.yml` + verify distributed traces visible
+- **Acceptance**: cross-cutting infrastructure ready; observability live before any module work (W2.6a 🟢; W2.6b PENDING)
 
 ### W2.7 — Extract BuildingBlocks.Contracts
 - [ ] **Action**: Implement `IntegrationEventBase`, `IntegrationEventV1` versioning convention

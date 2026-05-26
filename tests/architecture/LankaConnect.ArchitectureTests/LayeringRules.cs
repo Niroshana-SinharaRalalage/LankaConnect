@@ -119,6 +119,32 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    /// <summary>
+    /// <c>BuildingBlocks.Web</c> is the outermost building-block layer.
+    /// It may depend on Application/Domain/Contracts + ASP.NET Core framework refs,
+    /// but must not back-reference the existing layered monolith projects.
+    /// Added W2.6 (2026-05-25) once Web filled with real types (JWT, ProblemDetails,
+    /// Health, RateLimiting, Asp.Versioning, FeatureManagement).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void BuildingBlocks_Web_DoesNotDependOnLayeredMonolith()
+    {
+        var assembly = typeof(BuildingBlocks.Web.Authentication.JwtSettings).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- Helpers ----------
 
     private static void AssertCompliant(TestResult result, string assemblyName)

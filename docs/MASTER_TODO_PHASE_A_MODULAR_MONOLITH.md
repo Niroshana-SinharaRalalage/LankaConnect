@@ -702,8 +702,9 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
   - LankaConnect.API now references BuildingBlocks.Web and calls `AddBuildingBlocksTelemetry(..., serviceName: "LankaConnect.API")` after Serilog wire-up
   - 4 new unit tests in `tests/LankaConnect.BuildingBlocks.Web.Tests/Telemetry/` — DI registration shape + constant stability (22/22 total Web tests GREEN)
 - [x] **W2.6b staging provisioning**: created `lankaconnect-staging-insights` App Insights resource in `lankaconnect-staging` RG (eastus2); set Container App secret `appinsights-connection-string` and bound `APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string`
-- [ ] **W2.6b staging verification**: deploy via push to develop → confirm traces visible in App Insights for /api/Auth/login + a downstream endpoint
-- **Acceptance**: cross-cutting infrastructure ready; observability live before any module work (W2.6a 🟢; W2.6b code 🟢; staging trace verification PENDING deploy)
+- [x] **W2.6b staging verification (2026-05-26)**: deploy `e9c508d0` succeeded; revision `lankaconnect-api-staging--0001706` has env var bound. 7-request smoke burst (3× /api/Health + 1× /api/Auth/login + 3× /api/events) all ingested into `lankaconnect-staging-insights` with correct names, resultCode=200, durations (Health 1ms, Login 1.1s, Events 75-352ms), and unique operation_Id per request
+- [ ] **W2.6b polish (deferred)**: add `AddSource("Npgsql")` to capture Postgres dependency spans — Azure Monitor distro covers AspNetCore+HttpClient+SqlClient (Microsoft.Data.SqlClient) but not Npgsql. Not a blocker; request-level traces meet the architect's acceptance
+- **Acceptance**: ✅ cross-cutting infrastructure ready; observability live before any module work
 
 ### W2.7 — Extract BuildingBlocks.Contracts
 - [ ] **Action**: Implement `IntegrationEventBase`, `IntegrationEventV1` versioning convention

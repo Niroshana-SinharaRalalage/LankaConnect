@@ -243,6 +243,18 @@ jobs:
             > /dev/null
           echo "✓ Container App secret ticket-qr-signing-key wired (Phase 6A.141 F6)"
 
+          # W2.6b PRE-FLIGHT: ensure the Container App has a secret named
+          # appinsights-connection-string that references the Key Vault secret
+          # APPLICATIONINSIGHTS-CONNECTION-STRING. Idempotent. Must run BEFORE
+          # the env-var update because APPLICATIONINSIGHTS_CONNECTION_STRING
+          # references this secret via secretref.
+          az containerapp secret set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --secrets "appinsights-connection-string=keyvaultref:https://${{ env.KEY_VAULT_NAME }}.vault.azure.net/secrets/APPLICATIONINSIGHTS-CONNECTION-STRING,identityref:system" \
+            > /dev/null
+          echo "✓ Container App secret appinsights-connection-string wired (Phase A W2.6b)"
+
           # Update Container App with new image and environment variables
           # Using ASP.NET Core hierarchical configuration format (e.g., ConnectionStrings__DefaultConnection)
           # All secrets use secretref pattern for consistent Key Vault integration via system-assigned identity
@@ -301,7 +313,8 @@ jobs:
               WhatsAppSettings__TwilioContentSids__newsletter_broadcast=HX17b7b6276a4cd5e9967bff89bf145c22 \
               WhatsAppSettings__TwilioContentSids__event_ticket_confirmation=HXb161bc8eb956f4637ab4f961d4d08ca4 \
               WhatsAppSettings__TwilioContentSids__photo_album_published=HXcbb9d987a5953d9e7465f994f0d72dd5 \
-              Tickets__QrSigningKey=secretref:ticket-qr-signing-key
+              Tickets__QrSigningKey=secretref:ticket-qr-signing-key \
+              APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string
 
           # Ensure ingress is configured for port 5000 (ASP.NET Core default)
           az containerapp ingress update \

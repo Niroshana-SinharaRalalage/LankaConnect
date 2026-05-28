@@ -76,5 +76,10 @@ public record UpdateEventCommand(
     EventPaymentMode? PaymentMode = null,
     string? ExternalRegistrationUrl = null,
     string? ExternalRegistrationInstructions = null,
-    string? ExternalRegistrationVendorName = null
+    string? ExternalRegistrationVendorName = null,
+    // Phase 6A.154 — Tri-state vanity slug: UpdateVanitySlug=false (default)
+    // means "don't touch", true means "apply VanitySlug" (including null to
+    // clear). Same pattern as UpdateRegistrationWindow in 6A.153.
+    bool UpdateVanitySlug = false,
+    string? VanitySlug = null
 ) : ICommand;

@@ -405,6 +405,8 @@ export function EventCreationForm() {
 
       const eventData = {
         title: data.title,
+        // Phase 6A.154: optional vanity slug. Trim + empty-string → undefined.
+        vanitySlug: data.vanitySlug && data.vanitySlug.trim() ? data.vanitySlug.trim() : undefined,
         description: data.description,
         startDate: startDateUtc,
         endDate: endDateUtc,
@@ -740,6 +742,30 @@ export function EventCreationForm() {
             />
             {errors.title && (
               <p className="mt-1 text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          {/* Phase 6A.154: Vanity URL slug (optional). Empty = no vanity URL. */}
+          <div>
+            <label htmlFor="vanitySlug" className="block text-sm font-medium text-neutral-700 mb-2">
+              Vanity URL <span className="text-neutral-500 font-normal">(Optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-500 select-none">lankaconnect.app/</span>
+              <Input
+                id="vanitySlug"
+                type="text"
+                placeholder="cleveland-show"
+                error={!!errors.vanitySlug}
+                {...register('vanitySlug')}
+              />
+            </div>
+            {errors.vanitySlug ? (
+              <p className="mt-1 text-sm text-destructive">{errors.vanitySlug.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-neutral-500">
+                Lowercase letters, digits, and hyphens. 3–80 characters. Leave blank for no vanity URL.
+              </p>
             )}
           </div>
 

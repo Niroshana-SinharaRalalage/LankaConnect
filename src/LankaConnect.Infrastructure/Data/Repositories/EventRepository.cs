@@ -448,6 +448,26 @@ public class EventRepository : Repository<Event>, IEventRepository
             .ToListAsync(cancellationToken);
     }
 
+    // Phase 6A.154: vanity slug lookups
+    public async Task<Event?> GetByVanitySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var normalized = slug.Trim().ToLowerInvariant();
+        return await _dbSet
+            .Include(e => e.Images)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.VanitySlug != null && e.VanitySlug.Value == normalized, cancellationToken);
+    }
+
+    public async Task<bool> VanitySlugExistsAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return false;
+        var normalized = slug.Trim().ToLowerInvariant();
+        return await _dbSet
+            .AsNoTracking()
+            .AnyAsync(e => e.VanitySlug != null && e.VanitySlug.Value == normalized, cancellationToken);
+    }
+
     // Location-based queries (Epic 2 Phase 1 - PostGIS spatial queries)
     public async Task<IReadOnlyList<Event>> GetEventsByRadiusAsync(decimal latitude, decimal longitude, double radiusMiles, CancellationToken cancellationToken = default)
     {

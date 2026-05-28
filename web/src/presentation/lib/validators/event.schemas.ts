@@ -90,6 +90,17 @@ export const createEventSchema = z.object({
     .min(1, 'Capacity must be at least 1')
     .max(10000, 'Capacity cannot exceed 10,000'),
 
+  // Phase 6A.154: optional vanity URL slug. Empty string = no slug.
+  // Shape validation here is best-effort; backend EventVanitySlug.Create is
+  // the source of truth (handler returns 400 with exact error).
+  vanitySlug: z
+    .string()
+    .trim()
+    .max(80, 'Slug cannot exceed 80 characters')
+    .regex(/^$|^[a-z][a-z0-9-]{2,79}$/, 'Lowercase letters, digits, and hyphens only; must start with a letter')
+    .optional()
+    .or(z.literal('')),
+
   // Issue #51: Max attendees per registration
   maxAttendeesPerRegistration: z
     .number()
@@ -635,6 +646,17 @@ const baseEditEventSchema = z.object({
     .int('Capacity must be a whole number')
     .min(1, 'Capacity must be at least 1')
     .max(10000, 'Capacity cannot exceed 10,000'),
+
+  // Phase 6A.154: optional vanity URL slug. Empty string = no slug.
+  // Shape validation here is best-effort; backend EventVanitySlug.Create is
+  // the source of truth (handler returns 400 with exact error).
+  vanitySlug: z
+    .string()
+    .trim()
+    .max(80, 'Slug cannot exceed 80 characters')
+    .regex(/^$|^[a-z][a-z0-9-]{2,79}$/, 'Lowercase letters, digits, and hyphens only; must start with a letter')
+    .optional()
+    .or(z.literal('')),
 
   // Issue #51: Max attendees per registration
   maxAttendeesPerRegistration: z

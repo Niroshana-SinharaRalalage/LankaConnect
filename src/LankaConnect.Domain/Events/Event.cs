@@ -19,6 +19,7 @@ public partial class Event : BaseEntity
     private readonly List<Guid> _emailGroupIds = new(); // Phase 6A.32: Email group references for event invitations
     private readonly List<Domain.Communications.Entities.EmailGroup> _emailGroupEntities = new(); // Phase 6A.32: Shadow navigation for EF Core
     private readonly List<EventOrganizerContact> _organizerContacts = new(); // Multiple organizer contacts
+    private readonly List<EventSlugAlias> _slugAliases = new(); // Phase 6A.154: retired vanity slugs (permanent 301 sources)
 
     private const int MAX_IMAGES = 10; // Maximum images per event
     private const int MAX_BADGES = 3; // Maximum badges per event
@@ -100,12 +101,32 @@ public partial class Event : BaseEntity
     /// </summary>
     public int MaxAttendeesPerRegistration { get; private set; } = 10;
 
+    /// <summary>
+    /// Phase 6A.154: Organizer-controlled vanity URL slug. <c>null</c> = no
+    /// vanity URL (legacy default; event is reachable only via /events/{id}).
+    /// When set, <c>https://lankaconnect.app/{slug}</c> serves the event
+    /// detail page directly via the SSR <c>[slug]</c> route. Mutated via
+    /// <see cref="SetVanitySlug"/>; old slug values are persisted as
+    /// permanent 301 sources in <see cref="SlugAliases"/>.
+    /// </summary>
+    public EventVanitySlug? VanitySlug { get; private set; }
+
     // System-wide maximum for safety (prevents one registration from booking entire large event)
     public const int SYSTEM_MAX_ATTENDEES_PER_REGISTRATION = 50;
 
     // Event Organizer Contact Details: Optional contact information for event inquiries
     public bool PublishOrganizerContact { get; private set; }
     public IReadOnlyList<EventOrganizerContact> OrganizerContacts => _organizerContacts.AsReadOnly();
+
+    /// <summary>
+    /// Phase 6A.154: retired vanity slugs. Each entry is a permanent 301
+    /// source — visiting <c>lankaconnect.app/{alias}</c> redirects to the
+    /// current canonical (<see cref="VanitySlug"/> if set, otherwise
+    /// <c>/events/{id}</c>). Aliases are append-only; never reusable by
+    /// another event (enforced by the partial unique index spanning slug +
+    /// alias namespace).
+    /// </summary>
+    public IReadOnlyList<EventSlugAlias> SlugAliases => _slugAliases.AsReadOnly();
 
     // Backward-compat computed properties for email handlers (delegate to primary contact)
     public string? OrganizerContactName => GetPrimaryContact()?.ContactName;

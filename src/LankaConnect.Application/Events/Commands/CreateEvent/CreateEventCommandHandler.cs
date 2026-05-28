@@ -656,6 +656,34 @@ public class CreateEventCommandHandler : ICommandHandler<CreateEventCommand, Gui
                 location?.Address?.State);
         }
 
+        // Phase 6A.154: optional vanity URL slug. Skip when null/empty
+        // (legacy backward-compatible default). Domain mutator enforces
+        // status lock + alias bookkeeping; VO factory enforces shape.
+        if (!string.IsNullOrWhiteSpace(request.VanitySlug))
+        {
+            var slugResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
+            if (slugResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CreateEvent: VanitySlug rejected - EventId={EventId}, Slug={Slug}, Error={Error}",
+                    eventResult.Value.Id, request.VanitySlug, slugResult.Error);
+                return Result<Guid>.Failure(slugResult.Error);
+            }
+
+            var setSlugResult = eventResult.Value.SetVanitySlug(slugResult.Value);
+            if (setSlugResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "CreateEvent: SetVanitySlug rejected - EventId={EventId}, Slug={Slug}, Error={Error}",
+                    eventResult.Value.Id, request.VanitySlug, setSlugResult.Error);
+                return Result<Guid>.Failure(setSlugResult.Error);
+            }
+
+            _logger.LogInformation(
+                "CreateEvent: VanitySlug set - EventId={EventId}, Slug={Slug}",
+                eventResult.Value.Id, request.VanitySlug);
+        }
+
                 // Add EventId to LogContext now that we have it
                 using (LogContext.PushProperty("EventId", eventResult.Value.Id))
                 {

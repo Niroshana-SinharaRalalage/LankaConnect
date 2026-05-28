@@ -16,6 +16,12 @@ public record EventDto
     public DateTime? StartDate { get; init; }
     public DateTime? EndDate { get; init; }
     public Guid OrganizerId { get; init; }
+
+    /// <summary>
+    /// Phase 6A.154: Organizer-controlled vanity URL slug. <c>null</c> means
+    /// the event has no vanity URL (reachable only via /events/{id}).
+    /// </summary>
+    public string? VanitySlug { get; init; }
     public int Capacity { get; init; }
     public int CurrentRegistrations { get; init; }
 

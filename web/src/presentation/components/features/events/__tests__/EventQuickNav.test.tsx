@@ -111,4 +111,102 @@ describe('EventQuickNav (Phase 8YB.4)', () => {
       expect(scrollIntoViewMock).not.toHaveBeenCalled();
     });
   });
+
+  // Phase 6A.155: Promoted Register/RSVP CTA. The registration pill is the
+  // page's primary conversion action and must visually dominate the row.
+  // emphasis="primary" applies solid-fill brand styling; other pills stay
+  // outlined (default).
+  describe('Primary emphasis (Register/RSVP CTA)', () => {
+    it('applies primary styling when emphasis="primary"', () => {
+      render(
+        <EventQuickNav
+          pills={[buildPill({ id: 'registration', label: 'Register', emphasis: 'primary' })]}
+        />,
+      );
+      const btn = screen.getByRole('button', { name: /register/i });
+      // Stable test surface — explicit data attribute drives CSS branch.
+      expect(btn).toHaveAttribute('data-emphasis', 'primary');
+      // Primary pill is filled (white text on brand orange) and bolder.
+      expect(btn.className).toMatch(/text-white/);
+      expect(btn.className).toMatch(/font-semibold/);
+    });
+
+    it('default pills are not marked primary and keep the outlined look', () => {
+      render(
+        <EventQuickNav
+          pills={[
+            buildPill({ id: 'donations', label: 'Donate' }),
+            buildPill({ id: 'sponsors', label: 'Sponsor', emphasis: 'default' }),
+          ]}
+        />,
+      );
+      const donate = screen.getByRole('button', { name: /donate/i });
+      const sponsor = screen.getByRole('button', { name: /sponsor/i });
+      expect(donate).toHaveAttribute('data-emphasis', 'default');
+      expect(sponsor).toHaveAttribute('data-emphasis', 'default');
+      // Default pills should NOT carry font-semibold (primary marker).
+      expect(donate.className).not.toMatch(/font-semibold/);
+      expect(sponsor.className).not.toMatch(/font-semibold/);
+    });
+
+    it('primary pill is keyboard-focusable (no tabIndex=-1)', () => {
+      render(
+        <EventQuickNav
+          pills={[buildPill({ id: 'registration', label: 'Register', emphasis: 'primary' })]}
+        />,
+      );
+      const btn = screen.getByRole('button', { name: /register/i });
+      expect(btn.tabIndex).not.toBe(-1);
+    });
+
+    it('preserves DOM order — primary pill rendered first when listed first', () => {
+      render(
+        <EventQuickNav
+          pills={[
+            buildPill({ id: 'registration', label: 'Register', emphasis: 'primary' }),
+            buildPill({ id: 'donations', label: 'Donate' }),
+            buildPill({ id: 'sponsors', label: 'Sponsor' }),
+          ]}
+        />,
+      );
+      const buttons = screen.getAllByRole('button');
+      expect(buttons).toHaveLength(3);
+      expect(buttons[0]).toHaveAccessibleName(/register/i);
+      expect(buttons[1]).toHaveAccessibleName(/donate/i);
+      expect(buttons[2]).toHaveAccessibleName(/sponsor/i);
+    });
+
+    it('primary pill click still scrolls to anchor (behavior unchanged)', () => {
+      const scrollSpy = vi.fn();
+      Element.prototype.scrollIntoView = scrollSpy;
+      const target = document.createElement('div');
+      target.id = 'registration';
+      document.body.appendChild(target);
+
+      try {
+        render(
+          <EventQuickNav
+            pills={[buildPill({ id: 'registration', label: 'Register', emphasis: 'primary' })]}
+          />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /register/i }));
+        expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+      } finally {
+        target.remove();
+      }
+    });
+
+    it('Mode-B RSVP label also receives primary emphasis', () => {
+      // Mode B (HeadCount*) reuses the same pill descriptor with label="RSVP".
+      // The visual treatment must apply regardless of label text.
+      render(
+        <EventQuickNav
+          pills={[buildPill({ id: 'registration', label: 'RSVP', emphasis: 'primary' })]}
+        />,
+      );
+      const btn = screen.getByRole('button', { name: /rsvp/i });
+      expect(btn).toHaveAttribute('data-emphasis', 'primary');
+      expect(btn.className).toMatch(/text-white/);
+    });
+  });
 });

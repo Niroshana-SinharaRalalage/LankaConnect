@@ -7,6 +7,7 @@
     "CLAUDE_FLOW_REMOTE_EXECUTION": "true",
     "CLAUDE_FLOW_CHECKPOINTS_ENABLED": "true"
   },
+  "includeCoAuthoredBy": true,
   "permissions": {
     "allow": [
       "Bash(npx claude-flow *)",
@@ -28,7 +29,61 @@
       "Bash(node *)",
       "Bash(which *)",
       "Bash(pwd)",
-      "Bash(ls *)"
+      "Bash(ls *)",
+      "Bash(npx vitest *)",
+      "Bash(git push *)",
+      "Bash(gh workflow *)",
+      "Bash(gh run *)",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events?statusFilter=2\" -o /c/tmp/staging_inactive_after.json -w \"Inactive HTTP=%{http_code} bytes=%{size_download}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events?statusFilter=1\" -o /c/tmp/staging_active_after.json -w \"Active   HTTP=%{http_code} bytes=%{size_download}\\\\n\")",
+      "Bash(python -c ' *)",
+      "Bash(gh pr create --base Production_05_09_2026 --head feat/phase-6a-152-events-date-based-upcoming-completed --title 'feat\\(events 6A.152\\): date-based Upcoming/Completed split on /events page' --body ' *)",
+      "Bash(gh pr *)",
+      "Bash(curl -s \"https://api.lankaconnect.app/api/events?statusFilter=1\" -o /c/tmp/prod_active_after.json -w \"Active  HTTP=%{http_code} bytes=%{size_download}\\\\n\")",
+      "Bash(curl -s \"https://api.lankaconnect.app/api/events?statusFilter=2\" -o /c/tmp/prod_inactive_after.json -w \"Inactive HTTP=%{http_code} bytes=%{size_download}\\\\n\")",
+      "Bash(git fetch *)",
+      "Bash(gh api *)",
+      "Bash(awk '{print $NF}')",
+      "Bash(git switch *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet build *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{\"email\":\"niroshhh@gmail.com\",\"password\":\"1qaz!QAZ\",\"rememberMe\":true,\"ipAddress\":\"string\"}')",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('token:', d.get\\('token','?'\\)[:60], '...'\\); print\\('userId:', d.get\\('userId'\\)\\)\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)[:500]\\)\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events?statusFilter=1\")",
+      "Bash(curl -s https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277)",
+      "Bash(curl -s -X POST 'https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/Auth/login' -H 'Content-Type: application/json' -d '{\"email\":\"niroshhh@gmail.com\",\"password\":\"1qaz!QAZ\",\"rememberMe\":true,\"ipAddress\":\"string\"}')",
+      "Bash(curl -s -X POST https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277/register-anonymous -H 'Content-Type: application/json' -d '{\"email\":\"smoketest@example.test\",\"name\":\"Smoke Test\",\"phoneNumber\":\"+15551234567\",\"address\":\"123 Test\",\"quantity\":1}' -w '\\\\nHTTP=%{http_code}\\\\n')",
+      "Bash(curl -s -X POST https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277/register-anonymous -H 'Content-Type: application/json' -d '{\"email\":\"smoketest+window@example.test\",\"name\":\"Smoke Test\",\"age\":30,\"phoneNumber\":\"+15551234567\",\"address\":\"123 Test\",\"quantity\":1,\"attendees\":[{\"name\":\"Smoke Test\",\"age\":30}]}' -w '\\\\nHTTP=%{http_code}\\\\n')",
+      "Bash(curl -s -X POST https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277/register-anonymous -H 'Content-Type: application/json' -d '{\"email\":\"smoketest+window@example.test\",\"name\":\"Smoke Test\",\"age\":30,\"phoneNumber\":\"+15551234567\",\"address\":\"123 Test\",\"quantity\":1,\"attendees\":[{\"name\":\"Smoke Test\",\"age\":30,\"ageCategory\":1}]}' -w '\\\\nHTTP=%{http_code}\\\\n')",
+      "Bash(curl -s https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277 -w 'HTTP=%{http_code}\\\\n')",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277\")",
+      "Bash(curl -s https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/__TRACKED_VAR__)",
+      "Bash(curl -s -X POST https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/2c7ca1da-f332-4e18-a96f-747801432277/register-anonymous -H 'Content-Type: application/json' -d '{\"email\":\"smoketest+w2@example.test\",\"name\":\"Smoke Test 2\",\"age\":30,\"phoneNumber\":\"+15551234567\",\"address\":\"123 Test\",\"quantity\":1,\"attendees\":[{\"name\":\"Smoke Test 2\",\"age\":30,\"ageCategory\":1}]}' -w '\\\\nHTTP=%{http_code}\\\\n')",
+      "Bash(az containerapp *)",
+      "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://lankaconnect-api-prod.graystone-d581eaeb.eastus2.azurecontainerapps.io/health)",
+      "Bash(echo \"=== /events/{id} 400 body ===\")",
+      "Bash(curl -sS https://lankaconnect-api-prod.graystone-d581eaeb.eastus2.azurecontainerapps.io/api/events/7dd899c9-68e0-489f-89cb-ac8ea6601241)",
+      "Bash(echo \"=== Tables in workspace ===\")",
+      "Bash(az monitor *)",
+      "Bash(git -C \"c:/Work/LankaConnect_Production\" --no-pager log --oneline -15 -- 'src/LankaConnect.Infrastructure/Services/Stripe*' 'src/LankaConnect.Infrastructure/Services/Payment*')",
+      "Bash(grep -nB 1 -A 8 'class CheckoutLineItem\\\\|record CheckoutLineItem' \"c:/Work/LankaConnect_Production/src/LankaConnect.Application/Common/Interfaces/IStripePaymentService.cs\")",
+      "Bash(gh secret *)",
+      "Bash(gh -R Niroshana-SinharaRalalage/LankaConnect run list --workflow=deploy-production.yml --limit=3 --json conclusion,headSha,createdAt)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Work\\\\LankaConnect_Production\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(xargs grep -l \"slug\\\\|Slug\\\\|vanity\\\\|Permalink\")",
+      "Bash(xargs cat)",
+      "Bash(grep -n \"HttpPost\\\\]\\\\s*$\\\\|public async Task<IActionResult> CreateEvent\\\\|public async Task<IActionResult> GetEventById\" src/LankaConnect.API/Controllers/EventsController.cs)",
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=ab\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"  HTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=events\" -w \"  HTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/no-such-slug\" -w \"  HTTP=%{http_code}\\\\n\")"
     ],
     "deny": [
       "Bash(rm -rf /)",
@@ -37,6 +92,10 @@
       "Bash(eval *)"
     ]
   },
+  "enabledMcpjsonServers": [
+    "claude-flow",
+    "ruv-swarm"
+  ],
   "hooks": {
     "PreToolUse": [
       {
@@ -108,10 +167,5 @@
         ]
       }
     ]
-  },
-  "includeCoAuthoredBy": true,
-  "enabledMcpjsonServers": [
-    "claude-flow",
-    "ruv-swarm"
-  ]
+  }
 }

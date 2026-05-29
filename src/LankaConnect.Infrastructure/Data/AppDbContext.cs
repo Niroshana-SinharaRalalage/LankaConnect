@@ -178,6 +178,12 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new TicketTierConfiguration()); // Multi-tier ticketing (must be before EventConfiguration to avoid shared-type Money conflict)
         modelBuilder.ApplyConfiguration(new EventConfiguration());
+        // Phase 6A.154: EventSlugAliasConfiguration — order-independent.
+        // EventConfiguration declares HasMany(e => e.SlugAliases) as a scalar
+        // VanitySlug column (NOT OwnsOne), so EF Core 8 doesn't shadow-map
+        // the child during owned-entity discovery. Mirrors EventOrganizerContact
+        // (registered later at line 271 with no ordering issues).
+        modelBuilder.ApplyConfiguration(new EventSlugAliasConfiguration());
         modelBuilder.ApplyConfiguration(new EventImageConfiguration()); // Epic 2 Phase 2
         modelBuilder.ApplyConfiguration(new EventVideoConfiguration()); // Epic 2 Phase 2
 
@@ -458,6 +464,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(AddOnDefinition), // Purchasable add-on items (Financial Features)
             typeof(AddOnPurchase), // Add-on purchases (Financial Features)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
+            typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
             typeof(PhotoAlbum), // After Event Photo Album Feature
             typeof(AlbumPhoto), // After Event Photo Album Feature
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration

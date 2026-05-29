@@ -448,7 +448,13 @@ public class EventRepository : Repository<Event>, IEventRepository
             .ToListAsync(cancellationToken);
     }
 
-    // Phase 6A.154: vanity slug lookups
+    // Phase 6A.154: vanity slug lookups.
+    //
+    // EF Core 8 cannot translate `e.VanitySlug.Value == "..."` to SQL when
+    // the property is mapped via HasConversion (the VO is opaque to the
+    // query translator). Use EF.Property<string?>(e, "VanitySlug") to read
+    // the raw column value and bypass the VO comparison. The column name
+    // mapping (vanity_slug) is resolved by EF from the property name.
     public async Task<Event?> GetByVanitySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(slug)) return null;
@@ -456,7 +462,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         return await _dbSet
             .Include(e => e.Images)
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.VanitySlug != null && e.VanitySlug.Value == normalized, cancellationToken);
+            .FirstOrDefaultAsync(e => EF.Property<string?>(e, "VanitySlug") == normalized, cancellationToken);
     }
 
     public async Task<bool> VanitySlugExistsAsync(string slug, CancellationToken cancellationToken = default)
@@ -465,7 +471,7 @@ public class EventRepository : Repository<Event>, IEventRepository
         var normalized = slug.Trim().ToLowerInvariant();
         return await _dbSet
             .AsNoTracking()
-            .AnyAsync(e => e.VanitySlug != null && e.VanitySlug.Value == normalized, cancellationToken);
+            .AnyAsync(e => EF.Property<string?>(e, "VanitySlug") == normalized, cancellationToken);
     }
 
     // Location-based queries (Epic 2 Phase 1 - PostGIS spatial queries)

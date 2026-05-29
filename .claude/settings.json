@@ -77,7 +77,10 @@
       "Bash(xargs grep -l \"slug\\\\|Slug\\\\|vanity\\\\|Permalink\")",
       "Bash(xargs cat)",
       "Bash(grep -n \"HttpPost\\\\]\\\\s*$\\\\|public async Task<IActionResult> CreateEvent\\\\|public async Task<IActionResult> GetEventById\" src/LankaConnect.API/Controllers/EventsController.cs)",
-      "Bash(grep -vE \"^\\\\s*$\")"
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=ab\" -w \"\\\\nHTTP=%{http_code}\\\\n\")"
     ],
     "deny": [
       "Bash(rm -rf /)",

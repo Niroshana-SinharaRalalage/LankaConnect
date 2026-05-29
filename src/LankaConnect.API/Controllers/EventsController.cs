@@ -219,6 +219,36 @@ public class EventsController : BaseController<EventsController>
     }
 
     /// <summary>
+    /// Phase 6A.154: real-time vanity slug availability check.
+    /// Returns { available, reason?, message }. Used by organizer form for instant feedback.
+    /// </summary>
+    [HttpGet("check-slug")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(LankaConnect.Application.Events.Queries.CheckVanitySlugAvailability.VanitySlugAvailabilityResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CheckVanitySlugAvailability([FromQuery] string slug)
+    {
+        var query = new LankaConnect.Application.Events.Queries.CheckVanitySlugAvailability.CheckVanitySlugAvailabilityQuery(slug ?? string.Empty);
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.154: returns the canonical EventDto by vanity slug, or 404.
+    /// Used by the public-facing /{slug} Next.js route on lankaconnect.app.
+    /// </summary>
+    [HttpGet("by-slug/{slug}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(EventDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEventByVanitySlug(string slug)
+    {
+        var query = new LankaConnect.Application.Events.Queries.GetEventByVanitySlug.GetEventByVanitySlugQuery(slug);
+        var result = await Mediator.Send(query);
+        if (result.IsSuccess && result.Value == null) return NotFound();
+        return HandleResult(result);
+    }
+
+    /// <summary>
     /// Get event details by ID
     /// </summary>
     [HttpGet("{id:guid}")]

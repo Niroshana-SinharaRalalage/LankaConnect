@@ -77,7 +77,11 @@ public record CreateEventCommand(
     // Phase 8X — Optional plain-text instructions rendered on the event detail page.
     string? ExternalRegistrationInstructions = null,
     // Phase 8X — Optional vendor name (e.g. "Eventbrite") used in CTA label.
-    string? ExternalRegistrationVendorName = null
+    string? ExternalRegistrationVendorName = null,
+    // Phase 6A.154 — Organizer-controlled vanity URL slug. Optional; null
+    // means no vanity URL. Validated via EventVanitySlug.Create on the
+    // handler side. Uniqueness enforced at DB level (partial unique index).
+    string? VanitySlug = null
 ) : ICommand<Guid>;
 
 /// <summary>

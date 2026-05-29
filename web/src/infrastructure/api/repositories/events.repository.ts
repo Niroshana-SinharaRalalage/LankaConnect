@@ -171,6 +171,30 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.154: resolve vanity slug → event. Used by the public `/[slug]`
+   * route. Returns `null` on 404 (slug doesn't match any event).
+   */
+  async getByVanitySlug(slug: string): Promise<EventDto | null> {
+    try {
+      return await apiClient.get<EventDto>(`${this.basePath}/by-slug/${encodeURIComponent(slug)}`);
+    } catch (err) {
+      const status = (err as { status?: number; response?: { status?: number } })?.status
+        ?? (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      throw err;
+    }
+  }
+
+  /**
+   * Phase 6A.154: real-time availability check while organizer types in the
+   * vanity slug field. Returns { available, reason?, message } from backend.
+   */
+  async checkSlugAvailability(slug: string): Promise<{ available: boolean; reason?: string; message: string }> {
+    return await apiClient.get<{ available: boolean; reason?: string; message: string }>(
+      `${this.basePath}/check-slug?slug=${encodeURIComponent(slug)}`);
+  }
+
+  /**
    * Phase 6A.114 Issue #81: Get events created by the authenticated organizer
    * Maps to backend GET /api/Events/my-events
    * Requires authentication - returns only events owned by current user

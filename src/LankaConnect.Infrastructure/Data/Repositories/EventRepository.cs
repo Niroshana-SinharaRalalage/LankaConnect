@@ -448,6 +448,49 @@ public class EventRepository : Repository<Event>, IEventRepository
             .ToListAsync(cancellationToken);
     }
 
+    // Phase 6A.154: vanity slug lookups — architect-approved fix 2026-05-28.
+    //
+    // EF Core 8's idiomatic pattern for HasConversion-mapped value objects
+    // is `entity.VoProperty == voInstance`. EF translates this by running
+    // the write-side converter on `voInstance` to produce a string
+    // parameter and emitting `WHERE vanity_slug = @p`.
+    //
+    // Previous attempts that failed:
+    //   - `e.VanitySlug.Value == "..."` — EF can't dive into the VO
+    //   - `EF.Property<string?>(e, "VanitySlug") == "..."` — runtime invalid
+    //     cast because EF's metadata knows the property's CLR type as the VO
+    //
+    // Failure of `EventVanitySlug.Create(...)` (malformed input) returns
+    // null/false from these methods rather than throwing — the correct HTTP
+    // semantic is 404 (not found), not 500 (server error). Endpoints called
+    // by SSR routes / browser must never blow up on adversarial input.
+    public async Task<Event?> GetByVanitySlugAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+
+        var voResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
+        if (voResult.IsFailure || voResult.Value is null) return null;
+        var slugVo = voResult.Value;
+
+        return await _dbSet
+            .Include(e => e.Images)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.VanitySlug == slugVo, cancellationToken);
+    }
+
+    public async Task<bool> VanitySlugExistsAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return false;
+
+        var voResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(slug.Trim().ToLowerInvariant());
+        if (voResult.IsFailure || voResult.Value is null) return false;
+        var slugVo = voResult.Value;
+
+        return await _dbSet
+            .AsNoTracking()
+            .AnyAsync(e => e.VanitySlug == slugVo, cancellationToken);
+    }
+
     // Location-based queries (Epic 2 Phase 1 - PostGIS spatial queries)
     public async Task<IReadOnlyList<Event>> GetEventsByRadiusAsync(decimal latitude, decimal longitude, double radiusMiles, CancellationToken cancellationToken = default)
     {

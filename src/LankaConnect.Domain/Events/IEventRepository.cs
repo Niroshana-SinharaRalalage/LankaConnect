@@ -16,6 +16,10 @@ public interface IEventRepository : IRepository<Event>
     Task<Event?> GetWithRegistrationsAsync(Guid eventId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetPublishedEventsAsync(CancellationToken cancellationToken = default);
 
+    // Phase 6A.154 — vanity slug lookups
+    Task<Event?> GetByVanitySlugAsync(string slug, CancellationToken cancellationToken = default);
+    Task<bool> VanitySlugExistsAsync(string slug, CancellationToken cancellationToken = default);
+
     // Location-based queries (Epic 2 Phase 1 - PostGIS spatial queries)
     Task<IReadOnlyList<Event>> GetEventsByRadiusAsync(decimal latitude, decimal longitude, double radiusMiles, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Event>> GetEventsByCityAsync(string city, string? state = null, CancellationToken cancellationToken = default);

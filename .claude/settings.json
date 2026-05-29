@@ -80,7 +80,10 @@
       "Bash(grep -vE \"^\\\\s*$\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/cleveland-test\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
-      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=ab\" -w \"\\\\nHTTP=%{http_code}\\\\n\")"
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=ab\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"  HTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=events\" -w \"  HTTP=%{http_code}\\\\n\")",
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/no-such-slug\" -w \"  HTTP=%{http_code}\\\\n\")"
     ],
     "deny": [
       "Bash(rm -rf /)",

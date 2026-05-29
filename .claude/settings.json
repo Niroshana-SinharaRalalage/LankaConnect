@@ -76,7 +76,8 @@
       "Bash(Select-Object Name)",
       "Bash(xargs grep -l \"slug\\\\|Slug\\\\|vanity\\\\|Permalink\")",
       "Bash(xargs cat)",
-      "Bash(grep -n \"HttpPost\\\\]\\\\s*$\\\\|public async Task<IActionResult> CreateEvent\\\\|public async Task<IActionResult> GetEventById\" src/LankaConnect.API/Controllers/EventsController.cs)"
+      "Bash(grep -n \"HttpPost\\\\]\\\\s*$\\\\|public async Task<IActionResult> CreateEvent\\\\|public async Task<IActionResult> GetEventById\" src/LankaConnect.API/Controllers/EventsController.cs)",
+      "Bash(grep -vE \"^\\\\s*$\")"
     ],
     "deny": [
       "Bash(rm -rf /)",

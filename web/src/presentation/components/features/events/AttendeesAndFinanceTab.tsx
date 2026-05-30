@@ -15,14 +15,18 @@ import { AttendeeManagementTab } from '@/presentation/components/features/events
 import { DonationsManagementTab } from '@/presentation/components/features/events/DonationsManagementTab';
 import { CollectionsManagementTab } from '@/presentation/components/features/events/CollectionsManagementTab';
 import { SponsorsManagementTab } from '@/presentation/components/features/events/SponsorsManagementTab';
-import { SponsorshipPackagesManagementSection } from '@/presentation/components/features/events/SponsorshipPackagesManagementSection'; // Phase 6A.156
 import { AddOnsManagementTab } from '@/presentation/components/features/events/AddOnsManagementTab';
 import { TicketRevenueView } from '@/presentation/components/features/events/TicketRevenueView';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 
-type SubTab = 'attendees' | 'tickets' | 'donations' | 'collections' | 'sponsors' | 'packages' | 'addons';
+// Phase 6A.156-fix: dropped the standalone 'packages' sub-tab. Sponsorship
+// packages are a sub-shape of sponsors (a package purchase produces a Sponsor
+// record), so the CRUD surface is folded into the Sponsors tab via the
+// embedded SponsorshipPackageEditor (live mode). Mirrors the same mental
+// model as ticket tiers living inside Tickets.
+type SubTab = 'attendees' | 'tickets' | 'donations' | 'collections' | 'sponsors' | 'addons';
 
 interface SubTabConfig {
   id: SubTab;
@@ -36,7 +40,6 @@ const SUB_TABS: SubTabConfig[] = [
   { id: 'donations', label: 'Donations', icon: Heart },
   { id: 'collections', label: 'Collections', icon: Wallet },
   { id: 'sponsors', label: 'Sponsors', icon: Award },
-  { id: 'packages', label: 'Packages', icon: Award }, // Phase 6A.156: sponsorship packages
   { id: 'addons', label: 'Add-Ons', icon: ShoppingBag },
 ];
 
@@ -84,16 +87,6 @@ export function AttendeesAndFinanceTab({ eventId, event }: AttendeesAndFinanceTa
         return <CollectionsManagementTab eventId={eventId} collectionConfig={event.collectionConfig ?? null} />;
       case 'sponsors':
         return <SponsorsManagementTab eventId={eventId} sponsorConfig={event.sponsorConfig ?? null} />;
-      case 'packages':
-        // Phase 6A.156 — sponsorship packages live behind the EnablePackages flag in
-        // SponsorConfig. The management section itself shows a guided empty state
-        // when the flag is off, so we always render it and let it self-gate.
-        return (
-          <SponsorshipPackagesManagementSection
-            eventId={eventId}
-            enabled={event.sponsorConfig?.enablePackages === true}
-          />
-        );
       case 'addons':
         return <AddOnsManagementTab eventId={eventId} addOnConfig={event.addOnConfig ?? null} />;
       default:

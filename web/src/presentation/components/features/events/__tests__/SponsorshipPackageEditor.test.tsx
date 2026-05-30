@@ -312,6 +312,81 @@ describe('SponsorshipPackageEditor — live mode (existing event)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
+// FORM-NESTING REGRESSION (Phase 6A.156-fix-2)
+//
+// Operator UAT bug: the inline editor renders inside SponsorConfigForm, which
+// renders inside EventEditForm's <form onSubmit>. The editor's "Add Package"
+// button defaulted to type="submit" (HTML spec — buttons inside a form with
+// no explicit type are submit buttons), so clicking it:
+//   1. opened the modal via setState (modal flashed)
+//   2. submitted the parent EventEditForm
+//   3. on successful save, navigated away → modal vanished, edit mode lost
+//
+// These tests pin the contract: clicking the editor's add/empty-state CTAs
+// inside a <form> MUST NOT submit that form. The fix is dual: (a) Button
+// component defaults to type="button" globally, and (b) explicit type="button"
+// belt-and-suspenders on the editor's trigger buttons.
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('SponsorshipPackageEditor — form-nesting safety', () => {
+  it('does NOT submit a parent <form> when "Add Package" is clicked (local mode)', () => {
+    const formSubmitSpy = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    render(
+      <form onSubmit={formSubmitSpy} aria-label="parent">
+        <SponsorshipPackageEditor
+          pendingPackages={[]}
+          onPendingPackagesChange={() => {}}
+        />
+      </form>
+    );
+    // Click the header "Add Package" CTA (the empty-state CTA also dispatches
+    // to handleAddNew — both must be safe).
+    const addButtons = screen.getAllByRole('button', { name: /Add Package|Create.*Package/i });
+    fireEvent.click(addButtons[0]);
+    expect(formSubmitSpy).not.toHaveBeenCalled();
+    // Modal should still open — proves the click reaches handleAddNew without
+    // also being swallowed by the parent form.
+    expect(screen.getByTestId('modal-open')).toBeInTheDocument();
+  });
+
+  it('does NOT submit a parent <form> when the empty-state CTA is clicked', () => {
+    const formSubmitSpy = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    render(
+      <form onSubmit={formSubmitSpy}>
+        <SponsorshipPackageEditor
+          pendingPackages={[]}
+          onPendingPackagesChange={() => {}}
+        />
+      </form>
+    );
+    const addButtons = screen.getAllByRole('button', { name: /Add Package|Create.*Package/i });
+    // Click the empty-state CTA (last button — "Create your first package")
+    fireEvent.click(addButtons[addButtons.length - 1]);
+    expect(formSubmitSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('modal-open')).toBeInTheDocument();
+  });
+
+  it('does NOT submit a parent <form> when "Add Package" is clicked (live mode)', () => {
+    mockUseSponsorshipPackages.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const formSubmitSpy = vi.fn((e: { preventDefault: () => void }) => e.preventDefault());
+    render(
+      <form onSubmit={formSubmitSpy}>
+        <SponsorshipPackageEditor eventId="live-event-id" />
+      </form>
+    );
+    const addButtons = screen.getAllByRole('button', { name: /Add Package|Create.*Package/i });
+    fireEvent.click(addButtons[0]);
+    expect(formSubmitSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('modal-open')).toBeInTheDocument();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 

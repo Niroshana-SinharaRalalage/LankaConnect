@@ -409,6 +409,7 @@ export function AddOnDefinitionEditor({
             Add-On Items ({definitions.length})
           </CardTitle>
           <Button
+            type="button"
             size="sm"
             onClick={handleOpenCreate}
             disabled={showForm}

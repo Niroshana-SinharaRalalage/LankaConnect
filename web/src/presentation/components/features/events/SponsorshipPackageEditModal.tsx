@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
@@ -169,6 +170,14 @@ export function SponsorshipPackageEditModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Phase 6A.156-fix-2 — stop the React synthetic submit event from bubbling
+    // up through the React tree. The modal is portal'd to document.body so
+    // the DOM event no longer reaches a parent <form>, but React's synthetic
+    // event system bubbles through the COMPONENT tree (not DOM tree) — so a
+    // submit on the modal's <form> would still fire the parent
+    // EventEditForm's onSubmit handler via React. stopPropagation() severs
+    // that React bubble so the modal's submit is truly isolated.
+    e.stopPropagation();
     setError(null);
 
     const validationError = validate();
@@ -231,11 +240,27 @@ export function SponsorshipPackageEditModal({
     }
   };
 
+  // Phase 6A.156-fix-2 — portal-mount guard. SSR renders nothing (document is
+  // undefined on the server), then the useEffect below flips mounted=true on
+  // the client so createPortal can run. This avoids Next.js hydration
+  // mismatches and is the standard pattern for portal'd modals.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   if (!isOpen) return null;
+  if (!mounted) return null;
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
-  return (
+  // Phase 6A.156-fix-2 — portal the modal to document.body so its own <form>
+  // is no longer DOM-nested inside the caller's parent <form> (e.g.
+  // EventEditForm). Nested forms are invalid HTML; browsers silently drop
+  // the inner one, which made the modal's submit re-submit the parent. The
+  // portal escapes the DOM tree entirely while preserving the React tree
+  // (state, context, events still flow through the React parent).
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
@@ -428,6 +453,7 @@ export function SponsorshipPackageEditModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

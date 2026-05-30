@@ -288,7 +288,7 @@ export function SponsorshipPackageEditor({
         <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
         <div>
           <p className="font-medium">Failed to load sponsorship packages.</p>
-          <Button size="sm" variant="ghost" onClick={() => liveQuery.refetch()} className="mt-1">
+          <Button type="button" size="sm" variant="ghost" onClick={() => liveQuery.refetch()} className="mt-1">
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Retry
           </Button>
@@ -311,7 +311,7 @@ export function SponsorshipPackageEditor({
             optional bundled tickets. Buyer-facing purchase lands in a future phase.
           </p>
         </div>
-        <Button onClick={handleAddNew} size="sm">
+        <Button type="button" onClick={handleAddNew} size="sm">
           <Plus className="h-4 w-4 mr-1" />
           Add Package
         </Button>
@@ -330,7 +330,7 @@ export function SponsorshipPackageEditor({
                 Start by creating your first tier. Most events use Gold / Silver / Bronze,
                 but tier labels are free-text — name them whatever fits your event.
               </p>
-              <Button onClick={handleAddNew} size="sm">
+              <Button type="button" onClick={handleAddNew} size="sm">
                 <Plus className="h-4 w-4 mr-1" />
                 Create your first package
               </Button>

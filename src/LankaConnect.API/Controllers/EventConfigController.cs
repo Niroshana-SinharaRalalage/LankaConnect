@@ -93,7 +93,8 @@ public class EventConfigController : BaseController<EventConfigController>
             AcceptItemSponsors: request.AcceptItemSponsors,
             MinSponsorAmount: request.MinSponsorAmount,
             SponsorMessage: request.SponsorMessage,
-            ShowSponsorList: request.ShowSponsorList);
+            ShowSponsorList: request.ShowSponsorList,
+            EnablePackages: request.EnablePackages);
 
         var result = await Mediator.Send(command);
         return HandleResult(result);
@@ -180,6 +181,9 @@ public class UpdateCollectionConfigRequest
 
 /// <summary>
 /// Request body for updating sponsor configuration.
+/// Phase 6A.156: added <see cref="EnablePackages"/> to gate the organizer-defined
+/// sponsorship-package grid on the public event page. Backward-compatible:
+/// existing clients that don't send the field default to false (packages off).
 /// </summary>
 public class UpdateSponsorConfigRequest
 {
@@ -189,6 +193,7 @@ public class UpdateSponsorConfigRequest
     public decimal? MinSponsorAmount { get; init; }
     public string? SponsorMessage { get; init; }
     public bool ShowSponsorList { get; init; }
+    public bool EnablePackages { get; init; }
 }
 
 /// <summary>

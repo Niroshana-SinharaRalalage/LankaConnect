@@ -106,6 +106,49 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .HasColumnType("timestamp with time zone")
             .IsRequired(false); // Nullable for draft events
 
+        // Phase 6A.154: Organizer-controlled vanity URL slug.
+        //
+        // Mapped as a SCALAR Property with HasConversion, NOT OwnsOne.
+        // OwnsOne for a single-string VO causes EF Core 8's convention
+        // scanner to walk the owned-entity-type fragment first, which
+        // collides with the EventSlugAlias child entity discovery and
+        // produces "first mapped explicitly and then ignored" — the
+        // EventSlugAlias table then silently never makes it into the
+        // migration. Scalar + HasConversion has none of that overhead:
+        // the converter unwraps Value on write and rebuilds the VO via
+        // its private ctor on read (no factory re-validation, so legacy
+        // edge-case rows don't crash on materialization).
+        builder.Property(e => e.VanitySlug)
+            .HasColumnName("vanity_slug")
+            .HasMaxLength(80)
+            .HasConversion(
+                v => v == null ? null : v.Value,
+                v => MaterializeVanitySlug(v))
+            .IsRequired(false);
+
+        // Partial unique index — only enforced when vanity_slug IS NOT NULL.
+        // Thousands of legacy events with null slugs don't trip the constraint.
+        builder.HasIndex(e => e.VanitySlug)
+            .IsUnique()
+            .HasFilter("vanity_slug IS NOT NULL")
+            .HasDatabaseName("ix_events_vanity_slug_unique");
+
+        // Phase 6A.154: alias child collection. Mirrors the working
+        // OrganizerContacts pattern below (lines ~172-178). EventSlugAlias
+        // has its own EventSlugAliasConfiguration registered in AppDbContext
+        // — applied AFTER EventConfiguration is fine (same as
+        // EventOrganizerContactConfiguration; no ordering trick needed once
+        // VanitySlug is a scalar Property rather than OwnsOne).
+        builder.HasMany(e => e.SlugAliases)
+            .WithOne()
+            .HasForeignKey(a => a.EventId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Backing field "_slugAliases" — required for change tracking on
+        // the IReadOnlyList collection (same pattern as _organizerContacts).
+        builder.Navigation(e => e.SlugAliases)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Configure Category enum (Epic 2 Phase 2)
         builder.Property(e => e.Category)
             .HasConversion<string>()
@@ -483,5 +526,27 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
                     j.HasIndex("event_id");
                     j.HasIndex("email_group_id");
                 });
+    }
+
+    // Phase 6A.154: rebuild EventVanitySlug from its raw string column without
+    // re-running the factory's validation. Materialization MUST be lenient —
+    // if a legacy row holds an edge-case value (e.g. a slug that pre-dates a
+    // tightened regex), failing here would 500 every event read. The VO's
+    // private ctor accepts the raw value unconditionally; the factory is the
+    // gate for *new* values. Reflection cost is one-time per slot — EF caches
+    // the converter expression compile.
+    private static readonly System.Reflection.ConstructorInfo VanitySlugCtor =
+        typeof(LankaConnect.Domain.Events.ValueObjects.EventVanitySlug).GetConstructor(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(string) },
+            modifiers: null)
+        ?? throw new System.InvalidOperationException(
+            "EventVanitySlug private(string) ctor not found — VanitySlug converter cannot materialize values.");
+
+    private static LankaConnect.Domain.Events.ValueObjects.EventVanitySlug? MaterializeVanitySlug(string? raw)
+    {
+        if (raw is null) return null;
+        return (LankaConnect.Domain.Events.ValueObjects.EventVanitySlug)VanitySlugCtor.Invoke(new object[] { raw });
     }
 }

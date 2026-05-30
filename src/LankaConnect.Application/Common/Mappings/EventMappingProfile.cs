@@ -33,6 +33,8 @@ public class EventMappingProfile : Profile
             .ForMember(dest => dest.CurrentRegistrations, opt => opt.MapFrom(src => src.CurrentRegistrations))
             // Issue #51: MaxAttendeesPerRegistration - configurable by event organizer
             .ForMember(dest => dest.MaxAttendeesPerRegistration, opt => opt.MapFrom(src => src.MaxAttendeesPerRegistration))
+            // Phase 6A.154: surface vanity slug as plain string (VO.Value).
+            .ForMember(dest => dest.VanitySlug, opt => opt.MapFrom(src => src.VanitySlug != null ? src.VanitySlug.Value : null))
             .ForMember(dest => dest.IsFree, opt => opt.MapFrom(src => src.IsFree()))
             // Phase 8X — payment mode + external registration projection.
             .ForMember(dest => dest.PaymentMode, opt => opt.MapFrom(src => src.PaymentMode))

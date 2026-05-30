@@ -968,7 +968,13 @@ export function EventDetailPageInternal({
                 />
                 <EventQuickNav
                   pills={[
-                    { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-3.5 w-3.5" />, show: !isModeC },
+                    // Phase 6A.155: Register/RSVP is the page's primary conversion
+                    // action — promote with emphasis="primary" (solid orange fill,
+                    // larger, bolder) so it visually dominates the row instead of
+                    // reading as one of N identical secondary pills. Icon bumped
+                    // to h-4 w-4 to match the larger pill size; default pills stay
+                    // at h-3.5 w-3.5.
+                    { id: 'registration', label: registrationCtaLabel, icon: <Users className="h-4 w-4" />, show: !isModeC, emphasis: 'primary' },
                     { id: 'donations', label: 'Donate', icon: <Heart className="h-3.5 w-3.5" />, show: event?.donationConfig?.isEnabled === true },
                     { id: 'collections', label: 'Contribute', icon: <Wallet className="h-3.5 w-3.5" />, show: event?.collectionConfig?.isEnabled === true },
                     { id: 'sponsors', label: 'Sponsor', icon: <Award className="h-3.5 w-3.5" />, show: event?.sponsorConfig?.isEnabled === true },

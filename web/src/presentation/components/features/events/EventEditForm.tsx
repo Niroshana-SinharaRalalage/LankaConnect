@@ -235,6 +235,8 @@ export function EventEditForm({ event }: EventEditFormProps) {
     resolver: zodResolver(editEventSchema) as any,
     defaultValues: {
       title: event.title,
+      // Phase 6A.154: hydrate vanity slug from server payload.
+      vanitySlug: (event as { vanitySlug?: string | null }).vanitySlug || '',
       description: event.description,
       category: convertCategoryToNumber(event.category),
       startDate: formatDateForInput(event.startDate),
@@ -588,12 +590,24 @@ export function EventEditForm({ event }: EventEditFormProps) {
       const isTieredTicketing = !data.isFree && data.enableTieredTicketing;
       const isSinglePricing = !data.isFree && !data.enableDualPricing && !data.enableGroupPricing && !data.enableTieredTicketing;
 
+      // Phase 6A.154: tri-state slug update. Only mark as touched when the
+      // organizer actually changed the field, so unrelated edits don't
+      // accidentally clear an existing slug.
+      const currentSlug = (event as { vanitySlug?: string | null }).vanitySlug || '';
+      const enteredSlug = (data as { vanitySlug?: string }).vanitySlug?.trim() || '';
+      const slugTouched = enteredSlug !== currentSlug;
+
       const eventData = {
         eventId: event.id,
         title: data.title,
         description: data.description,
         startDate: startDateISO,
         endDate: endDateISO,
+        // Phase 6A.154: tri-state vanity slug — only sent when touched.
+        ...(slugTouched && {
+          updateVanitySlug: true,
+          vanitySlug: enteredSlug || null,
+        }),
         capacity: data.capacity,
         // Issue #51: Max attendees per registration
         maxAttendeesPerRegistration: data.maxAttendeesPerRegistration,
@@ -960,6 +974,30 @@ export function EventEditForm({ event }: EventEditFormProps) {
             />
             {errors.title && (
               <p className="mt-1 text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          {/* Phase 6A.154: Vanity URL slug (optional). */}
+          <div className="border-b pb-4">
+            <label htmlFor="vanitySlug" className="block text-sm font-semibold text-neutral-700 mb-2">
+              Vanity URL <span className="text-neutral-500 font-normal">(Optional)</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-500 select-none">lankaconnect.app/</span>
+              <Input
+                id="vanitySlug"
+                type="text"
+                placeholder="cleveland-show"
+                error={!!(errors as { vanitySlug?: { message?: string } }).vanitySlug}
+                {...register('vanitySlug' as never)}
+              />
+            </div>
+            {(errors as { vanitySlug?: { message?: string } }).vanitySlug ? (
+              <p className="mt-1 text-sm text-destructive">{(errors as { vanitySlug?: { message?: string } }).vanitySlug?.message}</p>
+            ) : (
+              <p className="mt-1 text-xs text-neutral-500">
+                Lowercase letters, digits, and hyphens. 3–80 characters. Leave blank to clear.
+              </p>
             )}
           </div>
 

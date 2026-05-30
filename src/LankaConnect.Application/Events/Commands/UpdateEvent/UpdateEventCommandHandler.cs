@@ -325,6 +325,37 @@ public class UpdateEventCommandHandler : ICommandHandler<UpdateEventCommand>
                 return maxAttendeesResult;
         }
 
+        // Phase 6A.154: Apply vanity slug only when organizer toggled the
+        // update flag. Tri-state design mirrors UpdateRegistrationWindow
+        // from 6A.153 — unrelated edits don't accidentally clear the slug.
+        if (request.UpdateVanitySlug)
+        {
+            LankaConnect.Domain.Events.ValueObjects.EventVanitySlug? slug = null;
+            if (!string.IsNullOrWhiteSpace(request.VanitySlug))
+            {
+                var slugResult = LankaConnect.Domain.Events.ValueObjects.EventVanitySlug.Create(request.VanitySlug);
+                if (slugResult.IsFailure)
+                {
+                    _logger.LogWarning(
+                        "UpdateEvent: VanitySlug rejected - EventId={EventId}, Slug={Slug}, Error={Error}",
+                        @event.Id, request.VanitySlug, slugResult.Error);
+                    return Result.Failure(slugResult.Error);
+                }
+                slug = slugResult.Value;
+            }
+            var setResult = @event.SetVanitySlug(slug);
+            if (setResult.IsFailure)
+            {
+                _logger.LogWarning(
+                    "UpdateEvent: SetVanitySlug rejected - EventId={EventId}, Slug={Slug}, Error={Error}",
+                    @event.Id, request.VanitySlug, setResult.Error);
+                return setResult;
+            }
+            _logger.LogInformation(
+                "UpdateEvent: VanitySlug updated - EventId={EventId}, NewSlug={NewSlug}",
+                @event.Id, request.VanitySlug ?? "(cleared)");
+        }
+
         if (request.Category.HasValue)
         {
             var categoryProperty = typeof(Event).GetProperty(nameof(Event.Category));

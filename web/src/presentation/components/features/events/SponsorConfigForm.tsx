@@ -1,6 +1,10 @@
 'use client';
 
 import { Input } from '@/presentation/components/ui/Input';
+import {
+  SponsorshipPackageEditor,
+  type PendingSponsorshipPackage,
+} from './SponsorshipPackageEditor';
 
 interface SponsorConfigFormProps {
   /** Whether sponsorships are enabled */
@@ -29,6 +33,20 @@ interface SponsorConfigFormProps {
    */
   enablePackages?: boolean;
   onEnablePackagesChange?: (enabled: boolean) => void;
+  /**
+   * Phase 6A.156-fix — when provided, the embedded
+   * {@link SponsorshipPackageEditor} runs in live mode (CRUD via API hooks).
+   * Used by {@link EventEditForm}. Omit for {@link EventCreationForm} so the
+   * editor runs in local mode against {@link pendingPackages}.
+   */
+  eventId?: string;
+  /**
+   * Phase 6A.156-fix — local-mode pending packages. Used during event creation
+   * before the event row exists. Parent (EventCreationForm) owns the array
+   * and POSTs each entry after the event is created.
+   */
+  pendingPackages?: PendingSponsorshipPackage[];
+  onPendingPackagesChange?: (packages: PendingSponsorshipPackage[]) => void;
 }
 
 /**
@@ -51,6 +69,9 @@ export function SponsorConfigForm({
   onShowSponsorListChange,
   enablePackages,
   onEnablePackagesChange,
+  eventId,
+  pendingPackages,
+  onPendingPackagesChange,
 }: SponsorConfigFormProps) {
   const showTypeWarning = isEnabled && !acceptMoneySponsors && !acceptItemSponsors;
 
@@ -197,11 +218,28 @@ export function SponsorConfigForm({
                     Enable sponsorship packages (Gold / Silver / Bronze tiers)
                   </label>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Define tiered sponsorships with perks and bundled tickets. Manage
-                    packages in the &ldquo;Packages&rdquo; tab under Attendees &amp; Finance.
-                    Buyer-facing purchase lands in a follow-up phase.
+                    Define tiered sponsorships with perks and optional bundled tickets.
+                    Edit packages below; they also appear in the Sponsors tab after the
+                    event is published. Buyer-facing purchase lands in a follow-up phase.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/*
+             * Phase 6A.156-fix — inline package editor. Mirrors the add-on
+             * pattern where AddOnConfigForm embeds AddOnDefinitionEditor at
+             * AddOnConfigForm.tsx:129. Gated on (a) the packages toggle being
+             * on, AND (b) the parent providing the toggle handler (handlers
+             * absent → caller pre-dates 6A.156 → don't render anything new).
+             */}
+            {onEnablePackagesChange && enablePackages && (
+              <div className="pt-2">
+                <SponsorshipPackageEditor
+                  eventId={eventId}
+                  pendingPackages={pendingPackages}
+                  onPendingPackagesChange={onPendingPackagesChange}
+                />
               </div>
             )}
         </div>

@@ -2230,6 +2230,11 @@ export function EventEditForm({ event }: EventEditFormProps) {
             onShowSponsorListChange={setShowSponsorList}
             enablePackages={enableSponsorPackages}
             onEnablePackagesChange={setEnableSponsorPackages}
+            /* Phase 6A.156-fix — eventId triggers the embedded
+               SponsorshipPackageEditor's live mode (CRUD via API hooks),
+               mirroring AddOnConfigForm's live-mode pass-through at
+               EventEditForm.tsx:2255. */
+            eventId={event.id}
           />
         </CollapsibleSection>
       </div>

@@ -11,6 +11,25 @@ import {
 } from '@/presentation/hooks/useSponsorshipPackages';
 import type { SponsorshipPackageDto } from '@/infrastructure/api/types/events.types';
 
+/**
+ * Phase 6A.156-fix — payload sent to {@link SponsorshipPackageEditModalProps.onSubmitOverride}
+ * in local mode. Matches the shape of {@code UpdateSponsorshipPackageRequest}
+ * so the same modal can drive both create + edit + local-mode dispatches
+ * uniformly.
+ */
+export interface SponsorshipPackageSubmitPayload {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  tier?: string | null;
+  perks?: string[];
+  includedTicketCount: number;
+  isActive: boolean;
+}
+
 interface SponsorshipPackageEditModalProps {
   eventId: string;
   /** Existing package to edit, or null for create-new. */
@@ -18,6 +37,15 @@ interface SponsorshipPackageEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /**
+   * Phase 6A.156-fix — when provided, the modal calls this instead of the
+   * live React Query mutations. Used by SponsorshipPackageEditor's local
+   * mode to push the form payload into parent-managed pendingPackages state
+   * (since the event doesn't exist yet during EventCreationForm). When
+   * undefined, the modal falls back to live mode (createMutation /
+   * updateMutation) — the original 6A.156 contract.
+   */
+  onSubmitOverride?: (payload: SponsorshipPackageSubmitPayload) => Promise<void>;
 }
 
 const MAX_PERKS = 10;
@@ -32,6 +60,11 @@ const MAX_INCLUDED_TICKETS = 20;
  * Field validation mirrors the domain constants in `SponsorshipPackage.cs`
  * so the user sees friendly errors before submit; server-side validation
  * remains the source of truth.
+ *
+ * Phase 6A.156-fix: gains optional {@code onSubmitOverride} prop so the
+ * editor's local mode can intercept submit and dispatch into pendingPackages
+ * state instead of hitting the API. Live mode (eventId provided + no
+ * override) is unchanged from the 6A.156 contract.
  */
 export function SponsorshipPackageEditModal({
   eventId,
@@ -39,6 +72,7 @@ export function SponsorshipPackageEditModal({
   isOpen,
   onClose,
   onSaved,
+  onSubmitOverride,
 }: SponsorshipPackageEditModalProps) {
   const isEditing = pkg != null;
 
@@ -149,38 +183,44 @@ export function SponsorshipPackageEditModal({
     const sortOrderNum = parseInt(sortOrder, 10) || 0;
     const ticketNum = parseInt(includedTicketCount, 10) || 0;
 
+    // Shared payload — same shape for create + update + local-mode override.
+    // Note: isActive is only meaningful for edit; create always lands active
+    // server-side. We include it uniformly so onSubmitOverride sees a complete
+    // record without branching on isEditing.
+    const payload: SponsorshipPackageSubmitPayload = {
+      name: name.trim(),
+      description: description.trim() || null,
+      price: priceNum,
+      currency,
+      quantityLimit: limitNum,
+      sortOrder: sortOrderNum,
+      tier: tier.trim() || null,
+      perks: meaningfulPerks,
+      includedTicketCount: ticketNum,
+      isActive: isEditing ? isActive : true,
+    };
+
     try {
-      if (isEditing && pkg) {
+      if (onSubmitOverride) {
+        // Phase 6A.156-fix local-mode path — dispatch into parent state instead
+        // of calling the live mutations. The editor's handleLocalSubmit decides
+        // whether to push a new pending package or update an existing one based
+        // on its own editingPackage state.
+        await onSubmitOverride(payload);
+      } else if (isEditing && pkg) {
         await updateMutation.mutateAsync({
           eventId,
           packageId: pkg.id,
-          request: {
-            name: name.trim(),
-            description: description.trim() || null,
-            price: priceNum,
-            currency,
-            quantityLimit: limitNum,
-            sortOrder: sortOrderNum,
-            tier: tier.trim() || null,
-            perks: meaningfulPerks,
-            includedTicketCount: ticketNum,
-            isActive,
-          },
+          request: payload,
         });
       } else {
+        // Create mutation accepts a request without `isActive` — strip it so
+        // the TypeScript shape matches CreateSponsorshipPackageRequest.
+        const { isActive: _isActive, ...createPayload } = payload;
+        void _isActive; // silence unused destructure
         await createMutation.mutateAsync({
           eventId,
-          request: {
-            name: name.trim(),
-            description: description.trim() || null,
-            price: priceNum,
-            currency,
-            quantityLimit: limitNum,
-            sortOrder: sortOrderNum,
-            tier: tier.trim() || null,
-            perks: meaningfulPerks,
-            includedTicketCount: ticketNum,
-          },
+          request: createPayload,
         });
       }
       onSaved();

@@ -106,6 +106,70 @@ public class Sponsor : BaseEntity
     /// </summary>
     public Guid? LastEditedBy { get; private set; }
 
+    // =========================================================================
+    // Phase 6A.156 — Sponsorship Package linkage (nullable, additive)
+    //
+    // Generic sponsorship (today's flow) = SponsorshipPackageId IS NULL.
+    // Packaged sponsorship (6A.157+) sets SponsorshipPackageId + snapshots the
+    // package fields at purchase time so that organizer edits to the package
+    // don't retroactively alter historic sponsor receipts (mirrors the verified
+    // AddOnPurchase.UnitPrice snapshot pattern).
+    //
+    // Wiring for these fields lands in 6A.157 (public purchase command via
+    // a new Sponsor.CreatePackageSponsor factory). 6A.156 only persists the
+    // schema + properties so the EF migration is one ship, not two.
+    // =========================================================================
+
+    /// <summary>
+    /// Phase 6A.156 — FK to <see cref="SponsorshipPackage"/>. Null for the
+    /// existing generic flow (free-form amount or item); non-null for packaged
+    /// sponsorships introduced in 6A.157. Database constraint: when set, the
+    /// snapshot fields below must also be populated (DB-level CHECK in the EF
+    /// configuration).
+    /// </summary>
+    public Guid? SponsorshipPackageId { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — FK to <see cref="Registration"/> when this sponsor was
+    /// purchased as part of a registration checkout (RSVP-bundled flow in
+    /// 6A.159) or when the package's bundled ticket allocation created a
+    /// head-count registration (6A.158). Null for standalone (non-bundled)
+    /// sponsors.
+    /// </summary>
+    public Guid? RegistrationId { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package name at purchase time, denormalized so that
+    /// organizer edits to <see cref="SponsorshipPackage.Name"/> don't change
+    /// historical receipts. Required when <see cref="SponsorshipPackageId"/>
+    /// is set (DB-level CHECK).
+    /// </summary>
+    public string? PackageNameSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package tier label at purchase time. Nullable even when
+    /// packaged because the source <see cref="SponsorshipPackage.Tier"/> is
+    /// itself optional.
+    /// </summary>
+    public string? PackageTierSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package price at purchase time. Distinct from
+    /// <see cref="Amount"/>: for package sponsors the two are equal at create
+    /// time, but storing the snapshot separately keeps reporting clear and
+    /// allows future top-up/discount semantics on Amount without disturbing
+    /// historic price-on-day-of-purchase.
+    /// </summary>
+    public Money? PackagePriceSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — included-ticket count at purchase time. Drives the
+    /// 6A.158 bundled head-count Registration allocation. Frozen at purchase
+    /// so a package edit (e.g., organizer drops Gold from 5 tix to 3) does not
+    /// re-allocate already-bought sponsors.
+    /// </summary>
+    public int? IncludedTicketCountSnapshot { get; private set; }
+
     // EF Core constructor
     private Sponsor()
     {

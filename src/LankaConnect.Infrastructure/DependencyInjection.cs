@@ -539,6 +539,8 @@ public static class DependencyInjection
         services.AddScoped<ISponsorRepository, SponsorRepository>();
         services.AddScoped<IAddOnDefinitionRepository, AddOnDefinitionRepository>();
         services.AddScoped<IAddOnPurchaseRepository, AddOnPurchaseRepository>();
+        // Phase 6A.156 — organizer-defined sponsorship packages (Gold/Silver/Bronze tiers)
+        services.AddScoped<ISponsorshipPackageRepository, SponsorshipPackageRepository>();
 
         // Phase 6A.109: Add EnumSyncValidator to detect enum/database drift at startup (Issue #78)
         services.AddHostedService<LankaConnect.Infrastructure.Services.Validation.EnumSyncValidator>();

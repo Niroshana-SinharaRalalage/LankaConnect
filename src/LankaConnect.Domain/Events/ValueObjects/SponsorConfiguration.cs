@@ -49,6 +49,20 @@ public class SponsorConfiguration : ValueObject
     /// </summary>
     public bool ShowSponsorList { get; private set; }
 
+    /// <summary>
+    /// Phase 6A.156 — whether sponsorship packages (organizer-curated tiers like
+    /// Gold/Silver/Bronze) are exposed on the public event page. When false
+    /// (default), packages can be defined and edited by the organizer but the
+    /// public-facing package grid is hidden — useful for drafting before launch.
+    /// Existing generic sponsorship (free-form amount/item) is governed by
+    /// the IsEnabled / AcceptMoneySponsors / AcceptItemSponsors trio above.
+    ///
+    /// JSONB backward-compat: existing rows missing the EnablePackages key
+    /// deserialize to false (default), keeping the pre-6A.156 behaviour for all
+    /// existing events.
+    /// </summary>
+    public bool EnablePackages { get; private set; }
+
     // EF Core constructor
     private SponsorConfiguration()
     {
@@ -60,7 +74,8 @@ public class SponsorConfiguration : ValueObject
         bool acceptItemSponsors,
         decimal? minSponsorAmount,
         string? sponsorMessage,
-        bool showSponsorList)
+        bool showSponsorList,
+        bool enablePackages)
     {
         IsEnabled = isEnabled;
         AcceptMoneySponsors = acceptMoneySponsors;
@@ -68,6 +83,7 @@ public class SponsorConfiguration : ValueObject
         MinSponsorAmount = minSponsorAmount;
         SponsorMessage = sponsorMessage;
         ShowSponsorList = showSponsorList;
+        EnablePackages = enablePackages;
     }
 
     /// <summary>
@@ -79,7 +95,8 @@ public class SponsorConfiguration : ValueObject
         bool acceptItemSponsors,
         decimal? minSponsorAmount,
         string? sponsorMessage,
-        bool showSponsorList = false)
+        bool showSponsorList = false,
+        bool enablePackages = false)
     {
         if (!isEnabled)
             return Result<SponsorConfiguration>.Success(Disabled());
@@ -112,7 +129,8 @@ public class SponsorConfiguration : ValueObject
             acceptItemSponsors,
             minSponsorAmount,
             sponsorMessage?.Trim(),
-            showSponsorList));
+            showSponsorList,
+            enablePackages));
     }
 
     /// <summary>
@@ -120,7 +138,7 @@ public class SponsorConfiguration : ValueObject
     /// </summary>
     public static SponsorConfiguration Disabled()
     {
-        return new SponsorConfiguration(false, false, false, null, null, false);
+        return new SponsorConfiguration(false, false, false, null, null, false, false);
     }
 
     /// <summary>
@@ -151,5 +169,6 @@ public class SponsorConfiguration : ValueObject
         yield return MinSponsorAmount ?? 0m;
         yield return SponsorMessage ?? string.Empty;
         yield return ShowSponsorList;
+        yield return EnablePackages;
     }
 }

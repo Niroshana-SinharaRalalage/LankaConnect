@@ -66,39 +66,39 @@
       "Bash(identify c:/Work/LankaConnect/web/public/lanka-events5.jpg)",
       "Bash(ffmpeg -version)",
       "Bash(mkdir -p \"c:/tmp/demo-frames/clip02\" \"c:/tmp/demo-frames/clip10\" \"c:/tmp/demo-frames/E01\")",
-      "Bash(ffmpeg -i \"CLIP 02 \u2014 Registration Form.mp4\" -vf \"fps=1/7,scale=640:-1\" \"c:/tmp/demo-frames/clip02/frame_%03d.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -i \"CLIP 10 \u2014 Fundraising - Sponsorship Overview.mp4\" -vf \"fps=1/7,scale=640:-1\" \"c:/tmp/demo-frames/clip10/frame_%03d.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -i \"CLIP E01 \u2014 Registration Confirmation Email.mp4\" -vf \"fps=1/5,scale=640:-1\" \"c:/tmp/demo-frames/E01/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 02 — Registration Form.mp4\" -vf \"fps=1/7,scale=640:-1\" \"c:/tmp/demo-frames/clip02/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 10 — Fundraising - Sponsorship Overview.mp4\" -vf \"fps=1/7,scale=640:-1\" \"c:/tmp/demo-frames/clip10/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP E01 — Registration Confirmation Email.mp4\" -vf \"fps=1/5,scale=640:-1\" \"c:/tmp/demo-frames/E01/frame_%03d.jpg\" -y -loglevel error)",
       "Bash(mkdir -p \"c:/tmp/demo-frames/clip07\" \"c:/tmp/demo-frames/clip04\" \"c:/tmp/demo-frames/clip11\" \"c:/tmp/demo-frames/clip14\" \"c:/tmp/demo-frames/clip16\")",
-      "Bash(ffmpeg -i \"CLIP 07 \u2014 Free vs Paid Event Creation.mp4\" -vf \"fps=1/25,scale=640:-1\" \"c:/tmp/demo-frames/clip07/frame_%03d.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -i \"CLIP 04 \u2014 Sign-Up List \\(Quantity-Based\\).mp4\" -vf \"fps=1/13,scale=640:-1\" \"c:/tmp/demo-frames/clip04/frame_%03d.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -i \"CLIP 11 \u2014 Newsletter - Email Composer.mp4\" -vf \"fps=1/10,scale=640:-1\" \"c:/tmp/demo-frames/clip11/frame_%03d.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -i \"CLIP 14 \u2014 Subscriber Metro - Interest Filter.mp4\" -vf \"fps=1/10,scale=640:-1\" \"c:/tmp/demo-frames/clip14/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 07 — Free vs Paid Event Creation.mp4\" -vf \"fps=1/25,scale=640:-1\" \"c:/tmp/demo-frames/clip07/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 04 — Sign-Up List \\(Quantity-Based\\).mp4\" -vf \"fps=1/13,scale=640:-1\" \"c:/tmp/demo-frames/clip04/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 11 — Newsletter - Email Composer.mp4\" -vf \"fps=1/10,scale=640:-1\" \"c:/tmp/demo-frames/clip11/frame_%03d.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -i \"CLIP 14 — Subscriber Metro - Interest Filter.mp4\" -vf \"fps=1/10,scale=640:-1\" \"c:/tmp/demo-frames/clip14/frame_%03d.jpg\" -y -loglevel error)",
       "Bash(mkdir -p \"c:/Work/LankaConnect/docs/demo-video/trimmed\")",
-      "Bash(ffmpeg -ss 7 -i \"CLIP 02 \u2014 Registration Form.mp4\" -t 21 -c copy \"trimmed/CLIP 02 \u2014 Registration Form.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 28 -i \"CLIP 09 \u2014 Donation  Add-On at Checkout.mp4\" -t 16 -c copy \"trimmed/CLIP 09 \u2014 Donation Add-On at Checkout.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 21 -i \"CLIP 10 \u2014 Fundraising - Sponsorship Overview.mp4\" -t 21 -c copy \"trimmed/CLIP 10 \u2014 Fundraising Sponsorship Overview.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 7 -i \"CLIP 20 \u2014 Financial Dashboard.mp4\" -t 42 -c copy \"trimmed/CLIP 20 \u2014 Financial Dashboard.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 0 -i \"CLIP E01 \u2014 Registration Confirmation Email.mp4\" -t 10 -c copy \"trimmed/CLIP E01 \u2014 Registration Confirmation Email.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 10 -i \"CLIP E02 \u2014 Payment Receipt Email.mp4\" -t 12 -c copy \"trimmed/CLIP E02 \u2014 Payment Receipt Email.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 80 -i \"CLIP 07 \u2014 Free vs Paid Event Creation.mp4\" -t 40 -c copy \"trimmed/CLIP 07 \u2014 Free vs Paid Event Creation.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 0 -i \"CLIP 04 \u2014 Sign-Up List \\(Quantity-Based\\).mp4\" -t 30 -c copy \"trimmed/CLIP 04 \u2014 Sign-Up List Quantity-Based.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 30 -i \"CLIP 11 \u2014 Newsletter - Email Composer.mp4\" -t 39 -c copy \"trimmed/CLIP 11 \u2014 Newsletter Email Composer.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 0 -i \"CLIP 14 \u2014 Subscriber Metro - Interest Filter.mp4\" -t 40 -c copy \"trimmed/CLIP 14 \u2014 Subscriber Metro Interest Filter.mp4\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 0 -i \"CLIP 16 \u2014 Gallery Upload \\(Organiser Side\\).mp4\" -t 55 -c copy \"trimmed/CLIP 16 \u2014 Gallery Upload Organiser Side.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 7 -i \"CLIP 02 — Registration Form.mp4\" -t 21 -c copy \"trimmed/CLIP 02 — Registration Form.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 28 -i \"CLIP 09 — Donation  Add-On at Checkout.mp4\" -t 16 -c copy \"trimmed/CLIP 09 — Donation Add-On at Checkout.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 21 -i \"CLIP 10 — Fundraising - Sponsorship Overview.mp4\" -t 21 -c copy \"trimmed/CLIP 10 — Fundraising Sponsorship Overview.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 7 -i \"CLIP 20 — Financial Dashboard.mp4\" -t 42 -c copy \"trimmed/CLIP 20 — Financial Dashboard.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"CLIP E01 — Registration Confirmation Email.mp4\" -t 10 -c copy \"trimmed/CLIP E01 — Registration Confirmation Email.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 10 -i \"CLIP E02 — Payment Receipt Email.mp4\" -t 12 -c copy \"trimmed/CLIP E02 — Payment Receipt Email.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 80 -i \"CLIP 07 — Free vs Paid Event Creation.mp4\" -t 40 -c copy \"trimmed/CLIP 07 — Free vs Paid Event Creation.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"CLIP 04 — Sign-Up List \\(Quantity-Based\\).mp4\" -t 30 -c copy \"trimmed/CLIP 04 — Sign-Up List Quantity-Based.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 30 -i \"CLIP 11 — Newsletter - Email Composer.mp4\" -t 39 -c copy \"trimmed/CLIP 11 — Newsletter Email Composer.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"CLIP 14 — Subscriber Metro - Interest Filter.mp4\" -t 40 -c copy \"trimmed/CLIP 14 — Subscriber Metro Interest Filter.mp4\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"CLIP 16 — Gallery Upload \\(Organiser Side\\).mp4\" -t 55 -c copy \"trimmed/CLIP 16 — Gallery Upload Organiser Side.mp4\" -y -loglevel error)",
       "Bash(\"C:\\\\Users\\\\Niroshana\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -m pip install psycopg2-binary --quiet)",
       "Bash(\"C:\\\\Users\\\\Niroshana\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python310\\\\python.exe\" -)",
       "WebFetch(domain:www.youtube.com)",
       "Bash(mkdir -p \"c:/tmp/brand-analysis\")",
-      "Bash(ffmpeg -ss 0 -i \"trimmed/CLIP 00A \u2014 LankaConnect Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/lc-landing.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 2 -i \"trimmed/CLIP 00B \u2014 LankaEvents Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/le-landing.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 1 -i \"trimmed/CLIP 01 \u2014 Event Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/event-page.jpg\" -y -loglevel error)",
-      "Bash(ffmpeg -ss 0 -i \"trimmed/CLIP 00 \u2014 Explore Events.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/explore.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"trimmed/CLIP 00A — LankaConnect Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/lc-landing.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 2 -i \"trimmed/CLIP 00B — LankaEvents Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/le-landing.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 1 -i \"trimmed/CLIP 01 — Event Landing Page.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/event-page.jpg\" -y -loglevel error)",
+      "Bash(ffmpeg -ss 0 -i \"trimmed/CLIP 00 — Explore Events.mp4\" -frames:v 1 -q:v 2 \"c:/tmp/brand-analysis/explore.jpg\" -y -loglevel error)",
       "Read(//c/Users/Niroshana/AppData/Local/Microsoft/Windows/Fonts/**)",
       "Read(//c/Windows/Fonts/**)",
-      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00 \u2014 Explore Events.mp4\")",
-      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00A \u2014 LankaConnect Landing Page.mp4\")",
-      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00B \u2014 LankaEvents Landing Page.mp4\")",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00 — Explore Events.mp4\")",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00A — LankaConnect Landing Page.mp4\")",
+      "Bash(ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"trimmed/CLIP 00B — LankaEvents Landing Page.mp4\")",
       "Bash(mv slide_13_free.png slide_29_free.png)",
       "Bash(mv slide_14_montage.png slide_30_montage.png)",
       "Bash(mv slide_15_outro.png slide_31_outro.png)",
@@ -389,7 +389,8 @@
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=ab\" -w \"\\\\nHTTP=%{http_code}\\\\n\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=cleveland-test\" -w \"  HTTP=%{http_code}\\\\n\")",
       "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/check-slug?slug=events\" -w \"  HTTP=%{http_code}\\\\n\")",
-      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/no-such-slug\" -w \"  HTTP=%{http_code}\\\\n\")"
+      "Bash(curl -s \"https://lankaconnect-api-staging.politebay-79d6e8a2.eastus2.azurecontainerapps.io/api/events/by-slug/no-such-slug\" -w \"  HTTP=%{http_code}\\\\n\")",
+      "Bash(awk 'NR>=18 && NR<=60' docs/PROGRESS_TRACKER.md)"
     ],
     "deny": [
       "Bash(rm -rf /)",
@@ -476,7 +477,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/bash -c 'INPUT=$(cat); CUSTOM=$(echo \"$INPUT\" | jq -r \".custom_instructions // \\\"\\\"\"); echo \"\ud83d\udd04 PreCompact Guidance:\"; echo \"\ud83d\udccb IMPORTANT: Review CLAUDE.md in project root for:\"; echo \"   \u2022 54 available agents and concurrent usage patterns\"; echo \"   \u2022 Swarm coordination strategies (hierarchical, mesh, adaptive)\"; echo \"   \u2022 SPARC methodology workflows with batchtools optimization\"; echo \"   \u2022 Critical concurrent execution rules (GOLDEN RULE: 1 MESSAGE = ALL OPERATIONS)\"; if [ -n \"$CUSTOM\" ]; then echo \"\ud83c\udfaf Custom compact instructions: $CUSTOM\"; fi; echo \"\u2705 Ready for compact operation\"'"
+            "command": "/bin/bash -c 'INPUT=$(cat); CUSTOM=$(echo \"$INPUT\" | jq -r \".custom_instructions // \\\"\\\"\"); echo \"🔄 PreCompact Guidance:\"; echo \"📋 IMPORTANT: Review CLAUDE.md in project root for:\"; echo \"   • 54 available agents and concurrent usage patterns\"; echo \"   • Swarm coordination strategies (hierarchical, mesh, adaptive)\"; echo \"   • SPARC methodology workflows with batchtools optimization\"; echo \"   • Critical concurrent execution rules (GOLDEN RULE: 1 MESSAGE = ALL OPERATIONS)\"; if [ -n \"$CUSTOM\" ]; then echo \"🎯 Custom compact instructions: $CUSTOM\"; fi; echo \"✅ Ready for compact operation\"'"
           }
         ]
       },
@@ -485,7 +486,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/bin/bash -c 'echo \"\ud83d\udd04 Auto-Compact Guidance (Context Window Full):\"; echo \"\ud83d\udccb CRITICAL: Before compacting, ensure you understand:\"; echo \"   \u2022 All 54 agents available in .claude/agents/ directory\"; echo \"   \u2022 Concurrent execution patterns from CLAUDE.md\"; echo \"   \u2022 Batchtools optimization for 300% performance gains\"; echo \"   \u2022 Swarm coordination strategies for complex tasks\"; echo \"\u26a1 Apply GOLDEN RULE: Always batch operations in single messages\"; echo \"\u2705 Auto-compact proceeding with full agent context\"'"
+            "command": "/bin/bash -c 'echo \"🔄 Auto-Compact Guidance (Context Window Full):\"; echo \"📋 CRITICAL: Before compacting, ensure you understand:\"; echo \"   • All 54 agents available in .claude/agents/ directory\"; echo \"   • Concurrent execution patterns from CLAUDE.md\"; echo \"   • Batchtools optimization for 300% performance gains\"; echo \"   • Swarm coordination strategies for complex tasks\"; echo \"⚡ Apply GOLDEN RULE: Always batch operations in single messages\"; echo \"✅ Auto-compact proceeding with full agent context\"'"
           }
         ]
       }

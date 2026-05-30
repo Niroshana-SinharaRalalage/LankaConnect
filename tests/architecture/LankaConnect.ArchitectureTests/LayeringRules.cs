@@ -60,7 +60,8 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void BuildingBlocks_Contracts_HasNoLankaConnectDependencies()
     {
-        var assembly = typeof(BuildingBlocks.Contracts.AssemblyMarker).Assembly;
+        // W2.7 (2026-05-30) — AssemblyMarker placeholder removed; anchor on the real IntegrationEventBase now.
+        var assembly = typeof(BuildingBlocks.Contracts.IntegrationEvents.IntegrationEventBase).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

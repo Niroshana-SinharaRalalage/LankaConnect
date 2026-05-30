@@ -707,9 +707,14 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - **Acceptance**: ✅ cross-cutting infrastructure ready; observability live before any module work
 
 ### W2.7 — Extract BuildingBlocks.Contracts
-- [ ] **Action**: Implement `IntegrationEventBase`, `IntegrationEventV1` versioning convention
-- [ ] **NEW**: define `IIntegrationEventDispatcher` and contract for cross-module event publishing
-- **Acceptance**: contracts package referenceable by future modules
+- [x] **W2.7 (2026-05-30)**: cross-module integration-event contracts landed in `src/BuildingBlocks/BuildingBlocks.Contracts/IntegrationEvents/`:
+  - `IntegrationEventBase` — abstract record with `EventId` (Guid), `OccurredOnUtc` (DateTimeOffset), `EventType` (AssemblyQualifiedName), virtual `Version` (defaults to 1)
+  - `IIntegrationEventV1` — marker interface declaring schema version 1; convention `IIntegrationEventV2+` for breaking changes
+  - `IIntegrationEventDispatcher` — typed publish API `Task PublishAsync(IntegrationEventBase, CancellationToken)` for module authors; concrete impl belongs to BuildingBlocks.Infrastructure (next; not in this commit's scope)
+- [x] **W2.7 tests**: new `LankaConnect.BuildingBlocks.Contracts.Tests` project — 17/17 GREEN (record value-equality, EventId uniqueness, AQN routing, V1 marker convention, contract shape pinned via reflection)
+- [x] **W2.7 ArchTest anchor**: switched Contracts anchor from `AssemblyMarker` placeholder to `typeof(IntegrationEventBase)`; removed AssemblyMarker.cs; existing rule `BuildingBlocks_Contracts_HasNoLankaConnectDependencies` still GREEN (Contracts has zero LankaConnect ProjectReferences by design)
+- [ ] **W2.7 follow-up (deferred)**: AllInOne concrete `IIntegrationEventDispatcher` impl in BuildingBlocks.Infrastructure (enqueue → outbox → MediatR publish) — small task once a module needs cross-module publish. Existing Infrastructure `IIntegrationEventDispatcher` (string-based, used by OutboxProcessor as consume-side) is a separate concern; rename/retype deferred to avoid risky surgery
+- **Acceptance**: ✅ contracts package referenceable by future modules; ABI is the cross-module wire format
 
 ### W2.8 — API baseline regression run
 - [ ] **Action**: Run `tests/api-baseline/run-baseline-regression.sh` against staging

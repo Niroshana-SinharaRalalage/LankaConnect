@@ -2203,6 +2203,70 @@ export class EventsRepository {
     return await apiClient.put<void>(`${this.basePath}/${eventId}/add-on-config`, request);
   }
 
+  // ==================== Phase 6A.156: Sponsorship Packages (Organizer CRUD) ====================
+  //
+  // Catalogue half of the packaged-sponsorship feature. Buyer purchase + public
+  // read endpoints land in 6A.157. Every endpoint here is organizer-gated.
+
+  async getSponsorshipPackages(
+    eventId: string,
+  ): Promise<import('../types/events.types').SponsorshipPackageDto[]> {
+    return await apiClient.get<import('../types/events.types').SponsorshipPackageDto[]>(
+      `${this.basePath}/${eventId}/sponsorship-packages`,
+    );
+  }
+
+  async createSponsorshipPackage(
+    eventId: string,
+    request: import('../types/events.types').CreateSponsorshipPackageRequest,
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/sponsorship-packages`,
+      request,
+    );
+  }
+
+  async updateSponsorshipPackage(
+    eventId: string,
+    packageId: string,
+    request: import('../types/events.types').UpdateSponsorshipPackageRequest,
+  ): Promise<void> {
+    return await apiClient.put<void>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}`,
+      request,
+    );
+  }
+
+  async deleteSponsorshipPackage(eventId: string, packageId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsorship-packages/${packageId}`);
+  }
+
+  /**
+   * Uploads (or replaces) the display image for a sponsorship package.
+   * Server deletes any prior blob best-effort after persisting the new one.
+   */
+  async uploadSponsorshipPackageImage(
+    eventId: string,
+    packageId: string,
+    file: File,
+  ): Promise<import('../types/events.types').SetSponsorshipPackageImageResult> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').SetSponsorshipPackageImageResult>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/image`,
+      formData,
+    );
+  }
+
+  /**
+   * Clears the display image from a sponsorship package. Idempotent.
+   */
+  async deleteSponsorshipPackageImage(eventId: string, packageId: string): Promise<void> {
+    await apiClient.delete(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/image`,
+    );
+  }
+
   // ==================== Phase 6A.133: Co-Organizer Management ====================
 
   /**

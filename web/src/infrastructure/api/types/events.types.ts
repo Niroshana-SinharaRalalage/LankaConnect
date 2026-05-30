@@ -2412,6 +2412,70 @@ export interface SponsorConfigurationDto {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  /**
+   * Phase 6A.156 — gates whether organizer-defined sponsorship packages
+   * (Gold/Silver/Bronze tiers) are exposed on the public event page. Default
+   * false; existing rows missing this field deserialize to false (backward-
+   * compatible for all pre-6A.156 events).
+   */
+  enablePackages?: boolean;
+}
+
+/**
+ * Phase 6A.156 — organizer-defined sponsorship package (Gold / Silver /
+ * Bronze tiers). Catalogue projection mirrored from `AddOnDefinitionDto`.
+ * Buyer transactions live on the `Sponsor` aggregate (FK + snapshots,
+ * populated in 6A.157+).
+ */
+export interface SponsorshipPackageDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  priceAmount: number;
+  priceCurrency: string;
+  quantityLimit?: number | null;
+  quantitySold: number;
+  remainingStock?: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
+  tier?: string | null;
+  perks: string[];
+  includedTicketCount: number;
+  createdAt: string; // ISO 8601
+  updatedAt?: string | null;
+}
+
+export interface CreateSponsorshipPackageRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  tier?: string | null;
+  perks?: string[];
+  includedTicketCount: number;
+}
+
+export interface UpdateSponsorshipPackageRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  tier?: string | null;
+  perks?: string[];
+  includedTicketCount: number;
+  isActive: boolean;
+}
+
+export interface SetSponsorshipPackageImageResult {
+  imageUrl: string;
+  imageBlobName: string;
 }
 
 export interface SponsorDto {
@@ -2705,6 +2769,12 @@ export interface UpdateSponsorConfigRequest {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  /**
+   * Phase 6A.156 — gates the organizer-defined sponsorship-package grid
+   * (Gold/Silver/Bronze) on the public event page. Default false on the
+   * backend for backward-compatibility with pre-6A.156 clients.
+   */
+  enablePackages?: boolean;
 }
 
 export interface UpdateAddOnConfigRequest {

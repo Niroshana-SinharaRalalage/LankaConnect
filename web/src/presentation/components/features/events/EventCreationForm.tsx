@@ -133,6 +133,8 @@ export function EventCreationForm() {
   const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(null);
   const [sponsorMessage, setSponsorMessage] = useState('');
   const [showSponsorList, setShowSponsorList] = useState(false);
+  // Phase 6A.156 — gates the public sponsorship-package grid (Gold/Silver/Bronze tiers)
+  const [enableSponsorPackages, setEnableSponsorPackages] = useState(false);
   // Phase 6A.144 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
 
   // Add-On configuration state
@@ -574,6 +576,7 @@ export function EventCreationForm() {
             minSponsorAmount: minSponsorAmount,
             sponsorMessage: sponsorMessage || null,
             showSponsorList,
+            enablePackages: enableSponsorPackages,
           })
         );
       }
@@ -1862,6 +1865,8 @@ export function EventCreationForm() {
             onSponsorMessageChange={setSponsorMessage}
             showSponsorList={showSponsorList}
             onShowSponsorListChange={setShowSponsorList}
+            enablePackages={enableSponsorPackages}
+            onEnablePackagesChange={setEnableSponsorPackages}
           />
         </CollapsibleSection>
       </div>

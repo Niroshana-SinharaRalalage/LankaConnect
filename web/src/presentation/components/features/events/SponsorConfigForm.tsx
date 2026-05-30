@@ -21,6 +21,14 @@ interface SponsorConfigFormProps {
   /** Whether to show sponsor list publicly */
   showSponsorList: boolean;
   onShowSponsorListChange: (show: boolean) => void;
+  /**
+   * Phase 6A.156 — whether to expose the organizer-defined sponsorship-package
+   * grid (Gold/Silver/Bronze tiers) on the public event page. Optional for
+   * backward compatibility with callers that pre-date 6A.156 — when undefined,
+   * the toggle is hidden entirely.
+   */
+  enablePackages?: boolean;
+  onEnablePackagesChange?: (enabled: boolean) => void;
 }
 
 /**
@@ -41,6 +49,8 @@ export function SponsorConfigForm({
   onSponsorMessageChange,
   showSponsorList,
   onShowSponsorListChange,
+  enablePackages,
+  onEnablePackagesChange,
 }: SponsorConfigFormProps) {
   const showTypeWarning = isEnabled && !acceptMoneySponsors && !acceptItemSponsors;
 
@@ -171,6 +181,29 @@ export function SponsorConfigForm({
                 </p>
               </div>
             </div>
+
+            {/* Phase 6A.156 — Enable sponsorship packages */}
+            {onEnablePackagesChange && (
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  id="enablePackages"
+                  checked={enablePackages ?? false}
+                  onChange={(e) => onEnablePackagesChange(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div>
+                  <label htmlFor="enablePackages" className="text-sm font-medium text-gray-700">
+                    Enable sponsorship packages (Gold / Silver / Bronze tiers)
+                  </label>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Define tiered sponsorships with perks and bundled tickets. Manage
+                    packages in the &ldquo;Packages&rdquo; tab under Attendees &amp; Finance.
+                    Buyer-facing purchase lands in a follow-up phase.
+                  </p>
+                </div>
+              </div>
+            )}
         </div>
       )}
     </div>

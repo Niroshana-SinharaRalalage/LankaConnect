@@ -1,10 +1,12 @@
 using LankaConnect.API.Extensions;
 using LankaConnect.Application.Events.Commands.ClearSponsorshipPackageImage;
+using LankaConnect.Application.Events.Commands.CreatePackageSponsor;
 using LankaConnect.Application.Events.Commands.CreateSponsorshipPackage;
 using LankaConnect.Application.Events.Commands.DeleteSponsorshipPackage;
 using LankaConnect.Application.Events.Commands.SetSponsorshipPackageImage;
 using LankaConnect.Application.Events.Commands.UpdateSponsorshipPackage;
 using LankaConnect.Application.Events.Common;
+using LankaConnect.Application.Events.Queries.GetActiveSponsorshipPackages;
 using LankaConnect.Application.Events.Queries.GetEventById;
 using LankaConnect.Application.Events.Queries.GetEventSponsorshipPackages;
 using MediatR;
@@ -57,6 +59,81 @@ public class SponsorshipPackagesController : BaseController<SponsorshipPackagesC
         if (authResult != null) return authResult;
 
         var result = await Mediator.Send(new GetEventSponsorshipPackagesQuery(eventId, IncludeInactive: true));
+        return HandleResult(result);
+    }
+
+    // ──────────────────────────────────────────────
+    // Phase 6A.157 — PUBLIC (anonymous) buyer endpoints
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Phase 6A.157 — anonymous list of buyable sponsorship packages for an
+    /// event. Server-side filters: event Published + SponsorConfig.IsEnabled
+    /// + EnablePackages + package.IsActive + (unlimited OR has remaining
+    /// stock). Any gate failure returns an empty list (NOT an error) so the
+    /// public FE stays quiet for events that haven't opted into packages.
+    /// </summary>
+    [HttpGet("active")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(IReadOnlyList<SponsorshipPackagePublicDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetActiveSponsorshipPackages(Guid eventId)
+    {
+        Logger.LogInformation("GetActiveSponsorshipPackages: EventId={EventId}", eventId);
+
+        var result = await Mediator.Send(new GetActiveSponsorshipPackagesQuery(eventId));
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.157 — anonymous purchase of a sponsorship package. Atomically
+    /// reserves stock, snapshots package fields onto the Sponsor row, then
+    /// either creates a Stripe Checkout session (paid packages) or completes
+    /// the sponsor immediately with a sentinel intent (free $0 packages).
+    ///
+    /// Returns <see cref="CreatePackageSponsorResult"/>: <c>CheckoutUrl</c>
+    /// (Stripe URL for paid; SuccessUrl directly for free) + <c>SponsorId</c>
+    /// (so the FE can attach a buyer logo to the Pending sponsor BEFORE the
+    /// Stripe redirect — mirrors 6A.145's widened CreateMoneySponsor pattern).
+    ///
+    /// On any post-stock-reservation failure, stock is restored idempotently
+    /// per the same recovery pattern as PurchaseAddOnCommandHandler.
+    /// </summary>
+    [HttpPost("{packageId}/purchase")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(CreatePackageSponsorResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> PurchaseSponsorshipPackage(
+        Guid eventId,
+        Guid packageId,
+        [FromBody] CreatePackageSponsorRequest request)
+    {
+        Logger.LogInformation(
+            "PurchaseSponsorshipPackage: EventId={EventId}, PackageId={PackageId}, BuyerEmail={BuyerEmail}, BuyerOrg={BuyerOrg}",
+            eventId, packageId, request.BuyerEmail, request.BuyerOrganization);
+
+        // Allow either anonymous OR authenticated buyers. UserId snapshot lets
+        // logged-in buyers see their package sponsorships in "My Sponsorships"
+        // later; nullable so anonymous flows work without an account.
+        var userId = User.Identity?.IsAuthenticated == true
+            ? User.TryGetUserId()
+            : null;
+
+        var command = new CreatePackageSponsorCommand(
+            EventId: eventId,
+            PackageId: packageId,
+            BuyerName: request.BuyerName,
+            BuyerEmail: request.BuyerEmail,
+            BuyerPhone: request.BuyerPhone,
+            BuyerOrganization: request.BuyerOrganization,
+            BuyerNotes: request.BuyerNotes,
+            SuccessUrl: request.SuccessUrl,
+            CancelUrl: request.CancelUrl,
+            UserId: userId);
+
+        var result = await Mediator.Send(command);
         return HandleResult(result);
     }
 
@@ -284,6 +361,23 @@ public class CreateSponsorshipPackageRequest
     public string? Tier { get; init; }
     public List<string>? Perks { get; init; }
     public int IncludedTicketCount { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.157 — request body for the public package-purchase endpoint.
+/// Buyer fields are snapshotted onto the Sponsor row by
+/// <see cref="CreatePackageSponsorCommand"/>; Success/Cancel URLs are forwarded
+/// to Stripe Checkout for paid packages and used directly for free ones.
+/// </summary>
+public class CreatePackageSponsorRequest
+{
+    public required string BuyerName { get; init; }
+    public required string BuyerEmail { get; init; }
+    public string? BuyerPhone { get; init; }
+    public string? BuyerOrganization { get; init; }
+    public string? BuyerNotes { get; init; }
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
 }
 
 /// <summary>

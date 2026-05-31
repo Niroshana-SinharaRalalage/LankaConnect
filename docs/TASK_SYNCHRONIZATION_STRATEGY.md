@@ -3,7 +3,24 @@
 
 **⚠️ CRITICAL**: See [PHASE_6A_MASTER_INDEX.md](./PHASE_6A_MASTER_INDEX.md) for phase number management and cross-reference rules. **Phase-number availability requires a FOUR-source check**: master index + git log --grep + branch names + `find docs -name "MASTER_TODO_PHASE_*"`. Memory `feedback_phase_number_check.md` enforces this after a 2026-05-16 incident where I declared 6A.148 "free" without the fourth check, missed the sibling agent's `MASTER_TODO_PHASE_6A_148_REFUND_APPROVAL_WORKFLOW_2026_05_16.md` reservation doc, and had to back out and renumber to 6A.149.
 
-## 🚀 CURRENT SESSION STATUS — Phase 6A.156-fix-3 show Sponsorship Packages table on Event Details tab (UI display gap)
+## 🚀 CURRENT SESSION STATUS — Phase 6A.157 Sponsorship Packages public purchase flow (buyer-facing surface)
+**Date**: 2026-05-31
+**Session**: Closes the buyer-side gap left open at 6A.156 design time. Architect-paired RCA across 4 passes; classified as **feature-missing for buyer side** (backend/API/EF schema from 6A.156 stays untouched; only the [3/6] email-template seed adds a row).
+**Progress**: ✅ **6 COMMITS PUSHED, deploy pending**.
+- Branch: `feat/phase-6a-157-sponsorship-public-purchase` off main
+- Domain (1/6) `101c73f1`: Sponsor.CreatePackageSponsor + CompletePackagePayment + mutual guards + PackageSponsorCompletedEvent
+- App+Infra (2/6) `2c508d2c`: command + handler (mirrors PurchaseAddOnCommandHandler byte-for-byte) + query + Stripe service method + webhook handler + dispatcher case + DI
+- Email (3/6) `a7fd26bc`: migration `Phase6A157_AddPackageSponsorEmailTemplate` + params + handler subscribing to new event
+- API (4/6) `04949f4e`: SponsorshipPackagesController public endpoints + CreatePackageSponsorRequest DTO + 7 reflection contract tests GREEN
+- FE (5/6) `6f21faf8`: types + repo + hooks + PurchaseSponsorshipPackageModal (portal'd + form-nesting safe per 6A.156-fix-2 contract) + PublicSponsorshipPackageCard + 14 modal RTL tests GREEN
+- Integration (6/6) `05a1b7ee`: SponsorSection package grid ABOVE custom-amount toggle + divider + modal mount; two-layer gate; 6 SponsorSection regression tests GREEN
+- Tests: Application 2846/2852 + Infrastructure 354/354 + all 20 events vitest files 181/181 GREEN + TypeScript clean + Next build clean + dotnet build clean
+- **Master TODO**: [docs/MASTER_TODO_PHASE_6A_157_SPONSORSHIP_PACKAGES_PUBLIC_PURCHASE_2026_05_31.md](./MASTER_TODO_PHASE_6A_157_SPONSORSHIP_PACKAGES_PUBLIC_PURCHASE_2026_05_31.md) (architect-approved 4 passes, ~16 locked decisions including user pivots: tickets informational only — organizer handles admission off-platform; package buys produce Sponsor rows distinct from package definitions so refunds match by StripePaymentIntentId)
+**Pending**: deploy-staging.yml (backend) + deploy-ui-staging.yml (UI) in same chain per memory `feedback_deploy_backend_and_ui_together` → staging API smoke (auth + `GET /active` + `POST /purchase` paid AND free) → operator browser UAT (public event detail page → package cards above custom form → Stripe redirect → confirmation email).
+
+---
+
+## Earlier Session — Phase 6A.156-fix-3 show Sponsorship Packages table on Event Details tab (UI display gap)
 **Date**: 2026-05-30
 **Session**: Operator UAT on 6A.156-fix-2 confirmed modal-flash bug RESOLVED (3 packages created successfully). They raised two new gaps: (1) buyer flow on public event detail page can't select packages → **feature-missing** (6A.157 scope, deferred by design); (2) Event Details tab's Sponsor Configuration section lacks the Sponsorship Packages table that mirrors the Add-On Items table under Add-On Configuration → **UI display gap**, ships now. Architect locked Option A: ship Gap 2 as `6A.156-fix-3` on existing branch, reserve Gap 1 as 6A.157 on fresh branch with its own RCA cycle. Backend verified correct via API (`enablePackages: true` + 3 packages persisted).
 **Progress**: ✅ **One commit `c12b1630` pushed, frontend deploy run 26699318913 dispatched, operator re-UAT pending**.

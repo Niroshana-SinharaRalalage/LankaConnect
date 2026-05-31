@@ -2478,6 +2478,64 @@ export interface SetSponsorshipPackageImageResult {
   imageBlobName: string;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 6A.157 — public/buyer-facing sponsorship package types
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Phase 6A.157 — public/buyer DTO returned by `GET /sponsorship-packages/active`.
+ * Strips organizer-only fields (quantitySold, quantityLimit, imageBlobName,
+ * audit, isActive). Mirrors the backend `SponsorshipPackagePublicDto`.
+ */
+export interface SponsorshipPackagePublicDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  priceAmount: number;
+  priceCurrency: string;
+  /** Null = unlimited; 0 = sold out (server filters sold-out rows but the field is exposed for client-side defensive UX). */
+  remainingStock?: number | null;
+  isSoldOut: boolean;
+  sortOrder: number;
+  imageUrl?: string | null;
+  tier?: string | null;
+  perks: string[];
+  /** Informational only — system does NOT issue tickets for package sponsors (organizer handles admission off-platform per 6A.157 final scope). */
+  includedTicketCount: number;
+}
+
+/**
+ * Phase 6A.157 — request body for `POST /sponsorship-packages/{packageId}/purchase`.
+ * Mirrors the backend `CreatePackageSponsorRequest`. Buyer fields snapshot
+ * onto the new Sponsor row; success/cancel URLs forwarded to Stripe Checkout
+ * (paid packages) or used directly (free packages).
+ */
+export interface CreatePackageSponsorRequest {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  buyerOrganization?: string | null;
+  buyerNotes?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * Phase 6A.157 — response from `POST /sponsorship-packages/{packageId}/purchase`.
+ * Mirrors the backend `CreatePackageSponsorResult`.
+ *
+ * `checkoutUrl` is the Stripe Checkout URL for paid packages, or the
+ * SuccessUrl directly for free $0 packages — caller redirects to it either
+ * way. `sponsorId` is the new Pending Sponsor row so the FE can attach a
+ * buyer logo via `POST /sponsors/{id}/image` BEFORE the Stripe redirect
+ * (mirrors 6A.145's widened CreateMoneySponsor pattern).
+ */
+export interface CreatePackageSponsorResult {
+  checkoutUrl: string;
+  sponsorId: string;
+}
+
 export interface SponsorDto {
   id: string;
   eventId: string;

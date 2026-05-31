@@ -2267,6 +2267,38 @@ export class EventsRepository {
     );
   }
 
+  // ==================== Phase 6A.157: Public sponsorship package buyer endpoints ====================
+
+  /**
+   * Phase 6A.157 — anonymous list of buyable packages for an event. Server-
+   * filtered to Published + sponsors enabled + packages enabled + active +
+   * non-sold-out. Returns [] for non-opted-in events.
+   */
+  async getActiveSponsorshipPackages(
+    eventId: string,
+  ): Promise<import('../types/events.types').SponsorshipPackagePublicDto[]> {
+    return await apiClient.get<import('../types/events.types').SponsorshipPackagePublicDto[]>(
+      `${this.basePath}/${eventId}/sponsorship-packages/active`,
+    );
+  }
+
+  /**
+   * Phase 6A.157 — anonymous purchase of a sponsorship package. Returns
+   * `{ checkoutUrl, sponsorId }` — caller redirects to checkoutUrl (Stripe
+   * for paid, SuccessUrl directly for free) and may optionally use sponsorId
+   * to attach a buyer logo via `POST /sponsors/{id}/image` before redirect.
+   */
+  async purchaseSponsorshipPackage(
+    eventId: string,
+    packageId: string,
+    request: import('../types/events.types').CreatePackageSponsorRequest,
+  ): Promise<import('../types/events.types').CreatePackageSponsorResult> {
+    return await apiClient.post<import('../types/events.types').CreatePackageSponsorResult>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/purchase`,
+      request,
+    );
+  }
+
   // ==================== Phase 6A.133: Co-Organizer Management ====================
 
   /**

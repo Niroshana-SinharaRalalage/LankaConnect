@@ -11,13 +11,17 @@ import {
   usePublicEventSponsors,  // Phase 6A.150: PII-free public read for the in-section sponsor wall
   useUploadSponsorImage,
 } from '@/presentation/hooks/useSponsors';
+import { usePublicSponsorshipPackages } from '@/presentation/hooks/useSponsorshipPackages';  // Phase 6A.157
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type {
   SponsorConfigurationDto,
   SponsorDto,
   PublicSponsorDto,  // Phase 6A.150
+  SponsorshipPackagePublicDto,  // Phase 6A.157
 } from '@/infrastructure/api/types/events.types';
 import { EditSponsorModal } from './EditSponsorModal';
+import { PublicSponsorshipPackageCard } from './PublicSponsorshipPackageCard';  // Phase 6A.157
+import { PurchaseSponsorshipPackageModal } from './PurchaseSponsorshipPackageModal';  // Phase 6A.157
 
 type SponsorMode = 'money' | 'item';
 
@@ -38,6 +42,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   const [mode, setMode] = useState<SponsorMode>(defaultMode);
   // Phase 6A.151 — sponsor self-edit modal state.
   const [editingMySponsor, setEditingMySponsor] = useState<SponsorDto | null>(null);
+  // Phase 6A.157 — buyer purchase modal state. Null pkg = closed.
+  const [purchasingPackage, setPurchasingPackage] = useState<SponsorshipPackagePublicDto | null>(null);
 
   // Common fields
   const [sponsorName, setSponsorName] = useState('');
@@ -74,6 +80,14 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   // already filters to image-bearing confirmed sponsors and pre-sorts by
   // contribution magnitude — the response is exactly what we want to render.
   const { data: sponsorsResponse } = usePublicEventSponsors(eventId, sponsorConfig.isEnabled === true);
+
+  // Phase 6A.157 — public buyer-facing packages, gated on the EnablePackages
+  // flag. Server returns [] for events that haven't opted in (so the gate is
+  // belt-and-suspenders — the section below also self-hides on empty list).
+  const { data: publicPackages = [] } = usePublicSponsorshipPackages(
+    eventId,
+    sponsorConfig.isEnabled === true && sponsorConfig.enablePackages === true,
+  );
   const sponsorsWithImages: PublicSponsorDto[] = sponsorsResponse?.sponsors ?? [];
 
   const parsedAmount = parseFloat(amount) || 0;
@@ -266,6 +280,43 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/*
+       * Phase 6A.157 — sponsorship package grid (buyer-facing). Mounted ABOVE
+       * the custom-amount mode toggle per the user-locked decision in 6A.156:
+       * packages render as cards above the existing form so buyers see the
+       * curated tiers first and can fall back to a custom amount below.
+       *
+       * Self-gated on EnablePackages (via the query enabled flag) AND on
+       * non-empty list — events that haven't opted in OR have no active
+       * packages see the original UI completely unchanged (zero regression
+       * risk for non-packages sponsor flows).
+       */}
+      {sponsorConfig.enablePackages === true && publicPackages.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+            <Award className="h-4 w-4 text-amber-500" />
+            Sponsorship Packages
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {publicPackages.map((pkg) => (
+              <PublicSponsorshipPackageCard
+                key={pkg.id}
+                pkg={pkg}
+                onSelect={(selected) => setPurchasingPackage(selected)}
+              />
+            ))}
+          </div>
+          {/* Divider between curated packages and the free-form custom-amount form */}
+          <div className="mt-6 mb-2 flex items-center gap-3">
+            <div className="flex-1 h-px bg-neutral-200" />
+            <span className="text-xs text-neutral-500 uppercase tracking-wide">
+              Or choose your own amount
+            </span>
+            <div className="flex-1 h-px bg-neutral-200" />
           </div>
         </div>
       )}
@@ -586,6 +637,15 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
         open={editingMySponsor !== null}
         onClose={() => setEditingMySponsor(null)}
         onSaved={() => setEditingMySponsor(null)}
+      />
+
+      {/* Phase 6A.157 — buyer purchase modal. Portal'd to document.body so its
+          submit is isolated from any parent <form> (per 6A.156-fix-2 contract). */}
+      <PurchaseSponsorshipPackageModal
+        eventId={eventId}
+        pkg={purchasingPackage}
+        isOpen={purchasingPackage !== null}
+        onClose={() => setPurchasingPackage(null)}
       />
     </CollapsibleSection>
   );

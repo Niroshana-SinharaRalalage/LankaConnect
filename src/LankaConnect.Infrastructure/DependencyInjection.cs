@@ -497,6 +497,8 @@ public static class DependencyInjection
         services.AddScoped<ICollectionWebhookHandler, CollectionWebhookHandler>();
         services.AddScoped<ISponsorWebhookHandler, SponsorWebhookHandler>();
         services.AddScoped<IAddOnPurchaseWebhookHandler, AddOnPurchaseWebhookHandler>();
+        // Phase 6A.157 — sibling to ISponsorWebhookHandler for packaged sponsorships.
+        services.AddScoped<IPackageSponsorWebhookHandler, PackageSponsorWebhookHandler>();
 
         // Phase 6A.24: Ticket services for QR code and PDF generation
         services.AddScoped<IQrCodeService, QrCodeService>();

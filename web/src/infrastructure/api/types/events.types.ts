@@ -1224,6 +1224,9 @@ export interface AttendeeDto {
   gender?: Gender | null;
   // Phase 8: Optional ticket tier assignment for tiered events
   ticketTierId?: string | null;
+  // Phase 6A.161: Denormalized tier name for display (e.g. "VIP"). Null for
+  // single-tier/free/legacy registrations.
+  ticketTierName?: string | null;
 }
 
 /**
@@ -1698,6 +1701,10 @@ export interface EventAttendeeDto {
   // Computed Properties (computed on backend)
   mainAttendeeName: string;
   additionalAttendees: string;
+  // Phase 6A.161: Registration-level ticket-tier summary computed on backend.
+  // Single name when uniform ("VIP"), comma-joined when mixed ("VIP, General"),
+  // "—" when no attendee carries a tier. Never null/blank.
+  ticketTierSummary?: string | null;
 }
 
 /**

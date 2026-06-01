@@ -129,4 +129,26 @@ public class EventAttendeeDto
             return "—";
         }
     }
+
+    /// <summary>
+    /// Phase 6A.161: Registration-level ticket-tier summary for the Attendees table and exports.
+    /// Distinct, first-appearance-ordered tier names across this registration's attendees:
+    /// a single name when uniform ("VIP"), comma-joined when mixed ("VIP, General"), and the
+    /// em-dash "—" when no attendee carries a tier (single-tier/free/legacy events, or Mode B
+    /// head-count registrations with an empty Attendees list). Never returns null or blank.
+    /// Computed (not stored) so it can never drift from the per-attendee TicketTierName detail.
+    /// </summary>
+    public string TicketTierSummary
+    {
+        get
+        {
+            var tierNames = Attendees
+                .Where(a => !string.IsNullOrWhiteSpace(a.TicketTierName))
+                .Select(a => a.TicketTierName!.Trim())
+                .Distinct()
+                .ToList();
+
+            return tierNames.Count > 0 ? string.Join(", ", tierNames) : "—";
+        }
+    }
 }

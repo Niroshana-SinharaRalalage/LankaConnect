@@ -98,4 +98,11 @@ public record AttendeeDetailsDto
     public string Name { get; init; } = string.Empty;
     public AgeCategory? AgeCategory { get; init; } // Nullable to handle data integrity issues
     public Gender? Gender { get; init; }
+
+    // Phase 6A.161: Ticket tier the attendee was registered under. Denormalized name is
+    // already persisted per-attendee in the registrations.attendees JSONB (since migration
+    // 20260415203751_AddTicketTiers), so no join to ticket_tiers is needed to surface it.
+    // Nullable: null for single-tier events, free events, and legacy pre-tier registrations.
+    public Guid? TicketTierId { get; init; }
+    public string? TicketTierName { get; init; }
 }

@@ -130,7 +130,12 @@ public class GetEventAttendeesQueryHandler
                         {
                             Name = a.Name,
                             AgeCategory = a.AgeCategory, // DTO is nullable (Phase 6A.48)
-                            Gender = a.Gender
+                            Gender = a.Gender,
+                            // Phase 6A.161: surface the per-attendee ticket tier (denormalized name
+                            // lives in the same JSONB row, so this projects without any extra join).
+                            // Null for single-tier/free/legacy registrations.
+                            TicketTierId = a.TicketTierId,
+                            TicketTierName = a.TicketTierName
                         }).ToList(),
 
                         TotalAttendees = r.Attendees.Count(),
@@ -185,6 +190,15 @@ public class GetEventAttendeesQueryHandler
                         HasTicket = ticket != null
                     }
                 ).ToListAsync(cancellationToken);
+
+        // Phase 6A.161: Observability — how many registrations carry at least one ticket tier.
+        // Helps diagnose "tier column is empty" reports (single-tier/free/legacy events legitimately
+        // return zero here). Cheap in-memory scan over the already-materialised DTOs.
+        var registrationsWithTier = attendeeDtos.Count(d =>
+            d.Attendees.Any(a => !string.IsNullOrWhiteSpace(a.TicketTierName)));
+        _logger.LogInformation(
+            "GetEventAttendees: ticket-tier coverage - {WithTier}/{Total} registrations have a tier, EventId={EventId}",
+            registrationsWithTier, attendeeDtos.Count, request.EventId);
 
         // Phase 7E.7: Post-processing override for Mode B registrations. The custom JSONB
         // ValueConverter on Registration.HeadCount prevents SQL-side sub-field access, so we

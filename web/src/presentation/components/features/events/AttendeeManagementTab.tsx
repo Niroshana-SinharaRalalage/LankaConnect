@@ -546,6 +546,8 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                         <th className="text-left p-3 text-sm font-semibold text-neutral-700">Ticket Code</th>
                       </>
                     )}
+                    {/* Phase 6A.161: Ticket Tier column — unconditional (tiers exist on free events too) */}
+                    <th className="text-left p-3 text-sm font-semibold text-neutral-700">Ticket Tier</th>
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Status</th>
                     {/* Phase 6A.X: Actions column for resend confirmation */}
                     <th className="text-left p-3 text-sm font-semibold text-neutral-700">Actions</th>
@@ -625,6 +627,9 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                               </td>
                             </>
                           )}
+                          {/* Phase 6A.161: Ticket Tier summary (collapsed row). Backend computes
+                              "VIP" / "VIP, General" / "—"; fall back defensively to em-dash. */}
+                          <td className="p-3 text-sm text-neutral-600">{attendee.ticketTierSummary || '—'}</td>
                           <td className="p-3">
                             <Badge style={{ backgroundColor: getStatusColor(attendee.status), color: 'white' }}>
                               {getRegistrationStatusLabel(attendee.status)}
@@ -668,9 +673,9 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                         {/* Expanded Row - Attendee Details */}
                         {isExpanded && (
                           <tr className="bg-neutral-50 border-b border-neutral-100">
-                            {/* Phase 6A.X: Updated colSpan for new columns - Ticket Code (paid) + Actions (all) */}
-                            {/* Free events: 10 columns (added Actions), Paid events: 13 columns (added Ticket Code + Actions) */}
-                            <td colSpan={isFreeEvent ? 10 : 13} className="p-6">
+                            {/* Phase 6A.161: colSpan bumped +1 for the new Ticket Tier column (all event types) */}
+                            {/* Free events: 11 columns, Paid events: 14 columns (Ticket Code + Ticket Tier + Actions) */}
+                            <td colSpan={isFreeEvent ? 11 : 14} className="p-6">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Left Column - Attendee Details */}
                                 <div>
@@ -687,6 +692,12 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                                             {person.gender && (
                                               <Badge className="bg-purple-100 text-purple-700 text-xs">
                                                 {Gender[person.gender]}
+                                              </Badge>
+                                            )}
+                                            {/* Phase 6A.161: per-attendee ticket tier (expanded detail) */}
+                                            {person.ticketTierName && (
+                                              <Badge className="bg-amber-100 text-amber-800 text-xs">
+                                                {person.ticketTierName}
                                               </Badge>
                                             )}
                                           </div>
@@ -748,9 +759,9 @@ export function AttendeeManagementTab({ eventId }: AttendeeManagementTabProps) {
                 {attendees.length > 0 && (
                   <tfoot className="sticky bottom-0 bg-neutral-100 border-t-2 border-neutral-300">
                     <tr>
-                      {/* Phase 6A.X: Updated colSpan for new columns - Ticket Code (paid) + Actions (all) */}
-                      {/* Free events: 10 columns (added Actions), Paid events: 13 columns (added Ticket Code + Actions) */}
-                      <td colSpan={isFreeEvent ? 10 : 13} className="p-4">
+                      {/* Phase 6A.161: colSpan bumped +1 for the new Ticket Tier column (all event types) */}
+                      {/* Free events: 11 columns, Paid events: 14 columns (Ticket Code + Ticket Tier + Actions) */}
+                      <td colSpan={isFreeEvent ? 11 : 14} className="p-4">
                         <div className="flex justify-end items-center gap-8">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-neutral-700">Total Registrations:</span>

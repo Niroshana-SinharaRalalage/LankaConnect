@@ -1,5 +1,7 @@
 using LankaConnect.API.Extensions;
+using LankaConnect.Application.Events.Commands.ClearSponsorBrochure;
 using LankaConnect.Application.Events.Commands.ClearSponsorImage;
+using LankaConnect.Application.Events.Commands.SetSponsorBrochure;
 using LankaConnect.Application.Events.Commands.CreateOffPlatformSponsor;
 using LankaConnect.Application.Events.Commands.CreateSponsor;
 using LankaConnect.Application.Events.Commands.SetSponsorImage;
@@ -196,6 +198,87 @@ public class SponsorsController : BaseController<SponsorsController>
         }
 
         var result = await Mediator.Send(new ClearSponsorImageCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+        });
+        return result.IsSuccess ? NoContent() : HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — uploads (or replaces) a sponsor's brochure/flyer image
+    /// (the optional sibling slot to the logo). Mirrors <see cref="SetSponsorImage"/>
+    /// authz model exactly: public access by sponsor-id knowledge (the ID was just
+    /// returned from the create-sponsor command); same 5MB cap + MIME guards
+    /// enforced server-side by <c>IImageService.ValidateImage</c>.
+    /// </summary>
+    [HttpPost("{sponsorId:guid}/brochure")]
+    [AllowAnonymous]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SetSponsorBrochureResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSponsorBrochure(
+        Guid eventId,
+        Guid sponsorId,
+        IFormFile image)
+    {
+        Logger.LogInformation(
+            "SetSponsorBrochure: EventId={EventId}, SponsorId={SponsorId}, FileName={FileName}, Size={Size}",
+            eventId, sponsorId, image?.FileName, image?.Length);
+
+        if (image is null || image.Length == 0)
+            return BadRequest(new ProblemDetails { Title = "A brochure image file is required." });
+
+        using var ms = new MemoryStream();
+        await image.CopyToAsync(ms);
+
+        var command = new SetSponsorBrochureCommand
+        {
+            EventId = eventId,
+            SponsorId = sponsorId,
+            ImageData = ms.ToArray(),
+            FileName = image.FileName,
+        };
+
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — clears a sponsor's brochure. Idempotent. Mirrors
+    /// <see cref="ClearSponsorImage"/> authz model verbatim: allowed if caller is the
+    /// sponsor's owner OR organizer of the parent event.
+    /// </summary>
+    [HttpDelete("{sponsorId:guid}/brochure")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSponsorBrochure(Guid eventId, Guid sponsorId)
+    {
+        Logger.LogInformation(
+            "ClearSponsorBrochure: EventId={EventId}, SponsorId={SponsorId}", eventId, sponsorId);
+
+        // Phase 6A.151 H9 sponsor-self pre-check, lifted from ClearSponsorImage.
+        var currentUserId = User.TryGetUserId();
+        var sponsor = await _sponsorRepository.GetByIdAsync(sponsorId);
+        if (sponsor != null && sponsor.EventId == eventId
+            && sponsor.SponsorUserId.HasValue
+            && currentUserId.HasValue
+            && sponsor.SponsorUserId.Value == currentUserId.Value)
+        {
+            Logger.LogInformation(
+                "ClearSponsorBrochure: sponsor-self path — SponsorUserId={SponsorUserId}",
+                sponsor.SponsorUserId);
+        }
+        else
+        {
+            var authResult = await VerifyOrganizerAsync(eventId);
+            if (authResult != null) return authResult;
+        }
+
+        var result = await Mediator.Send(new ClearSponsorBrochureCommand
         {
             EventId = eventId,
             SponsorId = sponsorId,

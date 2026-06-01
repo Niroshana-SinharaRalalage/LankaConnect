@@ -226,6 +226,119 @@ describe('SponsorSection — Phase 6A.157 package integration', () => {
     expect(screen.getByText(/Sponsor — Gold Sponsor/i)).toBeInTheDocument();
   });
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // Phase 6A.157-fix-1 [3/3] — default-collapse the custom-amount form when
+  // curated packages are present. Operator UAT 2026-06-01: "We can collapse
+  // the 'Or choose your own amount' section by default. If the user is
+  // interested, he/she will expand it and work on it." Progressive
+  // disclosure — packages are the primary CTA; custom amount is fallback.
+  //
+  // The form MUST stay open by default when no packages render (either
+  // EnablePackages off or empty list) — in those cases the custom-amount
+  // form is the only sponsor surface and must be visible.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('default-collapses the custom-amount form when EnablePackages ON AND packages returned', () => {
+    mockUsePublicSponsorshipPackages.mockReturnValue({
+      data: [makePkg({ id: 'p1', name: 'Gold Sponsor', priceAmount: 500 })],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderWithQuery(
+      <SponsorSection
+        eventId="event-uuid-1"
+        sponsorConfig={makeConfig({ enablePackages: true, acceptMoneySponsors: true })}
+      />
+    );
+
+    fireEvent.click(screen.getByText(/Sponsor This Event/i));
+
+    // The package grid + the collapsed pill MUST render
+    expect(screen.getByText('Gold Sponsor')).toBeInTheDocument();
+    expect(screen.getByText(/Or choose your own amount/i)).toBeInTheDocument();
+
+    // The custom-amount form's Sponsorship Amount input MUST NOT be visible
+    // (CollapsibleSection uses CSS grid-template-rows for animation, so the
+    // children may still be MOUNTED but should not be visually exposed —
+    // assert via aria-expanded=false on the disclosure button).
+    const pill = screen.getByRole('button', { name: /Or choose your own amount/i });
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('renders the custom-amount form directly (no disclosure wrap) when EnablePackages is OFF', () => {
+    mockUsePublicSponsorshipPackages.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderWithQuery(
+      <SponsorSection
+        eventId="event-uuid-1"
+        sponsorConfig={makeConfig({ enablePackages: false, acceptMoneySponsors: true })}
+      />
+    );
+
+    fireEvent.click(screen.getByText(/Sponsor This Event/i));
+
+    // No packages → no disclosure wrap; custom form is the only sponsor
+    // surface. The "Or choose your own amount" pill MUST be absent (no "or"
+    // makes sense when there's nothing to choose between) AND the
+    // Sponsorship Amount input MUST be directly visible.
+    expect(screen.queryByRole('button', { name: /Or choose your own amount/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Sponsorship Amount/i)).toBeInTheDocument();
+  });
+
+  it('renders the custom-amount form directly (no disclosure wrap) when EnablePackages ON but server returns []', () => {
+    mockUsePublicSponsorshipPackages.mockReturnValue({
+      data: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderWithQuery(
+      <SponsorSection
+        eventId="event-uuid-1"
+        sponsorConfig={makeConfig({ enablePackages: true, acceptMoneySponsors: true })}
+      />
+    );
+
+    fireEvent.click(screen.getByText(/Sponsor This Event/i));
+
+    // Empty packages list — same as flag-off; no disclosure wrap, no "or"
+    // copy, the form is directly visible.
+    expect(screen.queryByRole('button', { name: /Or choose your own amount/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Sponsorship Amount/i)).toBeInTheDocument();
+  });
+
+  it('reveals the custom-amount form when the expand pill is clicked', () => {
+    mockUsePublicSponsorshipPackages.mockReturnValue({
+      data: [makePkg({ id: 'p1', name: 'Gold Sponsor', priceAmount: 500 })],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderWithQuery(
+      <SponsorSection
+        eventId="event-uuid-1"
+        sponsorConfig={makeConfig({ enablePackages: true, acceptMoneySponsors: true })}
+      />
+    );
+
+    fireEvent.click(screen.getByText(/Sponsor This Event/i));
+
+    const pill = screen.getByRole('button', { name: /Or choose your own amount/i });
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(pill);
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('queries the public packages hook with enabled=true ONLY when both isEnabled AND enablePackages are on', () => {
     mockUsePublicSponsorshipPackages.mockReturnValue({
       data: [],

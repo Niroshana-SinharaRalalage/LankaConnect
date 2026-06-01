@@ -310,17 +310,22 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
               />
             ))}
           </div>
-          {/* Divider between curated packages and the free-form custom-amount form */}
-          <div className="mt-6 mb-2 flex items-center gap-3">
-            <div className="flex-1 h-px bg-neutral-200" />
-            <span className="text-xs text-neutral-500 uppercase tracking-wide">
-              Or choose your own amount
-            </span>
-            <div className="flex-1 h-px bg-neutral-200" />
-          </div>
+          {/* Phase 6A.157-fix-1 [3/3] — divider removed. The
+              CollapsibleSection header below acts as the disclosure
+              affordance when packages are present, replacing the
+              standalone dividerline-text-dividerline visual. */}
         </div>
       )}
 
+      {/* Phase 6A.157-fix-1 [3/3] — conditional disclosure wrap. When
+          packages render alongside, the custom-amount form is collapsed
+          by default (progressive disclosure — packages are the primary
+          CTA, custom amount is the fallback). When no packages render,
+          the form is the only sponsor surface — rendered directly with
+          no disclosure wrap and no "or" copy. */}
+      {(() => {
+        const customAmountForm = (
+          <>
       {/* Mode Toggle */}
       {showToggle && (
         <div className="mb-4 flex rounded-lg bg-indigo-50 p-1">
@@ -573,6 +578,21 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
           </Button>
         )}
       </form>
+          </>
+        );
+        return sponsorConfig.enablePackages === true && publicPackages.length > 0 ? (
+          <CollapsibleSection
+            title="Or choose your own amount"
+            defaultOpen={false}
+            expandLabel="Show custom-amount form"
+            collapseLabel="Hide"
+          >
+            {customAmountForm}
+          </CollapsibleSection>
+        ) : (
+          customAmountForm
+        );
+      })()}
 
       {/* Your Sponsorships */}
       {mySponsors && mySponsors.length > 0 && (

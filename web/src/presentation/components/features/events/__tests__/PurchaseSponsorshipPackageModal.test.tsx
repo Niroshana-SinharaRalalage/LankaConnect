@@ -46,9 +46,15 @@ vi.mock('@/presentation/hooks/useSponsorshipPackages', () => ({
 // sponsors and money/item sponsors share the same /sponsors/{id}/image
 // surface server-side.
 const mockUploadImageMutate = vi.fn<[unknown], Promise<unknown>>();
+// Phase 6A.162 — brochure hook added alongside the existing logo hook.
+const mockUploadBrochureMutate = vi.fn<[unknown], Promise<unknown>>();
 vi.mock('@/presentation/hooks/useSponsors', () => ({
   useUploadSponsorImage: () => ({
     mutateAsync: mockUploadImageMutate,
+    isPending: false,
+  }),
+  useUploadSponsorBrochure: () => ({
+    mutateAsync: mockUploadBrochureMutate,
     isPending: false,
   }),
 }));

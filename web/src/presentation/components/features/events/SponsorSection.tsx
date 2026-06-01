@@ -20,6 +20,7 @@ import type {
   SponsorshipPackagePublicDto,  // Phase 6A.157
 } from '@/infrastructure/api/types/events.types';
 import { EditSponsorModal } from './EditSponsorModal';
+import { SponsorBrochurePopup } from './SponsorBrochurePopup';  // Phase 6A.162
 import { PublicSponsorshipPackageCard } from './PublicSponsorshipPackageCard';  // Phase 6A.157
 import { PurchaseSponsorshipPackageModal } from './PurchaseSponsorshipPackageModal';  // Phase 6A.157
 
@@ -89,6 +90,9 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
     sponsorConfig.isEnabled === true && sponsorConfig.enablePackages === true,
   );
   const sponsorsWithImages: PublicSponsorDto[] = sponsorsResponse?.sponsors ?? [];
+
+  // Phase 6A.162 — in-section sponsor-wall click-to-popup. Null = closed.
+  const [popupSponsor, setPopupSponsor] = useState<PublicSponsorDto | null>(null);
 
   const parsedAmount = parseFloat(amount) || 0;
   const isPending = createMoneySponsor.isPending || createItemSponsor.isPending || uploadImage.isPending;
@@ -254,10 +258,16 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   : (words[0]![0]! + words[1]![0]!).toUpperCase();
 
               return (
-                <div
+                // Phase 6A.162 — whole-card click opens the brochure popup
+                // (or logo fallback when no brochure). Replaces the prior
+                // static <div> per user-locked UX 2026-06-01.
+                <button
                   key={s.id}
-                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2"
+                  type="button"
+                  onClick={() => setPopupSponsor(s)}
+                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2 transition-shadow hover:shadow-md hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={displayName}
+                  aria-label={`Sponsor: ${displayName} — click to view brochure`}
                 >
                   {s.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -277,7 +287,7 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   <span className="mt-1 w-full truncate text-center text-xs text-neutral-600">
                     {displayName}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -667,6 +677,11 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
         isOpen={purchasingPackage !== null}
         onClose={() => setPurchasingPackage(null)}
       />
+
+      {/* Phase 6A.162 — in-section sponsor-wall click-to-popup. Portal'd
+          modal showing the brochure full-size; falls back to logo when no
+          brochure (user-locked UX 2026-06-01). */}
+      <SponsorBrochurePopup sponsor={popupSponsor} onClose={() => setPopupSponsor(null)} />
     </CollapsibleSection>
   );
 }

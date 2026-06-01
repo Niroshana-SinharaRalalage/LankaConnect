@@ -48,6 +48,10 @@ vi.mock('@/presentation/hooks/useSponsors', () => {
     useCreateItemSponsor: stub,
     useUploadSponsorImage: stub,
     useDeleteSponsorImage: stub,
+    // Phase 6A.162 — brochure hooks needed because EditSponsorModal (mounted
+    // inside SponsorSection) now pulls them.
+    useUploadSponsorBrochure: stub,
+    useDeleteSponsorBrochure: stub,
     useUpdateSponsor: stub,
     useCreateOffPlatformSponsor: stub,
   };

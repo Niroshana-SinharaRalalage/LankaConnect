@@ -181,7 +181,7 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("recorded_at")
             .HasColumnType("timestamp with time zone");
 
-        // Phase 6A.145 — optional sponsor image. Any sponsor can attach (no threshold).
+        // Phase 6A.145 — optional sponsor image (LOGO). Any sponsor can attach (no threshold).
         // Both columns nullable; either both populated together or both null. Handler enforces atomicity.
         builder.Property(s => s.ImageUrl)
             .HasColumnName("image_url")
@@ -190,6 +190,20 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
 
         builder.Property(s => s.ImageBlobName)
             .HasColumnName("image_blob_name")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        // Phase 6A.162 — optional sponsor BROCHURE / FLYER (sibling slot to logo).
+        // Same atomic pair semantics as the logo columns; the two slots are orthogonal
+        // (touching one MUST NOT mutate the other — pinned by SponsorTests independence
+        // invariants). Migration Phase6A162_AddSponsorBrochure adds both columns nullable.
+        builder.Property(s => s.BrochureUrl)
+            .HasColumnName("brochure_url")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(s => s.BrochureBlobName)
+            .HasColumnName("brochure_blob_name")
             .HasColumnType("text")
             .IsRequired(false);
 

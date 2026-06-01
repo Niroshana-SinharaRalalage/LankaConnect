@@ -1230,6 +1230,135 @@ public class SponsorTests
 
     #endregion
 
+    #region Phase 6A.162 — Brochure methods (SetBrochure / ClearBrochure)
+
+    /// <summary>
+    /// Phase 6A.162 — Sponsor gains a SECOND optional image slot for a
+    /// brochure/flyer alongside the existing logo. Architect Option C: keep
+    /// existing SetImage/ClearImage verbatim (semantically the "logo"), add
+    /// SIBLING SetBrochure/ClearBrochure methods that mirror line-for-line.
+    /// Independence invariant: each slot is orthogonal — touching one MUST
+    /// NOT mutate the other.
+    /// </summary>
+
+    [Fact]
+    public void SetBrochure_WithValidUrlAndBlobName_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure(
+            "https://blob.example.com/brochure.png",
+            "brochure_blob.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/brochure.png");
+        sponsor.BrochureBlobName.Should().Be("brochure_blob.png");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetBrochure_WithEmptyUrl_Fails(string? badUrl)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure(badUrl!, "brochure.png");
+
+        result.IsSuccess.Should().BeFalse();
+        sponsor.BrochureUrl.Should().BeNull("rejected SetBrochure must NOT mutate the entity");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetBrochure_WithEmptyBlobName_Fails(string? badBlobName)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure("https://blob.example.com/x.png", badBlobName!);
+
+        result.IsSuccess.Should().BeFalse();
+        sponsor.BrochureUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetBrochure_ReplacingExisting_OverwritesBoth()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetBrochure("https://blob.example.com/old.png", "old_brochure.png");
+
+        sponsor.SetBrochure("https://blob.example.com/new.png", "new_brochure.png");
+
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/new.png");
+        sponsor.BrochureBlobName.Should().Be("new_brochure.png");
+    }
+
+    [Fact]
+    public void ClearBrochure_RemovesBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetBrochure("https://blob.example.com/x.png", "x.png");
+
+        var result = sponsor.ClearBrochure();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().BeNull();
+        sponsor.BrochureBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ClearBrochure_WhenNoBrochure_IsIdempotent()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.BrochureUrl.Should().BeNull();
+
+        var result = sponsor.ClearBrochure();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().BeNull();
+        sponsor.BrochureBlobName.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — independence invariant #1: SetBrochure MUST NOT touch
+    /// the logo slot (ImageUrl/ImageBlobName). Catches the bug class where a
+    /// future refactor collapses the two slots into one method by accident.
+    /// </summary>
+    [Fact]
+    public void SetBrochure_DoesNotMutateImageSlot()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/logo.png", "logo.png");
+
+        sponsor.SetBrochure("https://blob.example.com/brochure.png", "brochure.png");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/logo.png", "logo must survive brochure set");
+        sponsor.ImageBlobName.Should().Be("logo.png");
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — independence invariant #2: ClearImage MUST NOT touch
+    /// the brochure slot. Mirror of the SetBrochure-doesnt-touch-image
+    /// invariant. Same bug class.
+    /// </summary>
+    [Fact]
+    public void ClearImage_DoesNotMutateBrochureSlot()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/logo.png", "logo.png");
+        sponsor.SetBrochure("https://blob.example.com/brochure.png", "brochure.png");
+
+        sponsor.ClearImage();
+
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/brochure.png", "brochure must survive logo clear");
+        sponsor.BrochureBlobName.Should().Be("brochure.png");
+    }
+
+    #endregion
+
     #region Phase 6A.151 — Edit Existing Sponsorship (RED tests)
 
     /// <summary>

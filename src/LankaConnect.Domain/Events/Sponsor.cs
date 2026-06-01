@@ -74,9 +74,13 @@ public class Sponsor : BaseEntity
     public DateTime? RecordedAt { get; private set; }
 
     /// <summary>
-    /// Phase 6A.145 — optional public URL of the sponsor's logo/image displayed on the
-    /// event details page. Any sponsor can attach an image (no threshold gate as of
-    /// Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
+    /// Phase 6A.145 — optional public URL of the sponsor's <b>logo</b> image displayed
+    /// on the event details page. Any sponsor can attach an image (no threshold gate as
+    /// of Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
+    ///
+    /// Phase 6A.162 — semantically this is the LOGO slot. A separate optional BROCHURE
+    /// slot lives on <see cref="BrochureUrl"/>/<see cref="BrochureBlobName"/>; the two
+    /// slots are orthogonal — touching one does NOT mutate the other.
     /// </summary>
     public string? ImageUrl { get; private set; }
 
@@ -86,6 +90,22 @@ public class Sponsor : BaseEntity
     /// <see cref="ImageUrl"/>.
     /// </summary>
     public string? ImageBlobName { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.162 — optional public URL of the sponsor's <b>brochure / flyer</b>
+    /// image. Sibling slot to the logo (<see cref="ImageUrl"/>); the two slots are
+    /// orthogonal. Click-to-popup on the public sponsor strip shows the brochure when
+    /// set, falling back to the logo when null. Always set together with
+    /// <see cref="BrochureBlobName"/>.
+    /// </summary>
+    public string? BrochureUrl { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.162 — Azure blob name for the brochure slot. Used by the upload handler
+    /// to delete the old blob on replace/clear. Always set together with
+    /// <see cref="BrochureUrl"/>.
+    /// </summary>
+    public string? BrochureBlobName { get; private set; }
 
     /// <summary>
     /// Phase 6A.151 — timestamp of the last human-initiated content edit
@@ -625,6 +645,41 @@ public class Sponsor : BaseEntity
     {
         ImageUrl = null;
         ImageBlobName = null;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — set or replace the sponsor's brochure / flyer image. Both URL
+    /// and blob name are required and set atomically. Mirrors <see cref="SetImage"/>
+    /// line-for-line — the brochure slot is fully orthogonal to the logo slot.
+    /// Handler is responsible for uploading the new blob first and deleting any prior
+    /// brochure blob on replace.
+    /// </summary>
+    public Result SetBrochure(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Brochure URL is required");
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Brochure blob name is required");
+
+        BrochureUrl = url.Trim();
+        BrochureBlobName = blobName.Trim();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — clear the sponsor's brochure / flyer image. Idempotent.
+    /// Handler is responsible for deleting the blob from storage. Mirrors
+    /// <see cref="ClearImage"/>; the logo slot is untouched.
+    /// </summary>
+    public Result ClearBrochure()
+    {
+        BrochureUrl = null;
+        BrochureBlobName = null;
         MarkAsUpdated();
 
         return Result.Success();

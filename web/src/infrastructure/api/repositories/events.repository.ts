@@ -2002,6 +2002,32 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.162 — uploads (or replaces) a sponsor's brochure/flyer image
+   * (sibling slot to the logo). Public access by sponsor-id knowledge,
+   * same auth model as /image POST. Backend enforces 5MB cap + MIME guards.
+   */
+  async uploadSponsorBrochure(
+    eventId: string,
+    sponsorId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}/brochure`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.162 — clears a sponsor's brochure. Authorized (sponsor-self or
+   * organizer). Idempotent.
+   */
+  async deleteSponsorBrochure(eventId: string, sponsorId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsors/${sponsorId}/brochure`);
+  }
+
+  /**
    * Phase 6A.151 C4 — pre-upload a sponsor logo to a staging blob path. Used by
    * the inline registration panel: when the user picks a file, we upload to
    * staging immediately (file-pick time, not submit time) because the parent

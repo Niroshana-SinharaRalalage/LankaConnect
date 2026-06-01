@@ -2562,9 +2562,14 @@ export interface SponsorDto {
   stripeFeeAmount?: number | null;
   platformCommissionAmount?: number | null;
   organizerPayoutAmount?: number | null;
-  // Phase 6A.145 — optional sponsor logo/image gated by SponsorConfiguration.minAmountForSponsorImage.
+  // Phase 6A.145 — optional sponsor LOGO image.
   imageUrl?: string | null;
   imageBlobName?: string | null;
+  // Phase 6A.162 — optional sponsor brochure/flyer (sibling slot to logo).
+  // Orthogonal to imageUrl/imageBlobName; touching one does NOT mutate the
+  // other (pinned by backend SponsorTests independence invariants).
+  brochureUrl?: string | null;
+  brochureBlobName?: string | null;
   createdAt: string;
   paymentCompletedAt?: string | null;
 }
@@ -2656,6 +2661,13 @@ export interface PublicSponsorDto {
   sponsorName: string;
   itemName?: string | null;
   imageUrl?: string | null;
+  /**
+   * Phase 6A.162 — optional brochure/flyer URL. When set, the click-to-popup
+   * flow on the public sponsor strip shows the brochure full-size; when null
+   * the popup falls back to the logo. `brochureBlobName` STAYS ABSENT (PII —
+   * internal storage identifier, backend reflection-asserted).
+   */
+  brochureUrl?: string | null;
   /** "Money" or "Item" — drives the Item-name caption rendering. */
   sponsorType: string;
 }

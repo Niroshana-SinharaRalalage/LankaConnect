@@ -41,12 +41,26 @@ vi.mock('@/presentation/hooks/useSponsorshipPackages', () => ({
   }),
 }));
 
+// Phase 6A.157-fix-1 [2/3] — best-effort logo upload after sponsorId is
+// returned. Reuses the existing useUploadSponsorImage hook so package
+// sponsors and money/item sponsors share the same /sponsors/{id}/image
+// surface server-side.
+const mockUploadImageMutate = vi.fn<[unknown], Promise<unknown>>();
+vi.mock('@/presentation/hooks/useSponsors', () => ({
+  useUploadSponsorImage: () => ({
+    mutateAsync: mockUploadImageMutate,
+    isPending: false,
+  }),
+}));
+
 // Stub window.location.assign so the redirect-to-Stripe path is observable
 // without actually navigating the test page.
 const mockAssign = vi.fn();
 
 beforeEach(() => {
   mockMutateAsync.mockReset();
+  mockUploadImageMutate.mockReset();
+  mockUploadImageMutate.mockResolvedValue(undefined);
   mockIsPending = false;
   mockAssign.mockReset();
   vi.stubGlobal('alert', vi.fn());
@@ -335,6 +349,150 @@ describe('PurchaseSponsorshipPackageModal — form-nesting safety', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
     expect(parentFormSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Phase 6A.157-fix-1 [2/3] — logo upload between mutateAsync resolve and
+// location.assign. Best-effort: a failed upload must NOT block the Stripe
+// redirect (the buyer's Pending sponsor row already exists; the orphan blob
+// is acceptable, same shape as W5.D10.b orphans in the registration flow).
+// ──────────────────────────────────────────────────────────────────────────────
+
+describe('PurchaseSponsorshipPackageModal — buyer logo upload', () => {
+  it('renders a logo file picker labelled with "Logo or Image"', () => {
+    render(
+      <PurchaseSponsorshipPackageModal
+        eventId={liveEventId}
+        pkg={paidPackage}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+    // The picker's Label "Logo or Image (optional)" + the dashed-box picker
+    // copy "Attach a logo or image" both reference the same widget. Two
+    // matches expected; assert the widget is present.
+    expect(screen.getAllByText(/Logo or Image|Attach a logo/i).length).toBeGreaterThan(0);
+    // Hidden file input must exist
+    expect(document.querySelector('input[type="file"]')).not.toBeNull();
+  });
+
+  it('rejects a file larger than 5MB with an inline error and does NOT call upload', async () => {
+    mockMutateAsync.mockResolvedValue({
+      checkoutUrl: 'https://checkout.stripe.com/abc',
+      sponsorId: 'sponsor-uuid-1',
+    });
+    render(
+      <PurchaseSponsorshipPackageModal
+        eventId={liveEventId}
+        pkg={paidPackage}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    // 6MB synthetic file
+    const big = new File(['x'.repeat(6 * 1024 * 1024)], 'big-logo.png', { type: 'image/png' });
+    Object.defineProperty(fileInput, 'files', { value: [big], configurable: true });
+    fireEvent.change(fileInput);
+
+    // Inline error must mention "too large" (the picker's idle copy also
+    // says "max 5MB", so we match the active error phrase specifically).
+    expect(screen.getByText(/too large/i)).toBeInTheDocument();
+    expect(mockUploadImageMutate).not.toHaveBeenCalled();
+  });
+
+  it('calls useUploadSponsorImage with the returned sponsorId after successful purchase', async () => {
+    mockMutateAsync.mockResolvedValue({
+      checkoutUrl: 'https://checkout.stripe.com/abc',
+      sponsorId: 'sponsor-uuid-1',
+    });
+    mockUploadImageMutate.mockResolvedValue(undefined);
+
+    render(
+      <PurchaseSponsorshipPackageModal
+        eventId={liveEventId}
+        pkg={paidPackage}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    // Select a small valid file
+    const small = new File(['payload'], 'logo.png', { type: 'image/png' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', { value: [small], configurable: true });
+    fireEvent.change(fileInput);
+
+    // Fill required fields + submit
+    fireEvent.change(screen.getByLabelText(/Your Name/i), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'j@e.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue to payment|Proceed to Stripe|Sponsor.*Pay|Pay\b/i }));
+
+    await waitFor(() => expect(mockUploadImageMutate).toHaveBeenCalledTimes(1));
+    // Verify it dispatched the correct sponsorId + eventId + file
+    const call = mockUploadImageMutate.mock.calls[0][0] as {
+      eventId: string;
+      sponsorId: string;
+      file: File;
+    };
+    expect(call.eventId).toBe(liveEventId);
+    expect(call.sponsorId).toBe('sponsor-uuid-1');
+    expect(call.file).toBe(small);
+  });
+
+  it('still redirects to checkoutUrl when the logo upload mutation rejects (best-effort)', async () => {
+    mockMutateAsync.mockResolvedValue({
+      checkoutUrl: 'https://checkout.stripe.com/abc',
+      sponsorId: 'sponsor-uuid-1',
+    });
+    mockUploadImageMutate.mockRejectedValue(new Error('image upload failed'));
+
+    render(
+      <PurchaseSponsorshipPackageModal
+        eventId={liveEventId}
+        pkg={paidPackage}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    const small = new File(['x'], 'logo.png', { type: 'image/png' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', { value: [small], configurable: true });
+    fireEvent.change(fileInput);
+
+    fireEvent.change(screen.getByLabelText(/Your Name/i), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'j@e.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue to payment|Proceed to Stripe|Sponsor.*Pay|Pay\b/i }));
+
+    // Stripe redirect MUST still fire even though the image upload threw
+    await waitFor(() => expect(mockAssign).toHaveBeenCalledWith('https://checkout.stripe.com/abc'));
+  });
+
+  it('does NOT call useUploadSponsorImage when the buyer selected no file', async () => {
+    mockMutateAsync.mockResolvedValue({
+      checkoutUrl: 'https://checkout.stripe.com/abc',
+      sponsorId: 'sponsor-uuid-1',
+    });
+
+    render(
+      <PurchaseSponsorshipPackageModal
+        eventId={liveEventId}
+        pkg={paidPackage}
+        isOpen={true}
+        onClose={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText(/Your Name/i), { target: { value: 'Jane' } });
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'j@e.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /Continue to payment|Proceed to Stripe|Sponsor.*Pay|Pay\b/i }));
+
+    await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledTimes(1));
+    expect(mockUploadImageMutate).not.toHaveBeenCalled();
+    // Stripe redirect still fires
+    await waitFor(() => expect(mockAssign).toHaveBeenCalledWith('https://checkout.stripe.com/abc'));
   });
 });
 

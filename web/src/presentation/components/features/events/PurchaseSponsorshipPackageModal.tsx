@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, AlertCircle, Award, Users } from 'lucide-react';
+import { X, AlertCircle, Award, Users, ImagePlus } from 'lucide-react';
 import { Button } from '@/presentation/components/ui/Button';
 import { Input } from '@/presentation/components/ui/Input';
 import { Label } from '@/presentation/components/ui/Label';
 import { usePurchasePackageSponsor } from '@/presentation/hooks/useSponsorshipPackages';
+import { useUploadSponsorImage } from '@/presentation/hooks/useSponsors';
 import type {
   SponsorshipPackagePublicDto,
   CreatePackageSponsorRequest,
@@ -66,7 +67,16 @@ export function PurchaseSponsorshipPackageModal({
   const [buyerNotes, setBuyerNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Phase 6A.157-fix-1 [2/3] — buyer logo file (best-effort, optional).
+  // Uploaded AFTER purchaseMutation returns sponsorId, BEFORE the Stripe
+  // redirect. A failed upload is non-fatal — the buyer's Pending sponsor
+  // row already exists; organizer can attach a logo later from the
+  // SponsorsManagementTab.
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const purchaseMutation = usePurchasePackageSponsor();
+  const uploadImage = useUploadSponsorImage();
 
   // Portal-mount guard — SSR renders nothing on the server, then flips
   // mounted=true on the client so createPortal can run safely (avoids Next.js
@@ -81,8 +91,28 @@ export function PurchaseSponsorshipPackageModal({
   useEffect(() => {
     if (isOpen) {
       setError(null);
+      // 6A.157-fix-1 [2/3] — also clear any previously picked file so a
+      // stale selection doesn't accidentally attach to a different package.
+      setImageFile(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   }, [isOpen, pkg?.id]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image too large (max 5MB).');
+      return;
+    }
+    setError(null);
+    setImageFile(file);
+  };
+
+  const handleImageClear = () => {
+    setImageFile(null);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
 
   if (!isOpen || !pkg) return null;
   if (!mounted) return null;
@@ -138,6 +168,31 @@ export function PurchaseSponsorshipPackageModal({
         packageId: pkg.id,
         request,
       });
+
+      // Phase 6A.157-fix-1 [2/3] — best-effort buyer logo upload BEFORE the
+      // Stripe redirect. The sponsor row already exists at Pending status
+      // by this point; if the upload fails we still redirect so the buyer
+      // can finish payment, and the organizer can attach a logo later from
+      // SponsorsManagementTab. Mirrors the SponsorSection in-section item
+      // sponsor flow's behaviour (lines 152-197 of SponsorSection.tsx) and
+      // honours CLAUDE.md Section 4 observability with structured logs.
+      if (imageFile) {
+        try {
+          await uploadImage.mutateAsync({
+            eventId,
+            sponsorId: result.sponsorId,
+            file: imageFile,
+          });
+        } catch (uploadErr) {
+          // Non-fatal — log and continue to Stripe. Buyer never sees an error
+          // for this; the organizer can attach a logo post-purchase.
+          console.warn(
+            'PurchaseSponsorshipPackage: best-effort logo upload failed; continuing to checkout',
+            uploadErr,
+          );
+        }
+      }
+
       // Redirect to checkoutUrl — Stripe for paid, SuccessUrl directly for
       // free $0. Server-side resolution; FE just navigates.
       window.location.assign(result.checkoutUrl);
@@ -273,6 +328,45 @@ export function PurchaseSponsorshipPackageModal({
                 disabled={isSubmitting}
               />
             </div>
+          </div>
+
+          {/* Phase 6A.157-fix-1 [2/3] — optional buyer logo. Same picker
+              UX as the in-section sponsor form (SponsorSection.tsx:425-458).
+              Attached best-effort after sponsorId returns; non-fatal if the
+              upload fails. */}
+          <div>
+            <Label htmlFor="buyer-image">Logo or Image (optional)</Label>
+            {imageFile ? (
+              <div className="flex items-center justify-between rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm">
+                <span className="truncate text-neutral-700">{imageFile.name}</span>
+                <button
+                  type="button"
+                  onClick={handleImageClear}
+                  className="ml-2 flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700"
+                  aria-label="Remove image"
+                  disabled={isSubmitting}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="buyer-image"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-600 hover:border-indigo-400 hover:text-indigo-600"
+              >
+                <ImagePlus className="h-4 w-4" />
+                <span>Attach a logo or image (max 5MB)</span>
+              </label>
+            )}
+            <input
+              ref={imageInputRef}
+              id="buyer-image"
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              className="hidden"
+              onChange={handleImageSelect}
+              disabled={isSubmitting}
+            />
           </div>
 
           <div>

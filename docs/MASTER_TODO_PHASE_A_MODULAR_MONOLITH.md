@@ -717,11 +717,17 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - **Acceptance**: ✅ contracts package referenceable by future modules; ABI is the cross-module wire format
 
 ### W2.8 — API baseline regression run
-- [ ] **Action**: Run `tests/api-baseline/run-baseline-regression.sh` against staging
-- [ ] **Verify**: zero structural drift (existing API still responds identically)
-- **Acceptance**: regression green; baselines unchanged
+- [x] **W2.8 (2026-06-02)**: scaffolding + initial baseline landed in `tests/api-baseline/`:
+  - `openapi-baseline.json` — captured from staging post-swagger-fix (`6308af3c`): 312 paths, 403 schemas
+  - `run-baseline-regression.py` — fetches current staging (or `--target prod`), diffs path set + per-path verb set + schema set against baseline; exit 0 (OK) / 1 (breaking) / 2 (error); `--refresh` flag for deliberate additive updates
+  - `run-baseline-regression.sh` — thin bash wrapper around the Python script for the canonical command the master TODO references
+  - `README.md` — workflow + refresh policy + known follow-ups (field-level schema drift deferred)
+- [x] **W2.8 verification**: first regression run against staging — **OK, no breaking drift** (current = baseline as expected)
+- [x] **W2.8 prerequisite fix**: `/swagger/v1/swagger.json` was returning HTTP 500 before W2.8 work started — root cause was `ContentController.UploadImage([FromForm] IFormFile image)` triggering Swashbuckle's `SwaggerGeneratorException`. Fix `6308af3c`: drop the `[FromForm]` attribute (existing `[Consumes("multipart/form-data")]` + `FileUploadOperationFilter` handle binding + schema correctly)
+- **Acceptance**: ✅ regression green; baselines unchanged
 
 ### W2.9 — Update tracking docs
+- [x] **W2.9 (2026-06-02)**: master TODO updated through W2.8; PROGRESS_TRACKER updated with W2.6/2.7/2.8 + three forward-merges + swagger fix; STREAMLINED_ACTION_PLAN rollup deferred to next Friday-rollup tick. **W2 closes**: BuildingBlocks tier (Domain/Application/Infrastructure/Web/Contracts) all extracted with NetArchTest enforcing layer boundaries, observability live in staging via OpenTelemetry+Azure Monitor, API baseline regression captured. **Phase A test totals**: Domain 194/194 + Application 27/27 + Web 22/22 + Contracts 17/17 + Infrastructure 20/25 (4 Docker baseline, 1 JSONB skipped) + ArchTest 5/5 = 285 GREEN. **Ready for W3** (first module extraction — Notifications)
 
 ---
 

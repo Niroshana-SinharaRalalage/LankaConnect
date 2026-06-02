@@ -32,6 +32,7 @@ import {
   Wallet,
   HandCoins,
   PackagePlus,
+  Award,
 } from 'lucide-react';
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import { CollapsibleSection } from '@/presentation/components/ui/CollapsibleSection';
@@ -39,8 +40,13 @@ import { Badge } from '@/presentation/components/ui/Badge';
 import { ImageUploader } from '@/presentation/components/features/events/ImageUploader';
 import { VideoUploader } from '@/presentation/components/features/events/VideoUploader';
 import { useEmailGroups } from '@/presentation/hooks/useEmailGroups';
-import { type EventDto, type AddOnDefinitionDto } from '@/infrastructure/api/types/events.types';
+import {
+  type EventDto,
+  type AddOnDefinitionDto,
+  type SponsorshipPackageDto,
+} from '@/infrastructure/api/types/events.types';
 import { useAddOnDefinitions } from '@/presentation/hooks/useAddOns';
+import { useSponsorshipPackages } from '@/presentation/hooks/useSponsorshipPackages';
 // Phase 6A.97: Import timezone-aware date formatter
 import { formatEventDateTime } from '@/presentation/lib/utils/date-formatter';
 
@@ -62,6 +68,19 @@ export function EventDetailsTab({
   const router = useRouter();
   const { data: emailGroups = [] } = useEmailGroups();
   const { data: addOnDefinitions = [] } = useAddOnDefinitions(event.id, event.addOnConfig?.isEnabled === true);
+  // Phase 6A.156-fix-3 — read-only mirror of the Add-On Items table for
+  // sponsorship packages. Two-layer gate: outer sponsorConfig.isEnabled AND
+  // inner enablePackages. Hook self-gates on the `enabled` arg so no fetch
+  // fires for sponsor-disabled OR packages-disabled OR legacy events
+  // (sponsorConfig === null). The collapsed AND/=== expression ensures
+  // legacy rows with stray enablePackages=true on a disabled sponsorConfig
+  // still resolve to false (defence in depth).
+  const sponsorshipPackagesEnabled =
+    event.sponsorConfig?.isEnabled === true && event.sponsorConfig?.enablePackages === true;
+  const { data: sponsorshipPackages = [] } = useSponsorshipPackages(
+    event.id,
+    sponsorshipPackagesEnabled,
+  );
 
   // Issue #51: State for editing max attendees per registration
   const [isEditingMaxAttendees, setIsEditingMaxAttendees] = useState(false);
@@ -833,6 +852,105 @@ export function EventDetailsTab({
                       <span className="text-sm text-neutral-600 italic">
                         &ldquo;{event.sponsorConfig.sponsorMessage}&rdquo;
                       </span>
+                    </div>
+                  )}
+                  {/*
+                   * Phase 6A.156-fix-3 — Sponsorship Packages read-only table.
+                   * Mirrors the Add-On Items table below (lines ~924-984) so the
+                   * Sponsor Configuration section has parity with the Add-On
+                   * Configuration section. Inline by design (no extracted
+                   * component) for byte-for-byte symmetry with add-ons — the
+                   * editable surface lives in the Sponsors sub-tab.
+                   */}
+                  {event.sponsorConfig.enablePackages === true && (
+                    <div className="pt-1">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Award className="h-4 w-4 text-amber-500" />
+                        <span className="text-sm font-semibold text-neutral-700">
+                          Sponsorship Packages ({sponsorshipPackages.length})
+                        </span>
+                      </div>
+                      {sponsorshipPackages.length > 0 ? (
+                        <div className="border border-neutral-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-neutral-50 border-b border-neutral-200">
+                                <th className="text-left px-4 py-2 font-semibold text-neutral-600">Name</th>
+                                <th className="text-right px-4 py-2 font-semibold text-neutral-600">Price</th>
+                                <th className="text-center px-4 py-2 font-semibold text-neutral-600">Stock</th>
+                                <th className="text-center px-4 py-2 font-semibold text-neutral-600">Tickets</th>
+                                <th className="text-center px-4 py-2 font-semibold text-neutral-600">Perks</th>
+                                <th className="text-center px-4 py-2 font-semibold text-neutral-600">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sponsorshipPackages.map((pkg: SponsorshipPackageDto, idx: number) => (
+                                <tr
+                                  key={pkg.id}
+                                  className={idx < sponsorshipPackages.length - 1 ? 'border-b border-neutral-100' : ''}
+                                >
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-neutral-800 font-medium">{pkg.name}</span>
+                                      {pkg.tier && (
+                                        <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-1.5 py-0">
+                                          {pkg.tier}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {pkg.description && (
+                                      <p className="text-xs text-neutral-400 mt-0.5 line-clamp-1">{pkg.description}</p>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-right">
+                                    {pkg.priceAmount === 0 ? (
+                                      <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                        Free
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-neutral-700 font-medium">${pkg.priceAmount.toFixed(2)}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center text-neutral-600">
+                                    {pkg.quantityLimit != null ? (
+                                      <span>{pkg.quantitySold}/{pkg.quantityLimit}</span>
+                                    ) : (
+                                      <span className="text-neutral-400">Unlimited</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center text-neutral-600">
+                                    {pkg.includedTicketCount > 0 ? (
+                                      <span>{pkg.includedTicketCount} {pkg.includedTicketCount === 1 ? 'ticket' : 'tickets'}</span>
+                                    ) : (
+                                      <span className="text-neutral-400">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center text-neutral-600">
+                                    {pkg.perks.length > 0 ? (
+                                      <span>{pkg.perks.length} {pkg.perks.length === 1 ? 'perk' : 'perks'}</span>
+                                    ) : (
+                                      <span className="text-neutral-400">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2.5 text-center">
+                                    {pkg.isActive ? (
+                                      <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">
+                                        Active
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-neutral-100 text-neutral-500 border border-neutral-200 text-xs px-2 py-0.5">
+                                        Inactive
+                                      </Badge>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-neutral-400 italic pl-6">No sponsorship packages defined yet</p>
+                      )}
                     </div>
                   )}
                 </>

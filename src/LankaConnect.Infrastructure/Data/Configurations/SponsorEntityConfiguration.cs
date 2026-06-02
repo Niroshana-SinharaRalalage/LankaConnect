@@ -13,7 +13,18 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
 {
     public void Configure(EntityTypeBuilder<Sponsor> builder)
     {
-        builder.ToTable("sponsors", "events");
+        // Phase 6A.156 — DB-level CHECK constraint enforces the
+        // "package-set => snapshots populated" invariant captured in the
+        // domain factory (Sponsor.CreatePackageSponsor lands in 6A.157). A
+        // null sponsorship_package_id short-circuits the check, so all
+        // existing rows (generic-flow sponsors with NULL FK) remain valid
+        // without backfill.
+        builder.ToTable("sponsors", "events", t =>
+        {
+            t.HasCheckConstraint(
+                "chk_sponsors_package_snapshot",
+                "(sponsorship_package_id IS NULL) OR (package_name_snapshot IS NOT NULL AND package_price_amount_snapshot IS NOT NULL)");
+        });
 
         builder.HasKey(s => s.Id);
 
@@ -170,7 +181,7 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("recorded_at")
             .HasColumnType("timestamp with time zone");
 
-        // Phase 6A.145 — optional sponsor image. Any sponsor can attach (no threshold).
+        // Phase 6A.145 — optional sponsor image (LOGO). Any sponsor can attach (no threshold).
         // Both columns nullable; either both populated together or both null. Handler enforces atomicity.
         builder.Property(s => s.ImageUrl)
             .HasColumnName("image_url")
@@ -179,6 +190,20 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
 
         builder.Property(s => s.ImageBlobName)
             .HasColumnName("image_blob_name")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        // Phase 6A.162 — optional sponsor BROCHURE / FLYER (sibling slot to logo).
+        // Same atomic pair semantics as the logo columns; the two slots are orthogonal
+        // (touching one MUST NOT mutate the other — pinned by SponsorTests independence
+        // invariants). Migration Phase6A162_AddSponsorBrochure adds both columns nullable.
+        builder.Property(s => s.BrochureUrl)
+            .HasColumnName("brochure_url")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(s => s.BrochureBlobName)
+            .HasColumnName("brochure_blob_name")
             .HasColumnType("text")
             .IsRequired(false);
 
@@ -208,9 +233,64 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        // Phase 6A.156 — Sponsorship Package linkage (nullable, additive).
+        // Generic sponsorship = SponsorshipPackageId IS NULL; packaged
+        // sponsorship (6A.157+) populates the FK + snapshot columns. CHECK
+        // constraint at table level enforces the "package set => snapshots
+        // populated" invariant.
+        builder.Property(s => s.SponsorshipPackageId)
+            .HasColumnName("sponsorship_package_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.Property(s => s.RegistrationId)
+            .HasColumnName("registration_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.Property(s => s.PackageNameSnapshot)
+            .HasColumnName("package_name_snapshot")
+            .HasMaxLength(200)
+            .IsRequired(false);
+
+        builder.Property(s => s.PackageTierSnapshot)
+            .HasColumnName("package_tier_snapshot")
+            .HasMaxLength(100)
+            .IsRequired(false);
+
+        // Package price snapshot as nullable Money owned entity (mirrors the
+        // existing Amount / StripeFeeAmount / etc. pattern). Two columns:
+        // package_price_amount_snapshot + package_price_currency_snapshot.
+        builder.OwnsOne(s => s.PackagePriceSnapshot, money =>
+        {
+            money.Property(m => m.Amount)
+                .HasColumnName("package_price_amount_snapshot")
+                .HasPrecision(18, 2);
+
+            money.Property(m => m.Currency)
+                .HasColumnName("package_price_currency_snapshot")
+                .HasConversion<string>()
+                .HasMaxLength(3);
+        });
+
+        builder.Property(s => s.IncludedTicketCountSnapshot)
+            .HasColumnName("included_ticket_count_snapshot")
+            .IsRequired(false);
+
         // Indexes
         builder.HasIndex(s => s.EventId)
             .HasDatabaseName("ix_sponsors_event_id");
+
+        // Phase 6A.156 — filter indexes for the new FKs. Partial indexes
+        // (WHERE column IS NOT NULL) keep the index slim because the vast
+        // majority of sponsor rows are generic-flow (NULL FK).
+        builder.HasIndex(s => s.SponsorshipPackageId)
+            .HasDatabaseName("ix_sponsors_sponsorship_package_id")
+            .HasFilter("\"sponsorship_package_id\" IS NOT NULL");
+
+        builder.HasIndex(s => s.RegistrationId)
+            .HasDatabaseName("ix_sponsors_registration_id")
+            .HasFilter("\"registration_id\" IS NOT NULL");
 
         builder.HasIndex(s => s.SponsorUserId)
             .HasDatabaseName("ix_sponsors_sponsor_user_id");
@@ -232,5 +312,22 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .WithMany()
             .HasForeignKey(s => s.EventId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Phase 6A.156 — FK to SponsorshipPackage with ON DELETE SET NULL so
+        // that organizer-deleted packages preserve historical sponsor receipts
+        // (snapshots already carry the name/tier/price at purchase time).
+        builder.HasOne<SponsorshipPackage>()
+            .WithMany()
+            .HasForeignKey(s => s.SponsorshipPackageId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Phase 6A.156 — FK to Registration with ON DELETE SET NULL mirroring
+        // the AddOnPurchase.RegistrationId pattern (events/add_on_purchases).
+        // A canceled / refunded registration drops the link but keeps the
+        // sponsor record intact for revenue history.
+        builder.HasOne<Registration>()
+            .WithMany()
+            .HasForeignKey(s => s.RegistrationId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

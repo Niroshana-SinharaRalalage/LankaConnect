@@ -31,6 +31,7 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 import type { SponsorDto, SponsorConfigurationDto } from '@/infrastructure/api/types/events.types';
 import { AddOffPlatformSponsorModal } from './AddOffPlatformSponsorModal';
 import { EditSponsorModal } from './EditSponsorModal';
+import { SponsorshipPackageEditor } from './SponsorshipPackageEditor';
 
 interface SponsorsManagementTabProps {
   eventId: string;
@@ -292,6 +293,19 @@ export function SponsorsManagementTab({ eventId, sponsorConfig }: SponsorsManage
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/*
+       * Phase 6A.156-fix — sponsorship packages live INSIDE the Sponsors tab
+       * (a package purchase produces a Sponsor record, so they belong together
+       * in the organiser's mental model). Editor runs in live mode here;
+       * SponsorConfigForm renders the SAME editor in local OR live mode
+       * during event create/edit. Gated on the EnablePackages flag from
+       * sponsor config so non-packages events see the original Sponsors UI
+       * unchanged.
+       */}
+      {sponsorConfig?.enablePackages === true && (
+        <SponsorshipPackageEditor eventId={eventId} />
       )}
 
       {/* Summary Cards */}

@@ -21,6 +21,11 @@ import { eventsRepository } from '@/infrastructure/api/repositories/events.repos
 
 import type { EventDto } from '@/infrastructure/api/types/events.types';
 
+// Phase 6A.156-fix: dropped the standalone 'packages' sub-tab. Sponsorship
+// packages are a sub-shape of sponsors (a package purchase produces a Sponsor
+// record), so the CRUD surface is folded into the Sponsors tab via the
+// embedded SponsorshipPackageEditor (live mode). Mirrors the same mental
+// model as ticket tiers living inside Tickets.
 type SubTab = 'attendees' | 'tickets' | 'donations' | 'collections' | 'sponsors' | 'addons';
 
 interface SubTabConfig {

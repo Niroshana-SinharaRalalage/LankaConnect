@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Handshake, ChevronRight } from 'lucide-react';
 // Phase 6A.150 — switched from useEventSponsors (auth-required, returns full
 // PII) to usePublicEventSponsors. The new public endpoint is [AllowAnonymous]
@@ -8,6 +9,7 @@ import { Handshake, ChevronRight } from 'lucide-react';
 // confirmed status and pre-sorts by contribution magnitude.
 import { usePublicEventSponsors } from '@/presentation/hooks/useSponsors';
 import type { SponsorConfigurationDto, PublicSponsorDto } from '@/infrastructure/api/types/events.types';
+import { SponsorBrochurePopup } from './SponsorBrochurePopup';
 
 interface SponsorsPreviewStripProps {
   eventId: string;
@@ -60,9 +62,16 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
   const { data: sponsorsResponse } = usePublicEventSponsors(eventId, enabled);
   const eligibleSponsors = sponsorsResponse?.sponsors ?? [];
 
+  // Phase 6A.162 — whole-card click opens the brochure popup (or logo
+  // fallback). REPLACES today's scroll-to-section UX per the user-locked
+  // decision 2026-06-01. The "Sponsor this event" header link KEEPS its
+  // scroll behavior so visitors who want to contribute can still jump to
+  // the form.
+  const [popupSponsor, setPopupSponsor] = useState<PublicSponsorDto | null>(null);
+
   if (!enabled || eligibleSponsors.length === 0) return null;
 
-  const handleCardClick = () => {
+  const scrollToSponsorSection = () => {
     document.getElementById('sponsors')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -78,7 +87,7 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
         <span className="text-sm text-neutral-500 font-medium">({eligibleSponsors.length})</span>
         <button
           type="button"
-          onClick={handleCardClick}
+          onClick={scrollToSponsorSection}
           className="ml-auto text-sm text-indigo-700 hover:underline flex items-center gap-1 font-medium"
         >
           Sponsor this event
@@ -95,10 +104,10 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
           <button
             key={s.id}
             type="button"
-            onClick={handleCardClick}
+            onClick={() => setPopupSponsor(s)}
             data-testid={`sponsor-preview-card-${s.id}`}
             className="flex-none w-64 snap-start rounded-lg border border-neutral-200 bg-white text-left transition-shadow hover:shadow-md hover:border-indigo-300"
-            aria-label={`Sponsor: ${s.sponsorOrganization || s.sponsorName}`}
+            aria-label={`Sponsor: ${s.sponsorOrganization || s.sponsorName} — click to view brochure`}
           >
             <div className="aspect-[4/3] w-full overflow-hidden rounded-t-lg bg-neutral-50 flex items-center justify-center">
               {s.imageUrl ? (
@@ -136,6 +145,10 @@ export function SponsorsPreviewStrip({ eventId, sponsorConfig }: SponsorsPreview
           </button>
         ))}
       </div>
+
+      {/* Phase 6A.162 — portal'd popup; null sponsor = closed. Shows
+          brochure full-size if set; falls back to the logo otherwise. */}
+      <SponsorBrochurePopup sponsor={popupSponsor} onClose={() => setPopupSponsor(null)} />
     </section>
   );
 }

@@ -362,7 +362,10 @@ public class ExcelExportService : IExcelExportService
         headersList.AddRange(new[]
         {
             "Registration Date",
-            "Status"
+            "Status",
+            // Phase 6A.161: Ticket tier(s) — appended LAST to preserve existing column order.
+            // Unconditional so free-event tiers ($0 adult price) still export.
+            "Ticket Tier"
         });
 
         var headers = headersList.ToArray();
@@ -494,10 +497,15 @@ public class ExcelExportService : IExcelExportService
 
             sheet.Cell(row, col++).Value = attendee.Status.ToString();
 
+            // Phase 6A.161: Ticket tier summary (computed, never null — "—" when no tier).
+            sheet.Cell(row, col++).Value = attendee.TicketTierSummary;
+
             row++;
         }
 
         // Phase 6A.71: Add summary row with dynamic column positioning
+        // Phase 6A.161 note: the TOTALS row writes only specific columns; the appended
+        // Ticket Tier column is intentionally left blank here (matches the CSV summary row).
         row++;
         sheet.Cell(row, 1).Value = "TOTALS";
         sheet.Cell(row, 1).Style.Font.Bold = true;

@@ -76,6 +76,18 @@ public interface IStripePaymentService
     Task<Result<AddOnPurchaseCheckoutResult>> CreateAddOnCartCheckoutSessionAsync(
         CreateAddOnCartCheckoutSessionRequest request,
         CancellationToken cancellationToken = default);
+
+    // Phase 6A.157: Sponsorship Package Feature — create checkout session for
+    // a packaged sponsorship purchase. Distinct from
+    // CreateSponsorCheckoutSessionAsync (generic money sponsorship) because
+    // the line-item description includes the package name + tier + (optional)
+    // included-tickets appendix, and the metadata payment_type literal is
+    // "package_sponsor" so the webhook dispatcher routes to
+    // PackageSponsorWebhookHandler (which raises the new
+    // PackageSponsorCompletedEvent rather than the generic one).
+    Task<Result<PackageSponsorCheckoutResult>> CreatePackageSponsorCheckoutSessionAsync(
+        CreatePackageSponsorCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -726,6 +738,50 @@ public class CreateAddOnPurchaseCheckoutSessionRequest
 /// Result of creating an add-on purchase Stripe Checkout session.
 /// </summary>
 public class AddOnPurchaseCheckoutResult
+{
+    public required string SessionId { get; init; }
+    public required string CheckoutUrl { get; init; }
+    public DateTime ExpiresAt { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.157 — request to create a Stripe Checkout session for a
+/// packaged sponsorship purchase. Mirrors
+/// <see cref="CreateSponsorCheckoutSessionRequest"/> but carries the
+/// package-specific fields needed to render a clear Stripe line-item
+/// description ("Gold Sponsor — Includes 3 tickets") and to populate the
+/// webhook metadata for routing through PackageSponsorWebhookHandler.
+/// </summary>
+public class CreatePackageSponsorCheckoutSessionRequest
+{
+    public Guid EventId { get; init; }
+    public Guid SponsorId { get; init; }
+    public Guid SponsorshipPackageId { get; init; }
+    public required string EventTitle { get; init; }
+    public required string PackageName { get; init; }
+    public string? PackageTier { get; init; }
+    public string? SponsorOrganization { get; init; }
+    public decimal Amount { get; init; }
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>
+    /// Phase 6A.157 — included-ticket count drives a conditional appendix on
+    /// the Stripe line-item description (per user pivot 2026-05-31, tickets
+    /// are purely informational; organizer handles admission off-platform).
+    /// Zero suppresses the appendix entirely.
+    /// </summary>
+    public int IncludedTicketCount { get; init; }
+
+    public required string SuccessUrl { get; init; }
+    public required string CancelUrl { get; init; }
+    public Dictionary<string, string>? Metadata { get; init; }
+}
+
+/// <summary>
+/// Phase 6A.157 — result of creating a packaged sponsorship Stripe Checkout
+/// session. Same shape as <see cref="SponsorCheckoutResult"/>.
+/// </summary>
+public class PackageSponsorCheckoutResult
 {
     public required string SessionId { get; init; }
     public required string CheckoutUrl { get; init; }

@@ -8,6 +8,8 @@ import {
   useUpdateSponsor,
   useUploadSponsorImage,
   useDeleteSponsorImage,
+  useUploadSponsorBrochure,
+  useDeleteSponsorBrochure,
 } from '@/presentation/hooks/useSponsors';
 import type {
   SponsorDto,
@@ -68,12 +70,18 @@ export function EditSponsorModal({
   // remove cancels the remove.
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  // Phase 6A.162 — brochure slot (sibling to logo). Same mutual-exclusion
+  // pattern: picking a new file cancels a pending remove, and vice versa.
+  const [brochureFile, setBrochureFile] = useState<File | null>(null);
+  const [removeExistingBrochure, setRemoveExistingBrochure] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const updateSponsor = useUpdateSponsor();
   const uploadImage = useUploadSponsorImage();
   const deleteImage = useDeleteSponsorImage();
+  const uploadBrochure = useUploadSponsorBrochure();
+  const deleteBrochure = useDeleteSponsorBrochure();
 
   // Reset form when sponsor changes / modal opens
   useEffect(() => {
@@ -87,6 +95,12 @@ export function EditSponsorModal({
     setEstimatedValue(sponsor.estimatedValue != null ? String(sponsor.estimatedValue) : '');
     setImageFile(null);
     setRemoveExistingImage(false);
+    // Phase 6A.162-fix-1 — brochure slot reset, mirroring the logo slot
+    // above. Operator UAT: without these two lines, a brochure file
+    // picked while editing sponsor A survives the modal close and
+    // re-uploads to sponsor B on next save.
+    setBrochureFile(null);
+    setRemoveExistingBrochure(false);
     setError(null);
   }, [sponsor?.id, open]);
 
@@ -99,6 +113,17 @@ export function EditSponsorModal({
   const handleRemoveExisting = () => {
     setRemoveExistingImage(true);
     setImageFile(null);
+  };
+
+  // Phase 6A.162 — same mutual-exclusion shape for the brochure slot.
+  const handleBrochureChange = (file: File | null) => {
+    setBrochureFile(file);
+    if (file !== null) setRemoveExistingBrochure(false);
+  };
+
+  const handleRemoveExistingBrochure = () => {
+    setRemoveExistingBrochure(true);
+    setBrochureFile(null);
   };
 
   if (!open || !sponsor) return null;
@@ -166,7 +191,9 @@ export function EditSponsorModal({
       }
 
       const hasImageChange = canEditImage && (imageFile !== null || removeExistingImage);
-      if (Object.keys(patch).length === 0 && !hasImageChange) {
+      // Phase 6A.162 — brochure change participates in "have something to save"
+      const hasBrochureChange = canEditImage && (brochureFile !== null || removeExistingBrochure);
+      if (Object.keys(patch).length === 0 && !hasImageChange && !hasBrochureChange) {
         setError('No changes to save');
         setSaving(false);
         return;
@@ -210,6 +237,42 @@ export function EditSponsorModal({
             // eslint-disable-next-line no-console
             console.error('[EditSponsorModal] image delete failed:', imgErr);
             setError('Saved text fields, but the image remove failed. Try again.');
+            setSaving(false);
+            return;
+          }
+        }
+      }
+
+      // Phase 6A.162 — brochure change runs AFTER the logo change so a logo
+      // failure doesn't block the brochure (and vice versa). Both are
+      // best-effort wrapped in try/catch per CLAUDE.md Section 4
+      // observability; an upload/delete failure surfaces a user-facing
+      // error but the text-field PATCH has already committed.
+      if (hasBrochureChange) {
+        if (brochureFile) {
+          try {
+            await uploadBrochure.mutateAsync({
+              eventId,
+              sponsorId: sponsor.id,
+              file: brochureFile,
+            });
+          } catch (brErr) {
+            // eslint-disable-next-line no-console
+            console.error('[EditSponsorModal] brochure upload failed:', brErr);
+            setError('Saved text fields, but the brochure upload failed. Try again.');
+            setSaving(false);
+            return;
+          }
+        } else if (removeExistingBrochure) {
+          try {
+            await deleteBrochure.mutateAsync({
+              eventId,
+              sponsorId: sponsor.id,
+            });
+          } catch (brErr) {
+            // eslint-disable-next-line no-console
+            console.error('[EditSponsorModal] brochure delete failed:', brErr);
+            setError('Saved text fields, but the brochure remove failed. Try again.');
             setSaving(false);
             return;
           }
@@ -301,6 +364,13 @@ export function EditSponsorModal({
               existingImageUrl={removeExistingImage ? null : sponsor.imageUrl}
               onRemoveExisting={sponsor.imageUrl && !removeExistingImage ? handleRemoveExisting : undefined}
               disabled={saving}
+              brochure={{
+                value: brochureFile,
+                onChange: handleBrochureChange,
+                existingImageUrl: removeExistingBrochure ? null : sponsor.brochureUrl,
+                onRemoveExisting: sponsor.brochureUrl && !removeExistingBrochure ? handleRemoveExistingBrochure : undefined,
+                label: 'Brochure / flyer (optional)',
+              }}
               helperText={
                 removeExistingImage
                   ? 'Existing image will be removed when you click Save changes.'

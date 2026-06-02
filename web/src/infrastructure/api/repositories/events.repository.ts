@@ -2002,6 +2002,32 @@ export class EventsRepository {
   }
 
   /**
+   * Phase 6A.162 — uploads (or replaces) a sponsor's brochure/flyer image
+   * (sibling slot to the logo). Public access by sponsor-id knowledge,
+   * same auth model as /image POST. Backend enforces 5MB cap + MIME guards.
+   */
+  async uploadSponsorBrochure(
+    eventId: string,
+    sponsorId: string,
+    file: File
+  ): Promise<import('../types/events.types').ImageUploadResultDto> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').ImageUploadResultDto>(
+      `${this.basePath}/${eventId}/sponsors/${sponsorId}/brochure`,
+      formData
+    );
+  }
+
+  /**
+   * Phase 6A.162 — clears a sponsor's brochure. Authorized (sponsor-self or
+   * organizer). Idempotent.
+   */
+  async deleteSponsorBrochure(eventId: string, sponsorId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsors/${sponsorId}/brochure`);
+  }
+
+  /**
    * Phase 6A.151 C4 — pre-upload a sponsor logo to a staging blob path. Used by
    * the inline registration panel: when the user picks a file, we upload to
    * staging immediately (file-pick time, not submit time) because the parent
@@ -2201,6 +2227,102 @@ export class EventsRepository {
 
   async updateAddOnConfig(eventId: string, request: import('../types/events.types').UpdateAddOnConfigRequest): Promise<void> {
     return await apiClient.put<void>(`${this.basePath}/${eventId}/add-on-config`, request);
+  }
+
+  // ==================== Phase 6A.156: Sponsorship Packages (Organizer CRUD) ====================
+  //
+  // Catalogue half of the packaged-sponsorship feature. Buyer purchase + public
+  // read endpoints land in 6A.157. Every endpoint here is organizer-gated.
+
+  async getSponsorshipPackages(
+    eventId: string,
+  ): Promise<import('../types/events.types').SponsorshipPackageDto[]> {
+    return await apiClient.get<import('../types/events.types').SponsorshipPackageDto[]>(
+      `${this.basePath}/${eventId}/sponsorship-packages`,
+    );
+  }
+
+  async createSponsorshipPackage(
+    eventId: string,
+    request: import('../types/events.types').CreateSponsorshipPackageRequest,
+  ): Promise<string> {
+    return await apiClient.post<string>(
+      `${this.basePath}/${eventId}/sponsorship-packages`,
+      request,
+    );
+  }
+
+  async updateSponsorshipPackage(
+    eventId: string,
+    packageId: string,
+    request: import('../types/events.types').UpdateSponsorshipPackageRequest,
+  ): Promise<void> {
+    return await apiClient.put<void>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}`,
+      request,
+    );
+  }
+
+  async deleteSponsorshipPackage(eventId: string, packageId: string): Promise<void> {
+    await apiClient.delete(`${this.basePath}/${eventId}/sponsorship-packages/${packageId}`);
+  }
+
+  /**
+   * Uploads (or replaces) the display image for a sponsorship package.
+   * Server deletes any prior blob best-effort after persisting the new one.
+   */
+  async uploadSponsorshipPackageImage(
+    eventId: string,
+    packageId: string,
+    file: File,
+  ): Promise<import('../types/events.types').SetSponsorshipPackageImageResult> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return await apiClient.postMultipart<import('../types/events.types').SetSponsorshipPackageImageResult>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/image`,
+      formData,
+    );
+  }
+
+  /**
+   * Clears the display image from a sponsorship package. Idempotent.
+   */
+  async deleteSponsorshipPackageImage(eventId: string, packageId: string): Promise<void> {
+    await apiClient.delete(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/image`,
+    );
+  }
+
+  // ==================== Phase 6A.157: Public sponsorship package buyer endpoints ====================
+
+  /**
+   * Phase 6A.157 — anonymous list of buyable packages for an event. Server-
+   * filtered to Published + sponsors enabled + packages enabled + active +
+   * non-sold-out. Returns [] for non-opted-in events.
+   */
+  async getActiveSponsorshipPackages(
+    eventId: string,
+  ): Promise<import('../types/events.types').SponsorshipPackagePublicDto[]> {
+    return await apiClient.get<import('../types/events.types').SponsorshipPackagePublicDto[]>(
+      `${this.basePath}/${eventId}/sponsorship-packages/active`,
+    );
+  }
+
+  /**
+   * Phase 6A.157 — anonymous purchase of a sponsorship package. Returns
+   * `{ checkoutUrl, sponsorId }` — caller redirects to checkoutUrl (Stripe
+   * for paid, SuccessUrl directly for free) and may optionally use sponsorId
+   * to attach a buyer logo via `POST /sponsors/{id}/image` before redirect.
+   */
+  async purchaseSponsorshipPackage(
+    eventId: string,
+    packageId: string,
+    request: import('../types/events.types').CreatePackageSponsorRequest,
+  ): Promise<import('../types/events.types').CreatePackageSponsorResult> {
+    return await apiClient.post<import('../types/events.types').CreatePackageSponsorResult>(
+      `${this.basePath}/${eventId}/sponsorship-packages/${packageId}/purchase`,
+      request,
+    );
   }
 
   // ==================== Phase 6A.133: Co-Organizer Management ====================

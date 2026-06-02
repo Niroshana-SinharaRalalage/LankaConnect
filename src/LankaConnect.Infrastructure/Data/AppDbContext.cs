@@ -123,6 +123,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<Sponsor> Sponsors => Set<Sponsor>(); // Money (Stripe) or item-based sponsorships
     public DbSet<AddOnDefinition> AddOnDefinitions => Set<AddOnDefinition>(); // Organizer-defined purchasable add-on items
     public DbSet<AddOnPurchase> AddOnPurchases => Set<AddOnPurchase>(); // Add-on purchases with Stripe payment lifecycle
+    public DbSet<SponsorshipPackage> SponsorshipPackages => Set<SponsorshipPackage>(); // Phase 6A.156 — organizer-defined sponsorship tiers (Gold/Silver/Bronze)
 
     // Badge Entity Sets (Phase 6A.25)
     public DbSet<Badge> Badges => Set<Badge>(); // Phase 6A.25: Badge Management
@@ -261,6 +262,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new SponsorEntityConfiguration());
         modelBuilder.ApplyConfiguration(new AddOnDefinitionEntityConfiguration());
         modelBuilder.ApplyConfiguration(new AddOnPurchaseEntityConfiguration());
+        modelBuilder.ApplyConfiguration(new SponsorshipPackageEntityConfiguration()); // Phase 6A.156: organizer-defined sponsorship packages
 
         // Badge entity configurations (Phase 6A.25)
         modelBuilder.ApplyConfiguration(new BadgeConfiguration());
@@ -463,6 +465,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(Sponsor), // Money/item sponsorships (Financial Features)
             typeof(AddOnDefinition), // Purchasable add-on items (Financial Features)
             typeof(AddOnPurchase), // Add-on purchases (Financial Features)
+            typeof(SponsorshipPackage), // Phase 6A.156: organizer-defined sponsorship packages (Gold/Silver/Bronze)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
             typeof(PhotoAlbum), // After Event Photo Album Feature

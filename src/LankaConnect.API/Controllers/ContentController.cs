@@ -39,7 +39,10 @@ public class ContentController : ControllerBase
     [ProducesResponseType(typeof(ContentImageUploadResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UploadImage([FromForm] IFormFile image)
+    // [FromForm] on a top-level IFormFile parameter breaks Swashbuckle's parameter
+    // generator (SwaggerGeneratorException). [Consumes("multipart/form-data")] +
+    // FileUploadOperationFilter handle binding + schema correctly without it.
+    public async Task<IActionResult> UploadImage(IFormFile image)
     {
         try
         {

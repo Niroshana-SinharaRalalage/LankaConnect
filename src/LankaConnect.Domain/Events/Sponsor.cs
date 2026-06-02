@@ -74,9 +74,13 @@ public class Sponsor : BaseEntity
     public DateTime? RecordedAt { get; private set; }
 
     /// <summary>
-    /// Phase 6A.145 — optional public URL of the sponsor's logo/image displayed on the
-    /// event details page. Any sponsor can attach an image (no threshold gate as of
-    /// Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
+    /// Phase 6A.145 — optional public URL of the sponsor's <b>logo</b> image displayed
+    /// on the event details page. Any sponsor can attach an image (no threshold gate as
+    /// of Commit 6 per UAT). Always set together with <see cref="ImageBlobName"/>.
+    ///
+    /// Phase 6A.162 — semantically this is the LOGO slot. A separate optional BROCHURE
+    /// slot lives on <see cref="BrochureUrl"/>/<see cref="BrochureBlobName"/>; the two
+    /// slots are orthogonal — touching one does NOT mutate the other.
     /// </summary>
     public string? ImageUrl { get; private set; }
 
@@ -86,6 +90,22 @@ public class Sponsor : BaseEntity
     /// <see cref="ImageUrl"/>.
     /// </summary>
     public string? ImageBlobName { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.162 — optional public URL of the sponsor's <b>brochure / flyer</b>
+    /// image. Sibling slot to the logo (<see cref="ImageUrl"/>); the two slots are
+    /// orthogonal. Click-to-popup on the public sponsor strip shows the brochure when
+    /// set, falling back to the logo when null. Always set together with
+    /// <see cref="BrochureBlobName"/>.
+    /// </summary>
+    public string? BrochureUrl { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.162 — Azure blob name for the brochure slot. Used by the upload handler
+    /// to delete the old blob on replace/clear. Always set together with
+    /// <see cref="BrochureUrl"/>.
+    /// </summary>
+    public string? BrochureBlobName { get; private set; }
 
     /// <summary>
     /// Phase 6A.151 — timestamp of the last human-initiated content edit
@@ -105,6 +125,70 @@ public class Sponsor : BaseEntity
     /// Set in tandem with <see cref="LastEditedAt"/>.
     /// </summary>
     public Guid? LastEditedBy { get; private set; }
+
+    // =========================================================================
+    // Phase 6A.156 — Sponsorship Package linkage (nullable, additive)
+    //
+    // Generic sponsorship (today's flow) = SponsorshipPackageId IS NULL.
+    // Packaged sponsorship (6A.157+) sets SponsorshipPackageId + snapshots the
+    // package fields at purchase time so that organizer edits to the package
+    // don't retroactively alter historic sponsor receipts (mirrors the verified
+    // AddOnPurchase.UnitPrice snapshot pattern).
+    //
+    // Wiring for these fields lands in 6A.157 (public purchase command via
+    // a new Sponsor.CreatePackageSponsor factory). 6A.156 only persists the
+    // schema + properties so the EF migration is one ship, not two.
+    // =========================================================================
+
+    /// <summary>
+    /// Phase 6A.156 — FK to <see cref="SponsorshipPackage"/>. Null for the
+    /// existing generic flow (free-form amount or item); non-null for packaged
+    /// sponsorships introduced in 6A.157. Database constraint: when set, the
+    /// snapshot fields below must also be populated (DB-level CHECK in the EF
+    /// configuration).
+    /// </summary>
+    public Guid? SponsorshipPackageId { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — FK to <see cref="Registration"/> when this sponsor was
+    /// purchased as part of a registration checkout (RSVP-bundled flow in
+    /// 6A.159) or when the package's bundled ticket allocation created a
+    /// head-count registration (6A.158). Null for standalone (non-bundled)
+    /// sponsors.
+    /// </summary>
+    public Guid? RegistrationId { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package name at purchase time, denormalized so that
+    /// organizer edits to <see cref="SponsorshipPackage.Name"/> don't change
+    /// historical receipts. Required when <see cref="SponsorshipPackageId"/>
+    /// is set (DB-level CHECK).
+    /// </summary>
+    public string? PackageNameSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package tier label at purchase time. Nullable even when
+    /// packaged because the source <see cref="SponsorshipPackage.Tier"/> is
+    /// itself optional.
+    /// </summary>
+    public string? PackageTierSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — package price at purchase time. Distinct from
+    /// <see cref="Amount"/>: for package sponsors the two are equal at create
+    /// time, but storing the snapshot separately keeps reporting clear and
+    /// allows future top-up/discount semantics on Amount without disturbing
+    /// historic price-on-day-of-purchase.
+    /// </summary>
+    public Money? PackagePriceSnapshot { get; private set; }
+
+    /// <summary>
+    /// Phase 6A.156 — included-ticket count at purchase time. Drives the
+    /// 6A.158 bundled head-count Registration allocation. Frozen at purchase
+    /// so a package edit (e.g., organizer drops Gold from 5 tix to 3) does not
+    /// re-allocate already-bought sponsors.
+    /// </summary>
+    public int? IncludedTicketCountSnapshot { get; private set; }
 
     // EF Core constructor
     private Sponsor()
@@ -146,6 +230,92 @@ public class Sponsor : BaseEntity
             SponsorNotes = sponsorNotes?.Trim(),
             Amount = amount,
             Status = SponsorStatus.Pending
+        };
+
+        return Result<Sponsor>.Success(sponsor);
+    }
+
+    /// <summary>
+    /// Phase 6A.157 — creates a packaged sponsorship from a chosen
+    /// <see cref="SponsorshipPackage"/>. Writes all 6 snapshot fields
+    /// (SponsorshipPackageId + 5 snapshot values) atomically so the Sponsor row
+    /// reflects the package state at purchase time even if the organizer later
+    /// edits the catalogue.
+    ///
+    /// Status starts at <see cref="SponsorStatus.Pending"/> — caller is expected
+    /// to immediately call <see cref="SetStripeCheckoutSession"/> and then
+    /// <see cref="CompletePackagePayment"/> on webhook (paid flow), OR to call
+    /// <see cref="CompletePackagePayment"/> directly with a sentinel
+    /// "free_package_no_payment_required" intent ID for free packages.
+    ///
+    /// The Money <paramref name="packagePrice"/> is used for BOTH
+    /// <see cref="Amount"/> and <see cref="PackagePriceSnapshot"/>. Per EF Core
+    /// owned-type rules, the same Money instance cannot be referenced twice —
+    /// we materialize two distinct copies via the Money factory.
+    ///
+    /// Mirrors <see cref="CreateMoneySponsor"/> for non-package fields. Type is
+    /// fixed to <see cref="SponsorType.Money"/> (item packages explicitly out of
+    /// scope per 6A.156 decision #3). RegistrationId stays null (RSVP-bundled
+    /// flow was 6A.159, CANCELLED 2026-05-31).
+    /// </summary>
+    public static Result<Sponsor> CreatePackageSponsor(
+        Guid eventId,
+        Guid? sponsorUserId,
+        string sponsorName,
+        string sponsorEmail,
+        string? sponsorPhone,
+        string? sponsorOrganization,
+        string? sponsorNotes,
+        Guid sponsorshipPackageId,
+        string packageName,
+        string? packageTier,
+        Money packagePrice,
+        int includedTicketCount)
+    {
+        var validationResult = ValidateCommon(eventId, sponsorName, sponsorEmail);
+        if (validationResult.IsFailure)
+            return Result<Sponsor>.Failure(validationResult.Error);
+
+        if (sponsorshipPackageId == Guid.Empty)
+            return Result<Sponsor>.Failure("SponsorshipPackageId is required for package sponsors");
+
+        if (string.IsNullOrWhiteSpace(packageName))
+            return Result<Sponsor>.Failure("PackageName is required for package sponsors");
+
+        if (packagePrice == null)
+            return Result<Sponsor>.Failure("PackagePrice is required for package sponsors");
+
+        if (packagePrice.Amount < 0)
+            return Result<Sponsor>.Failure("PackagePrice cannot be negative");
+
+        if (includedTicketCount < 0)
+            return Result<Sponsor>.Failure("IncludedTicketCount cannot be negative");
+
+        // EF Core owned-type rule — the same Money instance cannot be shared
+        // across two properties. Materialize a second copy for the snapshot.
+        var snapshotPriceResult = Money.Create(packagePrice.Amount, packagePrice.Currency);
+        if (snapshotPriceResult.IsFailure)
+            return Result<Sponsor>.Failure(snapshotPriceResult.Error);
+
+        var sponsor = new Sponsor
+        {
+            EventId = eventId,
+            Type = SponsorType.Money,
+            SponsorUserId = sponsorUserId,
+            SponsorName = sponsorName.Trim(),
+            SponsorEmail = sponsorEmail.Trim().ToLowerInvariant(),
+            SponsorPhone = sponsorPhone?.Trim(),
+            SponsorOrganization = sponsorOrganization?.Trim(),
+            SponsorNotes = sponsorNotes?.Trim(),
+            Amount = packagePrice,
+            Status = SponsorStatus.Pending,
+            // Package snapshot fields (6A.156 schema, 6A.157 wiring)
+            SponsorshipPackageId = sponsorshipPackageId,
+            RegistrationId = null,
+            PackageNameSnapshot = packageName.Trim(),
+            PackageTierSnapshot = packageTier?.Trim(),
+            PackagePriceSnapshot = snapshotPriceResult.Value,
+            IncludedTicketCountSnapshot = includedTicketCount
         };
 
         return Result<Sponsor>.Success(sponsor);
@@ -245,6 +415,14 @@ public class Sponsor : BaseEntity
         if (Type != SponsorType.Money)
             return Result.Failure("Cannot complete payment for item-based sponsors");
 
+        // Phase 6A.157 mutual guard — package sponsors MUST use
+        // CompletePackagePayment so the package-specific event fires (which
+        // drives the forked email template). Calling generic CompletePayment
+        // would raise the wrong event and the buyer would get the generic
+        // money-sponsor confirmation instead of the package one.
+        if (SponsorshipPackageId.HasValue)
+            return Result.Failure("Package sponsors must use CompletePackagePayment, not CompletePayment");
+
         if (Status != SponsorStatus.Pending)
             return Result.Failure($"Cannot complete payment when status is {Status}");
 
@@ -267,6 +445,56 @@ public class Sponsor : BaseEntity
             Amount!.Amount,
             Amount.Currency.ToString(),
             PaymentCompletedAt.Value));
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.157 — completes a packaged sponsorship after Stripe webhook
+    /// (or instantly for free packages with sentinel
+    /// "free_package_no_payment_required" intent ID). Mirrors
+    /// <see cref="CompletePayment"/> but raises the sibling
+    /// <see cref="PackageSponsorCompletedEvent"/> instead of the generic one,
+    /// so the forked email handler can subscribe cleanly without null-checks
+    /// on the snapshot fields.
+    ///
+    /// Errors when called on a generic (non-package) sponsor — guards prevent
+    /// silent misuse from a webhook handler that doesn't branch correctly.
+    /// </summary>
+    public Result CompletePackagePayment(string paymentIntentId)
+    {
+        if (Type != SponsorType.Money)
+            return Result.Failure("Cannot complete payment for item-based sponsors");
+
+        if (!SponsorshipPackageId.HasValue)
+            return Result.Failure("CompletePackagePayment applies only to package sponsors; use CompletePayment for generic money sponsors");
+
+        if (Status != SponsorStatus.Pending)
+            return Result.Failure($"Cannot complete payment when status is {Status}");
+
+        if (string.IsNullOrWhiteSpace(paymentIntentId))
+            return Result.Failure("Payment intent ID is required");
+
+        StripePaymentIntentId = paymentIntentId;
+        Status = SponsorStatus.Completed;
+        PaymentCompletedAt = DateTime.UtcNow;
+        MarkAsUpdated();
+
+        RaiseDomainEvent(new PackageSponsorCompletedEvent(
+            EventId,
+            Id,
+            SponsorUserId,
+            SponsorName,
+            SponsorEmail,
+            SponsorOrganization,
+            paymentIntentId,
+            Amount!.Amount,
+            Amount.Currency.ToString(),
+            PaymentCompletedAt.Value,
+            SponsorshipPackageId.Value,
+            PackageNameSnapshot!,
+            PackageTierSnapshot,
+            IncludedTicketCountSnapshot ?? 0));
 
         return Result.Success();
     }
@@ -423,6 +651,41 @@ public class Sponsor : BaseEntity
     }
 
     /// <summary>
+    /// Phase 6A.162 — set or replace the sponsor's brochure / flyer image. Both URL
+    /// and blob name are required and set atomically. Mirrors <see cref="SetImage"/>
+    /// line-for-line — the brochure slot is fully orthogonal to the logo slot.
+    /// Handler is responsible for uploading the new blob first and deleting any prior
+    /// brochure blob on replace.
+    /// </summary>
+    public Result SetBrochure(string url, string blobName)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Failure("Brochure URL is required");
+        if (string.IsNullOrWhiteSpace(blobName))
+            return Result.Failure("Brochure blob name is required");
+
+        BrochureUrl = url.Trim();
+        BrochureBlobName = blobName.Trim();
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — clear the sponsor's brochure / flyer image. Idempotent.
+    /// Handler is responsible for deleting the blob from storage. Mirrors
+    /// <see cref="ClearImage"/>; the logo slot is untouched.
+    /// </summary>
+    public Result ClearBrochure()
+    {
+        BrochureUrl = null;
+        BrochureBlobName = null;
+        MarkAsUpdated();
+
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Phase 6A.145 — completes a money sponsor as off-platform (cash collected by the
     /// organizer directly, bypassing Stripe). Used by the organizer-add-sponsor flow
     /// in <see cref="CreateOffPlatformSponsor"/>. Sets Status=Completed +
@@ -438,6 +701,13 @@ public class Sponsor : BaseEntity
     {
         if (Type != SponsorType.Money)
             return Result.Failure("CompleteAsOrganizerCash applies only to money sponsors");
+
+        // Phase 6A.157 mutual guard — same reason as CompletePayment's guard:
+        // off-platform completion of a package sponsor would raise the generic
+        // event and send the wrong (non-package) confirmation email. Off-
+        // platform package completion is not a supported v1 flow.
+        if (SponsorshipPackageId.HasValue)
+            return Result.Failure("CompleteAsOrganizerCash does not apply to package sponsors; package sponsors complete via Stripe (or sentinel for free packages)");
 
         if (Status != SponsorStatus.Pending)
             return Result.Failure($"Cannot complete off-platform when status is {Status}. Must be Pending.");

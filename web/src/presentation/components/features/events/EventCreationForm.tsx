@@ -133,6 +133,13 @@ export function EventCreationForm() {
   const [minSponsorAmount, setMinSponsorAmount] = useState<number | null>(null);
   const [sponsorMessage, setSponsorMessage] = useState('');
   const [showSponsorList, setShowSponsorList] = useState(false);
+  // Phase 6A.156 — gates the public sponsorship-package grid (Gold/Silver/Bronze tiers)
+  const [enableSponsorPackages, setEnableSponsorPackages] = useState(false);
+  // Phase 6A.156-fix — local-mode queue for the inline editor inside SponsorConfigForm.
+  // POSTed per-item after event creation (mirrors pendingAddOnDefinitions at line 145).
+  const [pendingSponsorshipPackages, setPendingSponsorshipPackages] = useState<
+    import('./SponsorshipPackageEditor').PendingSponsorshipPackage[]
+  >([]);
   // Phase 6A.144 — opt-in threshold for per-sponsor image uploads. Null = feature OFF.
 
   // Add-On configuration state
@@ -574,6 +581,7 @@ export function EventCreationForm() {
             minSponsorAmount: minSponsorAmount,
             sponsorMessage: sponsorMessage || null,
             showSponsorList,
+            enablePackages: enableSponsorPackages,
           })
         );
       }
@@ -618,6 +626,40 @@ export function EventCreationForm() {
         } catch (defErr) {
           console.error('⚠️ Some add-on definitions failed to save:', defErr);
           // Non-blocking — definitions can be added later from manage page
+        }
+      }
+
+      // Phase 6A.156-fix — create pending sponsorship packages (queued during
+      // local-mode editing inside SponsorConfigForm). Mirrors the add-on POST
+      // loop above byte-for-byte. Non-blocking: a failure here doesn't undo
+      // event creation — the organiser can add packages from the manage page.
+      if (
+        sponsorsEnabled &&
+        enableSponsorPackages &&
+        pendingSponsorshipPackages.length > 0
+      ) {
+        try {
+          await Promise.all(
+            pendingSponsorshipPackages.map((pkg) =>
+              eventsRepository.createSponsorshipPackage(eventId, {
+                name: pkg.name,
+                description: pkg.description,
+                price: pkg.price,
+                currency: pkg.currency,
+                quantityLimit: pkg.quantityLimit,
+                sortOrder: pkg.sortOrder,
+                tier: pkg.tier,
+                perks: pkg.perks,
+                includedTicketCount: pkg.includedTicketCount,
+              })
+            )
+          );
+          console.log(
+            `✅ ${pendingSponsorshipPackages.length} sponsorship packages created`
+          );
+        } catch (pkgErr) {
+          console.error('⚠️ Some sponsorship packages failed to save:', pkgErr);
+          // Non-blocking — packages can be added later from manage page Sponsors tab
         }
       }
 
@@ -1862,6 +1904,10 @@ export function EventCreationForm() {
             onSponsorMessageChange={setSponsorMessage}
             showSponsorList={showSponsorList}
             onShowSponsorListChange={setShowSponsorList}
+            enablePackages={enableSponsorPackages}
+            onEnablePackagesChange={setEnableSponsorPackages}
+            pendingPackages={pendingSponsorshipPackages}
+            onPendingPackagesChange={setPendingSponsorshipPackages}
           />
         </CollapsibleSection>
       </div>

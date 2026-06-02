@@ -3,52 +3,88 @@
 import { useRef, useState, useEffect } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 
-interface SponsorImagePickerProps {
-  /** The currently-staged new file to upload (or null when nothing picked). */
-  value: File | null;
-  /** Called when the user picks or clears a file. Pass null to clear. */
-  onChange: (file: File | null) => void;
-  /** Existing image URL on the sponsor (server-side). Shown as preview when no new file is staged. */
-  existingImageUrl?: string | null;
-  /** Called when the user clicks "Remove" on an EXISTING image — handler should DELETE on the backend. */
-  onRemoveExisting?: () => void;
-  /** When true, all inputs are read-only. */
-  disabled?: boolean;
-  /** Field label shown above the picker. */
-  label?: string;
-  /** Inline helper text below the picker. */
-  helperText?: string;
-}
-
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — matches backend limit
 const ACCEPT = 'image/jpeg,image/png,image/webp';
 
 /**
- * Phase 6A.151 C6 — shared sponsor-image picker. Three states:
- *   1. No new file + no existing image → "Attach a logo" CTA
+ * Phase 6A.151 C6 — shared sponsor-image picker. Three states per slot:
+ *   1. No new file + no existing image → empty-state CTA ("Attach...")
  *   2. No new file + existing image → preview + "Replace" + "Remove"
  *   3. New file staged                → preview the new file + "Clear"
  *
- * Pure presentational. Owns no network state. The parent decides what to
- * do with the staged file (POST /staging-image for the inline panel,
- * POST /sponsors/{id}/image for the edit modal). Backend enforces the
- * same 5MB + MIME guards; this component pre-filters so the user sees
- * the error before the network round-trip.
+ * Phase 6A.162 — gains an optional second slot for a brochure/flyer.
+ * When the parent passes a `brochure` prop, the component renders TWO
+ * stacked single pickers (logo on top, brochure beneath) with their own
+ * independent state + handlers. When `brochure` is undefined → today's
+ * single-picker behavior, byte-for-byte unchanged — zero regression for
+ * callers that haven't opted in.
+ *
+ * Pure presentational. Owns no network state. Backend enforces the same
+ * 5 MB + MIME guards; this component pre-filters so the user sees the
+ * error before the network round-trip.
  */
-export function SponsorImagePicker({
+export interface SponsorImagePickerBrochureSlot {
+  value: File | null;
+  onChange: (file: File | null) => void;
+  existingImageUrl?: string | null;
+  onRemoveExisting?: () => void;
+  label?: string;
+  helperText?: string;
+}
+
+interface SponsorImagePickerProps {
+  /** The currently-staged new LOGO file (or null when nothing picked). */
+  value: File | null;
+  /** Called when the user picks or clears the logo file. */
+  onChange: (file: File | null) => void;
+  /** Existing logo URL on the sponsor (server-side). */
+  existingImageUrl?: string | null;
+  /** Called when the user clicks "Remove" on the EXISTING logo. */
+  onRemoveExisting?: () => void;
+  /** When true, all inputs are read-only. */
+  disabled?: boolean;
+  /** Field label shown above the logo picker. */
+  label?: string;
+  /** Inline helper text below the logo picker. */
+  helperText?: string;
+  /**
+   * Phase 6A.162 — optional brochure/flyer slot. When provided, the
+   * component renders TWO stacked pickers (logo + brochure) with
+   * independent state.
+   */
+  brochure?: SponsorImagePickerBrochureSlot;
+}
+
+/**
+ * Single-slot picker — extracted so the dual mode renders two
+ * independent instances. The public SponsorImagePicker wrapper below
+ * forwards its props into this internal component.
+ */
+function SingleSlotPicker({
   value,
   onChange,
   existingImageUrl,
   onRemoveExisting,
   disabled = false,
-  label = 'Sponsor logo / image (optional)',
+  label,
   helperText,
-}: SponsorImagePickerProps) {
+  emptyCtaLabel,
+  altText,
+}: {
+  value: File | null;
+  onChange: (file: File | null) => void;
+  existingImageUrl?: string | null;
+  onRemoveExisting?: () => void;
+  disabled?: boolean;
+  label: string;
+  helperText?: string;
+  emptyCtaLabel: string;
+  altText: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Build / tear down the object URL for the staged file preview.
   useEffect(() => {
     if (!value) {
       setPreviewUrl(null);
@@ -101,7 +137,7 @@ export function SponsorImagePicker({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl!}
-            alt="New logo preview"
+            alt={`New ${altText} preview`}
             className="h-16 w-16 rounded object-contain bg-white"
           />
           <div className="flex-1 min-w-0">
@@ -115,7 +151,7 @@ export function SponsorImagePicker({
             onClick={handleClearStaged}
             disabled={disabled}
             className="text-neutral-500 hover:text-red-600 disabled:opacity-50"
-            aria-label="Clear staged image"
+            aria-label={`Clear staged ${altText}`}
             title="Clear"
           >
             <X className="h-4 w-4" />
@@ -129,11 +165,11 @@ export function SponsorImagePicker({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={existingImageUrl!}
-            alt="Current sponsor logo"
+            alt={`Current sponsor ${altText}`}
             className="h-16 w-16 rounded object-contain bg-white"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-neutral-600">Current image</p>
+            <p className="text-xs text-neutral-600">Current {altText}</p>
           </div>
           <button
             type="button"
@@ -165,7 +201,7 @@ export function SponsorImagePicker({
           className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-white px-3 py-3 text-sm text-neutral-600 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-700 disabled:opacity-50"
         >
           <ImagePlus className="h-4 w-4" />
-          Attach a logo (JPEG/PNG/WebP · max 5 MB)
+          {emptyCtaLabel}
         </button>
       )}
 
@@ -182,6 +218,62 @@ export function SponsorImagePicker({
       {helperText && !error && (
         <p className="mt-1 text-xs text-neutral-500">{helperText}</p>
       )}
+    </div>
+  );
+}
+
+export function SponsorImagePicker({
+  value,
+  onChange,
+  existingImageUrl,
+  onRemoveExisting,
+  disabled = false,
+  label = 'Sponsor logo / image (optional)',
+  helperText,
+  brochure,
+}: SponsorImagePickerProps) {
+  if (!brochure) {
+    // Single-picker mode: byte-identical with the pre-6A.162 behaviour.
+    return (
+      <SingleSlotPicker
+        value={value}
+        onChange={onChange}
+        existingImageUrl={existingImageUrl}
+        onRemoveExisting={onRemoveExisting}
+        disabled={disabled}
+        label={label}
+        helperText={helperText}
+        emptyCtaLabel="Attach a logo (JPEG/PNG/WebP · max 5 MB)"
+        altText="logo"
+      />
+    );
+  }
+
+  // Phase 6A.162 — dual-picker mode: stacked on mobile, side-by-side on md+.
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <SingleSlotPicker
+        value={value}
+        onChange={onChange}
+        existingImageUrl={existingImageUrl}
+        onRemoveExisting={onRemoveExisting}
+        disabled={disabled}
+        label={label}
+        helperText={helperText}
+        emptyCtaLabel="Attach a logo (JPEG/PNG/WebP · max 5 MB)"
+        altText="logo"
+      />
+      <SingleSlotPicker
+        value={brochure.value}
+        onChange={brochure.onChange}
+        existingImageUrl={brochure.existingImageUrl}
+        onRemoveExisting={brochure.onRemoveExisting}
+        disabled={disabled}
+        label={brochure.label ?? 'Brochure / flyer (optional)'}
+        helperText={brochure.helperText}
+        emptyCtaLabel="Attach a brochure (JPEG/PNG/WebP · max 5 MB)"
+        altText="brochure"
+      />
     </div>
   );
 }

@@ -1,5 +1,21 @@
 'use client';
 
+/**
+ * @deprecated Phase 6A.157-fix-1 [1/3] (operator UAT 2026-06-01) — retired
+ * from the registration flow. Sponsorship is now its own surface via
+ * {@link SponsorSection} on the event detail page; package buys live in
+ * {@link PurchaseSponsorshipPackageModal}. This file is kept as dead code
+ * because:
+ *   - The {@link eventsRepository.uploadSponsorStagingImage} method it
+ *     consumes is also used by no other surface; deleting cascades.
+ *   - We may reintroduce a sponsor-during-registration v2 behind a feature
+ *     flag in a future phase; keeping the component avoids a re-build.
+ *
+ * No new callers should be added. To re-enable, mount it from
+ * {@link EventRegistrationForm} per the original 6A.137E pattern AND
+ * restore the sponsor* state vars + submit-branch + price-summary +
+ * upload-gate in the parent.
+ */
 import { useEffect, useState } from 'react';
 import { Award, Loader2 } from 'lucide-react';
 import { Input } from '@/presentation/components/ui/Input';

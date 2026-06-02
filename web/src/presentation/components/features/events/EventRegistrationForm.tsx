@@ -18,7 +18,12 @@ import { SeatPickerView as SeatSelector } from './SeatPickerView';
 import { DonationOptionInForm } from './DonationOptionInForm';
 import { AddOnOptionInForm, type AddOnSelection } from './AddOnOptionInForm';
 import { CollectionOptionInForm } from './CollectionOptionInForm';
-import { SponsorOptionInForm } from './SponsorOptionInForm';
+// Phase 6A.157-fix-1 [1/3] — SponsorOptionInForm retired from the registration
+// flow per operator UAT 2026-06-01. Backend RsvpToEventCommand still accepts
+// the optional sponsor* fields (UI-only removal preserves backward-compat with
+// in-flight deployed clients during rollout). Sponsorship is now its own flow
+// via SponsorSection on the event detail page (Phase 6A.157 buyer purchase).
+// import { SponsorOptionInForm } from './SponsorOptionInForm';
 import { validatePhoneNumber, isValidPhoneNumber } from '@/presentation/lib/validators/phone';
 import { WhatsAppInlineOptIn } from '@/presentation/components/features/whatsapp/WhatsAppInlineOptIn';
 import { toE164 } from '@/presentation/lib/validators/whatsapp.schemas';
@@ -102,27 +107,14 @@ export function EventRegistrationForm({
   const [addOnSelections, setAddOnSelections] = useState<AddOnSelection[]>([]);
   const addOnTotal = addOnSelections.reduce((sum, s) => sum + s.unitPrice * s.quantity, 0);
 
-  // Phase 6A.137E: Collection/sponsor state
+  // Phase 6A.137E: Collection state. Sponsor state retired in
+  // 6A.157-fix-1 [1/3] (operator UAT 2026-06-01 — sponsorship is now a
+  // separate flow on the event detail page; ticket purchase + sponsorship
+  // no longer share a single Stripe session). Backend RsvpToEventCommand
+  // still accepts the sponsor* fields for backward-compat with deployed
+  // clients during rollout; the FE simply stops sending them.
   const [collectionAmount, setCollectionAmount] = useState<number | null>(null);
   const [collectionNotes, setCollectionNotes] = useState<string | null>(null);
-  const [sponsorAmount, setSponsorAmount] = useState<number | null>(null);
-  const [sponsorOrganization, setSponsorOrganization] = useState<string | null>(null);
-  const [sponsorNotes, setSponsorNotes] = useState<string | null>(null);
-  // Phase 6A.151 C7 — pre-staged sponsor logo blob (set by SponsorOptionInForm
-  // after a successful POST /sponsors/staging-image). Both fields populated
-  // together or both null. Threaded into the registration payload at line 419.
-  const [sponsorStagingBlobName, setSponsorStagingBlobName] = useState<string | null>(null);
-  const [sponsorStagingBlobUrl, setSponsorStagingBlobUrl] = useState<string | null>(null);
-  // W5.D10.b — gate submit while the sponsor logo is uploading so the user
-  // can't race-submit before the staging blob URL is captured (operator UAT:
-  // sponsor 1763328f on 2026-05-21 was created without an image because the
-  // form posted before the in-flight upload had returned the blob URL).
-  const [sponsorImageUploading, setSponsorImageUploading] = useState(false);
-  // W5.D10.c — optional sponsor contact-detail overrides (parity with standalone
-  // /sponsors form). Blank = backend uses registering user's identity.
-  const [sponsorContactName, setSponsorContactName] = useState<string | null>(null);
-  const [sponsorContactEmail, setSponsorContactEmail] = useState<string | null>(null);
-  const [sponsorContactPhone, setSponsorContactPhone] = useState<string | null>(null);
 
   // Form state
   const [quantity, setQuantity] = useState(1);
@@ -347,12 +339,10 @@ export function EventRegistrationForm({
     e.preventDefault();
 
     // W5.D10.b defensive guard — even if the submit button's disabled state
-    // was bypassed, refuse to post while a sponsor logo upload is in flight.
-    // Submitting now would silently lose the user's logo selection (the
-    // operator-UAT root cause of sponsor 1763328f having image_url=NULL).
-    if (sponsorImageUploading) {
-      return;
-    }
+    // Phase 6A.157-fix-1 [1/3] — sponsor-logo upload guard removed alongside
+    // the in-registration sponsor block. Buyer-side logo upload now lives in
+    // PurchaseSponsorshipPackageModal where it can be best-effort without
+    // gating the parent submit path.
 
     // Mark all fields as touched for validation
     setTouched({
@@ -438,24 +428,10 @@ export function EventRegistrationForm({
           collectionAmount,
           collectionNotes: collectionNotes || undefined,
         }),
-        // Phase 6A.137E: Include sponsor amount for bundled checkout
-        ...(sponsorAmount && sponsorAmount > 0 && {
-          sponsorAmount,
-          sponsorOrganization: sponsorOrganization || undefined,
-          sponsorNotes: sponsorNotes || undefined,
-          // Phase 6A.151 C7: pre-staged sponsor logo. Backend Sponsor.SetImage
-          // is invoked in-tx with Sponsor row create. Both fields together or
-          // both omitted; partial = sponsor row created without image.
-          ...(sponsorStagingBlobName && sponsorStagingBlobUrl && {
-            sponsorStagingBlobName,
-            sponsorStagingBlobUrl,
-          }),
-          // W5.D10.c: optional sponsor-contact overrides — backend falls back
-          // to the registering user's identity when these are omitted.
-          ...(sponsorContactName && { sponsorName: sponsorContactName }),
-          ...(sponsorContactEmail && { sponsorEmail: sponsorContactEmail }),
-          ...(sponsorContactPhone && { sponsorPhone: sponsorContactPhone }),
-        }),
+        // Phase 6A.157-fix-1 [1/3] — bundled sponsor-during-registration
+        // payload retired; sponsorship now ships as its own flow on the event
+        // detail page. Backend optional fields remain for backward-compat with
+        // deployed clients (handler null-skips when absent).
       };
 
       await onSubmit(rsvpData);
@@ -873,28 +849,13 @@ export function EventRegistrationForm({
         />
       )}
 
-      {/* Phase 6A.137E: Optional money sponsorship during registration */}
-      {sponsorConfig?.isEnabled === true && sponsorConfig?.acceptMoneySponsors === true && (
-        <SponsorOptionInForm
-          eventId={eventId}
-          sponsorConfig={sponsorConfig}
-          onSponsorChange={(amount, org, notes) => {
-            setSponsorAmount(amount);
-            setSponsorOrganization(org);
-            setSponsorNotes(notes);
-          }}
-          onStagingBlobChange={(blobName, blobUrl) => {
-            setSponsorStagingBlobName(blobName);
-            setSponsorStagingBlobUrl(blobUrl);
-          }}
-          onUploadingChange={setSponsorImageUploading}
-          onContactChange={(name, email, phone) => {
-            setSponsorContactName(name);
-            setSponsorContactEmail(email);
-            setSponsorContactPhone(phone);
-          }}
-        />
-      )}
+      {/*
+       * Phase 6A.137E: Optional money sponsorship during registration —
+       * RETIRED 6A.157-fix-1 [1/3] (operator UAT 2026-06-01). Sponsorship now
+       * lives in its own flow on the event detail page (Phase 6A.157 buyer
+       * purchase / SponsorSection custom-amount form). Backend optional
+       * fields preserved for backward-compat; FE stops sending them.
+       */}
 
       {/* Total Price with Group/Dual/Single Pricing Breakdown */}
       {!isFree && totalPrice > 0 && (
@@ -984,21 +945,12 @@ export function EventRegistrationForm({
             </div>
           )}
 
-          {/* Phase 6A.137F: Sponsorship section */}
-          {sponsorAmount && sponsorAmount > 0 && (
-            <div className="border-t pt-2 mt-2">
-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Sponsorship</span>
-              <div className="flex justify-between items-center text-sm text-neutral-600 mt-1">
-                <span>Event sponsorship</span>
-                <span>${sponsorAmount.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
+          {/* Phase 6A.137F Sponsorship section retired in 6A.157-fix-1 [1/3] */}
 
           <div className="flex justify-between items-center border-t pt-3">
             <span className="text-base font-medium text-neutral-700">Total</span>
             <span className="text-xl font-bold" style={{ color: '#8B1538' }}>
-              ${(totalPrice + (donationAmount || 0) + addOnTotal + (collectionAmount || 0) + (sponsorAmount || 0)).toFixed(2)}
+              ${(totalPrice + (donationAmount || 0) + addOnTotal + (collectionAmount || 0)).toFixed(2)}
             </span>
           </div>
         </div>
@@ -1011,11 +963,11 @@ export function EventRegistrationForm({
         </div>
       )}
 
-      {/* Submit Button — W5.D10.b: gated on sponsor image upload-in-flight so
-          the user can't race-submit before the staging blob URL is captured. */}
+      {/* Submit Button — 6A.157-fix-1 [1/3] drops the W5.D10.b sponsor-upload
+          gate alongside the rest of the in-registration sponsor block. */}
       <Button
         type="submit"
-        disabled={isProcessing || !isFormValid || sponsorImageUploading}
+        disabled={isProcessing || !isFormValid}
         className="w-full text-lg py-6"
         style={{ background: '#FF7900' }}
       >
@@ -1023,11 +975,6 @@ export function EventRegistrationForm({
           <>
             <Clock className="h-5 w-5 mr-2 animate-spin" />
             Processing...
-          </>
-        ) : sponsorImageUploading ? (
-          <>
-            <Clock className="h-5 w-5 mr-2 animate-spin" />
-            Uploading sponsor logo&hellip;
           </>
         ) : isFree ? (
           'Register for Free'

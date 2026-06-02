@@ -40,9 +40,17 @@ export interface ButtonProps
  * Follows UI/UX best practices with loading states and accessibility
  */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, disabled, children, ...props }, ref) => {
+  ({ className, variant, size, loading, disabled, type, children, ...props }, ref) => {
     return (
       <button
+        // Phase 6A.156-fix-2 — default type="button" so callers that drop a
+        // <Button> inside a <form> don't accidentally submit it. Native HTML
+        // defaults to type="submit" for unmarked buttons in forms, which led
+        // to the operator-UAT bug where "Add Package" inside EventEditForm
+        // submitted the parent form mid-edit. Callers that legitimately want a
+        // submit button still pass type="submit" explicitly (~9 sites today).
+        // Matches the convention used by shadcn/ui and MUI.
+        type={type ?? 'button'}
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={disabled || loading}

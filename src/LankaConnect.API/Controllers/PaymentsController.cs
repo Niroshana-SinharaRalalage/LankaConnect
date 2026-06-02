@@ -32,6 +32,8 @@ public class PaymentsController : ControllerBase
     private readonly ICollectionWebhookHandler _collectionWebhookHandler;
     private readonly ISponsorWebhookHandler _sponsorWebhookHandler;
     private readonly IAddOnPurchaseWebhookHandler _addOnPurchaseWebhookHandler;
+    // Phase 6A.157 — sibling to ISponsorWebhookHandler for packaged sponsorships.
+    private readonly IPackageSponsorWebhookHandler _packageSponsorWebhookHandler;
     // Phase 6A.148.W5.5.D4 — workflow-line lookup for iterate-all-refunds router. Without
     // this the dispatcher uses charge.Refunds.Data.FirstOrDefault() and silently mis-routes
     // when a single PI carries multiple refunds of different types (Bug 1: ticket+sponsor
@@ -51,6 +53,7 @@ public class PaymentsController : ControllerBase
         ICollectionWebhookHandler collectionWebhookHandler,
         ISponsorWebhookHandler sponsorWebhookHandler,
         IAddOnPurchaseWebhookHandler addOnPurchaseWebhookHandler,
+        IPackageSponsorWebhookHandler packageSponsorWebhookHandler,
         LankaConnect.Domain.Events.Repositories.IRefundRequestRepository refundRequestRepository,
         IOptions<StripeOptions> stripeOptions,
         ILogger<PaymentsController> logger)
@@ -65,6 +68,7 @@ public class PaymentsController : ControllerBase
         _collectionWebhookHandler = collectionWebhookHandler;
         _sponsorWebhookHandler = sponsorWebhookHandler;
         _addOnPurchaseWebhookHandler = addOnPurchaseWebhookHandler;
+        _packageSponsorWebhookHandler = packageSponsorWebhookHandler;
         _refundRequestRepository = refundRequestRepository;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
@@ -442,6 +446,17 @@ public class PaymentsController : ControllerBase
                         await _addOnPurchaseWebhookHandler.HandleCheckoutCompletedAsync(
                             session.Id, paymentIntentId, metadata, correlationId);
                         return;
+
+                    // Phase 6A.157 — packaged sponsorship purchase. Routes to
+                    // the new handler which calls Sponsor.CompletePackagePayment
+                    // (raises PackageSponsorCompletedEvent → forked email handler).
+                    case "package_sponsor":
+                        _logger.LogInformation(
+                            "[PackageSponsor] [Webhook-Route] Routing to package sponsor handler - CorrelationId: {CorrelationId}, SessionId: {SessionId}",
+                            correlationId, session.Id);
+                        await _packageSponsorWebhookHandler.HandleCheckoutCompletedAsync(
+                            session.Id, paymentIntentId, metadata, correlationId);
+                        return;
                 }
             }
 
@@ -506,6 +521,12 @@ public class PaymentsController : ControllerBase
 
                     case "add_on_purchase":
                         await _addOnPurchaseWebhookHandler.HandleCheckoutExpiredAsync(
+                            session.Id, metadata, correlationId);
+                        return;
+
+                    // Phase 6A.157 — package sponsor expiry restores reserved stock
+                    case "package_sponsor":
+                        await _packageSponsorWebhookHandler.HandleCheckoutExpiredAsync(
                             session.Id, metadata, correlationId);
                         return;
 

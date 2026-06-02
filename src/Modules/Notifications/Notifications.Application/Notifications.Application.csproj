@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Notifications.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Notifications.Application</AssemblyName>
+    <Description>Notifications module — Application layer. MediatR command/query handlers, DTOs, application services. Depends on Notifications.Domain + Notifications.Contracts + BuildingBlocks.Application (for pipeline behaviors + abstractions). No Infrastructure / Web / Modules.* leakage per ADR-002 module boundary.</Description>
+  </PropertyGroup>
+
+  <!--
+    W3.1 SKELETON (2026-06-02). Empty shell — handlers move in W3.4.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Notifications.Domain\Notifications.Domain.csproj" />
+    <ProjectReference Include="..\Notifications.Contracts\Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+</Project>

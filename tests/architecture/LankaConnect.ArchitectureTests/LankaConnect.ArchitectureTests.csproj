@@ -35,6 +35,12 @@
     <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+
+    <!-- W3.1 (2026-06-02) — Notifications module skeleton; rules enforce module boundary as types move in W3.2+. -->
+    <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Contracts\Notifications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Application\Notifications.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

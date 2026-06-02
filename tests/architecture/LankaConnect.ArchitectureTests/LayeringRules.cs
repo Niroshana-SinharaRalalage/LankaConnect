@@ -146,6 +146,123 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    // ---------- W3 — Notifications module boundaries (added 2026-06-02 with W3.1 skeleton) ----------
+
+    /// <summary>
+    /// W3 module-boundary invariant: the Notifications module must not back-reference
+    /// the legacy layered monolith. As types move (W3.2+), this rule guards against
+    /// accidental edges to <c>LankaConnect.{Domain,Application,Infrastructure,API,Shared}</c>.
+    /// Anchored on Notifications.Domain (innermost layer of the module).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Notifications_Domain_DoesNotDependOnLayeredMonolithOrOtherModules()
+    {
+        var assembly = typeof(Modules.Notifications.Domain.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.BuildingBlocks.Contracts")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// W3 module-boundary invariant: the Notifications module Application layer
+    /// may reach into its own Domain + Contracts + BuildingBlocks.Application,
+    /// but must not reach into Infrastructure / Web or the legacy monolith.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Notifications_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Notifications.Application.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// W3 module-boundary invariant: the Notifications module Contracts layer
+    /// is the cross-module ABI — depends only on BuildingBlocks.Contracts
+    /// (for IntegrationEventBase + V1 marker). No domain entity / handler
+    /// leakage; no other module reference.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Notifications_Contracts_DependsOnlyOnBuildingBlocksContracts()
+    {
+        var assembly = typeof(Modules.Notifications.Contracts.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// W3 module-boundary invariant: the Notifications module Infrastructure
+    /// layer must not reach into Api/Web (outermost) or the legacy monolith.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Notifications_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        var assembly = typeof(Modules.Notifications.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- Helpers ----------
 
     private static void AssertCompliant(TestResult result, string assemblyName)

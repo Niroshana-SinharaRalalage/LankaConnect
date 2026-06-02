@@ -736,15 +736,18 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 **Why first**: lowest fan-in, already generic, sets the playbook.
 
 ### W3.1 — Notifications module skeleton
-- [ ] **Action**: Create:
-  - `src/Modules/Notifications/Notifications.Domain.csproj`
-  - `src/Modules/Notifications/Notifications.Application.csproj`
-  - `src/Modules/Notifications/Notifications.Contracts.csproj`
-  - `src/Modules/Notifications/Notifications.Infrastructure.csproj`
-  - `src/Modules/Notifications/Notifications.Api.csproj`
-  - `tests/Modules/Notifications/Notifications.{Domain,Application,Infrastructure,Api}.Tests.csproj`
-- [ ] **Verify**: ArchTest passes; `dotnet build` green
-- **Acceptance**: 5 module projects + 4 test projects exist
+- [x] **W3.1 (2026-06-02)**: 5 source csprojs + 4 test csprojs landed:
+  - `src/Modules/Notifications/Notifications.{Domain,Contracts,Application,Infrastructure,Api}.csproj` — empty shells with AssemblyMarker.cs placeholders; ProjectReferences follow Clean Architecture inward (Domain→nothing, Contracts→BuildingBlocks.Contracts, Application→{Domain,Contracts,BuildingBlocks.Application}, Infrastructure→{Application,Domain,Contracts,BuildingBlocks.Infrastructure}, Api→{Application,Domain,Contracts,Infrastructure,BuildingBlocks.Web})
+  - `tests/Modules/Notifications/Notifications.{Domain,Application,Infrastructure,Api}.Tests.csproj` — empty shells; tests land in W3.2+ alongside their source types
+  - All 9 projects added to `LankaConnect.sln`
+- [x] **W3.1 ArchTest** (4 new module-boundary rules added; LayeringRules.cs now 9 rules):
+  - `Modules_Notifications_Domain_DoesNotDependOnLayeredMonolithOrOtherModules` (innermost; zero LankaConnect.* / Modules.* / BuildingBlocks.{Application,Infrastructure,Web,Contracts} refs)
+  - `Modules_Notifications_Application_DoesNotDependOnInfraOrWebOrLayeredMonolith`
+  - `Modules_Notifications_Contracts_DependsOnlyOnBuildingBlocksContracts` (cross-module ABI; no domain leak)
+  - `Modules_Notifications_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith`
+  - All 9 rules GREEN (5 BuildingBlocks + 4 Notifications)
+- [x] **W3.1 build**: all 5 module DLLs + ArchTest assembly compile clean (0 warnings, 0 errors)
+- **Acceptance**: ✅ 5 module projects + 4 test projects exist; ArchTest passes; dotnet build green
 
 ### W3.2 — Move domain types
 - [ ] Move `src/LankaConnect.Domain/Notifications/*` → `src/Modules/Notifications/Domain/`

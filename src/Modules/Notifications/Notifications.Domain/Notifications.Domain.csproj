@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Notifications.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Notifications.Domain</AssemblyName>
+    <Description>Notifications module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain (innermost shared kernel); no LankaConnect.Application / LankaConnect.Infrastructure / Modules.* references.</Description>
+  </PropertyGroup>
+
+  <!--
+    W3.1 SKELETON (2026-06-02). Empty shell — domain types move in W3.2.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

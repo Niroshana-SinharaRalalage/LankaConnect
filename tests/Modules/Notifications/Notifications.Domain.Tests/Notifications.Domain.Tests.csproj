@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.Notifications.Domain.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Notifications.Domain.Tests</AssemblyName>
+    <Description>Unit tests for the Notifications module Domain layer (aggregates, value objects, domain events). W3.1 skeleton; pinning tests move in W3.2 alongside the domain types.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Notifications.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Notifications.Contracts</AssemblyName>
+    <Description>Notifications module — Contracts layer (cross-module wire-format ABI). Public interfaces other modules consume (INotificationDispatcher) + integration events (NotificationCreatedIntegrationEventV1, ...). Depends only on BuildingBlocks.Contracts. No domain entity leakage by design.</Description>
+  </PropertyGroup>
+
+  <!--
+    W3.1 SKELETON (2026-06-02). Empty shell — contracts move in W3.3.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

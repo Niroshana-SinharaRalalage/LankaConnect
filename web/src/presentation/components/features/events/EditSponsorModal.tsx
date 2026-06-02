@@ -95,6 +95,12 @@ export function EditSponsorModal({
     setEstimatedValue(sponsor.estimatedValue != null ? String(sponsor.estimatedValue) : '');
     setImageFile(null);
     setRemoveExistingImage(false);
+    // Phase 6A.162-fix-1 — brochure slot reset, mirroring the logo slot
+    // above. Operator UAT: without these two lines, a brochure file
+    // picked while editing sponsor A survives the modal close and
+    // re-uploads to sponsor B on next save.
+    setBrochureFile(null);
+    setRemoveExistingBrochure(false);
     setError(null);
   }, [sponsor?.id, open]);
 

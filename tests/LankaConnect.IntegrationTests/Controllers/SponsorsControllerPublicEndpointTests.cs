@@ -89,6 +89,7 @@ public class SponsorsControllerPublicEndpointTests
             "SponsorOrganization",    // displayed as primary label on the card
             "ItemName",               // shown for Item-type sponsors
             "ImageUrl",               // sponsor logo
+            "BrochureUrl",            // Phase 6A.162 — optional brochure/flyer; click-to-popup
             "SponsorType",            // "Money" or "Item" — drives card rendering
         };
 
@@ -116,6 +117,7 @@ public class SponsorsControllerPublicEndpointTests
     [InlineData("PlatformCommissionAmount")]
     [InlineData("OrganizerPayoutAmount")]
     [InlineData("ImageBlobName")]
+    [InlineData("BrochureBlobName")] // Phase 6A.162 — brochure blob name MUST stay absent (PII contract)
     [InlineData("Status")]
     [InlineData("PaymentCompletedAt")]
     [InlineData("CreatedAt")]

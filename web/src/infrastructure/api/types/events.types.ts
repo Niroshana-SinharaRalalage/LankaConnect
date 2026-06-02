@@ -1224,6 +1224,9 @@ export interface AttendeeDto {
   gender?: Gender | null;
   // Phase 8: Optional ticket tier assignment for tiered events
   ticketTierId?: string | null;
+  // Phase 6A.161: Denormalized tier name for display (e.g. "VIP"). Null for
+  // single-tier/free/legacy registrations.
+  ticketTierName?: string | null;
 }
 
 /**
@@ -1698,6 +1701,10 @@ export interface EventAttendeeDto {
   // Computed Properties (computed on backend)
   mainAttendeeName: string;
   additionalAttendees: string;
+  // Phase 6A.161: Registration-level ticket-tier summary computed on backend.
+  // Single name when uniform ("VIP"), comma-joined when mixed ("VIP, General"),
+  // "—" when no attendee carries a tier. Never null/blank.
+  ticketTierSummary?: string | null;
 }
 
 /**
@@ -2412,6 +2419,128 @@ export interface SponsorConfigurationDto {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  /**
+   * Phase 6A.156 — gates whether organizer-defined sponsorship packages
+   * (Gold/Silver/Bronze tiers) are exposed on the public event page. Default
+   * false; existing rows missing this field deserialize to false (backward-
+   * compatible for all pre-6A.156 events).
+   */
+  enablePackages?: boolean;
+}
+
+/**
+ * Phase 6A.156 — organizer-defined sponsorship package (Gold / Silver /
+ * Bronze tiers). Catalogue projection mirrored from `AddOnDefinitionDto`.
+ * Buyer transactions live on the `Sponsor` aggregate (FK + snapshots,
+ * populated in 6A.157+).
+ */
+export interface SponsorshipPackageDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  priceAmount: number;
+  priceCurrency: string;
+  quantityLimit?: number | null;
+  quantitySold: number;
+  remainingStock?: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  imageUrl?: string | null;
+  imageBlobName?: string | null;
+  tier?: string | null;
+  perks: string[];
+  includedTicketCount: number;
+  createdAt: string; // ISO 8601
+  updatedAt?: string | null;
+}
+
+export interface CreateSponsorshipPackageRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  tier?: string | null;
+  perks?: string[];
+  includedTicketCount: number;
+}
+
+export interface UpdateSponsorshipPackageRequest {
+  name: string;
+  description?: string | null;
+  price: number;
+  currency?: string;
+  quantityLimit?: number | null;
+  sortOrder: number;
+  tier?: string | null;
+  perks?: string[];
+  includedTicketCount: number;
+  isActive: boolean;
+}
+
+export interface SetSponsorshipPackageImageResult {
+  imageUrl: string;
+  imageBlobName: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 6A.157 — public/buyer-facing sponsorship package types
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Phase 6A.157 — public/buyer DTO returned by `GET /sponsorship-packages/active`.
+ * Strips organizer-only fields (quantitySold, quantityLimit, imageBlobName,
+ * audit, isActive). Mirrors the backend `SponsorshipPackagePublicDto`.
+ */
+export interface SponsorshipPackagePublicDto {
+  id: string;
+  eventId: string;
+  name: string;
+  description?: string | null;
+  priceAmount: number;
+  priceCurrency: string;
+  /** Null = unlimited; 0 = sold out (server filters sold-out rows but the field is exposed for client-side defensive UX). */
+  remainingStock?: number | null;
+  isSoldOut: boolean;
+  sortOrder: number;
+  imageUrl?: string | null;
+  tier?: string | null;
+  perks: string[];
+  /** Informational only — system does NOT issue tickets for package sponsors (organizer handles admission off-platform per 6A.157 final scope). */
+  includedTicketCount: number;
+}
+
+/**
+ * Phase 6A.157 — request body for `POST /sponsorship-packages/{packageId}/purchase`.
+ * Mirrors the backend `CreatePackageSponsorRequest`. Buyer fields snapshot
+ * onto the new Sponsor row; success/cancel URLs forwarded to Stripe Checkout
+ * (paid packages) or used directly (free packages).
+ */
+export interface CreatePackageSponsorRequest {
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone?: string | null;
+  buyerOrganization?: string | null;
+  buyerNotes?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+/**
+ * Phase 6A.157 — response from `POST /sponsorship-packages/{packageId}/purchase`.
+ * Mirrors the backend `CreatePackageSponsorResult`.
+ *
+ * `checkoutUrl` is the Stripe Checkout URL for paid packages, or the
+ * SuccessUrl directly for free $0 packages — caller redirects to it either
+ * way. `sponsorId` is the new Pending Sponsor row so the FE can attach a
+ * buyer logo via `POST /sponsors/{id}/image` BEFORE the Stripe redirect
+ * (mirrors 6A.145's widened CreateMoneySponsor pattern).
+ */
+export interface CreatePackageSponsorResult {
+  checkoutUrl: string;
+  sponsorId: string;
 }
 
 export interface SponsorDto {
@@ -2433,9 +2562,14 @@ export interface SponsorDto {
   stripeFeeAmount?: number | null;
   platformCommissionAmount?: number | null;
   organizerPayoutAmount?: number | null;
-  // Phase 6A.145 — optional sponsor logo/image gated by SponsorConfiguration.minAmountForSponsorImage.
+  // Phase 6A.145 — optional sponsor LOGO image.
   imageUrl?: string | null;
   imageBlobName?: string | null;
+  // Phase 6A.162 — optional sponsor brochure/flyer (sibling slot to logo).
+  // Orthogonal to imageUrl/imageBlobName; touching one does NOT mutate the
+  // other (pinned by backend SponsorTests independence invariants).
+  brochureUrl?: string | null;
+  brochureBlobName?: string | null;
   createdAt: string;
   paymentCompletedAt?: string | null;
 }
@@ -2527,6 +2661,13 @@ export interface PublicSponsorDto {
   sponsorName: string;
   itemName?: string | null;
   imageUrl?: string | null;
+  /**
+   * Phase 6A.162 — optional brochure/flyer URL. When set, the click-to-popup
+   * flow on the public sponsor strip shows the brochure full-size; when null
+   * the popup falls back to the logo. `brochureBlobName` STAYS ABSENT (PII —
+   * internal storage identifier, backend reflection-asserted).
+   */
+  brochureUrl?: string | null;
   /** "Money" or "Item" — drives the Item-name caption rendering. */
   sponsorType: string;
 }
@@ -2705,6 +2846,12 @@ export interface UpdateSponsorConfigRequest {
   minSponsorAmount?: number | null;
   sponsorMessage?: string | null;
   showSponsorList: boolean;
+  /**
+   * Phase 6A.156 — gates the organizer-defined sponsorship-package grid
+   * (Gold/Silver/Bronze) on the public event page. Default false on the
+   * backend for backward-compatibility with pre-6A.156 clients.
+   */
+  enablePackages?: boolean;
 }
 
 export interface UpdateAddOnConfigRequest {

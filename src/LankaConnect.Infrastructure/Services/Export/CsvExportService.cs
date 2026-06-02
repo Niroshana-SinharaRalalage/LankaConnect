@@ -65,6 +65,9 @@ public class CsvExportService : ICsvExportService
 
         csv.WriteField("RegistrationDate");
         csv.WriteField("Status");
+        // Phase 6A.161: Ticket tier(s) — appended LAST so existing positional column order is
+        // untouched. Unconditional (tiers can exist on free events too, e.g. $0 adult price).
+        csv.WriteField("TicketTier");
         csv.NextRecord();
 
         // Phase 6A.71: Calculate totals for summary row with NET revenue (after commission)
@@ -121,6 +124,8 @@ public class CsvExportService : ICsvExportService
 
             csv.WriteField(a.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
             csv.WriteField(a.Status.ToString());
+            // Phase 6A.161: Ticket tier summary (computed, never null — "—" when no tier).
+            csv.WriteField(a.TicketTierSummary);
             csv.NextRecord();
         }
 
@@ -167,6 +172,7 @@ public class CsvExportService : ICsvExportService
 
             csv.WriteField("");  // RegistrationDate
             csv.WriteField("");  // Status
+            csv.WriteField("");  // Phase 6A.161: TicketTier — blank in the TOTAL summary row
             csv.NextRecord();
         }
 

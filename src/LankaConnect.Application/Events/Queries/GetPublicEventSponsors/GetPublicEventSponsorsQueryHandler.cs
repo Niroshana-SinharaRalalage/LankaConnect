@@ -106,6 +106,10 @@ public class GetPublicEventSponsorsQueryHandler
                     SponsorName = s.SponsorName,
                     ItemName = s.ItemName,
                     ImageUrl = s.ImageUrl,
+                    // Phase 6A.162 — surface BrochureUrl (NOT BlobName, preserving the
+                    // 6A.150 PII-free contract) so the click-to-popup brochure flow
+                    // works for anonymous visitors.
+                    BrochureUrl = s.BrochureUrl,
                     SponsorType = s.Type.ToString(),
                 }).ToList();
 

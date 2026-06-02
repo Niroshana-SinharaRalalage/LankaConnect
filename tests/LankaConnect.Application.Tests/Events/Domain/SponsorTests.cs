@@ -1230,6 +1230,135 @@ public class SponsorTests
 
     #endregion
 
+    #region Phase 6A.162 — Brochure methods (SetBrochure / ClearBrochure)
+
+    /// <summary>
+    /// Phase 6A.162 — Sponsor gains a SECOND optional image slot for a
+    /// brochure/flyer alongside the existing logo. Architect Option C: keep
+    /// existing SetImage/ClearImage verbatim (semantically the "logo"), add
+    /// SIBLING SetBrochure/ClearBrochure methods that mirror line-for-line.
+    /// Independence invariant: each slot is orthogonal — touching one MUST
+    /// NOT mutate the other.
+    /// </summary>
+
+    [Fact]
+    public void SetBrochure_WithValidUrlAndBlobName_Succeeds()
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure(
+            "https://blob.example.com/brochure.png",
+            "brochure_blob.png");
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/brochure.png");
+        sponsor.BrochureBlobName.Should().Be("brochure_blob.png");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetBrochure_WithEmptyUrl_Fails(string? badUrl)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure(badUrl!, "brochure.png");
+
+        result.IsSuccess.Should().BeFalse();
+        sponsor.BrochureUrl.Should().BeNull("rejected SetBrochure must NOT mutate the entity");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetBrochure_WithEmptyBlobName_Fails(string? badBlobName)
+    {
+        var sponsor = CreateValidMoneySponsor();
+
+        var result = sponsor.SetBrochure("https://blob.example.com/x.png", badBlobName!);
+
+        result.IsSuccess.Should().BeFalse();
+        sponsor.BrochureUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetBrochure_ReplacingExisting_OverwritesBoth()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetBrochure("https://blob.example.com/old.png", "old_brochure.png");
+
+        sponsor.SetBrochure("https://blob.example.com/new.png", "new_brochure.png");
+
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/new.png");
+        sponsor.BrochureBlobName.Should().Be("new_brochure.png");
+    }
+
+    [Fact]
+    public void ClearBrochure_RemovesBothFields()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetBrochure("https://blob.example.com/x.png", "x.png");
+
+        var result = sponsor.ClearBrochure();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().BeNull();
+        sponsor.BrochureBlobName.Should().BeNull();
+    }
+
+    [Fact]
+    public void ClearBrochure_WhenNoBrochure_IsIdempotent()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.BrochureUrl.Should().BeNull();
+
+        var result = sponsor.ClearBrochure();
+
+        result.IsSuccess.Should().BeTrue();
+        sponsor.BrochureUrl.Should().BeNull();
+        sponsor.BrochureBlobName.Should().BeNull();
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — independence invariant #1: SetBrochure MUST NOT touch
+    /// the logo slot (ImageUrl/ImageBlobName). Catches the bug class where a
+    /// future refactor collapses the two slots into one method by accident.
+    /// </summary>
+    [Fact]
+    public void SetBrochure_DoesNotMutateImageSlot()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/logo.png", "logo.png");
+
+        sponsor.SetBrochure("https://blob.example.com/brochure.png", "brochure.png");
+
+        sponsor.ImageUrl.Should().Be("https://blob.example.com/logo.png", "logo must survive brochure set");
+        sponsor.ImageBlobName.Should().Be("logo.png");
+    }
+
+    /// <summary>
+    /// Phase 6A.162 — independence invariant #2: ClearImage MUST NOT touch
+    /// the brochure slot. Mirror of the SetBrochure-doesnt-touch-image
+    /// invariant. Same bug class.
+    /// </summary>
+    [Fact]
+    public void ClearImage_DoesNotMutateBrochureSlot()
+    {
+        var sponsor = CreateValidMoneySponsor();
+        sponsor.SetImage("https://blob.example.com/logo.png", "logo.png");
+        sponsor.SetBrochure("https://blob.example.com/brochure.png", "brochure.png");
+
+        sponsor.ClearImage();
+
+        sponsor.ImageUrl.Should().BeNull();
+        sponsor.BrochureUrl.Should().Be("https://blob.example.com/brochure.png", "brochure must survive logo clear");
+        sponsor.BrochureBlobName.Should().Be("brochure.png");
+    }
+
+    #endregion
+
     #region Phase 6A.151 — Edit Existing Sponsorship (RED tests)
 
     /// <summary>
@@ -1764,6 +1893,267 @@ public class SponsorTests
         sponsor.UpdateName("New", OrganizerActorId, true);
         sponsor.LastEditedBy.Should().Be(OrganizerActorId);
         sponsor.LastEditedAt.Should().BeOnOrAfter(firstEditAt!.Value);
+    }
+
+    #endregion
+
+    // =========================================================================
+    // Phase 6A.157 — Packaged sponsorship purchase flow
+    //
+    // Coverage matrix (14 cases):
+    //   Factory:
+    //     - 6 snapshot fields populated + Pending status + Money type
+    //     - Distinct Money instances for Amount + PackagePriceSnapshot (EF owned-type trap)
+    //     - Free package (price=0) accepted (instant-complete handled by caller)
+    //     - Trims/normalizes inputs same as CreateMoneySponsor
+    //     - Validation: empty packageId / empty packageName / null price / negative price / negative ticket count
+    //     - RegistrationId always null (6A.159 cancelled)
+    //   CompletePackagePayment:
+    //     - Pending package sponsor → Completed + raises PackageSponsorCompletedEvent (NOT SponsorPaymentCompletedEvent)
+    //     - Event carries 4 package snapshot fields
+    //     - Cannot call on generic (non-package) sponsor
+    //   Mutual guards:
+    //     - Cannot call CompletePayment on package sponsor
+    //     - Cannot call CompleteAsOrganizerCash on package sponsor
+    // =========================================================================
+    #region Package Sponsor (Phase 6A.157)
+
+    private const string ValidPackageName = "  Gold Sponsor  ";
+    private const string ValidPackageTier = "  Gold  ";
+    private const int ValidIncludedTicketCount = 3;
+
+    private static Sponsor CreateValidPackageSponsor(
+        Guid? packageId = null,
+        Money? price = null,
+        int includedTicketCount = ValidIncludedTicketCount,
+        string? tier = ValidPackageTier,
+        SponsorStatus? desiredStatus = null)
+    {
+        var result = Sponsor.CreatePackageSponsor(
+            ValidEventId,
+            ValidUserId,
+            ValidName,
+            ValidEmail,
+            ValidPhone,
+            ValidOrganization,
+            ValidNotes,
+            packageId ?? Guid.NewGuid(),
+            ValidPackageName,
+            tier,
+            price ?? CreateMoney(500m),
+            includedTicketCount);
+
+        result.IsSuccess.Should().BeTrue($"factory should succeed but said: {result.Error}");
+        var sponsor = result.Value;
+
+        if (desiredStatus == SponsorStatus.Completed)
+        {
+            sponsor.SetStripeCheckoutSession("cs_test_pkg_123", DateTime.UtcNow.AddHours(1));
+            sponsor.CompletePackagePayment("pi_test_pkg_456");
+        }
+
+        return sponsor;
+    }
+
+    [Fact]
+    public void CreatePackageSponsor_WithValidInputs_PopulatesAllSnapshotFields()
+    {
+        var packageId = Guid.NewGuid();
+        var price = CreateMoney(500m, Currency.USD);
+
+        var sponsor = CreateValidPackageSponsor(packageId: packageId, price: price);
+
+        sponsor.EventId.Should().Be(ValidEventId);
+        sponsor.Type.Should().Be(SponsorType.Money);
+        sponsor.Status.Should().Be(SponsorStatus.Pending);
+        sponsor.SponsorshipPackageId.Should().Be(packageId);
+        sponsor.PackageNameSnapshot.Should().Be("Gold Sponsor"); // trimmed
+        sponsor.PackageTierSnapshot.Should().Be("Gold"); // trimmed
+        sponsor.PackagePriceSnapshot.Should().NotBeNull();
+        sponsor.PackagePriceSnapshot!.Amount.Should().Be(500m);
+        sponsor.PackagePriceSnapshot.Currency.Should().Be(Currency.USD);
+        sponsor.IncludedTicketCountSnapshot.Should().Be(ValidIncludedTicketCount);
+        sponsor.RegistrationId.Should().BeNull("RSVP-bundling (6A.159) was cancelled");
+        sponsor.Amount.Should().NotBeNull();
+        sponsor.Amount!.Amount.Should().Be(500m);
+    }
+
+    [Fact]
+    public void CreatePackageSponsor_UsesDistinctMoneyInstancesForAmountAndSnapshot()
+    {
+        // EF Core owned-type rule — Amount and PackagePriceSnapshot must NOT
+        // reference the same Money instance. The factory materializes a second
+        // copy so EF tracks each independently.
+        var sponsor = CreateValidPackageSponsor(price: CreateMoney(750m));
+
+        sponsor.Amount.Should().NotBeSameAs(sponsor.PackagePriceSnapshot);
+        sponsor.Amount!.Amount.Should().Be(sponsor.PackagePriceSnapshot!.Amount);
+        sponsor.Amount.Currency.Should().Be(sponsor.PackagePriceSnapshot.Currency);
+    }
+
+    [Fact]
+    public void CreatePackageSponsor_WithFreePackage_AcceptsZeroPrice()
+    {
+        // Free packages ("Friend of the show" tier with $0 price) are valid;
+        // the caller is expected to immediately call CompletePackagePayment
+        // with a sentinel intent ID rather than going through Stripe.
+        var sponsor = CreateValidPackageSponsor(price: CreateMoney(0m));
+
+        sponsor.Amount!.Amount.Should().Be(0m);
+        sponsor.PackagePriceSnapshot!.Amount.Should().Be(0m);
+        sponsor.Status.Should().Be(SponsorStatus.Pending);
+    }
+
+    [Fact]
+    public void CreatePackageSponsor_TrimsAndNormalizesContactFields()
+    {
+        var sponsor = CreateValidPackageSponsor();
+
+        sponsor.SponsorName.Should().Be("John Doe"); // trimmed
+        sponsor.SponsorEmail.Should().Be("john.doe@example.com"); // trimmed + lowered
+        sponsor.SponsorPhone.Should().Be("+1-555-1234");
+        sponsor.SponsorOrganization.Should().Be("Acme Corp");
+        sponsor.SponsorNotes.Should().Be("Happy to help");
+    }
+
+    [Theory]
+    [InlineData("00000000-0000-0000-0000-000000000000", "SponsorshipPackageId is required")]
+    public void CreatePackageSponsor_WithEmptyPackageId_ReturnsFailure(string emptyGuid, string expectedFragment)
+    {
+        var result = Sponsor.CreatePackageSponsor(
+            ValidEventId, ValidUserId, ValidName, ValidEmail, ValidPhone,
+            ValidOrganization, ValidNotes,
+            Guid.Parse(emptyGuid), ValidPackageName, ValidPackageTier,
+            CreateMoney(500m), ValidIncludedTicketCount);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain(expectedFragment);
+    }
+
+    [Fact]
+    public void CreatePackageSponsor_WithEmptyPackageName_ReturnsFailure()
+    {
+        var result = Sponsor.CreatePackageSponsor(
+            ValidEventId, ValidUserId, ValidName, ValidEmail, ValidPhone,
+            ValidOrganization, ValidNotes,
+            Guid.NewGuid(), "  ", ValidPackageTier,
+            CreateMoney(500m), ValidIncludedTicketCount);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("PackageName is required");
+    }
+
+    // Note: negative price is rejected by Money VO before reaching the
+    // Sponsor factory — the defensive `packagePrice.Amount < 0` check inside
+    // CreatePackageSponsor is unreachable via the public API. Kept as
+    // defense in depth (future Money variants or reflection-based
+    // construction) but not exercisable by a test.
+
+    [Fact]
+    public void CreatePackageSponsor_WithNegativeTicketCount_ReturnsFailure()
+    {
+        var result = Sponsor.CreatePackageSponsor(
+            ValidEventId, ValidUserId, ValidName, ValidEmail, ValidPhone,
+            ValidOrganization, ValidNotes,
+            Guid.NewGuid(), ValidPackageName, ValidPackageTier,
+            CreateMoney(500m), -1);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("IncludedTicketCount cannot be negative");
+    }
+
+    [Fact]
+    public void CompletePackagePayment_OnPendingPackageSponsor_TransitionsToCompletedAndRaisesPackageEvent()
+    {
+        var sponsor = CreateValidPackageSponsor();
+        sponsor.SetStripeCheckoutSession("cs_test_pkg_123", DateTime.UtcNow.AddHours(1));
+        sponsor.ClearDomainEvents(); // strip any setup events
+
+        var result = sponsor.CompletePackagePayment("pi_test_pkg_456");
+
+        result.IsSuccess.Should().BeTrue($"expected success but got: {result.Error}");
+        sponsor.Status.Should().Be(SponsorStatus.Completed);
+        sponsor.StripePaymentIntentId.Should().Be("pi_test_pkg_456");
+        sponsor.PaymentCompletedAt.Should().NotBeNull();
+        sponsor.DomainEvents.Should().HaveCount(1);
+        sponsor.DomainEvents[0].Should().BeOfType<PackageSponsorCompletedEvent>(
+            "package sponsors raise the package-specific event, NOT the generic SponsorPaymentCompletedEvent");
+    }
+
+    [Fact]
+    public void CompletePackagePayment_RaisedEventCarriesAllSnapshotFields()
+    {
+        var packageId = Guid.NewGuid();
+        var sponsor = CreateValidPackageSponsor(packageId: packageId);
+        sponsor.SetStripeCheckoutSession("cs_test_pkg_123", DateTime.UtcNow.AddHours(1));
+        sponsor.ClearDomainEvents();
+
+        sponsor.CompletePackagePayment("pi_test_pkg_456");
+
+        var raised = sponsor.DomainEvents.OfType<PackageSponsorCompletedEvent>().Single();
+        raised.SponsorshipPackageId.Should().Be(packageId);
+        raised.PackageNameSnapshot.Should().Be("Gold Sponsor");
+        raised.PackageTierSnapshot.Should().Be("Gold");
+        raised.IncludedTicketCountSnapshot.Should().Be(ValidIncludedTicketCount);
+        raised.PaymentIntentId.Should().Be("pi_test_pkg_456");
+        raised.Amount.Should().Be(500m);
+    }
+
+    [Fact]
+    public void CompletePackagePayment_OnGenericMoneySponsor_ReturnsFailure()
+    {
+        // Mutual guard: generic sponsors cannot use the package method.
+        var generic = CreateValidMoneySponsor();
+        generic.SetStripeCheckoutSession("cs_test_money_123", DateTime.UtcNow.AddHours(1));
+
+        var result = generic.CompletePackagePayment("pi_test_pkg_456");
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("CompletePackagePayment applies only to package sponsors");
+        generic.Status.Should().Be(SponsorStatus.Pending); // unchanged
+    }
+
+    [Fact]
+    public void CompletePayment_OnPackageSponsor_ReturnsFailure_MutualGuard()
+    {
+        // Mutual guard: package sponsors cannot use the generic method.
+        // If this guard were missing, the generic SponsorPaymentCompletedEvent
+        // would fire and the buyer would get the wrong confirmation email.
+        var package = CreateValidPackageSponsor();
+        package.SetStripeCheckoutSession("cs_test_pkg_123", DateTime.UtcNow.AddHours(1));
+
+        var result = package.CompletePayment("pi_test_pkg_456");
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Package sponsors must use CompletePackagePayment");
+        package.Status.Should().Be(SponsorStatus.Pending); // unchanged
+    }
+
+    [Fact]
+    public void CompleteAsOrganizerCash_OnPackageSponsor_ReturnsFailure_MutualGuard()
+    {
+        // Mutual guard: same reason as CompletePayment's guard. Off-platform
+        // completion of a package sponsor would raise the generic event and
+        // fire the wrong email template. Off-platform package completion is
+        // not a supported v1 flow.
+        var package = CreateValidPackageSponsor();
+
+        var result = package.CompleteAsOrganizerCash();
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("CompleteAsOrganizerCash does not apply to package sponsors");
+        package.Status.Should().Be(SponsorStatus.Pending); // unchanged
+    }
+
+    [Fact]
+    public void CompletePackagePayment_WhenStatusNotPending_ReturnsFailure()
+    {
+        var sponsor = CreateValidPackageSponsor(desiredStatus: SponsorStatus.Completed);
+
+        var result = sponsor.CompletePackagePayment("pi_attempt_2");
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Cannot complete payment when status is Completed");
     }
 
     #endregion

@@ -97,6 +97,9 @@ public static class EmailTemplateContract
         public const string AddOnPurchaseReceipt = "template-addon-purchase-receipt";
         public const string CollectionReceipt = "template-collection-receipt";
         public const string SponsorConfirmation = "template-sponsor-confirmation";
+        // Phase 6A.157: Packaged-sponsorship confirmation (forked from
+        // SponsorConfirmation — different voice + perks + included-tickets line).
+        public const string PackageSponsorConfirmation = "template-package-sponsor-confirmation";
 
         // Phase 6A.137B2: Financial Refund Templates
         public const string DonationRefund = "template-donation-refund";

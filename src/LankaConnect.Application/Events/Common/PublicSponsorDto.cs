@@ -17,10 +17,15 @@ namespace LankaConnect.Application.Events.Common;
 ///   Amount, EstimatedValue, Currency,
 ///   StripeFeeAmount, PlatformCommissionAmount, OrganizerPayoutAmount,
 ///   ImageBlobName (internal storage identifier),
+///   BrochureBlobName (internal storage identifier — Phase 6A.162),
 ///   Status (filter is done server-side; client doesn't need to discriminate),
 ///   PaymentCompletedAt, CreatedAt (timing-correlation surface),
 ///   EventId (already in the URL path),
 ///   ItemDescription (free-text — possible PII).
+///
+/// Phase 6A.162 — added <see cref="BrochureUrl"/> to the public projection so
+/// the click-to-popup brochure flow works for anonymous visitors. The blob
+/// name STAYS ABSENT (internal storage identifier).
 /// </summary>
 public record PublicSponsorDto
 {
@@ -33,6 +38,13 @@ public record PublicSponsorDto
     public string? ItemName { get; init; }
     /// <summary>Sponsor logo / image URL — the whole reason the public preview exists.</summary>
     public string? ImageUrl { get; init; }
+    /// <summary>
+    /// Phase 6A.162 — optional brochure/flyer URL. When set, the click-to-popup flow
+    /// on the public sponsor strip shows the brochure full-size; when null, the
+    /// popup falls back to the logo. <c>BrochureBlobName</c> STAYS ABSENT from this
+    /// public projection (internal storage identifier; PII contract preserved).
+    /// </summary>
+    public string? BrochureUrl { get; init; }
     /// <summary>"Money" or "Item" — drives client-side rendering branch (Item gets an item-name caption).</summary>
     public string SponsorType { get; init; } = string.Empty;
 }

@@ -1319,6 +1319,131 @@ public class StripePaymentService : IStripePaymentService
         }
     }
 
+    /// <summary>
+    /// Phase 6A.157 — creates a Stripe Checkout session for a packaged
+    /// sponsorship purchase. Mirrors <see cref="CreateAddOnPurchaseCheckoutSessionAsync"/>
+    /// byte-for-byte. Metadata literal "package_sponsor" MUST match the
+    /// PaymentsController dispatcher case (architect bonus catch #2). Line-item
+    /// description includes the package name, tier (if any), and conditional
+    /// included-tickets appendix per user pivot 2026-05-31.
+    /// </summary>
+    public async Task<Result<PackageSponsorCheckoutResult>> CreatePackageSponsorCheckoutSessionAsync(
+        CreatePackageSponsorCheckoutSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "[PackageSponsor] Creating package sponsor checkout session - EventId={EventId}, SponsorId={SponsorId}, PackageId={PackageId}, Amount={Amount} {Currency}",
+                request.EventId, request.SponsorId, request.SponsorshipPackageId,
+                request.Amount, request.Currency);
+
+            // Build buyer-visible line item name + description.
+            //   Name format: "Gold Sponsor — Acme Annual Conference" OR
+            //                "Gold Sponsor (Gold) — Acme Annual Conference" when tier set
+            //                (drop the tier suffix when tier matches name to avoid duplication)
+            //   Description: organization (if set) + conditional included-tickets line
+            var lineName = string.IsNullOrWhiteSpace(request.PackageTier)
+                || string.Equals(request.PackageTier, request.PackageName, StringComparison.OrdinalIgnoreCase)
+                    ? $"{request.PackageName} - {request.EventTitle}"
+                    : $"{request.PackageName} ({request.PackageTier}) - {request.EventTitle}";
+
+            var descriptionParts = new List<string> { "Sponsorship package" };
+            if (!string.IsNullOrWhiteSpace(request.SponsorOrganization))
+                descriptionParts.Add(request.SponsorOrganization);
+            if (request.IncludedTicketCount > 0)
+                descriptionParts.Add($"{request.IncludedTicketCount} ticket(s) included — issued by organizer");
+            var lineDescription = string.Join(" • ", descriptionParts);
+
+            var sessionService = new SessionService(_stripeClient);
+            var sessionOptions = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                Mode = "payment",
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            Currency = request.Currency.ToLower(),
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = lineName,
+                                Description = lineDescription,
+                                Metadata = new Dictionary<string, string>
+                                {
+                                    ["event_id"] = request.EventId.ToString(),
+                                    ["sponsor_id"] = request.SponsorId.ToString(),
+                                    ["sponsorship_package_id"] = request.SponsorshipPackageId.ToString(),
+                                    ["payment_type"] = "package_sponsor"
+                                }
+                            },
+                            UnitAmount = ConvertToStripeAmount(request.Amount, request.Currency)
+                        },
+                        Quantity = 1
+                    }
+                },
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                Metadata = new Dictionary<string, string>
+                {
+                    ["event_id"] = request.EventId.ToString(),
+                    ["sponsor_id"] = request.SponsorId.ToString(),
+                    ["sponsorship_package_id"] = request.SponsorshipPackageId.ToString(),
+                    ["payment_type"] = "package_sponsor"
+                },
+                PaymentIntentData = new SessionPaymentIntentDataOptions
+                {
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["event_id"] = request.EventId.ToString(),
+                        ["sponsor_id"] = request.SponsorId.ToString(),
+                        ["sponsorship_package_id"] = request.SponsorshipPackageId.ToString(),
+                        ["payment_type"] = "package_sponsor"
+                    }
+                },
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+
+            if (request.Metadata != null)
+            {
+                foreach (var kvp in request.Metadata)
+                {
+                    sessionOptions.Metadata[kvp.Key] = kvp.Value;
+                    sessionOptions.PaymentIntentData.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+
+            var session = await sessionService.CreateAsync(sessionOptions, cancellationToken: cancellationToken);
+
+            _logger.LogInformation(
+                "[PackageSponsor] Created checkout session - SessionId={SessionId}, SponsorId={SponsorId}, ExpiresAt={ExpiresAt}",
+                session.Id, request.SponsorId, session.ExpiresAt);
+
+            return Result<PackageSponsorCheckoutResult>.Success(new PackageSponsorCheckoutResult
+            {
+                SessionId = session.Id,
+                CheckoutUrl = session.Url,
+                ExpiresAt = session.ExpiresAt
+            });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex,
+                "[PackageSponsor] Stripe error creating package sponsor checkout - SponsorId={SponsorId}, Error={Error}",
+                request.SponsorId, ex.Message);
+            return Result<PackageSponsorCheckoutResult>.Failure($"Payment processing error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "[PackageSponsor] Error creating package sponsor checkout - SponsorId={SponsorId}",
+                request.SponsorId);
+            return Result<PackageSponsorCheckoutResult>.Failure("Failed to create package sponsorship payment session");
+        }
+    }
+
     #region Not Implemented Methods (Cultural Intelligence - Future)
 
     // These methods are part of IStripePaymentService for Cultural Intelligence billing

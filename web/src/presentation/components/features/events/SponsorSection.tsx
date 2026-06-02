@@ -11,13 +11,18 @@ import {
   usePublicEventSponsors,  // Phase 6A.150: PII-free public read for the in-section sponsor wall
   useUploadSponsorImage,
 } from '@/presentation/hooks/useSponsors';
+import { usePublicSponsorshipPackages } from '@/presentation/hooks/useSponsorshipPackages';  // Phase 6A.157
 import { eventsRepository } from '@/infrastructure/api/repositories/events.repository';
 import type {
   SponsorConfigurationDto,
   SponsorDto,
   PublicSponsorDto,  // Phase 6A.150
+  SponsorshipPackagePublicDto,  // Phase 6A.157
 } from '@/infrastructure/api/types/events.types';
 import { EditSponsorModal } from './EditSponsorModal';
+import { SponsorBrochurePopup } from './SponsorBrochurePopup';  // Phase 6A.162
+import { PublicSponsorshipPackageCard } from './PublicSponsorshipPackageCard';  // Phase 6A.157
+import { PurchaseSponsorshipPackageModal } from './PurchaseSponsorshipPackageModal';  // Phase 6A.157
 
 type SponsorMode = 'money' | 'item';
 
@@ -38,6 +43,8 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   const [mode, setMode] = useState<SponsorMode>(defaultMode);
   // Phase 6A.151 — sponsor self-edit modal state.
   const [editingMySponsor, setEditingMySponsor] = useState<SponsorDto | null>(null);
+  // Phase 6A.157 — buyer purchase modal state. Null pkg = closed.
+  const [purchasingPackage, setPurchasingPackage] = useState<SponsorshipPackagePublicDto | null>(null);
 
   // Common fields
   const [sponsorName, setSponsorName] = useState('');
@@ -74,7 +81,18 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
   // already filters to image-bearing confirmed sponsors and pre-sorts by
   // contribution magnitude — the response is exactly what we want to render.
   const { data: sponsorsResponse } = usePublicEventSponsors(eventId, sponsorConfig.isEnabled === true);
+
+  // Phase 6A.157 — public buyer-facing packages, gated on the EnablePackages
+  // flag. Server returns [] for events that haven't opted in (so the gate is
+  // belt-and-suspenders — the section below also self-hides on empty list).
+  const { data: publicPackages = [] } = usePublicSponsorshipPackages(
+    eventId,
+    sponsorConfig.isEnabled === true && sponsorConfig.enablePackages === true,
+  );
   const sponsorsWithImages: PublicSponsorDto[] = sponsorsResponse?.sponsors ?? [];
+
+  // Phase 6A.162 — in-section sponsor-wall click-to-popup. Null = closed.
+  const [popupSponsor, setPopupSponsor] = useState<PublicSponsorDto | null>(null);
 
   const parsedAmount = parseFloat(amount) || 0;
   const isPending = createMoneySponsor.isPending || createItemSponsor.isPending || uploadImage.isPending;
@@ -240,10 +258,16 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   : (words[0]![0]! + words[1]![0]!).toUpperCase();
 
               return (
-                <div
+                // Phase 6A.162 — whole-card click opens the brochure popup
+                // (or logo fallback when no brochure). Replaces the prior
+                // static <div> per user-locked UX 2026-06-01.
+                <button
                   key={s.id}
-                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2"
+                  type="button"
+                  onClick={() => setPopupSponsor(s)}
+                  className="flex flex-col items-center w-24 rounded-lg border border-neutral-200 bg-white p-2 transition-shadow hover:shadow-md hover:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                   title={displayName}
+                  aria-label={`Sponsor: ${displayName} — click to view brochure`}
                 >
                   {s.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -263,13 +287,55 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
                   <span className="mt-1 w-full truncate text-center text-xs text-neutral-600">
                     {displayName}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
+      {/*
+       * Phase 6A.157 — sponsorship package grid (buyer-facing). Mounted ABOVE
+       * the custom-amount mode toggle per the user-locked decision in 6A.156:
+       * packages render as cards above the existing form so buyers see the
+       * curated tiers first and can fall back to a custom amount below.
+       *
+       * Self-gated on EnablePackages (via the query enabled flag) AND on
+       * non-empty list — events that haven't opted in OR have no active
+       * packages see the original UI completely unchanged (zero regression
+       * risk for non-packages sponsor flows).
+       */}
+      {sponsorConfig.enablePackages === true && publicPackages.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
+            <Award className="h-4 w-4 text-amber-500" />
+            Sponsorship Packages
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {publicPackages.map((pkg) => (
+              <PublicSponsorshipPackageCard
+                key={pkg.id}
+                pkg={pkg}
+                onSelect={(selected) => setPurchasingPackage(selected)}
+              />
+            ))}
+          </div>
+          {/* Phase 6A.157-fix-1 [3/3] — divider removed. The
+              CollapsibleSection header below acts as the disclosure
+              affordance when packages are present, replacing the
+              standalone dividerline-text-dividerline visual. */}
+        </div>
+      )}
+
+      {/* Phase 6A.157-fix-1 [3/3] — conditional disclosure wrap. When
+          packages render alongside, the custom-amount form is collapsed
+          by default (progressive disclosure — packages are the primary
+          CTA, custom amount is the fallback). When no packages render,
+          the form is the only sponsor surface — rendered directly with
+          no disclosure wrap and no "or" copy. */}
+      {(() => {
+        const customAmountForm = (
+          <>
       {/* Mode Toggle */}
       {showToggle && (
         <div className="mb-4 flex rounded-lg bg-indigo-50 p-1">
@@ -522,6 +588,21 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
           </Button>
         )}
       </form>
+          </>
+        );
+        return sponsorConfig.enablePackages === true && publicPackages.length > 0 ? (
+          <CollapsibleSection
+            title="Or choose your own amount"
+            defaultOpen={false}
+            expandLabel="Show custom-amount form"
+            collapseLabel="Hide"
+          >
+            {customAmountForm}
+          </CollapsibleSection>
+        ) : (
+          customAmountForm
+        );
+      })()}
 
       {/* Your Sponsorships */}
       {mySponsors && mySponsors.length > 0 && (
@@ -587,6 +668,20 @@ export function SponsorSection({ eventId, sponsorConfig, mySponsors }: SponsorSe
         onClose={() => setEditingMySponsor(null)}
         onSaved={() => setEditingMySponsor(null)}
       />
+
+      {/* Phase 6A.157 — buyer purchase modal. Portal'd to document.body so its
+          submit is isolated from any parent <form> (per 6A.156-fix-2 contract). */}
+      <PurchaseSponsorshipPackageModal
+        eventId={eventId}
+        pkg={purchasingPackage}
+        isOpen={purchasingPackage !== null}
+        onClose={() => setPurchasingPackage(null)}
+      />
+
+      {/* Phase 6A.162 — in-section sponsor-wall click-to-popup. Portal'd
+          modal showing the brochure full-size; falls back to logo when no
+          brochure (user-locked UX 2026-06-01). */}
+      <SponsorBrochurePopup sponsor={popupSponsor} onClose={() => setPopupSponsor(null)} />
     </CollapsibleSection>
   );
 }

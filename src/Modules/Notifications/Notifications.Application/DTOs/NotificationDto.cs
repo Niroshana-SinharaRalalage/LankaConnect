@@ -1,4 +1,4 @@
-namespace LankaConnect.Application.Notifications.DTOs;
+namespace LankaConnect.Modules.Notifications.Application.DTOs;
 
 /// <summary>
 /// DTO for notification

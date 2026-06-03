@@ -1,8 +1,8 @@
 using LankaConnect.Application.Common.Interfaces;
-using LankaConnect.Application.Notifications.DTOs;
+using LankaConnect.Modules.Notifications.Application.DTOs;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Application.Notifications.Queries.GetUnreadNotifications;
+namespace LankaConnect.Modules.Notifications.Application.Queries.GetUnreadNotifications;
 
 /// <summary>
 /// Query to get unread notifications for the current user

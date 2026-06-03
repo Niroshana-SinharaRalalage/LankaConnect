@@ -2,10 +2,10 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LankaConnect.API.Extensions;
-using LankaConnect.Application.Notifications.Queries.GetUnreadNotifications;
-using LankaConnect.Application.Notifications.Commands.MarkNotificationAsRead;
-using LankaConnect.Application.Notifications.Commands.MarkAllNotificationsAsRead;
-using LankaConnect.Application.Notifications.DTOs;
+using LankaConnect.Modules.Notifications.Application.Queries.GetUnreadNotifications;
+using LankaConnect.Modules.Notifications.Application.Commands.MarkNotificationAsRead;
+using LankaConnect.Modules.Notifications.Application.Commands.MarkAllNotificationsAsRead;
+using LankaConnect.Modules.Notifications.Application.DTOs;
 
 namespace LankaConnect.API.Controllers;
 

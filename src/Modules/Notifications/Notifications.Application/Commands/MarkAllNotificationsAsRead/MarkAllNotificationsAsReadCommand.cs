@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Application.Notifications.Commands.MarkAllNotificationsAsRead;
+namespace LankaConnect.Modules.Notifications.Application.Commands.MarkAllNotificationsAsRead;
 
 /// <summary>
 /// Command to mark all notifications as read for the current user

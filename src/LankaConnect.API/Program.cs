@@ -8,6 +8,7 @@ using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
+using LankaConnect.Modules.Notifications.Api;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
 using Serilog;
@@ -90,6 +91,12 @@ try
 
     // Add Infrastructure Layer
     builder.Services.AddInfrastructure(builder.Configuration);
+
+    // W3.4 Phase A (2026-06-03) — Notifications module composition. Registers
+    // NotificationsDbContext + INotificationRepository. Called AFTER
+    // AddInfrastructure so the AppDbContext + Repository<T> base are available
+    // for the NotificationRepository transitional edge.
+    builder.Services.AddNotificationsModule(builder.Configuration);
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

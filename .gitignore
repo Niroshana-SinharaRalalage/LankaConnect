@@ -608,3 +608,6 @@ infra/bicep/*.json
 infra/bicep/**/*.json
 !infra/bicep/**/*.parameters.json
 
+
+# Phase A W3.4 (2026-06-03) — large media files; never commit, never push to GitHub (>100MB blocks the push).
+docs/demo-video/

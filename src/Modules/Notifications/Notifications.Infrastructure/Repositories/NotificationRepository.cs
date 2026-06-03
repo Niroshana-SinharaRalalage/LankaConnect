@@ -3,8 +3,13 @@ using Microsoft.Extensions.Logging;
 using LankaConnect.Modules.Notifications.Domain;
 using System.Diagnostics;
 using Serilog.Context;
+// W3.4 (2026-06-03) — transitional edges: base class Repository<T> + AppDbContext live in the
+// legacy LankaConnect.Infrastructure assembly. Cut these usings when BuildingBlocks.Infrastructure
+// owns Repository<T> and the W3.6 / W3.7 flag pivots the repository onto NotificationsDbContext.
+using LankaConnect.Infrastructure.Data;
+using LankaConnect.Infrastructure.Data.Repositories;
 
-namespace LankaConnect.Infrastructure.Data.Repositories;
+namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository implementation for Notification entity

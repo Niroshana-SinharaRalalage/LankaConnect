@@ -773,37 +773,42 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - **Acceptance**: ✅ contracts pass ArchTest; only primitive types in Contracts surface
 
 ### W3.4 — Move application + infrastructure
-- [ ] Move handlers → `Notifications.Application/`
-- [ ] Move repositories → `Notifications.Infrastructure/`
-- [ ] Create `NotificationsDbContext` pointing at `notifications` schema
-- **Verify**: unit tests pass
+- [x] **W3.4 (2026-06-03)**: handlers + repository + DbContext + module DI all in the module:
+  - `Notifications.Application/` now hosts 7 files: 3 commands (`MarkAllNotificationsAsRead`, `MarkNotificationAsRead` × Command + Handler) + 1 query (`GetUnreadNotifications` × Query + Handler) + `DTOs/NotificationDto.cs`. Namespaces: `LankaConnect.Modules.Notifications.Application.*`
+  - `Notifications.Infrastructure/Repositories/NotificationRepository.cs` — implementation moved; still extends legacy `Repository<Notification>` and injects `AppDbContext` (transitional edge documented in csproj + LayeringRules)
+  - `Notifications.Infrastructure/Data/NotificationsDbContext.cs` (NEW) — module-owned DbContext deriving from `DbContext` directly (BaseDbContext deferred until Notification implements IAuditable/ISoftDeletable). Default schema `notifications`. Maps the existing physical `notifications.notifications` table via the existing `NotificationConfiguration` (which stays in legacy `LankaConnect.Infrastructure` to avoid a back-edge cycle)
+  - `Notifications.Api/NotificationsModule.cs` (NEW; pulled forward from W3.6 to break the cycle) — `AddNotificationsModule(IServiceCollection, IConfiguration)` extension registers `NotificationsDbContext` (with the same Npgsql wiring as AppDbContext + per-schema migrations history table) and `INotificationRepository → NotificationRepository`
+- [x] **W3.4 host wiring**: `LankaConnect.API/Program.cs` now calls `builder.Services.AddNotificationsModule(builder.Configuration)` AFTER `AddInfrastructure(...)` (so AppDbContext + Repository<T> base are available for the repository's transitional edge). `LankaConnect.API.csproj` ProjectReferences `Notifications.Api.csproj`
+- [x] **W3.4 callers**: `NotificationsController` + `Application.Notifications` consumers in monolith still resolve handlers via MediatR's existing assembly-scan over `LankaConnect.Application` — but the handler IMPLEMENTATIONS now live in `Notifications.Application`. MediatR finds them by ProjectReference transitivity (Application → Notifications.Application → Notifications.Domain). No call-site code changes needed
+- [x] **W3.4 transitional architectural debt** (documented):
+  - `Notifications.Application` references `LankaConnect.Application` for `ICommand` / `ICommandHandler` / `ICurrentUserService` / `IUnitOfWork`
+  - `Notifications.Infrastructure` references `LankaConnect.Infrastructure` for `Repository<T>` base + `AppDbContext`
+  - `NotificationConfiguration` stayed in `LankaConnect.Infrastructure/Data/Configurations` (not moved into the module) to avoid an `Infrastructure ↔ Notifications.Infrastructure` cycle
+  - All edges cut in a follow-up alongside the BuildingBlocks elevation pass for `BaseEntity` / `IRepository<T>` / pipeline abstractions
+- **Verify**: full sln build green (0 errors); ArchTest 9/9; new `Notifications.Application.Tests` 6/6; legacy notification-related app tests 32/32 GREEN
 
 ### W3.5 — Baseline migration for Notifications schema
-- [ ] **Action**: Use `migra` (or pg-diff) to capture exact production `notifications` schema
-- [ ] **Action**: Generate baseline migration:
+- [x] **W3.5a (2026-06-03)**: empty-Up baseline migration for the EXISTING `notifications.notifications` table:
+  - `NotificationsDbContext.OnModelCreating` corrected to explicitly map `Notification` to lowercase `notifications.notifications` (legacy AppDbContext migration used lowercase; EF convention would have generated PascalCase)
+  - New `Notifications.Infrastructure/Data/NotificationsDbContextDesignTimeFactory.cs` — `IDesignTimeDbContextFactory<NotificationsDbContext>` so `dotnet ef migrations add` can materialise the context without booting `Program.cs` (the host throws on empty Npgsql connection string at design time)
+  - `Microsoft.EntityFrameworkCore.Design` package added to `Notifications.Infrastructure.csproj`
+  - Generated `Migrations/20260603221324_Baseline_Notifications.cs` + companion `.Designer.cs` (verified `[Migration("20260603221324_Baseline_Notifications")]` attribute at Designer.cs:15 per MEMORY.md hand-create rule)
+  - `Up()` and `Down()` emptied with class-level remarks documenting: (a) why empty; (b) the manual `INSERT INTO notifications."__EFMigrationsHistory" (migration_id, product_version) VALUES ('20260603221324_Baseline_Notifications', '8.0.19');` deployment step
+  - `NotificationsDbContextModelSnapshot.cs` checked in alongside (snapshot reflects the lowercase table mapping)
+  - Full sln build green; ArchTest 9/9 GREEN
+- [ ] **W3.5b (follow-up)**: add per-schema operational tables (no migration yet):
+  - `notifications.idempotency_keys` (for `IIdempotencyStore`)
+  - `notifications.outbox` (for `IOutbox` per-module)
+  - `notifications.outbox_dead_letter`
+  - Generated by a SECOND migration (`Add_NotificationsOperationalTables`) so the baseline stays a true history-only marker
+- [ ] **W3.5c (follow-up)**: staging schema-diff verification:
   ```bash
-  dotnet ef migrations add Baseline_Notifications \
-    --context NotificationsDbContext \
-    --project src/Modules/Notifications/Notifications.Infrastructure \
-    --startup-project src/Hosts/Host.AllInOne
-  ```
-- [ ] **Manual edit**: empty the `Up()` method
-- [ ] **Manual SQL**: insert history row marking baseline as applied:
-  ```sql
-  INSERT INTO notifications."__EFMigrationsHistory" (migration_id, product_version)
-  VALUES ('20260501000000_Baseline_Notifications', '8.0.0');
-  ```
-- [ ] **CRITICAL**: verify `.Designer.cs` companion file exists (per MEMORY.md hand-created migration warning)
-- [ ] Add per-schema idempotency table: `notifications.idempotency_keys`
-- [ ] Add per-schema outbox + dead-letter: `notifications.outbox`, `notifications.outbox_dead_letter`
-- [ ] **Verify**:
-  ```bash
-  # On staging clone
-  dotnet ef database update --context NotificationsDbContext
-  # Then schema diff vs production
+  # On staging clone:
+  dotnet ef database update --context NotificationsDbContext --project src/Modules/Notifications/Notifications.Infrastructure --startup-project src/LankaConnect.API
+  # Then schema diff vs production:
   migra postgresql://staging postgresql://production
   ```
-- [ ] **Acceptance**: zero schema drift; migration applied with `Up()` empty (no DDL run)
+- **W3.5a Acceptance**: ✅ baseline migration scaffolded with empty Up() + Designer.cs companion; manual `__EFMigrationsHistory` INSERT documented in the migration class XML doc
 
 ### W3.6 — Move controllers, wire NotificationsModule extension
 - [ ] Move `NotificationsController` → `Notifications.Api/`

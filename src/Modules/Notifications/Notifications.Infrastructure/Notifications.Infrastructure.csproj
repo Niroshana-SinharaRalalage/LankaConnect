@@ -15,11 +15,19 @@
     <ProjectReference Include="..\Notifications.Domain\Notifications.Domain.csproj" />
     <ProjectReference Include="..\Notifications.Contracts\Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <!--
+      W3.4 TRANSITIONAL EDGE (2026-06-03). Notifications.Infrastructure references
+      the legacy LankaConnect.Infrastructure for Repository<T> base class until
+      that primitive moves to BuildingBlocks.Infrastructure. Cut in a follow-up
+      alongside the BuildingBlocks elevation pass.
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 

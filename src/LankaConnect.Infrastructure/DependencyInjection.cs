@@ -114,6 +114,11 @@ public static class DependencyInjection
 
         }, ServiceLifetime.Scoped); // Explicitly set lifetime for connection pooling
 
+        // W3.4 Phase A (2026-06-03) — NotificationsDbContext + NotificationRepository
+        // registrations moved to NotificationsModule.AddNotificationsModule (called from
+        // Host.AllInOne / LankaConnect.API.Program.cs). Keeping them here would create a
+        // cycle (LankaConnect.Infrastructure → Notifications.Infrastructure → LankaConnect.Infrastructure).
+
         // Add Memory Cache (required by email template service)
         services.AddMemoryCache();
 
@@ -210,8 +215,8 @@ public static class DependencyInjection
         // communications.whatsapp_templates. No-op when Provider != Twilio. Safe to run on every startup.
         services.AddHostedService<TwilioTemplateSeeder>();
 
-        // Add Notifications Repositories (Phase 6A.6)
-        services.AddScoped<INotificationRepository, NotificationRepository>();
+        // Add Notifications Repositories (Phase 6A.6) — W3.4 Phase A (2026-06-03):
+        // registration moved to NotificationsModule.AddNotificationsModule (cycle avoidance).
 
         // Add Badge Repositories (Phase 6A.25)
         services.AddScoped<IBadgeRepository, BadgeRepository>();

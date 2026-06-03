@@ -5,7 +5,7 @@ using LankaConnect.Modules.Notifications.Domain;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 
-namespace LankaConnect.Application.Notifications.Commands.MarkAllNotificationsAsRead;
+namespace LankaConnect.Modules.Notifications.Application.Commands.MarkAllNotificationsAsRead;
 
 /// <summary>
 /// Handler for MarkAllNotificationsAsReadCommand

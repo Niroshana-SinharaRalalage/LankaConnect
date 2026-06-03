@@ -11,7 +11,7 @@ namespace LankaConnect.Modules.Notifications.Domain;
 /// Temporarily extends <c>LankaConnect.Domain.Common.IRepository&lt;T&gt;</c>
 /// pending the BuildingBlocks elevation of <c>IRepository&lt;T&gt;</c>
 /// (planned W4/W5). Concrete EF implementation lives in
-/// <c>LankaConnect.Infrastructure.Data.Repositories.NotificationRepository</c>
+/// <c>LankaConnect.Modules.Notifications.Infrastructure.Repositories.NotificationRepository</c>
 /// today and moves to <c>Notifications.Infrastructure</c> in W3.4.
 /// </remarks>
 public interface INotificationRepository : IRepository<Notification>

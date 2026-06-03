@@ -12,6 +12,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <!--
+      W3.2 TRANSITIONAL EDGE (2026-06-02). Notifications.Domain references the
+      legacy LankaConnect.Domain for BaseEntity + IRepository<T> + IDomainEvent
+      until BuildingBlocks.Domain owns those primitives. Cut this edge after
+      the BuildingBlocks elevation pass (planned W4/W5 alongside the next
+      module move). The corresponding ArchTest rule is relaxed during the
+      transition window (see LayeringRules.cs).
+    -->
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

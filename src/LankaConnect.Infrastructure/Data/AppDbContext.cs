@@ -8,7 +8,7 @@ using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
-using LankaConnect.Domain.Notifications;
+using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.ReferenceData.Entities;
 using LankaConnect.Domain.Support;

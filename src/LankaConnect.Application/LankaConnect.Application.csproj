@@ -3,6 +3,8 @@
   <ItemGroup>
     <ProjectReference Include="..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
     <ProjectReference Include="..\LankaConnect.Shared\LankaConnect.Shared.csproj" />
+    <!-- W3.2 (2026-06-02) — Notification + INotificationRepository moved out of legacy LankaConnect.Domain.Notifications. -->
+    <ProjectReference Include="..\Modules\Notifications\Notifications.Domain\Notifications.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

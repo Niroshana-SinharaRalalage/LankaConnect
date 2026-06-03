@@ -2,8 +2,8 @@ using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
-using LankaConnect.Domain.Notifications;
-using LankaConnect.Domain.Notifications.Enums;
+using LankaConnect.Modules.Notifications.Domain;
+using LankaConnect.Modules.Notifications.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Notifications;
-using LankaConnect.Domain.Notifications.Enums;
+using LankaConnect.Modules.Notifications.Domain;
+using LankaConnect.Modules.Notifications.Domain.Enums;
 
 namespace LankaConnect.Infrastructure.Data.Configurations;
 

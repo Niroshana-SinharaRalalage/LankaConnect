@@ -1,7 +1,7 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Notifications.DTOs;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Notifications;
+using LankaConnect.Modules.Notifications.Domain;
 
 namespace LankaConnect.Application.Notifications.Queries.GetUnreadNotifications;
 

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Notifications;
+using LankaConnect.Modules.Notifications.Domain;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 

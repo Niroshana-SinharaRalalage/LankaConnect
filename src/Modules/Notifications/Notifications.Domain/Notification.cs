@@ -1,12 +1,19 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Notifications.Enums;
+using LankaConnect.Modules.Notifications.Domain.Enums;
 
-namespace LankaConnect.Domain.Notifications;
+namespace LankaConnect.Modules.Notifications.Domain;
 
 /// <summary>
-/// Notification entity for in-app notification system
-/// Phase 6A.6: Notification System
+/// Notification entity for the in-app notification surface.
+/// Originated in Phase 6A.6; moved into the Notifications module Domain layer
+/// during Phase A W3.2 (2026-06-02) without behavior change.
 /// </summary>
+/// <remarks>
+/// Temporarily derives from <c>LankaConnect.Domain.Common.BaseEntity</c> and
+/// uses <c>LankaConnect.Domain.Common.Result</c> while the BuildingBlocks
+/// elevation of these primitives is pending. Cut the legacy edge after
+/// BuildingBlocks owns BaseEntity + Result + IRepository&lt;T&gt; (planned W4/W5).
+/// </remarks>
 public class Notification : BaseEntity
 {
     public Guid UserId { get; private set; }
@@ -16,19 +23,24 @@ public class Notification : BaseEntity
     public bool IsRead { get; private set; }
     public DateTime? ReadAt { get; private set; }
 
-    // Optional metadata for linking to related entities
+    // Optional metadata for linking to related entities.
     public string? RelatedEntityId { get; private set; }
     public string? RelatedEntityType { get; private set; }
 
-    // EF Core constructor
+    // EF Core constructor.
     private Notification()
     {
         Title = null!;
         Message = null!;
     }
 
-    private Notification(Guid userId, string title, string message, NotificationType type,
-        string? relatedEntityId = null, string? relatedEntityType = null)
+    private Notification(
+        Guid userId,
+        string title,
+        string message,
+        NotificationType type,
+        string? relatedEntityId = null,
+        string? relatedEntityType = null)
     {
         UserId = userId;
         Title = title;
@@ -39,11 +51,14 @@ public class Notification : BaseEntity
         RelatedEntityType = relatedEntityType;
     }
 
-    /// <summary>
-    /// Factory method to create a new notification
-    /// </summary>
-    public static Result<Notification> Create(Guid userId, string title, string message, NotificationType type,
-        string? relatedEntityId = null, string? relatedEntityType = null)
+    /// <summary>Factory method to create a new notification.</summary>
+    public static Result<Notification> Create(
+        Guid userId,
+        string title,
+        string message,
+        NotificationType type,
+        string? relatedEntityId = null,
+        string? relatedEntityType = null)
     {
         if (userId == Guid.Empty)
             return Result<Notification>.Failure("User ID is required");
@@ -64,9 +79,7 @@ public class Notification : BaseEntity
         return Result<Notification>.Success(notification);
     }
 
-    /// <summary>
-    /// Mark the notification as read
-    /// </summary>
+    /// <summary>Mark the notification as read.</summary>
     public Result MarkAsRead()
     {
         if (IsRead)
@@ -79,9 +92,7 @@ public class Notification : BaseEntity
         return Result.Success();
     }
 
-    /// <summary>
-    /// Mark the notification as unread (for testing or admin purposes)
-    /// </summary>
+    /// <summary>Mark the notification as unread (for testing or admin purposes).</summary>
     public Result MarkAsUnread()
     {
         if (!IsRead)

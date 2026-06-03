@@ -12,7 +12,7 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Community;
-using LankaConnect.Domain.Notifications;
+using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.Communications;
 using LankaConnect.Domain.ReferenceData.Interfaces;

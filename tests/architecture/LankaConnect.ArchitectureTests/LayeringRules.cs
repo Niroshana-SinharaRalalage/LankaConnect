@@ -220,7 +220,8 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void Modules_Notifications_Contracts_DependsOnlyOnBuildingBlocksContracts()
     {
-        var assembly = typeof(Modules.Notifications.Contracts.AssemblyMarker).Assembly;
+        // W3.3 (2026-06-02) — AssemblyMarker placeholder removed; anchor on a real type now.
+        var assembly = typeof(Modules.Notifications.Contracts.INotificationDispatcher).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()

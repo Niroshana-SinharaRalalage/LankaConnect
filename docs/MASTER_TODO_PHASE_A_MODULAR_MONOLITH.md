@@ -763,11 +763,14 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 - **Acceptance**: ✅ domain types moved + namespaces updated + tests still pass
 
 ### W3.3 — Define Notifications.Contracts
-- [ ] **Action**: Create:
-  - `INotificationDispatcher` (public interface for other modules)
-  - `NotificationCreatedIntegrationEventV1`
-- [ ] **Verify**: only primitive types in Contracts (no domain entity leakage)
-- **Acceptance**: contracts pass ArchTest
+- [x] **W3.3 (2026-06-02)**: 3 types landed in `src/Modules/Notifications/Notifications.Contracts/`:
+  - `INotificationDispatcher` — cross-module publish API `Task NotifyAsync(Guid userId, string title, string message, NotificationKind kind, string? relatedEntityId, string? relatedEntityType, CancellationToken)`; primitives only
+  - `NotificationCreatedIntegrationEventV1` — record deriving from `IntegrationEventBase` + implementing `IIntegrationEventV1`; carries `NotificationId`, `UserId`, `Title`, `Message`, `Kind`, `RelatedEntityId/Type`; no domain leak
+  - `NotificationKind` — enum mirroring `Domain.Enums.NotificationType` 1-for-1 by ordinal; intentionally duplicated so the wire-format ABI decouples from internal domain evolution
+- [x] **W3.3 cleanup**: removed Contracts AssemblyMarker placeholder; LayeringRules anchor switched to `typeof(INotificationDispatcher)`
+- [x] **W3.3 tests**: 6 Contracts-shape pinning tests added to `Notifications.Application.Tests` (interface shape, primitive parameter types, NotificationKind↔NotificationType ordinal parity, integration event inheritance chain, record value-shape). All GREEN
+- [x] **W3.3 ArchTest**: `Modules_Notifications_Contracts_DependsOnlyOnBuildingBlocksContracts` still GREEN (no domain leak; no other-module ref)
+- **Acceptance**: ✅ contracts pass ArchTest; only primitive types in Contracts surface
 
 ### W3.4 — Move application + infrastructure
 - [ ] Move handlers → `Notifications.Application/`

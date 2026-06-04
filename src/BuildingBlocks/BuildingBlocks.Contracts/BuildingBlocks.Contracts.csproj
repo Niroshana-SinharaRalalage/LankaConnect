@@ -7,6 +7,18 @@
   </PropertyGroup>
 
   <!--
+    W2.7 follow-up (2026-06-04). MediatR.Contracts is the interface-only sibling
+    of MediatR (~5KB; no runtime, no DI dependencies). Adding it lets
+    IntegrationEventBase implement INotification so the AllInOne
+    MediatRIntegrationEventDispatcher (in BuildingBlocks.Infrastructure) can
+    publish events directly through MediatR's IPublisher. Phase B Service Bus
+    consumers can still treat IntegrationEventBase as plain data.
+  -->
+  <ItemGroup>
+    <PackageReference Include="MediatR.Contracts" />
+  </ItemGroup>
+
+  <!--
     W2.1 SKELETON (2026-05-12). Empty shell — W2.7 fills with contracts.
     NO project references by design — Contracts is the cross-module ABI.
     Adding a reference here is a Phase A architectural violation.

@@ -60,6 +60,18 @@ public static class TelemetryExtensions
         var otelBuilder = services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName));
 
+        // W2.6b polish (2026-06-04). Azure Monitor distro auto-instruments
+        // AspNetCore + HttpClient + Microsoft.Data.SqlClient — but NOT Npgsql.
+        // Npgsql 6+ ships its own ActivitySource named "Npgsql"; adding it
+        // here surfaces every Postgres query as a `dependency` span in App
+        // Insights with command text, target server, duration, and result
+        // status — regardless of which exporter branch runs below.
+        //
+        // No PackageReference needed — the Npgsql ActivitySource is emitted
+        // by the same Npgsql.dll already pulled in via
+        // Npgsql.EntityFrameworkCore.PostgreSQL transitively.
+        otelBuilder.WithTracing(tracing => tracing.AddSource("Npgsql"));
+
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
             otelBuilder.UseAzureMonitor(options =>
@@ -69,9 +81,10 @@ public static class TelemetryExtensions
         }
         else
         {
-            // No App Insights connection string — still register instrumentation
-            // so activity sources are emitted. Local dev can attach a different
-            // exporter (Console / Jaeger / Zipkin) by configuration later.
+            // No App Insights connection string — still register AspNetCore +
+            // HttpClient instrumentation so activity sources are emitted.
+            // Local dev can attach a different exporter (Console / Jaeger /
+            // Zipkin) via configuration later.
             otelBuilder.WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation());

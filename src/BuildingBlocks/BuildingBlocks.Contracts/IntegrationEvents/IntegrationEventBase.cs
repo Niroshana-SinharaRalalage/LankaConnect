@@ -1,3 +1,5 @@
+using MediatR;
+
 namespace LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 
 /// <summary>
@@ -28,7 +30,7 @@ namespace LankaConnect.BuildingBlocks.Contracts.IntegrationEvents;
 /// window.
 /// </para>
 /// </remarks>
-public abstract record IntegrationEventBase
+public abstract record IntegrationEventBase : INotification
 {
     /// <summary>
     /// Stable per-event identifier. Used by subscribers for idempotency

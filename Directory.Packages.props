@@ -47,6 +47,14 @@
   <!-- MediatR for CQRS -->
   <ItemGroup>
     <PackageVersion Include="MediatR" Version="12.4.1" />
+    <!--
+      W2.7 follow-up (2026-06-04). MediatR.Contracts ships only the INotification /
+      IRequest interfaces (no runtime). Used in BuildingBlocks.Contracts so
+      IntegrationEventBase can implement INotification — keeping the cross-module ABI
+      free of the full MediatR runtime. Phase B Service Bus consumers depend on a
+      ~5KB interface package, not the AllInOne mediator.
+    -->
+    <PackageVersion Include="MediatR.Contracts" Version="2.0.1" />
   </ItemGroup>
   <!-- FluentValidation -->
   <ItemGroup>

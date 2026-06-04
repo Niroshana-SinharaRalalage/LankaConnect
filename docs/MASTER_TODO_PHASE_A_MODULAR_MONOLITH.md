@@ -833,27 +833,17 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
   - Controller-side flag check from W3.6 IS the "dispatch logic uses flag" acceptance — verified end-to-end via the `UseNewModule={...}` log line each endpoint emits
 
 ### W3.8 — Deploy to staging + soak
-- [ ] **Push**: develop branch
-- [ ] **Deploy**: via `deploy-staging.yml`
-- [ ] **Verify deployment**: container logs show new module loaded
-  ```bash
-  az containerapp logs show -n lankaconnect-api-staging -g <rg> --tail 200
-  ```
-- [ ] **API test (legacy path, flag OFF)**:
-  ```bash
-  TOKEN=$(curl -X POST $STAGING/api/Auth/login ... | jq -r .accessToken)
-  curl -H "Authorization: Bearer $TOKEN" $STAGING/api/Notifications
-  ```
-  → verify response shape matches A.0.B baseline
-- [ ] **Flip flag in staging**: set `Refactor.Notifications.UseNewModule=true` via Azure App Configuration
-- [ ] **API test (new path, flag ON)**: same curl → verify identical response shape
-- [ ] **Soak**: 7 days monitoring App Insights for error rate, latency p50/p95/p99 deltas
-- [ ] **Acceptance**: zero error rate increase, latency within 10% of baseline
+- [x] **W3.8 (2026-06-04)** code-verifiable acceptance MET; 7-day calendar soak proceeds wall-clock:
+  - Push `2673a319` triggered `deploy-staging.yml` run `26930080528` (success)
+  - First flag-OFF smoke caught a real bug: `MediatR.IRequestHandler<GetUnreadNotificationsQuery, ...>` not registered (handler assembly invisible to MediatR). Fix `ea0b0313`: `NotificationsModule.AddNotificationsModule` calls `AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(GetUnreadNotificationsQueryHandler).Assembly))`. Added MediatR PackageReference to `Notifications.Api.csproj`. This pitfall captured in the W3.9 playbook
+  - Redeploy `26931041557` (success); re-smoke flag-OFF: `GET /api/Notifications/unread` → HTTP 200 `[]`. Container log confirms `LankaConnect.Modules.Notifications.Api.Controllers.NotificationsController: ... (UseNewModule=False)` — flag pipeline observed end-to-end
+  - Flag flip ON via `az containerapp update --set-env-vars "FeatureManagement__Refactor.Notifications.UseNewModule=true"`. Re-smoke: HTTP 200 `[]`; container log shows `UseNewModule=True`
+  - **API baseline regression GREEN**: `bash tests/api-baseline/run-baseline-regression.sh` reports `Baseline 312 paths / 403 schemas → Current 312 paths / 403 schemas → OK — no breaking drift`. Module extraction did not drift the public API surface
+  - Flag reverted to OFF (appsettings default) via `--remove-env-vars`
+- [ ] **7-day calendar soak**: monitor App Insights for error-rate deltas + p50/p95/p99 latency deltas vs the W2.6b baseline (error rate ≤ baseline + 0%, latency within +10%)
 
 ### W3.9 — Document MODULE_EXTRACTION_PLAYBOOK
-- [ ] **Files**: `docs/architecture/MODULE_EXTRACTION_PLAYBOOK.md`
-- [ ] Capture: skeleton creation, namespace migration, baseline migration recipe, feature flag wiring, deployment + soak procedure, common pitfalls encountered
-- **Acceptance**: every subsequent module extraction follows this playbook
+- [x] **W3.9 (2026-06-04)**: [docs/architecture/MODULE_EXTRACTION_PLAYBOOK.md](architecture/MODULE_EXTRACTION_PLAYBOOK.md) authored. 10-step extraction sequence (matches the W3.1-W3.10 substeps) with file-and-code-level instructions, decision rationale, transitional-debt callouts. Module map names every Phase A shared-infra module (Notifications/Communications/Media/Forms/Payments/Events/Identity) + every known Phase 2+ product module — including **LankaHomes + LankaTemples** per architect's pair-review nit. Pitfalls table captures 10 real issues hit during W3 (GitHub >100MB push reject, EF PascalCase convention, `IDesignTimeDbContextFactory` requirement, three different reference-cycle traps, missing implicit usings, MediatR assembly invisibility, Container Apps env-var override syntax). Microservice-readiness checklist for Phase B+ extraction.
 
 ### W3.10 — Update tracking docs
 

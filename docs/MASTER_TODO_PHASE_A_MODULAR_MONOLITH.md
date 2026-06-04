@@ -2,17 +2,92 @@
 
 | | |
 |---|---|
-| **Plan Version** | v4 (architect-reviewed 2026-05-11 — delta amendments applied) |
-| **Phase A Duration** | **20 weeks calendar** (~85 person-days; was 19 weeks pre-delta) |
-| **Approach** | Trunk-based development + feature flags (no long-lived branch) |
+| **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04)** |
+| **Phase A Duration** | **25 weeks calendar** (21 remaining; v4 was 20 weeks but had compounding debt; v5 zero carried debt) |
+| **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) |
+| **Approach** | Trunk-based development + feature flags (no long-lived branch); wave-based sequencing |
 | **Cutover Discipline** | Per-module flag flip with 7-day staging soak + 24h production canary |
-| **Definition of Done** | LankaEvents (and all current functionality) works identically post-cutover; 3-week stabilization soak completed |
+| **Definition of Done** | LankaEvents (and all current functionality) works identically post-cutover; future products (LankaSeyla/LankaMart/LankaHomes/LankaTemples/LankaBusiness/LankaNivasa) integrate against the stable foundation with ZERO re-architecture |
 | **Pre-flight gates landed** | PR-0 (#107), PR-0a (#108), PR-A (#109), PR-B (#113) all merged on develop |
-| **First Phase A task** | W1.0a — align this doc with plan-file delta amendments (this PR) |
+| **Current wave** | Wave 0 — architecture ratification in progress |
 
 ---
 
-## Plan Delta Amendments (re-baselined 2026-05-11) — read first
+## Plan v5 Amendment — Enterprise Wave Plan (founder-approved 2026-06-04) — READ FIRST
+
+Authoritative architecture: **[ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md)**. This amendment SUPERSEDES the v4 week-based plan sequencing below. The per-module task contents (W3.\*, W4.\*, W5.\* etc.) remain valid as the "what to do" reference but their ordering is now organized into 8 waves.
+
+### Why v5
+
+W4.1.2 (Communications Domain move) failed twice on cross-domain cultural type coupling (line 858 below). Architect re-evaluation concluded that the pragmatic "extract module now, fix transitional debt later" path produces compounding debt as future products are added. New plan: do the foundational untangling FIRST so all 7+ Phase 2 products integrate against a stable foundation with zero re-architecture later.
+
+### 5-layer architecture (replaces the previous 3-layer Modules/Hosts/Tests model)
+
+```
+BuildingBlocks → SharedKernel → Capabilities → Products → Hosts
+```
+
+See blueprint §1 for full topology + dependency rules. The 5th layer (`Capabilities` between `Modules` and `Products`) is what unblocks LankaTemples-uses-Scheduling without taking LankaEvents-EventPass as a dep.
+
+### 8-wave sequencing (replaces the v4 week-based ordering)
+
+| Wave | Title | Duration |
+|---|---|---|
+| W0 | Architecture ratification — blueprint + 5 ADRs + Master TODO update | 1 week |
+| W1 | BuildingBlocks completion + SharedKernel skeleton | 2 weeks |
+| W2 | SharedKernel.Cultural untangling — unblocks Communications | 2 weeks |
+| W3 | Migrate 79 entities to `BuildingBlocks.Entity<TId>` + delete legacy `BaseEntity` | 2 weeks |
+| W4 | Capability extractions (Notifications cleanup, Communications, Media, Forms, Payments, Scheduling, Identity, CulturalIntelligence) | 5 weeks |
+| W5 | Products layer carve-out (`Products/LankaEvents`) | 1 week |
+| W6 | ArchTest hardening — 28 rules total | 1 week |
+| W7 | Frontend mirror — Turborepo + feature packages aligned to backend layering | 3 weeks |
+| W8 | Production cutover + stabilization | 4 weeks |
+| **Total remaining** | | **21 weeks** |
+
+Net: +5 weeks vs v4 nominal, but **zero carried debt** when future products integrate. The v4 path was 20 weeks + certain 6-8 weeks of re-architecture later when adding LankaSeyla = 26-28 weeks with debt; v5 is 25 weeks with zero debt.
+
+### Key design decisions (D1-D10 founder-approved 2026-06-04, see blueprint §2)
+
+- **D1** — IAuditable + AuditableInterceptor (already shipped W2.5; refinements: IConcurrencyToken + IMultiTenant<T>)
+- **D2** — Cultural in SharedKernel (54 types, 410 references)
+- **D3** — Enum partition by audience (concrete map in blueprint §2.D3)
+- **D4** — Repository-per-aggregate (kill generic `IRepository<T>`)
+- **D5** — **Outbox-everything** — eventual consistency between modules (UI wording changes: "email sent" → "email queued")
+- **D6** — Money moves `BuildingBlocks` → `SharedKernel.Money`
+- **D7** — Identity split: `SharedKernel.Identity` (typed IDs) + `Capabilities/Identity` (User aggregate)
+- **D8** — Frontend mirrors backend layering (per W7)
+- **D9** — Delete `ISpecification<T>` pattern
+- **D10** — `IDomainEvent` stays in-module; cross-module signaling = `IIntegrationEventV1` only
+
+### W4.1 Communications BLOCKED status → rescheduled to Wave 4
+
+W4.1.2 BLOCKED status (line 858+ below) is RESCHEDULED. The fix lands in Wave 2 (SharedKernel.Cultural untangling). Communications extraction then resumes cleanly in Wave 4 with no cycles.
+
+### Reading guide for this document
+
+- **This v5 amendment** = current authoritative sequencing
+- **v4 Plan Delta Amendments** (below) = historical reference; week-based ordering superseded by waves
+- **Architect Review v3** (below) = historical reference
+- **Per-module task content** (W3.\*, W4.\*, W5.\* etc. below) = still valid as "what to do" reference; ordering now organized by waves
+- **Authoritative**: `docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md`
+
+### Wave 0 execution checklist
+
+- [x] W0.1 (2026-06-04): commit `docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md`
+- [x] W0.4 (2026-06-04): insert this v5 amendment into Master TODO
+- [ ] W0.2: draft ADR-006 (Layer Topology)
+- [ ] W0.2: draft ADR-007 (IAuditable + AuditableInterceptor)
+- [ ] W0.2: draft ADR-008 (Cultural in SharedKernel)
+- [ ] W0.2: draft ADR-009 (Outbox-everything)
+- [ ] W0.2: draft ADR-010 (Repository-per-aggregate)
+- [ ] W0.5: mark W4.1.2 BLOCKED entry as "rescheduled to Wave 4" inline
+- [ ] W0 commit + push (blueprint + 5 ADRs + Master TODO update)
+
+**Gate to exit Wave 0**: blueprint + 5 ADRs + this v5 amendment all committed; next session begins Wave 1 (BuildingBlocks completion).
+
+---
+
+## Plan Delta Amendments (re-baselined 2026-05-11) — historical reference (v4)
 
 The strategic plan was finalized 2026-04-26. Between then and pre-flight kickoff (2026-05-11), the codebase accumulated 21 operational migrations, the events mega-page grew +89 LOC, and the existing `.github/CODEOWNERS` was found unfit (15 fictional team handles). Architect re-reviewed and approved the delta amendments below. **These amendments take precedence over the Architect Review v3 section and weekly tasks below where they conflict.**
 
@@ -855,7 +930,7 @@ Two parallel agent worktrees; PR review sequential.
 
 ### W4.1 — Communications module (Email + WhatsApp + Newsletter)
 - [x] **W4.1.1 (2026-06-04)**: skeleton — 5 src + 4 test csprojs under `src/Modules/Communications/`; AssemblyMarker.cs placeholders; ProjectReferences mirror Notifications shape; 4 new ArchTest module-boundary rules added; build clean. The skeleton scope is Domain (99 files pending move) + Application (100 files pending move) + Infrastructure (54 files non-migration) + 59 typed email-param classes in `LankaConnect.Shared/Email/` + 9 controllers (Email, EmailGroups, EmailMetrics, AdminEmailTemplates, Newsletter, Newsletters, WhatsApp, WhatsAppAdmin, WhatsAppWebhook). Module is the biggest extraction by file count of any Phase A module — substeps W4.1.2 (Domain move) and W4.1.4 (Application + Infrastructure move) will land in dedicated sessions
-- [ ] **W4.1.2 BLOCKED on cross-domain coupling discovery (2026-06-04)**: two attempts (full move of 99 files + partial move of 47 then 74 files) both failed because Communications domain has cross-cutting cultural types (`CulturalContext` + ~15 cultural VOs in `Communications/ValueObjects/` + ~20 cultural Services) referenced from outside Communications (Events, Common.Monitoring, Common.Security, Shared.BackupTypes — 100+ external refs). Moving them creates a `legacy LankaConnect.Domain ↔ Modules.Communications.Domain` cycle. Partial moves (some files in legacy, some in module) just push the cycle to a different layer (Entities↔ValueObjects). **The fix is upstream**: pull the pre-W12 BuildingBlocks elevation pass forward. Elevate the cross-cutting cultural types to `BuildingBlocks.Domain.Cultural/` (or similar), then retry W4.1.2. See `docs/architecture/MODULE_EXTRACTION_PLAYBOOK.md` §"When a domain isn't ready: the untangling-first pattern" for the diagnostic + procedure
+- [ ] **W4.1.2 RESCHEDULED to Wave 4 per Plan v5 amendment (2026-06-04)**: this task was BLOCKED 2026-06-04 by cross-domain cultural type coupling (two move attempts — full 99 files + partial 74 — both failed with cycle errors). Architect re-evaluation produced the enterprise wave plan: cultural types lift to `SharedKernel.Cultural` in **Wave 2**; Communications then extracts cleanly in **Wave 4**. See [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) §3 Wave 2-4 + the v5 amendment at top of this document. Stash references for the failed attempts: stash@{0} (LITE — 74 files), stash@{1} (full — 99 files). Both will be dropped in Wave 4 since Wave 2's untangling makes them obsolete.
 - [ ] Repeat W3.2–W3.10 (per W3.9 playbook) for Communications AFTER untangling
 - [ ] 41+ email parameter types move to `Communications.Contracts`
 - [ ] Per-locale template lookup (en-US fallback) — implements ADR-001 foundation

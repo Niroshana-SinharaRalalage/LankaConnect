@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Media.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Media.Contracts</AssemblyName>
+    <Description>Media module — Contracts layer (cross-module wire-format ABI). Public dispatch interface + integration events. Depends only on BuildingBlocks.Contracts. No domain entity leakage.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — contracts land in W4.2.3 per W3.9 playbook §Step 3. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

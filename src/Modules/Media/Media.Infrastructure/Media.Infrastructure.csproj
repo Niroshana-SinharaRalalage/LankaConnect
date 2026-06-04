@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Media.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Media.Infrastructure</AssemblyName>
+    <Description>Media module — Infrastructure layer. Module DbContext, EF configurations, repositories, integration-event dispatch impl. Depends on Application + Domain + Contracts + BuildingBlocks.Infrastructure.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — DbContext + repos move in W4.2.4 / baseline migration in W4.2.5. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Media.Application\Media.Application.csproj" />
+    <ProjectReference Include="..\Media.Domain\Media.Domain.csproj" />
+    <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

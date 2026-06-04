@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Communications.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Communications.Application</AssemblyName>
+    <Description>Communications module — Application layer. MediatR command/query handlers, DTOs, application services. Depends on Domain + Contracts + BuildingBlocks.Application.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — handlers move in W4.1.4 per W3.9 playbook §Step 4. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Communications.Domain\Communications.Domain.csproj" />
+    <ProjectReference Include="..\Communications.Contracts\Communications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+</Project>

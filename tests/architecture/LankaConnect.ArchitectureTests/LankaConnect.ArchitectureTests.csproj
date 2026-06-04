@@ -41,6 +41,18 @@
     <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Contracts\Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Application\Notifications.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
+
+    <!-- W4.1.1 (2026-06-04) — Communications module skeleton. -->
+    <ProjectReference Include="..\..\..\src\Modules\Communications\Communications.Domain\Communications.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Communications\Communications.Contracts\Communications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Communications\Communications.Application\Communications.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Communications\Communications.Infrastructure\Communications.Infrastructure.csproj" />
+
+    <!-- W4.2.1 (2026-06-04) — Media module skeleton. -->
+    <ProjectReference Include="..\..\..\src\Modules\Media\Media.Domain\Media.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Media\Media.Contracts\Media.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Media\Media.Application\Media.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

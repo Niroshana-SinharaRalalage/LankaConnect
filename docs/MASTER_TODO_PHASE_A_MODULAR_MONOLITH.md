@@ -854,8 +854,9 @@ EF value-converter for `Money` (composite to `_amount` + `_currency` columns per
 Two parallel agent worktrees; PR review sequential.
 
 ### W4.1 — Communications module (Email + WhatsApp + Newsletter)
-- [ ] Repeat W3.1–W3.7 pattern for Communications
-- [ ] 41 email parameter types move to `Communications.Contracts`
+- [x] **W4.1.1 (2026-06-04)**: skeleton — 5 src + 4 test csprojs under `src/Modules/Communications/`; AssemblyMarker.cs placeholders; ProjectReferences mirror Notifications shape; 4 new ArchTest module-boundary rules added; build clean. The skeleton scope is Domain (99 files pending move) + Application (100 files pending move) + Infrastructure (54 files non-migration) + 59 typed email-param classes in `LankaConnect.Shared/Email/` + 9 controllers (Email, EmailGroups, EmailMetrics, AdminEmailTemplates, Newsletter, Newsletters, WhatsApp, WhatsAppAdmin, WhatsAppWebhook). Module is the biggest extraction by file count of any Phase A module — substeps W4.1.2 (Domain move) and W4.1.4 (Application + Infrastructure move) will land in dedicated sessions
+- [ ] Repeat W3.2–W3.10 (per W3.9 playbook) for Communications
+- [ ] 41+ email parameter types move to `Communications.Contracts`
 - [ ] Per-locale template lookup (en-US fallback) — implements ADR-001 foundation
 - [ ] Feature flag: `Refactor.Communications.UseNewModule` (sunset Week 8)
 - [ ] **Verify staging soak**: send test email via API; verify Azure Communication Services receives request
@@ -872,7 +873,8 @@ Two parallel agent worktrees; PR review sequential.
 - **Acceptance**: legacy + new path both deliverable; staging soak 7 days
 
 ### W4.2 — Media module (Photo Albums)
-- [ ] Repeat W3.1–W3.7 pattern for Media
+- [x] **W4.2.1 (2026-06-04)**: skeleton — 5 src + 4 test csprojs under `src/Modules/Media/`; AssemblyMarker.cs placeholders; ProjectReferences mirror Notifications shape; 4 new ArchTest module-boundary rules added; build clean. The skeleton scope is Domain (2 entities — PhotoAlbum + AlbumPhoto — plus 2 domain events + 1 enum) + Application (13 handler/query files in `LankaConnect.Application/Events/Commands/PhotoAlbums/`) + 1 controller (`PhotoAlbumsController`). Smaller than Communications by ~10× — substeps W4.2.2–W4.2.10 fit in fewer sessions
+- [ ] Repeat W3.2–W3.10 (per W3.9 playbook) for Media
 - [ ] **Schema migration**: rename `EventId` → `OwnerEntityId` + add `OwnerEntityType`
   - Use `migra` diff to verify exact change
   - Backfill: `UPDATE media.album_photos SET owner_entity_type = 'Event' WHERE owner_entity_type IS NULL`

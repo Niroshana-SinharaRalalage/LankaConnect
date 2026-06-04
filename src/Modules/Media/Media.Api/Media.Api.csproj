@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Media.Api</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Media.Api</AssemblyName>
+    <Description>Media module — Api layer. ASP.NET Core controllers + MediaModule DI extension. Composes Domain/Application/Infrastructure + BuildingBlocks.Web cross-cutting concerns.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — controllers move in W4.2.6 / module DI in W4.2.4 (pulled forward per W3.9 playbook §Step 4). -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Media.Application\Media.Application.csproj" />
+    <ProjectReference Include="..\Media.Domain\Media.Domain.csproj" />
+    <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
+    <ProjectReference Include="..\Media.Infrastructure\Media.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+  </ItemGroup>
+
+</Project>

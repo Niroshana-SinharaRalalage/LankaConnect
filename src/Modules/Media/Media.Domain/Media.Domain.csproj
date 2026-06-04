@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Media.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Media.Domain</AssemblyName>
+    <Description>Media module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain; no LankaConnect.Application/Infrastructure/Modules.* references.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — domain types move in W4.2.2 per W3.9 playbook §Step 2. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Communications.Infrastructure</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Communications.Infrastructure</AssemblyName>
+    <Description>Communications module — Infrastructure layer. Module DbContext, EF configurations, repositories, integration-event dispatch impl. Depends on Application + Domain + Contracts + BuildingBlocks.Infrastructure.</Description>
+  </PropertyGroup>
+
+  <!-- W4 SKELETON (2026-06-04). Empty shell — DbContext + repos move in W4.1.4 / baseline migration in W4.1.5. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Communications.Application\Communications.Application.csproj" />
+    <ProjectReference Include="..\Communications.Domain\Communications.Domain.csproj" />
+    <ProjectReference Include="..\Communications.Contracts\Communications.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

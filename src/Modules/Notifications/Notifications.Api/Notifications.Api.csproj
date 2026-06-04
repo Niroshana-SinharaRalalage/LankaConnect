@@ -28,6 +28,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <!-- W3.6 (2026-06-03): NotificationsController observes the Refactor.Notifications.UseNewModule flag. -->
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
+    <!-- W3.8 (2026-06-04): NotificationsModule registers MediatR handlers from the module assembly. -->
+    <PackageReference Include="MediatR" />
   </ItemGroup>
 
   <!-- W3.6 TRANSITIONAL EDGE (2026-06-03). NotificationsController uses

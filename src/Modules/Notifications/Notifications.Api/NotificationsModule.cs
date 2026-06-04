@@ -76,6 +76,17 @@ public static class NotificationsModule
 
         services.AddScoped<INotificationRepository, NotificationRepository>();
 
+        // W3.8 fix Phase A (2026-06-04) — register MediatR handlers from the
+        // Notifications.Application assembly. The host's outer `AddApplication(...)`
+        // only scans `LankaConnect.Application.dll`; the module's handlers live in
+        // a separate assembly and would otherwise be invisible to MediatR.
+        // Surfaced as a runtime InvalidOperationException ("No service for type
+        // 'MediatR.IRequestHandler<GetUnreadNotificationsQuery, ...>'") on the
+        // first /api/Notifications/unread call after the W3.6 controller move.
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
+            typeof(LankaConnect.Modules.Notifications.Application.Queries.GetUnreadNotifications.GetUnreadNotificationsQueryHandler)
+                .Assembly));
+
         return services;
     }
 }

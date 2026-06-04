@@ -75,15 +75,24 @@ W4.1.2 BLOCKED status (line 858+ below) is RESCHEDULED. The fix lands in Wave 2 
 
 - [x] W0.1 (2026-06-04): commit `docs/architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md`
 - [x] W0.4 (2026-06-04): insert this v5 amendment into Master TODO
-- [ ] W0.2: draft ADR-006 (Layer Topology)
-- [ ] W0.2: draft ADR-007 (IAuditable + AuditableInterceptor)
-- [ ] W0.2: draft ADR-008 (Cultural in SharedKernel)
-- [ ] W0.2: draft ADR-009 (Outbox-everything)
-- [ ] W0.2: draft ADR-010 (Repository-per-aggregate)
-- [ ] W0.5: mark W4.1.2 BLOCKED entry as "rescheduled to Wave 4" inline
-- [ ] W0 commit + push (blueprint + 5 ADRs + Master TODO update)
+- [x] W0.2 (2026-06-04 commit `3821ea67`): drafted ADR-006 (Layer Topology), ADR-007 (IAuditable + AuditableInterceptor), ADR-008 (Cultural in SharedKernel), ADR-009 (Outbox-everything), ADR-010 (Repository-per-aggregate)
+- [x] W0.5 (2026-06-04): marked W4.1.2 BLOCKED entry as rescheduled to Wave 4 inline (line 858 below)
+- [x] W0 commit + push (3821ea67 — blueprint + 5 ADRs + Master TODO update + Phase B roadmap)
 
-**Gate to exit Wave 0**: blueprint + 5 ADRs + this v5 amendment all committed; next session begins Wave 1 (BuildingBlocks completion).
+**Wave 0 closed 2026-06-04. Wave 1 in progress.**
+
+### Wave 1 execution checklist
+
+- [x] W1A (2026-06-04): `BuildingBlocks.Abstractions` csproj created; 8 files moved from `BuildingBlocks.Application/Abstractions/` (IAuditLogger, ICommand, ICurrentActor, IIdempotencyStore, IIdempotentCommand, IOutbox, IQuery, IUnitOfWork) + extracted `IIntegrationEventBuffer` from OutboxBehavior.cs. Namespace preserved as `LankaConnect.BuildingBlocks.Application.Abstractions` (deliberate assembly-vs-namespace mismatch — zero source churn). MediatR is the only package dep on new csproj. Build green; ArchTest 17/17. Architect pair-validated rationale (see blueprint Wave 1A row): consumers can depend on contract surface without inheriting MediatR + FluentValidation + ILogger.Abstractions.
+- [ ] W1B: IConcurrencyToken + IMultiTenant<T> interfaces in BB.Domain + BaseDbContext integration + tests
+- [ ] W1C: IAggregateRepository<TAggregate, TId> marker in BuildingBlocks.Abstractions (revised location)
+- [ ] W1D: SharedKernel skeleton — 7 csprojs (Cultural, Money, Locale, Identity, Geo, Time, Contracts) with AssemblyMarker placeholders + ArchTest rules
+- [ ] W1E: Move Money + Currency from BB.Domain to SharedKernel.Money (per D6 + ADR-006)
+- [ ] W1F: Move Locale + Country from BB.Domain to SharedKernel.Locale (per ADR-006)
+- [ ] W1G: IClock in BB.Abstractions + IUserContext in SharedKernel.Identity + composition root impl in Hosts.AllInOne
+- [ ] W1H: ArchTest expansion (~20 rules; will be ~28 by end of Wave 6)
+
+**Gate to exit Wave 1**: zero new code in `LankaConnect.{Domain,Application,Infrastructure}`. Notifications module's transitional debt to `LankaConnect.Domain` (per W3.2) is CUT. ArchTest for Notifications passes WITHOUT the relaxation rule.
 
 ---
 

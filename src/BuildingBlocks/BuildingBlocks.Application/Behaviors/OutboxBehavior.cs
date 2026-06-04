@@ -69,17 +69,3 @@ public sealed class OutboxBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         return response;
     }
 }
-
-/// <summary>
-/// Scoped buffer of integration events raised by aggregate roots during a
-/// request. Concrete implementation lives with <c>BaseDbContext</c> (W2.5)
-/// which can collect events from tracked entities on SaveChanges.
-/// </summary>
-public interface IIntegrationEventBuffer
-{
-    /// <summary>
-    /// Returns + clears the buffered events. Subsequent calls within the same
-    /// scope return empty.
-    /// </summary>
-    IReadOnlyList<object> DrainEvents();
-}

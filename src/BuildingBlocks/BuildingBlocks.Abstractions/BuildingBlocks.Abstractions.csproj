@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.BuildingBlocks.Application.Abstractions</RootNamespace>
+    <AssemblyName>LankaConnect.BuildingBlocks.Abstractions</AssemblyName>
+    <Description>Pure cross-cutting contracts (ICommand, IQuery, IUnitOfWork, IOutbox, ICurrentActor, IAuditLogger, IIdempotencyStore, IIntegrationEventBuffer). Consumers depend on the contract surface without inheriting the behavior surface (MediatR pipeline behaviors + FluentValidation + ILogger). Namespace deliberately kept as LankaConnect.BuildingBlocks.Application.Abstractions to preserve zero-source-churn for existing consumers per W1A architect ruling.</Description>
+  </PropertyGroup>
+
+  <!-- W1A (2026-06-04). Per ENTERPRISE_ARCHITECTURE_BLUEPRINT.md §3 Wave 1A. -->
+
+  <ItemGroup>
+    <!-- ICommand / IQuery / IIdempotentCommand inherit MediatR.IRequest<T>. Required dep.
+         Other consumers (FluentValidation, ILogger) stay in BuildingBlocks.Application. -->
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+
+</Project>

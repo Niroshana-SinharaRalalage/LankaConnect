@@ -66,7 +66,11 @@ try
             // This allows frontend to send enum values as strings (e.g., "EventOrganizer")
             // which the deserializer will properly convert to UserRole enum values
             options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        });
+        })
+        // W3.6 Phase A (2026-06-04) — make module-assembly controllers discoverable.
+        // MVC auto-discovers controllers in the entry assembly + ApplicationParts;
+        // module controllers in referenced assemblies need an explicit ApplicationPart.
+        .AddApplicationPart(typeof(LankaConnect.Modules.Notifications.Api.Controllers.NotificationsController).Assembly);
 
     // Configure FormOptions for large file uploads (videos up to 500MB)
     builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>

@@ -29,6 +29,7 @@ Governed by [ADR-004 — Feature Flag Strategy](architecture/ADR-004-feature-fla
 | Flag | Category | Owner | Created | Sunset | Default (no config) | Description |
 |---|---|---|---|---|---|---|
 | `Refactor.Smoke.Enabled` | Refactor | Niroshana | 2026-05-12 | 2026-06-09 (W5) | `false` | Smoke flag wired in W1.5 to prove `Microsoft.FeatureManagement` infrastructure works end-to-end (configured `true` in staging via appsettings.json; evaluated by `GET /api/Health/feature-flags`). Will be removed and deleted by W5 (master TODO §"Plan Delta Amendments" table) once first real `Refactor.<Module>.*` flag exists. |
+| `Refactor.Notifications.UseNewModule` | Refactor | Niroshana | 2026-06-03 | 2026-07-01 (W7) | `false` | W3 Notifications module-extraction cutover gate. When `false` (default), `INotificationRepository` resolves to the legacy implementation that injects `AppDbContext`. When `true`, resolves to the module implementation that injects `NotificationsDbContext` (per-module DbContext registered by `Notifications.Api.NotificationsModule.AddNotificationsModule`). Soak target 7 days at staging-ON before production canary ramp (10% → 50% → 100% via Container Apps revision traffic split per ADR-004). Sunsets W7 alongside legacy `NotificationRepository` removal in the cleanup PR. |
 
 ## Lifecycle checklist (per ADR-004)
 

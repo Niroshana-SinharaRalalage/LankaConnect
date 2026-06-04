@@ -26,6 +26,18 @@
     <!-- W3.4 (2026-06-03): NotificationsModule.AddNotificationsModule wires EF Core + Npgsql for NotificationsDbContext. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- W3.6 (2026-06-03): NotificationsController observes the Refactor.Notifications.UseNewModule flag. -->
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
+  </ItemGroup>
+
+  <!-- W3.6 TRANSITIONAL EDGE (2026-06-03). NotificationsController uses
+       LankaConnect.Domain.Common.Result<T> from the legacy LankaConnect.Domain
+       assembly (handlers return the legacy Result type). Cut alongside the
+       BuildingBlocks elevation pass that promotes Result<T> to
+       BuildingBlocks.Domain. The corresponding ArchTest rule already permits
+       this edge for Notifications.Domain → LankaConnect.Domain. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
   </ItemGroup>
 
 </Project>

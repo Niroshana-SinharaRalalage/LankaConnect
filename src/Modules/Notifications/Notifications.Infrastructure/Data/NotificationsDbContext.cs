@@ -1,3 +1,5 @@
+using LankaConnect.BuildingBlocks.Infrastructure.Idempotency;
+using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
 using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Modules.Notifications.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +50,15 @@ public sealed class NotificationsDbContext : DbContext
 
     public DbSet<Notification> Notifications => Set<Notification>();
 
+    /// <summary>Per-module outbox table (<c>notifications.outbox</c>).</summary>
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
+
+    /// <summary>Per-module dead-letter table (<c>notifications.outbox_dead_letter</c>).</summary>
+    public DbSet<DeadLetterMessage> OutboxDeadLetter => Set<DeadLetterMessage>();
+
+    /// <summary>Per-module idempotency-keys table (<c>notifications.idempotency_keys</c>).</summary>
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -60,6 +71,11 @@ public sealed class NotificationsDbContext : DbContext
         // in schema "notifications"). Without this, EF would derive PascalCase
         // "Notifications" from the DbSet property name + drift from production.
         modelBuilder.Entity<Notification>().ToTable("notifications", SchemaName);
+
+        // W3.5b operational tables — shared shape across all modules, per-schema isolation.
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
         base.OnModelCreating(modelBuilder);
     }

@@ -260,7 +260,7 @@ When all 5 are checked, extraction = (a) lift the module's csprojs into a separa
 
 ---
 
-## Common pitfalls (caught during W3)
+## Common pitfalls (caught during W3 + W4)
 
 | Pitfall | Symptom | Fix |
 |---|---|---|
@@ -274,6 +274,20 @@ When all 5 are checked, extraction = (a) lift the module's csprojs into a separa
 | `MediatR can't find module handler` | Runtime: `No service for type 'MediatR.IRequestHandler<...>'` | `<Name>Module.Add<Name>Module` must also call `AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(SomeHandler).Assembly))` — host's outer `AddApplication` only scans `LankaConnect.Application.dll` |
 | `Container App --replace-env-vars` wipes manual env-var edits | Manual `set-env-vars` lost on next CI deploy | Add the env var binding (with `secretref:` for sensitive values) to `deploy-staging.yml` — see W2.6b commit `e9c508d0` |
 | `appsettings.json FeatureManagement env-var override` syntax | Flag flip via `set-env-vars` doesn't take effect | Use dotted key: `FeatureManagement__Refactor.<Name>.UseNewModule=true` (double-underscore for the section separator, dots in the flag name) |
+| **Tightly-coupled domain (W4.1 Communications discovery)** | Move attempt produces 24-100+ build errors. Legacy `LankaConnect.Domain` files reference types that were moved into the module; module files reference cultural / cross-cutting types that stayed in legacy. Cannot resolve without one side or the other taking a hard cycle. | **Pre-extraction analysis BEFORE attempting Step 2 (Domain move):** for each candidate domain, run a per-type cross-reference count: `find src/LankaConnect.Domain/<Name>/ValueObjects -name "*.cs" | while read f; do echo "$(grep -rln "\b$(basename $f .cs)\b" --include=*.cs src/LankaConnect.Domain | grep -v "/<Name>/" \| wc -l) $f"; done | sort -rn`. If any VO/Service has >0 external refs, that type is **cross-cutting kernel material**, NOT module-internal. Either (a) elevate it to BuildingBlocks.Domain BEFORE the module move (one-shot untangling pass), or (b) skip the module — its domain isn't ready for extraction yet. Do NOT proceed with a partial move; partial moves create cycle-trapped graphs (entities-in-module ↔ VOs-in-legacy ↔ entities-in-module). |
+
+## When a domain isn't ready: the untangling-first pattern
+
+Some legacy subdomains accreted cross-cutting types over years. Communications is the canonical example: `CulturalContext`, `CulturalEvent`, `CulturalAppropriateness` etc. live structurally inside `Communications/ValueObjects/` but are referenced from Events, Common.Monitoring, Common.Security, Shared.BackupTypes. Moving them into the module creates a cycle.
+
+When the pre-extraction analysis above flags a domain as too tangled:
+
+1. **Defer the module extraction.** Don't attempt partial moves; they paint you into a cycle trap.
+2. **Identify the cross-cutting type cluster.** Use the per-type cross-reference count from the playbook command.
+3. **Elevate to BuildingBlocks.Domain in a dedicated session.** Create `BuildingBlocks.Domain/Cultural/` (or appropriate namespace) and move the cross-cutting types there. Update all references (legacy + future module). This is mechanical sed + ProjectReference work.
+4. **Then retry the module move per playbook §"Step 2".** Domain is now clean enough to extract.
+
+The architect-approved Phase A plan called this the "BuildingBlocks elevation pass" — originally scheduled pre-W12, but discovered during W4.1 to be a prerequisite for Communications (and possibly Events). Pulling it forward when the analysis demands.
 
 ---
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.SharedKernel.Cultural;
 
 namespace LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
 
@@ -12,42 +13,12 @@ namespace LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;
 
 #region Core Enums
 
-/// <summary>
-/// South Asian languages supported by the multi-language routing engine
-/// Covers primary diaspora languages with cultural intelligence context
-/// </summary>
-public enum SouthAsianLanguage
-{
-    // Primary Sri Lankan Languages
-    Sinhala,
-    Tamil,
-    
-    // Primary Indian Subcontinent Languages  
-    Hindi,
-    Urdu,
-    Punjabi,
-    Bengali,
-    Gujarati,
-    Marathi,
-    Telugu,
-    Kannada,
-    Malayalam,
-    
-    // Additional Languages
-    English,
-    Arabic,
-    Persian,
-    
-    // Sacred/Classical Languages
-    Sanskrit,
-    Pali,
-    
-    // Regional Variants
-    SriLankanTamil,
-    IndianTamil,
-    PakistaniUrdu,
-    IndianUrdu
-}
+// W2C.2 (2026-06-04): the duplicate `SouthAsianLanguage` enum that lived here was
+// deleted. Its 4 regional variants (SriLankanTamil, IndianTamil, PakistaniUrdu,
+// IndianUrdu) plus Arabic + Persian were absorbed additively into the canonical
+// enum at LankaConnect.SharedKernel.Cultural.SouthAsianLanguage. Consumers of this
+// file now resolve SouthAsianLanguage from SharedKernel.Cultural via the using
+// directive above. See cultural-type-inventory.md §B.6 + ADR-008.
 
 /// <summary>
 /// Generational cohorts for diaspora language pattern analysis

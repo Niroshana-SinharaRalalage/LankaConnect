@@ -1,8 +1,18 @@
-namespace LankaConnect.Domain.Common.Enums;
+namespace LankaConnect.SharedKernel.Cultural;
 
 /// <summary>
-/// South Asian languages supported by the cultural intelligence system
+/// Broad South Asian language set used by the Phase 6 cultural intelligence
+/// routing engine for diaspora language preference detection.
 /// </summary>
+/// <remarks>
+/// Distinct from <c>SriLankanLanguage</c> (narrow 3-value Sri Lankan operations
+/// enum) — see ADR-008 + cultural-type-inventory.md §B.6 for the narrow-vs-broad
+/// rationale. Both live in SharedKernel.Cultural.
+///
+/// Regional variants (SriLankanTamil, IndianTamil, PakistaniUrdu, IndianUrdu,
+/// Arabic, Persian) absorbed in W2C.2 (2026-06-04) from the duplicate enum
+/// previously in <c>LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels</c>.
+/// </remarks>
 public enum SouthAsianLanguage
 {
     /// <summary>
@@ -100,6 +110,26 @@ public enum SouthAsianLanguage
     /// </summary>
     MultiLanguage = 19,
 
+    // Regional variants — absorbed from the routing-models duplicate enum in W2C.2 (2026-06-04).
+
+    /// <summary>Sri Lankan Tamil dialect (distinct from Indian Tamil)</summary>
+    SriLankanTamil = 20,
+
+    /// <summary>Indian Tamil dialect (distinct from Sri Lankan Tamil)</summary>
+    IndianTamil = 21,
+
+    /// <summary>Pakistani Urdu dialect</summary>
+    PakistaniUrdu = 22,
+
+    /// <summary>Indian Urdu dialect</summary>
+    IndianUrdu = 23,
+
+    /// <summary>Arabic — Middle Eastern diaspora liturgical/communication language</summary>
+    Arabic = 24,
+
+    /// <summary>Persian (Farsi) — Iranian/Afghan diaspora language</summary>
+    Persian = 25,
+
     /// <summary>
     /// Unknown or other South Asian language
     /// </summary>
@@ -138,6 +168,12 @@ public static class SouthAsianLanguageExtensions
             SouthAsianLanguage.Sanskrit => "sa",
             SouthAsianLanguage.Pali => "pi",
             SouthAsianLanguage.English => "en",
+            SouthAsianLanguage.SriLankanTamil => "ta-LK",
+            SouthAsianLanguage.IndianTamil => "ta-IN",
+            SouthAsianLanguage.PakistaniUrdu => "ur-PK",
+            SouthAsianLanguage.IndianUrdu => "ur-IN",
+            SouthAsianLanguage.Arabic => "ar",
+            SouthAsianLanguage.Persian => "fa",
             _ => "unknown"
         };
     }
@@ -170,6 +206,12 @@ public static class SouthAsianLanguageExtensions
             SouthAsianLanguage.Pali => "Pali (पालि)",
             SouthAsianLanguage.English => "English",
             SouthAsianLanguage.MultiLanguage => "Multiple Languages",
+            SouthAsianLanguage.SriLankanTamil => "Sri Lankan Tamil",
+            SouthAsianLanguage.IndianTamil => "Indian Tamil",
+            SouthAsianLanguage.PakistaniUrdu => "Pakistani Urdu",
+            SouthAsianLanguage.IndianUrdu => "Indian Urdu",
+            SouthAsianLanguage.Arabic => "Arabic (العربية)",
+            SouthAsianLanguage.Persian => "Persian (فارسی)",
             _ => "Other"
         };
     }
@@ -181,7 +223,9 @@ public static class SouthAsianLanguageExtensions
     /// <returns>True if primarily religious</returns>
     public static bool IsReligiousLanguage(this SouthAsianLanguage language)
     {
-        return language is SouthAsianLanguage.Sanskrit or SouthAsianLanguage.Pali;
+        return language is SouthAsianLanguage.Sanskrit
+            or SouthAsianLanguage.Pali
+            or SouthAsianLanguage.Arabic; // Quranic / Islamic liturgical
     }
 
     /// <summary>
@@ -191,6 +235,11 @@ public static class SouthAsianLanguageExtensions
     /// <returns>True if right-to-left</returns>
     public static bool IsRightToLeft(this SouthAsianLanguage language)
     {
-        return language is SouthAsianLanguage.Urdu or SouthAsianLanguage.Dhivehi;
+        return language is SouthAsianLanguage.Urdu
+            or SouthAsianLanguage.Dhivehi
+            or SouthAsianLanguage.PakistaniUrdu
+            or SouthAsianLanguage.IndianUrdu
+            or SouthAsianLanguage.Arabic
+            or SouthAsianLanguage.Persian;
     }
 }

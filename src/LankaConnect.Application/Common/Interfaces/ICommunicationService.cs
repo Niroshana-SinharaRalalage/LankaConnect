@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Enums;
-using SouthAsianLanguage = LankaConnect.Domain.Common.Enums.SouthAsianLanguage;
+using SouthAsianLanguage = LankaConnect.SharedKernel.Cultural.SouthAsianLanguage;
 
 namespace LankaConnect.Application.Common.Interfaces;
 

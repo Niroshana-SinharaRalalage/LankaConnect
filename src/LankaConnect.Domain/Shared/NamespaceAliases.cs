@@ -26,4 +26,7 @@ global using AutoScalingDecision = LankaConnect.Domain.Common.Database.AutoScali
 global using CulturalEventType = LankaConnect.Domain.Common.Enums.CulturalEventType;
 
 // South Asian Language canonical reference - resolves namespace conflicts
-global using SouthAsianLanguage = LankaConnect.Domain.Common.Enums.SouthAsianLanguage;
+// W2C.2 (2026-06-04): SouthAsianLanguage moved to SharedKernel.Cultural per ADR-008.
+// The global alias keeps unqualified `SouthAsianLanguage` working for all consumers
+// across LankaConnect.Domain without per-file using-directive churn.
+global using SouthAsianLanguage = LankaConnect.SharedKernel.Cultural.SouthAsianLanguage;

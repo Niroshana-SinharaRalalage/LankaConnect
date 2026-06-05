@@ -30,3 +30,11 @@ global using CulturalEventType = LankaConnect.Domain.Common.Enums.CulturalEventT
 // The global alias keeps unqualified `SouthAsianLanguage` working for all consumers
 // across LankaConnect.Domain without per-file using-directive churn.
 global using SouthAsianLanguage = LankaConnect.SharedKernel.Cultural.SouthAsianLanguage;
+
+// W2C.4 (2026-06-05): CulturalBackground moved to SharedKernel.Cultural per ADR-008.
+// Same per-file-churn-avoidance pattern as SouthAsianLanguage. The canonical
+// CulturalBackground has 8 Sri-Lankan-focused values (SinhalaBuddhist, TamilHindu,
+// TamilSriLankan, SriLankanMuslim, SriLankanChristian, Burgher, Malay, Other).
+// The broader 15-value South-Asian community granularity was renamed to
+// `SouthAsianCommunity` in MultiLanguageRoutingModels.cs to avoid name collision.
+global using CulturalBackground = LankaConnect.SharedKernel.Cultural.CulturalBackground;

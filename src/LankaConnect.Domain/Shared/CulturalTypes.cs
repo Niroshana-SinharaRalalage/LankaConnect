@@ -26,19 +26,10 @@ public enum CulturalEvent
     MultiCultural
 }
 
-/// <summary>
-/// Cultural background classification for user profiling
-/// </summary>
-public enum CulturalBackground
-{
-    SriLankanBuddhist,
-    IndianTamil,
-    PakistaniMuslim,
-    IndianHindu,
-    SouthAsianGeneric,
-    Mixed,
-    Other
-}
+// W2C.4 (2026-06-05): the orphan `CulturalBackground` enum that lived here was
+// deleted. Zero production callers used these values (verified via grep). The
+// canonical CulturalBackground lives in LankaConnect.SharedKernel.Cultural —
+// see cultural-type-inventory.md §B.5 + ADR-008.
 
 /// <summary>
 /// Cultural event intensity classification

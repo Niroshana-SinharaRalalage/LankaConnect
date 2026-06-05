@@ -328,11 +328,11 @@ public class WhatsAppCulturalContext : ValueObject
     {
         var culturalBackground = PrimaryReligion switch
         {
-            "Buddhism" => LankaConnect.Domain.Communications.Enums.CulturalBackground.SinhalaBuddhist,
-            "Hinduism" => LankaConnect.Domain.Communications.Enums.CulturalBackground.TamilHindu,
-            "Islam" => LankaConnect.Domain.Communications.Enums.CulturalBackground.SriLankanMuslim,
-            "Christianity" => LankaConnect.Domain.Communications.Enums.CulturalBackground.SriLankanChristian,
-            _ => LankaConnect.Domain.Communications.Enums.CulturalBackground.Other
+            "Buddhism" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SinhalaBuddhist,
+            "Hinduism" => LankaConnect.SharedKernel.Cultural.CulturalBackground.TamilHindu,
+            "Islam" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SriLankanMuslim,
+            "Christianity" => LankaConnect.SharedKernel.Cultural.CulturalBackground.SriLankanChristian,
+            _ => LankaConnect.SharedKernel.Cultural.CulturalBackground.Other
         };
 
         var religiousContext = PrimaryReligion switch

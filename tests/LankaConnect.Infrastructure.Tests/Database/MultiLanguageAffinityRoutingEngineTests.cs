@@ -103,7 +103,7 @@ public class MultiLanguageAffinityRoutingEngineTests
                 { SouthAsianLanguage.Sinhala, 0.95m },
                 { SouthAsianLanguage.English, 0.60m }
             },
-            CulturalBackground = CulturalBackground.SriLankanBuddhist
+            CulturalCommunity = SouthAsianCommunity.SriLankanBuddhist
         };
         
         // Act
@@ -131,7 +131,7 @@ public class MultiLanguageAffinityRoutingEngineTests
                 { SouthAsianLanguage.Tamil, 0.75m },
                 { SouthAsianLanguage.English, 0.85m }
             },
-            CulturalBackground = CulturalBackground.IndianTamil
+            CulturalCommunity = SouthAsianCommunity.IndianTamil
         };
         
         // Act
@@ -240,7 +240,7 @@ public class MultiLanguageAffinityRoutingEngineTests
         {
             ContentType = SacredContentType.Buddhist,
             RequestedLanguage = SouthAsianLanguage.English,
-            UserCulturalBackground = CulturalBackground.SriLankanBuddhist
+            UserCulturalCommunity = SouthAsianCommunity.SriLankanBuddhist
         };
         
         // Act
@@ -262,7 +262,7 @@ public class MultiLanguageAffinityRoutingEngineTests
         {
             ContentType = SacredContentType.Hindu,
             RequestedLanguage = SouthAsianLanguage.Tamil,
-            UserCulturalBackground = CulturalBackground.IndianTamil
+            UserCulturalCommunity = SouthAsianCommunity.IndianTamil
         };
         
         // Act
@@ -284,7 +284,7 @@ public class MultiLanguageAffinityRoutingEngineTests
         {
             ContentType = SacredContentType.Islamic,
             RequestedLanguage = SouthAsianLanguage.English,
-            UserCulturalBackground = CulturalBackground.PakistaniMuslim
+            UserCulturalCommunity = SouthAsianCommunity.PakistaniMuslim
         };
         
         // Act

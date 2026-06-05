@@ -66,31 +66,40 @@ public enum CulturalContextType
 }
 
 /// <summary>
-/// Cultural backgrounds for precise community targeting
+/// South Asian community granularity for routing (15 values across SL, Indian,
+/// Pakistani, Bangladeshi communities + multi-cultural). Distinct from the
+/// canonical <see cref="LankaConnect.SharedKernel.Cultural.CulturalBackground"/>
+/// which is narrower-scope Sri-Lankan-focused.
 /// </summary>
-public enum CulturalBackground
+/// <remarks>
+/// W2C.4 (2026-06-05): renamed from `CulturalBackground` to `SouthAsianCommunity`
+/// to avoid name collision with the canonical narrow-scope CulturalBackground
+/// in SharedKernel.Cultural. The 5 test callers in MultiLanguageAffinityRoutingEngineTests
+/// migrated to the new name in the same commit. See cultural-type-inventory.md §B.5.
+/// </remarks>
+public enum SouthAsianCommunity
 {
     // Sri Lankan Communities
     SriLankanBuddhist,
     SriLankanTamil,
     SriLankanChristian,
     SriLankanMuslim,
-    
+
     // Indian Communities
     IndianTamil,
     IndianHindu,
     IndianSikh,
     IndianChristian,
     IndianMuslim,
-    
+
     // Pakistani Communities
     PakistaniMuslim,
     PakistaniChristian,
-    
+
     // Bangladeshi Communities
     BengaliMuslim,
     BengaliHindu,
-    
+
     // Multi-Cultural
     MultiCultural,
     SouthAsianGeneric

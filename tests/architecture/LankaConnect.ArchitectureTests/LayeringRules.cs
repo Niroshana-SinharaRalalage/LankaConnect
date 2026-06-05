@@ -508,6 +508,181 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    // ---------- W1A — BuildingBlocks.Abstractions (added 2026-06-04) ----------
+
+    /// <summary>
+    /// W1A invariant: BuildingBlocks.Abstractions holds pure cross-cutting
+    /// contracts (ICommand, IQuery, IUnitOfWork, IOutbox, ICurrentActor,
+    /// IAuditLogger, IIdempotencyStore, IIntegrationEventBuffer, IClock).
+    /// It must not reference any other LankaConnect assembly — consumers
+    /// depend on this for the contract surface without pulling in the
+    /// behavior surface (MediatR pipeline behaviors etc.).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void BuildingBlocks_Abstractions_HasNoLankaConnectDependencies()
+    {
+        var assembly = typeof(BuildingBlocks.Application.Abstractions.IClock).Assembly;
+
+        // NOTE: per architect's W1A ruling, the abstractions namespace stays
+        // `LankaConnect.BuildingBlocks.Application.Abstractions` for zero
+        // source churn even though the assembly is BB.Abstractions. NetArchTest's
+        // NotHaveDependencyOnAny does prefix matching, so we cannot enumerate
+        // `LankaConnect.BuildingBlocks.Application` here — it would false-positive
+        // on the abstractions' OWN namespace. Instead, assert no reference to
+        // the OTHER BuildingBlocks layers + the legacy monolith. The csproj
+        // already structurally enforces no BB.Application/Domain dep
+        // (BB.Abstractions has ZERO ProjectReferences besides MediatR package).
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.BuildingBlocks.Contracts",
+                "LankaConnect.SharedKernel.Cultural",
+                "LankaConnect.SharedKernel.Money",
+                "LankaConnect.SharedKernel.Locale",
+                "LankaConnect.SharedKernel.Identity",
+                "LankaConnect.SharedKernel.Geo",
+                "LankaConnect.SharedKernel.Time",
+                "LankaConnect.SharedKernel.Contracts",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    // ---------- W1D-W1G — SharedKernel layer (added 2026-06-04) ----------
+    //
+    // Invariant: every SharedKernel.X package may reference only BuildingBlocks.*
+    // (Domain + Contracts as needed); MUST NOT reference Capabilities (yet to land),
+    // Products (yet to land), Hosts, LankaConnect.* (legacy monolith), or other
+    // SharedKernel sibling implementations (except via SharedKernel.Contracts when
+    // cross-SharedKernel integration events land in Wave 2).
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Cultural_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Cultural.AssemblyMarker).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Money_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Money.Money).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Locale_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Locale.Locale).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Identity_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Identity.UserId).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Geo_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Geo.AssemblyMarker).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Time_DependsOnlyOnBuildingBlocks()
+    {
+        var assembly = typeof(SharedKernel.Time.AssemblyMarker).Assembly;
+        AssertCompliant(SharedKernelDependencyRule(assembly), assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// SharedKernel.Contracts is the SharedKernel-level integration-event ABI.
+    /// May reference only BuildingBlocks.Contracts (for IIntegrationEventV1 + base).
+    /// </summary>
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void SharedKernel_Contracts_DependsOnlyOnBuildingBlocksContracts()
+    {
+        var assembly = typeof(SharedKernel.Contracts.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.BuildingBlocks.Domain",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.SharedKernel.Cultural",
+                "LankaConnect.SharedKernel.Money",
+                "LankaConnect.SharedKernel.Locale",
+                "LankaConnect.SharedKernel.Identity",
+                "LankaConnect.SharedKernel.Geo",
+                "LankaConnect.SharedKernel.Time",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    /// <summary>
+    /// Shared rule body: a SharedKernel package may reference BuildingBlocks.*
+    /// (Domain + Abstractions + Contracts) but NOT Capabilities / Products /
+    /// Hosts / legacy LankaConnect.* / sibling SharedKernel impl packages.
+    /// SharedKernel.Contracts is the only sibling allowed (for cross-SharedKernel
+    /// integration events, lands in Wave 2).
+    /// </summary>
+    private static TestResult SharedKernelDependencyRule(Assembly assembly)
+    {
+        return Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api")
+            .GetResult();
+    }
+
     // ---------- Helpers ----------
 
     private static void AssertCompliant(TestResult result, string assemblyName)

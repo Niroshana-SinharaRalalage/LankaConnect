@@ -53,6 +53,18 @@
     <ProjectReference Include="..\..\..\src\Modules\Media\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Media\Media.Application\Media.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
+
+    <!-- W1A (2026-06-04) — BuildingBlocks.Abstractions extracted; ArchTest verifies the abstractions assembly has zero LankaConnect dependencies. -->
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+
+    <!-- W1D-W1G (2026-06-04) — SharedKernel layer (7 packages); ArchTest enforces SharedKernel-only-depends-on-BuildingBlocks invariants. -->
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Locale\SharedKernel.Locale.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Identity\SharedKernel.Identity.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Geo\SharedKernel.Geo.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Time\SharedKernel.Time.csproj" />
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Contracts\SharedKernel.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

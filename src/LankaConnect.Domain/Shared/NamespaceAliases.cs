@@ -67,3 +67,9 @@ global using CulturalContext = LankaConnect.SharedKernel.Cultural.CulturalContex
 // EventCulturalConflict and the CulturalUserProfile nested record to
 // UserCulturalConflict — both distinct concepts per architect Q3 pattern.
 global using CulturalConflict = LankaConnect.SharedKernel.Cultural.CulturalConflict;
+
+// W2D.1d (2026-06-05): CulturalAppropriateness scoring value object moved to
+// SharedKernel.Cultural per ADR-008. Breaks 4 cycle-creating Domain refs
+// (EventRecommendationEngine, IEventRecommendationEngine, ConsistencyModels,
+// CulturalIntelligenceMetrics).
+global using CulturalAppropriateness = LankaConnect.SharedKernel.Cultural.CulturalAppropriateness;

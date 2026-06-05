@@ -1,8 +1,8 @@
 using LankaConnect.Domain.Events;
 using LankaConnect.Domain.Events.Services;
 using LankaConnect.Domain.Events.ValueObjects.Recommendations;
-using CulturalAppropriateness = LankaConnect.Domain.Communications.ValueObjects.CulturalAppropriateness;
-using AppropriatenessLevel = LankaConnect.Domain.Communications.ValueObjects.AppropriatenessLevel;
+using CulturalAppropriateness = LankaConnect.SharedKernel.Cultural.CulturalAppropriateness;
+using AppropriatenessLevel = LankaConnect.SharedKernel.Cultural.AppropriatenessLevel;
 
 namespace LankaConnect.Infrastructure.CulturalIntelligence;
 

@@ -1,7 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.Domain.Communications.ValueObjects;
+namespace LankaConnect.SharedKernel.Cultural;
 
 /// <summary>
 /// Cultural Appropriateness scoring value object for Cultural Intelligence Engine
@@ -48,7 +47,7 @@ public class CulturalAppropriateness : ValueObject
     public bool IsHighlyAppropriate => Value >= 0.8;
     public bool IsInappropriate => Value < 0.4;
     
-    public override IEnumerable<object> GetEqualityComponents()
+    protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Value;
         yield return Level;

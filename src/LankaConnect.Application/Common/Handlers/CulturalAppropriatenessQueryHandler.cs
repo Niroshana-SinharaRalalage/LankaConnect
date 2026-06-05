@@ -193,16 +193,16 @@ public class CulturalAppropriatenessQueryHandler : IQueryHandler<CulturalAppropr
         return analysis;
     }
 
-    private AppropriatenessLevel DetermineAppropriatenessLevel(double score)
+    private LankaConnect.Application.Common.Queries.AppropriatenessLevel DetermineAppropriatenessLevel(double score)
     {
         return score switch
         {
-            >= 0.9 => AppropriatenessLevel.HighlyAppropriate,
-            >= 0.7 => AppropriatenessLevel.Appropriate,
-            >= 0.6 => AppropriatenessLevel.MildConcern,
-            >= 0.4 => AppropriatenessLevel.ModerateConcern,
-            >= 0.2 => AppropriatenessLevel.HighConcern,
-            _ => AppropriatenessLevel.Inappropriate
+            >= 0.9 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.HighlyAppropriate,
+            >= 0.7 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.Appropriate,
+            >= 0.6 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.MildConcern,
+            >= 0.4 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.ModerateConcern,
+            >= 0.2 => LankaConnect.Application.Common.Queries.AppropriatenessLevel.HighConcern,
+            _ => LankaConnect.Application.Common.Queries.AppropriatenessLevel.Inappropriate
         };
     }
 

@@ -704,7 +704,7 @@ namespace LankaConnect.Application.Common.Interfaces
         public required Dictionary<string, object> EventMetadata { get; set; }
     }
 
-    // CulturalEventType enum removed - using LankaConnect.Domain.Common.Enums.CulturalEventType
+    // CulturalEventType enum removed - using LankaConnect.SharedKernel.Cultural.CulturalEventType
 
 
     public class ScalingPredictionResult

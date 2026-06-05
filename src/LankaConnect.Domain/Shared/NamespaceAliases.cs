@@ -22,8 +22,15 @@ global using AutoScalingDecision = LankaConnect.Domain.Common.Database.AutoScali
 // - DiasporaCommunity, CulturalSignificanceLevel, RevenueProtectionStrategy
 // - DisasterRecoveryType, RecoveryPriority, AnalysisPeriodType
 
-// Keep CulturalEventType - it exists in Domain.Common.Enums
-global using CulturalEventType = LankaConnect.Domain.Common.Enums.CulturalEventType;
+// W2C.6 (2026-06-05): CulturalEventType (40+ value enum) moved to SharedKernel.Cultural
+// per ADR-008. The 350+ unqualified references across 62 files resolve via this alias.
+// Was: LankaConnect.Domain.Common.Enums.CulturalEventType
+global using CulturalEventType = LankaConnect.SharedKernel.Cultural.CulturalEventType;
+
+// W2C.6 (2026-06-05): ReligiousObservanceLevel extracted from
+// GoogleCalendarCulturalEvent.cs to its own file in SharedKernel.Cultural.
+// Unblocks W2D.1b CulturalConflict + CulturalEvent moves.
+global using ReligiousObservanceLevel = LankaConnect.SharedKernel.Cultural.ReligiousObservanceLevel;
 
 // South Asian Language canonical reference - resolves namespace conflicts
 // W2C.2 (2026-06-04): SouthAsianLanguage moved to SharedKernel.Cultural per ADR-008.

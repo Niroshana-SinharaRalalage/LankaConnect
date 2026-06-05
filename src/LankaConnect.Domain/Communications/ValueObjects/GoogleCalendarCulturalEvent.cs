@@ -317,17 +317,9 @@ public enum CulturalSignificance
     Highest
 }
 
-/// <summary>
-/// Religious observance levels affecting scheduling conflicts
-/// </summary>
-public enum ReligiousObservanceLevel
-{
-    None,
-    Low,
-    Medium,
-    High,
-    Highest
-}
+// W2C.6 (2026-06-05): ReligiousObservanceLevel extracted to its own file in
+// SharedKernel.Cultural (alongside CulturalEventType) per ADR-008. Unqualified
+// references resolve via the global alias in NamespaceAliases.cs.
 
 /// <summary>
 /// Frequency patterns for recurring cultural events

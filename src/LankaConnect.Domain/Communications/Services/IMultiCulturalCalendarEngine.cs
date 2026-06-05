@@ -147,7 +147,7 @@ public record MultiCulturalEnterpriseAnalytics(
     CulturalROIProjection ROIProjection,
     IEnumerable<CulturalRisk> ComplianceRisks);
 
-// CulturalEventType enum removed - using LankaConnect.Domain.Common.Enums.CulturalEventType
+// CulturalEventType enum removed - using LankaConnect.SharedKernel.Cultural.CulturalEventType
 
 // Note: GeographicRegion enum moved to LankaConnect.Domain.Common.Enums for consolidation
 // US Metro regions now mapped to the consolidated enum values

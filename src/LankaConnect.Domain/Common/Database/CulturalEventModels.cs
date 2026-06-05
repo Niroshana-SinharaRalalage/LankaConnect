@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common.Enums;
 
 namespace LankaConnect.Domain.Common.Database;
 
-// CulturalEventType enum removed - using LankaConnect.Domain.Common.Enums.CulturalEventType
+// CulturalEventType enum removed - using LankaConnect.SharedKernel.Cultural.CulturalEventType
 
 /// <summary>
 /// Sacred event priority levels based on architect's recommendation for conflict resolution

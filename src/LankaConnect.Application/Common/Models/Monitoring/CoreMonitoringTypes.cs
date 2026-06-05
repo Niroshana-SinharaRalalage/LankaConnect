@@ -29,7 +29,7 @@ public class AlertEscalationRequest
     /// <summary>
     /// Gets whether this is a cultural event related escalation
     /// </summary>
-    public bool IsCulturalEvent => CulturalEventType.HasValue && CulturalEventType != LankaConnect.Domain.Common.Enums.CulturalEventType.None;
+    public bool IsCulturalEvent => CulturalEventType.HasValue && CulturalEventType != LankaConnect.SharedKernel.Cultural.CulturalEventType.None;
 
     /// <summary>
     /// Gets whether immediate attention is required

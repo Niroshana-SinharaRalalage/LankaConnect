@@ -2,6 +2,7 @@ using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.SharedKernel.Cultural;
 
 namespace LankaConnect.Domain.Communications.Services;
 
@@ -52,8 +53,8 @@ public class EmailCulturalOptimizer
     {
         return timing.ReligiousContext switch
         {
-            Communications.Enums.ReligiousContext.BuddhistPoyaday => "Brahma Muhurta",
-            Communications.Enums.ReligiousContext.HinduFestival => "Brahma Muhurta",
+            LankaConnect.SharedKernel.Cultural.ReligiousContext.BuddhistPoyaday => "Brahma Muhurta",
+            LankaConnect.SharedKernel.Cultural.ReligiousContext.HinduFestival => "Brahma Muhurta",
             _ => "Optimal community engagement time"
         };
     }
@@ -62,9 +63,9 @@ public class EmailCulturalOptimizer
     {
         return timing.ReligiousContext switch
         {
-            Communications.Enums.ReligiousContext.ChristianSabbath => "Church service time",
-            Communications.Enums.ReligiousContext.BuddhistPoyaday => "Poyaday observance",
-            Communications.Enums.ReligiousContext.Ramadan => "Fasting hours",
+            LankaConnect.SharedKernel.Cultural.ReligiousContext.ChristianSabbath => "Church service time",
+            LankaConnect.SharedKernel.Cultural.ReligiousContext.BuddhistPoyaday => "Poyaday observance",
+            LankaConnect.SharedKernel.Cultural.ReligiousContext.Ramadan => "Fasting hours",
             _ => "Cultural consideration"
         };
     }
@@ -77,7 +78,7 @@ public class EmailCulturalOptimizer
 public record CulturalOptimizationResult(
     DateTime OptimizedSendTime,
     string CulturalDelayReason,
-    Communications.Enums.ReligiousContext ReligiousContext,
+    LankaConnect.SharedKernel.Cultural.ReligiousContext ReligiousContext,
     IReadOnlyList<DateTime> AlternativeTimeSlots,
     string AuspiciousTimingReason,
     string AvoidanceReason);

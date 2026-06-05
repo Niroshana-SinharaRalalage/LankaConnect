@@ -337,11 +337,11 @@ public class WhatsAppCulturalContext : ValueObject
 
         var religiousContext = PrimaryReligion switch
         {
-            "Buddhism" => LankaConnect.Domain.Communications.Enums.ReligiousContext.BuddhistPoyaday,
-            "Hinduism" => LankaConnect.Domain.Communications.Enums.ReligiousContext.HinduFestival,
-            "Islam" => LankaConnect.Domain.Communications.Enums.ReligiousContext.Ramadan,
-            "Christianity" => LankaConnect.Domain.Communications.Enums.ReligiousContext.ChristianSabbath,
-            _ => LankaConnect.Domain.Communications.Enums.ReligiousContext.None
+            "Buddhism" => LankaConnect.SharedKernel.Cultural.ReligiousContext.BuddhistPoyaday,
+            "Hinduism" => LankaConnect.SharedKernel.Cultural.ReligiousContext.HinduFestival,
+            "Islam" => LankaConnect.SharedKernel.Cultural.ReligiousContext.Ramadan,
+            "Christianity" => LankaConnect.SharedKernel.Cultural.ReligiousContext.ChristianSabbath,
+            _ => LankaConnect.SharedKernel.Cultural.ReligiousContext.None
         };
 
         return LankaConnect.Domain.Communications.ValueObjects.CulturalContext.Create(

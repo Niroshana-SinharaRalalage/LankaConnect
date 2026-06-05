@@ -1,6 +1,7 @@
 using System.Globalization;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.BuildingBlocks.Domain;
+namespace LankaConnect.SharedKernel.Locale;
 
 /// <summary>
 /// A BCP 47 / .NET-culture locale identifier (e.g. <c>"en-US"</c>, <c>"si-LK"</c>,

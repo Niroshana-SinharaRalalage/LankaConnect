@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <!-- W1E: Money + Currency tests live here; types moved to SharedKernel.Money per D6. -->
     <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
+    <!-- W1F: Locale + Country tests live here; types moved to SharedKernel.Locale per ADR-001. -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Locale\SharedKernel.Locale.csproj" />
   </ItemGroup>
 
 </Project>

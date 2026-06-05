@@ -1,4 +1,6 @@
-namespace LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain;
+
+namespace LankaConnect.SharedKernel.Locale;
 
 /// <summary>
 /// ISO 3166-1 alpha-2 country code (e.g. <c>"LK"</c>, <c>"US"</c>). Identified

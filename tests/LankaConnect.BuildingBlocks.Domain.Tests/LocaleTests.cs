@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.SharedKernel.Locale;
 
 namespace LankaConnect.BuildingBlocks.Domain.Tests;
 

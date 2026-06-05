@@ -1,4 +1,6 @@
-namespace LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain;
+
+namespace LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// A monetary amount in a specific <see cref="Currency"/>. Arithmetic between

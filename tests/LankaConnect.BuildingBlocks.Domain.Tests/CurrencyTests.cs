@@ -1,4 +1,5 @@
 using LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.SharedKernel.Money;
 
 namespace LankaConnect.BuildingBlocks.Domain.Tests;
 

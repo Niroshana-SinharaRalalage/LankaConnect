@@ -29,6 +29,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <!-- W1E: Money + Currency in SharedKernel.Money; tests use the types directly. -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
 </Project>

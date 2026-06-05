@@ -15,6 +15,10 @@
     <ProjectReference Include="..\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <!-- W1E (2026-06-04): Money + Currency moved BB.Domain -> SharedKernel.Money per D6.
+         Infrastructure references SharedKernel.Money for the MoneyConfigurationExtensions
+         EF value converter. -->
+    <ProjectReference Include="..\..\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
   <!-- W2.5 — Infrastructure pulls in EF Core + Npgsql + hosted-service base -->

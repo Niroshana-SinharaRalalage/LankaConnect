@@ -13,8 +13,8 @@ namespace LankaConnect.BuildingBlocks.Domain;
 /// <para>
 /// Country differs from <see cref="Locale"/>: <c>en-US</c> and <c>es-US</c>
 /// are different locales but the same country. Country drives tax + settlement
-/// + geo gating (<see cref="Currency"/>); locale drives i18n message lookup
-/// + formatting.
+/// + geo gating (paired with <c>LankaConnect.SharedKernel.Money.Currency</c>);
+/// locale drives i18n message lookup + formatting.
 /// </para>
 /// </remarks>
 public sealed class Country : ValueObject

@@ -1,4 +1,6 @@
-namespace LankaConnect.BuildingBlocks.Domain;
+using LankaConnect.BuildingBlocks.Domain;
+
+namespace LankaConnect.SharedKernel.Money;
 
 /// <summary>
 /// ISO 4217 currency. Identified by its 3-letter code (e.g. <c>"USD"</c>),

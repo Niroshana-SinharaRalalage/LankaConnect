@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <!-- W1E: Money + Currency tests live here; types moved to SharedKernel.Money per D6. -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
   </ItemGroup>
 
 </Project>

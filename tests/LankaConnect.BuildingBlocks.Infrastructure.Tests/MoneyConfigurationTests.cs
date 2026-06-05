@@ -1,5 +1,6 @@
 using LankaConnect.BuildingBlocks.Domain;
 using LankaConnect.BuildingBlocks.Infrastructure.Persistence;
+using LankaConnect.SharedKernel.Money;
 using Microsoft.EntityFrameworkCore;
 
 namespace LankaConnect.BuildingBlocks.Infrastructure.Tests;

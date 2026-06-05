@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Money</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Money</AssemblyName>
+    <Description>SharedKernel.Money — LankaConnect's currency-aware Money primitive (per ADR-005). Money, Currency value objects with ISO 4217 registry (USD, LKR, INR, GBP, EUR, AUD, CAD). Per D6 (blueprint §2.D6): graduated from BuildingBlocks.Domain because the supported-currency REGISTRY is business knowledge; BuildingBlocks must stay framework-agnostic.</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — Money + Currency move from BuildingBlocks.Domain in W1E. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

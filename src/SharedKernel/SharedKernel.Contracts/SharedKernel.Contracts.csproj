@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Contracts</AssemblyName>
+    <Description>SharedKernel.Contracts — cross-SharedKernel integration events (e.g. LocalizationChangedV1, UserCulturalProfileUpdatedV1). Extends BuildingBlocks.Contracts ABI. Per ADR-006: SharedKernel layer can publish events that Capabilities consume; events live here so Capabilities don't need to take a SharedKernel.Cultural / SharedKernel.Locale dep just to handle the event.</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — SharedKernel-level integration events land in Wave 2 (cultural) / W1F (locale). -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

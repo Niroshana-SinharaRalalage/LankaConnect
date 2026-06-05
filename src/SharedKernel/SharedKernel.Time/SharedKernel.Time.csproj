@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Time</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Time</AssemblyName>
+    <Description>SharedKernel.Time — LankaConnect-specific time primitives. DateRange, ITimeZoneService. Note: framework-level IClock lives in BuildingBlocks.Abstractions (per W1G) because clock abstraction is business-agnostic; SharedKernel.Time owns LankaConnect-specific time concepts (e.g. DateRange semantics for event scheduling).</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — types land in W1G + Wave 4. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

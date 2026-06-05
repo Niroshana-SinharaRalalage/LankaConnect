@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Identity</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Identity</AssemblyName>
+    <Description>SharedKernel.Identity — typed identifier value objects (UserId, TenantId, StorefrontId, OrganizationId) + IUserContext interface. Per D7 (blueprint §2.D7): every Capability + Product references this for typed IDs; the User AGGREGATE itself lives in Capabilities/Identity. This split is how Identity ships LAST in Wave 4 without blocking anyone.</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — typed IDs land in W1G alongside IUserContext. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

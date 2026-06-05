@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Locale</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Locale</AssemblyName>
+    <Description>SharedKernel.Locale — LankaConnect's i18n primitives (per ADR-001). Locale, Country, LocalizedString&lt;T&gt; value objects. Per ADR-006: SharedKernel layer; cross-Capability shared types with no behavior.</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — Locale + Country move from BuildingBlocks.Domain in W1F. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

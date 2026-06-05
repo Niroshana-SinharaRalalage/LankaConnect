@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.SharedKernel.Geo</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Geo</AssemblyName>
+    <Description>SharedKernel.Geo — geographic primitives. Address, GeoCoordinate, MetroAreaId, TimeZoneRegion value objects. Per ADR-006: SharedKernel layer; consumed by LankaEvents (event venues), LankaHomes (property location), LankaNivasa (accommodation locations), etc.</Description>
+  </PropertyGroup>
+
+  <!-- W1D SKELETON (2026-06-04). Empty shell — types land in Wave 4 as Capability/Product extractions surface the canonical shape. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

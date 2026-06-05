@@ -1,5 +1,4 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Shared;
 using LankaConnect.Domain.Shared.ValueObjects;
 

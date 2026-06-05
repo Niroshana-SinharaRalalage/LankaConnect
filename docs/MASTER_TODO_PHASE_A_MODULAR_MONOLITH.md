@@ -78,7 +78,7 @@ W4.1.2 BLOCKED status (line 858+ below) is RESCHEDULED. The fix lands in Wave 2 
   - [ ] W2D.1c CulturalEvent: needs W2C.7 dep-chase first (CulturalCommunity + CalendarSystem + MultiLingualName).
   - [x] **W2D.1d (2026-06-05)**: `CulturalAppropriateness` VO + nested `AppropriatenessLevel` enum moved opportunistically — closed 4 of 11 remaining cycle-creator gaps (EventRecommendationEngine + I-, ConsistencyModels, CulturalIntelligenceMetrics). Derives from BB.Domain.ValueObject. Global alias added. 2 explicit aliases removed, 1 ambiguous reference disambiguated (CulturalAppropriatenessQueryHandler had own AppropriatenessLevel enum — fully-qualified the legacy refs). 1 Infrastructure stub alias updated. Build green; ArchTest 25/25.
 - [ ] W2E: `ICulturalCalendarService` + `ICulturalAppropriatenessChecker` interfaces
-- [ ] W2G: gate — re-run W4.1.2 dry-run
+- [~] W2G partial gate run (2026-06-05): Pre-Wave-2 state had 11 cycle-creating refs from `LankaConnect.Domain/*` (outside Communications) to `LankaConnect.Domain.Communications.ValueObjects/Services`. After this session's moves (CulturalContext + CulturalConflict + CulturalAppropriateness) + dead-using cleanup: **11 → 4 (64% reduction)**. Remaining 4 cycle-creators all reference types in the Wave 2.5 deferred backlog (CulturalProfile, CulturalEvent) — naturally resolved when Wave 4 Communications module surgery touches their callers. **W4.1.2 is now substantially less blocked**; the actual retry can attempt during Wave 4 with the lighter remaining coupling.
 
 ### Reading guide for this document
 

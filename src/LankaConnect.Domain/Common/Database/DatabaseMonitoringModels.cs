@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using LankaConnect.Domain.Common.ValueObjects;
 using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.ValueObjects;
 
 namespace LankaConnect.Domain.Common.Database
 {

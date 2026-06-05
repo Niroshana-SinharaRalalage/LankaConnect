@@ -3,24 +3,19 @@
   <PropertyGroup>
     <RootNamespace>LankaConnect.Modules.Notifications.Domain</RootNamespace>
     <AssemblyName>LankaConnect.Modules.Notifications.Domain</AssemblyName>
-    <Description>Notifications module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.Domain (innermost shared kernel); no LankaConnect.Application / LankaConnect.Infrastructure / Modules.* references.</Description>
+    <Description>Notifications module — Domain layer. Aggregates, entities, value objects, domain events, repository interfaces. Per ADR-002 module boundary: depends only on BuildingBlocks.* + SharedKernel.*; no LankaConnect.Application / LankaConnect.Infrastructure / Modules.* references.</Description>
   </PropertyGroup>
 
   <!--
-    W3.1 SKELETON (2026-06-02). Empty shell — domain types move in W3.2.
+    W3A (2026-06-05): legacy LankaConnect.Domain dep CUT. Notification now derives
+    from BuildingBlocks.Domain.Entity<Guid> + IAuditable (per ADR-007); INotificationRepository
+    derives from BuildingBlocks.Abstractions.IAggregateRepository<Notification, Guid>
+    (per ADR-010). The module domain layer is now fully BuildingBlocks-only.
   -->
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
-    <!--
-      W3.2 TRANSITIONAL EDGE (2026-06-02). Notifications.Domain references the
-      legacy LankaConnect.Domain for BaseEntity + IRepository<T> + IDomainEvent
-      until BuildingBlocks.Domain owns those primitives. Cut this edge after
-      the BuildingBlocks elevation pass (planned W4/W5 alongside the next
-      module move). The corresponding ArchTest rule is relaxed during the
-      transition window (see LayeringRules.cs).
-    -->
-    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

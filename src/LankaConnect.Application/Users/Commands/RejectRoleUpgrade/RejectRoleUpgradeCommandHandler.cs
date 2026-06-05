@@ -114,7 +114,7 @@ public class RejectRoleUpgradeCommandHandler : ICommandHandler<RejectRoleUpgrade
                 {
                     _logger.LogWarning(
                         "RejectRoleUpgrade: Notification creation failed - UserId={UserId}, Errors={Errors}",
-                        user.Id, string.Join(", ", notificationResult.Errors));
+                        user.Id, notificationResult.Error);
                 }
 
                 await _unitOfWork.CommitAsync(cancellationToken);

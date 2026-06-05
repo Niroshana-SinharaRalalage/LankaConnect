@@ -104,7 +104,11 @@ public class MarkNotificationAsReadCommandHandler : ICommandHandler<MarkNotifica
                             "MarkNotificationAsRead FAILED: MarkAsRead failed - NotificationId={NotificationId}, UserId={UserId}, Error={Error}, Duration={ElapsedMs}ms",
                             request.NotificationId, currentUserId, markAsReadResult.Error, stopwatch.ElapsedMilliseconds);
 
-                        return markAsReadResult;
+                        // W3A boundary conversion: Notification.MarkAsRead() now returns
+                        // BuildingBlocks.Domain.Result. Handler contract returns legacy
+                        // LankaConnect.Domain.Common.Result. Cut conversion when handler
+                        // migrates to BB.Domain abstractions (Wave 4 capability extraction).
+                        return Result.Failure(markAsReadResult.Error.Message);
                     }
 
                     _notificationRepository.Update(notification);

@@ -145,7 +145,7 @@ public class ApproveRoleUpgradeCommandHandler : ICommandHandler<ApproveRoleUpgra
                 {
                     _logger.LogWarning(
                         "ApproveRoleUpgrade: Notification creation failed - UserId={UserId}, Errors={Errors}",
-                        user.Id, string.Join(", ", notificationResult.Errors));
+                        user.Id, notificationResult.Error);
                 }
 
                 // Phase 6A.X Issue #46: Create admin audit log entry for role approval

@@ -150,7 +150,7 @@ public class AdminUpgradeUserCommandHandler : ICommandHandler<AdminUpgradeUserCo
                 {
                     _logger.LogWarning(
                         "AdminUpgradeUser: Notification creation failed - UserId={UserId}, Errors={Errors}",
-                        targetUser.Id, string.Join(", ", notificationResult.Errors));
+                        targetUser.Id, notificationResult.Error);
                 }
 
                 // 6. Audit log (with ShortCircuitedPendingRequest flag if applicable)

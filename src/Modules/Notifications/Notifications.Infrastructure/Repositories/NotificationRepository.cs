@@ -1,38 +1,75 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using LankaConnect.Modules.Notifications.Domain;
-using System.Diagnostics;
 using Serilog.Context;
-// W3.4 (2026-06-03) — transitional edges: base class Repository<T> + AppDbContext live in the
-// legacy LankaConnect.Infrastructure assembly. Cut these usings when BuildingBlocks.Infrastructure
-// owns Repository<T> and the W3.6 / W3.7 flag pivots the repository onto NotificationsDbContext.
+using LankaConnect.Modules.Notifications.Domain;
+// W3.4 (2026-06-03) — transitional edge: AppDbContext lives in legacy
+// LankaConnect.Infrastructure. Cut when W3.6/W3.7 dispatcher fully routes
+// repository onto NotificationsDbContext.
 using LankaConnect.Infrastructure.Data;
-using LankaConnect.Infrastructure.Data.Repositories;
 
 namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 
 /// <summary>
-/// Repository implementation for Notification entity
-/// Phase 6A.6: Notification System
+/// Concrete repository for the <see cref="Notification"/> aggregate.
+/// Hand-rolled per ADR-010 (Repository-per-Aggregate) — no generic
+/// <c>Repository&lt;T&gt;</c> base. Each method has explicit query intent.
 /// </summary>
-public class NotificationRepository : Repository<Notification>, INotificationRepository
+/// <remarks>
+/// W3A (2026-06-05): de-coupled from legacy <c>Repository&lt;T&gt;</c> base
+/// after Notification migrated to <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}"/>.
+/// Methods previously inherited from <c>Repository&lt;T&gt;</c> (AddAsync,
+/// GetByIdAsync, Update) are now explicit, using the injected DbContext directly.
+/// </remarks>
+public class NotificationRepository : INotificationRepository
 {
+    private readonly AppDbContext _context;
+    private readonly DbSet<Notification> _dbSet;
     private readonly ILogger<NotificationRepository> _repoLogger;
 
     public NotificationRepository(
         AppDbContext context,
-        ILogger<NotificationRepository> logger) : base(context)
+        ILogger<NotificationRepository> logger)
     {
+        _context = context;
+        _dbSet = context.Set<Notification>();
         _repoLogger = logger;
     }
 
-    /// <summary>
-    /// Get all notifications for a specific user
-    /// </summary>
+    public async Task<Notification?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "GetById"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
+        using (LogContext.PushProperty("EntityId", id))
+        {
+            return await _dbSet.FindAsync(new object[] { id }, cancellationToken);
+        }
+    }
+
+    public async Task AddAsync(Notification notification, CancellationToken cancellationToken = default)
+    {
+        using (LogContext.PushProperty("Operation", "Add"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
+        using (LogContext.PushProperty("EntityId", notification.Id))
+        {
+            await _dbSet.AddAsync(notification, cancellationToken);
+        }
+    }
+
+    public void Update(Notification notification)
+    {
+        using (LogContext.PushProperty("Operation", "Update"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
+        using (LogContext.PushProperty("EntityId", notification.Id))
+        {
+            _dbSet.Update(notification);
+        }
+    }
+
     public async Task<IReadOnlyList<Notification>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetByUserId"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("UserId", userId))
         {
             var stopwatch = Stopwatch.StartNew();
@@ -73,13 +110,10 @@ public class NotificationRepository : Repository<Notification>, INotificationRep
         }
     }
 
-    /// <summary>
-    /// Get unread notifications for a specific user
-    /// </summary>
     public async Task<IReadOnlyList<Notification>> GetUnreadByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetUnreadByUserId"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("UserId", userId))
         {
             var stopwatch = Stopwatch.StartNew();
@@ -120,53 +154,17 @@ public class NotificationRepository : Repository<Notification>, INotificationRep
         }
     }
 
-    /// <summary>
-    /// Get count of unread notifications for a specific user
-    /// </summary>
     public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetUnreadCount"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("UserId", userId))
         {
-            var stopwatch = Stopwatch.StartNew();
-
-            _repoLogger.LogDebug("GetUnreadCountAsync START: UserId={UserId}", userId);
-
-            try
-            {
-                var count = await _dbSet
-                    .CountAsync(n => n.UserId == userId && !n.IsRead, cancellationToken);
-
-                stopwatch.Stop();
-
-                _repoLogger.LogInformation(
-                    "GetUnreadCountAsync COMPLETE: UserId={UserId}, Count={Count}, Duration={ElapsedMs}ms",
-                    userId,
-                    count,
-                    stopwatch.ElapsedMilliseconds);
-
-                return count;
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-
-                _repoLogger.LogError(ex,
-                    "GetUnreadCountAsync FAILED: UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
-                    userId,
-                    stopwatch.ElapsedMilliseconds,
-                    ex.Message,
-                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
-
-                throw;
-            }
+            return await _dbSet
+                .CountAsync(n => n.UserId == userId && !n.IsRead, cancellationToken);
         }
     }
 
-    /// <summary>
-    /// Get paginated notifications for a specific user
-    /// </summary>
     public async Task<(IReadOnlyList<Notification> Items, int TotalCount)> GetPagedByUserIdAsync(
         Guid userId,
         int page,
@@ -175,147 +173,67 @@ public class NotificationRepository : Repository<Notification>, INotificationRep
         CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "GetPagedByUserId"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("UserId", userId))
         using (LogContext.PushProperty("Page", page))
         using (LogContext.PushProperty("PageSize", pageSize))
         using (LogContext.PushProperty("UnreadOnly", unreadOnly))
         {
-            var stopwatch = Stopwatch.StartNew();
+            var query = _dbSet
+                .AsNoTracking()
+                .Where(n => n.UserId == userId);
 
-            _repoLogger.LogDebug(
-                "GetPagedByUserIdAsync START: UserId={UserId}, Page={Page}, PageSize={PageSize}, UnreadOnly={UnreadOnly}",
-                userId, page, pageSize, unreadOnly);
-
-            try
+            if (unreadOnly)
             {
-                var query = _dbSet
-                    .AsNoTracking()
-                    .Where(n => n.UserId == userId);
-
-                if (unreadOnly)
-                {
-                    query = query.Where(n => !n.IsRead);
-                }
-
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                var items = await query
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                stopwatch.Stop();
-
-                _repoLogger.LogInformation(
-                    "GetPagedByUserIdAsync COMPLETE: UserId={UserId}, Page={Page}, PageSize={PageSize}, UnreadOnly={UnreadOnly}, ItemCount={ItemCount}, TotalCount={TotalCount}, Duration={ElapsedMs}ms",
-                    userId, page, pageSize, unreadOnly, items.Count, totalCount, stopwatch.ElapsedMilliseconds);
-
-                return (items, totalCount);
+                query = query.Where(n => !n.IsRead);
             }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
 
-                _repoLogger.LogError(ex,
-                    "GetPagedByUserIdAsync FAILED: UserId={UserId}, Page={Page}, PageSize={PageSize}, UnreadOnly={UnreadOnly}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
-                    userId, page, pageSize, unreadOnly, stopwatch.ElapsedMilliseconds, ex.Message,
-                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
+            var totalCount = await query.CountAsync(cancellationToken);
 
-                throw;
-            }
+            var items = await query
+                .OrderByDescending(n => n.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            return (items, totalCount);
         }
     }
 
-    /// <summary>
-    /// Mark all notifications as read for a specific user
-    /// </summary>
     public async Task MarkAllAsReadAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "MarkAllAsRead"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("UserId", userId))
         {
-            var stopwatch = Stopwatch.StartNew();
+            var rowsAffected = await _dbSet
+                .Where(n => n.UserId == userId && !n.IsRead)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(n => n.IsRead, true)
+                        .SetProperty(n => n.ReadAt, DateTime.UtcNow)
+                        .SetProperty(n => n.UpdatedAt, DateTime.UtcNow),
+                    cancellationToken);
 
-            _repoLogger.LogDebug("MarkAllAsReadAsync START: UserId={UserId}", userId);
-
-            try
-            {
-                var rowsAffected = await _dbSet
-                    .Where(n => n.UserId == userId && !n.IsRead)
-                    .ExecuteUpdateAsync(
-                        setters => setters
-                            .SetProperty(n => n.IsRead, true)
-                            .SetProperty(n => n.ReadAt, DateTime.UtcNow)
-                            .SetProperty(n => n.UpdatedAt, DateTime.UtcNow),
-                        cancellationToken);
-
-                stopwatch.Stop();
-
-                _repoLogger.LogInformation(
-                    "MarkAllAsReadAsync COMPLETE: UserId={UserId}, RowsAffected={RowsAffected}, Duration={ElapsedMs}ms",
-                    userId,
-                    rowsAffected,
-                    stopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-
-                _repoLogger.LogError(ex,
-                    "MarkAllAsReadAsync FAILED: UserId={UserId}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
-                    userId,
-                    stopwatch.ElapsedMilliseconds,
-                    ex.Message,
-                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
-
-                throw;
-            }
+            _repoLogger.LogInformation(
+                "MarkAllAsReadAsync: UserId={UserId}, RowsAffected={RowsAffected}",
+                userId, rowsAffected);
         }
     }
 
-    /// <summary>
-    /// Delete old read notifications (cleanup task)
-    /// </summary>
     public async Task DeleteOldReadNotificationsAsync(DateTime olderThan, CancellationToken cancellationToken = default)
     {
         using (LogContext.PushProperty("Operation", "DeleteOldReadNotifications"))
-        using (LogContext.PushProperty("EntityType", "Notification"))
+        using (LogContext.PushProperty("EntityType", nameof(Notification)))
         using (LogContext.PushProperty("OlderThan", olderThan))
         {
-            var stopwatch = Stopwatch.StartNew();
+            var rowsAffected = await _dbSet
+                .Where(n => n.IsRead && n.CreatedAt < olderThan)
+                .ExecuteDeleteAsync(cancellationToken);
 
-            _repoLogger.LogDebug("DeleteOldReadNotificationsAsync START: OlderThan={OlderThan}", olderThan);
-
-            try
-            {
-                var rowsAffected = await _dbSet
-                    .Where(n => n.IsRead && n.CreatedAt < olderThan)
-                    .ExecuteDeleteAsync(cancellationToken);
-
-                stopwatch.Stop();
-
-                _repoLogger.LogInformation(
-                    "DeleteOldReadNotificationsAsync COMPLETE: OlderThan={OlderThan}, RowsDeleted={RowsDeleted}, Duration={ElapsedMs}ms",
-                    olderThan,
-                    rowsAffected,
-                    stopwatch.ElapsedMilliseconds);
-            }
-            catch (Exception ex)
-            {
-                stopwatch.Stop();
-
-                _repoLogger.LogError(ex,
-                    "DeleteOldReadNotificationsAsync FAILED: OlderThan={OlderThan}, Duration={ElapsedMs}ms, Error={ErrorMessage}, SqlState={SqlState}",
-                    olderThan,
-                    stopwatch.ElapsedMilliseconds,
-                    ex.Message,
-                    (ex as Npgsql.NpgsqlException)?.SqlState ?? "N/A");
-
-                throw;
-            }
+            _repoLogger.LogInformation(
+                "DeleteOldReadNotificationsAsync: OlderThan={OlderThan}, RowsDeleted={RowsDeleted}",
+                olderThan, rowsAffected);
         }
     }
 }

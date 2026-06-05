@@ -158,22 +158,29 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void Modules_Notifications_Domain_DoesNotDependOnLayeredMonolithOrOtherModules()
     {
-        // W3.2 transitional (2026-06-02): LankaConnect.Domain is INTENTIONALLY allowed
-        // here because Notification still derives from LankaConnect.Domain.Common.BaseEntity
-        // and INotificationRepository extends LankaConnect.Domain.Common.IRepository<T>.
-        // The edge is cut once BuildingBlocks.Domain owns BaseEntity + IRepository<T>
-        // (planned W4/W5 alongside the next module move). At that point, re-tighten
-        // this rule by adding "LankaConnect.Domain" back to NotHaveDependencyOnAny.
+        // W3A (2026-06-05): legacy LankaConnect.Domain transitional edge CUT.
+        // Notification now derives from BuildingBlocks.Domain.Entity<Guid> + IAuditable
+        // (per ADR-007); INotificationRepository extends
+        // BuildingBlocks.Abstractions.IAggregateRepository<Notification, Guid> (per ADR-010).
+        //
+        // NOTE: per architect's W1A ruling, the BuildingBlocks.Abstractions namespace
+        // is `LankaConnect.BuildingBlocks.Application.Abstractions` (deliberate
+        // assembly-vs-namespace mismatch for zero source churn). NetArchTest's
+        // NotHaveDependencyOnAny prefix-matches on namespaces, so we CANNOT
+        // enumerate "LankaConnect.BuildingBlocks.Application" here — it would
+        // false-positive on legitimate BB.Abstractions usage. The csproj
+        // structurally enforces no BB.Application dep (Notifications.Domain has
+        // zero ProjectReferences to BuildingBlocks.Application).
         var assembly = typeof(Modules.Notifications.Domain.Notification).Assembly;
 
         var result = Types.InAssembly(assembly)
             .Should()
             .NotHaveDependencyOnAny(
+                "LankaConnect.Domain",
                 "LankaConnect.Application",
                 "LankaConnect.Infrastructure",
                 "LankaConnect.API",
                 "LankaConnect.Shared",
-                "LankaConnect.BuildingBlocks.Application",
                 "LankaConnect.BuildingBlocks.Infrastructure",
                 "LankaConnect.BuildingBlocks.Web",
                 "LankaConnect.BuildingBlocks.Contracts")

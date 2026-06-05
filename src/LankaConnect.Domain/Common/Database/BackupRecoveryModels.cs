@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Common.Abstractions;
-using GeoRegionEnum = LankaConnect.Domain.Common.Enums.GeographicRegion;
+using GeoRegionEnum = LankaConnect.SharedKernel.Cultural.GeographicRegion;
 
 namespace LankaConnect.Domain.Common.Database;
 

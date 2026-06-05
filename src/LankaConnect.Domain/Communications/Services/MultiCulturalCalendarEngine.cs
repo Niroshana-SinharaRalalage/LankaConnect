@@ -3,7 +3,10 @@ using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Events.ValueObjects;
-using GeographicRegion = LankaConnect.Domain.Common.Enums.GeographicRegion;
+// W2C.5 (2026-06-05): GeographicRegion moved to SharedKernel.Cultural; the
+// global alias in NamespaceAliases.cs resolves unqualified GeographicRegion.
+// The previous explicit alias was removed because (a) it duplicates the global
+// alias and (b) it would point at the deleted Common/Enums variant.
 using CulturalConflict = LankaConnect.Domain.Communications.ValueObjects.CulturalConflict;
 using Error = LankaConnect.Domain.Common.Error;
 

@@ -1,8 +1,17 @@
-namespace LankaConnect.Domain.Common.Enums;
+namespace LankaConnect.SharedKernel.Cultural;
 
 /// <summary>
-/// Comprehensive geographic regions for Sri Lankan diaspora communities and local provinces
-/// Consolidated from multiple domain areas to avoid duplication
+/// Comprehensive geographic regions for Sri Lankan diaspora communities and local provinces.
+/// 35 values spanning Sri Lankan provinces, major diaspora regions, and significant cities.
+/// </summary>
+/// <remarks>
+/// W2C.5 (2026-06-05): moved from LankaConnect.Domain.Common.Enums to SharedKernel.Cultural per
+/// ADR-008. Two deprecated empty-stub variants (Communications/Enums/GeographicRegion.cs and
+/// Events/Enums/GeographicRegion.cs) deleted. The Billing/BillingSupportingTypes.cs CLASS
+/// variant (distinct open-text tax-jurisdiction VO) renamed to <c>BillingRegion</c> in the
+/// same commit per architect Q3 ruling — different concept that shared a name.
+/// </remarks>
+/// <summary>Consolidated from multiple domain areas to avoid duplication</summary>
 /// </summary>
 public enum GeographicRegion
 {

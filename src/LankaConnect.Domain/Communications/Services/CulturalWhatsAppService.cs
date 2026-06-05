@@ -241,7 +241,7 @@ public class CulturalWhatsAppService : ICulturalWhatsAppService
             // Check Buddhist observance restrictions
             if (culturalContext.RequiresBuddhistCalendarAwareness)
             {
-                var buddhistRestriction = await _observanceService.CheckBuddhistObservanceRestrictionsAsync(messageTime, LankaConnect.Domain.Common.Enums.GeographicRegion.SriLanka);
+                var buddhistRestriction = await _observanceService.CheckBuddhistObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka);
                 if (buddhistRestriction)
                     return Result<bool>.Success(false);
             }
@@ -249,7 +249,7 @@ public class CulturalWhatsAppService : ICulturalWhatsAppService
             // Check Hindu observance restrictions
             if (culturalContext.RequiresHinduCalendarAwareness)
             {
-                var hinduRestriction = await _observanceService.CheckHinduObservanceRestrictionsAsync(messageTime, LankaConnect.Domain.Common.Enums.GeographicRegion.SriLanka);
+                var hinduRestriction = await _observanceService.CheckHinduObservanceRestrictionsAsync(messageTime, LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka);
                 if (hinduRestriction)
                     return Result<bool>.Success(false);
             }

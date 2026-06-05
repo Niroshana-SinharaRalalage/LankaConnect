@@ -38,3 +38,10 @@ global using SouthAsianLanguage = LankaConnect.SharedKernel.Cultural.SouthAsianL
 // The broader 15-value South-Asian community granularity was renamed to
 // `SouthAsianCommunity` in MultiLanguageRoutingModels.cs to avoid name collision.
 global using CulturalBackground = LankaConnect.SharedKernel.Cultural.CulturalBackground;
+
+// W2C.5 (2026-06-05): GeographicRegion ENUM moved to SharedKernel.Cultural per ADR-008.
+// 35-value enum spanning SL provinces + diaspora regions + cities. Two deprecated
+// empty-stub variants (Communications + Events) deleted. The Billing CLASS variant
+// (distinct open-text tax-jurisdiction VO) renamed to `BillingRegion` to avoid
+// name collision.
+global using GeographicRegion = LankaConnect.SharedKernel.Cultural.GeographicRegion;

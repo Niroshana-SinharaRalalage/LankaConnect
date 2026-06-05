@@ -347,7 +347,7 @@ public class WhatsAppCulturalContext : ValueObject
         return LankaConnect.Domain.Communications.ValueObjects.CulturalContext.Create(
             LankaConnect.SharedKernel.Cultural.SriLankanLanguage.English,
             culturalBackground,
-            LankaConnect.Domain.Common.Enums.GeographicRegion.SriLanka,
+            LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka,
             religiousContext,
             HasReligiousContent,
             HasReligiousContent).Value;

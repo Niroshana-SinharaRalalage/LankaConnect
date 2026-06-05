@@ -165,13 +165,20 @@ public class RealTimeModeration : ValueObject
     }
 }
 
-public class GeographicRegion : ValueObject
+/// <summary>
+/// Open-text tax/billing-jurisdiction value object. Distinct concept from
+/// <see cref="LankaConnect.SharedKernel.Cultural.GeographicRegion"/> (closed
+/// regional enum). Per architect Q3 ruling in W2C.5 (2026-06-05): renamed
+/// from <c>GeographicRegion</c> to <c>BillingRegion</c> to avoid name
+/// collision with the canonical regional enum.
+/// </summary>
+public class BillingRegion : ValueObject
 {
     public string Name { get; }
     public string Country { get; }
     public string Continent { get; }
 
-    public GeographicRegion(string name, string country = "", string continent = "")
+    public BillingRegion(string name, string country = "", string continent = "")
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty", nameof(name));
@@ -181,7 +188,7 @@ public class GeographicRegion : ValueObject
         Continent = continent;
     }
 
-    public static GeographicRegion Create(string name, string country = "", string continent = "")
+    public static BillingRegion Create(string name, string country = "", string continent = "")
         => new(name, country, continent);
 
     public override IEnumerable<object> GetEqualityComponents()

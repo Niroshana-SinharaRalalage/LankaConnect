@@ -15,6 +15,7 @@ public sealed class TestDbContext : BaseDbContext
     public DbSet<SoftDeletableEntity> SoftDeletable => Set<SoftDeletableEntity>();
     public DbSet<AuditableAndSoftDeletableEntity> Both => Set<AuditableAndSoftDeletableEntity>();
     public DbSet<MoneyOwnerEntity> MoneyOwners => Set<MoneyOwnerEntity>();
+    public DbSet<ConcurrencyTokenEntity> ConcurrencyTokens => Set<ConcurrencyTokenEntity>();
 
     public TestDbContext(DbContextOptions<TestDbContext> options, ICurrentActor currentActor, ILogger logger)
         : base(options, currentActor, logger) { }
@@ -27,6 +28,7 @@ public sealed class TestDbContext : BaseDbContext
         modelBuilder.Entity<AuditableEntity>().HasKey(e => e.Id);
         modelBuilder.Entity<SoftDeletableEntity>().HasKey(e => e.Id);
         modelBuilder.Entity<AuditableAndSoftDeletableEntity>().HasKey(e => e.Id);
+        modelBuilder.Entity<ConcurrencyTokenEntity>().HasKey(e => e.Id);
 
         // Money owner configured via the helper under test
         modelBuilder.Entity<MoneyOwnerEntity>(b =>
@@ -81,6 +83,28 @@ public sealed class MoneyOwnerEntity
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public Money? Price { get; set; }
+}
+
+/// <summary>Entity that opts into optimistic concurrency control via IConcurrencyToken.</summary>
+public sealed class ConcurrencyTokenEntity : IConcurrencyToken
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+}
+
+/// <summary>Typed tenant identifier for multi-tenant tests. Mirrors the shape of StorefrontId/OrganizationId from SharedKernel.Identity (W1D).</summary>
+public readonly record struct TestTenantId(Guid Value)
+{
+    public static TestTenantId New() => new(Guid.NewGuid());
+}
+
+/// <summary>Entity scoped to a tenant via IMultiTenant&lt;TestTenantId&gt;.</summary>
+public sealed class MultiTenantEntity : IMultiTenant<TestTenantId>
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public TestTenantId TenantId { get; init; }
 }
 
 /// <summary>Returns the configured actor id; mutable for tests that vary actor mid-scenario.</summary>

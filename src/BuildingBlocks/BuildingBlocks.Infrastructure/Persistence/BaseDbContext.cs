@@ -131,10 +131,22 @@ public abstract class BaseDbContext : DbContext
     }
 
     /// <summary>
-    /// Applies the cross-cutting model conventions — soft-delete global query
-    /// filter for every <see cref="ISoftDeletable"/> entity. Module overrides
-    /// MUST call <c>base.OnModelCreating(modelBuilder)</c> first.
+    /// Applies the cross-cutting model conventions:
+    /// <list type="bullet">
+    ///   <item>Soft-delete global query filter for every <see cref="ISoftDeletable"/> entity</item>
+    ///   <item>Optimistic concurrency token on every <see cref="IConcurrencyToken"/> entity's <c>RowVersion</c> property</item>
+    /// </list>
+    /// Module overrides MUST call <c>base.OnModelCreating(modelBuilder)</c> first.
     /// </summary>
+    /// <remarks>
+    /// <b>Multi-tenant query filter</b> (per ADR-007 / W1B): per-Capability
+    /// DbContexts that need tenancy isolation call
+    /// <see cref="ApplyMultiTenantFilter{TTenantId}"/> from their own
+    /// <c>OnModelCreating</c> override (after calling <c>base.OnModelCreating</c>).
+    /// It's opt-in per DbContext because the current-tenant accessor type
+    /// varies (StorefrontId vs OrganizationId) — passing it via DI generics
+    /// would force every DbContext to declare the type even when irrelevant.
+    /// </remarks>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -145,6 +157,11 @@ public abstract class BaseDbContext : DbContext
             if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
             {
                 ApplySoftDeleteFilter(modelBuilder, entityType.ClrType);
+            }
+
+            if (typeof(IConcurrencyToken).IsAssignableFrom(entityType.ClrType))
+            {
+                ApplyConcurrencyToken(modelBuilder, entityType.ClrType);
             }
         }
     }
@@ -159,5 +176,100 @@ public abstract class BaseDbContext : DbContext
         var lambda = Expression.Lambda(notDeleted, parameter);
 
         modelBuilder.Entity(clrType).HasQueryFilter(lambda);
+    }
+
+    private static void ApplyConcurrencyToken(ModelBuilder modelBuilder, Type clrType)
+    {
+        modelBuilder.Entity(clrType)
+            .Property(nameof(IConcurrencyToken.RowVersion))
+            .IsRowVersion();
+    }
+
+    /// <summary>
+    /// Applies the multi-tenant global query filter for every entity
+    /// implementing <see cref="IMultiTenant{TTenantId}"/> in this DbContext's
+    /// model. Per-Capability DbContexts call this from their own
+    /// <c>OnModelCreating</c> override AFTER <c>base.OnModelCreating</c>.
+    /// </summary>
+    /// <typeparam name="TTenantId">
+    /// The tenant-identifier type (e.g. <c>StorefrontId</c>, <c>OrganizationId</c>).
+    /// Must match what the entity declares for <c>IMultiTenant&lt;TTenantId&gt;</c>.
+    /// </typeparam>
+    /// <param name="modelBuilder">EF Core model builder from OnModelCreating.</param>
+    /// <param name="tenantSelector">
+    /// Expression accessing a PROPERTY on the derived DbContext that returns
+    /// the current tenant id. Form: <c>() =&gt; CurrentStorefrontId</c>. The
+    /// body is rewritten into the filter expression so EF Core treats it as
+    /// a per-instance access (parameterised per query, re-evaluated each call).
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>Why an Expression, not a value</b>: EF Core caches the compiled model
+    /// per DbContext type. A filter built from a CONSTANT (e.g. captured value
+    /// from the first DbContext instance) bakes that value into the cached
+    /// model — every subsequent request, regardless of its tenant, sees the
+    /// FIRST tenant's filter. Disastrous in production. The fix is to make the
+    /// filter expression reference a property on the DbContext (<c>this</c>);
+    /// EF Core's expression visitor recognises property-on-DbContext access
+    /// and parameterises it, re-reading the property per query.
+    /// </para>
+    /// <para>
+    /// <b>Usage</b>:
+    /// <code>
+    /// public class CommerceDbContext : BaseDbContext {
+    ///     public StorefrontId CurrentStorefrontId { get; }
+    ///     public CommerceDbContext(..., ICurrentStorefrontAccessor accessor)
+    ///         : base(...) { CurrentStorefrontId = accessor.Current; }
+    ///
+    ///     protected override void OnModelCreating(ModelBuilder mb) {
+    ///         base.OnModelCreating(mb);
+    ///         ApplyMultiTenantFilter&lt;StorefrontId&gt;(mb, () =&gt; CurrentStorefrontId);
+    ///     }
+    /// }
+    /// </code>
+    /// </para>
+    /// </remarks>
+    protected void ApplyMultiTenantFilter<TTenantId>(
+        ModelBuilder modelBuilder,
+        Expression<Func<TTenantId>> tenantSelector)
+        where TTenantId : notnull
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+        ArgumentNullException.ThrowIfNull(tenantSelector);
+
+        var multiTenantInterface = typeof(IMultiTenant<TTenantId>);
+        // Extract the property-access body — this is what gets substituted into
+        // each entity's filter so EF Core can parameterise it as a per-query access.
+        var tenantAccessBody = tenantSelector.Body;
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!multiTenantInterface.IsAssignableFrom(entityType.ClrType))
+            {
+                continue;
+            }
+
+            // Build: e => e.TenantId.Equals(tenantSelector.Body)
+            var parameter = Expression.Parameter(entityType.ClrType, "e");
+            var tenantIdProperty = Expression.Property(parameter, nameof(IMultiTenant<TTenantId>.TenantId));
+
+            var stronglyTypedEquals = typeof(TTenantId).GetMethod(nameof(object.Equals), new[] { typeof(TTenantId) });
+            Expression equalsExpr;
+            if (stronglyTypedEquals is not null)
+            {
+                equalsExpr = Expression.Call(tenantIdProperty, stronglyTypedEquals, tenantAccessBody);
+            }
+            else
+            {
+                var objectEquals = typeof(object).GetMethod(nameof(object.Equals), new[] { typeof(object) })!;
+                equalsExpr = Expression.Call(
+                    tenantIdProperty,
+                    objectEquals,
+                    Expression.Convert(tenantAccessBody, typeof(object)));
+            }
+
+            var lambda = Expression.Lambda(equalsExpr, parameter);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+        }
     }
 }

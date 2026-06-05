@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Shared;
 using LankaConnect.Domain.Infrastructure.Scaling;
 using LankaConnect.Domain.Events.ValueObjects;
-using CommunicationsCulturalContext = LankaConnect.Domain.Communications.ValueObjects.CulturalContext;
+using CommunicationsCulturalContext = LankaConnect.SharedKernel.Cultural.CulturalContext;
 
 namespace LankaConnect.Domain.Infrastructure.Failover;
 

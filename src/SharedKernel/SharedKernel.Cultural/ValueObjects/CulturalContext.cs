@@ -1,9 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.Enums;
-using LankaConnect.SharedKernel.Cultural;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.Domain.Communications.ValueObjects;
+namespace LankaConnect.SharedKernel.Cultural;
 
 /// <summary>
 /// Cultural context for email optimization including language, religious background, and geographic considerations
@@ -117,7 +114,7 @@ public class CulturalContext : ValueObject
             "Sri Lankan Christian community with Sabbath considerations");
     }
 
-    public override IEnumerable<object> GetEqualityComponents()
+    protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Language;
         yield return CulturalBackground;

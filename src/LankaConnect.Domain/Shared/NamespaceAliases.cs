@@ -45,3 +45,9 @@ global using CulturalBackground = LankaConnect.SharedKernel.Cultural.CulturalBac
 // (distinct open-text tax-jurisdiction VO) renamed to `BillingRegion` to avoid
 // name collision.
 global using GeographicRegion = LankaConnect.SharedKernel.Cultural.GeographicRegion;
+
+// W2D.1a (2026-06-05): CulturalContext value object moved to SharedKernel.Cultural
+// per ADR-008. The canonical class (Language/CulturalBackground/GeographicRegion/
+// ReligiousContext/TimeZone/CulturalNotes + factory methods for community types).
+// The orphan POCO stub at Common/Database/AdditionalMissingModels.cs was deleted.
+global using CulturalContext = LankaConnect.SharedKernel.Cultural.CulturalContext;

@@ -144,7 +144,7 @@ public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
             .HasColumnType("jsonb")
             .HasConversion(
                 v => v != null ? JsonSerializer.Serialize(v, (JsonSerializerOptions?)null) : null,
-                v => v != null ? JsonSerializer.Deserialize<Domain.Communications.ValueObjects.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
+                v => v != null ? JsonSerializer.Deserialize<LankaConnect.SharedKernel.Cultural.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
             .IsRequired(false);
 
         // Performance indexes for email queue processing

@@ -257,11 +257,11 @@ public class DiasporaCommunityScalingProfile
     public DateTime ProfileCreated { get; set; } = DateTime.UtcNow;
 }
 
-public class CulturalContext
-{
-    public string CommunityId { get; set; } = string.Empty;
-    public string GeographicRegion { get; set; } = string.Empty;
-}
+// W2D.1a (2026-06-05): the orphan stub `CulturalContext` POCO that lived here
+// (with just CommunityId + GeographicRegion string fields) was DELETED.
+// The canonical CulturalContext lives in SharedKernel.Cultural with full
+// language/background/region/religious-context value-object semantics.
+// See cultural-type-inventory.md §B.4 + ADR-008.
 
 public enum ScalingDirection
 {

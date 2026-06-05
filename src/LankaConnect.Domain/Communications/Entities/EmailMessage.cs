@@ -52,7 +52,7 @@ public class EmailMessage : BaseEntity
     public string? MessageId { get; private set; }
     
     // Cultural Intelligence Properties
-    public LankaConnect.Domain.Communications.ValueObjects.CulturalContext? CulturalContext { get; private set; }
+    public LankaConnect.SharedKernel.Cultural.CulturalContext? CulturalContext { get; private set; }
     public bool CulturalTimingOptimized { get; private set; }
     public GeographicRegion? GeographicRegion { get; private set; }
     public DateTime? OptimalSendTime { get; private set; }
@@ -87,7 +87,7 @@ public class EmailMessage : BaseEntity
         UserEmail toEmail,
         string subject,
         string body,
-        LankaConnect.Domain.Communications.ValueObjects.CulturalContext? culturalContext = null,
+        LankaConnect.SharedKernel.Cultural.CulturalContext? culturalContext = null,
         string? htmlBody = null,
         EmailType type = EmailType.Transactional)
     {

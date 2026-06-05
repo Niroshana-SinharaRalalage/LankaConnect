@@ -34,7 +34,7 @@ public class EmailCulturalOptimizer
             context.TargetRegion);
 
         if (culturalContextResult.IsFailure)
-            return Result<CulturalOptimizationResult>.Failure(culturalContextResult.Error);
+            return Result<CulturalOptimizationResult>.Failure(culturalContextResult.Error.Message);
 
         var optimizedTiming = _culturalCalendar.GetOptimalSendTime(targetTime, culturalContextResult.Value);
 

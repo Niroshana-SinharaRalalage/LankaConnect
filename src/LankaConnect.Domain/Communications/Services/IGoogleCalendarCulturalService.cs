@@ -34,7 +34,7 @@ public interface IGoogleCalendarCulturalService
     /// <param name="proposedTime">Proposed meeting or event time</param>
     /// <param name="context">User's cultural context and preferences</param>
     /// <returns>Cultural conflict analysis with resolution suggestions</returns>
-    Task<Result<CulturalConflict>> ValidateSchedulingConflict(DateTime proposedTime, LankaConnect.Domain.Communications.ValueObjects.CulturalContext context);
+    Task<Result<CulturalConflict>> ValidateSchedulingConflict(DateTime proposedTime, LankaConnect.SharedKernel.Cultural.CulturalContext context);
 
     /// <summary>
     /// Retrieves personalized cultural events based on user's cultural profile

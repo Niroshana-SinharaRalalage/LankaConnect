@@ -324,7 +324,7 @@ public class WhatsAppCulturalContext : ValueObject
     /// <summary>
     /// Converts WhatsAppCulturalContext to CulturalContext for cultural calendar services
     /// </summary>
-    public LankaConnect.Domain.Communications.ValueObjects.CulturalContext ToCulturalContext()
+    public LankaConnect.SharedKernel.Cultural.CulturalContext ToCulturalContext()
     {
         var culturalBackground = PrimaryReligion switch
         {
@@ -344,7 +344,7 @@ public class WhatsAppCulturalContext : ValueObject
             _ => LankaConnect.SharedKernel.Cultural.ReligiousContext.None
         };
 
-        return LankaConnect.Domain.Communications.ValueObjects.CulturalContext.Create(
+        return LankaConnect.SharedKernel.Cultural.CulturalContext.Create(
             LankaConnect.SharedKernel.Cultural.SriLankanLanguage.English,
             culturalBackground,
             LankaConnect.SharedKernel.Cultural.GeographicRegion.SriLanka,

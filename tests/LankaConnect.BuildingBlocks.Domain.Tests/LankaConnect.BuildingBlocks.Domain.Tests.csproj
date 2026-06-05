@@ -27,6 +27,8 @@
     <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Money\SharedKernel.Money.csproj" />
     <!-- W1F: Locale + Country tests live here; types moved to SharedKernel.Locale per ADR-001. -->
     <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Locale\SharedKernel.Locale.csproj" />
+    <!-- W1G: UserId + IUserContext tests live here per D7. -->
+    <ProjectReference Include="..\..\src\SharedKernel\SharedKernel.Identity\SharedKernel.Identity.csproj" />
   </ItemGroup>
 
 </Project>

@@ -46,18 +46,38 @@ public abstract class BaseDbContext : DbContext
 {
     private readonly ICurrentActor _currentActor;
     private readonly ILogger _logger;
+    private readonly IClock _clock;
 
     /// <summary>
-    /// Constructs a base context with audit + soft-delete + JSONB conventions.
+    /// Constructs a base context with audit + soft-delete + JSONB conventions
+    /// using the real <see cref="SystemClock"/> for audit timestamps. Existing
+    /// per-Capability DbContexts and test contexts use this overload.
     /// </summary>
     protected BaseDbContext(
         DbContextOptions options,
         ICurrentActor currentActor,
         ILogger logger)
+        : this(options, currentActor, logger, SystemClock.Instance)
+    {
+    }
+
+    /// <summary>
+    /// Constructs a base context with an injected <see cref="IClock"/>. Use
+    /// this overload from per-Capability DbContexts that want deterministic
+    /// clock control (typically only test scenarios — production composition
+    /// roots wire <see cref="SystemClock"/> via DI which is what the default
+    /// overload picks up).
+    /// </summary>
+    protected BaseDbContext(
+        DbContextOptions options,
+        ICurrentActor currentActor,
+        ILogger logger,
+        IClock clock)
         : base(options)
     {
         _currentActor = currentActor ?? throw new ArgumentNullException(nameof(currentActor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _clock = clock ?? throw new ArgumentNullException(nameof(clock));
     }
 
     /// <inheritdoc />
@@ -86,7 +106,7 @@ public abstract class BaseDbContext : DbContext
     /// </remarks>
     private void ApplyAuditAndSoftDelete()
     {
-        var now = DateTime.UtcNow;
+        var now = _clock.UtcNow;
         var actorId = _currentActor.ActorId;
 
         // Pass 1: soft-delete conversion (Deleted → Modified + IsDeleted=true)

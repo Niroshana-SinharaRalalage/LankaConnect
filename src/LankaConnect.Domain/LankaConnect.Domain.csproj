@@ -11,4 +11,12 @@
     <InternalsVisibleTo Include="LankaConnect.Infrastructure" />
   </ItemGroup>
 
+  <!-- W2C.1 (2026-06-04): legacy domain references SharedKernel.Cultural for the
+       cultural primitives lifted from LankaConnect.Domain.Communications.Enums.
+       This is a TRANSITIONAL edge — Wave 4 module extraction empties legacy
+       LankaConnect.Domain and removes this reference. -->
+  <ItemGroup>
+    <ProjectReference Include="..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
+  </ItemGroup>
+
 </Project>

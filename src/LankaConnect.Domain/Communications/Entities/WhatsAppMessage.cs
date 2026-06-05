@@ -1,6 +1,7 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.SharedKernel.Cultural;
 
 namespace LankaConnect.Domain.Communications.Entities;
 
@@ -344,7 +345,7 @@ public class WhatsAppCulturalContext : ValueObject
         };
 
         return LankaConnect.Domain.Communications.ValueObjects.CulturalContext.Create(
-            LankaConnect.Domain.Communications.Enums.SriLankanLanguage.English,
+            LankaConnect.SharedKernel.Cultural.SriLankanLanguage.English,
             culturalBackground,
             LankaConnect.Domain.Common.Enums.GeographicRegion.SriLanka,
             religiousContext,

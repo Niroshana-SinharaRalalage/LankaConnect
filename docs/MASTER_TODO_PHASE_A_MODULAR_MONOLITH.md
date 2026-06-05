@@ -63,6 +63,19 @@ Net: +5 weeks vs v4 nominal, but **zero carried debt** when future products inte
 
 W4.1.2 BLOCKED status (line 858+ below) is RESCHEDULED. The fix lands in Wave 2 (SharedKernel.Cultural untangling). Communications extraction then resumes cleanly in Wave 4 with no cycles.
 
+### Wave 2 execution checklist (in progress 2026-06-04)
+
+- [x] W2A (21f270e0): cultural type inventory + architect-revised MVP scope (cut 13 VOs + 3 enums to Wave 2.5 backlog)
+- [x] W2B (W1D 82bdb5bc): SharedKernel.Cultural skeleton already shipped
+- [x] W2C.1 (2026-06-04): `SriLankanLanguage` enum moved to `SharedKernel.Cultural.Enums`. LankaConnect.Domain.csproj adds ProjectReference to SharedKernel.Cultural (transitional edge, cut in Wave 4-5). 7 caller files updated to `using LankaConnect.SharedKernel.Cultural;` + 1 fully-qualified ref in WhatsAppMessage.cs fixed. Migration file uses string literals only (no code change needed). Build green; ArchTest 25/25; BB.Domain.Tests 201/201.
+- [ ] W2C.2: `SouthAsianLanguage` (19→23 values absorbing regional variants) + 31 callers
+- [ ] W2C.3: `ReligiousContext` (no dupes)
+- [ ] W2C.4: `CulturalBackground` + dedupe Shared/Common variants
+- [ ] W2C.5: `GeographicRegion` enum + dedupe + rename Billing class
+- [ ] W2D.1: `CulturalContext` + `CulturalEvent` + `CulturalConflict` (W4.1.2 blockers)
+- [ ] W2E: `ICulturalCalendarService` + `ICulturalAppropriatenessChecker` interfaces
+- [ ] W2G: gate — re-run W4.1.2 dry-run
+
 ### Reading guide for this document
 
 - **This v5 amendment** = current authoritative sequencing

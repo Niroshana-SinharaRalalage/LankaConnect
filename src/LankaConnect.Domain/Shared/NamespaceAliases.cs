@@ -58,3 +58,12 @@ global using GeographicRegion = LankaConnect.SharedKernel.Cultural.GeographicReg
 // ReligiousContext/TimeZone/CulturalNotes + factory methods for community types).
 // The orphan POCO stub at Common/Database/AdditionalMissingModels.cs was deleted.
 global using CulturalContext = LankaConnect.SharedKernel.Cultural.CulturalContext;
+
+// W2D.1b (2026-06-05): CulturalConflict value object moved to SharedKernel.Cultural
+// per ADR-008. The canonical Communications class (HasConflict/ConflictReason/
+// ConflictingEventType/ConflictSeverity/SuggestedAlternativeTime/AlternativeTimeSlots/
+// RecommendedStrategy/CulturalGuidance + factory methods CreateBuddhistConflict,
+// CreateHinduConflict, CreateCulturalConflict). The Events record was renamed to
+// EventCulturalConflict and the CulturalUserProfile nested record to
+// UserCulturalConflict — both distinct concepts per architect Q3 pattern.
+global using CulturalConflict = LankaConnect.SharedKernel.Cultural.CulturalConflict;

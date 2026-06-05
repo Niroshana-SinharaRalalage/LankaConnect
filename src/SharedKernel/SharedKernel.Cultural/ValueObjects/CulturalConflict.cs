@@ -1,8 +1,6 @@
-using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Common.Enums;
-using LankaConnect.Domain.Communications.Enums;
+using LankaConnect.BuildingBlocks.Domain;
 
-namespace LankaConnect.Domain.Communications.ValueObjects;
+namespace LankaConnect.SharedKernel.Cultural;
 
 /// <summary>
 /// Value object representing a cultural scheduling conflict and resolution
@@ -267,7 +265,7 @@ public sealed class CulturalConflict : ValueObject
         };
     }
 
-    public override IEnumerable<object> GetEqualityComponents()
+    protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return HasConflict;
         yield return ConflictReason;

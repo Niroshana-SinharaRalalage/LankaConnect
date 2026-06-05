@@ -124,7 +124,11 @@ public record CulturalContentRecommendation(
     double RelevanceScore
 );
 
-public record CulturalConflict(
+// W2D.1b (2026-06-05): nested record RENAMED from `CulturalConflict` to
+// `UserCulturalConflict` per architect Q3 ruling — distinct concept (user-profile
+// content/conflict detection) that shared a name with the canonical Communications
+// CulturalConflict class. See cultural-type-inventory.md §B.2.
+public record UserCulturalConflict(
     CulturalConflictType ConflictType,
     string Description,
     string Resolution

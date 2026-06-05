@@ -1,8 +1,10 @@
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
-using EventsCulturalConflict = LankaConnect.Domain.Events.ValueObjects.CulturalConflict;
-using CommsCulturalConflict = LankaConnect.Domain.Communications.ValueObjects.CulturalConflict;
+// W2D.1b (2026-06-05): canonical CulturalConflict moved to SharedKernel.Cultural.
+// Events record renamed to EventCulturalConflict per architect Q3 ruling.
+using EventsCulturalConflict = LankaConnect.Domain.Events.ValueObjects.EventCulturalConflict;
+using CommsCulturalConflict = LankaConnect.SharedKernel.Cultural.CulturalConflict;
 
 namespace LankaConnect.Domain.Communications.ValueObjects;
 

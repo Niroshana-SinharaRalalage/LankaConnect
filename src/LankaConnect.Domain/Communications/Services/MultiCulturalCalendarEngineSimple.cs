@@ -2,8 +2,11 @@ using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Common.Enums;
 using LankaConnect.Domain.Communications.Enums;
 using LankaConnect.Domain.Communications.ValueObjects;
-using EventsCulturalConflict = LankaConnect.Domain.Events.ValueObjects.CulturalConflict;
-using CommsCulturalConflict = LankaConnect.Domain.Communications.ValueObjects.CulturalConflict;
+// W2D.1b (2026-06-05): canonical CulturalConflict moved to SharedKernel.Cultural;
+// global alias resolves CommsCulturalConflict-style refs as plain CulturalConflict.
+// Events record renamed to EventCulturalConflict.
+using EventsCulturalConflict = LankaConnect.Domain.Events.ValueObjects.EventCulturalConflict;
+using CommsCulturalConflict = LankaConnect.SharedKernel.Cultural.CulturalConflict;
 
 namespace LankaConnect.Domain.Communications.Services;
 

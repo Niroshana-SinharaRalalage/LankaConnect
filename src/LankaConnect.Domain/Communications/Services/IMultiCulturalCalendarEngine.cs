@@ -5,8 +5,10 @@ using LankaConnect.Domain.Communications.ValueObjects;
 using LankaConnect.Domain.Events.ValueObjects;
 // W2C.5 (2026-06-05): GeographicRegion moved to SharedKernel.Cultural;
 // global alias in NamespaceAliases.cs handles unqualified resolution.
-using CulturalConflictEvents = LankaConnect.Domain.Events.ValueObjects.CulturalConflict;
-using CulturalConflict = LankaConnect.Domain.Communications.ValueObjects.CulturalConflict;
+// W2D.1b (2026-06-05): canonical CulturalConflict moved to SharedKernel.Cultural;
+// global alias in NamespaceAliases.cs resolves it unqualified. The Events record
+// was renamed to EventCulturalConflict per architect Q3 (distinct concept).
+using CulturalConflictEvents = LankaConnect.Domain.Events.ValueObjects.EventCulturalConflict;
 
 namespace LankaConnect.Domain.Communications.Services;
 

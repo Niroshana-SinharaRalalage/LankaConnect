@@ -7,7 +7,8 @@ using LankaConnect.Domain.Events.ValueObjects;
 // global alias in NamespaceAliases.cs resolves unqualified GeographicRegion.
 // The previous explicit alias was removed because (a) it duplicates the global
 // alias and (b) it would point at the deleted Common/Enums variant.
-using CulturalConflict = LankaConnect.Domain.Communications.ValueObjects.CulturalConflict;
+// W2D.1b (2026-06-05): CulturalConflict moved to SharedKernel.Cultural; global
+// alias resolves it unqualified. Previous explicit alias removed.
 using Error = LankaConnect.Domain.Common.Error;
 
 namespace LankaConnect.Domain.Communications.Services;

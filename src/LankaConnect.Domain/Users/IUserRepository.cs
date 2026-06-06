@@ -1,11 +1,25 @@
-using LankaConnect.Domain.Common;
+using LankaConnect.BuildingBlocks.Application.Abstractions;
 using LankaConnect.Domain.Shared.ValueObjects;
 using LankaConnect.Domain.Users.Enums;
 
 namespace LankaConnect.Domain.Users;
 
-public interface IUserRepository : IRepository<User>
+/// <summary>
+/// Repository for the <see cref="User"/> aggregate. W3B (2026-06-05) migrated from
+/// the legacy generic <c>IRepository&lt;T&gt;</c> base to
+/// <see cref="IAggregateRepository{TAggregate, TId}"/> per ADR-010 — generic
+/// predicate-based query methods are forbidden; each method declares explicit
+/// intent.
+/// </summary>
+public interface IUserRepository : IAggregateRepository<User, Guid>
 {
+    // ---------- Base CRUD (previously inherited from IRepository<T>) ----------
+    Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task AddAsync(User user, CancellationToken cancellationToken = default);
+    void Update(User user);
+    Task<int> CountAsync(CancellationToken cancellationToken = default);
+
+    // ---------- Named query methods ----------
     Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default);
     Task<bool> ExistsWithEmailAsync(Email email, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<User>> GetActiveUsersAsync(CancellationToken cancellationToken = default);

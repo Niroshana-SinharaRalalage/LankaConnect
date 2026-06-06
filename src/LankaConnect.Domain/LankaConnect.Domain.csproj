@@ -19,4 +19,15 @@
     <ProjectReference Include="..\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
   </ItemGroup>
 
+  <!-- W3B (2026-06-05): legacy domain references BuildingBlocks.Domain so individual
+       entities can incrementally migrate to Entity<Guid> + IAuditable (per ADR-007)
+       without forcing all 79 entities to migrate atomically. Same transitional-edge
+       pattern as SharedKernel.Cultural above — empties when entity migration completes
+       (W3G) and BaseEntity is deleted. BuildingBlocks.Abstractions provides
+       IAggregateRepository<TAggregate, TId> for repository refactor per ADR-010. -->
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

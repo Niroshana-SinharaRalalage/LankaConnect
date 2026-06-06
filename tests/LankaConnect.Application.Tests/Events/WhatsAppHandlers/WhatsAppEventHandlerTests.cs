@@ -138,10 +138,10 @@ public class WhatsAppEventHandlerTests
         return evt;
     }
 
-    /// <summary>Sets BaseEntity.Id via reflection (property has protected setter).</summary>
-    private static void SetEntityId(LankaConnect.Domain.Common.BaseEntity entity, Guid id)
+    /// <summary>Sets Id via reflection (works for both legacy BaseEntity and BB.Domain.Entity&lt;TId&gt;).</summary>
+    private static void SetEntityId(object entity, Guid id)
     {
-        var prop = typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id");
+        var prop = entity.GetType().GetProperty("Id");
         prop?.SetValue(entity, id);
     }
 

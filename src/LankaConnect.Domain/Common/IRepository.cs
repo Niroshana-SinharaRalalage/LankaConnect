@@ -2,7 +2,11 @@ using System.Linq.Expressions;
 
 namespace LankaConnect.Domain.Common;
 
-public interface IRepository<T> where T : BaseEntity
+// W3B (2026-06-05): constraint relaxed from `T : BaseEntity` to `T : class`
+// — see Repository<T> notes in Infrastructure for rationale. The interface +
+// implementation move in lockstep; both retire alongside per-aggregate
+// hand-rolled repos during Wave 4 capability extraction (ADR-010).
+public interface IRepository<T> where T : class
 {
     Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<T>> GetAllAsync(CancellationToken cancellationToken = default);

@@ -7,8 +7,28 @@ using Email = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Domain.Users;
 
-public class User : BaseEntity
+// W3B (2026-06-05): User migrated from legacy BaseEntity to BB.Domain Entity<Guid>
+// + IAuditable per ADR-007. Class declaration uses fully-qualified BB types because
+// `using LankaConnect.BuildingBlocks.Domain;` would import Result<T> and conflict
+// with the legacy Result<T> still used by User's factory methods (migrated
+// opportunistically in Wave 4 capability extraction). The AuditableInterceptor in
+// BaseDbContext populates the 4 IAuditable timestamp fields automatically — no
+// more `MarkAsUpdated()` calls; the change tracker reports modifications.
+public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
+    // IAuditable members — interceptor-populated; treat as read-only from domain code.
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Backward-compat method preserved for callers that used legacy
+    /// <c>BaseEntity.GetDomainEvents()</c>. New code reads <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}.DomainEvents"/>
+    /// property directly.
+    /// </summary>
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+
     public Email Email { get; private set; }
     public string FirstName { get; private set; }
     public string LastName { get; private set; }
@@ -81,6 +101,9 @@ public class User : BaseEntity
 
     private User(Email email, string firstName, string lastName, UserRole role = UserRole.GeneralUser)
     {
+        // W3B (2026-06-05): explicit Id init — legacy BaseEntity's parameterless ctor
+        // set Id = Guid.NewGuid(); BB.Domain.Entity<Guid> does not. Set in factory ctor.
+        Id = Guid.NewGuid();
         Email = email;
         FirstName = firstName;
         LastName = lastName;
@@ -195,7 +218,6 @@ public class User : BaseEntity
         PhoneNumber = phoneNumber;
         Bio = bio?.Trim();
         
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -205,20 +227,17 @@ public class User : BaseEntity
             return Result.Failure("Email is required");
 
         Email = newEmail;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public void Activate()
     {
         IsActive = true;
-        MarkAsUpdated();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        MarkAsUpdated();
     }
 
     // Authentication methods
@@ -232,7 +251,6 @@ public class User : BaseEntity
             return Result.Failure("Password hash is required");
 
         PasswordHash = passwordHash;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -253,7 +271,6 @@ public class User : BaseEntity
         FailedLoginAttempts = 0;
         AccountLockedUntil = null;
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserPasswordChangedEvent(Id, Email.Value));
         return Result.Success();
     }
@@ -269,7 +286,6 @@ public class User : BaseEntity
         // GUID for unpredictable tokens (ARCHITECT-APPROVED)
         EmailVerificationToken = Guid.NewGuid().ToString("N");  // 32 hex chars
         EmailVerificationTokenExpiresAt = DateTime.UtcNow.AddHours(24);
-        MarkAsUpdated();
 
         // Phase 6A.53 Fix: Include FirstName and LastName for personalized emails
         RaiseDomainEvent(new DomainEvents.MemberVerificationRequestedEvent(
@@ -303,7 +319,6 @@ public class User : BaseEntity
         IsEmailVerified = true;
         EmailVerificationToken = null;  // One-time use
         EmailVerificationTokenExpiresAt = null;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserEmailVerifiedEvent(Id, Email.Value));
         return Result.Success();
@@ -320,7 +335,6 @@ public class User : BaseEntity
             IsEmailVerified = true;
             EmailVerificationToken = null;
             EmailVerificationTokenExpiresAt = null;
-            MarkAsUpdated();
         }
     }
 
@@ -358,7 +372,6 @@ public class User : BaseEntity
 
         EmailVerificationToken = token;
         EmailVerificationTokenExpiresAt = expiresAt;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -372,7 +385,6 @@ public class User : BaseEntity
 
         PasswordResetToken = token;
         PasswordResetTokenExpiresAt = expiresAt;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -394,7 +406,6 @@ public class User : BaseEntity
         }
 
         _refreshTokens.Add(refreshToken);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -408,7 +419,6 @@ public class User : BaseEntity
             return Result.Failure("Token is already revoked");
 
         refreshToken.Revoke(revokedByIp);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -418,7 +428,6 @@ public class User : BaseEntity
         {
             token.Revoke(revokedByIp);
         }
-        MarkAsUpdated();
     }
 
     public RefreshToken? GetRefreshToken(string token)
@@ -437,7 +446,6 @@ public class User : BaseEntity
             RaiseDomainEvent(new UserAccountLockedEvent(Id, Email.Value, AccountLockedUntil.Value));
         }
         
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -446,7 +454,6 @@ public class User : BaseEntity
         FailedLoginAttempts = 0;
         AccountLockedUntil = null;
         LastLoginAt = DateTime.UtcNow;
-        MarkAsUpdated();
         
         RaiseDomainEvent(new UserLoggedInEvent(Id, Email.Value, LastLoginAt.Value));
         return Result.Success();
@@ -475,7 +482,6 @@ public class User : BaseEntity
 
         var oldRole = Role;
         Role = newRole;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, newRole));
         return Result.Success();
@@ -513,7 +519,6 @@ public class User : BaseEntity
         ProfilePhotoUrl = url.Trim();
         ProfilePhotoBlobName = blobName.Trim();
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserProfilePhotoUpdatedEvent(Id, ProfilePhotoUrl, ProfilePhotoBlobName));
 
         return Result.Success();
@@ -533,7 +538,6 @@ public class User : BaseEntity
         ProfilePhotoUrl = null;
         ProfilePhotoBlobName = null;
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserProfilePhotoRemovedEvent(Id, oldUrl, oldBlobName));
 
         return Result.Success();
@@ -547,7 +551,6 @@ public class User : BaseEntity
     public Result UpdateLocation(UserLocation? location)
     {
         Location = location;
-        MarkAsUpdated();
 
         // Only raise event if location is being set (not cleared)
         if (location != null)
@@ -577,7 +580,6 @@ public class User : BaseEntity
         _culturalInterests.Clear();
         _culturalInterests.AddRange(interestList.Distinct());
 
-        MarkAsUpdated();
 
         // Only raise event if setting interests (not clearing)
         if (_culturalInterests.Any())
@@ -612,7 +614,6 @@ public class User : BaseEntity
         _languages.Clear();
         _languages.AddRange(languageList.Distinct());
 
-        MarkAsUpdated();
 
         // Always raise event (languages are required, not privacy choice like interests)
         RaiseDomainEvent(new LanguagesUpdatedEvent(Id, _languages.AsReadOnly()));
@@ -648,7 +649,6 @@ public class User : BaseEntity
         // See UpdateUserPreferredMetroAreasCommandHandler - uses EF Core ChangeTracker API
         // Domain layer only maintains GUID list for business logic per ADR-009
 
-        MarkAsUpdated();
 
         // Only raise event if setting preferences (not clearing for privacy)
         if (_preferredMetroAreaIds.Any())
@@ -697,7 +697,6 @@ public class User : BaseEntity
         // Add external login
         _externalLogins.Add(externalLogin);
 
-        MarkAsUpdated();
         RaiseDomainEvent(new ExternalProviderLinkedEvent(
             Id,
             provider,
@@ -731,7 +730,6 @@ public class User : BaseEntity
         // Remove external login
         _externalLogins.Remove(externalLogin);
 
-        MarkAsUpdated();
         RaiseDomainEvent(new ExternalProviderUnlinkedEvent(
             Id,
             provider,
@@ -778,7 +776,6 @@ public class User : BaseEntity
         PendingUpgradeRole = pendingRole;
         UpgradeRequestedAt = DateTime.UtcNow;
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserRoleUpgradeRequestedEvent(Id, Email.Value, pendingRole));
 
         return Result.Success();
@@ -799,7 +796,6 @@ public class User : BaseEntity
         PendingUpgradeRole = null;
         UpgradeRequestedAt = null;
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, newRole));
 
         return Result.Success();
@@ -817,7 +813,6 @@ public class User : BaseEntity
         PendingUpgradeRole = null;
         UpgradeRequestedAt = null;
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserRoleUpgradeRejectedEvent(Id, Email.Value, rejectedRole, reason));
 
         return Result.Success();
@@ -834,7 +829,6 @@ public class User : BaseEntity
         PendingUpgradeRole = null;
         UpgradeRequestedAt = null;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -856,7 +850,6 @@ public class User : BaseEntity
             return Result.Failure("Account is already locked");
 
         AccountLockedUntil = lockUntil;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserAccountLockedByAdminEvent(
             Id, Email.Value, lockUntil, reason));
@@ -875,7 +868,6 @@ public class User : BaseEntity
 
         AccountLockedUntil = null;
         FailedLoginAttempts = 0; // Reset failed attempts
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserAccountUnlockedByAdminEvent(Id, Email.Value));
 
@@ -892,7 +884,6 @@ public class User : BaseEntity
             return Result.Failure("User is already deactivated");
 
         IsActive = false;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserDeactivatedByAdminEvent(Id, Email.Value, FullName));
 
@@ -909,7 +900,6 @@ public class User : BaseEntity
             return Result.Failure("User is already active");
 
         IsActive = true;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new UserActivatedByAdminEvent(Id, Email.Value, FullName));
 
@@ -939,7 +929,6 @@ public class User : BaseEntity
             UpgradeRequestedAt = null;
         }
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, UserRole.GeneralUser));
 
         return Result.Success();
@@ -969,7 +958,6 @@ public class User : BaseEntity
             UpgradeRequestedAt = null;
         }
 
-        MarkAsUpdated();
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, UserRole.EventOrganizer));
 
         return Result.Success();

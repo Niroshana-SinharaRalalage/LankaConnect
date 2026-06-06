@@ -6,8 +6,22 @@ using Serilog.Context;
 
 namespace LankaConnect.Infrastructure.Data.Repositories;
 
-public class Repository<T> : IRepository<T> where T : BaseEntity
+// W3B (2026-06-05): generic constraint relaxed from `T : BaseEntity` to
+// `T : class` so entities migrated to BB.Domain.Entity<Guid> (which does NOT
+// inherit BaseEntity) can still flow through this legacy repository base
+// without forcing simultaneous per-aggregate repository refactor across all
+// 78 remaining entities. Logging that needs ExtractId(entity) uses ExtractId() with
+// one-time-per-type reflection cache. Per ADR-010 the proper fix is
+// per-aggregate hand-rolled repositories with IAggregateRepository marker;
+// that lands during Wave 4 capability extraction when each module's
+// Infrastructure ownership pivots.
+public class Repository<T> : IRepository<T> where T : class
 {
+    private static readonly System.Reflection.PropertyInfo? IdProperty =
+        typeof(T).GetProperty("Id");
+
+    private static object? ExtractId(T entity) => IdProperty?.GetValue(entity);
+
     protected readonly AppDbContext _context;
     protected readonly DbSet<T> _dbSet;
     protected readonly ILogger _logger;
@@ -114,9 +128,9 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
     {
         using (LogContext.PushProperty("Operation", "Add"))
         using (LogContext.PushProperty("EntityType", typeof(T).Name))
-        using (LogContext.PushProperty("EntityId", entity.Id))
+        using (LogContext.PushProperty("EntityId", ExtractId(entity)))
         {
-            _logger.Information("Adding entity {EntityType} with ID {EntityId}", typeof(T).Name, entity.Id);
+            _logger.Information("Adding entity {EntityType} with ID {EntityId}", typeof(T).Name, ExtractId(entity));
             await _dbSet.AddAsync(entity, cancellationToken);
         }
     }
@@ -137,9 +151,9 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
     {
         using (LogContext.PushProperty("Operation", "Update"))
         using (LogContext.PushProperty("EntityType", typeof(T).Name))
-        using (LogContext.PushProperty("EntityId", entity.Id))
+        using (LogContext.PushProperty("EntityId", ExtractId(entity)))
         {
-            _logger.Information("Updating entity {EntityType} with ID {EntityId}", typeof(T).Name, entity.Id);
+            _logger.Information("Updating entity {EntityType} with ID {EntityId}", typeof(T).Name, ExtractId(entity));
             _dbSet.Update(entity);
         }
     }
@@ -160,9 +174,9 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
     {
         using (LogContext.PushProperty("Operation", "Remove"))
         using (LogContext.PushProperty("EntityType", typeof(T).Name))
-        using (LogContext.PushProperty("EntityId", entity.Id))
+        using (LogContext.PushProperty("EntityId", ExtractId(entity)))
         {
-            _logger.Information("Removing entity {EntityType} with ID {EntityId}", typeof(T).Name, entity.Id);
+            _logger.Information("Removing entity {EntityType} with ID {EntityId}", typeof(T).Name, ExtractId(entity));
             _dbSet.Remove(entity);
         }
     }

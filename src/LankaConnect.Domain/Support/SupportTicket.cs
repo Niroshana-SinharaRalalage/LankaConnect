@@ -10,7 +10,7 @@ namespace LankaConnect.Domain.Support;
 /// Phase 6A.89: Support ticket aggregate root for handling contact form submissions.
 /// Follows DDD patterns with factory method, domain methods, and domain events.
 /// </summary>
-public class SupportTicket : BaseEntity
+public class SupportTicket : LegacyBaseEntity
 {
     /// <summary>
     /// Human-readable reference ID in format: CONTACT-YYYYMMDD-XXXXXXXX
@@ -148,7 +148,6 @@ public class SupportTicket : BaseEntity
         if (Status == SupportTicketStatus.New)
             Status = SupportTicketStatus.InProgress;
 
-        MarkAsUpdated();
 
         // Raise domain event for reply notification email
         RaiseDomainEvent(new SupportTicketRepliedEvent(
@@ -180,7 +179,6 @@ public class SupportTicket : BaseEntity
         var note = new SupportTicketNote(content.Trim(), adminUserId);
         _notes.Add(note);
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -200,7 +198,6 @@ public class SupportTicket : BaseEntity
         var oldStatus = Status;
         Status = newStatus;
 
-        MarkAsUpdated();
 
         // Raise domain event for audit logging
         RaiseDomainEvent(new SupportTicketStatusChangedEvent(
@@ -224,7 +221,6 @@ public class SupportTicket : BaseEntity
             return Result.Failure("Cannot change priority of a closed ticket");
 
         Priority = newPriority;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -247,7 +243,6 @@ public class SupportTicket : BaseEntity
         var previousAssignee = AssignedToUserId;
         AssignedToUserId = adminUserId;
 
-        MarkAsUpdated();
 
         // Raise domain event for admin notification
         RaiseDomainEvent(new SupportTicketAssignedEvent(
@@ -271,7 +266,6 @@ public class SupportTicket : BaseEntity
             return Result.Failure("Cannot unassign a closed ticket");
 
         AssignedToUserId = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }

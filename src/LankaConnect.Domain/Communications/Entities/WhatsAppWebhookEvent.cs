@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Phase 7A: Raw webhook payload from ACS/Meta for debugging and idempotency.
 /// Stores delivery status callbacks for WhatsApp messages.
 /// </summary>
-public class WhatsAppWebhookEvent : BaseEntity
+public class WhatsAppWebhookEvent : LegacyBaseEntity
 {
     public string EventType { get; private set; } = null!;
     public string Payload { get; private set; } = null!;
@@ -45,7 +45,6 @@ public class WhatsAppWebhookEvent : BaseEntity
     {
         Processed = true;
         ProcessedAt = DateTime.UtcNow;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -55,6 +54,5 @@ public class WhatsAppWebhookEvent : BaseEntity
     {
         Processed = false;
         ErrorMessage = error;
-        MarkAsUpdated();
     }
 }

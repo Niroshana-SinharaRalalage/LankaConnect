@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Financial constraints model for revenue optimization
 /// TDD Implementation: Defines financial constraints for optimization decisions
 /// </summary>
-public class FinancialConstraints : BaseEntity
+public class FinancialConstraints : LegacyBaseEntity
 {
     public Guid ConstraintsId { get; set; } = Guid.NewGuid();
     public decimal MaxBudget { get; set; } = 0;

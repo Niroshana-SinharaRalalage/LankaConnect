@@ -4,7 +4,7 @@ using LankaConnect.Domain.Community.Enums;
 
 namespace LankaConnect.Domain.Community;
 
-public class ForumTopic : BaseEntity
+public class ForumTopic : LegacyBaseEntity
 {
     private readonly List<Reply> _replies = new();
 
@@ -74,7 +74,6 @@ public class ForumTopic : BaseEntity
             return Result.Failure(replyResult.Errors);
 
         _replies.Add(replyResult.Value);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -93,20 +92,17 @@ public class ForumTopic : BaseEntity
             return Result.Failure("Cannot update deleted topic");
 
         Content = newContent;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public void Pin(Guid moderatorId)
     {
         IsPinned = true;
-        MarkAsUpdated();
     }
 
     public void Unpin(Guid moderatorId)
     {
         IsPinned = false;
-        MarkAsUpdated();
     }
 
     public Result Lock(Guid moderatorId, string reason)
@@ -116,7 +112,6 @@ public class ForumTopic : BaseEntity
 
         Status = TopicStatus.Locked;
         LockReason = reason.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -124,25 +119,21 @@ public class ForumTopic : BaseEntity
     {
         Status = TopicStatus.Active;
         LockReason = null;
-        MarkAsUpdated();
     }
 
     public void Archive(Guid moderatorId)
     {
         Status = TopicStatus.Archived;
-        MarkAsUpdated();
     }
 
     public void Delete(Guid moderatorId)
     {
         Status = TopicStatus.Deleted;
-        MarkAsUpdated();
     }
 
     public void IncrementViewCount()
     {
         ViewCount++;
-        MarkAsUpdated();
     }
 
     public bool CanUserReply(Guid userId)

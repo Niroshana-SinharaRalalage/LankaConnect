@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Security;
 /// Cross-region response protocol for coordinated incident response
 /// TDD Implementation: Ensures consistent response across regions
 /// </summary>
-public class CrossRegionResponseProtocol : BaseEntity
+public class CrossRegionResponseProtocol : LegacyBaseEntity
 {
     public Guid ProtocolId { get; set; } = Guid.NewGuid();
     public string ProtocolName { get; set; } = string.Empty;

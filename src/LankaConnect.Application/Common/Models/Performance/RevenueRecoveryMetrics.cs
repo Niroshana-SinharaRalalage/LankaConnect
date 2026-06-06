@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Revenue recovery metrics model for performance incident tracking
 /// TDD Implementation: Tracks revenue recovery after performance incidents
 /// </summary>
-public class RevenueRecoveryMetrics : BaseEntity
+public class RevenueRecoveryMetrics : LegacyBaseEntity
 {
     public Guid MetricsId { get; set; } = Guid.NewGuid();
     public Guid IncidentId { get; set; }

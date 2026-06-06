@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Newsletter aggregate root
 /// Phase 6A.74: Newsletter/News Alert system with location targeting
 /// </summary>
-public class Newsletter : BaseEntity
+public class Newsletter : LegacyBaseEntity
 {
     private readonly List<Guid> _emailGroupIds = new();
     private readonly List<Guid> _metroAreaIds = new();

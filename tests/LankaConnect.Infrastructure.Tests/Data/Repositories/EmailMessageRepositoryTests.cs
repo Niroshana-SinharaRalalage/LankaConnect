@@ -484,7 +484,7 @@ public class EmailMessageRepositoryTests : IDisposable
 
     #region Test Helpers
 
-    private async Task<T> AddEntityAsync<T>(T entity) where T : BaseEntity
+    private async Task<T> AddEntityAsync<T>(T entity) where T : LegacyBaseEntity
     {
         _context.Set<T>().Add(entity);
         await _context.SaveChangesAsync();
@@ -492,7 +492,7 @@ public class EmailMessageRepositoryTests : IDisposable
         return entity;
     }
 
-    private async Task AddEntitiesAsync<T>(params T[] entities) where T : BaseEntity
+    private async Task AddEntitiesAsync<T>(params T[] entities) where T : LegacyBaseEntity
     {
         _context.Set<T>().AddRange(entities);
         await _context.SaveChangesAsync();

@@ -8,7 +8,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Performance degradation scenario model for revenue impact analysis
 /// TDD Implementation: Models performance degradation scenarios
 /// </summary>
-public class PerformanceDegradationScenario : BaseEntity
+public class PerformanceDegradationScenario : LegacyBaseEntity
 {
     public Guid ScenarioId { get; set; } = Guid.NewGuid();
     public string ScenarioName { get; set; } = string.Empty;

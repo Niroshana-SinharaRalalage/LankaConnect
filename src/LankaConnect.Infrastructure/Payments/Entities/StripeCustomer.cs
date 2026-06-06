@@ -6,7 +6,7 @@ namespace LankaConnect.Infrastructure.Payments.Entities;
 /// Infrastructure entity to track Stripe customer data
 /// This is an infrastructure concern, not part of the core domain
 /// </summary>
-public class StripeCustomer : BaseEntity
+public class StripeCustomer : LegacyBaseEntity
 {
     /// <summary>
     /// Reference to the User entity

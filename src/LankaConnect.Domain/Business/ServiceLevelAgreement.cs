@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Business;
 /// Domain entity representing a Service Level Agreement with cultural intelligence features.
 /// Used for enterprise-grade SLA management across the LankaConnect platform.
 /// </summary>
-public class ServiceLevelAgreement : BaseEntity
+public class ServiceLevelAgreement : LegacyBaseEntity
 {
     /// <summary>
     /// Gets the SLA level (e.g., Gold, Silver, Bronze, Cultural_Premium).

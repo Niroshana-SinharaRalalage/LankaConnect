@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Performance impact threshold model for revenue risk analysis
 /// TDD Implementation: Defines thresholds for performance impact assessment
 /// </summary>
-public class PerformanceImpactThreshold : BaseEntity
+public class PerformanceImpactThreshold : LegacyBaseEntity
 {
     public Guid ThresholdId { get; set; } = Guid.NewGuid();
     public string ThresholdName { get; set; } = string.Empty;

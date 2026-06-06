@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security;
 
-public class RegionalComplianceAlignmentResult : BaseEntity
+public class RegionalComplianceAlignmentResult : LegacyBaseEntity
 {
     public Guid AlignmentId { get; set; } = Guid.NewGuid();
     public string RegionId { get; set; } = string.Empty;

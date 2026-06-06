@@ -3,7 +3,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Business;
 
-public class Service : BaseEntity
+public class Service : LegacyBaseEntity
 {
     public string Name { get; private set; }
     public string Description { get; private set; }
@@ -92,7 +92,6 @@ public class Service : BaseEntity
         Description = description.Trim();
         Price = price;
         Duration = duration?.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -103,7 +102,6 @@ public class Service : BaseEntity
             return Result.Failure("Service is already active");
 
         IsActive = true;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -114,7 +112,6 @@ public class Service : BaseEntity
             return Result.Failure("Service is already inactive");
 
         IsActive = false;
-        MarkAsUpdated();
 
         return Result.Success();
     }

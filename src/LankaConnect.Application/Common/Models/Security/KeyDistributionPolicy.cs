@@ -8,7 +8,7 @@ namespace LankaConnect.Application.Common.Models.Security;
 /// Key distribution policy for multi-region security management
 /// TDD Implementation: Ensures secure key distribution across regions
 /// </summary>
-public class KeyDistributionPolicy : BaseEntity
+public class KeyDistributionPolicy : LegacyBaseEntity
 {
     public Guid PolicyId { get; set; } = Guid.NewGuid();
     public string PolicyName { get; set; } = string.Empty;

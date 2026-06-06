@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.MultiLanguage
 {
-    public class LanguageRoutingPerformanceMetrics : BaseEntity
+    public class LanguageRoutingPerformanceMetrics : LegacyBaseEntity
     {
         public string MetricId { get; set; } = string.Empty;
         public string LanguagePair { get; set; } = string.Empty;
@@ -15,7 +15,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Active";
     }
 
-    public class LanguageRoutingAnalyticsRequest : BaseEntity
+    public class LanguageRoutingAnalyticsRequest : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public List<string> LanguagePairs { get; set; } = new();
@@ -28,7 +28,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string RequestedBy { get; set; } = string.Empty;
     }
 
-    public class LanguageRoutingAnalytics : BaseEntity
+    public class LanguageRoutingAnalytics : LegacyBaseEntity
     {
         public string AnalyticsId { get; set; } = string.Empty;
         public string RequestId { get; set; } = string.Empty;
@@ -40,7 +40,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Completed";
     }
 
-    public class CulturalEventPerformanceBenchmark : BaseEntity
+    public class CulturalEventPerformanceBenchmark : LegacyBaseEntity
     {
         public string BenchmarkId { get; set; } = string.Empty;
         public string EventType { get; set; } = string.Empty;
@@ -54,7 +54,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public bool IsActive { get; set; } = true;
     }
 
-    public class CacheOptimizationRequest : BaseEntity
+    public class CacheOptimizationRequest : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string CacheType { get; set; } = string.Empty;
@@ -66,7 +66,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string RequestedBy { get; set; } = string.Empty;
     }
 
-    public class CacheOptimizationResult : BaseEntity
+    public class CacheOptimizationResult : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string OptimizationStrategy { get; set; } = string.Empty;

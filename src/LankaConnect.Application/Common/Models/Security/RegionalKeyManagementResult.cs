@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security;
 
-public class RegionalKeyManagementResult : BaseEntity
+public class RegionalKeyManagementResult : LegacyBaseEntity
 {
     public Guid ResultId { get; set; } = Guid.NewGuid();
     public string RegionId { get; set; } = string.Empty;

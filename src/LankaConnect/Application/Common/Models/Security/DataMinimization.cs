@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class DataProcessingPurpose : BaseEntity
+    public class DataProcessingPurpose : LegacyBaseEntity
     {
         public string PurposeName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class MinimizationStrategy : BaseEntity
+    public class MinimizationStrategy : LegacyBaseEntity
     {
         public string StrategyName { get; set; } = string.Empty;
         public string DataCategory { get; set; } = string.Empty;
@@ -29,7 +29,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsApproved { get; set; }
     }
 
-    public class DataMinimizationResult : BaseEntity
+    public class DataMinimizationResult : LegacyBaseEntity
     {
         public string OperationId { get; set; } = string.Empty;
         public string DataSetId { get; set; } = string.Empty;

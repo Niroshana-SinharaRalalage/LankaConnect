@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.MultiLanguage
 {
-    public class LanguageRevenueAnalysisResult : BaseEntity
+    public class LanguageRevenueAnalysisResult : LegacyBaseEntity
     {
         public string AnalysisId { get; set; } = string.Empty;
         public string LanguagePair { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Completed";
     }
 
-    public class BusinessLanguageMatchingRequest : BaseEntity
+    public class BusinessLanguageMatchingRequest : LegacyBaseEntity
     {
         public string BusinessId { get; set; } = string.Empty;
         public string BusinessType { get; set; } = string.Empty;
@@ -29,7 +29,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string RequestedBy { get; set; } = string.Empty;
     }
 
-    public class BusinessLanguageMatchingResult : BaseEntity
+    public class BusinessLanguageMatchingResult : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public List<string> RecommendedTranslators { get; set; } = new();
@@ -42,7 +42,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class PremiumContentStrategy : BaseEntity
+    public class PremiumContentStrategy : LegacyBaseEntity
     {
         public string StrategyName { get; set; } = string.Empty;
         public string TargetLanguage { get; set; } = string.Empty;

@@ -4,7 +4,7 @@ using LankaConnect.Domain.Common.Enums;
 
 namespace LankaConnect.Application.Common.Models.Routing;
 
-public class MultiLanguageUserProfile : BaseEntity
+public class MultiLanguageUserProfile : LegacyBaseEntity
 {
     public Guid UserId { get; set; } = Guid.NewGuid();
     public List<SouthAsianLanguage> PreferredLanguages { get; set; } = new();

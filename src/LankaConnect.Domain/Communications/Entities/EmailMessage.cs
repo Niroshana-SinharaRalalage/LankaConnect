@@ -7,7 +7,7 @@ using UserEmail = LankaConnect.Domain.Shared.ValueObjects.Email;
 
 namespace LankaConnect.Domain.Communications.Entities;
 
-public class EmailMessage : BaseEntity
+public class EmailMessage : LegacyBaseEntity
 {
     private readonly List<string> _recipients = new();
     private readonly List<string> _ccRecipients = new();
@@ -246,7 +246,6 @@ public class EmailMessage : BaseEntity
             return Result.Failure($"Cannot mark email as queued when status is {Status}");
 
         Status = EmailStatus.Queued;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -256,7 +255,6 @@ public class EmailMessage : BaseEntity
             return Result.Failure($"Cannot mark email as sending when status is {Status}");
 
         Status = EmailStatus.Sending;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -272,7 +270,6 @@ public class EmailMessage : BaseEntity
             
         Status = EmailStatus.Sent;
         SentAt = DateTime.UtcNow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -283,7 +280,6 @@ public class EmailMessage : BaseEntity
 
         Status = EmailStatus.Delivered;
         DeliveredAt = DateTime.UtcNow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -297,7 +293,6 @@ public class EmailMessage : BaseEntity
         RetryCount++;
         FailedAt = DateTime.UtcNow;
         NextRetryAt = nextRetryAt;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -327,7 +322,6 @@ public class EmailMessage : BaseEntity
 
         Status = EmailStatus.Queued;
         ErrorMessage = null;
-        MarkAsUpdated();
         return Result.Success();
     }
     
@@ -341,7 +335,6 @@ public class EmailMessage : BaseEntity
         if (!ClickedAt.HasValue)
         {
             ClickedAt = DateTime.UtcNow;
-            MarkAsUpdated();
         }
     }
     
@@ -353,7 +346,6 @@ public class EmailMessage : BaseEntity
         if (!OpenedAt.HasValue)
         {
             OpenedAt = DateTime.UtcNow;
-            MarkAsUpdated();
         }
     }
     
@@ -369,7 +361,6 @@ public class EmailMessage : BaseEntity
         Status = EmailStatus.Sent;
         SentAt = DateTime.UtcNow;
         MessageId = messageId;
-        MarkAsUpdated();
     }
     
     /// <summary>
@@ -383,7 +374,6 @@ public class EmailMessage : BaseEntity
             
         Status = EmailStatus.Delivered;
         DeliveredAt = DateTime.UtcNow;
-        MarkAsUpdated();
     }
     
     
@@ -398,7 +388,6 @@ public class EmailMessage : BaseEntity
         RetryCount++;
         FailedAt = DateTime.UtcNow;
         NextRetryAt = null; // Explicitly set to null for no retry
-        MarkAsUpdated();
     }
     
     
@@ -412,7 +401,6 @@ public class EmailMessage : BaseEntity
             Status = EmailStatus.Pending;
             NextRetryAt = null;
             ErrorMessage = null;
-            MarkAsUpdated();
         }
     }
     
@@ -537,7 +525,6 @@ public class EmailMessage : BaseEntity
     {
         Priority = Math.Max(1, Math.Min(10, priority)); // Clamp between 1-10
         AddStateTransition($"Priority set to {Priority}");
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -547,7 +534,6 @@ public class EmailMessage : BaseEntity
     {
         Type = emailType;
         AddStateTransition($"Email type set to {emailType}");
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -564,7 +550,6 @@ public class EmailMessage : BaseEntity
         }
 
         AddStateTransition($"Optimized for diaspora region: {targetRegion}");
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -577,7 +562,6 @@ public class EmailMessage : BaseEntity
         TargetTimezone = timezone;
         
         AddStateTransition($"Optimized for geography: {region}");
-        MarkAsUpdated();
     }
 
     /// <summary>

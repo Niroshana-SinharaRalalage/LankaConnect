@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class DataSubjectRequest : BaseEntity
+    public class DataSubjectRequest : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string SubjectId { get; set; } = string.Empty;
@@ -17,7 +17,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string ContactPreference { get; set; } = string.Empty;
     }
 
-    public class RightsFulfillmentProcess : BaseEntity
+    public class RightsFulfillmentProcess : LegacyBaseEntity
     {
         public string ProcessId { get; set; } = string.Empty;
         public string RequestId { get; set; } = string.Empty;

@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Analytics;
 /// Tracks analytics data for events (views, registrations, conversion rates)
 /// Separate aggregate from Event to maintain different consistency boundaries
 /// </summary>
-public class EventAnalytics : BaseEntity
+public class EventAnalytics : LegacyBaseEntity
 {
     public Guid EventId { get; private set; }
     public int TotalViews { get; private set; }

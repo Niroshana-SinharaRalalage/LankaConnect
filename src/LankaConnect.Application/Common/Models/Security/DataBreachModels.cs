@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class DataBreachIncident : BaseEntity
+    public class DataBreachIncident : LegacyBaseEntity
     {
         public string IncidentId { get; set; } = string.Empty;
         public string IncidentType { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string Status { get; set; } = "Active";
     }
 
-    public class BreachResponseProtocol : BaseEntity
+    public class BreachResponseProtocol : LegacyBaseEntity
     {
         public string ProtocolName { get; set; } = string.Empty;
         public string IncidentType { get; set; } = string.Empty;
@@ -30,7 +30,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class DataBreachResponseResult : BaseEntity
+    public class DataBreachResponseResult : LegacyBaseEntity
     {
         public string IncidentId { get; set; } = string.Empty;
         public string ResponseId { get; set; } = string.Empty;
@@ -44,7 +44,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string Status { get; set; } = "Resolved";
     }
 
-    public class CulturalFeatureImplementation : BaseEntity
+    public class CulturalFeatureImplementation : LegacyBaseEntity
     {
         public string FeatureName { get; set; } = string.Empty;
         public string CulturalContext { get; set; } = string.Empty;
@@ -56,7 +56,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class PIAValidationCriteria : BaseEntity
+    public class PIAValidationCriteria : LegacyBaseEntity
     {
         public string CriteriaName { get; set; } = string.Empty;
         public string DataCategory { get; set; } = string.Empty;
@@ -68,7 +68,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class PrivacyImpactAssessmentResult : BaseEntity
+    public class PrivacyImpactAssessmentResult : LegacyBaseEntity
     {
         public string AssessmentId { get; set; } = string.Empty;
         public string FeatureId { get; set; } = string.Empty;
@@ -81,7 +81,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string Status { get; set; } = "Completed";
     }
 
-    public class CulturalEventLoadPattern : BaseEntity
+    public class CulturalEventLoadPattern : LegacyBaseEntity
     {
         public string PatternName { get; set; } = string.Empty;
         public string EventType { get; set; } = string.Empty;
@@ -95,7 +95,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class SecurityPerformanceMonitoring : BaseEntity
+    public class SecurityPerformanceMonitoring : LegacyBaseEntity
     {
         public string MonitoringId { get; set; } = string.Empty;
         public string MonitoredComponent { get; set; } = string.Empty;

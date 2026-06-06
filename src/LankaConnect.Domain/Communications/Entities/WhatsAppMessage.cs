@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// WhatsApp Business API Message entity with cultural intelligence integration
 /// Supports Buddhist/Hindu calendar awareness, multi-language content, and diaspora community targeting
 /// </summary>
-public class WhatsAppMessage : BaseEntity
+public class WhatsAppMessage : LegacyBaseEntity
 {
     private readonly List<string> _recipients = new();
     private readonly Dictionary<string, object> _templateParameters = new();
@@ -141,7 +141,6 @@ public class WhatsAppMessage : BaseEntity
 
         ScheduledFor = requestedTime;
         Status = WhatsAppMessageStatus.Scheduled;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -152,7 +151,6 @@ public class WhatsAppMessage : BaseEntity
             return Result.Failure("Cultural appropriateness score must be between 0 and 1");
 
         CulturalAppropriatnessScore = score;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -163,7 +161,6 @@ public class WhatsAppMessage : BaseEntity
             return Result.Failure("Cultural metadata key is required");
 
         _culturalMetadata[key] = value ?? string.Empty;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -178,7 +175,6 @@ public class WhatsAppMessage : BaseEntity
 
         DiasporaRegion = region;
         TimeZone = timeZone;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -193,7 +189,6 @@ public class WhatsAppMessage : BaseEntity
 
         Status = WhatsAppMessageStatus.Sending;
         SentAt = DateTime.UtcNow;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -205,7 +200,6 @@ public class WhatsAppMessage : BaseEntity
 
         Status = WhatsAppMessageStatus.Delivered;
         DeliveredAt = DateTime.UtcNow;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -216,7 +210,6 @@ public class WhatsAppMessage : BaseEntity
             return Result.Failure("Only delivered messages can be marked as read");
 
         ReadAt = DateTime.UtcNow;
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -229,7 +222,6 @@ public class WhatsAppMessage : BaseEntity
         Status = WhatsAppMessageStatus.Failed;
         FailedAt = DateTime.UtcNow;
         ErrorMessage = errorMessage.Trim();
-        MarkAsUpdated();
         
         return Result.Success();
     }
@@ -243,7 +235,6 @@ public class WhatsAppMessage : BaseEntity
         Status = WhatsAppMessageStatus.Draft;
         ErrorMessage = null;
         FailedAt = null;
-        MarkAsUpdated();
         
         return Result.Success();
     }

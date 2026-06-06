@@ -17,7 +17,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// - Load historical failures on startup
 /// - Auto-cleanup expired records via background service
 /// </summary>
-public class EmailFailureDetail : BaseEntity
+public class EmailFailureDetail : LegacyBaseEntity
 {
     /// <summary>
     /// When the email failure occurred

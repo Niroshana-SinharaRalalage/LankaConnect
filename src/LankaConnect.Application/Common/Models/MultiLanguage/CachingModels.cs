@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.MultiLanguage
 {
-    public class CachePreWarmingResult : BaseEntity
+    public class CachePreWarmingResult : LegacyBaseEntity
     {
         public string PreWarmingId { get; set; } = string.Empty;
         public List<string> CachedLanguagePairs { get; set; } = new();
@@ -15,7 +15,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Completed";
     }
 
-    public class CacheInvalidationStrategy : BaseEntity
+    public class CacheInvalidationStrategy : LegacyBaseEntity
     {
         public string StrategyName { get; set; } = string.Empty;
         public string InvalidationType { get; set; } = string.Empty;
@@ -27,7 +27,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public bool IsActive { get; set; } = true;
     }
 
-    public class CacheInvalidationResult : BaseEntity
+    public class CacheInvalidationResult : LegacyBaseEntity
     {
         public string InvalidationId { get; set; } = string.Empty;
         public string StrategyUsed { get; set; } = string.Empty;
@@ -39,7 +39,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Impact { get; set; } = string.Empty;
     }
 
-    public class LanguageRoutingFailoverResult : BaseEntity
+    public class LanguageRoutingFailoverResult : LegacyBaseEntity
     {
         public string FailoverId { get; set; } = string.Empty;
         public string OriginalRoute { get; set; } = string.Empty;
@@ -52,7 +52,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Active";
     }
 
-    public class CulturalIntelligenceState : BaseEntity
+    public class CulturalIntelligenceState : LegacyBaseEntity
     {
         public string StateId { get; set; } = string.Empty;
         public string CulturalContext { get; set; } = string.Empty;
@@ -64,7 +64,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Active";
     }
 
-    public class CulturalIntelligencePreservationResult : BaseEntity
+    public class CulturalIntelligencePreservationResult : LegacyBaseEntity
     {
         public string PreservationId { get; set; } = string.Empty;
         public string CulturalContext { get; set; } = string.Empty;

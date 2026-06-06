@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class ConsentRequest : BaseEntity
+    public class ConsentRequest : LegacyBaseEntity
     {
         public string UserId { get; set; } = string.Empty;
         public string DataCategory { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool CanWithdraw { get; set; } = true;
     }
 
-    public class CulturalConsentPolicy : BaseEntity
+    public class CulturalConsentPolicy : LegacyBaseEntity
     {
         public string PolicyName { get; set; } = string.Empty;
         public string CulturalGroup { get; set; } = string.Empty;
@@ -29,7 +29,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class ConsentManagementResult : BaseEntity
+    public class ConsentManagementResult : LegacyBaseEntity
     {
         public string OperationId { get; set; } = string.Empty;
         public int ConsentRequestsProcessed { get; set; }

@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security;
 
-public class DataSovereigntyRequirements : BaseEntity
+public class DataSovereigntyRequirements : LegacyBaseEntity
 {
     public Guid RequirementsId { get; set; } = Guid.NewGuid();
     public string Jurisdiction { get; set; } = string.Empty;

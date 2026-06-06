@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class DataSubjectRightsResult : BaseEntity
+    public class DataSubjectRightsResult : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string SubjectId { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string ComplianceVerification { get; set; } = string.Empty;
     }
 
-    public class AnalyticsConfiguration : BaseEntity
+    public class AnalyticsConfiguration : LegacyBaseEntity
     {
         public string ConfigurationName { get; set; } = string.Empty;
         public List<string> MetricsToCollect { get; set; } = new();
@@ -28,7 +28,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public DateTime ConfiguredAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class PrivacyPreservationTechniques : BaseEntity
+    public class PrivacyPreservationTechniques : LegacyBaseEntity
     {
         public string TechniqueName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
@@ -40,7 +40,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public bool IsActive { get; set; } = true;
     }
 
-    public class PrivacyPreservingAnalyticsResult : BaseEntity
+    public class PrivacyPreservingAnalyticsResult : LegacyBaseEntity
     {
         public string AnalysisId { get; set; } = string.Empty;
         public string DataSetId { get; set; } = string.Empty;

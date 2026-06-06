@@ -8,7 +8,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Performance incident model for tracking and response
 /// TDD Implementation: Tracks performance incidents and their revenue impact
 /// </summary>
-public class PerformanceIncident : BaseEntity
+public class PerformanceIncident : LegacyBaseEntity
 {
     public Guid IncidentId { get; set; } = Guid.NewGuid();
     public string Title { get; set; } = string.Empty;

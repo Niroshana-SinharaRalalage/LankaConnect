@@ -3,7 +3,7 @@ using LankaConnect.Domain.Community.ValueObjects;
 
 namespace LankaConnect.Domain.Community;
 
-public class Reply : BaseEntity
+public class Reply : LegacyBaseEntity
 {
     public Guid TopicId { get; private set; }
     public PostContent Content { get; private set; }
@@ -52,14 +52,12 @@ public class Reply : BaseEntity
             return Result.Failure("Only the author can update the reply");
 
         Content = newContent;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public void AddHelpfulVote()
     {
         HelpfulVotes++;
-        MarkAsUpdated();
     }
 
     public void RemoveHelpfulVote()
@@ -67,19 +65,16 @@ public class Reply : BaseEntity
         if (HelpfulVotes > 0)
         {
             HelpfulVotes--;
-            MarkAsUpdated();
         }
     }
 
     public void MarkAsSolution(Guid moderatorId)
     {
         IsMarkedAsSolution = true;
-        MarkAsUpdated();
     }
 
     public void UnmarkAsSolution(Guid moderatorId)
     {
         IsMarkedAsSolution = false;
-        MarkAsUpdated();
     }
 }

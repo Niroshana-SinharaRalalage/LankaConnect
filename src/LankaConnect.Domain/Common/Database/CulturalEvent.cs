@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Domain.Common.Database
 {
-    public class CulturalEvent : BaseEntity
+    public class CulturalEvent : LegacyBaseEntity
     {
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;

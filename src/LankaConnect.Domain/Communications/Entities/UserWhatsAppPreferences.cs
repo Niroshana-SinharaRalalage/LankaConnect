@@ -13,7 +13,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Uses cryptographic random for verification codes per architect review D4.
 /// Includes lockout reset mechanism per architect review D5.
 /// </summary>
-public class UserWhatsAppPreferences : BaseEntity
+public class UserWhatsAppPreferences : LegacyBaseEntity
 {
     private static readonly Regex E164Regex = new(@"^\+[1-9]\d{1,14}$", RegexOptions.Compiled);
 
@@ -99,7 +99,6 @@ public class UserWhatsAppPreferences : BaseEntity
         VerificationCodeExpires = null;
         VerificationAttempts = 0;
         VerificationLockedUntil = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -111,7 +110,6 @@ public class UserWhatsAppPreferences : BaseEntity
     {
         WhatsAppEnabled = false;
         WhatsAppEnabledAt = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -137,7 +135,6 @@ public class UserWhatsAppPreferences : BaseEntity
         WhatsAppEnabledAt = null;
         WhatsAppAutoDisabledAt = DateTime.UtcNow;
         WhatsAppAutoDisableReason = reason;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new WhatsAppAutoDisabledDomainEvent(UserId, phoneForEvent, reason));
 
@@ -174,7 +171,6 @@ public class UserWhatsAppPreferences : BaseEntity
         if (VerificationAttempts >= 5)
         {
             VerificationLockedUntil = DateTime.UtcNow.AddHours(1);
-            MarkAsUpdated();
             return Result.Failure("Maximum verification attempts reached. Please try again in 1 hour.");
         }
 
@@ -182,7 +178,6 @@ public class UserWhatsAppPreferences : BaseEntity
         VerificationCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
         VerificationCodeExpires = DateTime.UtcNow.AddMinutes(10);
         VerificationAttempts++;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -210,7 +205,6 @@ public class UserWhatsAppPreferences : BaseEntity
         VerificationCodeExpires = null;
         VerificationAttempts = 0;
         VerificationLockedUntil = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -279,7 +273,6 @@ public class UserWhatsAppPreferences : BaseEntity
         NotifyNewsletter = notifyNewsletter;
         NotifyNewEvent = notifyNewEvent;
         NotifyPayment = notifyPayment;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -300,7 +293,6 @@ public class UserWhatsAppPreferences : BaseEntity
         QuietHoursStart = quietHoursStart;
         QuietHoursEnd = quietHoursEnd;
         RespectCulturalTiming = respectCulturalTiming;
-        MarkAsUpdated();
 
         return Result.Success();
     }

@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.MultiLanguage
 {
-    public class HeritageLanguagePreservationRequest : BaseEntity
+    public class HeritageLanguagePreservationRequest : LegacyBaseEntity
     {
         public string LanguageName { get; set; } = string.Empty;
         public string CommunityId { get; set; } = string.Empty;
@@ -16,7 +16,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string RequestedBy { get; set; } = string.Empty;
     }
 
-    public class HeritageLanguagePreservationResult : BaseEntity
+    public class HeritageLanguagePreservationResult : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string PreservationPlan { get; set; } = string.Empty;
@@ -30,7 +30,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Pending";
     }
 
-    public class IntergenerationalContentRequest : BaseEntity
+    public class IntergenerationalContentRequest : LegacyBaseEntity
     {
         public string ContentType { get; set; } = string.Empty;
         public string SourceLanguage { get; set; } = string.Empty;
@@ -43,7 +43,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string RequestedBy { get; set; } = string.Empty;
     }
 
-    public class IntergenerationalContentResult : BaseEntity
+    public class IntergenerationalContentResult : LegacyBaseEntity
     {
         public string RequestId { get; set; } = string.Empty;
         public string AdaptedContent { get; set; } = string.Empty;
@@ -56,7 +56,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string Status { get; set; } = "Completed";
     }
 
-    public class LanguageRevenueAnalysisRequest : BaseEntity
+    public class LanguageRevenueAnalysisRequest : LegacyBaseEntity
     {
         public string LanguagePair { get; set; } = string.Empty;
         public string ServiceType { get; set; } = string.Empty;

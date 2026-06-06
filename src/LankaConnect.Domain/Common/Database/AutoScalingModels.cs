@@ -603,7 +603,7 @@ public class EnterpriseConnectionPoolMetrics : ValueObject
 /// <summary>
 /// Represents an auto-scaling request with cultural intelligence
 /// </summary>
-public class AutoScalingRequest : BaseEntity
+public class AutoScalingRequest : LegacyBaseEntity
 {
     public ScalingTriggerType TriggerType { get; private set; }
     public ScalingDirection RequestedDirection { get; private set; }
@@ -678,7 +678,6 @@ public class AutoScalingRequest : BaseEntity
     public void UpdateCulturalPrediction(CulturalEventLoadPrediction prediction)
     {
         CulturalPrediction = prediction;
-        MarkAsUpdated();
         RaiseDomainEvent(new CulturalPredictionUpdatedEvent(Id, prediction));
     }
 
@@ -686,7 +685,6 @@ public class AutoScalingRequest : BaseEntity
     {
         IsEmergencyScaling = true;
         Justification = $"{Justification} | EMERGENCY: {reason}";
-        MarkAsUpdated();
         RaiseDomainEvent(new EmergencyScalingTriggeredEvent(Id, reason));
     }
 
@@ -702,7 +700,7 @@ public class AutoScalingRequest : BaseEntity
 /// <summary>
 /// Represents an auto-scaling response with execution details
 /// </summary>
-public class AutoScalingResponse : BaseEntity
+public class AutoScalingResponse : LegacyBaseEntity
 {
     public Guid RequestId { get; private set; }
     public bool IsApproved { get; private set; }
@@ -770,7 +768,6 @@ public class AutoScalingResponse : BaseEntity
         PostScalingMetrics = postScalingMetrics;
         ExecutionDuration = executionDuration;
         IsRollbackRequired = requiresRollback;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new AutoScalingCompletedEvent(Id, ExecutionDuration, requiresRollback));
     }
@@ -780,7 +777,6 @@ public class AutoScalingResponse : BaseEntity
         if (!string.IsNullOrWhiteSpace(warning))
         {
             ExecutionWarnings.Add($"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {warning}");
-            MarkAsUpdated();
         }
     }
 
@@ -793,7 +789,7 @@ public class AutoScalingResponse : BaseEntity
 /// <summary>
 /// Represents scaling decision context for cultural intelligence
 /// </summary>
-public class ScalingDecisionContext : BaseEntity
+public class ScalingDecisionContext : LegacyBaseEntity
 {
     public List<PerformanceThreshold> ActiveThresholds { get; init; } = new();
     public ConnectionPoolMetrics? CurrentMetrics { get; set; }
@@ -859,7 +855,6 @@ public class ScalingDecisionContext : BaseEntity
         CurrentSlaStatus = newSlaStatus;
         CurrentRevenueConcern = Math.Clamp(newRevenueConcern, 0.0, 1.0);
         EvaluatedAt = DateTime.UtcNow;
-        MarkAsUpdated();
     }
 
     public void AddUpcomingEvent(CulturalEventLoadPrediction prediction)
@@ -867,7 +862,6 @@ public class ScalingDecisionContext : BaseEntity
         if (prediction != null && !UpcomingEvents.Any(e => e.EventDateTime == prediction.EventDateTime))
         {
             UpcomingEvents.Add(prediction);
-            MarkAsUpdated();
             RaiseDomainEvent(new CulturalEventDetectedEvent(Id, prediction));
         }
     }

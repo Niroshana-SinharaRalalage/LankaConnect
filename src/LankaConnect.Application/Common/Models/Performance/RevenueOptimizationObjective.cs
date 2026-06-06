@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Revenue optimization objective model for performance management
 /// TDD Implementation: Defines objectives for revenue optimization
 /// </summary>
-public class RevenueOptimizationObjective : BaseEntity
+public class RevenueOptimizationObjective : LegacyBaseEntity
 {
     public Guid ObjectiveId { get; set; } = Guid.NewGuid();
     public string ObjectiveName { get; set; } = string.Empty;

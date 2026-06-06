@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Performance;
 
-public class CompetitiveBenchmarkData : BaseEntity
+public class CompetitiveBenchmarkData : LegacyBaseEntity
 {
     public Guid BenchmarkId { get; set; } = Guid.NewGuid();
     public string CompetitorName { get; set; } = string.Empty;

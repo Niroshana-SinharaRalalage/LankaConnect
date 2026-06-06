@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Phase 6A.74 Part 13+: Tracks newsletter email send history with detailed recipient breakdown
 /// Purpose: Display "X recipients (breakdown) ✓ Y sent ✗ Z failed" in newsletter UI
 /// </summary>
-public class NewsletterEmailHistory : BaseEntity
+public class NewsletterEmailHistory : LegacyBaseEntity
 {
     /// <summary>
     /// Newsletter that was sent

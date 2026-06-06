@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security;
 
-public class RegionalKeyRotationSchedule : BaseEntity
+public class RegionalKeyRotationSchedule : LegacyBaseEntity
 {
     public Guid ScheduleId { get; set; } = Guid.NewGuid();
     public string RegionId { get; set; } = string.Empty;

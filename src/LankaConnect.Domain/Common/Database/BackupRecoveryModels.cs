@@ -261,7 +261,7 @@ public record GeoRegionEnumDetails
 /// <summary>
 /// Backup request model with cultural intelligence
 /// </summary>
-public class BackupRequest : BaseEntity
+public class BackupRequest : LegacyBaseEntity
 {
     public BackupType BackupType { get; private set; }
     public CulturalDataPriority Priority { get; private set; }
@@ -340,7 +340,7 @@ public class BackupRequest : BaseEntity
 /// <summary>
 /// Backup response and status tracking
 /// </summary>
-public class BackupResponse : BaseEntity
+public class BackupResponse : LegacyBaseEntity
 {
     public Guid BackupRequestId { get; private set; }
     public DateTime StartedAt { get; private set; }
@@ -403,7 +403,7 @@ public class BackupResponse : BaseEntity
 /// <summary>
 /// Disaster recovery configuration and coordination
 /// </summary>
-public class DisasterRecoveryConfiguration : BaseEntity
+public class DisasterRecoveryConfiguration : LegacyBaseEntity
 {
     public string ConfigurationName { get; private set; } = string.Empty;
     public DisasterType DisasterType { get; private set; }
@@ -487,7 +487,7 @@ public class DisasterRecoveryConfiguration : BaseEntity
 /// <summary>
 /// Cultural event backup analysis and metadata
 /// </summary>
-public class CulturalEventBackupAnalysis : BaseEntity
+public class CulturalEventBackupAnalysis : LegacyBaseEntity
 {
     public Guid EventId { get; private set; }
     public string EventName { get; private set; } = string.Empty;
@@ -565,7 +565,7 @@ public class CulturalEventBackupAnalysis : BaseEntity
 /// <summary>
 /// Multi-region coordination for disaster recovery
 /// </summary>
-public class MultiRegionCoordination : BaseEntity
+public class MultiRegionCoordination : LegacyBaseEntity
 {
     public string CoordinationName { get; private set; } = string.Empty;
     public GeoRegionEnum PrimaryRegion { get; private set; }
@@ -648,7 +648,7 @@ public class MultiRegionCoordination : BaseEntity
 /// <summary>
 /// Business continuity plan and execution model
 /// </summary>
-public class BusinessContinuityPlan : BaseEntity
+public class BusinessContinuityPlan : LegacyBaseEntity
 {
     public string PlanName { get; private set; } = string.Empty;
     public BusinessContinuityState CurrentState { get; private set; }
@@ -748,7 +748,7 @@ public class BusinessContinuityPlan : BaseEntity
 /// <summary>
 /// Data integrity validation and metrics
 /// </summary>
-public class DataIntegrityMetrics : BaseEntity
+public class DataIntegrityMetrics : LegacyBaseEntity
 {
     public string ValidationName { get; private set; } = string.Empty;
     public DataIntegrityCheckType CheckType { get; private set; }
@@ -837,7 +837,7 @@ public class DataIntegrityMetrics : BaseEntity
 /// <summary>
 /// Recovery procedure execution tracking
 /// </summary>
-public class RecoveryProcedure : BaseEntity
+public class RecoveryProcedure : LegacyBaseEntity
 {
     public string ProcedureName { get; private set; } = string.Empty;
     public RecoveryStrategy Strategy { get; private set; }
@@ -941,7 +941,7 @@ public class RecoveryProcedure : BaseEntity
 /// <summary>
 /// Disaster recovery metrics and monitoring
 /// </summary>
-public class DisasterRecoveryMetrics : BaseEntity
+public class DisasterRecoveryMetrics : LegacyBaseEntity
 {
     public DateTime MetricTimestamp { get; private set; }
     public TimeSpan ActualRTO { get; private set; }

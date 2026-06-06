@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security;
 
-public class MultiJurisdictionCompliance : BaseEntity
+public class MultiJurisdictionCompliance : LegacyBaseEntity
 {
     public Guid ComplianceId { get; set; } = Guid.NewGuid();
     public List<string> Jurisdictions { get; set; } = new();

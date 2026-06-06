@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Security;
 /// Result of cross-region incident response execution
 /// TDD Implementation: Tracks response effectiveness and metrics
 /// </summary>
-public class CrossRegionIncidentResponseResult : BaseEntity
+public class CrossRegionIncidentResponseResult : LegacyBaseEntity
 {
     public Guid ResponseId { get; set; } = Guid.NewGuid();
     public Guid IncidentId { get; set; }

@@ -4,7 +4,7 @@ using LankaConnect.Domain.Common.Enums;
 
 namespace LankaConnect.Application.Common.Models.Routing;
 
-public class GenerationalPatternAnalysis : BaseEntity
+public class GenerationalPatternAnalysis : LegacyBaseEntity
 {
     public Guid AnalysisId { get; set; } = Guid.NewGuid();
     public int Generation { get; set; } = 1;

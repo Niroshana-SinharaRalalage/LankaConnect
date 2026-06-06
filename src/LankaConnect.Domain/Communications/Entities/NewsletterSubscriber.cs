@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Encapsulates newsletter subscription business rules and workflow
 /// Phase 6A.64: Updated to support many-to-many relationship with MetroAreas via junction table
 /// </summary>
-public class NewsletterSubscriber : BaseEntity, IAggregateRoot
+public class NewsletterSubscriber : LegacyBaseEntity, IAggregateRoot
 {
     public Email Email { get; private set; } = null!;
 
@@ -140,7 +140,6 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
         IsConfirmed = true;
         ConfirmedAt = DateTime.UtcNow;
         ConfirmationToken = null;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new NewsletterSubscriptionConfirmedEvent(
             Id,
@@ -163,7 +162,6 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
 
         ConfirmationToken = GenerateToken();
         ConfirmationSentAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -185,7 +183,6 @@ public class NewsletterSubscriber : BaseEntity, IAggregateRoot
 
         IsActive = false;
         UnsubscribedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new NewsletterSubscriptionCancelledEvent(
             Id,

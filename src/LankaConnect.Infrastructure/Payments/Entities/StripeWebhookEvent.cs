@@ -5,7 +5,7 @@ namespace LankaConnect.Infrastructure.Payments.Entities;
 /// <summary>
 /// Tracks processed Stripe webhook events for idempotency
 /// </summary>
-public class StripeWebhookEvent : BaseEntity
+public class StripeWebhookEvent : LegacyBaseEntity
 {
     /// <summary>
     /// Stripe event ID (evt_xxx)
@@ -65,6 +65,5 @@ public class StripeWebhookEvent : BaseEntity
     {
         AttemptCount++;
         ErrorMessage = errorMessage;
-        MarkAsUpdated();
     }
 }

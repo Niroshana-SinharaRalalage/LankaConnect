@@ -3,7 +3,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Cultural;
 
-public class SacredContentValidationResult : BaseEntity
+public class SacredContentValidationResult : LegacyBaseEntity
 {
     public Guid ValidationId { get; set; } = Guid.NewGuid();
     public bool IsValid { get; set; } = true;

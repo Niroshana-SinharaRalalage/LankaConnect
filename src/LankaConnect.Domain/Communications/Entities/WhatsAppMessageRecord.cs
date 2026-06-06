@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Maps 1:1 with communications.whatsapp_messages table.
 /// Uses private setters with domain methods per architect review C1.
 /// </summary>
-public class WhatsAppMessageRecord : BaseEntity
+public class WhatsAppMessageRecord : LegacyBaseEntity
 {
     public string FromPhoneNumber { get; private set; } = null!;
     public string ToPhoneNumber { get; private set; } = null!;
@@ -101,7 +101,6 @@ public class WhatsAppMessageRecord : BaseEntity
         Status = WhatsAppMessageStatus.Sent;
         SentAt = DateTime.UtcNow;
         AcsMessageId = providerMessageId;  // DB column name kept for backward compat
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -110,7 +109,6 @@ public class WhatsAppMessageRecord : BaseEntity
     public void SetProvider(WhatsAppProvider provider)
     {
         Provider = provider;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -120,7 +118,6 @@ public class WhatsAppMessageRecord : BaseEntity
     {
         Status = WhatsAppMessageStatus.Delivered;
         DeliveredAt = DateTime.UtcNow;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -130,7 +127,6 @@ public class WhatsAppMessageRecord : BaseEntity
     {
         Status = WhatsAppMessageStatus.Read;
         ReadAt = DateTime.UtcNow;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -141,7 +137,6 @@ public class WhatsAppMessageRecord : BaseEntity
         Status = WhatsAppMessageStatus.Failed;
         FailedAt = DateTime.UtcNow;
         ErrorMessage = error;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -154,7 +149,6 @@ public class WhatsAppMessageRecord : BaseEntity
         Status = WhatsAppMessageStatus.Sending;
         FailedAt = null;
         ErrorMessage = null;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -164,7 +158,6 @@ public class WhatsAppMessageRecord : BaseEntity
     {
         Status = WhatsAppMessageStatus.Scheduled;
         ScheduledFor = scheduledTime;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -173,7 +166,6 @@ public class WhatsAppMessageRecord : BaseEntity
     public void SetMetaMessageId(string metaMessageId)
     {
         MetaMessageId = metaMessageId;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -182,7 +174,6 @@ public class WhatsAppMessageRecord : BaseEntity
     public void SetContent(string content)
     {
         MessageContent = content;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -193,7 +184,6 @@ public class WhatsAppMessageRecord : BaseEntity
         CulturalContext = culturalContextJson;
         CulturalAppropriatenessScore = appropriatenessScore;
         RequiresCulturalValidation = requiresValidation;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -203,6 +193,5 @@ public class WhatsAppMessageRecord : BaseEntity
     {
         DiasporaRegion = diasporaRegion;
         TimeZone = timeZone;
-        MarkAsUpdated();
     }
 }

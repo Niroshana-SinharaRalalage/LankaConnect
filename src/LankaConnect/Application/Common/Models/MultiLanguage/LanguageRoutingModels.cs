@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.MultiLanguage
 {
-    public class CommunityLanguageProfileUpdate : BaseEntity
+    public class CommunityLanguageProfileUpdate : LegacyBaseEntity
     {
         public string CommunityId { get; set; } = string.Empty;
         public string PrimaryLanguage { get; set; } = string.Empty;
@@ -14,7 +14,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string UpdatedBy { get; set; } = string.Empty;
     }
 
-    public class LanguageRoutingQuery : BaseEntity
+    public class LanguageRoutingQuery : LegacyBaseEntity
     {
         public string SourceLanguage { get; set; } = string.Empty;
         public string TargetLanguage { get; set; } = string.Empty;
@@ -26,7 +26,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string UserId { get; set; } = string.Empty;
     }
 
-    public class LanguageRoutingQueryResult : BaseEntity
+    public class LanguageRoutingQueryResult : LegacyBaseEntity
     {
         public string QueryId { get; set; } = string.Empty;
         public List<string> RecommendedTranslators { get; set; } = new();
@@ -38,7 +38,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public DateTime ProcessedAt { get; set; } = DateTime.UtcNow;
     }
 
-    public class DatabaseOptimizationStrategy : BaseEntity
+    public class DatabaseOptimizationStrategy : LegacyBaseEntity
     {
         public string StrategyName { get; set; } = string.Empty;
         public string TargetLanguagePair { get; set; } = string.Empty;
@@ -50,7 +50,7 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public bool IsActive { get; set; } = true;
     }
 
-    public class DatabasePerformanceAnalysis : BaseEntity
+    public class DatabasePerformanceAnalysis : LegacyBaseEntity
     {
         public string AnalysisId { get; set; } = string.Empty;
         public string LanguagePair { get; set; } = string.Empty;

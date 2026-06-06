@@ -215,7 +215,7 @@ public class BillingAnalytics : ValueObject
 /// <summary>
 /// Enterprise client for custom billing
 /// </summary>
-public class EnterpriseClient : BaseEntity
+public class EnterpriseClient : LegacyBaseEntity
 {
     public CompanyName CompanyName { get; private set; }
     public ContactInfo ContactInfo { get; private set; }

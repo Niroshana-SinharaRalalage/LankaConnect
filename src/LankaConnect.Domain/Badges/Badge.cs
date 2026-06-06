@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Badges;
 /// Examples: "New Event", "Cancelled", "New Year", "Valentine", etc.
 /// Badge images are displayed as corner ribbons or decorative overlays on event cards
 /// </summary>
-public class Badge : BaseEntity
+public class Badge : LegacyBaseEntity
 {
     /// <summary>
     /// Display name of the badge (e.g., "New Event", "Valentine")
@@ -228,7 +228,6 @@ public class Badge : BaseEntity
 #pragma warning restore CS0618
 
         DisplayOrder = displayOrder;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -246,7 +245,6 @@ public class Badge : BaseEntity
 
         ImageUrl = newImageUrl;
         BlobName = newBlobName;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -260,7 +258,6 @@ public class Badge : BaseEntity
             return Result.Failure("Badge is already active");
 
         IsActive = true;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -275,7 +272,6 @@ public class Badge : BaseEntity
             return Result.Failure("Badge is already inactive");
 
         IsActive = false;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -298,7 +294,6 @@ public class Badge : BaseEntity
             return Result.Failure("Duration must be a positive number of days");
 
         DefaultDurationDays = durationDays;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -312,7 +307,6 @@ public class Badge : BaseEntity
             throw new ArgumentNullException(nameof(config));
 
         ListingConfig = config;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -325,7 +319,6 @@ public class Badge : BaseEntity
             throw new ArgumentNullException(nameof(config));
 
         FeaturedConfig = config;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -338,7 +331,6 @@ public class Badge : BaseEntity
             throw new ArgumentNullException(nameof(config));
 
         DetailConfig = config;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -353,6 +345,5 @@ public class Badge : BaseEntity
         ListingConfig = config;
         FeaturedConfig = config;
         DetailConfig = config;
-        MarkAsUpdated();
     }
 }

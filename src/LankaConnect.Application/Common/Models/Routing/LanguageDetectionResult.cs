@@ -4,7 +4,7 @@ using LankaConnect.Domain.Common.Enums;
 
 namespace LankaConnect.Application.Common.Models.Routing;
 
-public class LanguageDetectionResult : BaseEntity
+public class LanguageDetectionResult : LegacyBaseEntity
 {
     public Guid DetectionId { get; set; } = Guid.NewGuid();
     public SouthAsianLanguage PrimaryLanguage { get; set; } = SouthAsianLanguage.English;

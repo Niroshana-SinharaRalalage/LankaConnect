@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Templates must be submitted to Meta Business Manager and approved before use.
 /// Status/Category use enums per architect review D3.
 /// </summary>
-public class WhatsAppTemplate : BaseEntity
+public class WhatsAppTemplate : LegacyBaseEntity
 {
     public string TemplateName { get; private set; } = null!;
     public string DisplayName { get; private set; } = null!;
@@ -96,7 +96,6 @@ public class WhatsAppTemplate : BaseEntity
         ApprovedAt = DateTime.UtcNow;
         RejectedAt = null;
         RejectionReason = null;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -109,7 +108,6 @@ public class WhatsAppTemplate : BaseEntity
         RejectedAt = DateTime.UtcNow;
         ApprovedAt = null;
         MetaTemplateId = null;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -122,7 +120,6 @@ public class WhatsAppTemplate : BaseEntity
         RejectionReason = null;
         ApprovedAt = null;
         MetaTemplateId = null;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -131,7 +128,6 @@ public class WhatsAppTemplate : BaseEntity
     public void SetTwilioContentSid(string? contentSid)
     {
         TwilioContentSid = contentSid;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -148,7 +144,6 @@ public class WhatsAppTemplate : BaseEntity
         ApprovedAt = DateTime.UtcNow;
         RejectedAt = null;
         RejectionReason = null;
-        MarkAsUpdated();
     }
 
     /// <summary>

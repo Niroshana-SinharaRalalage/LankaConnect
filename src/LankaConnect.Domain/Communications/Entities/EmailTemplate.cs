@@ -5,7 +5,7 @@ using LankaConnect.Domain.Communications.Services;
 
 namespace LankaConnect.Domain.Communications.Entities;
 
-public class EmailTemplate : BaseEntity
+public class EmailTemplate : LegacyBaseEntity
 {
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
@@ -36,7 +36,7 @@ public class EmailTemplate : BaseEntity
         Type = type;
         Category = EmailTemplateCategory.ForEmailType(type); // Auto-assign category based on type
         IsActive = true;
-        MarkAsUpdated(); // Initialize UpdatedAt timestamp
+         // Initialize UpdatedAt timestamp
     }
 
     public static Result<EmailTemplate> Create(
@@ -68,7 +68,6 @@ public class EmailTemplate : BaseEntity
         SubjectTemplate = subjectTemplate;
         TextTemplate = textTemplate;
         HtmlTemplate = htmlTemplate;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -76,14 +75,12 @@ public class EmailTemplate : BaseEntity
     public Result SetActive(bool isActive)
     {
         IsActive = isActive;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public Result SetTags(string? tags)
     {
         Tags = tags;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -91,7 +88,6 @@ public class EmailTemplate : BaseEntity
     {
         Type = newType;
         Category = EmailTemplateCategory.ForEmailType(newType); // Update category when type changes
-        MarkAsUpdated();
         return Result.Success();
     }
 

@@ -8,7 +8,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Revenue protection policy for performance incident response
 /// TDD Implementation: Defines policies for protecting revenue during incidents
 /// </summary>
-public class RevenueProtectionPolicy : BaseEntity
+public class RevenueProtectionPolicy : LegacyBaseEntity
 {
     public Guid PolicyId { get; set; } = Guid.NewGuid();
     public string PolicyName { get; set; } = string.Empty;

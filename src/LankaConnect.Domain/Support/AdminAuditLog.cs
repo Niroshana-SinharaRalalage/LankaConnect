@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Support;
 /// Phase 6A.89: Security audit log for admin actions.
 /// Records all administrative actions for compliance and security tracking.
 /// </summary>
-public class AdminAuditLog : BaseEntity
+public class AdminAuditLog : LegacyBaseEntity
 {
     /// <summary>
     /// The admin user who performed the action

@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Churn risk analysis model for performance impact assessment
 /// TDD Implementation: Analyzes customer churn risk from performance issues
 /// </summary>
-public class ChurnRiskAnalysis : BaseEntity
+public class ChurnRiskAnalysis : LegacyBaseEntity
 {
     public Guid AnalysisId { get; set; } = Guid.NewGuid();
     public DateTime AnalysisDate { get; set; } = DateTime.UtcNow;

@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// Phase 6A.25: Allows organizers and admins to manage groups of email addresses
 /// for event announcements, invitations, and marketing communications.
 /// </summary>
-public class EmailGroup : BaseEntity
+public class EmailGroup : LegacyBaseEntity
 {
     public string Name { get; private set; } = string.Empty;
     public string? Description { get; private set; }
@@ -64,7 +64,6 @@ public class EmailGroup : BaseEntity
         Name = name.Trim();
         EmailAddresses = validationResult.Value;
         Description = description?.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -75,7 +74,6 @@ public class EmailGroup : BaseEntity
     public void Deactivate()
     {
         IsActive = false;
-        MarkAsUpdated();
     }
 
     /// <summary>

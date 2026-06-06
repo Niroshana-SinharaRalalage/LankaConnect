@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Maintenance revenue protection model
 /// TDD Implementation: Protects revenue during maintenance windows
 /// </summary>
-public class MaintenanceRevenueProtection : BaseEntity
+public class MaintenanceRevenueProtection : LegacyBaseEntity
 {
     public Guid ProtectionId { get; set; } = Guid.NewGuid();
     public Guid MaintenanceId { get; set; }

@@ -7,7 +7,7 @@ namespace LankaConnect.Application.Common.Models.Performance;
 /// Revenue optimization recommendations model
 /// TDD Implementation: Provides AI-driven recommendations for revenue optimization
 /// </summary>
-public class RevenueOptimizationRecommendations : BaseEntity
+public class RevenueOptimizationRecommendations : LegacyBaseEntity
 {
     public Guid RecommendationsId { get; set; } = Guid.NewGuid();
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;

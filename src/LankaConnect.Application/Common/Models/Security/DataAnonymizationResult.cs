@@ -2,7 +2,7 @@ using LankaConnect.Domain.Common;
 
 namespace LankaConnect.Application.Common.Models.Security
 {
-    public class DataAnonymizationResult : BaseEntity
+    public class DataAnonymizationResult : LegacyBaseEntity
     {
         public string OperationId { get; set; } = string.Empty;
         public string DataSetId { get; set; } = string.Empty;
@@ -18,7 +18,7 @@ namespace LankaConnect.Application.Common.Models.Security
     }
 
 
-    public class DeletionSchedule : BaseEntity
+    public class DeletionSchedule : LegacyBaseEntity
     {
         public string ScheduleName { get; set; } = string.Empty;
         public DateTime ScheduledDate { get; set; }
@@ -30,7 +30,7 @@ namespace LankaConnect.Application.Common.Models.Security
         public string BackupLocation { get; set; } = string.Empty;
     }
 
-    public class DataRetentionResult : BaseEntity
+    public class DataRetentionResult : LegacyBaseEntity
     {
         public string OperationId { get; set; } = string.Empty;
         public int RecordsEvaluated { get; set; }

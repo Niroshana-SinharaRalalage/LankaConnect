@@ -4,7 +4,7 @@ using LankaConnect.Domain.Business.Enums;
 
 namespace LankaConnect.Domain.Business;
 
-public class Review : BaseEntity
+public class Review : LegacyBaseEntity
 {
     public Rating Rating { get; private set; }
     public ReviewContent Content { get; private set; }
@@ -77,7 +77,6 @@ public class Review : BaseEntity
         Status = ReviewStatus.Pending; // Reset to pending after edit
         ApprovedAt = null;
         ModerationNotes = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -90,7 +89,6 @@ public class Review : BaseEntity
         Status = ReviewStatus.Approved;
         ApprovedAt = DateTime.UtcNow;
         ModerationNotes = moderationNotes?.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -106,7 +104,6 @@ public class Review : BaseEntity
         Status = ReviewStatus.Rejected;
         ApprovedAt = null;
         ModerationNotes = moderationNotes.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -119,7 +116,6 @@ public class Review : BaseEntity
         Status = ReviewStatus.Pending;
         ApprovedAt = null;
         ModerationNotes = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }

@@ -4,7 +4,7 @@ using LankaConnect.Domain.Common.Enums;
 
 namespace LankaConnect.Application.Common.Models.Cultural;
 
-public class SacredContentRequest : BaseEntity
+public class SacredContentRequest : LegacyBaseEntity
 {
     public Guid RequestId { get; set; } = Guid.NewGuid();
     public string ContentText { get; set; } = string.Empty;

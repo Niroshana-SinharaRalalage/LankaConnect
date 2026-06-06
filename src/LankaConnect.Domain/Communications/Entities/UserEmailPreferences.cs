@@ -3,7 +3,7 @@ using LankaConnect.Domain.Users.ValueObjects;
 
 namespace LankaConnect.Domain.Communications.Entities;
 
-public class UserEmailPreferences : BaseEntity
+public class UserEmailPreferences : LegacyBaseEntity
 {
     public Guid UserId { get; private set; }
     public bool AllowMarketing { get; private set; }
@@ -24,7 +24,7 @@ public class UserEmailPreferences : BaseEntity
         AllowNewsletters = true;
         AllowTransactional = true;
         PreferredLanguage = "en-US";
-        MarkAsUpdated(); // Initialize UpdatedAt timestamp
+         // Initialize UpdatedAt timestamp
     }
 
     public static Result<UserEmailPreferences> Create(Guid userId)
@@ -39,21 +39,18 @@ public class UserEmailPreferences : BaseEntity
     public Result UpdateMarketingPreference(bool allow)
     {
         AllowMarketing = allow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public Result UpdateNotificationPreference(bool allow)
     {
         AllowNotifications = allow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
     public Result UpdateNewsletterPreference(bool allow)
     {
         AllowNewsletters = allow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -64,7 +61,6 @@ public class UserEmailPreferences : BaseEntity
             return Result.Failure("Transactional emails cannot be disabled");
 
         AllowTransactional = allow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -74,7 +70,6 @@ public class UserEmailPreferences : BaseEntity
             return Result.Failure("Language is required");
 
         PreferredLanguage = language;
-        MarkAsUpdated();
         return Result.Success();
     }
 }

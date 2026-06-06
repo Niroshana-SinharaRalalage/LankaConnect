@@ -15,7 +15,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// - Aggregate metrics by date and template name
 /// - Support historical queries for dashboard
 /// </summary>
-public class EmailMetricRecord : BaseEntity
+public class EmailMetricRecord : LegacyBaseEntity
 {
     /// <summary>
     /// Date for which these metrics apply (granularity: daily)
@@ -108,7 +108,6 @@ public class EmailMetricRecord : BaseEntity
         else
             Failed++;
 
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -117,7 +116,6 @@ public class EmailMetricRecord : BaseEntity
     public void RecordValidationFailure()
     {
         ValidationFailures++;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -126,7 +124,6 @@ public class EmailMetricRecord : BaseEntity
     public void RecordTemplateNotFound()
     {
         TemplateNotFoundCount++;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -141,7 +138,6 @@ public class EmailMetricRecord : BaseEntity
         ValidationFailures += validationFailures;
         TemplateNotFoundCount += templateNotFoundCount;
         AverageDurationMs = TotalSent > 0 ? (int)(TotalDurationMs / TotalSent) : 0;
-        MarkAsUpdated();
     }
 
     /// <summary>

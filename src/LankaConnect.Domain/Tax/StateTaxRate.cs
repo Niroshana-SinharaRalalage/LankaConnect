@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Tax;
 /// Phase 6A.X: Entity representing US state sales tax rates
 /// Stores state-level tax rates for revenue breakdown calculations
 /// </summary>
-public class StateTaxRate : BaseEntity
+public class StateTaxRate : LegacyBaseEntity
 {
     /// <summary>
     /// Two-letter state code (e.g., "CA", "NY")
@@ -117,7 +117,6 @@ public class StateTaxRate : BaseEntity
         TaxRate = newTaxRate;
         EffectiveDate = effectiveDate;
         DataSource = dataSource;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -128,7 +127,6 @@ public class StateTaxRate : BaseEntity
     public void Deactivate()
     {
         IsActive = false;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -137,6 +135,5 @@ public class StateTaxRate : BaseEntity
     public void Activate()
     {
         IsActive = true;
-        MarkAsUpdated();
     }
 }

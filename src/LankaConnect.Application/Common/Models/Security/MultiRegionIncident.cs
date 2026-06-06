@@ -8,7 +8,7 @@ namespace LankaConnect.Application.Common.Models.Security;
 /// Multi-region security incident model for cross-region incident response
 /// TDD Implementation: Supports Fortune 500 security requirements
 /// </summary>
-public class MultiRegionIncident : BaseEntity
+public class MultiRegionIncident : LegacyBaseEntity
 {
     public Guid IncidentId { get; set; } = Guid.NewGuid();
     public string Title { get; set; } = string.Empty;

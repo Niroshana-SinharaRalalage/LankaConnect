@@ -23,7 +23,7 @@ namespace LankaConnect.Domain.Communications.Entities;
 /// - "What emails went to recipient X today?" →
 ///   <c>WHERE recipient_email = 'X' AND dispatched_at &gt;= now() - interval '1 day'</c>
 /// </summary>
-public class EmailDispatchLog : BaseEntity
+public class EmailDispatchLog : LegacyBaseEntity
 {
     public Guid CorrelationId { get; private set; }
     public Guid? RefundRequestId { get; private set; }
@@ -138,6 +138,5 @@ public class EmailDispatchLog : BaseEntity
     {
         ProviderMessageId = providerMessageId;
         ProviderStatus = providerStatus;
-        MarkAsUpdated();
     }
 }

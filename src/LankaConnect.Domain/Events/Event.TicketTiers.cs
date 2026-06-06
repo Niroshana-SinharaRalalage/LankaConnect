@@ -55,7 +55,6 @@ public partial class Event
         }
 
         TicketingMode = mode;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -97,7 +96,6 @@ public partial class Event
             return tierResult;
 
         _ticketTiers.Add(tierResult.Value);
-        MarkAsUpdated();
         return tierResult;
     }
 

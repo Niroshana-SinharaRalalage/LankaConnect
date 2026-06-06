@@ -79,7 +79,6 @@ public partial class Event
         }
 
         VanitySlug = newSlug;
-        MarkAsUpdated();
 
         return Result.Success();
     }

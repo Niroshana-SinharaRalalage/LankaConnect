@@ -7,8 +7,21 @@ using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
-public partial class Event : BaseEntity
+// W3C (2026-06-06): Event migrated from legacy BaseEntity to
+// BB.Domain.Entity<Guid> + IAuditable per ADR-007. Class declaration uses
+// fully-qualified BB types to avoid Result<T> namespace conflict with the
+// legacy LankaConnect.Domain.Common.Result still used by factories.
+public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
+    // IAuditable members — interceptor-populated; treat as read-only from domain code.
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+
+    /// <summary>Backward-compat for callers that used legacy BaseEntity.GetDomainEvents().</summary>
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+
     private readonly List<Registration> _registrations = new();
     private readonly List<EventImage> _images = new(); // Epic 2 Phase 2: Event images support
     private readonly List<EventVideo> _videos = new(); // Epic 2 Phase 2: Event videos support
@@ -178,6 +191,9 @@ public partial class Event : BaseEntity
     private Event(EventTitle title, EventDescription description, DateTime? startDate, DateTime? endDate,
         Guid organizerId, int capacity, EventLocation? location = null, EventCategory category = EventCategory.Community, Money? ticketPrice = null)
     {
+        // W3C (2026-06-06): explicit Id init — legacy BaseEntity's parameterless ctor
+        // set Id = Guid.NewGuid(); BB.Domain.Entity<Guid> does not. Set in factory ctor.
+        Id = Guid.NewGuid();
         Title = title;
         Description = description;
         // Phase 8YA.1: Dates are nullable for TBD events. Coerce to UTC only when present.
@@ -276,7 +292,6 @@ public partial class Event : BaseEntity
         if (Status == EventStatus.Planning)
             Status = EventStatus.Draft;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -307,7 +322,6 @@ public partial class Event : BaseEntity
 
         Status = EventStatus.Published;
         PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp for "New" label
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventPublishedEvent(Id, DateTime.UtcNow, OrganizerId));
@@ -341,7 +355,6 @@ public partial class Event : BaseEntity
             ? EventStatus.Draft
             : EventStatus.Planning;
         PublishedAt = null; // Phase 6A.46: Clear publish timestamp when unpublishing
-        MarkAsUpdated();
 
         // Raise domain event (for potential notification/logging)
         RaiseDomainEvent(new EventUnpublishedEvent(Id, DateTime.UtcNow));
@@ -360,7 +373,6 @@ public partial class Event : BaseEntity
 
         Status = EventStatus.Cancelled;
         CancellationReason = reason.Trim();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventCancelledEvent(Id, reason.Trim(), DateTime.UtcNow));
@@ -397,7 +409,6 @@ public partial class Event : BaseEntity
             return Result.Failure(registrationResult.Errors);
 
         _registrations.Add(registrationResult.Value);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new RegistrationConfirmedEvent(Id, userId, quantity, DateTime.UtcNow));
@@ -448,7 +459,6 @@ public partial class Event : BaseEntity
             return Result.Failure(registrationResult.Errors);
 
         _registrations.Add(registrationResult.Value);
-        MarkAsUpdated();
 
         // Raise domain event for anonymous registration
         RaiseDomainEvent(new AnonymousRegistrationConfirmedEvent(Id, attendeeInfo.Email.Value, quantity, DateTime.UtcNow));
@@ -627,7 +637,6 @@ public partial class Event : BaseEntity
             return Result.Failure(registrationResult.Errors);
 
         _registrations.Add(registrationResult.Value);
-        MarkAsUpdated();
 
         // Phase 6A.81: CRITICAL - Only raise confirmation events for Confirmed registrations
         // For Preliminary registrations (paid events waiting for payment), domain events will be
@@ -678,7 +687,6 @@ public partial class Event : BaseEntity
         }
 
         registration.Cancel();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
@@ -701,7 +709,6 @@ public partial class Event : BaseEntity
     public void RaiseRegistrationCancelledEvent(Guid userId)
     {
         RaiseDomainEvent(new RegistrationCancelledEvent(Id, userId, DateTime.UtcNow));
-        MarkAsUpdated();
     }
 
     public Result UpdateRegistration(Guid userId, int newQuantity)
@@ -730,7 +737,6 @@ public partial class Event : BaseEntity
 
         // Update the registration
         registration.UpdateQuantity(newQuantity);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new RegistrationQuantityUpdatedEvent(Id, userId, previousQuantity, newQuantity, DateTime.UtcNow));
@@ -791,7 +797,6 @@ public partial class Event : BaseEntity
         if (updateResult.IsFailure)
             return updateResult;
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new RegistrationDetailsUpdatedEvent(
@@ -832,7 +837,6 @@ public partial class Event : BaseEntity
         if (Status == EventStatus.Published && EndDate.HasValue && DateTime.UtcNow > EndDate.Value)
         {
             Status = EventStatus.Completed;
-            MarkAsUpdated();
         }
     }
 
@@ -849,7 +853,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Event cannot be activated before start date");
 
         Status = EventStatus.Active;
-        MarkAsUpdated();
         
         // Raise domain event
         RaiseDomainEvent(new EventActivatedEvent(Id, DateTime.UtcNow));
@@ -875,7 +878,6 @@ public partial class Event : BaseEntity
 
         Status = EventStatus.Postponed;
         CancellationReason = reason.Trim(); // Reuse cancellation reason field for postponement
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventPostponedEvent(Id, reason.Trim(), DateTime.UtcNow));
@@ -889,7 +891,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Only completed events can be archived");
 
         Status = EventStatus.Archived;
-        MarkAsUpdated();
         
         // Raise domain event
         RaiseDomainEvent(new EventArchivedEvent(Id, DateTime.UtcNow));
@@ -903,7 +904,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Only draft events can be submitted for review");
 
         Status = EventStatus.UnderReview;
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventSubmittedForReviewEvent(Id, DateTime.UtcNow, true)); // Cultural events require approval
@@ -921,7 +921,6 @@ public partial class Event : BaseEntity
 
         Status = EventStatus.Published;
         PublishedAt = DateTime.UtcNow; // Phase 6A.46: Track publish timestamp when approved
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventApprovedEvent(Id, approvedByAdminId, DateTime.UtcNow));
@@ -941,7 +940,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Rejection reason is required");
 
         Status = EventStatus.Draft; // Return to draft for organizer to modify
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventRejectedEvent(Id, rejectedByAdminId, reason, DateTime.UtcNow));
@@ -966,7 +964,6 @@ public partial class Event : BaseEntity
             MaxAttendeesPerRegistration = newCapacity;
         }
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventCapacityUpdatedEvent(Id, previousCapacity, newCapacity, DateTime.UtcNow));
@@ -997,7 +994,6 @@ public partial class Event : BaseEntity
             return Result.Failure($"Maximum attendees per registration cannot exceed event capacity ({Capacity})");
 
         MaxAttendeesPerRegistration = maxAttendees;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -1050,7 +1046,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Location cannot be null");
 
         Location = location;
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventLocationUpdatedEvent(Id, location, DateTime.UtcNow));
@@ -1079,7 +1074,6 @@ public partial class Event : BaseEntity
         }
 
         TimeZoneId = timeZoneId;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -1093,7 +1087,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Event does not have a location set");
 
         Location = null;
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventLocationRemovedEvent(Id, DateTime.UtcNow));
@@ -1116,7 +1109,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Secondary location cannot be null");
 
         SecondaryLocation = secondaryLocation;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -1129,7 +1121,6 @@ public partial class Event : BaseEntity
             return Result.Success();
 
         SecondaryLocation = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -1164,7 +1155,6 @@ public partial class Event : BaseEntity
             TicketPrice = zeroPrice.Value;
         }
 
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -1182,7 +1172,6 @@ public partial class Event : BaseEntity
         TicketPrice = ticketPrice;
         IsFreeEvent = ticketPrice.IsZero;
 
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -1224,7 +1213,6 @@ public partial class Event : BaseEntity
             }
         }
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
@@ -1253,7 +1241,6 @@ public partial class Event : BaseEntity
         // Set TicketPrice to null for group pricing (not applicable)
         TicketPrice = null;
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new EventPricingUpdatedEvent(Id, pricing, DateTime.UtcNow));
@@ -1271,7 +1258,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Revenue breakdown cannot be null");
 
         RevenueBreakdown = breakdown;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -1386,7 +1372,6 @@ public partial class Event : BaseEntity
         // Create and add image
         var eventImage = EventImage.Create(Id, imageUrl, blobName, displayOrder);
         _images.Add(eventImage);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new ImageAddedToEventDomainEvent(Id, eventImage.Id, imageUrl));
@@ -1409,7 +1394,6 @@ public partial class Event : BaseEntity
 
         // Resequence display orders after removal
         ResequenceDisplayOrders();
-        MarkAsUpdated();
 
         // Raise domain event (includes BlobName for cleanup in handler)
         RaiseDomainEvent(new ImageRemovedFromEventDomainEvent(Id, imageId, blobName));
@@ -1452,7 +1436,6 @@ public partial class Event : BaseEntity
 
         // Add new image
         _images.Add(newImage);
-        MarkAsUpdated();
 
         // Raise domain event with old blob name for cleanup
         RaiseDomainEvent(new ImageReplacedInEventDomainEvent(Id, imageId, oldBlobName, newImageUrl));
@@ -1493,7 +1476,6 @@ public partial class Event : BaseEntity
             image.UpdateDisplayOrder(kvp.Value);
         }
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new ImagesReorderedDomainEvent(Id));
@@ -1527,7 +1509,6 @@ public partial class Event : BaseEntity
 
         // Mark the selected image as primary
         image.SetAsPrimary();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PrimaryImageSetDomainEvent(Id, imageId));
@@ -1546,7 +1527,6 @@ public partial class Event : BaseEntity
         if (currentPrimary != null)
         {
             currentPrimary.UnmarkAsPrimary();
-            MarkAsUpdated();
         }
         // Success even if no primary exists - it's a valid state
         return Result.Success();
@@ -1570,7 +1550,6 @@ public partial class Event : BaseEntity
 
         // Mark the selected image as primary
         image.SetAsPrimary();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PrimaryImageSetDomainEvent(Id, imageId));
@@ -1631,7 +1610,6 @@ public partial class Event : BaseEntity
             displayOrder);
 
         _videos.Add(eventVideo);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new VideoAddedToEventDomainEvent(Id, eventVideo.Id, videoUrl));
@@ -1656,7 +1634,6 @@ public partial class Event : BaseEntity
 
         // Resequence display orders after removal
         ResequenceVideoDisplayOrders();
-        MarkAsUpdated();
 
         // Raise domain event (includes both blob names for cleanup in handler)
         RaiseDomainEvent(new VideoRemovedFromEventDomainEvent(Id, videoId, videoBlobName, thumbnailBlobName));
@@ -1737,7 +1714,6 @@ public partial class Event : BaseEntity
         var position = _waitingList.Count + 1;
         var entry = WaitingListEntry.Create(userId, position);
         _waitingList.Add(entry);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new UserAddedToWaitingListDomainEvent(Id, userId, position, DateTime.UtcNow));
@@ -1757,7 +1733,6 @@ public partial class Event : BaseEntity
 
         _waitingList.Remove(entry);
         ResequenceWaitingList();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new UserRemovedFromWaitingListDomainEvent(Id, userId, DateTime.UtcNow));
@@ -1791,7 +1766,6 @@ public partial class Event : BaseEntity
         // Remove from waiting list
         _waitingList.Remove(entry);
         ResequenceWaitingList();
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new UserPromotedFromWaitingListDomainEvent(Id, userId, DateTime.UtcNow));
@@ -1848,7 +1822,6 @@ public partial class Event : BaseEntity
             return Result.Failure($"A pass with the name '{eventPass.Name}' already exists");
 
         _passes.Add(eventPass);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PassAddedToEventDomainEvent(Id, eventPass.Id, eventPass.Name, DateTime.UtcNow));
@@ -1871,7 +1844,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Cannot remove pass with existing reservations");
 
         _passes.Remove(pass);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PassRemovedFromEventDomainEvent(Id, passId, DateTime.UtcNow));
@@ -1920,7 +1892,6 @@ public partial class Event : BaseEntity
             return Result.Failure($"A sign-up list with category '{signUpList.Category}' already exists");
 
         _signUpLists.Add(signUpList);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new SignUpListAddedToEventDomainEvent(Id, signUpList.Id, signUpList.Category, DateTime.UtcNow));
@@ -1943,7 +1914,6 @@ public partial class Event : BaseEntity
             return Result.Failure("Cannot remove sign-up list with existing commitments");
 
         _signUpLists.Remove(signUpList);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new SignUpListRemovedFromEventDomainEvent(Id, signUpListId, DateTime.UtcNow));
@@ -2012,7 +1982,6 @@ public partial class Event : BaseEntity
 
         if (cancelledCount > 0)
         {
-            MarkAsUpdated();
         }
 
         // Return success if at least one commitment was cancelled, even if some failed
@@ -2088,7 +2057,6 @@ public partial class Event : BaseEntity
             return Result<EventBadge>.Failure(eventBadgeResult.Error);
 
         _badges.Add(eventBadgeResult.Value);
-        MarkAsUpdated();
 
         return Result<EventBadge>.Success(eventBadgeResult.Value);
     }
@@ -2103,7 +2071,6 @@ public partial class Event : BaseEntity
             return Result.Failure($"Badge with ID {badgeId} is not assigned to this event");
 
         _badges.Remove(eventBadge);
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -2158,7 +2125,6 @@ public partial class Event : BaseEntity
         // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
         // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2182,7 +2148,6 @@ public partial class Event : BaseEntity
         // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
         // See EventRepository.AddAsync/UpdateAsync - uses EF Core Entry API per ADR-009
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2210,7 +2175,6 @@ public partial class Event : BaseEntity
         // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
         // See EventRepository - uses EF Core Entry API per ADR-009
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2228,7 +2192,6 @@ public partial class Event : BaseEntity
             // NOTE: _emailGroupEntities shadow navigation updated by infrastructure layer
             // See EventRepository - uses EF Core Entry API per ADR-009
 
-            MarkAsUpdated();
         }
 
         return Result.Success();
@@ -2314,7 +2277,6 @@ public partial class Event : BaseEntity
             PublishOrganizerContact = false;
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2406,7 +2368,6 @@ public partial class Event : BaseEntity
         if (linkResult.IsFailure)
             return linkResult;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2427,7 +2388,6 @@ public partial class Event : BaseEntity
         if (unlinkResult.IsFailure)
             return unlinkResult;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2503,7 +2463,6 @@ public partial class Event : BaseEntity
                 "Disable donations or switch to Free / OnPlatformPaid first.");
 
         DonationConfig = config;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2513,7 +2472,6 @@ public partial class Event : BaseEntity
     public Result DisableDonations()
     {
         DonationConfig = DonationConfiguration.Disabled();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2553,7 +2511,6 @@ public partial class Event : BaseEntity
                 "Disable collections or switch to Free / OnPlatformPaid first.");
 
         CollectionConfig = config;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2563,7 +2520,6 @@ public partial class Event : BaseEntity
     public Result DisableCollections()
     {
         CollectionConfig = CollectionConfiguration.Disabled();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2602,7 +2558,6 @@ public partial class Event : BaseEntity
                 "Disable sponsors or switch to Free / OnPlatformPaid first.");
 
         SponsorConfig = config;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2612,7 +2567,6 @@ public partial class Event : BaseEntity
     public Result DisableSponsors()
     {
         SponsorConfig = SponsorConfiguration.Disabled();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2642,7 +2596,6 @@ public partial class Event : BaseEntity
                 "Disable add-ons or switch to Free / OnPlatformPaid first.");
 
         AddOnConfig = config;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2652,7 +2605,6 @@ public partial class Event : BaseEntity
     public Result DisableAddOns()
     {
         AddOnConfig = AddOnConfiguration.Disabled();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -2777,7 +2729,6 @@ public partial class Event : BaseEntity
         // shows a semantically-correct option for ExternalPaid events.
         RegistrationMode = RegistrationMode.External;
         SyncLegacyIsFree();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -2834,7 +2785,6 @@ public partial class Event : BaseEntity
         }
 
         SyncLegacyIsFree();
-        MarkAsUpdated();
         return Result.Success();
     }
 

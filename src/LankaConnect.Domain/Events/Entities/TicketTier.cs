@@ -9,8 +9,17 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Each tier has its own adult/child pricing, capacity, and reservation tracking.
 /// Follows the EventPass Reserve/Release pattern for capacity management.
 /// </summary>
-public class TicketTier : BaseEntity
+// W3C (2026-06-06): TicketTier migrated to BB.Domain.Entity<Guid> + IAuditable per ADR-007.
+public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
+    // IAuditable members — interceptor-populated.
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+
     /// <summary>
     /// The event this tier belongs to
     /// </summary>
@@ -104,6 +113,8 @@ public class TicketTier : BaseEntity
         int maxPerUser,
         int sortOrder)
     {
+        // W3C (2026-06-06): explicit Id init — see Notification W3A migration notes.
+        Id = Guid.NewGuid();
         EventId = eventId;
         Name = name;
         Description = description;
@@ -187,7 +198,6 @@ public class TicketTier : BaseEntity
             return Result.Failure("Insufficient capacity in this tier");
 
         ReservedCount += quantity;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -203,7 +213,6 @@ public class TicketTier : BaseEntity
             return Result.Failure("Cannot release more than reserved");
 
         ReservedCount -= quantity;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -286,7 +295,6 @@ public class TicketTier : BaseEntity
         Capacity = capacity;
         MaxPerUser = maxPerUser;
         SortOrder = sortOrder;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -300,7 +308,6 @@ public class TicketTier : BaseEntity
             return Result.Failure("Cannot deactivate tier with existing reservations");
 
         IsActive = false;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -310,7 +317,6 @@ public class TicketTier : BaseEntity
     public Result Activate()
     {
         IsActive = true;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -346,7 +352,6 @@ public class TicketTier : BaseEntity
             return Result.Failure("Assignment not found");
 
         _assignments.Remove(existing);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -364,7 +369,6 @@ public class TicketTier : BaseEntity
             return Result.Failure(assignmentResult.Error);
 
         _assignments.Add(assignmentResult.Value);
-        MarkAsUpdated();
         return Result.Success();
     }
 }

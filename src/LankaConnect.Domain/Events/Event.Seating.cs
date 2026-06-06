@@ -63,7 +63,6 @@ public partial class Event
         if (mode == SeatingMode.GeneralAdmission)
             VenueLayoutId = null;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -84,7 +83,6 @@ public partial class Event
         }
 
         VenueLayoutId = venueLayoutId;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -111,7 +109,6 @@ public partial class Event
         if (SeatingMode == SeatingMode.AssignedSeating)
             SeatingMode = SeatingMode.GeneralAdmission;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -214,7 +211,6 @@ public partial class Event
 
         VenueLayoutId = venueLayoutId;
         SeatingMode = SeatingMode.AssignedSeating;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -237,7 +233,6 @@ public partial class Event
 
         SeatingMode = SeatingMode.GeneralAdmission;
         VenueLayoutId = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 

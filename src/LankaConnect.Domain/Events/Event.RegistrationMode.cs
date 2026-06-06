@@ -125,7 +125,6 @@ public partial class Event
         }
 
         RegistrationMode = mode;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -231,7 +230,6 @@ public partial class Event
         if (!policy.DryRun && (migrated.Count > 0 || activeRegistrations.Count == 0))
         {
             RegistrationMode = targetMode;
-            MarkAsUpdated();
         }
 
         return Result<ConversionReport>.Success(new ConversionReport(migrated, skipped));
@@ -708,7 +706,6 @@ public partial class Event
             return Result.Failure(registrationResult.Errors);
 
         _registrations.Add(registrationResult.Value);
-        MarkAsUpdated();
 
         // 8. Raise domain events. For free events the registration goes straight to Confirmed
         //    and we raise the confirmation event here. For paid events the row is Preliminary

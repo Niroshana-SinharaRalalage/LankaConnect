@@ -8,8 +8,17 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Entity representing a pass/ticket type for an event
 /// Examples: Adult Pass, Child Pass, Food Ticket, VIP Pass
 /// </summary>
-public class EventPass : BaseEntity
+// W3C (2026-06-06): EventPass migrated to BB.Domain.Entity<Guid> + IAuditable per ADR-007.
+public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnect.BuildingBlocks.Domain.IAuditable
 {
+    // IAuditable members — interceptor-populated.
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
+
+    public IReadOnlyList<LankaConnect.BuildingBlocks.Domain.IDomainEvent> GetDomainEvents() => DomainEvents;
+
     public PassName Name { get; private set; }
     public PassDescription Description { get; private set; }
     public Money Price { get; private set; }
@@ -28,6 +37,8 @@ public class EventPass : BaseEntity
 
     private EventPass(PassName name, PassDescription description, Money price, int totalQuantity)
     {
+        // W3C (2026-06-06): explicit Id init — see Notification W3A migration notes.
+        Id = Guid.NewGuid();
         Name = name;
         Description = description;
         Price = price;
@@ -70,7 +81,6 @@ public class EventPass : BaseEntity
             return Result.Failure("Insufficient passes available");
 
         ReservedQuantity += quantity;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -88,7 +98,6 @@ public class EventPass : BaseEntity
             return Result.Failure("Cannot release more than reserved");
 
         ReservedQuantity -= quantity;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -110,7 +119,6 @@ public class EventPass : BaseEntity
         Name = name;
         Description = description;
         Price = price;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -124,7 +132,6 @@ public class EventPass : BaseEntity
             return Result.Failure("Amount must be greater than 0");
 
         TotalQuantity += amount;
-        MarkAsUpdated();
 
         return Result.Success();
     }

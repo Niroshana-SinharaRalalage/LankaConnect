@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Events;
 /// Metro Area entity - represents geographic service areas
 /// Read-only entity for querying metro areas from events.metro_areas table
 /// </summary>
-public class MetroArea : BaseEntity
+public class MetroArea : LegacyBaseEntity
 {
     public string Name { get; private set; }
     public string State { get; private set; }

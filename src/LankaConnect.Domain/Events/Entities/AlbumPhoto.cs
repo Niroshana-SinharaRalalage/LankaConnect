@@ -11,7 +11,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Media auto-expires after RetentionDays (default 7 days).
 /// All media is immediately approved (no moderation).
 /// </summary>
-public class AlbumPhoto : BaseEntity
+public class AlbumPhoto : LegacyBaseEntity
 {
     public Guid AlbumId { get; private set; }
     public Guid UploaderId { get; private set; }

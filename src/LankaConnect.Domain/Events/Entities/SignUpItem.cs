@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Replaces the predefinedItems string array with a full entity supporting quantities and categories
 /// Phase 6A.27: Added CreatedByUserId for Open items
 /// </summary>
-public class SignUpItem : BaseEntity
+public class SignUpItem : LegacyBaseEntity
 {
     private readonly List<SignUpCommitment> _commitments = new();
 
@@ -289,7 +289,6 @@ public class SignUpItem : BaseEntity
             return Result.Failure(commitmentResult.Error);
 
         _commitments.Add(commitmentResult.Value);
-        MarkAsUpdated();
 
         RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
             SignUpListId,
@@ -347,7 +346,6 @@ public class SignUpItem : BaseEntity
             return Result.Failure(commitmentResult.Error);
 
         _commitments.Add(commitmentResult.Value);
-        MarkAsUpdated();
 
         RaiseDomainEvent(new DomainEvents.UserCommittedToSignUpEvent(
             SignUpListId,
@@ -396,7 +394,6 @@ public class SignUpItem : BaseEntity
             var commitmentId = existingCommitment.Id;
 
             _commitments.Remove(existingCommitment);
-            MarkAsUpdated();
 
             RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
                 Id,
@@ -445,7 +442,6 @@ public class SignUpItem : BaseEntity
             if (r.IsFailure) return r;
         }
 
-        MarkAsUpdated();
 
         RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
             Id,
@@ -489,7 +485,6 @@ public class SignUpItem : BaseEntity
             var commitmentId = existingCommitment.Id;
 
             _commitments.Remove(existingCommitment);
-            MarkAsUpdated();
 
             RaiseDomainEvent(new DomainEvents.CommitmentCancelledEvent(
                 Id,
@@ -538,7 +533,6 @@ public class SignUpItem : BaseEntity
             if (r.IsFailure) return r;
         }
 
-        MarkAsUpdated();
 
         RaiseDomainEvent(new DomainEvents.CommitmentUpdatedEvent(
             Id,
@@ -581,7 +575,6 @@ public class SignUpItem : BaseEntity
             CancelledPhysicalQuantity: cancelledPhysicalQuantity,
             CancelledSlotsClaimed: cancelledSlotsClaimed));
 
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -595,7 +588,6 @@ public class SignUpItem : BaseEntity
             return Result.Failure("Item description is required");
 
         ItemDescription = newDescription.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -617,7 +609,6 @@ public class SignUpItem : BaseEntity
             return Result.Failure($"Cannot reduce quantity below committed amount ({committedQuantity})");
 
         TargetQuantity = newQuantity;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -644,7 +635,6 @@ public class SignUpItem : BaseEntity
 
         AvailableSlots = newSlots;
         SuggestedPerSlot = newSuggestedPerSlot;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -726,7 +716,6 @@ public class SignUpItem : BaseEntity
         TargetQuantity = newQuantity;
         Notes = newNotes?.Trim();
 
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -770,7 +759,6 @@ public class SignUpItem : BaseEntity
         SuggestedPerSlot = newSuggestedPerSlot;
         Notes = newNotes?.Trim();
 
-        MarkAsUpdated();
 
         return Result.Success();
     }

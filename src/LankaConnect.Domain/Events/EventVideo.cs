@@ -7,7 +7,7 @@ namespace LankaConnect.Domain.Events;
 /// Entity within Event aggregate - lifecycle controlled by Event
 /// Follows same pattern as EventImage for consistency
 /// </summary>
-public class EventVideo : BaseEntity
+public class EventVideo : LegacyBaseEntity
 {
     public string VideoUrl { get; private set; }
     public string BlobName { get; private set; }

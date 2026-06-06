@@ -18,7 +18,7 @@ namespace LankaConnect.Domain.Events;
 /// - Checkout expires (24h) -> Status = Abandoned
 /// - Payment refunded -> Status = Refunded
 /// </summary>
-public class Collection : BaseEntity
+public class Collection : LegacyBaseEntity
 {
     // Event linkage
     public Guid EventId { get; private set; }
@@ -139,7 +139,6 @@ public class Collection : BaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -159,7 +158,6 @@ public class Collection : BaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = CollectionStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new CollectionCompletedEvent(
             EventId,
@@ -185,7 +183,6 @@ public class Collection : BaseEntity
 
         Status = CollectionStatus.Failed;
         FailedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -200,7 +197,6 @@ public class Collection : BaseEntity
 
         Status = CollectionStatus.Abandoned;
         AbandonedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -215,7 +211,6 @@ public class Collection : BaseEntity
 
         Status = CollectionStatus.Refunded;
         RefundedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -235,7 +230,6 @@ public class Collection : BaseEntity
         StripeFeeAmount = stripeFee;
         PlatformCommissionAmount = platformCommission;
         OrganizerPayoutAmount = organizerPayout;
-        MarkAsUpdated();
 
         return Result.Success();
     }

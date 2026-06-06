@@ -26,7 +26,7 @@ namespace LankaConnect.Domain.Events;
 /// Money-only v1: package-based item sponsorship is deferred; the existing
 /// free-form item flow on <see cref="Sponsor"/> remains the in-kind path.
 /// </summary>
-public class SponsorshipPackage : BaseEntity
+public class SponsorshipPackage : LegacyBaseEntity
 {
     public const int MAX_NAME_LENGTH = 200;
     public const int MAX_DESCRIPTION_LENGTH = 1000;
@@ -188,7 +188,6 @@ public class SponsorshipPackage : BaseEntity
         Tier = string.IsNullOrWhiteSpace(tier) ? null : tier.Trim();
         Perks = NormalizePerks(perks);
         IncludedTicketCount = includedTicketCount;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -203,7 +202,6 @@ public class SponsorshipPackage : BaseEntity
             return Result.Failure("Sponsorship package is already inactive");
 
         IsActive = false;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -216,7 +214,6 @@ public class SponsorshipPackage : BaseEntity
             return Result.Failure("Sponsorship package is already active");
 
         IsActive = true;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -252,7 +249,6 @@ public class SponsorshipPackage : BaseEntity
 
         ImageUrl = url.Trim();
         ImageBlobName = blobName.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -265,7 +261,6 @@ public class SponsorshipPackage : BaseEntity
     {
         ImageUrl = null;
         ImageBlobName = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 

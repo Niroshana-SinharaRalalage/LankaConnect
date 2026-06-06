@@ -13,7 +13,7 @@ namespace LankaConnect.Domain.Events;
 /// QuantitySold is managed by AddOnDefinitionRepository.TryReserveStockAsync()
 /// and should NOT be modified through EF Core change tracking.
 /// </summary>
-public class AddOnDefinition : BaseEntity
+public class AddOnDefinition : LegacyBaseEntity
 {
     public const int MAX_NAME_LENGTH = 200;
     public const int MAX_DESCRIPTION_LENGTH = 1000;
@@ -153,7 +153,6 @@ public class AddOnDefinition : BaseEntity
         Price = price;
         QuantityLimit = quantityLimit;
         SortOrder = sortOrder;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -167,7 +166,6 @@ public class AddOnDefinition : BaseEntity
             return Result.Failure("Add-on is already inactive");
 
         IsActive = false;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -181,7 +179,6 @@ public class AddOnDefinition : BaseEntity
             return Result.Failure("Add-on is already active");
 
         IsActive = true;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -216,7 +213,6 @@ public class AddOnDefinition : BaseEntity
 
         ImageUrl = url.Trim();
         ImageBlobName = blobName.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -229,7 +225,6 @@ public class AddOnDefinition : BaseEntity
     {
         ImageUrl = null;
         ImageBlobName = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }

@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Events;
 /// Represents an image in an event's gallery
 /// Entity within Event aggregate - lifecycle controlled by Event
 /// </summary>
-public class EventImage : BaseEntity
+public class EventImage : LegacyBaseEntity
 {
     public string ImageUrl { get; private set; }
     public string BlobName { get; private set; }

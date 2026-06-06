@@ -12,7 +12,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// SeatReservation tables. A layout can be a reusable template or assigned to a
 /// specific event.
 /// </summary>
-public class VenueLayout : BaseEntity
+public class VenueLayout : LegacyBaseEntity
 {
     private readonly List<VenueZone> _zones = new();
     private readonly List<VenueTable> _tables = new();
@@ -276,7 +276,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Canvas configuration is required");
 
         Canvas = canvas;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -315,7 +314,6 @@ public class VenueLayout : BaseEntity
             return Result<VenueZone>.Failure(zoneResult.Error);
 
         _zones.Add(zoneResult.Value);
-        MarkAsUpdated();
         return zoneResult;
     }
 
@@ -339,8 +337,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure($"A zone named '{name.Trim()}' already exists in this layout");
 
         var result = zone.Update(name, color, sortOrder);
-        if (result.IsSuccess)
-            MarkAsUpdated();
 
         return result;
     }
@@ -367,8 +363,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure($"A zone named '{name.Trim()}' already exists in this layout");
 
         var result = zone.Update(name, color, sortOrder, shape, geometry);
-        if (result.IsSuccess)
-            MarkAsUpdated();
 
         return result;
     }
@@ -384,7 +378,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Zone not found in this layout");
 
         _zones.Remove(zone);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -464,7 +457,6 @@ public class VenueLayout : BaseEntity
             }
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -519,7 +511,6 @@ public class VenueLayout : BaseEntity
             }
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -537,8 +528,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Seat not found in this layout");
 
         var result = seat.Disable();
-        if (result.IsSuccess)
-            MarkAsUpdated();
 
         return result;
     }
@@ -553,8 +542,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Seat not found in this layout");
 
         var result = seat.Enable();
-        if (result.IsSuccess)
-            MarkAsUpdated();
 
         return result;
     }
@@ -569,8 +556,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Seat not found in this layout");
 
         var result = seat.SetAccessible(isAccessible);
-        if (result.IsSuccess)
-            MarkAsUpdated();
 
         return result;
     }
@@ -594,7 +579,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("This layout is already assigned to a different event");
 
         EventId = eventId;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -607,7 +591,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("This layout is not assigned to any event");
 
         EventId = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -857,7 +840,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Layout name cannot exceed 200 characters");
 
         Name = name.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -889,7 +871,6 @@ public class VenueLayout : BaseEntity
             return Result<VenueTable>.Failure(tableResult.Error);
 
         _tables.Add(tableResult.Value);
-        MarkAsUpdated();
         return tableResult;
     }
 
@@ -915,7 +896,6 @@ public class VenueLayout : BaseEntity
             return Result<VenueTable>.Failure(seatResult.Error);
         }
 
-        MarkAsUpdated();
         return addResult;
     }
 
@@ -943,7 +923,6 @@ public class VenueLayout : BaseEntity
             return Result<VenueTable>.Failure(seatResult.Error);
         }
 
-        MarkAsUpdated();
         return addResult;
     }
 
@@ -968,7 +947,7 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Referenced zone does not exist in this layout");
 
         var result = table.Update(label!, shape, capacity, sortOrder, zoneId, geometry);
-        if (result.IsSuccess) MarkAsUpdated();
+        
         return result;
     }
 
@@ -979,7 +958,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Table not found in this layout");
 
         _tables.Remove(table);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -1001,7 +979,6 @@ public class VenueLayout : BaseEntity
             return Result<VenueDecoration>.Failure(decorationResult.Error);
 
         _decorations.Add(decorationResult.Value);
-        MarkAsUpdated();
         return decorationResult;
     }
 
@@ -1018,7 +995,7 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Decoration not found in this layout");
 
         var result = decoration.Update(kind, label, sortOrder, geometry, properties);
-        if (result.IsSuccess) MarkAsUpdated();
+        
         return result;
     }
 
@@ -1029,7 +1006,6 @@ public class VenueLayout : BaseEntity
             return Result.Failure("Decoration not found in this layout");
 
         _decorations.Remove(decoration);
-        MarkAsUpdated();
         return Result.Success();
     }
 

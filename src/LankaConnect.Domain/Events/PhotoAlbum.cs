@@ -15,7 +15,7 @@ namespace LankaConnect.Domain.Events;
 /// Multiple albums per event allowed (unique constraint on EventId + Name).
 /// Photos auto-expire after RetentionDays (default 7 days).
 /// </summary>
-public class PhotoAlbum : BaseEntity
+public class PhotoAlbum : LegacyBaseEntity
 {
     private readonly List<AlbumPhoto> _photos = new();
 
@@ -105,7 +105,6 @@ public class PhotoAlbum : BaseEntity
 
         Status = AlbumStatus.Published;
         PublishedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle, Name));
 
@@ -128,7 +127,6 @@ public class PhotoAlbum : BaseEntity
         if (description != null)
             Description = description;
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -166,7 +164,6 @@ public class PhotoAlbum : BaseEntity
             _photos.Add(photo);
             PhotoCount++;
 
-            MarkAsUpdated();
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, photo.Id, uploaderId));
 
             return Result<AlbumPhoto>.Success(photo);
@@ -209,7 +206,6 @@ public class PhotoAlbum : BaseEntity
             _photos.Add(video);
             PhotoCount++;
 
-            MarkAsUpdated();
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, video.Id, uploaderId));
 
             return Result<AlbumPhoto>.Success(video);
@@ -237,7 +233,6 @@ public class PhotoAlbum : BaseEntity
         _photos.Remove(photo);
         PhotoCount = Math.Max(0, PhotoCount - 1);
 
-        MarkAsUpdated();
         return Result<AlbumPhoto>.Success(photo);
     }
 
@@ -266,7 +261,6 @@ public class PhotoAlbum : BaseEntity
         if (removed.Count > 0)
         {
             PhotoCount = Math.Max(0, PhotoCount - removed.Count);
-            MarkAsUpdated();
         }
 
         return Result<List<AlbumPhoto>>.Success(removed);
@@ -282,7 +276,6 @@ public class PhotoAlbum : BaseEntity
             return Result.Failure($"Photo with ID {photoId} not found in this album");
 
         CoverPhotoUrl = photo.MediumUrl ?? photo.ThumbnailUrl;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -292,6 +285,5 @@ public class PhotoAlbum : BaseEntity
     public void DecrementPhotoCount(int count = 1)
     {
         PhotoCount = Math.Max(0, PhotoCount - count);
-        MarkAsUpdated();
     }
 }

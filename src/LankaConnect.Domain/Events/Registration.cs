@@ -7,7 +7,7 @@ using LankaConnect.Domain.Shared.ValueObjects;
 
 namespace LankaConnect.Domain.Events;
 
-public class Registration : BaseEntity
+public class Registration : LegacyBaseEntity
 {
     public Guid EventId { get; private set; }
     public Guid? UserId { get; private set; }  // Nullable for anonymous registrations
@@ -373,7 +373,6 @@ public class Registration : BaseEntity
         if (Status != RegistrationStatus.Cancelled)
         {
             Status = RegistrationStatus.Cancelled;
-            MarkAsUpdated();
             // Phase 8 S8.3: release seat reservations on cancel.
             RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
                 EventId, Id, "registration_cancelled"));
@@ -402,7 +401,6 @@ public class Registration : BaseEntity
         }
 
         Status = RegistrationStatus.Cancelled;
-        MarkAsUpdated();
         // Phase 8 S8.3: release seat reservations on force-cancel.
         RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
             EventId, Id, "force_cancelled_stuck_refund"));
@@ -447,7 +445,6 @@ public class Registration : BaseEntity
         }
 
         Status = RegistrationStatus.Confirmed;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -457,7 +454,6 @@ public class Registration : BaseEntity
             return Result.Failure("Only confirmed registrations can be checked in");
 
         Status = RegistrationStatus.CheckedIn;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -468,7 +464,6 @@ public class Registration : BaseEntity
 
         // Phase 6A.81: Use Attended instead of deprecated Completed
         Status = RegistrationStatus.Attended;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -479,7 +474,6 @@ public class Registration : BaseEntity
             return Result.Failure($"Invalid transition from {Status} to {newStatus}");
 
         Status = newStatus;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -501,7 +495,6 @@ public class Registration : BaseEntity
         {
             CheckoutSessionExpiresAt = stripeExpiresAt.Value;
         }
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -551,7 +544,6 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Completed;
         Status = RegistrationStatus.Confirmed;
         CheckoutSessionExpiresAt = null;  // Clear expiration as payment is complete
-        MarkAsUpdated();
 
         // Phase 6A.24: Raise PaymentCompletedEvent to trigger email and ticket generation
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
@@ -629,7 +621,6 @@ public class Registration : BaseEntity
         _pendingSeatAssignments.Clear();
         _pendingSeatAssignments.AddRange(assignments);
         PendingSeatSessionId = sessionId;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -649,7 +640,6 @@ public class Registration : BaseEntity
     {
         _pendingSeatAssignments.Clear();
         PendingSeatSessionId = null;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -737,7 +727,6 @@ public class Registration : BaseEntity
 
         _attendees.Clear();
         _attendees.AddRange(rebound);
-        MarkAsUpdated();
 
         // Raise the domain event so downstream handlers (S8.4 metric emission;
         // future ticket-PDF regeneration) get notified.
@@ -759,7 +748,6 @@ public class Registration : BaseEntity
 
         PaymentStatus = PaymentStatus.Failed;
         Status = RegistrationStatus.Cancelled;  // Cancel registration if payment fails
-        MarkAsUpdated();
         // Phase 8 S8.3: release seat reservations on payment failure.
         RaiseDomainEvent(new DomainEvents.SeatReservationsReleasedEvent(
             EventId, Id, "payment_failed"));
@@ -776,7 +764,6 @@ public class Registration : BaseEntity
 
         PaymentStatus = PaymentStatus.Refunded;
         Status = RegistrationStatus.Refunded;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -828,7 +815,6 @@ public class Registration : BaseEntity
         {
             StripeRefundId = stripeRefundId;
         }
-        MarkAsUpdated();
 
         // Raise domain event for email notification
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
@@ -879,7 +865,6 @@ public class Registration : BaseEntity
         // State transition: RefundRequested → Confirmed
         Status = RegistrationStatus.Confirmed;
         RefundWithdrawnAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Raise domain event for audit trail
         var contactEmail = Contact?.Email ?? AttendeeInfo?.Email?.Value ?? string.Empty;
@@ -924,7 +909,6 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Refunded;
         StripeRefundId = stripeRefundId;
         RefundCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Raise domain event for email notification
         // Phase 6A.135: Include persisted AddOnRefundAmount so completion email shows combined total
@@ -1006,7 +990,6 @@ public class Registration : BaseEntity
         PaymentStatus = PaymentStatus.Refunded;
         StripeRefundId = stripeRefundId;
         RefundCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Phase 6A.148.W5.6.B G1 — event-raising gate.
         //   - fromState == RefundRequested → legacy direct-Stripe path (pre-148 CancelRsvp).
@@ -1152,7 +1135,6 @@ public class Registration : BaseEntity
 
         var req = requestResult.Value;
         _refundRequests.Add(req);
-        MarkAsUpdated();
 
         // The entity raised its own creation event with EventId=Empty (it doesn't know it).
         // Re-raise from the aggregate with the real EventId so handlers can route by event.
@@ -1176,7 +1158,6 @@ public class Registration : BaseEntity
 
         Status = RegistrationStatus.RefundRequested;
         RefundRequestedAt = DateTime.UtcNow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -1194,7 +1175,6 @@ public class Registration : BaseEntity
 
         Status = RegistrationStatus.Confirmed;
         RefundWithdrawnAt = DateTime.UtcNow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -1274,7 +1254,6 @@ public class Registration : BaseEntity
         var result = req.Approve(organizerUserId, organizerNotes, perLineApprovedAmounts);
         if (result.IsFailure) return result;
 
-        MarkAsUpdated();
 
         RaiseDomainEvent(new RefundRequestApprovedEvent(
             EventId: EventId,
@@ -1304,7 +1283,6 @@ public class Registration : BaseEntity
         var result = req.Reject(organizerUserId, rejectionReason);
         if (result.IsFailure) return result;
 
-        MarkAsUpdated();
 
         RaiseDomainEvent(new RefundRequestRejectedEvent(
             EventId: EventId,
@@ -1335,7 +1313,6 @@ public class Registration : BaseEntity
         var result = req.Withdraw(byUserId);
         if (result.IsFailure) return result;
 
-        MarkAsUpdated();
 
         // WithdrawnAt is captured by child as DateTime.UtcNow at the moment of
         // Withdraw(); root re-raise uses UtcNow too — drift is sub-ms and the
@@ -1382,7 +1359,6 @@ public class Registration : BaseEntity
         Status = RegistrationStatus.Abandoned;
         PaymentStatus = PaymentStatus.Failed;  // Mark payment as failed since it was never completed
         AbandonedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Phase 8 S8.3: release seat reservations on abandonment. Defensive: a
         // Preliminary registration shouldn't have seat_reservations rows yet
@@ -1408,7 +1384,6 @@ public class Registration : BaseEntity
         PlatformCommissionAmount = breakdown.PlatformCommission;
         OrganizerPayoutAmount = breakdown.OrganizerPayout;
         SalesTaxRate = breakdown.SalesTaxRate;
-        MarkAsUpdated();
     }
 
     // Internal method for Event aggregate to update quantity
@@ -1418,7 +1393,6 @@ public class Registration : BaseEntity
             throw new ArgumentException("Quantity must be greater than 0", nameof(newQuantity));
 
         Quantity = newQuantity;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -1483,7 +1457,6 @@ public class Registration : BaseEntity
         // Update quantity to match attendee count (maintain backward compatibility)
         Quantity = attendeeList.Count;
 
-        MarkAsUpdated();
 
         // Raise domain event for email notification
         RaiseDomainEvent(new RegistrationDetailsUpdatedEvent(
@@ -1569,7 +1542,6 @@ public class Registration : BaseEntity
         // Update total price
         TotalPrice = newTotalPrice;
 
-        MarkAsUpdated();
 
         // Raise domain event for email notification
         RaiseDomainEvent(new AttendeesAddedEvent(

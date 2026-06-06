@@ -23,7 +23,7 @@ namespace LankaConnect.Domain.Events.Entities;
 ///   <item><see cref="AdminUnmark"/> — admin override that reverses a prior accept</item>
 /// </list>
 /// </summary>
-public class TicketScanLog : BaseEntity
+public class TicketScanLog : LegacyBaseEntity
 {
     // ============================================================
     // Constants — wire-compatible string values

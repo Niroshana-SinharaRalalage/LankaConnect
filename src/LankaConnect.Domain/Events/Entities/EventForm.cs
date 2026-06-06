@@ -13,7 +13,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Lifecycle: Draft -> Active -> Closed -> Archived
 /// Only Active forms accept responses.
 /// </summary>
-public class EventForm : BaseEntity
+public class EventForm : LegacyBaseEntity
 {
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 2000;
@@ -148,7 +148,6 @@ public class EventForm : BaseEntity
             return questionResult;
 
         _questions.Add(questionResult.Value);
-        MarkAsUpdated();
 
         return questionResult;
     }
@@ -190,7 +189,6 @@ public class EventForm : BaseEntity
             return Result.Failure($"Question with ID {questionId} not found");
 
         _questions.Remove(question);
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -218,7 +216,6 @@ public class EventForm : BaseEntity
             questionMap[questionIdsInOrder[i]].UpdateSortOrder(i);
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -283,7 +280,6 @@ public class EventForm : BaseEntity
         MaxResponses = maxResponses;
         if (allowAttendeesToViewResponses.HasValue)
             AllowAttendeesToViewResponses = allowAttendeesToViewResponses.Value;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -304,7 +300,6 @@ public class EventForm : BaseEntity
             return Result.Failure("Cannot publish a form with no questions");
 
         Status = EventFormStatus.Active;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new EventFormPublishedEvent(EventId, Id, DateTime.UtcNow));
 
@@ -320,7 +315,6 @@ public class EventForm : BaseEntity
             return Result.Failure("Only Active forms can be closed");
 
         Status = EventFormStatus.Closed;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new EventFormClosedEvent(EventId, Id, DateTime.UtcNow));
 
@@ -336,7 +330,6 @@ public class EventForm : BaseEntity
             return Result.Failure("Only Closed forms can be reopened");
 
         Status = EventFormStatus.Active;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -350,7 +343,6 @@ public class EventForm : BaseEntity
             return Result.Failure("Form is already archived");
 
         Status = EventFormStatus.Archived;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -380,7 +372,6 @@ public class EventForm : BaseEntity
         if (!HasResponses)
         {
             HasResponses = true;
-            MarkAsUpdated();
         }
     }
 

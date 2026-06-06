@@ -21,7 +21,7 @@ namespace LankaConnect.Domain.Events;
 /// - Checkout expires (24h) -> Status = Abandoned
 /// - Payment refunded -> Status = Refunded
 /// </summary>
-public class Sponsor : BaseEntity
+public class Sponsor : LegacyBaseEntity
 {
     // Event linkage
     public Guid EventId { get; private set; }
@@ -400,7 +400,6 @@ public class Sponsor : BaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -432,7 +431,6 @@ public class Sponsor : BaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = SponsorStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new SponsorPaymentCompletedEvent(
             EventId,
@@ -478,7 +476,6 @@ public class Sponsor : BaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = SponsorStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new PackageSponsorCompletedEvent(
             EventId,
@@ -513,7 +510,6 @@ public class Sponsor : BaseEntity
 
         Status = SponsorStatus.Failed;
         FailedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -532,7 +528,6 @@ public class Sponsor : BaseEntity
 
         Status = SponsorStatus.Abandoned;
         AbandonedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -551,7 +546,6 @@ public class Sponsor : BaseEntity
 
         Status = SponsorStatus.Refunded;
         RefundedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -574,7 +568,6 @@ public class Sponsor : BaseEntity
         StripeFeeAmount = stripeFee;
         PlatformCommissionAmount = platformCommission;
         OrganizerPayoutAmount = organizerPayout;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -632,7 +625,6 @@ public class Sponsor : BaseEntity
 
         ImageUrl = url.Trim();
         ImageBlobName = blobName.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -645,7 +637,6 @@ public class Sponsor : BaseEntity
     {
         ImageUrl = null;
         ImageBlobName = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -666,7 +657,6 @@ public class Sponsor : BaseEntity
 
         BrochureUrl = url.Trim();
         BrochureBlobName = blobName.Trim();
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -680,7 +670,6 @@ public class Sponsor : BaseEntity
     {
         BrochureUrl = null;
         BrochureBlobName = null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -714,7 +703,6 @@ public class Sponsor : BaseEntity
 
         Status = SponsorStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Reuse SponsorPaymentCompletedEvent so existing email/notification pipelines
         // fire for off-platform sponsors the same way they do for Stripe ones. The
@@ -911,6 +899,5 @@ public class Sponsor : BaseEntity
     {
         LastEditedAt = DateTime.UtcNow;
         LastEditedBy = actorUserId;
-        MarkAsUpdated();
     }
 }

@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Enables many-to-many relationship between Events and Badges
 /// Phase 6A.28: Added duration-based expiration per assignment
 /// </summary>
-public class EventBadge : BaseEntity
+public class EventBadge : LegacyBaseEntity
 {
     /// <summary>
     /// The event that this badge is assigned to

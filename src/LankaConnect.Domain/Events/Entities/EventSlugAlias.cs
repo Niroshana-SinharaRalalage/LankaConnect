@@ -12,7 +12,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// event. The partial unique index spans the alias namespace + the active-slug
 /// namespace so collisions are impossible at the DB level.
 /// </summary>
-public class EventSlugAlias : BaseEntity
+public class EventSlugAlias : LegacyBaseEntity
 {
     /// <summary>
     /// The event this alias belongs to. Cascade-deletes with the event row.

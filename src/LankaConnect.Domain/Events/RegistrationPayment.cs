@@ -14,7 +14,7 @@ namespace LankaConnect.Domain.Events;
 /// - Reconciliation with Stripe dashboard
 /// - Foundation for future partial refund support
 /// </summary>
-public class RegistrationPayment : BaseEntity
+public class RegistrationPayment : LegacyBaseEntity
 {
     /// <summary>
     /// ID of the registration this payment belongs to.
@@ -169,7 +169,6 @@ public class RegistrationPayment : BaseEntity
 
         Status = PaymentStatus.Completed;
         CompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -189,7 +188,6 @@ public class RegistrationPayment : BaseEntity
             return Result.Failure("Cannot mark a refunded payment as failed");
 
         Status = PaymentStatus.Failed;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -203,7 +201,6 @@ public class RegistrationPayment : BaseEntity
             return Result.Failure("Only completed payments can be refunded");
 
         Status = PaymentStatus.Refunded;
-        MarkAsUpdated();
 
         return Result.Success();
     }

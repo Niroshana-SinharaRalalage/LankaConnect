@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Entity representing a user's purchase of event passes
 /// Tracks purchase status, payment, and generates QR code for check-in
 /// </summary>
-public class PassPurchase : BaseEntity
+public class PassPurchase : LegacyBaseEntity
 {
     public Guid UserId { get; private set; }
     public Guid EventId { get; private set; }
@@ -83,7 +83,6 @@ public class PassPurchase : BaseEntity
 
         Status = PassPurchaseStatus.Confirmed;
         ConfirmedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PassPurchasedEvent(Id, UserId, EventId, EventPassId, Quantity, DateTime.UtcNow));
@@ -101,7 +100,6 @@ public class PassPurchase : BaseEntity
 
         Status = PassPurchaseStatus.Cancelled;
         CancelledAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new PassCancelledEvent(Id, UserId, EventId, Quantity, DateTime.UtcNow));

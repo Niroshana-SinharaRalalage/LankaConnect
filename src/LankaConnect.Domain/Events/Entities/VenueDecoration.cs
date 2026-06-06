@@ -12,7 +12,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// domain free of mutable nested value objects (avoids Phase 6A.130 deserialization
 /// issues with EF Core <c>OwnsOne().ToJson()</c>).
 /// </summary>
-public class VenueDecoration : BaseEntity
+public class VenueDecoration : LegacyBaseEntity
 {
     public const int MaxLabelLength = 100;
 
@@ -117,7 +117,6 @@ public class VenueDecoration : BaseEntity
         SortOrder = sortOrder;
         Geometry = NormalizeJson(geometry);
         Properties = NormalizeJson(properties);
-        MarkAsUpdated();
         return Result.Success();
     }
 

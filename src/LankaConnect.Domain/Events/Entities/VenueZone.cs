@@ -9,7 +9,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// (Slice 4 Release N); the legacy <c>TicketTierId</c> FK was dropped from the domain model.
 /// Examples: "VIP Section", "Section A", "Balcony".
 /// </summary>
-public class VenueZone : BaseEntity
+public class VenueZone : LegacyBaseEntity
 {
     private readonly List<Seat> _seats = new();
 
@@ -126,7 +126,6 @@ public class VenueZone : BaseEntity
         Name = name.Trim();
         Color = color.Trim();
         SortOrder = sortOrder;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -145,7 +144,6 @@ public class VenueZone : BaseEntity
 
         Shape = shape;
         Geometry = NormalizeGeometry(geometry);
-        MarkAsUpdated();
         return Result.Success();
     }
 

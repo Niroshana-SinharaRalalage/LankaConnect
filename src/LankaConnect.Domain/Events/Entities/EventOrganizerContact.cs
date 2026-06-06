@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Supports multiple contacts per event with primary contact designation.
 /// Future: linked_user_id enables co-organizer management.
 /// </summary>
-public class EventOrganizerContact : BaseEntity
+public class EventOrganizerContact : LegacyBaseEntity
 {
     /// <summary>
     /// The event this contact belongs to
@@ -137,7 +137,6 @@ public class EventOrganizerContact : BaseEntity
         ContactName = contactName.Trim();
         ContactEmail = hasEmail ? contactEmail!.Trim().ToLowerInvariant() : null;
         ContactPhone = hasPhone ? contactPhone!.Trim() : null;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -145,19 +144,16 @@ public class EventOrganizerContact : BaseEntity
     internal void SetAsPrimary()
     {
         IsPrimary = true;
-        MarkAsUpdated();
     }
 
     internal void UnmarkAsPrimary()
     {
         IsPrimary = false;
-        MarkAsUpdated();
     }
 
     internal void UpdateSortOrder(int sortOrder)
     {
         SortOrder = sortOrder;
-        MarkAsUpdated();
     }
 
     /// <summary>
@@ -176,7 +172,6 @@ public class EventOrganizerContact : BaseEntity
             return Result.Failure("This contact is already linked to a different user. Unlink first.");
 
         LinkedUserId = userId;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -190,7 +185,6 @@ public class EventOrganizerContact : BaseEntity
             return Result.Success(); // Already unlinked, idempotent
 
         LinkedUserId = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 

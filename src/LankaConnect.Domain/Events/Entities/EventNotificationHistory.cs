@@ -6,7 +6,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Tracks manual email notifications sent by event organizers
 /// Phase 6A.61: Added for Communication tab history display
 /// </summary>
-public class EventNotificationHistory : BaseEntity
+public class EventNotificationHistory : LegacyBaseEntity
 {
     /// <summary>
     /// The event that the notification was sent for
@@ -101,6 +101,5 @@ public class EventNotificationHistory : BaseEntity
         RecipientCount = totalRecipients;
         SuccessfulSends = successful;
         FailedSends = failed;
-        MarkAsUpdated();
     }
 }

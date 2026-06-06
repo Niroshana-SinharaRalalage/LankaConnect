@@ -7,7 +7,7 @@ namespace LankaConnect.Domain.Events;
 /// Phase 6A.8: Event Template System
 /// Pre-designed event templates to help organizers quickly create events
 /// </summary>
-public class EventTemplate : BaseEntity
+public class EventTemplate : LegacyBaseEntity
 {
     /// <summary>
     /// Template name (e.g., "Vesak Day Celebration", "Cricket Match Viewing")
@@ -113,7 +113,6 @@ public class EventTemplate : BaseEntity
     public Result SetActive(bool isActive)
     {
         IsActive = isActive;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -126,7 +125,6 @@ public class EventTemplate : BaseEntity
             return Result.Failure("Display order cannot be negative");
 
         DisplayOrder = newOrder;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -139,7 +137,6 @@ public class EventTemplate : BaseEntity
             return Result.Failure("Thumbnail SVG cannot be empty");
 
         ThumbnailSvg = thumbnailSvg;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -152,7 +149,6 @@ public class EventTemplate : BaseEntity
             return Result.Failure("Template data JSON cannot be empty");
 
         TemplateDataJson = templateDataJson;
-        MarkAsUpdated();
         return Result.Success();
     }
 }

@@ -11,7 +11,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// status (Available/Held/Reserved) is derived from SeatHold and SeatReservation
 /// tables at query time.
 /// </summary>
-public class Seat : BaseEntity
+public class Seat : LegacyBaseEntity
 {
     /// <summary>FK to parent zone. Null when seat belongs to a table instead.</summary>
     public Guid? VenueZoneId { get; private set; }
@@ -181,7 +181,6 @@ public class Seat : BaseEntity
             return Result.Failure("Seat is already disabled");
 
         IsEnabled = false;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -194,7 +193,6 @@ public class Seat : BaseEntity
             return Result.Failure("Seat is already enabled");
 
         IsEnabled = true;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -204,7 +202,6 @@ public class Seat : BaseEntity
     public Result SetAccessible(bool isAccessible)
     {
         IsAccessible = isAccessible;
-        MarkAsUpdated();
         return Result.Success();
     }
 

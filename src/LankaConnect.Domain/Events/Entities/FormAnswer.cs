@@ -16,7 +16,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// - Date: TextValue (stored as ISO date string)
 /// - YesNo: BooleanValue
 /// </summary>
-public class FormAnswer : BaseEntity
+public class FormAnswer : LegacyBaseEntity
 {
     public const int MaxTextValueLength = 5000;
 
@@ -135,7 +135,6 @@ public class FormAnswer : BaseEntity
         if (selectedOptionTextSnapshots != null) _selectedOptionTextSnapshots.AddRange(selectedOptionTextSnapshots);
 
         BooleanValue = booleanValue;
-        MarkAsUpdated();
 
         return Result.Success();
     }

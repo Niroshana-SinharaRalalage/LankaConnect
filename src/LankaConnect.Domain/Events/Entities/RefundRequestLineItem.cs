@@ -16,7 +16,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Terminal states (<see cref="RefundLineItemStatus.Refunded"/> / <see cref="RefundLineItemStatus.Failed"/>)
 /// are idempotent — webhook retries from Stripe must not double-emit completion events (F4).
 /// </summary>
-public class RefundRequestLineItem : BaseEntity
+public class RefundRequestLineItem : LegacyBaseEntity
 {
     public Guid RefundRequestId { get; private set; }
     public RefundLineItemType Type { get; private set; }
@@ -98,7 +98,6 @@ public class RefundRequestLineItem : BaseEntity
         Status = approvedAmount.Amount == 0
             ? RefundLineItemStatus.Rejected
             : RefundLineItemStatus.Approved;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -113,7 +112,6 @@ public class RefundRequestLineItem : BaseEntity
 
         ApprovedAmount = new Money(0m, RequestedAmount.Currency);
         Status = RefundLineItemStatus.Rejected;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -132,7 +130,6 @@ public class RefundRequestLineItem : BaseEntity
         StripeRefundId = stripeRefundId;
         StripeChargeId = stripeChargeId;
         Status = RefundLineItemStatus.Processing;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -152,7 +149,6 @@ public class RefundRequestLineItem : BaseEntity
 
         Status = RefundLineItemStatus.Refunded;
         ProcessedAt = processedAt;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -173,7 +169,6 @@ public class RefundRequestLineItem : BaseEntity
 
         Status = RefundLineItemStatus.Failed;
         FailureReason = failureReason;
-        MarkAsUpdated();
         return Result.Success();
     }
 }

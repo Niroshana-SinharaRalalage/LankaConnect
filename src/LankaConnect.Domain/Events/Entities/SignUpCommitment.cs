@@ -7,7 +7,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Example: User commits to bringing "Homemade lasagna" for the food sign-up
 /// Updated to support both legacy (SignUpList-level) and new (SignUpItem-level) commitments
 /// </summary>
-public class SignUpCommitment : BaseEntity
+public class SignUpCommitment : LegacyBaseEntity
 {
     public Guid? SignUpItemId { get; private set; } // Nullable for backward compatibility
     public Guid UserId { get; private set; }
@@ -273,7 +273,6 @@ public class SignUpCommitment : BaseEntity
         else if (SlotsClaimed.HasValue)
             SlotsClaimed = newQuantity;
 
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -290,7 +289,6 @@ public class SignUpCommitment : BaseEntity
             return Result.Failure("Physical quantity must be greater than 0");
 
         PhysicalQuantity = newPhysicalQuantity;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -307,7 +305,6 @@ public class SignUpCommitment : BaseEntity
             return Result.Failure("Slots claimed must be greater than 0");
 
         SlotsClaimed = newSlotsClaimed;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -319,7 +316,6 @@ public class SignUpCommitment : BaseEntity
     public Result UpdateContactName(string? newContactName)
     {
         ContactName = newContactName?.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -333,7 +329,6 @@ public class SignUpCommitment : BaseEntity
             return Result.Failure("Invalid email format");
 
         ContactEmail = newContactEmail?.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -344,7 +339,6 @@ public class SignUpCommitment : BaseEntity
     public Result UpdateContactPhone(string? newContactPhone)
     {
         ContactPhone = newContactPhone?.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -355,7 +349,6 @@ public class SignUpCommitment : BaseEntity
     public Result UpdateNotes(string? newNotes)
     {
         Notes = newNotes?.Trim();
-        MarkAsUpdated();
         return Result.Success();
     }
 }

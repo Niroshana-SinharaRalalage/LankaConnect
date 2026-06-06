@@ -19,7 +19,7 @@ namespace LankaConnect.Domain.Events;
 /// - Checkout expires (24h) -> Status = Abandoned
 /// - User cancels before payment -> Record deleted
 /// </summary>
-public class RegistrationAddition : BaseEntity
+public class RegistrationAddition : LegacyBaseEntity
 {
     public Guid RegistrationId { get; private set; }
     public Guid EventId { get; private set; }
@@ -269,7 +269,6 @@ public class RegistrationAddition : BaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -290,7 +289,6 @@ public class RegistrationAddition : BaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = RegistrationAdditionStatus.PaymentCompleted;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -306,7 +304,6 @@ public class RegistrationAddition : BaseEntity
 
         Status = RegistrationAdditionStatus.Merged;
         MergedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -328,7 +325,6 @@ public class RegistrationAddition : BaseEntity
 
         Status = RegistrationAdditionStatus.Failed;
         FailedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -344,7 +340,6 @@ public class RegistrationAddition : BaseEntity
 
         Status = RegistrationAdditionStatus.Abandoned;
         AbandonedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }

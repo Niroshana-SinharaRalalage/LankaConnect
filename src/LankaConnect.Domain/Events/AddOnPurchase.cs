@@ -23,7 +23,7 @@ namespace LankaConnect.Domain.Events;
 /// - Checkout expires (24h) -> Status = Abandoned, stock restored
 /// - Payment refunded -> Status = Refunded, stock restored
 /// </summary>
-public class AddOnPurchase : BaseEntity
+public class AddOnPurchase : LegacyBaseEntity
 {
     // Event and add-on linkage
     public Guid EventId { get; private set; }
@@ -198,7 +198,6 @@ public class AddOnPurchase : BaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -218,7 +217,6 @@ public class AddOnPurchase : BaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = AddOnPurchaseStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new AddOnPurchaseCompletedEvent(
             EventId,
@@ -248,7 +246,6 @@ public class AddOnPurchase : BaseEntity
 
         Status = AddOnPurchaseStatus.Failed;
         FailedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -264,7 +261,6 @@ public class AddOnPurchase : BaseEntity
 
         Status = AddOnPurchaseStatus.Abandoned;
         AbandonedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -280,7 +276,6 @@ public class AddOnPurchase : BaseEntity
 
         Status = AddOnPurchaseStatus.Refunded;
         RefundedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -299,7 +294,6 @@ public class AddOnPurchase : BaseEntity
         StripeFeeAmount = stripeFee;
         PlatformCommissionAmount = platformCommission;
         OrganizerPayoutAmount = organizerPayout;
-        MarkAsUpdated();
 
         return Result.Success();
     }

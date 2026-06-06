@@ -7,7 +7,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// A unique index on seat_id prevents double-booking.
 /// On cancellation/refund, the reservation is hard-deleted (V1 — no soft delete).
 /// </summary>
-public class SeatReservation : BaseEntity
+public class SeatReservation : LegacyBaseEntity
 {
     public Guid SeatId { get; private set; }
     public Guid RegistrationId { get; private set; }

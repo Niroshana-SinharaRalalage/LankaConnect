@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// once per organiser conversion action. Cheap dashboard joins; the per-registration
 /// detail rows live in <see cref="RegistrationModeConversionRow"/>.
 /// </summary>
-public class RegistrationModeConversion : BaseEntity
+public class RegistrationModeConversion : LegacyBaseEntity
 {
     public Guid EventId { get; private set; }
     public Guid OrganiserId { get; private set; }

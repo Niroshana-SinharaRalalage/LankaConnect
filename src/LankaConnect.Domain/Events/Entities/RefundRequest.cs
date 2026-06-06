@@ -19,7 +19,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// State machine: Pending → Approved → Processing → Completed | Rejected | Withdrawn.
 /// Backward transitions from Approved onward are forbidden — money is moving.
 /// </summary>
-public class RefundRequest : BaseEntity
+public class RefundRequest : LegacyBaseEntity
 {
     public Guid RegistrationId { get; private set; }
 
@@ -255,7 +255,6 @@ public class RefundRequest : BaseEntity
         ReviewedByUserId = organizerUserId;
         ReviewedAt = DateTime.UtcNow;
         OrganizerNotes = organizerNotes;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new RefundRequestApprovedEvent(
             EventId: Guid.Empty,
@@ -285,7 +284,6 @@ public class RefundRequest : BaseEntity
         ReviewedByUserId = organizerUserId;
         ReviewedAt = DateTime.UtcNow;
         RejectionReason = rejectionReason;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new RefundRequestRejectedEvent(
             EventId: Guid.Empty,
@@ -308,7 +306,6 @@ public class RefundRequest : BaseEntity
             return Result.Failure("Refund requests can be withdrawn only the requester themselves.");
 
         Status = RefundRequestStatus.Withdrawn;
-        MarkAsUpdated();
 
         RaiseDomainEvent(new RefundRequestWithdrawnEvent(
             EventId: Guid.Empty,
@@ -335,7 +332,6 @@ public class RefundRequest : BaseEntity
                 $"BeginProcessing requires Approved status; current status is {Status}.");
 
         Status = RefundRequestStatus.Processing;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -366,7 +362,6 @@ public class RefundRequest : BaseEntity
 
         Status = RefundRequestStatus.Completed;
         CompletedAt = DateTime.UtcNow;
-        MarkAsUpdated();
 
         // Phase 6A.148.W5.6.B G1 — raise the email-driving event at the EXACT moment Status
         // flips to Completed. The guard above proves every line is in a terminal state, so

@@ -8,7 +8,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Holds expire after 10 minutes if not confirmed.
 /// A partial unique index on (seat_id) WHERE status = 'Active' prevents double-holds.
 /// </summary>
-public class SeatHold : BaseEntity
+public class SeatHold : LegacyBaseEntity
 {
     /// <summary>Default hold duration: 10 minutes.</summary>
     public static readonly TimeSpan HoldDuration = TimeSpan.FromMinutes(10);
@@ -71,7 +71,6 @@ public class SeatHold : BaseEntity
             return Result.Failure($"Cannot expire a hold with status '{Status}'");
 
         Status = SeatHoldStatus.Expired;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -87,7 +86,6 @@ public class SeatHold : BaseEntity
             return Result.Failure("Cannot confirm an expired hold");
 
         Status = SeatHoldStatus.Confirmed;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -100,7 +98,6 @@ public class SeatHold : BaseEntity
             return Result.Failure($"Cannot release a hold with status '{Status}'");
 
         Status = SeatHoldStatus.Released;
-        MarkAsUpdated();
         return Result.Success();
     }
 }

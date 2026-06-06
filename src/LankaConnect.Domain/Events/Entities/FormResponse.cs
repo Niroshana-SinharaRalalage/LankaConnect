@@ -15,7 +15,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Anonymous respondents are identified by a cryptographic access token
 /// (stored as SHA256 hash). This token is returned on submission and used for editing.
 /// </summary>
-public class FormResponse : BaseEntity
+public class FormResponse : LegacyBaseEntity
 {
     public const int MaxEmailLength = 255;
     public const int MaxNameLength = 200;
@@ -180,7 +180,6 @@ public class FormResponse : BaseEntity
         if (updateResult.IsFailure)
             return updateResult;
 
-        MarkAsUpdated();
 
         // Phase 6A.114: Event raising moved to RaiseUpdatedEventWithContext()
         // Command handler will call it once after all answer updates complete

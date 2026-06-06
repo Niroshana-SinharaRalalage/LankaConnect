@@ -10,7 +10,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Similar to SignupGenius functionality
 /// Updated to support category-based items (Mandatory, Preferred, Suggested)
 /// </summary>
-public class SignUpList : BaseEntity
+public class SignUpList : LegacyBaseEntity
 {
     private readonly List<SignUpCommitment> _commitments = new(); // Legacy: for Open sign-ups
     private readonly List<string> _predefinedItems = new(); // Legacy: deprecated, use Items instead
@@ -290,7 +290,6 @@ public class SignUpList : BaseEntity
         // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
         itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
-        MarkAsUpdated();
 
         return itemResult;
     }
@@ -326,7 +325,6 @@ public class SignUpList : BaseEntity
         // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
         itemResult.Value.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(itemResult.Value);
-        MarkAsUpdated();
 
         return itemResult;
     }
@@ -344,7 +342,6 @@ public class SignUpList : BaseEntity
             return Result.Failure("Cannot remove item with existing commitments");
 
         _items.Remove(item);
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -399,7 +396,6 @@ public class SignUpList : BaseEntity
             return Result.Failure(commitmentResult.Error);
 
         _commitments.Add(commitmentResult.Value);
-        MarkAsUpdated();
 
         // Raise domain event (Phase 6A.121: Updated with dual nullable fields)
         RaiseDomainEvent(new UserCommittedToSignUpEvent(
@@ -424,7 +420,6 @@ public class SignUpList : BaseEntity
             return Result.Failure("User has no commitment to cancel");
 
         _commitments.Remove(commitment);
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new UserCancelledSignUpCommitmentEvent(
@@ -534,7 +529,6 @@ public class SignUpList : BaseEntity
         HasSuggestedItems = hasSuggestedItems;
         HasOpenItems = hasOpenItems;
 
-        MarkAsUpdated();
 
         // Raise domain event
         RaiseDomainEvent(new SignUpListUpdatedEvent(
@@ -596,7 +590,6 @@ public class SignUpList : BaseEntity
         // Phase 6A.132: Aggregate assigns DisplayOrder — new items append to the end.
         item.SetDisplayOrder(GetNextDisplayOrder());
         _items.Add(item);
-        MarkAsUpdated();
 
         return Result<SignUpItem>.Success(item);
     }
@@ -634,7 +627,6 @@ public class SignUpList : BaseEntity
             item.SetDisplayOrder(position);
         }
 
-        MarkAsUpdated();
 
         RaiseDomainEvent(new SignUpItemsReorderedEvent(
             Id,

@@ -14,7 +14,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Geometry is stored as raw JSON to give the canvas editor full freedom without
 /// forcing EF Core to serialize a mutable value-object graph (avoids Phase 6A.130).
 /// </summary>
-public class VenueTable : BaseEntity
+public class VenueTable : LegacyBaseEntity
 {
     public const int MaxLabelLength = 50;
     public const int MinCapacity = 1;
@@ -154,7 +154,6 @@ public class VenueTable : BaseEntity
         SortOrder = sortOrder;
         VenueZoneId = venueZoneId;
         Geometry = NormalizeGeometry(geometry);
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -199,7 +198,6 @@ public class VenueTable : BaseEntity
             _seats.Add(seatResult.Value);
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -256,7 +254,6 @@ public class VenueTable : BaseEntity
             }
         }
 
-        MarkAsUpdated();
         return Result.Success();
     }
 

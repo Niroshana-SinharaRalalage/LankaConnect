@@ -7,7 +7,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Phase 6A.24: Ticket entity for paid event registrations.
 /// Contains QR code data for validation and optional PDF URL for download.
 /// </summary>
-public class Ticket : BaseEntity
+public class Ticket : LegacyBaseEntity
 {
     /// <summary>
     /// Reference to the registration this ticket belongs to
@@ -215,7 +215,6 @@ public class Ticket : BaseEntity
             return Result.Failure("PDF URL cannot be empty");
 
         PdfBlobUrl = pdfBlobUrl;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -234,7 +233,6 @@ public class Ticket : BaseEntity
             return Result.Failure("Ticket has expired");
 
         ValidatedAt = DateTime.UtcNow;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -255,7 +253,6 @@ public class Ticket : BaseEntity
             return Result.Failure("Ticket has not been scanned; nothing to unmark.");
 
         ValidatedAt = null;
-        MarkAsUpdated();
         return Result.Success();
     }
 
@@ -268,7 +265,6 @@ public class Ticket : BaseEntity
             return Result.Failure("Ticket is already invalid");
 
         IsValid = false;
-        MarkAsUpdated();
         return Result.Success();
     }
 

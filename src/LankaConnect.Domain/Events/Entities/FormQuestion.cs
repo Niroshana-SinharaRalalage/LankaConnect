@@ -10,7 +10,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// Supports various question types (text, choice, number, date, yes/no).
 /// Options are stored as JSONB for choice-type questions (SingleChoice, MultipleChoice, Dropdown).
 /// </summary>
-public class FormQuestion : BaseEntity
+public class FormQuestion : LegacyBaseEntity
 {
     public const int MaxQuestionTextLength = 500;
     public const int MaxHelpTextLength = 300;
@@ -146,7 +146,6 @@ public class FormQuestion : BaseEntity
         HelpText = helpText;
         _options.Clear();
         _options.AddRange(optionsList);
-        MarkAsUpdated();
 
         return Result.Success();
     }
@@ -157,7 +156,6 @@ public class FormQuestion : BaseEntity
     public void UpdateSortOrder(int newSortOrder)
     {
         SortOrder = newSortOrder;
-        MarkAsUpdated();
     }
 
     /// <summary>

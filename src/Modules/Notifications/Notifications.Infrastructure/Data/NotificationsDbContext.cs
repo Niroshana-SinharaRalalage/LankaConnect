@@ -1,7 +1,7 @@
 using LankaConnect.BuildingBlocks.Infrastructure.Idempotency;
 using LankaConnect.BuildingBlocks.Infrastructure.Outbox;
-using LankaConnect.Infrastructure.Data.Configurations;
 using LankaConnect.Modules.Notifications.Domain;
+using LankaConnect.Modules.Notifications.Infrastructure.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 
 namespace LankaConnect.Modules.Notifications.Infrastructure.Data;

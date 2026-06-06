@@ -3,10 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
 using LankaConnect.Modules.Notifications.Domain;
-// W3.4 (2026-06-03) — transitional edge: AppDbContext lives in legacy
-// LankaConnect.Infrastructure. Cut when W3.6/W3.7 dispatcher fully routes
-// repository onto NotificationsDbContext.
-using LankaConnect.Infrastructure.Data;
+using LankaConnect.Modules.Notifications.Infrastructure.Data;
 
 namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 
@@ -16,19 +13,28 @@ namespace LankaConnect.Modules.Notifications.Infrastructure.Repositories;
 /// <c>Repository&lt;T&gt;</c> base. Each method has explicit query intent.
 /// </summary>
 /// <remarks>
+/// <para>
 /// W3A (2026-06-05): de-coupled from legacy <c>Repository&lt;T&gt;</c> base
 /// after Notification migrated to <see cref="LankaConnect.BuildingBlocks.Domain.Entity{TId}"/>.
-/// Methods previously inherited from <c>Repository&lt;T&gt;</c> (AddAsync,
-/// GetByIdAsync, Update) are now explicit, using the injected DbContext directly.
+/// </para>
+/// <para>
+/// W4.0b (2026-06-06): pivoted from <c>AppDbContext</c> to <see cref="NotificationsDbContext"/>
+/// per ENTERPRISE_ARCHITECTURE_BLUEPRINT.md Wave 4 capability extraction.
+/// AddAsync + Update now call <c>SaveChangesAsync</c> internally (self-saving repository
+/// pattern) because <c>IUnitOfWork.CommitAsync</c> still saves only AppDbContext —
+/// extending UnitOfWork to multi-context atomicity is deferred to the outbox-pattern
+/// roll-out (D5 in ADR). Acceptable in pre-launch context per architect ruling
+/// 2026-06-06; revisit when outbox dispatcher lands ahead of production cutover.
+/// </para>
 /// </remarks>
 public class NotificationRepository : INotificationRepository
 {
-    private readonly AppDbContext _context;
+    private readonly NotificationsDbContext _context;
     private readonly DbSet<Notification> _dbSet;
     private readonly ILogger<NotificationRepository> _repoLogger;
 
     public NotificationRepository(
-        AppDbContext context,
+        NotificationsDbContext context,
         ILogger<NotificationRepository> logger)
     {
         _context = context;
@@ -53,6 +59,9 @@ public class NotificationRepository : INotificationRepository
         using (LogContext.PushProperty("EntityId", notification.Id))
         {
             await _dbSet.AddAsync(notification, cancellationToken);
+            // W4.0b: self-save (see class remarks) — caller's IUnitOfWork.Commit
+            // saves AppDbContext only and would leave this row uncommitted otherwise.
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -63,6 +72,8 @@ public class NotificationRepository : INotificationRepository
         using (LogContext.PushProperty("EntityId", notification.Id))
         {
             _dbSet.Update(notification);
+            // W4.0b: self-save (see class remarks).
+            _context.SaveChanges();
         }
     }
 

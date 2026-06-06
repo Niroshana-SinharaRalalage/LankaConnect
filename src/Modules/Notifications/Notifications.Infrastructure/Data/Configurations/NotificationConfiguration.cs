@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Modules.Notifications.Domain.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.Modules.Notifications.Infrastructure.Data.Configurations;
 
 /// <summary>
 /// EF Core configuration for Notification entity

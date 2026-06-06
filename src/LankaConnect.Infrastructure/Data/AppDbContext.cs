@@ -8,7 +8,6 @@ using LankaConnect.Domain.Business;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Analytics;
-using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Domain.Badges;
 using LankaConnect.Domain.ReferenceData.Entities;
 using LankaConnect.Domain.Support;
@@ -82,8 +81,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<EventAnalytics> EventAnalytics => Set<EventAnalytics>();
     public DbSet<EventViewRecord> EventViewRecords => Set<EventViewRecord>();
 
-    // Notification Entity Set (Phase 6A.6)
-    public DbSet<Notification> Notifications => Set<Notification>();
+    // W4.0b (2026-06-06): Notification DbSet + EF config moved to NotificationsDbContext
+    // owned by Modules.Notifications.Infrastructure. AppDbContext no longer maps the
+    // notifications table; NotificationRepository injects NotificationsDbContext directly.
 
     // Sign-up Management Entity Sets (Phase 6A.16)
     public DbSet<SignUpList> SignUpLists => Set<SignUpList>(); // Phase 6A.16: Required for cascade deletion
@@ -228,9 +228,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new EventAnalyticsConfiguration());
         modelBuilder.ApplyConfiguration(new EventViewRecordConfiguration());
 
-        // Notification entity configuration (Phase 6A.6)
-        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
-
         // Ticket entity configuration (Phase 6A.24)
         modelBuilder.ApplyConfiguration(new TicketConfiguration());
 
@@ -366,8 +363,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EventAnalytics>().ToTable("event_analytics", "analytics");
         modelBuilder.Entity<EventViewRecord>().ToTable("event_view_records", "analytics");
 
-        // Notifications schema (Phase 6A.6)
-        modelBuilder.Entity<Notification>().ToTable("notifications", "notifications");
+        // W4.0b: Notification table mapping moved to NotificationsDbContext (notifications schema).
 
         // Tickets schema (Phase 6A.24)
         modelBuilder.Entity<Ticket>().ToTable("tickets", "events");
@@ -442,7 +438,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(EmailFailureDetail), // Phase 6A.99: Email failure details persistence
             typeof(EventAnalytics), // Epic 2 Phase 3
             typeof(EventViewRecord), // Epic 2 Phase 3
-            typeof(Notification), // Phase 6A.6
+            // W4.0b: Notification removed — owned by NotificationsDbContext.
             typeof(Ticket), // Phase 6A.24
             typeof(TicketScanLog), // Phase 6A.141: paid-event check-in audit log
             typeof(RegistrationAddition), // Add-Only Attendees Feature

@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Common.Enums;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Cultural data type classification for Sri Lankan diaspora platform

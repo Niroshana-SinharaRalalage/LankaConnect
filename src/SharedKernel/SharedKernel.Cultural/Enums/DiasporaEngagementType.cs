@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Common.Enums;
+namespace LankaConnect.SharedKernel.Cultural.Enums;
 
 /// <summary>
 /// Diaspora engagement type classification for Sri Lankan communities worldwide

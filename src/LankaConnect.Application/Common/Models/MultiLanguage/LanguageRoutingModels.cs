@@ -11,7 +11,9 @@ namespace LankaConnect.Application.Common.Models.MultiLanguage
         public string CulturalContext { get; set; } = string.Empty;
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
         public bool IsVerified { get; set; }
-        public string UpdatedBy { get; set; } = string.Empty;
+        // W3G (2026-06-06): inherited UpdatedBy is nullable string; `new` keyword keeps
+        // this DTO's domain-specific non-null override without colliding with IAuditable.
+        public new string UpdatedBy { get; set; } = string.Empty;
     }
 
     public class LanguageRoutingQuery : LegacyBaseEntity

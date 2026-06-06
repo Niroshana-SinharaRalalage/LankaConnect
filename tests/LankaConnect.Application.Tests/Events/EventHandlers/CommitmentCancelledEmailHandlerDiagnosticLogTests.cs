@@ -210,7 +210,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
             null, // online event — keeps the test minimal; full location projection is tested elsewhere
             EventCategory.Cultural).Value;
 
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
         return eventObj;
     }
@@ -219,7 +219,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
     {
         var userEmail = Email.Create(email).Value;
         var user = User.Create(userEmail, firstName, lastName).Value;
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(user, userId);
         return user;
     }

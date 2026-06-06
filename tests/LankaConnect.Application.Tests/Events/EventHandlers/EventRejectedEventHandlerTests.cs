@@ -219,7 +219,7 @@ public class EventRejectedEventHandlerTests
             EventCategory.Cultural).Value;
 
         // Set the Id using reflection
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
         return eventObj;
@@ -231,7 +231,7 @@ public class EventRejectedEventHandlerTests
         var user = User.Create(userEmail, firstName, lastName).Value;
 
         // Set the Id using reflection
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(user, userId);
 
         return user;

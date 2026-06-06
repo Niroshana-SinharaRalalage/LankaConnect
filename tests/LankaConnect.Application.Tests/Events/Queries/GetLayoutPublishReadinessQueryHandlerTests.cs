@@ -149,7 +149,7 @@ public class GetLayoutPublishReadinessQueryHandlerTests
         list.Add(tier);
 
         // Force the Id for cross-aggregate linkage assertions.
-        var idProp = typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id")!;
+        var idProp = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!;
         idProp.SetValue(@event, eventId);
         return @event;
     }

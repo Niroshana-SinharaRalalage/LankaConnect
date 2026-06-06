@@ -926,7 +926,7 @@ public class SponsorTests
 
     #endregion
 
-    #region BaseEntity Properties Tests
+    #region LegacyBaseEntity Properties Tests
 
     [Fact]
     public void CreateMoneySponsor_ShouldSetIdAndCreatedAt()

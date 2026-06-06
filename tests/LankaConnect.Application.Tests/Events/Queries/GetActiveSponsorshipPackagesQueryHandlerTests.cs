@@ -38,7 +38,7 @@ public class GetActiveSponsorshipPackagesQueryHandlerTests
         // by the query handler (Status, SponsorConfig). RuntimeHelpers is the
         // non-obsolete replacement for FormatterServices.GetUninitializedObject.
         var @event = (Event)RuntimeHelpers.GetUninitializedObject(typeof(Event));
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(@event, EventId);
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(@event, EventId);
         typeof(Event).GetProperty("Status")!.SetValue(@event, status);
         var sponsorConfig = sponsorsEnabled
             ? SponsorConfiguration.Create(true, true, true, null, null, true, packagesEnabled).Value

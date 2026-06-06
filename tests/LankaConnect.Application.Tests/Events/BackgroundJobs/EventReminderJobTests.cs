@@ -267,7 +267,7 @@ public class EventReminderJobTests
             EventCategory.Cultural).Value;
 
         // Set the Id using reflection
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
         // Publish the event so registrations can be added
@@ -294,7 +294,7 @@ public class EventReminderJobTests
             null,  // location
             EventCategory.Cultural).Value;
 
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
         // Phase 6A.81: Explicitly set $0 pricing for free events (null pricing defaults to paid)
@@ -328,7 +328,7 @@ public class EventReminderJobTests
             null,  // location
             EventCategory.Cultural).Value;
 
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(eventObj, eventId);
 
         // Publish the event so registrations can be added
@@ -345,7 +345,7 @@ public class EventReminderJobTests
         var userEmail = Email.Create(email).Value;
         var user = User.Create(userEmail, firstName, lastName).Value;
 
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(user, userId);
 
         return user;

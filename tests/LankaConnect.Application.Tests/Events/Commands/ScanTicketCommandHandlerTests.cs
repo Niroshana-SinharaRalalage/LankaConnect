@@ -62,7 +62,7 @@ public class ScanTicketCommandHandlerTests
         var d = LankaConnect.Domain.Events.ValueObjects.EventDescription.Create("desc").Value;
         var ev = Event.Create(t, d, DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(2),
             organizerId: organizerId ?? _scannerUserId, capacity: 100).Value;
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(ev, eventId);
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(ev, eventId);
         return ev;
     }
 
@@ -108,7 +108,7 @@ public class ScanTicketCommandHandlerTests
         var tier = TicketTier.Create(eventId, "VIP", "VIP access",
             adultPrice: adult, childPrice: child, childAgeLimit: 12,
             capacity: 100, maxPerUser: 10, sortOrder: 1).Value;
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(tier, Guid.NewGuid());
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(tier, Guid.NewGuid());
         var tiersField = typeof(Event).GetField("_ticketTiers",
             BindingFlags.Instance | BindingFlags.NonPublic);
         var list = (List<TicketTier>)tiersField!.GetValue(ev)!;
@@ -128,7 +128,7 @@ public class ScanTicketCommandHandlerTests
         var total = Money.Create(150m, Currency.USD).Value;
         var reg = Registration.CreateWithAttendees(eventId, _scannerUserId,
             new[] { att1, att2 }, contact, total, isPaidEvent: true).Value;
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
         return reg;
     }
 
@@ -469,7 +469,7 @@ public class ScanTicketCommandHandlerTests
         var total = Money.Create(0m, Currency.USD).Value;
         var reg = Registration.CreateWithAttendees(_eventId, _scannerUserId,
             new[] { att }, contact, total, isPaidEvent: true).Value;
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(reg, _registrationId);
 
         _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ev);
@@ -525,7 +525,7 @@ public class ScanTicketCommandHandlerTests
         purchase.CompletePayment("pi_test_xyz");
         // Build a matching AddOnDefinition so the name lookup succeeds.
         var defNameField = AddOnDefinition.Create(_eventId, "Dinner Add-on", "Extra", unitPrice, 100).Value;
-        typeof(BaseEntity).GetProperty("Id")!.SetValue(defNameField, addOnDefinitionId);
+        typeof(LegacyBaseEntity).GetProperty("Id")!.SetValue(defNameField, addOnDefinitionId);
 
         _eventRepo.Setup(r => r.GetByIdAsync(_eventId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ev);

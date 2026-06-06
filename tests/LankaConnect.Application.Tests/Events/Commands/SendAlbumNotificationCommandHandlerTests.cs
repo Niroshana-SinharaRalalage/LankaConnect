@@ -81,7 +81,7 @@ public class SendAlbumNotificationCommandHandlerTests
 
         // Force album Id if needed
         if (albumId.HasValue)
-            typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id")!.SetValue(album, albumId.Value);
+            typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, albumId.Value);
 
         album.Publish();
         return album;
@@ -126,7 +126,7 @@ public class SendAlbumNotificationCommandHandlerTests
     {
         // Create a Draft album (not published)
         var album = PhotoAlbum.Create(EventId, OrganizerId, "Test Event", "Draft Album").Value;
-        typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id")!.SetValue(album, AlbumId);
+        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")!.SetValue(album, AlbumId);
 
         _albumRepo
             .Setup(r => r.GetByIdAsync(AlbumId, false, It.IsAny<CancellationToken>()))

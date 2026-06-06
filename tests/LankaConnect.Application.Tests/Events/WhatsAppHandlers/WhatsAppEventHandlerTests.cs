@@ -138,7 +138,7 @@ public class WhatsAppEventHandlerTests
         return evt;
     }
 
-    /// <summary>Sets Id via reflection (works for both legacy BaseEntity and BB.Domain.Entity&lt;TId&gt;).</summary>
+    /// <summary>Sets Id via reflection (works for both legacy LegacyBaseEntity and BB.Domain.Entity&lt;TId&gt;).</summary>
     private static void SetEntityId(object entity, Guid id)
     {
         var prop = entity.GetType().GetProperty("Id");

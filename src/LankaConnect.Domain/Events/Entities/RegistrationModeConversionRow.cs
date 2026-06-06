@@ -5,7 +5,7 @@ namespace LankaConnect.Domain.Events.Entities;
 /// recorded for every registration touched by a conversion (migrated, skipped, OR failed).
 /// Joined to <see cref="RegistrationModeConversion"/> via <see cref="AggregateConversionId"/>.
 /// </summary>
-public class RegistrationModeConversionRow : LankaConnect.Domain.Common.BaseEntity
+public class RegistrationModeConversionRow : LankaConnect.Domain.Common.LegacyBaseEntity
 {
     public Guid AggregateConversionId { get; private set; }
     public Guid RegistrationId { get; private set; }

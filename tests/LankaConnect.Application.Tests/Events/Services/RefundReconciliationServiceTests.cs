@@ -90,13 +90,13 @@ public class RefundReconciliationServiceTests
 
     private static void InitDomainEventsBackingField(Registration registration)
     {
-        // BaseEntity._domainEvents is the typical backing field name. Use
+        // LegacyBaseEntity._domainEvents is the typical backing field name. Use
         // reflection so the test doesn't break if the field is renamed —
         // we just default to an empty list when found.
         var fieldNames = new[] { "_domainEvents", "domainEvents" };
         foreach (var name in fieldNames)
         {
-            var field = typeof(LankaConnect.Domain.Common.BaseEntity)
+            var field = typeof(LankaConnect.Domain.Common.LegacyBaseEntity)
                 .GetField(name, System.Reflection.BindingFlags.Instance
                     | System.Reflection.BindingFlags.NonPublic);
             if (field != null && field.GetValue(registration) == null)

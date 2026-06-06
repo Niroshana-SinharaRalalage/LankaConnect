@@ -490,7 +490,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         };
 
         // Get all types from Domain assembly that aren't in our configured list
-        var domainAssembly = typeof(BaseEntity).Assembly;
+        var domainAssembly = typeof(LegacyBaseEntity).Assembly;
         var valueObjectType = typeof(ValueObject);
 
         var allDomainTypes = domainAssembly.GetTypes()
@@ -551,9 +551,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
         _logger.LogWarning("[DEBUG-STACK] CommitAsync called from: {CallerStack}", callerInfo);
 
         // DIAGNOSTIC: Log all tracked entities BEFORE DetectChanges
-        var trackedEntitiesBeforeDetect = ChangeTracker.Entries<BaseEntity>().ToList();
+        var trackedEntitiesBeforeDetect = ChangeTracker.Entries<LegacyBaseEntity>().ToList();
         _logger.LogInformation(
-            "[DIAG-11] Tracked BaseEntity count BEFORE DetectChanges: {Count}",
+            "[DIAG-11] Tracked LegacyBaseEntity count BEFORE DetectChanges: {Count}",
             trackedEntitiesBeforeDetect.Count);
 
         foreach (var entry in trackedEntitiesBeforeDetect)
@@ -566,29 +566,19 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 entry.Entity.DomainEvents.Count);
         }
 
-        // Update timestamps before saving
-        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
-        {
-            switch (entry.State)
-            {
-                case EntityState.Added:
-                    // CreatedAt is set in constructor
-                    break;
-                case EntityState.Modified:
-                    entry.Entity.MarkAsUpdated();
-                    break;
-            }
-        }
+        // W3G (2026-06-06): IAuditable + AuditableInterceptor handle CreatedAt/UpdatedAt
+        // automatically — the old manual MarkAsUpdated() sweep is gone. Interceptor runs
+        // before SaveChangesAsync below; nothing to do here.
 
         // CRITICAL FIX Phase 6A.24: Force change detection BEFORE collecting domain events
-        // Without this, ChangeTracker.Entries<BaseEntity>() returns empty collection
+        // Without this, ChangeTracker.Entries<LegacyBaseEntity>() returns empty collection
         // because EF Core only auto-detects changes DURING SaveChangesAsync()
         ChangeTracker.DetectChanges();
 
         // DIAGNOSTIC: Log all tracked entities AFTER DetectChanges
-        var trackedEntitiesAfterDetect = ChangeTracker.Entries<BaseEntity>().ToList();
+        var trackedEntitiesAfterDetect = ChangeTracker.Entries<LegacyBaseEntity>().ToList();
         _logger.LogInformation(
-            "[DIAG-13] Tracked BaseEntity count AFTER DetectChanges: {Count}",
+            "[DIAG-13] Tracked LegacyBaseEntity count AFTER DetectChanges: {Count}",
             trackedEntitiesAfterDetect.Count);
 
         foreach (var entry in trackedEntitiesAfterDetect)
@@ -603,7 +593,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         }
 
         // Collect domain events before saving
-        var domainEvents = ChangeTracker.Entries<BaseEntity>()
+        var domainEvents = ChangeTracker.Entries<LegacyBaseEntity>()
             .Where(e => e.Entity.DomainEvents.Any())
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
@@ -630,7 +620,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // from re-collecting and re-dispatching the same domain events, which caused duplicate emails.
         // The domain events are already captured in the local 'domainEvents' list, so clearing them
         // from the entities is safe and necessary to prevent double dispatch.
-        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        foreach (var entry in ChangeTracker.Entries<LegacyBaseEntity>())
         {
             entry.Entity.ClearDomainEvents();
         }

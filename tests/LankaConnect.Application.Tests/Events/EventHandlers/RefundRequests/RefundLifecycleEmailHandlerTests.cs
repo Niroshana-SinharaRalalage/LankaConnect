@@ -356,7 +356,7 @@ public class RefundLifecycleEmailHandlerTests
     private static User CreateTestUser(Guid userId, string email, string firstName, string lastName)
     {
         var user = User.Create(Email.Create(email).Value, firstName, lastName).Value;
-        typeof(BaseEntity).GetProperty("Id")?.SetValue(user, userId);
+        typeof(LegacyBaseEntity).GetProperty("Id")?.SetValue(user, userId);
         return user;
     }
 
@@ -371,7 +371,7 @@ public class RefundLifecycleEmailHandlerTests
             100,
             null,
             EventCategory.Cultural).Value;
-        typeof(BaseEntity).GetProperty("Id")?.SetValue(ev, eventId);
+        typeof(LegacyBaseEntity).GetProperty("Id")?.SetValue(ev, eventId);
         return ev;
     }
 
@@ -384,7 +384,7 @@ public class RefundLifecycleEmailHandlerTests
             binder: null, types: Type.EmptyTypes, modifiers: null)
             ?? throw new InvalidOperationException("Registration must expose a non-public parameterless ctor for EF Core materialization");
         var reg = (Registration)ctor.Invoke(null);
-        typeof(BaseEntity).GetProperty("Id")?.SetValue(reg, regId);
+        typeof(LegacyBaseEntity).GetProperty("Id")?.SetValue(reg, regId);
         typeof(Registration).GetProperty(nameof(Registration.UserId))?.SetValue(reg, attendeeUserId);
         typeof(Registration).GetProperty(nameof(Registration.EventId))?.SetValue(reg, eventId);
         return reg;

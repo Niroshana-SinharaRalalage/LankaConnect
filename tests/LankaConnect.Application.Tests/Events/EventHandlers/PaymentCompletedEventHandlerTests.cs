@@ -405,7 +405,7 @@ public class PaymentCompletedEventHandlerTests
             EventCategory.Cultural).Value;
 
         // Set the Event Id using reflection
-        var eventIdProperty = typeof(BaseEntity).GetProperty("Id");
+        var eventIdProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         eventIdProperty?.SetValue(eventObj, eventId);
 
         // Mark as free event so registration doesn't require pricing config
@@ -426,7 +426,7 @@ public class PaymentCompletedEventHandlerTests
 
         // Set the Registration Id using reflection
         var registration = eventObj.Registrations.First();
-        var registrationIdProperty = typeof(BaseEntity).GetProperty("Id");
+        var registrationIdProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         registrationIdProperty?.SetValue(registration, registrationId);
 
         return eventObj;
@@ -445,7 +445,7 @@ public class PaymentCompletedEventHandlerTests
             EventCategory.Cultural).Value;
 
         // Set the Event Id using reflection
-        var eventIdProperty = typeof(BaseEntity).GetProperty("Id");
+        var eventIdProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         eventIdProperty?.SetValue(eventObj, eventId);
 
         // Mark as free event
@@ -493,7 +493,7 @@ public class PaymentCompletedEventHandlerTests
 
     private static void SetPrivateProperty(object obj, string propertyName, object value)
     {
-        var property = typeof(BaseEntity).GetProperty(propertyName);
+        var property = typeof(LegacyBaseEntity).GetProperty(propertyName);
         property?.SetValue(obj, value);
     }
 
@@ -503,7 +503,7 @@ public class PaymentCompletedEventHandlerTests
         var user = User.Create(userEmail, firstName, lastName).Value;
 
         // Set the Id using reflection
-        var idProperty = typeof(BaseEntity).GetProperty("Id");
+        var idProperty = typeof(LegacyBaseEntity).GetProperty("Id");
         idProperty?.SetValue(user, userId);
 
         return user;

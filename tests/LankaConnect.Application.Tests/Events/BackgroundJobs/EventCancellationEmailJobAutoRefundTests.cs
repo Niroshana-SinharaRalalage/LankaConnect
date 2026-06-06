@@ -140,7 +140,7 @@ public class EventCancellationEmailJobAutoRefundTests
     private void SetEntityId<T>(T entity, Guid id) where T : class
     {
         var baseType = typeof(T);
-        while (baseType != null && baseType.Name != "BaseEntity")
+        while (baseType != null && baseType.Name != "LegacyBaseEntity")
         {
             baseType = baseType.BaseType;
         }

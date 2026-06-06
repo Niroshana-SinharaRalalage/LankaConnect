@@ -56,8 +56,8 @@ public class WhatsAppBackgroundJobTests
 
         evt.SetAsFreeEvent();
 
-        // Set the Id using reflection (BaseEntity.Id has protected setter)
-        var prop = typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id");
+        // Set the Id using reflection (LegacyBaseEntity.Id has protected setter)
+        var prop = typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id");
         prop?.SetValue(evt, eventId);
         return evt;
     }
@@ -80,8 +80,8 @@ public class WhatsAppBackgroundJobTests
             includeNewsletterSubscribers: true,
             eventId: eventId).Value;
 
-        // Set the Id using reflection (BaseEntity.Id has protected setter)
-        typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id")?.SetValue(newsletter, newsletterId);
+        // Set the Id using reflection (LegacyBaseEntity.Id has protected setter)
+        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")?.SetValue(newsletter, newsletterId);
         return newsletter;
     }
 
@@ -326,7 +326,7 @@ public class WhatsAppBackgroundJobTests
             Guid.NewGuid(), 100, realLocation,
             LankaConnect.Domain.Events.Enums.EventCategory.Community).Value;
         realEvent.SetAsFreeEvent();
-        typeof(LankaConnect.Domain.Common.BaseEntity).GetProperty("Id")?.SetValue(realEvent, eventId);
+        typeof(LankaConnect.Domain.Common.LegacyBaseEntity).GetProperty("Id")?.SetValue(realEvent, eventId);
 
         _mockEventRepo
             .Setup(r => r.GetByIdAsync(eventId, It.IsAny<CancellationToken>()))

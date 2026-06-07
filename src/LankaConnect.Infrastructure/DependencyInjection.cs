@@ -410,7 +410,9 @@ public static class DependencyInjection
         services.AddHostedService<BackgroundServices.RefundReconciliationBackgroundService>();
 
         // Add Cultural Intelligence Services (Stub implementations for MVP - Phase 2 will add real implementations)
-        services.AddScoped<LankaConnect.Domain.Events.Services.ICulturalCalendar, LankaConnect.Infrastructure.CulturalIntelligence.StubCulturalCalendar>();
+        // W4.7 (2026-06-06): ICulturalCalendar / StubCulturalCalendar registration moved
+        // to CulturalIntelligenceModule.AddCulturalIntelligenceModule (called from
+        // LankaConnect.API/Program.cs).
         services.AddScoped<LankaConnect.Domain.Events.Services.IUserPreferences, LankaConnect.Infrastructure.CulturalIntelligence.StubUserPreferences>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IGeographicProximityService, LankaConnect.Infrastructure.CulturalIntelligence.StubGeographicProximityService>();
         services.AddScoped<LankaConnect.Domain.Events.Services.IEventRecommendationEngine, LankaConnect.Domain.Events.Services.EventRecommendationEngine>();

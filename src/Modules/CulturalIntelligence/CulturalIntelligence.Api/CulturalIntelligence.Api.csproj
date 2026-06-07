@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Api</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Api</AssemblyName>
+    <Description>CulturalIntelligence module — Api layer. CulturalIntelligenceModule composition extension.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CulturalIntelligence.Application\CulturalIntelligence.Application.csproj" />
+    <ProjectReference Include="..\CulturalIntelligence.Domain\CulturalIntelligence.Domain.csproj" />
+    <ProjectReference Include="..\CulturalIntelligence.Contracts\CulturalIntelligence.Contracts.csproj" />
+    <ProjectReference Include="..\CulturalIntelligence.Infrastructure\CulturalIntelligence.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+    <ProjectReference Include="..\..\..\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

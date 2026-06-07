@@ -60,6 +60,12 @@
     <ProjectReference Include="..\..\..\src\Modules\Forms\Forms.Application\Forms.Application.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\Forms\Forms.Infrastructure\Forms.Infrastructure.csproj" />
 
+    <!-- W4.7 (2026-06-06) — CulturalIntelligence module skeleton (StubCulturalCalendar impl moved). -->
+    <ProjectReference Include="..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Domain\CulturalIntelligence.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Contracts\CulturalIntelligence.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Application\CulturalIntelligence.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Infrastructure\CulturalIntelligence.Infrastructure.csproj" />
+
     <!-- W1A (2026-06-04) — BuildingBlocks.Abstractions extracted; ArchTest verifies the abstractions assembly has zero LankaConnect dependencies. -->
     <ProjectReference Include="..\..\..\src\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
 

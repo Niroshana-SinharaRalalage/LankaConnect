@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Application</AssemblyName>
+    <Description>CulturalIntelligence module — Application layer. Orchestrators that compose calendar + sensitivity + timing services. Empty in W4.7.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CulturalIntelligence.Domain\CulturalIntelligence.Domain.csproj" />
+    <ProjectReference Include="..\CulturalIntelligence.Contracts\CulturalIntelligence.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

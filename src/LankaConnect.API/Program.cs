@@ -8,6 +8,7 @@ using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
+using LankaConnect.Modules.CulturalIntelligence.Api;
 using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
@@ -111,6 +112,10 @@ try
     // (cross-schema overrides for events.event_forms / form_questions /
     // form_responses / form_answers) + IEventFormRepository + IFormResponseRepository.
     builder.Services.AddFormsModule(builder.Configuration);
+
+    // W4.7 (2026-06-06) — CulturalIntelligence module composition. Registers
+    // ICulturalCalendar (StubCulturalCalendar impl).
+    builder.Services.AddCulturalIntelligenceModule();
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

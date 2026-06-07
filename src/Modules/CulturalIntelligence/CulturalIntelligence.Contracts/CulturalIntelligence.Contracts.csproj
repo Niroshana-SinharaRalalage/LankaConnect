@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Contracts</AssemblyName>
+    <Description>CulturalIntelligence module — Contracts layer. Cross-module ABI for cultural awareness queries.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

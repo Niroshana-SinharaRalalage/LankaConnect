@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Domain</AssemblyName>
+    <Description>CulturalIntelligence module — Domain layer. Owns the calendar/sensitivity/timing interfaces + value objects that other capabilities depend on for cultural-aware behavior. Empty in W4.7; populated as the Communications-side cultural services migrate during W4.1 surgery.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

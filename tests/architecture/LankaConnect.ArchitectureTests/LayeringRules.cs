@@ -584,6 +584,59 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    // ---------- W4.7 — CulturalIntelligence module boundaries (added 2026-06-06) ----------
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_CulturalIntelligence_Domain_DoesNotDependOnLayeredMonolithOrOtherModules()
+    {
+        var assembly = typeof(Modules.CulturalIntelligence.Domain.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.BuildingBlocks.Contracts",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.Communications.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_CulturalIntelligence_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        // W4.7 transitional (2026-06-06): mirrors the W4.2 Media / W4.3 Forms transitional
+        // pattern. LankaConnect.Domain edge intentionally allowed because StubCulturalCalendar
+        // implements LankaConnect.Domain.Events.Services.ICulturalCalendar — interface stays
+        // in legacy Events.Services until Wave 5 Products carves Events into Products/LankaEvents.
+        // LankaConnect.Application + LankaConnect.Infrastructure excluded to avoid NetArchTest
+        // prefix-match false positives against BB.Application + BB.Infrastructure.
+        var assembly = typeof(Modules.CulturalIntelligence.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.CulturalIntelligence.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W1A — BuildingBlocks.Abstractions (added 2026-06-04) ----------
 
     /// <summary>

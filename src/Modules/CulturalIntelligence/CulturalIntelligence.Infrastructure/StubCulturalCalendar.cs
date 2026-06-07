@@ -4,7 +4,7 @@ using LankaConnect.Domain.Events.ValueObjects.Recommendations;
 using CulturalAppropriateness = LankaConnect.SharedKernel.Cultural.CulturalAppropriateness;
 using AppropriatenessLevel = LankaConnect.SharedKernel.Cultural.AppropriatenessLevel;
 
-namespace LankaConnect.Infrastructure.CulturalIntelligence;
+namespace LankaConnect.Modules.CulturalIntelligence.Infrastructure;
 
 /// <summary>
 /// Stub implementation of ICulturalCalendar for MVP

@@ -130,17 +130,55 @@ jobs:
               --context AppDbContext \
               --verbose; then
               SUCCESS=true
-              echo "✅ Migrations completed successfully"
+              echo "✅ AppDbContext migrations completed successfully"
             else
               if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
                 DELAY=$((10 * (2 ** ($RETRY_COUNT - 1))))  # Exponential backoff: 10s, 20s
                 echo "⚠️  Migration failed. Retrying in ${DELAY}s..."
                 sleep $DELAY
               else
-                echo "❌ Migration failed after $MAX_RETRIES attempts"
+                echo "❌ AppDbContext migration failed after $MAX_RETRIES attempts"
                 exit 1
               fi
             fi
+          done
+
+          # Phase 0.7 (Wave 4.9 — 2026-06-07): apply module-owned DbContexts.
+          # Before this step, NotificationsDbContext / MediaDbContext / FormsDbContext
+          # migrations were committed but never applied — meaning notifications.outbox,
+          # media.outbox, forms.outbox operational tables and the per-module
+          # __EFMigrationsHistory tables did not exist on staging. Each context is
+          # applied sequentially; failure of any one aborts the deploy.
+          for MODULE in "Notifications" "Media" "Forms"; do
+            CONTEXT_NAME="${MODULE}DbContext"
+            PROJECT_PATH="../Modules/${MODULE}/${MODULE}.Infrastructure/${MODULE}.Infrastructure.csproj"
+            echo ""
+            echo "Applying ${CONTEXT_NAME} migrations to staging database..."
+
+            RETRY_COUNT=0
+            CTX_SUCCESS=false
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$CTX_SUCCESS" = false ]; do
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "${CONTEXT_NAME} attempt $RETRY_COUNT of $MAX_RETRIES..."
+
+              if dotnet ef database update \
+                --connection "$DB_CONNECTION" \
+                --project "$PROJECT_PATH" \
+                --context "$CONTEXT_NAME" \
+                --verbose; then
+                CTX_SUCCESS=true
+                echo "✅ ${CONTEXT_NAME} migrations completed successfully"
+              else
+                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                  DELAY=$((10 * (2 ** ($RETRY_COUNT - 1))))
+                  echo "⚠️  ${CONTEXT_NAME} migration failed. Retrying in ${DELAY}s..."
+                  sleep $DELAY
+                else
+                  echo "❌ ${CONTEXT_NAME} migration failed after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+              fi
+            done
           done
 
       - name: Verify Database Schema (Phase 6A.61 Hotfix)

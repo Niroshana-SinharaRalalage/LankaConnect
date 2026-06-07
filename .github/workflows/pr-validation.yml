@@ -20,6 +20,10 @@ on:
       - 'tests/architecture/**'
       - 'Directory.Packages.props'
       - '.github/workflows/pr-validation.yml'
+      # Phase 0 (2026-06-07) — migration discipline lint catches destructive DDL
+      # on direct staging-deploy pushes, not just PRs.
+      - 'src/**/Migrations/**'
+      - 'src/**/Data/Migrations/**'
 
 env:
   DOTNET_VERSION: '8.0.x'
@@ -70,6 +74,99 @@ jobs:
           name: arch-test-results
           path: TestResults/ArchTest/
           retention-days: 7
+
+  migration-lint:
+    name: Migration Discipline Lint (no destructive DDL without approval)
+    runs-on: ubuntu-latest
+    # Phase 0 — runs on every PR + every direct push to develop. Cheap
+    # (~10s, pure bash + grep). Catches the failure mode that today's
+    # Forms PascalCase rename + 2038-line AppDbContext cleanup attempts
+    # represented. Per CLAUDE.md §5 north-star: destructive DDL requires the
+    # explicit `SCHEMA-DESTRUCTIVE-APPROVED: <reason>` header on the migration
+    # class doc comment. Per founder ruling 2026-06-07: no canary, no second
+    # DB; this lint is the dev-side replacement for local-Postgres dry-run.
+    steps:
+      - name: Checkout (full history for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed migration files
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            # Push event — diff the new commits against their parent. For the
+            # first push to a branch GITHUB_EVENT_BEFORE is all zeros; fall back
+            # to HEAD~1 in that case.
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+            else
+              BASE_SHA="$BEFORE"
+            fi
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          echo "Diffing $BASE_SHA..$HEAD_SHA"
+
+          # Migration files only — exclude Designer.cs + Snapshot.cs (auto-
+          # generated, scanning them creates false positives from BuildTargetModel).
+          CHANGED=$(git diff --name-only --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" \
+            | grep -E '(^|/)Migrations/[0-9]{14}_[^/]+\.cs$' \
+            | grep -v '\.Designer\.cs$' \
+            || true)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No changed migration files. Skipping lint."
+            echo "files=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Changed migrations:"
+            echo "$CHANGED"
+            # Write multi-line output via heredoc per GHA docs
+            {
+              echo 'files<<EOF'
+              echo "$CHANGED"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Enforce SCHEMA-DESTRUCTIVE-APPROVED header on destructive migrations
+        if: steps.changed.outputs.files != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          FAILED=0
+          # Patterns the lint rejects unless the migration carries an explicit
+          # SCHEMA-DESTRUCTIVE-APPROVED header. Per CLAUDE.md §5.
+          DESTRUCTIVE_PATTERN='migrationBuilder\.(DropTable|DropColumn|RenameTable|RenameColumn)\b'
+          APPROVAL_PATTERN='SCHEMA-DESTRUCTIVE-APPROVED:'
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+
+            if grep -qE "$DESTRUCTIVE_PATTERN" "$file"; then
+              if grep -q "$APPROVAL_PATTERN" "$file"; then
+                echo "::notice file=$file::Destructive DDL present + SCHEMA-DESTRUCTIVE-APPROVED header found. Approved."
+              else
+                echo "::error file=$file::Destructive DDL present (DropTable/DropColumn/RenameTable/RenameColumn) but migration class doc lacks 'SCHEMA-DESTRUCTIVE-APPROVED: <reason>' header. Per CLAUDE.md §5: every destructive migration requires explicit founder approval baked into the file. Add a /// SCHEMA-DESTRUCTIVE-APPROVED: <reason> comment to the migration class XML doc, or split the migration into a non-destructive Phase 1 first."
+                FAILED=1
+              fi
+            else
+              echo "::notice file=$file::Additive-only migration. Clean."
+            fi
+          done <<< "${{ steps.changed.outputs.files }}"
+
+          if [ "$FAILED" = "1" ]; then
+            exit 1
+          fi
 
   pr-quality-check:
     name: PR Quality Check

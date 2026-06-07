@@ -11,6 +11,10 @@ using System.Text;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Community;
 using LankaConnect.Modules.Notifications.Domain;
 using LankaConnect.Domain.Badges;
@@ -248,8 +252,8 @@ public static class DependencyInjection
         services.AddScoped<IEventFormRepository, EventFormRepository>();
         services.AddScoped<IFormResponseRepository, FormResponseRepository>();
 
-        // Photo Album Feature Repositories
-        services.AddScoped<IPhotoAlbumRepository, PhotoAlbumRepository>();
+        // W4.2 (2026-06-06): IPhotoAlbumRepository registration moved to
+        // MediaModule.AddMediaModule (called from LankaConnect.API/Program.cs).
 
         // Phase 6A.95: Configure Sales Tax Settings (feature flag)
         services.Configure<SalesTaxSettings>(configuration.GetSection(SalesTaxSettings.SectionName));

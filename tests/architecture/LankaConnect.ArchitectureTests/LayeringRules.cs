@@ -498,6 +498,14 @@ public sealed class LayeringRules
     [Trait("Category", "ArchTest")]
     public void Modules_Media_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
     {
+        // W4.2 transitional (2026-06-06): mirrors the Notifications transitional rule
+        // above. LankaConnect.Domain edge intentionally allowed because PhotoAlbum +
+        // AlbumPhoto still extend LegacyBaseEntity and use Result<T>; rebase to direct
+        // BB.Entity<Guid> + IAuditable + typed errors deferred to W4.8 Cross-cutting cleanup.
+        // LankaConnect.Application and LankaConnect.Infrastructure excluded from the forbidden
+        // list to avoid NetArchTest prefix-match false positives against
+        // LankaConnect.BuildingBlocks.Application + LankaConnect.BuildingBlocks.Infrastructure
+        // (architect Q1 ruling pattern, see W1A_BB_Abstractions rule).
         var assembly = typeof(Modules.Media.Infrastructure.AssemblyMarker).Assembly;
 
         var result = Types.InAssembly(assembly)
@@ -505,9 +513,6 @@ public sealed class LayeringRules
             .NotHaveDependencyOnAny(
                 "LankaConnect.Modules.Media.Api",
                 "LankaConnect.BuildingBlocks.Web",
-                "LankaConnect.Domain",
-                "LankaConnect.Application",
-                "LankaConnect.Infrastructure",
                 "LankaConnect.API",
                 "LankaConnect.Shared")
             .GetResult();

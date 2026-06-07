@@ -1,6 +1,10 @@
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Enums;
 using Microsoft.Extensions.Logging;
 using Serilog.Context;
@@ -74,8 +78,10 @@ public class DeletePhotoAlbumCommandHandler : ICommandHandler<DeletePhotoAlbumCo
                 }
             }
 
-            // Delete the album (cascade will delete photos from DB)
-            _photoAlbumRepository.Remove(album);
+            // Delete the album (cascade will delete photos from DB).
+            // W4.2: DeleteAsync is self-saving on the new IPhotoAlbumRepository contract;
+            // the IUnitOfWork.CommitAsync below remains for AppDbContext-scoped audit writes.
+            await _photoAlbumRepository.DeleteAsync(album, cancellationToken);
             await _unitOfWork.CommitAsync(cancellationToken);
 
             _logger.LogInformation(

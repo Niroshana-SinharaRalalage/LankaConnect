@@ -2309,7 +2309,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("donations", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.AlbumPhoto", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Media.Domain.Entities.AlbumPhoto", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -5830,7 +5830,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("StripeFeeAmount");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.AlbumPhoto", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Media.Domain.Entities.AlbumPhoto", b =>
                 {
                     b.HasOne("LankaConnect.Domain.Events.PhotoAlbum", null)
                         .WithMany("Photos")

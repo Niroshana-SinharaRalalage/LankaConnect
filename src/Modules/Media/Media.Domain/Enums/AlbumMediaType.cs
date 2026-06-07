@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Modules.Media.Domain.Enums;
 
 /// <summary>
 /// Discriminator for media type within a photo album.

@@ -32,8 +32,10 @@
     <ProjectReference Include="..\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
     <!-- W2.6b — Telemetry extension wires OpenTelemetry + Azure Monitor for staging/prod traces. -->
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
-    <!-- W3.4 (2026-06-03) — Notifications module: hosts AddNotificationsModule + NotificationsController (moves in W3.6). -->
+    <!-- W3.4 (2026-06-03) — Notifications module: hosts AddNotificationsModule + NotificationsController. -->
     <ProjectReference Include="..\Modules\Notifications\Notifications.Api\Notifications.Api.csproj" />
+    <!-- W4.2 (2026-06-06) — Media module: hosts AddMediaModule (PhotoAlbum + AlbumPhoto). -->
+    <ProjectReference Include="..\Modules\Media\Media.Api\Media.Api.csproj" />
   </ItemGroup>
 
   <!-- Phase 6A.34: Link Infrastructure email templates to API publish output -->

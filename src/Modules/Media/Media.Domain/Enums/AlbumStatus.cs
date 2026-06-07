@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Modules.Media.Domain.Enums;
 
 /// <summary>
 /// Status of a photo album's lifecycle.

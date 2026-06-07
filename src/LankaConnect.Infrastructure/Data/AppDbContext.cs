@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;
@@ -158,8 +162,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<AdminAuditLog> AdminAuditLogs => Set<AdminAuditLog>(); // Phase 6A.89: Admin Audit Logging
 
     // Photo Album Entity Sets (After Event Photo Album Feature)
-    public DbSet<PhotoAlbum> PhotoAlbums => Set<PhotoAlbum>();
-    public DbSet<AlbumPhoto> AlbumPhotos => Set<AlbumPhoto>();
+    // W4.2 (2026-06-06): PhotoAlbum + AlbumPhoto DbSets + EF configs moved to
+    // MediaDbContext owned by Modules.Media.Infrastructure. Tables physically
+    // remain on events.photo_albums + events.album_photos via cross-schema
+    // override per architect ruling 2026-06-06.
 
     // WhatsApp Entity Sets (Phase 7A: WhatsApp Integration)
     public DbSet<WhatsAppMessageRecord> WhatsAppMessageRecords => Set<WhatsAppMessageRecord>();
@@ -297,8 +303,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.ApplyConfiguration(new AdminAuditLogConfiguration()); // Phase 6A.89: Admin Audit Logging
 
         // Photo Album entity configurations (After Event Photo Album Feature)
-        modelBuilder.ApplyConfiguration(new PhotoAlbumConfiguration());
-        modelBuilder.ApplyConfiguration(new AlbumPhotoConfiguration());
+        // W4.2: PhotoAlbum + AlbumPhoto configurations moved to MediaDbContext.
 
         // WhatsApp entity configurations (Phase 7A: WhatsApp Integration)
         modelBuilder.ApplyConfiguration(new WhatsAppMessageRecordConfiguration());
@@ -464,8 +469,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(SponsorshipPackage), // Phase 6A.156: organizer-defined sponsorship packages (Gold/Silver/Bronze)
             typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact), // Multiple Organizer Contacts
             typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias), // Phase 6A.154: retired vanity slug aliases (permanent 301 sources)
-            typeof(PhotoAlbum), // After Event Photo Album Feature
-            typeof(AlbumPhoto), // After Event Photo Album Feature
+            // W4.2: PhotoAlbum + AlbumPhoto moved to MediaDbContext.
             typeof(WhatsAppMessageRecord), // Phase 7A: WhatsApp Integration
             typeof(WhatsAppTemplate), // Phase 7A: WhatsApp Integration
             typeof(UserWhatsAppPreferences), // Phase 7A: WhatsApp Integration

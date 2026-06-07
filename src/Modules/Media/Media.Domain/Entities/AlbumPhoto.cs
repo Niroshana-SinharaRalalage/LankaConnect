@@ -1,7 +1,7 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Modules.Media.Domain.Enums;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Modules.Media.Domain.Entities;
 
 /// <summary>
 /// Represents a media item (photo or video) in an event's post-event photo album.

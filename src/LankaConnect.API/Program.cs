@@ -8,6 +8,7 @@ using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
+using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
 using LankaConnect.Infrastructure.Data;
 using LankaConnect.API.Extensions;
@@ -101,6 +102,11 @@ try
     // AddInfrastructure so the AppDbContext + Repository<T> base are available
     // for the NotificationRepository transitional edge.
     builder.Services.AddNotificationsModule(builder.Configuration);
+
+    // W4.2 (2026-06-06) — Media module composition. Registers MediaDbContext
+    // (cross-schema overrides for events.photo_albums + events.album_photos)
+    // + IPhotoAlbumRepository.
+    builder.Services.AddMediaModule(builder.Configuration);
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

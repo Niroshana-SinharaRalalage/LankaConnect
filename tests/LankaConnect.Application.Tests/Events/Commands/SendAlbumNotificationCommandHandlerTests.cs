@@ -4,6 +4,10 @@ using LankaConnect.Application.Events.Commands.PhotoAlbums.SendAlbumNotification
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Business.ValueObjects;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Events.Enums;
 using LankaConnect.Domain.Events.ValueObjects;

@@ -1,9 +1,9 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 
-namespace LankaConnect.Domain.Events;
+namespace LankaConnect.Modules.Media.Domain;
 
 /// <summary>
 /// Aggregate root for post-event photo albums.

@@ -1,4 +1,8 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.DomainEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;

@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Modules.Media.Domain.DomainEvents;
 
 /// <summary>
 /// Domain event raised when a photo album is published.

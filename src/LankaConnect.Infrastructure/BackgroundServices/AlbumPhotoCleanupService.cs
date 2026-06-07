@@ -4,6 +4,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Media.Domain;
+using LankaConnect.Modules.Media.Domain.Entities;
+using LankaConnect.Modules.Media.Domain.Enums;
+using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 
 namespace LankaConnect.Infrastructure.BackgroundServices;
@@ -172,7 +176,7 @@ public class AlbumPhotoCleanupService : BackgroundService
                     if (album != null)
                     {
                         // Only count approved photos toward the decrement
-                        var approvedCount = photosInAlbum.Count(p => p.Status == Domain.Events.Enums.AlbumPhotoStatus.Approved);
+                        var approvedCount = photosInAlbum.Count(p => p.Status == AlbumPhotoStatus.Approved);
                         if (approvedCount > 0)
                         {
                             album.DecrementPhotoCount(approvedCount);

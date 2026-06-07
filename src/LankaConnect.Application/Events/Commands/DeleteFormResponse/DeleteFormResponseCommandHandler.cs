@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
@@ -146,7 +151,7 @@ public class DeleteFormResponseCommandHandler : ICommandHandler<DeleteFormRespon
                 }
 
                 // Hard delete (GDPR compliant - users control their data)
-                _formResponseRepository.Remove(response);
+                await _formResponseRepository.DeleteAsync(response, cancellationToken);
 
                 // Commit transaction (cascade delete will remove FormAnswers via EF Core configuration)
                 await _unitOfWork.CommitAsync(cancellationToken);

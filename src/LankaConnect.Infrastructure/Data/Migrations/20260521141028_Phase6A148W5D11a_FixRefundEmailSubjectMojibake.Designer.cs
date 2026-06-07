@@ -2491,7 +2491,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("event_badges", "badges");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventForm", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.EventForm", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -2688,7 +2688,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("event_organizer_contacts", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormAnswer", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormAnswer", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -2745,7 +2745,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("form_answers", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormQuestion", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormQuestion", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -2804,7 +2804,7 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.ToTable("form_questions", "events");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormResponse", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormResponse", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -6971,18 +6971,18 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormAnswer", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormAnswer", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Entities.FormResponse", null)
+                    b.HasOne("LankaConnect.Modules.Forms.Domain.Entities.FormResponse", null)
                         .WithMany("Answers")
                         .HasForeignKey("FormResponseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormQuestion", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormQuestion", b =>
                 {
-                    b.HasOne("LankaConnect.Domain.Events.Entities.EventForm", null)
+                    b.HasOne("LankaConnect.Modules.Forms.Domain.EventForm", null)
                         .WithMany("Questions")
                         .HasForeignKey("EventFormId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -9108,12 +9108,12 @@ namespace LankaConnect.Infrastructure.Data.Migrations
                     b.Navigation("Replies");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.EventForm", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.EventForm", b =>
                 {
                     b.Navigation("Questions");
                 });
 
-            modelBuilder.Entity("LankaConnect.Domain.Events.Entities.FormResponse", b =>
+            modelBuilder.Entity("LankaConnect.Modules.Forms.Domain.Entities.FormResponse", b =>
                 {
                     b.Navigation("Answers");
                 });

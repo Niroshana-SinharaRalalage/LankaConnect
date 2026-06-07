@@ -1,4 +1,9 @@
 using LankaConnect.Domain.Business;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Communications.Entities;
 using LankaConnect.Domain.Events;
@@ -47,11 +52,9 @@ public interface IApplicationDbContext
     DbSet<EmailTemplate> EmailTemplates { get; }
     DbSet<UserEmailPreferences> UserEmailPreferences { get; }
 
-    // Custom Form/Survey Sign-Up Feature
-    DbSet<EventForm> EventForms { get; }
-    DbSet<FormQuestion> FormQuestions { get; }
-    DbSet<FormResponse> FormResponses { get; }
-    DbSet<FormAnswer> FormAnswers { get; }
+    // W4.3 (2026-06-06): EventForm/FormQuestion/FormResponse/FormAnswer DbSets moved
+    // to FormsDbContext (Modules.Forms.Infrastructure). Callers that need direct
+    // DbContext access now inject FormsDbContext explicitly.
 
     // Reference Data Domain - Phase 6A.47 (Unified)
     DbSet<ReferenceValue> ReferenceValues { get; } // Phase 6A.47: Unified Reference Data

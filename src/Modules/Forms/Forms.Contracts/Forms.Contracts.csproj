@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Forms.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Forms.Contracts</AssemblyName>
+    <Description>Forms module — Contracts layer. Cross-module integration events + module API surface. Empty in W4.3; populated as cross-capability integration needs surface.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

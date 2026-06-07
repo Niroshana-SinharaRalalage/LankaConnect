@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Common;
@@ -69,7 +74,7 @@ public class GetMyFormResponseQueryHandler : IQueryHandler<GetMyFormResponseQuer
         }
     }
 
-    private static FormResponseDto MapToDto(Domain.Events.Entities.FormResponse response)
+    private static FormResponseDto MapToDto(Modules.Forms.Domain.Entities.FormResponse response)
     {
         return new FormResponseDto
         {

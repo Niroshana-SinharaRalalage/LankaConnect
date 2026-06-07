@@ -1,4 +1,9 @@
 using FluentAssertions;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common;
 using LankaConnect.Application.Common.Constants;
 using LankaConnect.Application.Common.Interfaces;
@@ -59,7 +64,7 @@ public class EventNotificationEmailJobTests
         // Phase 6A.129: Return empty forms list by default
         _mockEventFormRepository
             .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Domain.Events.Entities.EventForm>());
+            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.EventForm>());
 
         _job = new EventNotificationEmailJob(
             _mockHistoryRepository.Object,

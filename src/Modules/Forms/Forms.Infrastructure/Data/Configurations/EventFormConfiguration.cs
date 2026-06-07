@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Events.Entities;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.Modules.Forms.Infrastructure.Data.Configurations;
 
 public class EventFormConfiguration : IEntityTypeConfiguration<EventForm>
 {

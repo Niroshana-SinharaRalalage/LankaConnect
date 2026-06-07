@@ -1,4 +1,9 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.EventHandlers;
 using LankaConnect.Application.Interfaces;
 using LankaConnect.Domain.Common;
@@ -67,7 +72,7 @@ public class CommitmentCancelledEmailHandlerDiagnosticLogTests
 
         _eventFormRepository
             .Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IReadOnlyList<EventForm>)new List<EventForm>());
+            .ReturnsAsync(new List<EventForm>());
 
         _handler = new CommitmentCancelledEmailHandler(
             _scopeFactory.Object,

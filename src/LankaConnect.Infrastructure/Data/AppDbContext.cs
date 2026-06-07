@@ -1,4 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
@@ -152,10 +157,10 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public DbSet<LankaConnect.Domain.Tax.StateTaxRate> StateTaxRates => Set<LankaConnect.Domain.Tax.StateTaxRate>(); // Phase 6A.X: US State Sales Tax Rates
 
     // Custom Form Entity Sets (Custom Form/Survey Sign-Up Feature)
-    public DbSet<EventForm> EventForms => Set<EventForm>();
-    public DbSet<FormQuestion> FormQuestions => Set<FormQuestion>();
-    public DbSet<FormResponse> FormResponses => Set<FormResponse>();
-    public DbSet<FormAnswer> FormAnswers => Set<FormAnswer>();
+    // W4.3 (2026-06-06): EventForm + FormQuestion + FormResponse + FormAnswer DbSets +
+    // EF configs moved to FormsDbContext owned by Modules.Forms.Infrastructure. Tables
+    // physically remain on events.event_forms / events.form_questions /
+    // events.form_responses / events.form_answers via cross-schema override.
 
     // Support Entity Sets - Phase 6A.89
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>(); // Phase 6A.89: Support/Feedback System
@@ -292,11 +297,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Tax entity configurations (Phase 6A.X)
         modelBuilder.ApplyConfiguration(new StateTaxRateConfiguration()); // Phase 6A.X: US State Sales Tax Rates
 
-        // Custom Form entity configurations (Custom Form/Survey Sign-Up Feature)
-        modelBuilder.ApplyConfiguration(new EventFormConfiguration());
-        modelBuilder.ApplyConfiguration(new FormQuestionConfiguration());
-        modelBuilder.ApplyConfiguration(new FormResponseConfiguration());
-        modelBuilder.ApplyConfiguration(new FormAnswerConfiguration());
+        // W4.3: All form configurations (EventForm, FormQuestion, FormResponse, FormAnswer)
+        // moved to FormsDbContext (Modules.Forms.Infrastructure).
 
         // Support entity configurations (Phase 6A.89)
         modelBuilder.ApplyConfiguration(new SupportTicketConfiguration()); // Phase 6A.89: Support/Feedback System
@@ -399,10 +401,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<EventBadge>().ToTable("event_badges", "badges");
 
         // Custom Form tables (events schema)
-        modelBuilder.Entity<EventForm>().ToTable("event_forms", "events");
-        modelBuilder.Entity<FormQuestion>().ToTable("form_questions", "events");
-        modelBuilder.Entity<FormResponse>().ToTable("form_responses", "events");
-        modelBuilder.Entity<FormAnswer>().ToTable("form_answers", "events");
+        // W4.3: Forms entity table mappings moved to FormsDbContext (events schema cross-schema overrides).
 
         // Tax schema (Phase 6A.X)
         // Migration 20260114170149 created in public schema, will be moved to reference_data schema
@@ -457,10 +456,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Tax.StateTaxRate), // Phase 6A.X: US State Sales Tax Rates
             typeof(SupportTicket), // Phase 6A.89: Support/Feedback System
             typeof(AdminAuditLog), // Phase 6A.89: Admin Audit Logging
-            typeof(EventForm), // Custom Form/Survey Sign-Up Feature
-            typeof(FormQuestion), // Custom Form/Survey Sign-Up Feature
-            typeof(FormResponse), // Custom Form/Survey Sign-Up Feature
-            typeof(FormAnswer), // Custom Form/Survey Sign-Up Feature
+            // W4.3: EventForm + FormQuestion + FormResponse + FormAnswer moved to FormsDbContext.
             typeof(Donation), // Standalone Donation System
             typeof(Collection), // Event fund contributions (Financial Features)
             typeof(Sponsor), // Money/item sponsorships (Financial Features)

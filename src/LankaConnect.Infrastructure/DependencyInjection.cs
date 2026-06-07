@@ -1,4 +1,9 @@
 using Azure.Storage.Blobs;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
@@ -249,8 +254,8 @@ public static class DependencyInjection
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
 
         // Custom Form/Survey Sign-Up Feature Repositories
-        services.AddScoped<IEventFormRepository, EventFormRepository>();
-        services.AddScoped<IFormResponseRepository, FormResponseRepository>();
+        // W4.3 (2026-06-06): IEventFormRepository + IFormResponseRepository registrations
+        // moved to FormsModule.AddFormsModule (called from LankaConnect.API/Program.cs).
 
         // W4.2 (2026-06-06): IPhotoAlbumRepository registration moved to
         // MediaModule.AddMediaModule (called from LankaConnect.API/Program.cs).

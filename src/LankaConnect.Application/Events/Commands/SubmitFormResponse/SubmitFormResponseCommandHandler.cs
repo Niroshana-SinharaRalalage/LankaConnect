@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Security.Cryptography;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
@@ -229,7 +234,7 @@ public class SubmitFormResponseCommandHandler : ICommandHandler<SubmitFormRespon
                 if (!form.HasResponses)
                 {
                     form.MarkHasResponses();
-                    _eventFormRepository.Update(form);
+                    await _eventFormRepository.UpdateAsync(form, cancellationToken);
                 }
 
                 // Persist

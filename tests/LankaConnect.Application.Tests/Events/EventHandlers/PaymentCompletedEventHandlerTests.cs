@@ -1,4 +1,9 @@
 using LankaConnect.Application.Common;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.EventHandlers;
 using LankaConnect.Application.Interfaces;
@@ -58,7 +63,7 @@ public class PaymentCompletedEventHandlerTests
 
         // Phase 6A.112: Setup event form repository to return empty list by default
         _eventFormRepository.Setup(x => x.GetByEventIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<LankaConnect.Domain.Events.Entities.EventForm>());
+            .ReturnsAsync(new List<LankaConnect.Modules.Forms.Domain.EventForm>());
 
         // Setup default URL helper behavior
         _emailUrlHelper.Setup(x => x.BuildEventDetailsUrl(It.IsAny<Guid>()))

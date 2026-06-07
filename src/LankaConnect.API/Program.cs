@@ -8,6 +8,7 @@ using LankaConnect.Application.Badges.BackgroundJobs;
 using LankaConnect.Application.Communications.BackgroundJobs;
 using LankaConnect.BuildingBlocks.Web.Telemetry;
 using LankaConnect.Infrastructure;
+using LankaConnect.Modules.Forms.Api;
 using LankaConnect.Modules.Media.Api;
 using LankaConnect.Modules.Notifications.Api;
 using LankaConnect.Infrastructure.Data;
@@ -103,10 +104,13 @@ try
     // for the NotificationRepository transitional edge.
     builder.Services.AddNotificationsModule(builder.Configuration);
 
-    // W4.2 (2026-06-06) — Media module composition. Registers MediaDbContext
-    // (cross-schema overrides for events.photo_albums + events.album_photos)
-    // + IPhotoAlbumRepository.
+    // W4.2 (2026-06-06) — Media module composition.
     builder.Services.AddMediaModule(builder.Configuration);
+
+    // W4.3 (2026-06-06) — Forms module composition. Registers FormsDbContext
+    // (cross-schema overrides for events.event_forms / form_questions /
+    // form_responses / form_answers) + IEventFormRepository + IFormResponseRepository.
+    builder.Services.AddFormsModule(builder.Configuration);
 
     // Add JWT Authentication and Authorization
     builder.Services.AddJwtAuthentication(builder.Configuration);

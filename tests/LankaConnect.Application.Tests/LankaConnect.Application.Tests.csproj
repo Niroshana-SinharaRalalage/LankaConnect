@@ -39,6 +39,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+    <!-- W4.3 (2026-06-06): Forms.Domain hosts EventForm + FormResponse for mock setups. -->
+    <ProjectReference Include="..\..\src\Modules\Forms\Forms.Domain\Forms.Domain.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
   </ItemGroup>
 

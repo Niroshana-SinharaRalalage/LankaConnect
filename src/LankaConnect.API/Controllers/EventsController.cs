@@ -4360,7 +4360,7 @@ public record CreateEventFormRequest(
 
 public record CreateFormQuestionRequest(
     string QuestionText,
-    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    LankaConnect.Modules.Forms.Domain.Enums.FormQuestionType QuestionType,
     bool IsRequired,
     int SortOrder,
     string? HelpText,
@@ -4386,7 +4386,7 @@ public record UpdateEventFormRequest(
 /// </summary>
 public record AddFormQuestionRequest(
     string QuestionText,
-    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    LankaConnect.Modules.Forms.Domain.Enums.FormQuestionType QuestionType,
     bool IsRequired,
     int SortOrder,
     string? HelpText,
@@ -4397,7 +4397,7 @@ public record AddFormQuestionRequest(
 /// </summary>
 public record UpdateFormQuestionRequest(
     string QuestionText,
-    LankaConnect.Domain.Events.Enums.FormQuestionType QuestionType,
+    LankaConnect.Modules.Forms.Domain.Enums.FormQuestionType QuestionType,
     bool IsRequired,
     int SortOrder,
     string? HelpText,

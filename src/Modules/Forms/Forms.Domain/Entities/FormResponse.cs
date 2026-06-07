@@ -1,7 +1,8 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Modules.Forms.Domain.Entities;
 
 /// <summary>
 /// Aggregate root representing a respondent's submission to an event form.

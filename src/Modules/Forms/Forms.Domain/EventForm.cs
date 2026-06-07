@@ -1,9 +1,10 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
-using LankaConnect.Domain.Events.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
 using LankaConnect.Domain.Events.ValueObjects;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Modules.Forms.Domain;
 
 /// <summary>
 /// Aggregate root for custom event forms (Google Forms-like surveys).

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Forms.Application</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Forms.Application</AssemblyName>
+    <Description>Forms module — Application layer. Commands, queries, handlers, DTOs. Currently empty — handlers continue to live in legacy LankaConnect.Application until W4.8 cross-cutting cleanup.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Forms.Domain\Forms.Domain.csproj" />
+    <ProjectReference Include="..\Forms.Contracts\Forms.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

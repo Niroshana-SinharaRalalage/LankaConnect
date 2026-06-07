@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Modules.Forms.Domain.Enums;
 
 /// <summary>
 /// Status lifecycle for custom event forms.

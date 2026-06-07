@@ -1,4 +1,9 @@
 using LankaConnect.Application.Common.Interfaces;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Events.Commands.DeleteFormResponse;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.DomainEvents;
@@ -63,7 +68,7 @@ public class DeleteFormResponseCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        _mockRepository.Verify(r => r.Remove(response), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(response, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         // Verify domain event raised
@@ -100,7 +105,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("Invalid access token", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
         _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -127,7 +132,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("Access token is required to delete this response", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -157,7 +162,7 @@ public class DeleteFormResponseCommandHandlerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-        _mockRepository.Verify(r => r.Remove(response), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(response, It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(u => u.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -186,7 +191,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("You are not authorized to delete this response", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -213,7 +218,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("You are not authorized to delete this response", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -247,7 +252,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("You are not authorized to delete this response", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -277,7 +282,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("You are not authorized to delete this response", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion
@@ -305,7 +310,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("Response not found or already deleted", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -333,7 +338,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("Response does not belong to the specified form", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -361,7 +366,7 @@ public class DeleteFormResponseCommandHandlerTests
         // Assert
         Assert.False(result.IsSuccess);
         Assert.Equal("Response does not belong to the specified event", result.Error);
-        _mockRepository.Verify(r => r.Remove(It.IsAny<FormResponse>()), Times.Never);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<FormResponse>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     #endregion

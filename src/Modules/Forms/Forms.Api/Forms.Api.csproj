@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Forms.Api</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Forms.Api</AssemblyName>
+    <Description>Forms module — Api layer. FormsModule DI extension. Controllers stay in LankaConnect.API for W4.3 (move during W4.8 cross-cutting cleanup).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Forms.Application\Forms.Application.csproj" />
+    <ProjectReference Include="..\Forms.Domain\Forms.Domain.csproj" />
+    <ProjectReference Include="..\Forms.Contracts\Forms.Contracts.csproj" />
+    <ProjectReference Include="..\Forms.Infrastructure\Forms.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
+  </ItemGroup>
+
+</Project>

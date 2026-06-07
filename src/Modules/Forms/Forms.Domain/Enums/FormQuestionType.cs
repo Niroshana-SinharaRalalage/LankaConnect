@@ -1,4 +1,4 @@
-namespace LankaConnect.Domain.Events.Enums;
+namespace LankaConnect.Modules.Forms.Domain.Enums;
 
 /// <summary>
 /// Types of questions available for custom event forms.

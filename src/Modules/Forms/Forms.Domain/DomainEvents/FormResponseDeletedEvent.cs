@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
 /// <summary>
 /// Raised when a respondent deletes/cancels their form response.

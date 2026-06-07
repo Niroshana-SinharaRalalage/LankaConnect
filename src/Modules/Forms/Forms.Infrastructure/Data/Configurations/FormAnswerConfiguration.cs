@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Modules.Forms.Domain.Entities;
 
-namespace LankaConnect.Infrastructure.Data.Configurations;
+namespace LankaConnect.Modules.Forms.Infrastructure.Data.Configurations;
 
 public class FormAnswerConfiguration : IEntityTypeConfiguration<FormAnswer>
 {

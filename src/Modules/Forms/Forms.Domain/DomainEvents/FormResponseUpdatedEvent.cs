@@ -1,7 +1,8 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Entities;
+using LankaConnect.Domain.Events;
+using LankaConnect.Modules.Forms.Domain.Entities;
 
-namespace LankaConnect.Domain.Events.DomainEvents;
+namespace LankaConnect.Modules.Forms.Domain.DomainEvents;
 
 /// <summary>
 /// Raised when a respondent edits their existing response.

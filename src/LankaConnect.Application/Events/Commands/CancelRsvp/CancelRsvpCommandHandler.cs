@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using System.Linq;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Application.Events.Services;
@@ -245,7 +250,7 @@ public class CancelRsvpCommandHandler : ICommandHandler<CancelRsvpCommand, Cance
                                 foreach (var response in formResponses)
                                 {
                                     response.RaiseDeletedEvent();
-                                    _formResponseRepository.Remove(response);
+                                    await _formResponseRepository.DeleteAsync(response, cancellationToken);
                                 }
 
                                 formResponsesDeleted = true;

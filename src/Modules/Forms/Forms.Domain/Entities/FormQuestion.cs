@@ -1,8 +1,8 @@
 using LankaConnect.Domain.Common;
-using LankaConnect.Domain.Events.Enums;
+using LankaConnect.Modules.Forms.Domain.Enums;
 using LankaConnect.Domain.Events.ValueObjects;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Modules.Forms.Domain.Entities;
 
 /// <summary>
 /// Represents a question within a custom event form.

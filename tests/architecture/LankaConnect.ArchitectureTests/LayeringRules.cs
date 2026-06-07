@@ -520,6 +520,70 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    // ---------- W4.3 — Forms module boundaries (added 2026-06-06) ----------
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Forms_Domain_DoesNotDependOnLayeredMonolithOrOtherModules()
+    {
+        var assembly = typeof(Modules.Forms.Domain.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.BuildingBlocks.Contracts",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Notifications.Contracts",
+                "LankaConnect.Modules.Notifications.Application",
+                "LankaConnect.Modules.Notifications.Infrastructure",
+                "LankaConnect.Modules.Notifications.Api",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Media.Contracts",
+                "LankaConnect.Modules.Media.Application",
+                "LankaConnect.Modules.Media.Infrastructure",
+                "LankaConnect.Modules.Media.Api",
+                "LankaConnect.Modules.Communications.Domain",
+                "LankaConnect.Modules.Communications.Contracts",
+                "LankaConnect.Modules.Communications.Application",
+                "LankaConnect.Modules.Communications.Infrastructure",
+                "LankaConnect.Modules.Communications.Api")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Forms_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        // W4.3 transitional (2026-06-06): mirrors the W4.2 Media pattern.
+        // LankaConnect.Domain edge intentionally allowed because EventForm + FormQuestion
+        // + FormResponse + FormAnswer still extend LegacyBaseEntity and use Result<T>;
+        // rebase to direct BB.Entity<Guid> deferred to W4.8 Cross-cutting cleanup.
+        // LankaConnect.Application + LankaConnect.Infrastructure excluded from the forbidden
+        // list to avoid NetArchTest prefix-match false positives against BB.Application /
+        // BB.Infrastructure.
+        var assembly = typeof(Modules.Forms.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Forms.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W1A — BuildingBlocks.Abstractions (added 2026-06-04) ----------
 
     /// <summary>

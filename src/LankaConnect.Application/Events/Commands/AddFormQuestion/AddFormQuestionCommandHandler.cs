@@ -1,4 +1,9 @@
 using System.Diagnostics;
+using LankaConnect.Modules.Forms.Domain;
+using LankaConnect.Modules.Forms.Domain.Entities;
+using LankaConnect.Modules.Forms.Domain.Enums;
+using LankaConnect.Modules.Forms.Domain.DomainEvents;
+using LankaConnect.Modules.Forms.Domain.Repositories;
 using LankaConnect.Application.Common.Interfaces;
 using LankaConnect.Domain.Common;
 using LankaConnect.Domain.Events.Repositories;
@@ -96,7 +101,7 @@ public class AddFormQuestionCommandHandler : ICommandHandler<AddFormQuestionComm
                     return Result<Guid>.Failure(addResult.Error);
                 }
 
-                _eventFormRepository.Update(form);
+                await _eventFormRepository.UpdateAsync(form, cancellationToken);
                 await _unitOfWork.CommitAsync(cancellationToken);
 
                 stopwatch.Stop();

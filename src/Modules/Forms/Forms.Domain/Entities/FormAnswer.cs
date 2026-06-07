@@ -1,6 +1,6 @@
 using LankaConnect.Domain.Common;
 
-namespace LankaConnect.Domain.Events.Entities;
+namespace LankaConnect.Modules.Forms.Domain.Entities;
 
 /// <summary>
 /// Represents a single answer to a form question within a response.

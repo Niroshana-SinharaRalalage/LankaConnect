@@ -32,19 +32,16 @@ public sealed class SnapshotDriftRules
     /// snapshot drift and will produce a destructive DropTable on the next
     /// AppDbContext migration.
     /// </summary>
-    [Fact(Skip =
-        "Asserts a state Phase 3 has not yet established. Currently the legacy " +
-        "AppDbContext snapshot still references LankaConnect.Modules.Media.* and " +
-        "LankaConnect.Modules.Forms.* entities (drift left over from W4.2 + W4.3 " +
-        "extractions). Remove this Skip the moment Phase 3 ships the snapshot-sync " +
-        "migration that prunes those entries. From that point forward, this test " +
-        "fails the build on any new module-entity leak into the legacy snapshot.")]
+    [Fact]
     [Trait("Category", "ArchTest")]
     public void AppDbContextSnapshot_DoesNotReferenceAnyModulesEntity()
     {
+        // Phase 0.5 (2026-06-07) consolidated the two-migration-directory split;
+        // the snapshot now lives under Data/Migrations/. The earlier path
+        // (Migrations/AppDbContextModelSnapshot.cs) is gone.
         var snapshotPath = LocateSnapshot(
             relativePath: Path.Combine(
-                "src", "LankaConnect.Infrastructure", "Migrations", "AppDbContextModelSnapshot.cs"));
+                "src", "LankaConnect.Infrastructure", "Data", "Migrations", "AppDbContextModelSnapshot.cs"));
 
         var content = File.ReadAllText(snapshotPath);
 

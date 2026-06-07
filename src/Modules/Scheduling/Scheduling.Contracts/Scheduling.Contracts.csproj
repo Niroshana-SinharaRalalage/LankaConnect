@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Scheduling.Contracts</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Scheduling.Contracts</AssemblyName>
+    <Description>Scheduling capability — Contracts layer. W4.5 skeleton.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

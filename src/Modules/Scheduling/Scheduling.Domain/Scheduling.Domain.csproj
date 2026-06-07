@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>LankaConnect.Modules.Scheduling.Domain</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Scheduling.Domain</AssemblyName>
+    <Description>Scheduling capability — Domain layer. Reusable schedule/recurrence/RSVP/capacity primitives. W4.5 skeleton (2026-06-06); actual type extraction is paired with Wave 5 Products carve-out when the Event aggregate splits into Products/LankaEvents-specific types vs Scheduling-generic reusable primitives. Until then, this module advertises the boundary but holds no migrated types.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Abstractions\BuildingBlocks.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

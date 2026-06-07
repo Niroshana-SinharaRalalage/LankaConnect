@@ -637,6 +637,57 @@ public sealed class LayeringRules
         AssertCompliant(result, assembly.GetName().Name!);
     }
 
+    // ---------- W4.5 — Scheduling module boundaries (added 2026-06-06) ----------
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Scheduling_Domain_DoesNotDependOnLayeredMonolithOrOtherModules()
+    {
+        var assembly = typeof(Modules.Scheduling.Domain.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Domain",
+                "LankaConnect.Application",
+                "LankaConnect.Infrastructure",
+                "LankaConnect.API",
+                "LankaConnect.Shared",
+                "LankaConnect.BuildingBlocks.Application",
+                "LankaConnect.BuildingBlocks.Infrastructure",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.BuildingBlocks.Contracts",
+                "LankaConnect.Modules.Notifications.Domain",
+                "LankaConnect.Modules.Media.Domain",
+                "LankaConnect.Modules.Forms.Domain",
+                "LankaConnect.Modules.CulturalIntelligence.Domain",
+                "LankaConnect.Modules.Communications.Domain")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
+    [Fact]
+    [Trait("Category", "ArchTest")]
+    public void Modules_Scheduling_Infrastructure_DoesNotDependOnApiOrWebOrLayeredMonolith()
+    {
+        // W4.5 (2026-06-06): pristine skeleton — no transitional debt accepted at creation.
+        // Real types arrive during Wave 5 Products carve-out.
+        var assembly = typeof(Modules.Scheduling.Infrastructure.AssemblyMarker).Assembly;
+
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                "LankaConnect.Modules.Scheduling.Api",
+                "LankaConnect.BuildingBlocks.Web",
+                "LankaConnect.Domain",
+                "LankaConnect.API",
+                "LankaConnect.Shared")
+            .GetResult();
+
+        AssertCompliant(result, assembly.GetName().Name!);
+    }
+
     // ---------- W1A — BuildingBlocks.Abstractions (added 2026-06-04) ----------
 
     /// <summary>

@@ -10,11 +10,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251031194253_AddUserCulturalInterestsAndLanguages")]
-    partial class AddUserCulturalInterestsAndLanguages
+    [Migration("20251031125825_AddUserProfilePhoto")]
+    partial class AddUserProfilePhoto
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

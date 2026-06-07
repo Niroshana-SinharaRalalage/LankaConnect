@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace LankaConnect.Infrastructure.Migrations
+namespace LankaConnect.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class AddUserCulturalInterestsAndLanguages : Migration

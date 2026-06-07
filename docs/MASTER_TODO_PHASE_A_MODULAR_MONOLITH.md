@@ -46,6 +46,88 @@ See blueprint §1 for full topology + dependency rules. The 5th layer (`Capabili
 
 Net: +5 weeks vs v4 nominal, but **zero carried debt** when future products integrate. The v4 path was 20 weeks + certain 6-8 weeks of re-architecture later when adding LankaSeyla = 26-28 weeks with debt; v5 is 25 weeks with zero debt.
 
+### Migration discipline (founder-ruled 2026-06-07 — no local Docker, no canary, no extra DB)
+
+LankaConnect ships migrations **directly to staging via push to `develop`**; staging
+serves as both dev-validation AND pre-prod gate. PRs are reserved for production
+deploys (push to `main`). The discipline below replaces local Postgres dry-run.
+
+**The five rules**:
+
+1. **Idempotent SQL artifact in every commit message** for any commit that adds an
+   EF migration. Paste the output of
+   `dotnet ef migrations script --idempotent <prev> <new> --context <ContextName>`
+   into the commit body. No SQL = commit is not ready to push.
+
+2. **CI lint** (added in Phase 0) fails the build if a migration's `.cs` file
+   contains `DropTable` / `DropColumn` / `RenameTable` / `RenameColumn` **unless**
+   the migration's class-level XML doc comment starts with
+   `/// SCHEMA-DESTRUCTIVE-APPROVED: <reason>`. Forces a human review beat
+   for every destructive DDL.
+
+3. **One concern per migration**. No mixing IAuditable AddColumn with schema
+   renames. If `dotnet ef migrations add` produces a mixed migration, split it
+   into two commits. The 2026-06-07 attempt at a 2,038-line `Cleanup_RemovedMediaFormsEntities`
+   was the failure mode this rule prevents.
+
+4. **Azure Postgres Point-in-Time Restore (PITR) is the rollback mechanism**.
+   Already enabled by default (7-day retention, no extra cost). The restore
+   procedure is documented in [docs/operations/migration-rollback.md](operations/migration-rollback.md)
+   (added in Phase 0).
+
+5. **Explicit `ToTable("snake_case")` in entity configurations BEFORE generating
+   any rename migration**. The 2026-06-07 Forms PascalCase auto-rename
+   (`form_responses` → `FormResponses`) was caused by configs lacking explicit
+   table names, so EF defaulted to pluralised DbSet-property casing.
+
+**North-star guideline** (single-sentence rule, quote this when tempted to skip steps):
+
+> *"No schema migration ships to staging unless its idempotent SQL script has
+> been read by a human, its destructive DDL has been explicitly labeled with
+> `SCHEMA-DESTRUCTIVE-APPROVED`, and a pre-migration schema snapshot exists for
+> rollback."*
+
+**Wave 4.9 Schema Realignment plan** (phased, single staging, zero extra infra):
+
+- **Phase 0 (no migrations)** — Add the CI lint above + the PITR rollback runbook +
+  a new ArchTest that fails build if `AppDbContext` snapshot contains any entity
+  from `LankaConnect.Modules.*` namespace (turns silent snapshot drift into a CI
+  gate).
+- **Phase 1 — IAuditable additive cleanup** — Single migration with `AddColumn`
+  only (the legitimate W3 drift). Zero destructive DDL. Ships immediately under
+  the discipline.
+- **Phase 2 — Per-module schema rename** — One commit per module (Media → Forms
+  → future Communications/Identity). Each commit (a) adds explicit
+  `ToTable("snake_case")` to that module's entity configs, then (b) generates
+  the `ALTER TABLE events.X SET SCHEMA <module>` migration. SCHEMA-DESTRUCTIVE-APPROVED
+  applied. Idempotent SQL in commit message. One module's rename ships fully
+  (built + smoked on staging) before the next module's rename starts.
+- **Phase 3 — AppDbContext snapshot cleanup** — One migration with empty
+  `Up()`/`Down()` but with `.Designer.cs` + `ModelSnapshot.cs` regenerated to
+  drop the entries for Media/Forms/Notifications entities. Snapshot-sync only,
+  no physical DDL.
+
+**Wave 6.5 (NEW): Outbox cutover** — Sequenced between Wave 6 (ArchTest hardening)
+and Wave 7 (Frontend mirror). 3-5 sessions. Retires the transitional
+"self-saving repository" pattern (NotificationRepository, PhotoAlbumRepository,
+EventFormRepository, FormResponseRepository — all currently call
+`_context.SaveChangesAsync()` internally because `IUnitOfWork.CommitAsync()`
+only saves AppDbContext). Self-saving bypasses the D5 outbox atomicity contract,
+which is acceptable for leaf modules pre-launch but unacceptable for Wave 8
+production cutover.
+
+**Communications W4.1 split** (architect-ruled 2026-06-07):
+
+- **W4.1-A** — Code-move + skeleton + contracts only. NO DbContext pivot, NO
+  schema work. Mirrors the W4.5 Scheduling skeleton pattern. Ships under the
+  no-Docker discipline. Unblocks 50% of W4.1's structural value (ArchTest
+  module-boundary enforcement) without touching the database.
+- **W4.1-B** — DbContext pivot + handler rewiring + module schema rename.
+  Sequenced AFTER Phase 2 schema rename and Wave 6.5 outbox cutover.
+  Communications is NOT a leaf module — outbox safety matters more here.
+
+The same A/B split applies to W4.4 Payments and W4.6 Identity.
+
 ### Key design decisions (D1-D10 founder-approved 2026-06-04, see blueprint §2)
 
 - **D1** — IAuditable + AuditableInterceptor (already shipped W2.5; refinements: IConcurrencyToken + IMultiTenant<T>)

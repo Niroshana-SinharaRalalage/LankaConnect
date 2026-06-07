@@ -97,25 +97,88 @@ catch (Exception ex)
 
 **CRITICAL: ALL database changes MUST use EF Core migrations.**
 
-### Migration Workflow:
+### Deployment topology (founder-ruled 2026-06-07)
+
+There is **no local Postgres / Docker**. Staging is the dev-validation environment
+AND the pre-prod gate. Migrations ship by direct push to `develop` (which auto-deploys
+to staging via `deploy-staging.yml`). PRs are reserved for production deploys (push
+to `main`). The five rules below replace local dry-run.
+
+### The five rules
+
+1. **Idempotent SQL artifact in every migration commit message**. Paste the output
+   of `dotnet ef migrations script --idempotent <prev> <new> --context <ContextName>`
+   into the commit body. No SQL = commit is not ready to push.
+
+2. **CI lint** fails the build if a migration's `.cs` file contains `DropTable` /
+   `DropColumn` / `RenameTable` / `RenameColumn` UNLESS the migration's
+   class-level XML doc comment starts with
+   `/// SCHEMA-DESTRUCTIVE-APPROVED: <reason>`. Forces a deliberate human review
+   beat for every destructive DDL operation.
+
+3. **One concern per migration**. No mixing additive drift (AddColumn) with
+   schema rename (RenameTable). If `dotnet ef migrations add` produces a mixed
+   migration, **split it into two commits**.
+
+4. **Azure Postgres PITR is the rollback mechanism** (7-day retention, default
+   enabled). Restore procedure: `docs/operations/migration-rollback.md`.
+
+5. **Explicit `ToTable("snake_case")` in entity configurations BEFORE generating
+   any rename migration**. Without it, EF defaults to PascalCase pluralisation
+   of the DbSet property name and silently corrupts table names in the
+   generated `RenameTable` call.
+
+### North-star guideline
+
+> **"No schema migration ships to staging unless its idempotent SQL script has
+> been read by a human, its destructive DDL has been explicitly labeled with
+> `SCHEMA-DESTRUCTIVE-APPROVED`, and a pre-migration schema snapshot exists for
+> rollback."**
+
+### Migration Workflow (revised 2026-06-07):
+
 ```bash
-# 1. Create migration (ALWAYS name descriptively)
-dotnet ef migrations add AddMarketplaceProductsTable --project src/LankaConnect.Infrastructure
+# 1. Generate migration (ALWAYS name descriptively + use --context for module DbContexts)
+dotnet ef migrations add AddMarketplaceProductsTable \
+    --project src/LankaConnect.Infrastructure \
+    --startup-project src/LankaConnect.API \
+    --context AppDbContext
 
-# 2. Review generated migration code
-# 3. Test migration locally
-dotnet ef database update --project src/LankaConnect.Infrastructure
+# 2. READ THE GENERATED .cs FILE. Verify Up()/Down() match intent.
+#    For destructive DDL, add SCHEMA-DESTRUCTIVE-APPROVED header.
+#    For mixed concerns, abort and split into two migrations.
 
-# 4. Verify migration succeeded
-# 5. Commit migration files
-git add src/LankaConnect.Infrastructure/Data/Migrations/
-git commit -m "Add marketplace products table migration"
+# 3. Generate the idempotent SQL artifact
+dotnet ef migrations script --idempotent <prev> AddMarketplaceProductsTable \
+    --context AppDbContext > /tmp/migration.sql
+
+# 4. Read /tmp/migration.sql. Verify no PascalCase corruption,
+#    no unintended drops, no mixed concerns.
+
+# 5. Commit with the idempotent SQL in the body
+git add <migration files only>
+git commit -m "Add marketplace products migration
+
+<one-paragraph rationale>
+
+Idempotent SQL:
+\`\`\`sql
+<paste content of /tmp/migration.sql>
+\`\`\`
+"
+
+# 6. Push to develop (auto-deploys to staging via deploy-staging.yml)
+git push origin develop
+
+# 7. Verify staging deploy + smoke-test the affected endpoint
+# 8. If broken, use PITR to roll back per docs/operations/migration-rollback.md
 ```
 
 ### Migration Rules:
 - ✅ **Never edit existing migrations** - Create new migration if changes needed
-- ✅ **Always test Down() method** - Ensure rollback works
-- ✅ **Use schema names** - All tables must specify schema: `modelBuilder.ToTable("products", "marketplace");`
+- ✅ **Hand-editing the JUST-generated migration to remove unintended sections IS allowed** — that's the human-review step replacing local dry-run. (Per MEMORY 6A.133, the anti-pattern is hand-CREATING a `.cs` file without an accompanying `.Designer.cs`; surgical edits to EF-generated files are normal.)
+- ✅ **Use schema names** - All tables must specify schema: `modelBuilder.ToTable("products", "marketplace");` OR rely on `HasDefaultSchema("marketplace")`
+- ✅ **Module DbContexts own their physical schema**. Cross-schema overrides (`ToTable("X", "events")`) are transitional pending Wave 4.9 per-module schema realignment.
 - ✅ **Check for conflicts** - Pull latest from develop before creating migration
 
 ---

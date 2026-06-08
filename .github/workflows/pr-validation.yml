@@ -75,6 +75,58 @@ jobs:
           path: TestResults/ArchTest/
           retention-days: 7
 
+  full-test-suite-must-be-green:
+    name: Full Test Suite (CLAUDE.md §13 — existing-tests-must-pass invariant)
+    runs-on: ubuntu-latest
+    # Wave4.9.0.6 (2026-06-08) — full `dotnet test LankaConnect.sln` in CI.
+    # The pre-push hook (Wave4.9.0.5) runs the same suite locally, but
+    # filters out Category=Integration because those tests need Docker
+    # which the founder ruled out for local development (2026-06-07).
+    # CI runners DO have Docker — so this job runs the FULL suite,
+    # including Testcontainers-Postgres integration tests, to enforce
+    # existing-tests-must-pass per CLAUDE.md §13.
+    #
+    # Concurrency: cancel-in-progress so the latest develop push wins
+    # without queueing 5 obsolete runs.
+    concurrency:
+      group: full-test-suite-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore solution
+        run: dotnet restore LankaConnect.sln
+
+      - name: Build solution
+        run: |
+          dotnet build LankaConnect.sln \
+            --no-restore \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --verbosity minimal
+
+      - name: Run FULL test suite (including Category=Integration)
+        run: |
+          dotnet test LankaConnect.sln \
+            --no-build \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --logger "console;verbosity=normal" \
+            --logger trx \
+            --results-directory TestResults/FullSuite
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-test-suite-results
+          path: TestResults/FullSuite/
+          retention-days: 14
+
   test-discipline-gate:
     name: Test Discipline Gate (CLAUDE.md §13 T-triggers + S-class annotations)
     runs-on: ubuntu-latest

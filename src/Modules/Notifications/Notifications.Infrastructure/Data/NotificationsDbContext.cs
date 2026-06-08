@@ -77,6 +77,13 @@ public sealed class NotificationsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
+        // 2026-06-08 hotfix (matches AppDbContext.IgnoreAuditByActorPropertiesUntilPhase1):
+        // Notification implements IAuditable via direct BB.Entity<Guid> derivation. EF
+        // auto-maps the public CreatedBy/UpdatedBy properties into SELECT clauses, but
+        // the physical notifications.notifications table doesn't yet have those columns
+        // (Phase 1.9 of Wave 4.9 will add them). Ignore until then.
+        modelBuilder.Entity<Notification>().Ignore("CreatedBy").Ignore("UpdatedBy");
+
         base.OnModelCreating(modelBuilder);
     }
 }

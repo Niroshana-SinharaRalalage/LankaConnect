@@ -63,6 +63,15 @@ public sealed class FormsDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
+        // 2026-06-08 hotfix (matches AppDbContext.IgnoreAuditByActorPropertiesUntilPhase1):
+        // Phase 1.10 of Wave 4.9 will add physical CreatedBy/UpdatedBy columns to the
+        // event_forms / form_questions / form_responses / form_answers tables; until
+        // then, ignore the auto-mapped properties.
+        modelBuilder.Entity<EventForm>().Ignore("CreatedBy").Ignore("UpdatedBy");
+        modelBuilder.Entity<FormQuestion>().Ignore("CreatedBy").Ignore("UpdatedBy");
+        modelBuilder.Entity<FormResponse>().Ignore("CreatedBy").Ignore("UpdatedBy");
+        modelBuilder.Entity<FormAnswer>().Ignore("CreatedBy").Ignore("UpdatedBy");
+
         base.OnModelCreating(modelBuilder);
     }
 }

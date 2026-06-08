@@ -35,6 +35,13 @@
     <ProjectReference Include="..\..\src\LankaConnect.Application\LankaConnect.Application.csproj" />
     <ProjectReference Include="..\..\src\LankaConnect.Infrastructure\LankaConnect.Infrastructure.csproj" />
     <ProjectReference Include="..\LankaConnect.TestUtilities\LankaConnect.TestUtilities.csproj" />
+
+    <!-- Wave4.9.1.3 (2026-06-08): module-infrastructure refs for IAuditableIgnoreCoverageTests
+         (asserts all 4 DbContexts ignore CreatedBy/UpdatedBy on every IAuditable entity
+         until Wave4.9.2.x lands the physical columns). -->
+    <ProjectReference Include="..\..\src\Modules\Notifications\Notifications.Infrastructure\Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Forms\Forms.Infrastructure\Forms.Infrastructure.csproj" />
   </ItemGroup>
 
   <!-- Temporarily exclude ALL existing test files to get clean baseline for TDD -->

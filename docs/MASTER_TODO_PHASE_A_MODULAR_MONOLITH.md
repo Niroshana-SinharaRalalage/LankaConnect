@@ -2,14 +2,157 @@
 
 | | |
 |---|---|
-| **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04)** |
-| **Phase A Duration** | **25 weeks calendar** (21 remaining; v4 was 20 weeks but had compounding debt; v5 zero carried debt) |
+| **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04) + 2026-06-08 testing-discipline overlay** |
+| **Phase A Duration** | **25 weeks calendar** (v5 nominal) → **~35 weeks remaining under Approach 3** (parallel structural + testing tracks; see §"Calendar Impact" below) |
+| **Execution Plan (FINAL)** | [docs/architecture/PHASE_A_EXECUTION_PLAN_FINAL.md](architecture/PHASE_A_EXECUTION_PLAN_FINAL.md) — enterprise-locked 2026-06-08 |
 | **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) |
 | **Approach** | Trunk-based development + feature flags (no long-lived branch); wave-based sequencing |
 | **Cutover Discipline** | Per-module flag flip with 7-day staging soak + 24h production canary |
 | **Definition of Done** | LankaEvents (and all current functionality) works identically post-cutover; future products (LankaSeyla/LankaMart/LankaHomes/LankaTemples/LankaBusiness/LankaNivasa) integrate against the stable foundation with ZERO re-architecture |
 | **Pre-flight gates landed** | PR-0 (#107), PR-0a (#108), PR-A (#109), PR-B (#113) all merged on develop |
 | **Current wave** | Wave 0 — architecture ratification in progress |
+
+---
+
+## Quick Index (Auto-Maintained 2026-06-08)
+
+> Single-grep navigation: search this section for `W#.#` or `G#.#` to jump.
+
+### Phase A Wave Status
+
+| Wave | Title | Status | Adjusted Duration |
+|---|---|---|---|
+| **W0** | Architecture ratification | ✅ SHIPPED | — |
+| **W1** | BuildingBlocks + SharedKernel | ✅ SHIPPED | — |
+| **W2** | SharedKernel.Cultural untangling | ✅ SHIPPED (MVP scope) | — |
+| **W3** | 79-entity migration to BB.Entity<TId> | 🟡 In flight via W4 capability extractions | — |
+| **W4** | 8 capability extractions | 🟡 W4.0/W4.0b/W4.2/W4.3/W4.5/W4.7 shipped; W4.1/W4.4/W4.6 split A/B remaining | ~12 wk |
+| **W4.9** | Schema realignment (NEW; architect-added) | 🟡 Phases 0/0.5/0.7/3 reverted; Phase 1.1+ pending | ~7 wk |
+| **W5** | Products carve-out (Products/LankaEvents) | ⏳ Pending | ~2 wk |
+| **W6** | ArchTest hardening (28 rules) | ⏳ Pending | ~1.5 wk |
+| **W6.5** | Outbox cutover (NEW; architect-added) | ⏳ Pending | ~3 wk |
+| **W7** | Frontend mirror (Turborepo) | ⏳ Pending | ~6 wk |
+| **W8** | Production cutover + stabilization | ⏳ Pending | ~5 wk |
+
+### G0-G8 Retroactive Testing Coverage Gap-Fill (NEW 2026-06-08; runs in parallel with W4)
+
+| Gap | Description | Status | Commit |
+|---|---|---|---|
+| **G0** | 4 smoke scripts in `scripts/smoke/` | ✅ SHIPPED | `0ebcd0a4` |
+| **G1.a** | LegacyBaseEntity ctor unit tests | ✅ SHIPPED | `b815905d` |
+| **G1.b** | Per-aggregate audit-field round-trip tests (5 aggregates) | ✅ SHIPPED | `7f43b74b` |
+| **G1.c** | Infrastructure tests: global Ignore coverage × 4 DbContexts | 🟡 in flight | — |
+| **G1.d** | Staging mutator smokes (4 routes added to RouteMap per [route audit](audit/route-inventory-2026-06-08.md)) | ⏳ Pending | — |
+| **G6** | Probe `notifications/media/forms` operational tables on staging | ⏳ Pending | — |
+| **G2** | W4.2 Media write-path round-trip (album create) | ⏳ Pending | — |
+| **G3** | W4.3 Forms write-path round-trip | ⏳ Pending | — |
+| **G4** | W4.0b Notifications write-path round-trip | ⏳ Pending | — |
+| **G5** | W4.7 ICulturalCalendar DI resolution (unit-only per P4) | ⏳ Pending | — |
+| **G7** | Wave 2 cultural type unit tests (unit-only per P4) | ⏳ Pending | — |
+| **G8** | Wave 1 BB/SK surface tests (event price-shape API smoke) | ⏳ Pending | — |
+
+### Testing-Discipline Infrastructure (NEW 2026-06-08)
+
+| Artifact | Status | Commit |
+|---|---|---|
+| CLAUDE.md §13 — discipline as law | ✅ SHIPPED | `14a136ba` |
+| `docs/architecture/TESTING_DISCIPLINE_RULING.md` | ✅ SHIPPED | `14a136ba` |
+| `scripts/smoke/` 4-script harness | ✅ SHIPPED | `0ebcd0a4` |
+| `scripts/hooks/pre-push.ps1` (annotation enforcement + 24h budget) | ✅ SHIPPED | `d6cd0809` + `57c879df` |
+| `.github/workflows/pr-validation.yml` `test-discipline-gate` job | ✅ SHIPPED | `d6cd0809` |
+| **3-layer existing-tests-must-pass** (Tier A/B pre-push test run + CI full-suite gate + auto-file Issue) | ⏳ Pending Stage 1 of FINAL plan | — |
+
+### Cross-Reference Files
+
+- **Adjusted execution plan**: `docs/architecture/PHASE_A_EXECUTION_PLAN_FINAL.md`
+- **Testing discipline spec**: `docs/architecture/TESTING_DISCIPLINE_RULING.md`
+- **Wave 4.9 phase template**: `docs/architecture/WAVE_4_9_PLAN.md`
+- **Cross-link inventory (P2 audit)**: `docs/audit/master-todo-crosslinks.md`
+- **Route inventory (P3 audit)**: `docs/audit/route-inventory-2026-06-08.md`
+
+---
+
+## Fat-Task Template (Canonical) — applied to every fat-eligible Wave 0-8 task
+
+Every task that fires T1-T8 triggers (per CLAUDE.md §13.1) uses this 8-element template. Tasks that match counter-triggers C1-C4 stay one-liners with a `[counter-trigger: Cn]` annotation appended.
+
+```markdown
+### W#.# — <Task title>
+
+**Intent (1 sentence)**: what this task changes; ≤2 lines max.
+
+**T-triggers fired**: T1 / T2 / ... — explicit list. Pre-push hook + CI gate parse these.
+
+**Unit test items (same-commit, mandatory)**:
+- ADD `<test file path>` — `<test name>` covering `<scenario>`
+- MODIFY `<test file path>` — adjust assertion to match new behavior
+- ASSERT `dotnet test --filter <selector>` → N/N GREEN before push.
+
+**S-class smoke**: S1 / S2 / ... — which CLAUDE.md §13.2 class applies.
+- `scripts/smoke/Invoke-Login.ps1` → 200 + bearer.
+- `scripts/smoke/Smoke-Mutator.ps1 -Resource <r> -Mode <m>` → audit-field assertions pass.
+- `scripts/smoke/Smoke-LogSilence.ps1 -Endpoint <route>` → no 42703/22P02/NpgsqlException in last 60s.
+- (S5/S6 only) `scripts/smoke/Smoke-Probe.ps1 -Schema <s> -Table <t>` → expected post-deploy shape.
+
+**Smoke-Mutator RouteMap additions**: any new (Resource, Mode) entries this task adds to `scripts/smoke/Smoke-Mutator.ps1` — verified routes from `docs/audit/route-inventory-2026-06-08.md`.
+
+**Pre-deploy checkpoint**:
+- `dotnet build LankaConnect.sln` → 0 Error(s).
+- `dotnet test` (project-scoped Tier A OR full Tier B per pre-push.ps1) → 0 failed.
+- Commit message includes `T-triggers:` + `S-class:` lines.
+
+**Post-deploy checkpoint**:
+- `deploy-staging.yml` shows green build + all 4 DbContext applies + container start.
+- Listed S-class smoke executed, output captured in PROGRESS_TRACKER.
+- Log silence asserted.
+- (Render-surface only) Operator UAT confirmed by founder in browser.
+
+**Existing-tests-must-pass invariant**: full `dotnet test` baseline must remain at 0 failed before push AND the CI `full-test-suite-must-be-green` job must pass before develop→main PR merges.
+
+**Originating-amendment**: ADR / blueprint section / architect ruling date the task descends from.
+
+**Rollback**: explicit `git revert` / `dotnet ef database update <prev>` / PITR commands; references `docs/operations/migration-rollback.md` if migration involved.
+```
+
+### When to Fat vs One-Liner
+
+**Fat template required** if the task fires ANY of:
+- T1 — new public method on entity/aggregate/value object
+- T2 — mutator touching IAuditable / domain events / state-machine transition
+- T3 — new/changed Command/Query handler
+- T4 — new/changed EF Core configuration (`ToTable`, `HasColumnName`, `Property`, `Ignore`, `ValueComparer`, `HasConversion`)
+- T5 — new/changed REST endpoint signature
+- T6 — new/changed DI / DbContext / interceptor registration
+- T7 — namespace move / type relocation (no new test required but existing tests MUST compile + pass; commit posts `dotnet test` evidence)
+- T8 — EF Core migration add
+
+**One-liner with `[counter-trigger: Cn]`** if task is entirely:
+- C1 — using directive / namespace alias change only
+- C2 — comment / xml-doc / markdown only
+- C3 — .gitignore / .editorconfig / build-script only
+- C4 — csproj ProjectReference move (compiler is the proof; no runtime change)
+
+**Stub fat-template treatment** for future-wave tasks (W5+): include Intent + T-triggers + S-class + existing-tests-must-pass lines only. Full per-task details (file paths, RouteMap entries) are filled in when the wave activates per architect §A.4 — premature file-path commitment is itself an anti-pattern.
+
+---
+
+## Calendar Impact (Approach 3 — architect-recommended, decided 2026-06-08)
+
+The testing discipline mandated 2026-06-07 (CLAUDE.md §13) has measured wall-clock impact per task tier:
+
+| Tier | Multiplier vs Plan v5 nominal | Reason |
+|---|---|---|
+| **A 🔴** (write-path + migration + render-surface) | 3.0× | Full smoke matrix + operator UAT + log silence + cross-surface |
+| **B 🟡** (skeleton + dispatcher + ArchTest expansion + read-path) | 1.8× | Unit tests + S1 smoke + existing-tests-must-pass; no UAT, no cross-surface |
+| **C 🟢** (docs + csproj scaffolding + hygiene) | 1.0× | No discipline cost |
+
+Applied wave-by-wave: **Phase A goes from 21 remaining weeks (Plan v5 nominal) to ~35 weeks remaining under Approach 3** (parallel structural + testing tracks with 1-wave lag tolerance), or ~46 weeks under Approach 2 (sequential).
+
+**Decision**: Approach 3 selected by architect 2026-06-08 per founder delegation. Fallback to Approach 2 triggered automatically if testing-track falls 2 full waves behind structural-track — pre-push hook hard-blocks structural pushes until testing catches up.
+
+**Convention for Approach 3**: weekly UAT batch (~60 min/week founder time) — founder reviews 2 waves of UAT scenarios in one sitting to reduce switching cost.
+
+**Quarterly audit**: at week 12, 24, 36 of remaining Phase A, calendar variance vs Approach 3 estimate is reviewed. >25% variance triggers explicit re-baseline.
 
 ---
 

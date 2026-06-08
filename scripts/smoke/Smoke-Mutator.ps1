@@ -56,12 +56,17 @@ if (-not $env:LC_BEARER) {
 }
 
 # Route map per (Resource, Mode). Each entry returns @{ Method = ...; Path = ...; Body = ...; AssertAuditFields = $true/$false }
+# Path placeholders are substituted at runtime from env vars or the -Id parameter:
+#   {id:guid}      -> $env:LC_USER_ID or -Id
+#   {eventId:guid} -> $env:LC_EVENT_ID (or -Id when context is event-scoped)
+#   {groupId:guid} -> $env:LC_EMAIL_GROUP_ID
 # Extend this table as new gaps need new smokes.
 $script:RouteMap = @{
-    'user-UpdateLocation' = @{
+    'user-UpdateLocation' = @{                     # Wave4.9.1.4 (route audit 2026-06-08 fix)
         Method = 'PUT'
-        Path   = '/api/users/me/location'
-        Body   = @{ city = 'Cleveland'; state = 'OH'; country = 'USA' }
+        Path   = '/api/users/{id:guid}/location'   # was '/api/users/me/location'; corrected per UsersController.cs
+        # Wave4.9.1.4 smoke run found domain rule: ZipCode required (test caught "Zip code is required" 400).
+        Body   = @{ city = 'Cleveland'; state = 'OH'; zipCode = '44115'; country = 'USA' }
         AssertAuditFields = $true
     }
     'user-ReadProfile' = @{
@@ -79,6 +84,28 @@ $script:RouteMap = @{
         Path   = '/api/events?page=1&pageSize=5'
         AssertAuditFields = $false
     }
+    # Wave4.9.1.4 additions per docs/audit/route-inventory-2026-06-08.md
+    'photoAlbum-Create' = @{                       # G2 Media smoke
+        Method = 'POST'
+        Path   = '/api/events/{eventId:guid}/albums'
+        Body   = @{ name = 'Wave4.9.1.4 Smoke Album'; description = 'Mutator round-trip' }
+        AssertAuditFields = $true
+    }
+    'emailGroup-Update' = @{                       # G1.d smoke (needs $env:LC_EMAIL_GROUP_ID)
+        Method = 'PUT'
+        Path   = '/api/EmailGroups/{groupId:guid}'
+        Body   = @{ name = 'Wave4.9.1.4 Updated'; emailAddresses = 'a@b.com'; description = 'Mutator smoke' }
+        AssertAuditFields = $true
+    }
+    'registration-UpdateDetails' = @{              # G1.d smoke (needs $env:LC_EVENT_ID + existing registration)
+        Method = 'PUT'
+        Path   = '/api/events/{eventId:guid}/my-registration'
+        Body   = @{
+            attendees = @( @{ name = 'Test G1.d'; ageCategory = 'Adult' } )
+            contact   = @{ email = 'test@test.com'; phone = '1234567890' }
+        }
+        AssertAuditFields = $true
+    }
 }
 
 $key = "$Resource-$Mode"
@@ -89,7 +116,39 @@ if (-not $script:RouteMap.ContainsKey($key)) {
 }
 
 $route = $script:RouteMap[$key]
-$uri = "$StagingUrl$($route.Path)"
+
+# Wave4.9.1.4: substitute path placeholders {id:guid} / {eventId:guid} / {groupId:guid}
+# from env vars or the -Id param. Fails fast if a placeholder has no source.
+function Resolve-Placeholder {
+    param([string]$Token, [string]$IdParam)
+    switch ($Token) {
+        '{id:guid}' {
+            if ($IdParam) { return $IdParam }
+            if ($env:LC_USER_ID) { return $env:LC_USER_ID }
+            throw "Path contains {id:guid} but neither -Id nor `$env:LC_USER_ID is set. Run Invoke-Login.ps1 to populate `$env:LC_USER_ID."
+        }
+        '{eventId:guid}' {
+            if ($IdParam) { return $IdParam }
+            if ($env:LC_EVENT_ID) { return $env:LC_EVENT_ID }
+            throw "Path contains {eventId:guid} but neither -Id nor `$env:LC_EVENT_ID is set. Supply -Id <staging-event-guid> or set `$env:LC_EVENT_ID."
+        }
+        '{groupId:guid}' {
+            if ($IdParam) { return $IdParam }
+            if ($env:LC_EMAIL_GROUP_ID) { return $env:LC_EMAIL_GROUP_ID }
+            throw "Path contains {groupId:guid} but neither -Id nor `$env:LC_EMAIL_GROUP_ID is set."
+        }
+        default { throw "Unknown path placeholder: $Token" }
+    }
+}
+
+$resolvedPath = $route.Path
+[regex]::Matches($resolvedPath, '\{[a-zA-Z]+:guid\}') | ForEach-Object {
+    $token = $_.Value
+    $resolved = Resolve-Placeholder -Token $token -IdParam $Id
+    $resolvedPath = $resolvedPath.Replace($token, $resolved)
+}
+
+$uri = "$StagingUrl$resolvedPath"
 $method = $route.Method
 $payload = if ($Body) { $Body } else { $route.Body }
 

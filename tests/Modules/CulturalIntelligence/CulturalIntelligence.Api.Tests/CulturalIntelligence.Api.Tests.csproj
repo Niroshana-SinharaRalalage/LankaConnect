@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.CulturalIntelligence.Api.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.CulturalIntelligence.Api.Tests</AssemblyName>
+    <Description>Unit tests for the CulturalIntelligence module API/composition layer (DI registration). Wave4.9.1.9 (2026-06-08) backfill - the project was missing entirely; per route audit ICulturalCalendar has no HTTP surface so DI resolution is the testable invariant.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Api\CulturalIntelligence.Api.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Modules\CulturalIntelligence\CulturalIntelligence.Infrastructure\CulturalIntelligence.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\..\src\LankaConnect.Domain\LankaConnect.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

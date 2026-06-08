@@ -573,6 +573,98 @@ A task is ONLY complete when:
 
 ---
 
+## 🚨 SECTION 13: TESTING DISCIPLINE (MANDATORY — founder mandate 2026-06-07)
+
+**CRITICAL**: "Done" no longer means "compiles + reads green on staging". Done means:
+> **the testable unit has a unit test exercising the new behavior AND a staging API call
+> that actually invokes that code path in runtime.**
+
+Full ruling: [docs/architecture/TESTING_DISCIPLINE_RULING.md](docs/architecture/TESTING_DISCIPLINE_RULING.md).
+
+### 13.1 — Unit Test Mandatory Triggers (T1 — T8)
+
+Adding/modifying a unit test is MANDATORY in the same commit when any of these fire:
+
+- **T1** New public method on a domain entity / aggregate / value object
+- **T2** New or changed mutator touching `IAuditable` / domain events / state transitions
+- **T3** New or changed Command / Query handler
+- **T4** New or changed EF Core configuration (`ToTable`, `HasColumnName`, `Property`, `Ignore`, `ValueComparer`, `HasConversion`)
+- **T5** New or changed REST endpoint signature
+- **T6** New or changed DI registration / DbContext / interceptor registration
+- **T7** Namespace move (no new test, but existing tests MUST compile + pass; post `dotnet test` evidence in commit message)
+- **T8** EF Core migration add — migration-correctness test asserting snapshot delta matches intent
+
+**Counter-triggers** (test NOT required): pure namespace alias, comment changes, .gitignore / .editorconfig, csproj reference move that compiler validates.
+
+### 13.2 — Smoke Coverage Classes (S1 — S6)
+
+After deploy, the commit's claimed smoke executes against staging:
+
+- **S1** Read-only refactor → GET list + GET detail; assert 200 + non-empty
+- **S2** Mutator refactor → CREATE → re-fetch → assert `createdAt` ≤60s old + `updatedAt == createdAt`; PATCH → re-fetch → assert `updatedAt > createdAt`
+- **S3** EF config / Ignore / mapping change → POST → assert 201 → GET → assert fields present → inspect container logs for `42703` / `22P02` / `NpgsqlException` (any = FAIL)
+- **S4** New endpoint → full lifecycle POST → GET → PATCH → DELETE + log inspection
+- **S5** Schema migration → `\d <table>` probe pre + post + S2/S3 smoke on affected resource
+- **S6** Module-DbContext touch → trigger module write path → probe `\d <schema>.<table>` confirms row written via new context
+
+### 13.3 — Pre-Commit Checklist (enforced by `scripts/hooks/pre-push.ps1`)
+
+```
+[ ] 1. dotnet build LankaConnect.sln          → 0 Error(s)
+[ ] 2. dotnet test                            → 0 failed
+[ ] 3. T-trigger audit — list T-numbers fired + matching test file paths in commit body:
+       Example:  T-triggers: T2 (Sponsor mutators), T4 (Sponsor EF config), T6 (DI)
+                 Tests: tests/.../SponsorTests.cs, tests/.../SponsorConfigurationTests.cs
+[ ] 4. S-class plan — list smoke scripts that will run post-deploy:
+       Example:  S-class: S2 (mutator), S3 (log silence)
+                 Smokes: scripts/smoke/Smoke-Mutator.ps1 -Resource sponsor -Mode Update
+[ ] 5. Architect-consult flag — if T-triggers extend beyond current MASTER_TODO scope:
+       STOP. Consult system-architect. Update plan. Then commit.
+```
+
+### 13.4 — Pre-Deploy Verification Checklist
+
+```
+[ ] 1. deploy-staging.yml: build + all DbContexts apply + container start OK
+[ ] 2. scripts/smoke/Invoke-Login.ps1                  → 200 + bearer
+[ ] 3. For each S-class in commit message: execute smoke + capture stdout
+[ ] 4. scripts/smoke/Smoke-LogSilence.ps1              → no 42703/22P02/NpgsqlException
+[ ] 5. For S5/S6: scripts/smoke/Smoke-Probe.ps1        → table/schema as expected
+[ ] 6. Status report: deploy URL + smoke output + log silence + probe output
+```
+
+### 13.5 — Forcing Functions
+
+1. **`scripts/hooks/pre-push.ps1`** — rejects pushes lacking `T-triggers:` / `S-class:` lines in commit messages. Bypass via `git push --no-verify` (logged to `docs/audit/test-debt-overrides.log`).
+2. **PR-validation gate** — `.github/workflows/pr-validation.yml` greps for the same annotations on commits touching `src/`.
+3. **Test-debt budget**: max **2 untested commits** in any rolling 24-hour window per branch. Hook hard-blocks the 3rd.
+4. **Weekly audit**: `scripts/audit/Test-Debt-Report.ps1` runs Sunday EOD; posts one-paragraph summary to founder.
+
+### 13.6 — Per-Wave MASTER_TODO Discipline (D.2)
+
+Every behavior-touching wave gets `docs/MASTER_TODO_WAVE_<N>.md` with 4 mandatory checkboxes per Phase:
+
+```markdown
+- [ ] Migration written + applied + probe-verified
+- [ ] Unit tests: T-triggers = ...; tests added in commit X
+- [ ] API smoke: S-class = ...; smokes executed = ...
+- [ ] Operator UAT: founder confirmed in browser on YYYY-MM-DD HH:MM UTC
+- [ ] STAGING-VERIFIED flip at: <UTC>
+```
+
+**Status flips to STAGING-VERIFIED only when ALL FOUR boxes are ticked with concrete evidence.**
+
+### 13.7 — Common ❌ Patterns to Avoid
+
+1. ❌ "I'll write the test next commit" — FORBIDDEN. Same-commit or stop.
+2. ❌ Read-only smoke for a mutator commit — S1 ≠ S2.
+3. ❌ HTTP 200 alone counts as "verified" — only true if S1; mutator commits need re-fetch + assert.
+4. ❌ Container logs unread after deploy — log silence is part of every smoke.
+5. ❌ Skipping the operator UAT for render-surface changes — per `[[feedback-operator-uat-gate]]`.
+6. ❌ Status report missing concrete evidence for one or more checklist boxes — incomplete; do not flip to STAGING-VERIFIED.
+
+---
+
 **Remember: This file is LAW. Follow it without exception. If something is unclear, ASK the user.**
 
-**Last Updated**: 2026-01-24
+**Last Updated**: 2026-06-08 (Section 13 added per founder mandate)

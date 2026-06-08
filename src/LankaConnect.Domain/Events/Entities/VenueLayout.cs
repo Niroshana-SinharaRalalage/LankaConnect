@@ -276,6 +276,7 @@ public class VenueLayout : LegacyBaseEntity
             return Result.Failure("Canvas configuration is required");
 
         Canvas = canvas;
+        UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
 

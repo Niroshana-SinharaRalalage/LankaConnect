@@ -75,6 +75,90 @@ jobs:
           path: TestResults/ArchTest/
           retention-days: 7
 
+  test-discipline-gate:
+    name: Test Discipline Gate (CLAUDE.md §13 T-triggers + S-class annotations)
+    runs-on: ubuntu-latest
+    # CLAUDE.md §13.5 forcing function (founder mandate 2026-06-07). Fails the
+    # check if any commit in the push / PR range touches src/ or tests/ but
+    # lacks `T-triggers:` and `S-class:` lines in its message body. The same
+    # rule the local pre-push hook enforces; this is the CI safety-net for
+    # contributors who skipped or bypassed the hook.
+    #
+    # Exempt subject prefixes:  docs:  chore:  test:  revert:  [hotfix]
+    #                           Merge   Revert
+    steps:
+      - name: Checkout (full history for commit walk)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve commit range
+        id: range
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
+            else
+              BASE="$BEFORE"
+            fi
+            HEAD="${{ github.sha }}"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "Range: $BASE..$HEAD"
+
+      - name: Enforce T-triggers / S-class annotations
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE="${{ steps.range.outputs.base }}"
+          HEAD="${{ steps.range.outputs.head }}"
+
+          FAILED=0
+          for SHA in $(git log --format='%H' "$BASE..$HEAD"); do
+            SUBJECT=$(git log -1 --format='%s' "$SHA")
+            # Exempt subject prefixes
+            if echo "$SUBJECT" | grep -qE '^(docs|chore|test|revert):\s|^(Merge|Revert)\s|^\[hotfix\]'; then
+              continue
+            fi
+            # Only check commits that touched src/ or tests/
+            FILES=$(git show --pretty="" --name-only "$SHA")
+            if ! echo "$FILES" | grep -qE '^(src|tests)/'; then
+              continue
+            fi
+            BODY=$(git log -1 --format='%B' "$SHA")
+            HAS_T=$(echo "$BODY" | grep -cE '^T-triggers:' || true)
+            HAS_S=$(echo "$BODY" | grep -cE '^S-class:' || true)
+            if [ "$HAS_T" -eq 0 ] || [ "$HAS_S" -eq 0 ]; then
+              MISS=""
+              [ "$HAS_T" -eq 0 ] && MISS="$MISS T-triggers:"
+              [ "$HAS_S" -eq 0 ] && MISS="$MISS S-class:"
+              echo "::error::Commit ${SHA:0:8} '$SUBJECT' touches src/tests/ but lacks:$MISS"
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" = "1" ]; then
+            echo ''
+            echo 'Per CLAUDE.md §13: every commit touching src/ or tests/ must include'
+            echo 'both lines (no leading spaces) in its message body:'
+            echo ''
+            echo '  T-triggers: <T-numbers fired + matching test file paths>'
+            echo '  S-class:    <S1-S6 + which scripts/smoke/*.ps1 will run post-deploy>'
+            echo ''
+            echo 'Exempt subject prefixes: docs:  chore:  test:  revert:  [hotfix]  Merge  Revert'
+            echo ''
+            echo 'Full discipline reference: docs/architecture/TESTING_DISCIPLINE_RULING.md'
+            exit 1
+          fi
+
   migration-lint:
     name: Migration Discipline Lint (no destructive DDL without approval)
     runs-on: ubuntu-latest

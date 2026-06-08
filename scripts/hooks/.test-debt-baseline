@@ -1,0 +1,4 @@
+# CLAUDE.md §13.5 test-debt baseline.
+# The pre-push hook ignores commits OLDER than the timestamp below in its
+# 24h test-debt budget calculation.
+2026-06-08T03:00:00Z

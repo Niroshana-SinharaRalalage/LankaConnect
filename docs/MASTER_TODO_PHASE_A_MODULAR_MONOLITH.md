@@ -128,6 +128,86 @@ production cutover.
 
 The same A/B split applies to W4.4 Payments and W4.6 Identity.
 
+### Testing discipline (founder mandate 2026-06-07 — refactor without test coverage is not refactor)
+
+The modular monolith refactoring goal is unchanged from Plan v5. What
+changed today is the **how**: every commit on the path from Wave 0 to Wave 8
+must carry unit-test coverage + API smoke evidence for the changed behavior,
+not just a green build. Without this, the structural refactor compiles but
+the system collapses at cutover.
+
+**Full discipline**: [docs/architecture/TESTING_DISCIPLINE_RULING.md](architecture/TESTING_DISCIPLINE_RULING.md).
+**Encoded as law**: [CLAUDE.md §13](../CLAUDE.md#section-13-testing-discipline).
+
+**Forward rules** (every commit, every wave):
+
+1. **T1-T8 triggers** — adding/modifying a unit test is mandatory when any of
+   8 specific conditions fire (new public method, mutator touching IAuditable,
+   command/query handler, EF Core configuration, REST endpoint, DI/DbContext
+   registration, namespace move, EF migration). See CLAUDE.md §13.1.
+2. **S1-S6 smoke classes** — "verified on staging" means running an API
+   write-path smoke that exercises the changed code, not just a 200 on a
+   GET. See CLAUDE.md §13.2.
+3. **Pre-commit annotations** — every commit touching `src/` or `tests/`
+   must include `T-triggers:` and `S-class:` lines in its message body.
+   Exempt subject prefixes: `docs:`, `chore:`, `test:`, `revert:`,
+   `[hotfix]`, `Merge`, `Revert`.
+4. **Forcing functions**:
+   - `scripts/hooks/pre-push.ps1` blocks pushes lacking annotations + enforces
+     a 24h test-debt budget (max 2 untested commits / rolling 24h window).
+   - `.github/workflows/pr-validation.yml` `test-discipline-gate` job is the
+     CI safety net for contributors who bypassed the hook.
+5. **Per-wave MASTER_TODO** — every behavior-touching wave gets a
+   `docs/MASTER_TODO_WAVE_<N>.md` with 4-checkbox per-phase gate (migration,
+   unit tests, API smoke, operator UAT). Status flips to STAGING-VERIFIED
+   only when all four ticked with evidence.
+
+### Retroactive gap-fill: testing coverage debt from Waves 0-4 (G0-G8)
+
+Waves 0-4 shipped ~40 commits under the OLD discipline (compile + read
+smoke = done). These 9 gaps close the retroactive coverage debt before
+Wave 4.9 Phase 1 resumes. **Refactor work continues** — this is not a stop;
+it's a parallel forcing function that makes every subsequent wave provably
+safe.
+
+| Order | Gap | Risk | Est | Status |
+|---|---|---|---|---|
+| **G0** | Build 4 smoke scripts (Invoke-Login, Smoke-Mutator, Smoke-LogSilence, Smoke-Probe) — foundation | — | 90m | ✅ shipped `0ebcd0a4` |
+| **G1.a** | LegacyBaseEntity ctor unit tests (6 tests) | A | 30m | ✅ shipped `b815905d` |
+| **G1.b** | Per-aggregate audit-field round-trip tests (10 aggregates) | A | 90m | in flight |
+| **G1.c** | Infra tests: global Ignore covers all IAuditable entities × 4 DbContexts | A | 60m | pending |
+| **G1.d** | Staging mutator smokes (User/Registration/EmailGroup/Collection) | A | 90m | pending |
+| **G6** | Probe `notifications.outbox` / `media.outbox` / `forms.outbox` physically exist on staging | B | 20m | pending |
+| **G2** | W4.2 Media write-path round-trip | A | 90m | pending |
+| **G3** | W4.3 Forms write-path round-trip | A | 90m | pending |
+| **G4** | W4.0b Notifications write-path round-trip | B | 60m | pending |
+| **G5** | W4.7 `ICulturalCalendar` DI resolution | B | 30m | pending |
+| **G7** | Wave 2 cultural type API soak | C | 45m | pending |
+| **G8** | Wave 1 BB/SK surface tests | C | 30m | pending |
+
+**Total**: ~12 hours wall-clock spread across 2-3 working days. Closes the
+retroactive coverage on the modular monolith refactor work that has
+already shipped, BEFORE adding more structural changes on top.
+
+### Wave 4.9 Phase template (REPLACES every Phase 1.1-1.10 + Phase 2 spec)
+
+Every remaining Wave 4.9 phase follows the 5-section template documented in
+[TESTING_DISCIPLINE_RULING.md §C](architecture/TESTING_DISCIPLINE_RULING.md#section-c--wave-49-phase-template):
+
+- **Section A** — Unit Tests (mandatory per T1-T8)
+- **Section B** — Staging API Smoke Matrix (mandatory per S1-S6 + cross-surface)
+- **Section C** — Pre-Deploy Checklist
+- **Section D** — Post-Deploy Verification (with operator UAT)
+- **Section E** — Rollback
+
+Wall-clock per phase increases ~3× to absorb the discipline. This is the
+correct cost — the original "~45m per group" underweighted testing and
+that's exactly why we're paying down the gap-fill today.
+
+**The refactor goal — modular monolith with zero carried debt — is
+unchanged. The testing discipline is the mechanism that makes the refactor
+production-safe at Wave 8 cutover.**
+
 ### Key design decisions (D1-D10 founder-approved 2026-06-04, see blueprint §2)
 
 - **D1** — IAuditable + AuditableInterceptor (already shipped W2.5; refinements: IConcurrencyToken + IMultiTenant<T>)

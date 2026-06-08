@@ -194,6 +194,7 @@ public partial class Event : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, La
         // W3C (2026-06-06): explicit Id init — legacy BaseEntity's parameterless ctor
         // set Id = Guid.NewGuid(); BB.Domain.Entity<Guid> does not. Set in factory ctor.
         Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
         Title = title;
         Description = description;
         // Phase 8YA.1: Dates are nullable for TBD events. Coerce to UTC only when present.

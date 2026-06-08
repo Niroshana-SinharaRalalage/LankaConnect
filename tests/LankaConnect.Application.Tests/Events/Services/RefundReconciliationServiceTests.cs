@@ -90,21 +90,26 @@ public class RefundReconciliationServiceTests
 
     private static void InitDomainEventsBackingField(Registration registration)
     {
-        // LegacyBaseEntity._domainEvents is the typical backing field name. Use
-        // reflection so the test doesn't break if the field is renamed —
-        // we just default to an empty list when found.
+        // W3 (2026-06-08): `_domainEvents` lives on the BB.Entity<TId> base class
+        // (not LegacyBaseEntity which inherits it). GetField(BindingFlags.NonPublic)
+        // on a derived type does NOT walk the inheritance chain for private fields.
+        // Walk the chain manually so the uninitialized Registration object gets a
+        // usable backing list, regardless of which layer in the hierarchy declares it.
         var fieldNames = new[] { "_domainEvents", "domainEvents" };
-        foreach (var name in fieldNames)
+        for (var type = (Type?)registration.GetType(); type != null; type = type.BaseType)
         {
-            var field = typeof(LankaConnect.Domain.Common.LegacyBaseEntity)
-                .GetField(name, System.Reflection.BindingFlags.Instance
-                    | System.Reflection.BindingFlags.NonPublic);
-            if (field != null && field.GetValue(registration) == null)
+            foreach (var name in fieldNames)
             {
-                var listType = typeof(List<>).MakeGenericType(
-                    field.FieldType.GetGenericArguments());
-                field.SetValue(registration, Activator.CreateInstance(listType));
-                return;
+                var field = type.GetField(name, System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.DeclaredOnly);
+                if (field != null && field.GetValue(registration) == null)
+                {
+                    var listType = typeof(List<>).MakeGenericType(
+                        field.FieldType.GetGenericArguments());
+                    field.SetValue(registration, Activator.CreateInstance(listType));
+                    return;
+                }
             }
         }
     }

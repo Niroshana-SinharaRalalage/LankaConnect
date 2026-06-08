@@ -104,6 +104,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
         // W3B (2026-06-05): explicit Id init — legacy BaseEntity's parameterless ctor
         // set Id = Guid.NewGuid(); BB.Domain.Entity<Guid> does not. Set in factory ctor.
         Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
         Email = email;
         FirstName = firstName;
         LastName = lastName;
@@ -551,6 +552,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
     public Result UpdateLocation(UserLocation? location)
     {
         Location = location;
+        UpdatedAt = DateTime.UtcNow;
 
         // Only raise event if location is being set (not cleared)
         if (location != null)
@@ -959,6 +961,7 @@ public class User : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaConnec
         }
 
         RaiseDomainEvent(new UserRoleChangedEvent(Id, Email.Value, oldRole, UserRole.EventOrganizer));
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }

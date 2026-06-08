@@ -909,6 +909,7 @@ public class Registration : LegacyBaseEntity
         PaymentStatus = PaymentStatus.Refunded;
         StripeRefundId = stripeRefundId;
         RefundCompletedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         // Raise domain event for email notification
         // Phase 6A.135: Include persisted AddOnRefundAmount so completion email shows combined total
@@ -1456,7 +1457,7 @@ public class Registration : LegacyBaseEntity
 
         // Update quantity to match attendee count (maintain backward compatibility)
         Quantity = attendeeList.Count;
-
+        UpdatedAt = DateTime.UtcNow;
 
         // Raise domain event for email notification
         RaiseDomainEvent(new RegistrationDetailsUpdatedEvent(

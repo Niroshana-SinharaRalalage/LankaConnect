@@ -139,6 +139,7 @@ public class Collection : LegacyBaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -158,6 +159,7 @@ public class Collection : LegacyBaseEntity
         StripePaymentIntentId = paymentIntentId;
         Status = CollectionStatus.Completed;
         PaymentCompletedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new CollectionCompletedEvent(
             EventId,
@@ -183,6 +185,7 @@ public class Collection : LegacyBaseEntity
 
         Status = CollectionStatus.Failed;
         FailedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -197,6 +200,7 @@ public class Collection : LegacyBaseEntity
 
         Status = CollectionStatus.Abandoned;
         AbandonedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -211,6 +215,7 @@ public class Collection : LegacyBaseEntity
 
         Status = CollectionStatus.Refunded;
         RefundedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -230,6 +235,7 @@ public class Collection : LegacyBaseEntity
         StripeFeeAmount = stripeFee;
         PlatformCommissionAmount = platformCommission;
         OrganizerPayoutAmount = organizerPayout;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }

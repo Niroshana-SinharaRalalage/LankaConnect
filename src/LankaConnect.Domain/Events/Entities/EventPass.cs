@@ -39,6 +39,7 @@ public class EventPass : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, LankaC
     {
         // W3C (2026-06-06): explicit Id init — see Notification W3A migration notes.
         Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
         Name = name;
         Description = description;
         Price = price;

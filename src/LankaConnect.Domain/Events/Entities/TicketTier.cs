@@ -115,6 +115,7 @@ public class TicketTier : LankaConnect.BuildingBlocks.Domain.Entity<Guid>, Lanka
     {
         // W3C (2026-06-06): explicit Id init — see Notification W3A migration notes.
         Id = Guid.NewGuid();
+        CreatedAt = DateTime.UtcNow;
         EventId = eventId;
         Name = name;
         Description = description;

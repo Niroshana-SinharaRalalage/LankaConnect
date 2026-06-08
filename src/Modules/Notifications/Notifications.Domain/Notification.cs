@@ -59,6 +59,7 @@ public class Notification : Entity<Guid>, IAuditable
         IsRead = false;
         RelatedEntityId = relatedEntityId;
         RelatedEntityType = relatedEntityType;
+        CreatedAt = DateTime.UtcNow;
     }
 
     /// <summary>Factory method to create a new notification.</summary>

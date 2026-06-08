@@ -400,6 +400,7 @@ public class Sponsor : LegacyBaseEntity
 
         StripeCheckoutSessionId = sessionId;
         CheckoutExpiresAt = expiresAt;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -899,5 +900,6 @@ public class Sponsor : LegacyBaseEntity
     {
         LastEditedAt = DateTime.UtcNow;
         LastEditedBy = actorUserId;
+        UpdatedAt = DateTime.UtcNow;
     }
 }

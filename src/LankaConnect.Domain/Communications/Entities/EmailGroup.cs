@@ -64,6 +64,7 @@ public class EmailGroup : LegacyBaseEntity
         Name = name.Trim();
         EmailAddresses = validationResult.Value;
         Description = description?.Trim();
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -74,6 +75,7 @@ public class EmailGroup : LegacyBaseEntity
     public void Deactivate()
     {
         IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     /// <summary>

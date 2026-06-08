@@ -139,14 +139,22 @@ public class EventCancellationEmailJobAutoRefundTests
 
     private void SetEntityId<T>(T entity, Guid id) where T : class
     {
-        var baseType = typeof(T);
-        while (baseType != null && baseType.Name != "LegacyBaseEntity")
+        // W3 (2026-06-08): the Id property + its compiler-generated backing field
+        // moved up the hierarchy from legacy BaseEntity to BB.Entity<TId> when entities
+        // migrated to BuildingBlocks. Walk the chain and set whichever backing field
+        // is reachable (private fields are not inherited via GetField on derived types).
+        for (var type = (Type?)typeof(T); type != null; type = type.BaseType)
         {
-            baseType = baseType.BaseType;
+            var idField = type.GetField("<Id>k__BackingField",
+                System.Reflection.BindingFlags.NonPublic
+                | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.DeclaredOnly);
+            if (idField != null)
+            {
+                idField.SetValue(entity, id);
+                return;
+            }
         }
-        var idField = baseType?.GetField("<Id>k__BackingField",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        idField?.SetValue(entity, id);
     }
 
     private void SetPrivateProperty<T>(T obj, string propertyName, object value)

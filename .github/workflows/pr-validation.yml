@@ -165,15 +165,44 @@ jobs:
             --json number,title \
             --jq '.[0].number // empty' || true)
 
+          # Write multi-line issue bodies via heredoc to a temp file — avoids
+          # YAML parser confusion over markdown bullets that start with '-'
+          # at column 1 of the run: block.
+          cat > /tmp/comment-body.md <<COMMENT_BODY
+          ## Additional develop test failure
+          * Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
+          * Author: ${AUTHOR}
+          * Workflow run: ${RUN_URL}
+          * Timestamp: ${TIMESTAMP}
+
+          Existing-tests-must-pass invariant (CLAUDE.md §13) is still violated on develop.
+          COMMENT_BODY
+
+          cat > /tmp/new-issue-body.md <<NEW_ISSUE_BODY
+          ## Develop test suite failed
+          * Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
+          * Author: ${AUTHOR}
+          * Workflow run: ${RUN_URL}
+          * Timestamp: ${TIMESTAMP}
+
+          The \`full-test-suite-must-be-green\` job failed on this push to develop.
+          Per CLAUDE.md §13 (existing-tests-must-pass invariant), develop must be
+          restored to green before any further structural commits ship.
+
+          ### Next steps
+          1. Open the workflow run linked above and inspect failing tests.
+          2. Ship a fix-forward commit to develop OR revert this one.
+          3. This Issue will auto-close when the next successful push to develop
+             triggers a green \`full-test-suite-must-be-green\` run (Wave4.9.0.7
+             self-closes via the close-test-failure-on-green job below).
+
+          24h dedup window applies: further failures within 24h append as comments
+          on this Issue rather than opening new ones.
+          NEW_ISSUE_BODY
+
           if [ -n "$EXISTING" ]; then
             echo "Existing auto-filed issue #$EXISTING within 24h — commenting on it."
-            gh issue comment "$EXISTING" --body "## Additional develop test failure
-- Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
-- Author: ${AUTHOR}
-- Workflow run: ${RUN_URL}
-- Timestamp: ${TIMESTAMP}
-
-Existing-tests-must-pass invariant (CLAUDE.md §13) is still violated on develop."
+            gh issue comment "$EXISTING" --body-file /tmp/comment-body.md
           else
             echo "No open auto-filed issue in last 24h — opening new one."
             gh issue create \
@@ -181,29 +210,7 @@ Existing-tests-must-pass invariant (CLAUDE.md §13) is still violated on develop
               --label "auto-filed" \
               --label "develop" \
               --label "test-failure" \
-              --body "## Develop test suite failed
-- Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
-- Author: ${AUTHOR}
-- Workflow run: ${RUN_URL}
-- Timestamp: ${TIMESTAMP}
-
-The \`full-test-suite-must-be-green\` job failed on this push to develop.
-Per CLAUDE.md §13 (existing-tests-must-pass invariant), develop must be
-restored to green before any further structural commits ship.
-
-### Next steps
-1. Open the workflow run linked above and inspect failing tests.
-2. Ship a fix-forward commit to develop OR revert this one.
-3. This Issue will auto-close when the next successful push to develop
-   triggers a green \`full-test-suite-must-be-green\` run (Wave4.9.0.7
-   self-closes via the green-push job below).
-
-### Labels
-\`auto-filed\` — opened by CI, not human
-\`develop\` — relates to develop branch
-\`test-failure\` — broken test suite
-
-24h dedup window applies: further failures within 24h append as comments on this Issue rather than opening new ones."
+              --body-file /tmp/new-issue-body.md
           fi
 
   close-test-failure-on-green:

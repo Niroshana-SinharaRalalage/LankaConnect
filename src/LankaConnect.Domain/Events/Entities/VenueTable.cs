@@ -154,6 +154,7 @@ public class VenueTable : LegacyBaseEntity
         SortOrder = sortOrder;
         VenueZoneId = venueZoneId;
         Geometry = NormalizeGeometry(geometry);
+        UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
 

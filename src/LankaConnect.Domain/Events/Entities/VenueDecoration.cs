@@ -117,6 +117,7 @@ public class VenueDecoration : LegacyBaseEntity
         SortOrder = sortOrder;
         Geometry = NormalizeJson(geometry);
         Properties = NormalizeJson(properties);
+        UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
 

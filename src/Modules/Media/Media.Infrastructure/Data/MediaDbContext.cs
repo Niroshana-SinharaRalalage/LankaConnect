@@ -79,6 +79,13 @@ public sealed class MediaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
+        // 2026-06-08 hotfix (matches AppDbContext.IgnoreAuditByActorPropertiesUntilPhase1):
+        // Phase 1.9 of Wave 4.9 will add physical CreatedBy/UpdatedBy columns to the
+        // photo_albums + album_photos tables; until then, ignore the auto-mapped
+        // properties so SELECTs don't try to read non-existent columns.
+        modelBuilder.Entity<PhotoAlbum>().Ignore("CreatedBy").Ignore("UpdatedBy");
+        modelBuilder.Entity<AlbumPhoto>().Ignore("CreatedBy").Ignore("UpdatedBy");
+
         base.OnModelCreating(modelBuilder);
     }
 }

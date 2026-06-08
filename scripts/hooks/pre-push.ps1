@@ -88,7 +88,7 @@ foreach ($sha in $upstreamCommits) {
     $subject = & git log -1 --format='%s' $sha
     if (Test-CommitExempt -Subject $subject) { continue }
     if (-not (Test-CommitTouchesCode -Sha $sha)) { continue }
-    $body = & git log -1 --format='%B' $sha
+    $body = (& git log -1 --format='%B' $sha) -join "`n"
     $ann = Test-CommitAnnotated -Body $body
     if (-not $ann.Annotated) {
         $short = $sha.Substring(0, 8)
@@ -134,7 +134,7 @@ foreach ($sha in $recentShas) {
     $subject = & git log -1 --format='%s' $sha
     if (Test-CommitExempt -Subject $subject) { continue }
     if (-not (Test-CommitTouchesCode -Sha $sha)) { continue }
-    $body = & git log -1 --format='%B' $sha
+    $body = (& git log -1 --format='%B' $sha) -join "`n"
     $ann = Test-CommitAnnotated -Body $body
     if (-not $ann.Annotated) {
         $untestedRecent++

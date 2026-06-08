@@ -4,7 +4,7 @@
 |---|---|
 | **Plan Version** | **v5 (enterprise wave plan — founder-approved 2026-06-04) + 2026-06-08 testing-discipline overlay** |
 | **Phase A Duration** | **25 weeks calendar** (v5 nominal) → **~35 weeks remaining under Approach 3** (parallel structural + testing tracks; see §"Calendar Impact" below) |
-| **Execution Plan (FINAL)** | [docs/architecture/PHASE_A_EXECUTION_PLAN_FINAL.md](architecture/PHASE_A_EXECUTION_PLAN_FINAL.md) — enterprise-locked 2026-06-08 |
+| **Execution Plan** | THIS document — single source of truth; one W#.# numbering system (no parallel Stage/G/Layer hierarchies) |
 | **Authoritative Architecture** | [ENTERPRISE_ARCHITECTURE_BLUEPRINT.md](architecture/ENTERPRISE_ARCHITECTURE_BLUEPRINT.md) |
 | **Approach** | Trunk-based development + feature flags (no long-lived branch); wave-based sequencing |
 | **Cutover Discipline** | Per-module flag flip with 7-day staging soak + 24h production canary |
@@ -14,9 +14,9 @@
 
 ---
 
-## Quick Index (Auto-Maintained 2026-06-08)
+## Quick Index (Unified W#.# Numbering — 2026-06-08)
 
-> Single-grep navigation: search this section for `W#.#` or `G#.#` to jump.
+> **One numbering system.** Every work item is `W#.#` (Wave.Task) or `W#.#.#` for sub-tasks. No Stage/G/Layer/Phase parallel hierarchies anywhere.
 
 ### Phase A Wave Status
 
@@ -24,51 +24,74 @@
 |---|---|---|---|
 | **W0** | Architecture ratification | ✅ SHIPPED | — |
 | **W1** | BuildingBlocks + SharedKernel | ✅ SHIPPED | — |
-| **W2** | SharedKernel.Cultural untangling | ✅ SHIPPED (MVP scope) | — |
+| **W2** | SharedKernel.Cultural untangling (MVP scope) | ✅ SHIPPED | — |
 | **W3** | 79-entity migration to BB.Entity<TId> | 🟡 In flight via W4 capability extractions | — |
-| **W4** | 8 capability extractions | 🟡 W4.0/W4.0b/W4.2/W4.3/W4.5/W4.7 shipped; W4.1/W4.4/W4.6 split A/B remaining | ~12 wk |
-| **W4.9** | Schema realignment (NEW; architect-added) | 🟡 Phases 0/0.5/0.7/3 reverted; Phase 1.1+ pending | ~7 wk |
-| **W5** | Products carve-out (Products/LankaEvents) | ⏳ Pending | ~2 wk |
-| **W6** | ArchTest hardening (28 rules) | ⏳ Pending | ~1.5 wk |
-| **W6.5** | Outbox cutover (NEW; architect-added) | ⏳ Pending | ~3 wk |
-| **W7** | Frontend mirror (Turborepo) | ⏳ Pending | ~6 wk |
+| **W4** | 8 capability extractions (Notifications cleanup, Communications, Media, Forms, Payments, Scheduling, Identity, CulturalIntelligence) | 🟡 W4.0/W4.0b/W4.2/W4.3/W4.5/W4.7 shipped | ~12 wk |
+| **W4.9** | Testing-discipline overlay + IAuditable physical-column rollout + Schema realignment (architect-added 2026-06-07/08) | 🟡 W4.9.0 sub-tasks shipping; W4.9.1.4+ pending | ~7 wk |
+| **W5** | Products carve-out (`Products/LankaEvents`) | ⏳ Pending | ~2 wk |
+| **W6** | ArchTest hardening (28 rules total) | ⏳ Pending | ~1.5 wk |
+| **W6.5** | Outbox cutover (architect-added; retires self-saving repository pattern) | ⏳ Pending | ~3 wk |
+| **W7** | Frontend mirror (Turborepo + feature packages) | ⏳ Pending | ~6 wk |
 | **W8** | Production cutover + stabilization | ⏳ Pending | ~5 wk |
 
-### G0-G8 Retroactive Testing Coverage Gap-Fill (NEW 2026-06-08; runs in parallel with W4)
+### W4.9 Task Tree (replaces all prior Stage/G/Phase numbering)
 
-| Gap | Description | Status | Commit |
+**W4.9.0 — Testing-discipline infrastructure** (foundation; runs before the rest of W4.9 starts)
+
+| Task | Description | Status | Commit |
 |---|---|---|---|
-| **G0** | 4 smoke scripts in `scripts/smoke/` | ✅ SHIPPED | `0ebcd0a4` |
-| **G1.a** | LegacyBaseEntity ctor unit tests | ✅ SHIPPED | `b815905d` |
-| **G1.b** | Per-aggregate audit-field round-trip tests (5 aggregates) | ✅ SHIPPED | `7f43b74b` |
-| **G1.c** | Infrastructure tests: global Ignore coverage × 4 DbContexts | 🟡 in flight | — |
-| **G1.d** | Staging mutator smokes (4 routes added to RouteMap per [route audit](audit/route-inventory-2026-06-08.md)) | ⏳ Pending | — |
-| **G6** | Probe `notifications/media/forms` operational tables on staging | ⏳ Pending | — |
-| **G2** | W4.2 Media write-path round-trip (album create) | ⏳ Pending | — |
-| **G3** | W4.3 Forms write-path round-trip | ⏳ Pending | — |
-| **G4** | W4.0b Notifications write-path round-trip | ⏳ Pending | — |
-| **G5** | W4.7 ICulturalCalendar DI resolution (unit-only per P4) | ⏳ Pending | — |
-| **G7** | Wave 2 cultural type unit tests (unit-only per P4) | ⏳ Pending | — |
-| **G8** | Wave 1 BB/SK surface tests (event price-shape API smoke) | ⏳ Pending | — |
+| **W4.9.0.1** | CLAUDE.md §13 — discipline as law + `docs/architecture/TESTING_DISCIPLINE_RULING.md` | ✅ SHIPPED | `14a136ba` |
+| **W4.9.0.2** | `scripts/smoke/` 4-script harness (Invoke-Login, Smoke-Mutator, Smoke-LogSilence, Smoke-Probe) | ✅ SHIPPED | `0ebcd0a4` |
+| **W4.9.0.3** | `scripts/hooks/pre-push.ps1` (annotation enforcement + 24h test-debt budget) + `.github/workflows/pr-validation.yml test-discipline-gate` job | ✅ SHIPPED | `d6cd0809` + `57c879df` |
+| **W4.9.0.4** | Master TODO surgery + final execution plan + audits | ✅ SHIPPED | `ba7a2a6f` + `a7a5067d` + this commit |
+| **W4.9.0.5** | Pre-push hook Tier A/B `dotnet test` run (~30s for intra-module Tier A; full local run for Tier B) | ⏳ Pending | — |
+| **W4.9.0.6** | CI `full-test-suite-must-be-green` job in `pr-validation.yml` (`concurrency.cancel-in-progress: true`; parallel to deploy-staging) | ⏳ Pending | — |
+| **W4.9.0.7** | CI develop-push auto-file GitHub Issue on test failure (labels: `test-failure`, `develop`, `auto-filed`; 24h dedup) | ⏳ Pending | — |
 
-### Testing-Discipline Infrastructure (NEW 2026-06-08)
+**W4.9.1 — Retroactive testing-coverage gap-fill** (backfills Wave 0-4 testing debt; runs in parallel with new W4 work)
 
-| Artifact | Status | Commit |
-|---|---|---|
-| CLAUDE.md §13 — discipline as law | ✅ SHIPPED | `14a136ba` |
-| `docs/architecture/TESTING_DISCIPLINE_RULING.md` | ✅ SHIPPED | `14a136ba` |
-| `scripts/smoke/` 4-script harness | ✅ SHIPPED | `0ebcd0a4` |
-| `scripts/hooks/pre-push.ps1` (annotation enforcement + 24h budget) | ✅ SHIPPED | `d6cd0809` + `57c879df` |
-| `.github/workflows/pr-validation.yml` `test-discipline-gate` job | ✅ SHIPPED | `d6cd0809` |
-| **3-layer existing-tests-must-pass** (Tier A/B pre-push test run + CI full-suite gate + auto-file Issue) | ⏳ Pending Stage 1 of FINAL plan | — |
+| Task | Description | Status | Commit |
+|---|---|---|---|
+| **W4.9.1.0** | (Same as W4.9.0.2 — foundation) | ✅ SHIPPED | `0ebcd0a4` |
+| **W4.9.1.1** | LegacyBaseEntity ctor unit tests (6 tests) | ✅ SHIPPED | `b815905d` |
+| **W4.9.1.2** | Per-aggregate audit-field round-trip tests (5 aggregates: User, EmailGroup, Notification, PhotoAlbum, EventForm) | ✅ SHIPPED | `7f43b74b` |
+| **W4.9.1.3** | Infrastructure tests: global IAuditable Ignore coverage × 4 DbContexts via Npgsql model-builder-only | ⏳ Pending | — |
+| **W4.9.1.4** | Staging mutator smokes — 4 routes added to Smoke-Mutator RouteMap per [route audit](audit/route-inventory-2026-06-08.md) (User UpdateLocation, EmailGroup Update, Registration UpdateDetails, Collection MarkAsFailed) | ⏳ Pending | — |
+| **W4.9.1.5** | Probe `notifications.outbox` / `media.outbox` / `forms.outbox` operational tables exist on staging | ⏳ Pending | — |
+| **W4.9.1.6** | W4.2 Media write-path round-trip (album create + GET re-fetch + log silence; smoke bootstraps its own event) | ⏳ Pending | — |
+| **W4.9.1.7** | W4.3 Forms write-path round-trip | ⏳ Pending | — |
+| **W4.9.1.8** | W4.0b Notifications write-path round-trip (notification mark-read via webhook trigger) | ⏳ Pending | — |
+| **W4.9.1.9** | W4.7 `ICulturalCalendar` DI resolution unit test (unit-only — no direct API surface) | ⏳ Pending | — |
+| **W4.9.1.10** | Wave 2 cultural-type unit tests (one per moved type; unit-only) | ⏳ Pending | — |
+| **W4.9.1.11** | Wave 1 BB/SK surface tests (event price-shape API smoke for Money/Currency exposure) | ⏳ Pending | — |
+
+**W4.9.2 — IAuditable physical column rollout** (per-schema; AddColumn migrations)
+
+| Task | Group | Tables | Status |
+|---|---|---|---|
+| **W4.9.2.1** | Identity | 8 tables (users + 7 user-related) | ⏳ Pending |
+| **W4.9.2.2** | Events core | 12 tables (events, event_passes, event_organizer_contacts, event_slug_aliases, etc.) | ⏳ Pending |
+| **W4.9.2.3** | Registrations & seating | 15 tables (registrations, refund_requests, venue_layouts, seats, etc.) | ⏳ Pending |
+| **W4.9.2.4** | Financials | 10 tables (donations, collections, sponsors, sponsorship_packages, stripe_*) | ⏳ Pending |
+| **W4.9.2.5** | Communications (WhatsApp + email) | 8 tables (whatsapp_*, email_*, newsletter_*) | ⏳ Pending |
+| **W4.9.2.6** | Sign-ups | 5 tables (sign_up_*) | ⏳ Pending |
+| **W4.9.2.7** | Cultural reference data | 2 tables (metro_areas, badges) | ⏳ Pending |
+| **W4.9.2.8** | Admin & support | 2 tables (support_tickets, admin_audit_logs) | ⏳ Pending |
+| **W4.9.2.9** | Media (post W4.9.3) | 2 tables under MediaDbContext (photo_albums, album_photos) | ⏳ Pending |
+| **W4.9.2.10** | Forms (post W4.9.4) | 4 tables under FormsDbContext (event_forms, form_questions, form_responses, form_answers) | ⏳ Pending |
+
+**W4.9.3 — Media schema rename** (ALTER TABLE events.photo_albums SET SCHEMA media + album_photos) — ⏳ Pending
+
+**W4.9.4 — Forms schema rename** (4 form-table ALTER SET SCHEMA forms) — ⏳ Pending
+
+**W4.9.5 — AppDbContext snapshot resync** (Phase 3 redo: surgical purge of Modules.* leaks, NOT full snapshot regeneration) — ⏳ Pending
 
 ### Cross-Reference Files
 
-- **Adjusted execution plan**: `docs/architecture/PHASE_A_EXECUTION_PLAN_FINAL.md`
-- **Testing discipline spec**: `docs/architecture/TESTING_DISCIPLINE_RULING.md`
-- **Wave 4.9 phase template**: `docs/architecture/WAVE_4_9_PLAN.md`
-- **Cross-link inventory (P2 audit)**: `docs/audit/master-todo-crosslinks.md`
-- **Route inventory (P3 audit)**: `docs/audit/route-inventory-2026-06-08.md`
+- **Testing discipline spec**: `docs/architecture/TESTING_DISCIPLINE_RULING.md` (G/Stage references therein are historical; active tasks use W#.# IDs above)
+- **Wave 4.9 phase template**: `docs/architecture/WAVE_4_9_PLAN.md` (Phase 1.1 → W4.9.2.1 in new numbering)
+- **Cross-link inventory (preserved during master TODO surgery)**: `docs/audit/master-todo-crosslinks.md`
+- **Route inventory (corrects PhotoAlbums + UpdateLocation route assumptions)**: `docs/audit/route-inventory-2026-06-08.md`
 
 ---
 

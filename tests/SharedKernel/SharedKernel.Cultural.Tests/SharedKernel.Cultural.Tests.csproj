@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.SharedKernel.Cultural.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.SharedKernel.Cultural.Tests</AssemblyName>
+    <Description>Unit tests for SharedKernel.Cultural value objects (CulturalAppropriateness, CulturalConflict, CulturalContext). Wave4.9.1.10 (2026-06-08) backfill - the project was missing entirely; these types moved into SharedKernel during Wave 2 but no test project followed.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\SharedKernel\SharedKernel.Cultural\SharedKernel.Cultural.csproj" />
+  </ItemGroup>
+
+</Project>

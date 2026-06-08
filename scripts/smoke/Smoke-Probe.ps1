@@ -95,11 +95,13 @@ function Invoke-Psql {
         return $result
     }
 
-    # psql not available - bail with actionable message. A dotnet-Npgsql
-    # fallback is a possible future enhancement but not needed today since
-    # CI runners install psql via 'apt-get install postgresql-client' and
-    # local boxes can 'winget install PostgreSQL.PostgreSQL'.
-    throw "psql not installed. Install via 'apt-get install postgresql-client' (CI) or 'winget install PostgreSQL.PostgreSQL' (local), then re-run."
+    # psql not available - bail with actionable message.
+    # Wave4.9.1.5 attempted an Add-Type Npgsql.dll fallback but Windows
+    # PowerShell 5.1 cannot load .NET 8 assemblies (CLR mismatch). pwsh 7+
+    # would work but is not installed on the founder's box. Until psql or
+    # pwsh ships, the API-endpoint-exercise approach in
+    # scripts/smoke/Probe-OperationalTables.ps1 is the working alternative.
+    throw "psql not installed. Install via 'winget install PostgreSQL.PostgreSQL' (local) or 'apt-get install postgresql-client' (CI), then re-run. (Direct Npgsql.dll loading via Add-Type does NOT work in Windows PowerShell 5.1 — needs pwsh 7+.)"
 }
 
 try {

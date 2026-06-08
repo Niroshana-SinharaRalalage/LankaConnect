@@ -127,6 +127,120 @@ jobs:
           path: TestResults/FullSuite/
           retention-days: 14
 
+  notify-test-failure:
+    name: Auto-file GitHub Issue on develop test failure
+    needs: full-test-suite-must-be-green
+    # Wave4.9.0.7 (2026-06-08) — only fires when full-test-suite job FAILED
+    # AND we're on a direct develop push (not a PR — PRs are already
+    # gated by failure-required-to-merge).
+    if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: File or update auto-filed develop-test-failure Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SHA_SHORT="${GITHUB_SHA:0:8}"
+          SUBJECT=$(git log -1 --format='%s' "$GITHUB_SHA")
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          AUTHOR=$(git log -1 --format='%an <%ae>' "$GITHUB_SHA")
+          TIMESTAMP=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          # 24h dedup: check for an open Issue with the auto-filed label
+          # opened within the last 24h. If one exists, comment on it; else open a new one.
+          EXISTING=$(gh issue list \
+            --label "auto-filed" --label "develop" --label "test-failure" \
+            --state open \
+            --search "created:>=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            --limit 1 \
+            --json number,title \
+            --jq '.[0].number // empty' || true)
+
+          if [ -n "$EXISTING" ]; then
+            echo "Existing auto-filed issue #$EXISTING within 24h — commenting on it."
+            gh issue comment "$EXISTING" --body "## Additional develop test failure
+- Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
+- Author: ${AUTHOR}
+- Workflow run: ${RUN_URL}
+- Timestamp: ${TIMESTAMP}
+
+Existing-tests-must-pass invariant (CLAUDE.md §13) is still violated on develop."
+          else
+            echo "No open auto-filed issue in last 24h — opening new one."
+            gh issue create \
+              --title "[develop test failure] ${SHA_SHORT} — ${SUBJECT}" \
+              --label "auto-filed" \
+              --label "develop" \
+              --label "test-failure" \
+              --body "## Develop test suite failed
+- Commit: \`${SHA_SHORT}\` — \`${SUBJECT}\`
+- Author: ${AUTHOR}
+- Workflow run: ${RUN_URL}
+- Timestamp: ${TIMESTAMP}
+
+The \`full-test-suite-must-be-green\` job failed on this push to develop.
+Per CLAUDE.md §13 (existing-tests-must-pass invariant), develop must be
+restored to green before any further structural commits ship.
+
+### Next steps
+1. Open the workflow run linked above and inspect failing tests.
+2. Ship a fix-forward commit to develop OR revert this one.
+3. This Issue will auto-close when the next successful push to develop
+   triggers a green \`full-test-suite-must-be-green\` run (Wave4.9.0.7
+   self-closes via the green-push job below).
+
+### Labels
+\`auto-filed\` — opened by CI, not human
+\`develop\` — relates to develop branch
+\`test-failure\` — broken test suite
+
+24h dedup window applies: further failures within 24h append as comments on this Issue rather than opening new ones."
+          fi
+
+  close-test-failure-on-green:
+    name: Auto-close test-failure Issues when develop goes green
+    needs: full-test-suite-must-be-green
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Close open auto-filed develop-test-failure Issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA_SHORT="${GITHUB_SHA:0:8}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          OPEN_ISSUES=$(gh issue list \
+            --label "auto-filed" --label "develop" --label "test-failure" \
+            --state open \
+            --json number \
+            --jq '.[].number')
+
+          if [ -z "$OPEN_ISSUES" ]; then
+            echo "No open auto-filed test-failure issues — nothing to close."
+            exit 0
+          fi
+
+          for ISSUE in $OPEN_ISSUES; do
+            echo "Closing #$ISSUE (develop is green now)..."
+            gh issue comment "$ISSUE" --body "✅ Auto-closing. develop is green again as of commit \`${SHA_SHORT}\`. Workflow run: ${RUN_URL}"
+            gh issue close "$ISSUE" --reason completed
+          done
+
   test-discipline-gate:
     name: Test Discipline Gate (CLAUDE.md §13 T-triggers + S-class annotations)
     runs-on: ubuntu-latest

@@ -322,8 +322,51 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // Configure value object conversions
         ConfigureValueObjectConversions(modelBuilder);
 
+        // 2026-06-08 hotfix — Wave 3 LegacyBaseEntity exposes CreatedBy/UpdatedBy as
+        // public IAuditable properties, which EF auto-maps and includes in every
+        // SELECT. The physical DB columns do not yet exist on most AppDbContext
+        // tables (Wave 4.9 Phase 1 will add them per-schema). Until then,
+        // unconditionally Ignore these two properties at the AppDbContext model
+        // level so EF stops emitting SELECT clauses for non-existent columns.
+        // (CreatedAt + UpdatedAt remain mapped because those columns DO exist on
+        // every legacy table via the snake_case `created_at`/`updated_at`
+        // convention introduced by earlier migrations.)
+        //
+        // This Ignore is REMOVED per-entity by Phase 1.N migrations as physical
+        // CreatedBy/UpdatedBy columns are added (the per-entity config then
+        // re-maps the property via .HasColumnName("created_by") explicitly).
+        IgnoreAuditByActorPropertiesUntilPhase1(modelBuilder);
+
         // Note: Seed data is applied via DbInitializer at runtime
         // due to complex value objects and owned entities
+    }
+
+    /// <summary>
+    /// Walks every entity type in the model and calls
+    /// <c>modelBuilder.Entity(t).Ignore("CreatedBy").Ignore("UpdatedBy")</c> if
+    /// the entity implements <see cref="LankaConnect.BuildingBlocks.Domain.IAuditable"/>.
+    /// Temporary backstop until Wave 4.9 Phase 1 adds the physical columns.
+    /// </summary>
+    private static void IgnoreAuditByActorPropertiesUntilPhase1(ModelBuilder modelBuilder)
+    {
+        var iauditableType = typeof(LankaConnect.BuildingBlocks.Domain.IAuditable);
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
+        {
+            if (!iauditableType.IsAssignableFrom(entityType.ClrType))
+            {
+                continue;
+            }
+
+            var builder = modelBuilder.Entity(entityType.ClrType);
+            if (entityType.FindProperty("CreatedBy") is not null)
+            {
+                builder.Ignore("CreatedBy");
+            }
+            if (entityType.FindProperty("UpdatedBy") is not null)
+            {
+                builder.Ignore("UpdatedBy");
+            }
+        }
     }
 
     private static void ConfigureSchemas(ModelBuilder modelBuilder)

@@ -226,8 +226,13 @@ Write-Host ''
 if ($isTierB) {
     Write-Host "pre-push: Tier B (core path or cross-module change). Running full `dotnet test` LankaConnect.sln ..." -ForegroundColor Yellow
     Write-Host "  Bypass with: git push --no-verify  (logged + signals founder review later)" -ForegroundColor DarkGray
+    Write-Host "  Skipping Category=Integration tests (Testcontainers needs Docker; founder ruled no local Docker)" -ForegroundColor DarkGray
     Write-Host ''
-    $testOutput = & dotnet test LankaConnect.sln --nologo --verbosity quiet 2>&1
+    # --filter 'Category!=Integration' excludes Testcontainers-Postgres tests
+    # which require Docker (founder ruling 2026-06-07: no local Docker).
+    # CI runners DO have Docker; the Wave4.9.0.6 full-test-suite CI job
+    # will run Integration tests there.
+    $testOutput = & dotnet test LankaConnect.sln --nologo --verbosity quiet --filter 'Category!=Integration' 2>&1
     $testExit = $LASTEXITCODE
     # Echo summary lines
     $testOutput | Select-Object -Last 5 | ForEach-Object { Write-Host "  $_" }
@@ -266,7 +271,8 @@ if ($isTierB) {
         }
         $testProjects = Get-ChildItem -Path $moduleTestDir -Filter '*Tests.csproj' -Recurse -ErrorAction SilentlyContinue
         foreach ($proj in $testProjects) {
-            $modOutput = & dotnet test $proj.FullName --nologo --verbosity quiet 2>&1
+            # Same Integration-test exclusion as Tier B (Docker not available locally)
+            $modOutput = & dotnet test $proj.FullName --nologo --verbosity quiet --filter 'Category!=Integration' 2>&1
             if ($LASTEXITCODE -ne 0) {
                 $modOutput | Select-Object -Last 5 | ForEach-Object { Write-Host "  $_" }
                 Write-Host ''

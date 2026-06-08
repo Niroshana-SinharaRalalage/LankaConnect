@@ -157,6 +157,127 @@ if ($untestedRecent -gt 2) {
     exit 1
 }
 
-# Optional verbose summary for green pushes
-Write-Host "pre-push: OK ($($upstreamCommits.Count) commits being pushed, $untestedRecent / 2 untested in last 24h)" -ForegroundColor Green
+#-----------------------------------------------------------------------------
+# Wave4.9.0.5 (2026-06-08): Tier A / Tier B `dotnet test` enforcement.
+# Catches regressions before push instead of waiting for CI. Per architect
+# C.1 ruling: Tier A bounded at intra-module scope (~30s budget); Tier B is
+# unbounded local-run when touched files cross modules or core projects.
+#-----------------------------------------------------------------------------
+
+# Collect changed files across the entire push range
+$changedFiles = if ($upstream) {
+    & git diff --name-only --diff-filter=AM "${upstream}..HEAD" 2>$null
+} else {
+    & git diff --name-only --diff-filter=AM HEAD~1..HEAD 2>$null
+}
+
+# Only .cs files in src/ or tests/ trigger a test run; docs/scripts/CI changes skip
+$codeChanges = $changedFiles | Where-Object {
+    $_ -match '^(src|tests)/.+\.cs$'
+}
+
+if (-not $codeChanges) {
+    Write-Host "pre-push: no src/ or tests/ .cs changes; skipping Tier A/B test run." -ForegroundColor Cyan
+    Write-Host "pre-push: OK ($($upstreamCommits.Count) commits being pushed, $untestedRecent / 2 untested in last 24h)" -ForegroundColor Green
+    exit 0
+}
+
+# Classify Tier A vs Tier B. Tier B is triggered by any touch of these paths
+# (per architect ruling — any change to core projects or cross-module touch
+# requires the full suite, not a per-module subset).
+$tierBPrefixes = @(
+    'src/LankaConnect.Domain/',
+    'src/LankaConnect.Application/',
+    'src/LankaConnect.Infrastructure/',
+    'src/LankaConnect.API/',
+    'src/LankaConnect.Shared/',
+    'src/SharedKernel/',
+    'src/BuildingBlocks/',
+    'src/Capabilities/',
+    'tests/LankaConnect.Domain.Tests/',
+    'tests/LankaConnect.Application.Tests/',
+    'tests/LankaConnect.Infrastructure.Tests/',
+    'tests/LankaConnect.Shared.Tests/',
+    'tests/architecture/',
+    'tests/LankaConnect.IntegrationTests/'
+)
+$isTierB = $false
+foreach ($file in $codeChanges) {
+    foreach ($prefix in $tierBPrefixes) {
+        if ($file.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $isTierB = $true
+            break
+        }
+    }
+    if ($isTierB) { break }
+}
+
+# If not Tier B, also check whether changes span >1 Module. >1 module = Tier B.
+if (-not $isTierB) {
+    $modulesTouched = $codeChanges | ForEach-Object {
+        if ($_ -match '^(?:src|tests)/Modules/([^/]+)/') { $Matches[1] }
+    } | Sort-Object -Unique
+    if (($modulesTouched | Measure-Object).Count -gt 1) {
+        $isTierB = $true
+    }
+}
+
+Write-Host ''
+if ($isTierB) {
+    Write-Host "pre-push: Tier B (core path or cross-module change). Running full `dotnet test` LankaConnect.sln ..." -ForegroundColor Yellow
+    Write-Host "  Bypass with: git push --no-verify  (logged + signals founder review later)" -ForegroundColor DarkGray
+    Write-Host ''
+    $testOutput = & dotnet test LankaConnect.sln --nologo --verbosity quiet 2>&1
+    $testExit = $LASTEXITCODE
+    # Echo summary lines
+    $testOutput | Select-Object -Last 5 | ForEach-Object { Write-Host "  $_" }
+    if ($testExit -ne 0) {
+        Write-Host ''
+        Write-Host 'PRE-PUSH BLOCKED - Tier B test suite failed (CLAUDE.md §13.5)' -ForegroundColor Red
+        Write-Host '-----------------------------------------------------------'
+        Write-Host 'Run `dotnet test LankaConnect.sln` for the full failure detail.'
+        Write-Host 'Existing-tests-must-pass invariant: a refactor that breaks any test is not done.'
+        Write-Host ''
+        exit 1
+    }
+} else {
+    $modList = $modulesTouched -join ', '
+    if (-not $modList) { $modList = '<none>' }
+    Write-Host "pre-push: Tier A (intra-module: $modList). Running module tests + ArchTest ..." -ForegroundColor Cyan
+    Write-Host ''
+
+    # Always run ArchTest (catches boundary violations regardless of Tier)
+    $archProj = 'tests/architecture/LankaConnect.ArchitectureTests/LankaConnect.ArchitectureTests.csproj'
+    $archOutput = & dotnet test $archProj --nologo --verbosity quiet --filter 'Category=ArchTest' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $archOutput | Select-Object -Last 5 | ForEach-Object { Write-Host "  $_" }
+        Write-Host ''
+        Write-Host 'PRE-PUSH BLOCKED - ArchTest failed.' -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "  ArchTest: OK" -ForegroundColor Green
+
+    # Run module-specific test projects
+    foreach ($mod in $modulesTouched) {
+        $moduleTestDir = "tests/Modules/$mod"
+        if (-not (Test-Path $moduleTestDir)) {
+            Write-Host "  (no test projects under $moduleTestDir)" -ForegroundColor DarkGray
+            continue
+        }
+        $testProjects = Get-ChildItem -Path $moduleTestDir -Filter '*Tests.csproj' -Recurse -ErrorAction SilentlyContinue
+        foreach ($proj in $testProjects) {
+            $modOutput = & dotnet test $proj.FullName --nologo --verbosity quiet 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                $modOutput | Select-Object -Last 5 | ForEach-Object { Write-Host "  $_" }
+                Write-Host ''
+                Write-Host "PRE-PUSH BLOCKED - $($proj.Name) failed." -ForegroundColor Red
+                exit 1
+            }
+            Write-Host "  $($proj.BaseName): OK" -ForegroundColor Green
+        }
+    }
+}
+
+Write-Host ''
+Write-Host "pre-push: OK ($($upstreamCommits.Count) commits being pushed, $untestedRecent / 2 untested in last 24h, tests green)" -ForegroundColor Green
 exit 0

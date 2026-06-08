@@ -105,6 +105,7 @@ public class PhotoAlbum : LegacyBaseEntity
 
         Status = AlbumStatus.Published;
         PublishedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new PhotoAlbumPublishedDomainEvent(Id, EventId, EventTitle, Name));
 
@@ -126,6 +127,7 @@ public class PhotoAlbum : LegacyBaseEntity
         Name = name;
         if (description != null)
             Description = description;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -163,6 +165,7 @@ public class PhotoAlbum : LegacyBaseEntity
 
             _photos.Add(photo);
             PhotoCount++;
+            UpdatedAt = DateTime.UtcNow;
 
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, photo.Id, uploaderId));
 
@@ -205,6 +208,7 @@ public class PhotoAlbum : LegacyBaseEntity
 
             _photos.Add(video);
             PhotoCount++;
+            UpdatedAt = DateTime.UtcNow;
 
             RaiseDomainEvent(new PhotoUploadedToAlbumDomainEvent(Id, video.Id, uploaderId));
 
@@ -232,6 +236,7 @@ public class PhotoAlbum : LegacyBaseEntity
 
         _photos.Remove(photo);
         PhotoCount = Math.Max(0, PhotoCount - 1);
+        UpdatedAt = DateTime.UtcNow;
 
         return Result<AlbumPhoto>.Success(photo);
     }
@@ -261,6 +266,7 @@ public class PhotoAlbum : LegacyBaseEntity
         if (removed.Count > 0)
         {
             PhotoCount = Math.Max(0, PhotoCount - removed.Count);
+            UpdatedAt = DateTime.UtcNow;
         }
 
         return Result<List<AlbumPhoto>>.Success(removed);
@@ -276,6 +282,7 @@ public class PhotoAlbum : LegacyBaseEntity
             return Result.Failure($"Photo with ID {photoId} not found in this album");
 
         CoverPhotoUrl = photo.MediumUrl ?? photo.ThumbnailUrl;
+        UpdatedAt = DateTime.UtcNow;
         return Result.Success();
     }
 

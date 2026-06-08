@@ -149,6 +149,7 @@ public class EventForm : LegacyBaseEntity
             return questionResult;
 
         _questions.Add(questionResult.Value);
+        UpdatedAt = DateTime.UtcNow;
 
         return questionResult;
     }
@@ -174,7 +175,10 @@ public class EventForm : LegacyBaseEntity
         if (HasResponses && question.QuestionType != questionType)
             return Result.Failure("Cannot change question type after responses have been submitted");
 
-        return question.UpdateDetails(questionText, questionType, isRequired, sortOrder, options, helpText);
+        var updateResult = question.UpdateDetails(questionText, questionType, isRequired, sortOrder, options, helpText);
+        if (updateResult.IsSuccess)
+            UpdatedAt = DateTime.UtcNow;
+        return updateResult;
     }
 
     /// <summary>
@@ -190,6 +194,7 @@ public class EventForm : LegacyBaseEntity
             return Result.Failure($"Question with ID {questionId} not found");
 
         _questions.Remove(question);
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -216,6 +221,7 @@ public class EventForm : LegacyBaseEntity
         {
             questionMap[questionIdsInOrder[i]].UpdateSortOrder(i);
         }
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -281,6 +287,7 @@ public class EventForm : LegacyBaseEntity
         MaxResponses = maxResponses;
         if (allowAttendeesToViewResponses.HasValue)
             AllowAttendeesToViewResponses = allowAttendeesToViewResponses.Value;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -301,6 +308,7 @@ public class EventForm : LegacyBaseEntity
             return Result.Failure("Cannot publish a form with no questions");
 
         Status = EventFormStatus.Active;
+        UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new EventFormPublishedEvent(EventId, Id, DateTime.UtcNow));
 
@@ -316,6 +324,7 @@ public class EventForm : LegacyBaseEntity
             return Result.Failure("Only Active forms can be closed");
 
         Status = EventFormStatus.Closed;
+        UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new EventFormClosedEvent(EventId, Id, DateTime.UtcNow));
 
@@ -331,6 +340,7 @@ public class EventForm : LegacyBaseEntity
             return Result.Failure("Only Closed forms can be reopened");
 
         Status = EventFormStatus.Active;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -344,6 +354,7 @@ public class EventForm : LegacyBaseEntity
             return Result.Failure("Form is already archived");
 
         Status = EventFormStatus.Archived;
+        UpdatedAt = DateTime.UtcNow;
 
         return Result.Success();
     }
@@ -373,6 +384,7 @@ public class EventForm : LegacyBaseEntity
         if (!HasResponses)
         {
             HasResponses = true;
+            UpdatedAt = DateTime.UtcNow;
         }
     }
 

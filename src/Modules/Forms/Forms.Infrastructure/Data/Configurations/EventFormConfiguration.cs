@@ -65,6 +65,10 @@ public class EventFormConfiguration : IEntityTypeConfiguration<EventForm>
         builder.Property<DateTime?>("UpdatedAt")
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10c.a Phase 1.10c.a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property<string>("CreatedBy").HasColumnName("created_by").HasColumnType("text");
+        builder.Property<string>("UpdatedBy").HasColumnName("updated_by").HasColumnType("text");
+
         // Configure relationship to FormQuestions
         builder.HasMany(f => f.Questions)
             .WithOne()

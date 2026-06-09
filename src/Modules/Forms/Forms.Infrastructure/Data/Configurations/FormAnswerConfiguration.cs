@@ -78,6 +78,10 @@ public class FormAnswerConfiguration : IEntityTypeConfiguration<FormAnswer>
         builder.Property<DateTime?>("UpdatedAt")
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10c.a Phase 1.10c.a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property<string>("CreatedBy").HasColumnName("created_by").HasColumnType("text");
+        builder.Property<string>("UpdatedBy").HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(a => a.FormResponseId)
             .HasDatabaseName("ix_form_answers_form_response_id");

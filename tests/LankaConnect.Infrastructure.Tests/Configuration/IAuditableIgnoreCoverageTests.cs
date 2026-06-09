@@ -162,6 +162,11 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Events.Entities.VenueZone),
         typeof(LankaConnect.Domain.Events.Entities.VenueTable),
         typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
+        // Wave4.9.2.10c.a Phase 1.10c.a (2026-06-09): Forms via FormsDbContext (4 entities)
+        typeof(LankaConnect.Modules.Forms.Domain.EventForm),
+        typeof(LankaConnect.Modules.Forms.Domain.Entities.FormQuestion),
+        typeof(LankaConnect.Modules.Forms.Domain.Entities.FormResponse),
+        typeof(LankaConnect.Modules.Forms.Domain.Entities.FormAnswer),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

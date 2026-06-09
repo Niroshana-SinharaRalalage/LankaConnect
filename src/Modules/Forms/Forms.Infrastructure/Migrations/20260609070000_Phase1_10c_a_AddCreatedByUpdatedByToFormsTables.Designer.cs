@@ -5,6 +5,7 @@ using LankaConnect.Domain.Events.ValueObjects;
 using LankaConnect.Modules.Forms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LankaConnect.Modules.Forms.Infrastructure.Migrations
 {
     [DbContext(typeof(FormsDbContext))]
-    partial class FormsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609070000_Phase1_10c_a_AddCreatedByUpdatedByToFormsTables")]
+    partial class Phase1_10c_a_AddCreatedByUpdatedByToFormsTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

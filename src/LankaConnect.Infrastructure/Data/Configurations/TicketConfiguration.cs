@@ -70,6 +70,10 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 
         builder.Property(t => t.UpdatedAt);
 
+        // Wave4.9.2.10c.c Phase 1.10c.c (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(t => t.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(t => t.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(t => t.TicketCode)
             .IsUnique();

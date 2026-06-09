@@ -408,6 +408,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Events.Entities.VenueZone),
             typeof(LankaConnect.Domain.Events.Entities.VenueTable),
             typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
+            // Phase 1.10c.c (Wave4.9.2.10c.c, 2026-06-09): events.tickets (1 entity)
+            typeof(LankaConnect.Domain.Events.Entities.Ticket),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

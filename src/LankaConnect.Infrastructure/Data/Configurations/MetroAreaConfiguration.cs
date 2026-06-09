@@ -61,6 +61,10 @@ public class MetroAreaConfiguration : IEntityTypeConfiguration<MetroArea>
             .HasColumnName("updated_at")
             .IsRequired(false);
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(m => m.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(m => m.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(m => m.State)
             .HasDatabaseName("idx_metro_areas_state");

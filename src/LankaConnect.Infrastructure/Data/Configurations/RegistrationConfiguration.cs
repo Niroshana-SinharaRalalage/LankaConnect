@@ -318,6 +318,10 @@ public class RegistrationConfiguration : IEntityTypeConfiguration<Registration>
 
         builder.Property(r => r.UpdatedAt);
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(r => r.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(r => r.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Issue #56 FIX: Add concurrency token for optimistic locking
         // This prevents race conditions where concurrent webhook requests both
         // successfully modify the same registration row.

@@ -218,6 +218,10 @@ public class SponsorEntityConfiguration : IEntityTypeConfiguration<Sponsor>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(s => s.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(s => s.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Phase 6A.151 — human-edit audit columns. Distinct from UpdatedAt
         // which also fires on lifecycle transitions (CompletePayment etc.).
         // Both null until the first content edit (UpdateContactFields /

@@ -66,5 +66,9 @@ public class EventSlugAliasConfiguration : IEntityTypeConfiguration<EventSlugAli
         builder.Property(a => a.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
+
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(a => a.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(a => a.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
     }
 }

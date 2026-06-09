@@ -64,6 +64,10 @@ public class EventVideoConfiguration : IEntityTypeConfiguration<EventVideo>
 
         builder.Property(ev => ev.UpdatedAt);
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(ev => ev.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(ev => ev.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(ev => new { ev.EventId, ev.DisplayOrder })
             .IsUnique()

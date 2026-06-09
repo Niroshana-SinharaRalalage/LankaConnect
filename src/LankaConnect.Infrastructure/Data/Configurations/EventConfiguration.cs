@@ -283,6 +283,10 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
 
         builder.Property(e => e.UpdatedAt);
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Configure relationships
         builder.HasMany(e => e.Registrations)
             .WithOne()

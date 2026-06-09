@@ -51,6 +51,10 @@ public class EventImageConfiguration : IEntityTypeConfiguration<EventImage>
 
         builder.Property(ei => ei.UpdatedAt);
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(ei => ei.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(ei => ei.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(ei => new { ei.EventId, ei.DisplayOrder })
             .IsUnique()

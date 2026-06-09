@@ -140,6 +140,17 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord),
         typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
         typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): events schema - Event aggregate proper (10 entities)
+        typeof(LankaConnect.Domain.Events.Event),
+        typeof(LankaConnect.Domain.Events.Registration),
+        typeof(LankaConnect.Domain.Events.Sponsor),
+        typeof(LankaConnect.Domain.Events.SponsorshipPackage),
+        typeof(LankaConnect.Domain.Events.Entities.EventOrganizerContact),
+        typeof(LankaConnect.Domain.Events.Entities.EventSlugAlias),
+        typeof(LankaConnect.Domain.Events.EventTemplate),
+        typeof(LankaConnect.Domain.Events.EventImage),
+        typeof(LankaConnect.Domain.Events.EventVideo),
+        typeof(LankaConnect.Domain.Events.MetroArea),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

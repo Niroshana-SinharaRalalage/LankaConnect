@@ -62,6 +62,10 @@ public class EventOrganizerContactConfiguration : IEntityTypeConfiguration<Event
         builder.Property(c => c.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(c => c.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(c => c.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(c => c.EventId)
             .HasDatabaseName("ix_event_organizer_contacts_event_id");

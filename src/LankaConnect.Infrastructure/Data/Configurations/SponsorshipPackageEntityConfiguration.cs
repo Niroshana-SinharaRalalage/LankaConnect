@@ -122,6 +122,10 @@ public class SponsorshipPackageEntityConfiguration : IEntityTypeConfiguration<Sp
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10a Phase 1.10a (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(p => p.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(p => p.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes — narrow event-scoped queries are by far the hot path
         builder.HasIndex(p => p.EventId)
             .HasDatabaseName("ix_sponsorship_packages_event_id");

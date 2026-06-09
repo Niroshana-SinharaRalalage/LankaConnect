@@ -44,6 +44,10 @@ public class RegistrationModeConversionRowConfiguration : IEntityTypeConfigurati
 
         builder.Property(e => e.ConvertedAt).HasColumnName("converted_at").IsRequired();
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         builder.HasIndex(e => e.AggregateConversionId)
             .HasDatabaseName("ix_registration_mode_conversion_rows_aggregate_id");
         builder.HasIndex(e => e.RegistrationId)

@@ -410,6 +410,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
             // Phase 1.10c.c (Wave4.9.2.10c.c, 2026-06-09): events.tickets (1 entity)
             typeof(LankaConnect.Domain.Events.Entities.Ticket),
+            // Phase 1.10d (Wave4.9.2.10d, 2026-06-09): events donations + refunds + addons (10 entities)
+            typeof(LankaConnect.Domain.Events.Donation),
+            typeof(LankaConnect.Domain.Events.Entities.RefundRequest),
+            typeof(LankaConnect.Domain.Events.Entities.RefundRequestLineItem),
+            typeof(LankaConnect.Domain.Events.RegistrationAddition),
+            typeof(LankaConnect.Domain.Events.RegistrationPayment),
+            typeof(LankaConnect.Domain.Events.AddOnDefinition),
+            typeof(LankaConnect.Domain.Events.AddOnPurchase),
+            typeof(LankaConnect.Domain.Events.Collection),
+            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion),
+            typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

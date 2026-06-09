@@ -174,6 +174,10 @@ public class AddOnPurchaseEntityConfiguration : IEntityTypeConfiguration<AddOnPu
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(p => p.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(p => p.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(p => p.EventId)
             .HasDatabaseName("ix_add_on_purchases_event_id");

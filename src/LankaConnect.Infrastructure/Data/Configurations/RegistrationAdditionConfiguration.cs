@@ -193,6 +193,10 @@ public class RegistrationAdditionConfiguration : IEntityTypeConfiguration<Regist
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(ra => ra.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(ra => ra.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(ra => ra.RegistrationId)
             .HasDatabaseName("ix_registration_additions_registration_id");

@@ -41,6 +41,10 @@ public class RegistrationModeConversionConfiguration : IEntityTypeConfiguration<
         builder.Property(e => e.EventRowVersionSnapshot)
             .HasColumnName("event_row_version_snapshot");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Index on EventId for dashboard queries ("show all conversions on this event").
         builder.HasIndex(e => e.EventId).HasDatabaseName("ix_registration_mode_conversions_event_id");
         builder.HasIndex(e => e.OrganiserId).HasDatabaseName("ix_registration_mode_conversions_organiser_id");

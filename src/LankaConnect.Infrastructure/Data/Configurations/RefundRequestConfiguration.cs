@@ -89,6 +89,10 @@ public class RefundRequestConfiguration : IEntityTypeConfiguration<RefundRequest
         builder.Property(r => r.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(r => r.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(r => r.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Architect F3: Postgres xmin optimistic concurrency. Matches project convention
         // (RegistrationConfiguration.cs:327, EventFormConfiguration.cs:70).
 #pragma warning disable CS0618 // Type or member is obsolete

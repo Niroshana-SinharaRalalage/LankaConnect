@@ -172,6 +172,17 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Modules.Media.Domain.Entities.AlbumPhoto),
         // Wave4.9.2.10c.c Phase 1.10c.c (2026-06-09): events.tickets via AppDbContext
         typeof(LankaConnect.Domain.Events.Entities.Ticket),
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): events donations + refunds + addons (10 entities)
+        typeof(LankaConnect.Domain.Events.Donation),
+        typeof(LankaConnect.Domain.Events.Entities.RefundRequest),
+        typeof(LankaConnect.Domain.Events.Entities.RefundRequestLineItem),
+        typeof(LankaConnect.Domain.Events.RegistrationAddition),
+        typeof(LankaConnect.Domain.Events.RegistrationPayment),
+        typeof(LankaConnect.Domain.Events.AddOnDefinition),
+        typeof(LankaConnect.Domain.Events.AddOnPurchase),
+        typeof(LankaConnect.Domain.Events.Collection),
+        typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversion),
+        typeof(LankaConnect.Domain.Events.Entities.RegistrationModeConversionRow),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

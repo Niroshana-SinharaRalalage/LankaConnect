@@ -91,6 +91,10 @@ public class RefundRequestLineItemConfiguration : IEntityTypeConfiguration<Refun
         builder.Property(li => li.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(li => li.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(li => li.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indices.
         builder.HasIndex(li => li.RefundRequestId)
             .HasDatabaseName("ix_refund_line_items_refund_request_id");

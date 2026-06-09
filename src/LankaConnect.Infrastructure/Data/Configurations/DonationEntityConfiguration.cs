@@ -154,6 +154,10 @@ public class DonationEntityConfiguration : IEntityTypeConfiguration<Donation>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10d Phase 1.10d (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(d => d.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(d => d.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(d => d.EventId)
             .HasDatabaseName("ix_donations_event_id");

@@ -135,6 +135,11 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Communications.Entities.Newsletter),
         typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailHistory),
         typeof(LankaConnect.Domain.Communications.Entities.NewsletterSubscriber),
+        // Wave4.9.2.9 Phase 1.9 (2026-06-09): communications whatsapp subset
+        typeof(LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences),
+        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord),
+        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
+        typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

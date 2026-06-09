@@ -381,6 +381,11 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Communications.Entities.Newsletter),
             typeof(LankaConnect.Domain.Communications.Entities.NewsletterEmailHistory),
             typeof(LankaConnect.Domain.Communications.Entities.NewsletterSubscriber),
+            // Phase 1.9 (Wave4.9.2.9, 2026-06-09): communications whatsapp subset
+            typeof(LankaConnect.Domain.Communications.Entities.UserWhatsAppPreferences),
+            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppMessageRecord),
+            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppTemplate),
+            typeof(LankaConnect.Domain.Communications.Entities.WhatsAppWebhookEvent),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

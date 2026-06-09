@@ -152,6 +152,10 @@ public class UserWhatsAppPreferencesConfiguration : IEntityTypeConfiguration<Use
         builder.Property(e => e.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.9 Phase 1.9 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Ignore computed properties
         builder.Ignore(e => e.IsFullyVerified);
         builder.Ignore(e => e.IsLocked);

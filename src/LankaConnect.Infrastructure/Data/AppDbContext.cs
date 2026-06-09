@@ -358,7 +358,8 @@ public class AppDbContext : DbContext, IApplicationDbContext
         // honored. Phase 1.2-1.10 will each add one type to this allowlist.
         var phase1RelaxedTypes = new HashSet<Type>
         {
-            typeof(LankaConnect.Domain.Users.User),
+            typeof(LankaConnect.Domain.Users.User),                  // Phase 1.1 (Wave4.9.2.1, 2026-06-08): identity.users
+            typeof(LankaConnect.Domain.Tax.StateTaxRate),            // Phase 1.2 (Wave4.9.2.2, 2026-06-08): reference_data.state_tax_rates
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

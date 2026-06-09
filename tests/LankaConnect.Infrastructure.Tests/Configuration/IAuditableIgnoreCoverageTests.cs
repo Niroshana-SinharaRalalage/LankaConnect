@@ -108,6 +108,8 @@ public sealed class IAuditableIgnoreCoverageTests
     {
         // Wave4.9.2.1 Phase 1.1 (2026-06-08): identity.users
         typeof(LankaConnect.Domain.Users.User),
+        // Wave4.9.2.2 Phase 1.2 (2026-06-08): reference_data.state_tax_rates
+        typeof(LankaConnect.Domain.Tax.StateTaxRate),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

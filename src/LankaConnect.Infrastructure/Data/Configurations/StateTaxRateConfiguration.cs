@@ -57,6 +57,23 @@ public class StateTaxRateConfiguration : IEntityTypeConfiguration<StateTaxRate>
         builder.Property(r => r.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.2 Phase 1.2 (2026-06-08): physical CreatedBy/UpdatedBy
+        // columns landed on reference_data.state_tax_rates via
+        // Phase1_2_AddCreatedByUpdatedByToReferenceDataStateTaxRates migration.
+        // Snake_case per the audit-by-actor column convention. AppDbContext
+        // does not yet wire an AuditableInterceptor (Phase 1.10 scope) so
+        // these columns persist as NULL on writes until then.
+        // Closing the loop: StateTaxRate was the entity that produced the
+        // Phase 3 "column s.CreatedBy does not exist" 42703 error - the
+        // exact regression class this rollout is designed to prevent.
+        builder.Property(r => r.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(r => r.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Indexes
         builder.HasIndex(r => r.StateCode)
             .HasDatabaseName("ix_state_tax_rates_state_code");

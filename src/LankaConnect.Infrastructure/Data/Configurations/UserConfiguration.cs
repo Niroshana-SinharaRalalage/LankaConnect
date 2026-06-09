@@ -333,6 +333,20 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.UpdatedAt);
 
+        // Wave4.9.2.1 Phase 1.1 (2026-06-08): physical CreatedBy/UpdatedBy columns
+        // landed on identity.users via Phase1_1_AddCreatedByUpdatedByToIdentityUsers
+        // migration. Mapped to snake_case per the audit-by-actor column convention.
+        // AppDbContext does NOT yet wire an AuditableInterceptor (Phase 1.10 scope) —
+        // User entities persisted through AppDbContext will write NULL into these
+        // columns until that interceptor lands. Columns are nullable text.
+        builder.Property(u => u.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(u => u.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Configure indexes
         builder.HasIndex(u => u.CreatedAt)
             .HasDatabaseName("ix_users_created_at");

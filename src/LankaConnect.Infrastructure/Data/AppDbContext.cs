@@ -350,9 +350,24 @@ public class AppDbContext : DbContext, IApplicationDbContext
     private static void IgnoreAuditByActorPropertiesUntilPhase1(ModelBuilder modelBuilder)
     {
         var iauditableType = typeof(LankaConnect.BuildingBlocks.Domain.IAuditable);
+
+        // Wave4.9.2.1 Phase 1.1 (2026-06-08): per-schema-group rollout begins
+        // with identity.users. User has physical created_by/updated_by columns
+        // (Phase1_1_AddCreatedByUpdatedByToIdentityUsers); the global Ignore
+        // must SKIP User so UserConfiguration's HasColumnName mapping is
+        // honored. Phase 1.2-1.10 will each add one type to this allowlist.
+        var phase1RelaxedTypes = new HashSet<Type>
+        {
+            typeof(LankaConnect.Domain.Users.User),
+        };
+
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
         {
             if (!iauditableType.IsAssignableFrom(entityType.ClrType))
+            {
+                continue;
+            }
+            if (phase1RelaxedTypes.Contains(entityType.ClrType))
             {
                 continue;
             }

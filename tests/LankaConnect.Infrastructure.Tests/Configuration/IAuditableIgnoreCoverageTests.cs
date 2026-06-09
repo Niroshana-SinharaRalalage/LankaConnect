@@ -94,13 +94,26 @@ public sealed class IAuditableIgnoreCoverageTests
     /// <summary>
     /// For every entity in the model that implements <see cref="IAuditable"/>,
     /// fail if its EF property mapping still includes the named audit-by-actor
-    /// property. Pre-Wave4.9.2 invariant: ALL such properties must be
-    /// <c>builder.Ignore()</c>'d. Post-Wave4.9.2.x ships a schema group, the
-    /// invariant relaxes to "ignored OR mapped with snake_case HasColumnName".
+    /// property in an invalid state. The invariant adapts per-phase:
+    /// <list type="bullet">
+    ///   <item>Pre-Wave4.9.2: ALL IAuditable entities must Ignore() CreatedBy + UpdatedBy.</item>
+    ///   <item>Post-Phase 1.1 (Wave4.9.2.1, 2026-06-08): entities in
+    ///         <see cref="Phase1RelaxedTypes"/> MUST instead map to
+    ///         <c>created_by</c>/<c>updated_by</c> snake_case columns
+    ///         (HasColumnName invariant). All other IAuditable entities
+    ///         continue to require Ignore().</item>
+    /// </list>
     /// </summary>
+    private static readonly HashSet<Type> Phase1RelaxedTypes = new()
+    {
+        // Wave4.9.2.1 Phase 1.1 (2026-06-08): identity.users
+        typeof(LankaConnect.Domain.Users.User),
+    };
+
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)
     {
         var iauditableType = typeof(IAuditable);
+        var expectedColumnName = propertyName == "CreatedBy" ? "created_by" : "updated_by";
         var leaks = new List<string>();
         var auditableEntityCount = 0;
 
@@ -112,8 +125,28 @@ public sealed class IAuditableIgnoreCoverageTests
             }
             auditableEntityCount++;
 
-            if (et.FindProperty(propertyName) is not null)
+            var prop = et.FindProperty(propertyName);
+            if (prop is null)
             {
+                // Property is Ignore()'d — original invariant holds.
+                continue;
+            }
+
+            if (Phase1RelaxedTypes.Contains(et.ClrType))
+            {
+                // Property is mapped — accept ONLY if it maps to the
+                // expected snake_case column name. Anything else is a leak.
+                var actualColumnName = prop.GetColumnName();
+                if (actualColumnName == expectedColumnName)
+                {
+                    continue;
+                }
+                leaks.Add($"{et.ClrType.FullName} (mapped to '{actualColumnName}', expected '{expectedColumnName}')");
+            }
+            else
+            {
+                // Entity is NOT in the relaxed allowlist — property should
+                // be Ignore()'d but is mapped. Leak.
                 leaks.Add(et.ClrType.FullName ?? et.ClrType.Name);
             }
         }
@@ -124,7 +157,7 @@ public sealed class IAuditableIgnoreCoverageTests
             because: $"{contextName} should contain at least one IAuditable-implementing entity; the IAuditable bridge across the codebase guarantees this. If 0, either the model didn't load or IAuditable was severed.");
 
         leaks.Should().BeEmpty(
-            because: $"the hotfix at {contextName}.IgnoreAuditByActorPropertiesUntilPhase1 + per-entity Ignore() must apply to EVERY IAuditable entity until Wave4.9.2.x lands the physical {propertyName} columns. Leaking entities will cause EF to emit '{propertyName}' in SELECT clauses against tables that don't have that physical column, breaking runtime queries with PostgreSQL 42703 errors.\nLeaks in {contextName}: {string.Join(", ", leaks)}");
+            because: $"the hotfix at {contextName}.IgnoreAuditByActorPropertiesUntilPhase1 + per-entity Ignore() must apply to EVERY IAuditable entity that does NOT yet have physical {expectedColumnName} columns. Post-Wave4.9.2.x entities in Phase1RelaxedTypes MUST be mapped to the expected snake_case column name. Leaks in {contextName}: {string.Join(", ", leaks)}");
     }
 
     private static IModel BuildAppDbContextModel()

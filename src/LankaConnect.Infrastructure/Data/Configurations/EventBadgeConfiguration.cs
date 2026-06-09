@@ -49,6 +49,16 @@ public class EventBadgeConfiguration : IEntityTypeConfiguration<EventBadge>
 
         builder.Property(eb => eb.UpdatedAt);
 
+        // Wave4.9.2.3 Phase 1.3 (2026-06-08): physical CreatedBy/UpdatedBy
+        // on badges.event_badges per Phase1_3_AddCreatedByUpdatedByToBadges.
+        builder.Property(eb => eb.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(eb => eb.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Indexes
         builder.HasIndex(eb => new { eb.EventId, eb.BadgeId })
             .IsUnique()

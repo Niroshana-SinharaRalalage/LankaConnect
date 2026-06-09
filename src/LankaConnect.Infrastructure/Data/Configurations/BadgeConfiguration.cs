@@ -170,6 +170,18 @@ public class BadgeConfiguration : IEntityTypeConfiguration<Badge>
 
         builder.Property(b => b.UpdatedAt);
 
+        // Wave4.9.2.3 Phase 1.3 (2026-06-08): physical CreatedBy/UpdatedBy
+        // on badges.badges per Phase1_3_AddCreatedByUpdatedByToBadges.
+        // Snake_case mapping; nullable until AppDbContext interceptor
+        // wiring lands (Phase 1.10).
+        builder.Property(b => b.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(b => b.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Indexes
         builder.HasIndex(b => b.Name)
             .IsUnique()

@@ -367,6 +367,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Business.Review),                     // Phase 1.4 (Wave4.9.2.4, 2026-06-08): business.reviews
             typeof(LankaConnect.Domain.Community.ForumTopic),                // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.topics
             typeof(LankaConnect.Domain.Community.Reply),                     // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.replies
+            typeof(LankaConnect.Domain.Analytics.EventAnalytics),            // Phase 1.6 (Wave4.9.2.6, 2026-06-09): analytics.event_analytics
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

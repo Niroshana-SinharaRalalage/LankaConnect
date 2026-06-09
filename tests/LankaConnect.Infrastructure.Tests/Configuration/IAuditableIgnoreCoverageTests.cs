@@ -120,6 +120,8 @@ public sealed class IAuditableIgnoreCoverageTests
         // Wave4.9.2.5 Phase 1.5 (2026-06-09): community.topics + community.replies
         typeof(LankaConnect.Domain.Community.ForumTopic),
         typeof(LankaConnect.Domain.Community.Reply),
+        // Wave4.9.2.6 Phase 1.6 (2026-06-09): analytics.event_analytics
+        typeof(LankaConnect.Domain.Analytics.EventAnalytics),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

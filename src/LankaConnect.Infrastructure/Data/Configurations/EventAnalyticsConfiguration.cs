@@ -58,6 +58,16 @@ public class EventAnalyticsConfiguration : IEntityTypeConfiguration<EventAnalyti
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.6 Phase 1.6 (2026-06-09): physical CreatedBy/UpdatedBy
+        // on analytics.event_analytics per Phase1_6_AddCreatedByUpdatedByToAnalytics.
+        builder.Property(a => a.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(a => a.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Ignore calculated property (not stored in database)
         builder.Ignore(a => a.ConversionRate);
 

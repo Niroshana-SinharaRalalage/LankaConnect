@@ -64,6 +64,10 @@ public class UserEmailPreferencesConfiguration : IEntityTypeConfiguration<UserEm
         builder.Property(e => e.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.7 Phase 1.7 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Foreign key relationship to Users table
         builder.HasOne<LankaConnect.Domain.Users.User>()
             .WithMany()

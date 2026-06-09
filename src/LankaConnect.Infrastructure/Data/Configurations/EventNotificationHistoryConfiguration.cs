@@ -57,6 +57,10 @@ public class EventNotificationHistoryConfiguration : IEntityTypeConfiguration<Ev
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.7 Phase 1.7 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(h => h.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(h => h.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Foreign key to events table (CASCADE delete - if event is deleted, history should be deleted)
         builder.HasOne<Domain.Events.Event>()
             .WithMany()

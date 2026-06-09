@@ -147,6 +147,14 @@ public class EmailMessageConfiguration : IEntityTypeConfiguration<EmailMessage>
                 v => v != null ? JsonSerializer.Deserialize<LankaConnect.SharedKernel.Cultural.CulturalContext>(v, (JsonSerializerOptions?)null) : null)
             .IsRequired(false);
 
+        // Wave4.9.2.7 Phase 1.7 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+        builder.Property(e => e.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Performance indexes for email queue processing
         builder.HasIndex(e => e.Status)
             .HasDatabaseName("IX_EmailMessages_Status");

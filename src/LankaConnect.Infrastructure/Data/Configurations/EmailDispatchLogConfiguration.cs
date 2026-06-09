@@ -56,6 +56,10 @@ public class EmailDispatchLogConfiguration : IEntityTypeConfiguration<EmailDispa
         builder.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
 
+        // Wave4.9.2.7 Phase 1.7 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(x => x.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(x => x.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         builder.HasIndex(x => new { x.RefundRequestId, x.DispatchedAt })
             .HasDatabaseName("ix_email_dispatch_log_rr_dispatched")
             .HasFilter("refund_request_id IS NOT NULL");

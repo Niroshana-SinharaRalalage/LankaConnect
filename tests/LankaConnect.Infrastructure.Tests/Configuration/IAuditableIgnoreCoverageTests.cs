@@ -122,6 +122,15 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Community.Reply),
         // Wave4.9.2.6 Phase 1.6 (2026-06-09): analytics.event_analytics
         typeof(LankaConnect.Domain.Analytics.EventAnalytics),
+        // Wave4.9.2.7 Phase 1.7 (2026-06-09): communications email-side subset (8 entities)
+        typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
+        typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
+        typeof(LankaConnect.Domain.Communications.Entities.EmailGroup),
+        typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
+        typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
+        typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
+        typeof(LankaConnect.Domain.Events.Entities.EventNotificationHistory),
+        typeof(LankaConnect.Domain.Communications.Entities.UserEmailPreferences),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

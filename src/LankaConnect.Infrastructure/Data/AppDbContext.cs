@@ -368,6 +368,15 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Community.ForumTopic),                // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.topics
             typeof(LankaConnect.Domain.Community.Reply),                     // Phase 1.5 (Wave4.9.2.5, 2026-06-09): community.replies
             typeof(LankaConnect.Domain.Analytics.EventAnalytics),            // Phase 1.6 (Wave4.9.2.6, 2026-06-09): analytics.event_analytics
+            // Phase 1.7 (Wave4.9.2.7, 2026-06-09): communications email-side subset (8 entities)
+            typeof(LankaConnect.Domain.Communications.Entities.EmailDispatchLog),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailFailureDetail),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailGroup),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailMessage),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailMetricRecord),
+            typeof(LankaConnect.Domain.Communications.Entities.EmailTemplate),
+            typeof(LankaConnect.Domain.Events.Entities.EventNotificationHistory),
+            typeof(LankaConnect.Domain.Communications.Entities.UserEmailPreferences),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

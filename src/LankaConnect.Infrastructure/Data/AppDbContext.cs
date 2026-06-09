@@ -397,6 +397,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
             typeof(LankaConnect.Domain.Events.EventImage),
             typeof(LankaConnect.Domain.Events.EventVideo),
             typeof(LankaConnect.Domain.Events.MetroArea),
+            // Phase 1.10b (Wave4.9.2.10b, 2026-06-09): events signups + seats + venue (10 entities)
+            typeof(LankaConnect.Domain.Events.Entities.SignUpList),
+            typeof(LankaConnect.Domain.Events.Entities.SignUpItem),
+            typeof(LankaConnect.Domain.Events.Entities.SignUpCommitment),
+            typeof(LankaConnect.Domain.Events.Entities.Seat),
+            typeof(LankaConnect.Domain.Events.Entities.SeatHold),
+            typeof(LankaConnect.Domain.Events.Entities.SeatReservation),
+            typeof(LankaConnect.Domain.Events.Entities.VenueLayout),
+            typeof(LankaConnect.Domain.Events.Entities.VenueZone),
+            typeof(LankaConnect.Domain.Events.Entities.VenueTable),
+            typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
         };
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())

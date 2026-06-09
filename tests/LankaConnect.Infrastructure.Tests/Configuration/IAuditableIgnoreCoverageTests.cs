@@ -151,6 +151,17 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Events.EventImage),
         typeof(LankaConnect.Domain.Events.EventVideo),
         typeof(LankaConnect.Domain.Events.MetroArea),
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): events signups + seats + venue (10 entities)
+        typeof(LankaConnect.Domain.Events.Entities.SignUpList),
+        typeof(LankaConnect.Domain.Events.Entities.SignUpItem),
+        typeof(LankaConnect.Domain.Events.Entities.SignUpCommitment),
+        typeof(LankaConnect.Domain.Events.Entities.Seat),
+        typeof(LankaConnect.Domain.Events.Entities.SeatHold),
+        typeof(LankaConnect.Domain.Events.Entities.SeatReservation),
+        typeof(LankaConnect.Domain.Events.Entities.VenueLayout),
+        typeof(LankaConnect.Domain.Events.Entities.VenueZone),
+        typeof(LankaConnect.Domain.Events.Entities.VenueTable),
+        typeof(LankaConnect.Domain.Events.Entities.VenueDecoration),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

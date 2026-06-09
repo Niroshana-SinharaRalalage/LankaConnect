@@ -70,6 +70,10 @@ public class SignUpCommitmentConfiguration : IEntityTypeConfiguration<SignUpComm
         builder.Property<DateTime?>("UpdatedAt")
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property<string>("CreatedBy").HasColumnName("created_by").HasColumnType("text");
+        builder.Property<string>("UpdatedBy").HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(c => c.UserId)
             .HasDatabaseName("ix_sign_up_commitments_user_id");

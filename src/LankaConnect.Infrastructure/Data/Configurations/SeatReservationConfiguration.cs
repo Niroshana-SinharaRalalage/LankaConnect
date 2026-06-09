@@ -47,6 +47,10 @@ public class SeatReservationConfiguration : IEntityTypeConfiguration<SeatReserva
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(r => r.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(r => r.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // CRITICAL: Unique index on seat_id — prevents double-booking
         builder.HasIndex(r => r.SeatId)
             .IsUnique()

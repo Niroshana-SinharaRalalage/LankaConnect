@@ -89,6 +89,10 @@ public class SeatConfiguration : IEntityTypeConfiguration<Seat>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(s => s.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(s => s.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Indexes
         builder.HasIndex(s => s.VenueZoneId)
             .HasDatabaseName("ix_seats_venue_zone_id")

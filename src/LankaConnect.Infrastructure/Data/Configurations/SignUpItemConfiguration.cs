@@ -70,6 +70,10 @@ public class SignUpItemConfiguration : IEntityTypeConfiguration<SignUpItem>
         builder.Property<DateTime?>("UpdatedAt")
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property<string>("CreatedBy").HasColumnName("created_by").HasColumnType("text");
+        builder.Property<string>("UpdatedBy").HasColumnName("updated_by").HasColumnType("text");
+
         // Configure relationship with SignUpList
         builder.HasOne<SignUpList>()
             .WithMany(sl => sl.Items)

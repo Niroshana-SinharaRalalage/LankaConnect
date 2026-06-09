@@ -65,6 +65,10 @@ public class VenueTableConfiguration : IEntityTypeConfiguration<VenueTable>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(t => t.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(t => t.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Seats attached to a table have VenueTableId set (and VenueZoneId = null).
         builder.HasMany(t => t.Seats)
             .WithOne()

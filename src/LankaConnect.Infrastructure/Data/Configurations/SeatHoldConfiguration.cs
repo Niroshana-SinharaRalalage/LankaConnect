@@ -62,6 +62,10 @@ public class SeatHoldConfiguration : IEntityTypeConfiguration<SeatHold>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(h => h.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(h => h.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // CRITICAL: Partial unique index — only ONE active hold per seat
         builder.HasIndex(h => h.SeatId)
             .IsUnique()

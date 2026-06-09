@@ -61,6 +61,10 @@ public class VenueLayoutConfiguration : IEntityTypeConfiguration<VenueLayout>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(v => v.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(v => v.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Canvas configuration persisted as flat columns (not ToJson() — avoids
         // Phase 6A.130 where OwnsOne().ToJson() cannot deserialize IReadOnlyList
         // collections; OwnsOne flat columns work fine for scalar value objects).

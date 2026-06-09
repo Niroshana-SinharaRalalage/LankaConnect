@@ -62,6 +62,10 @@ public class VenueDecorationConfiguration : IEntityTypeConfiguration<VenueDecora
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.10b Phase 1.10b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(d => d.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(d => d.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         builder.HasIndex(d => d.VenueLayoutId)
             .HasDatabaseName("ix_venue_decorations_venue_layout_id");
     }

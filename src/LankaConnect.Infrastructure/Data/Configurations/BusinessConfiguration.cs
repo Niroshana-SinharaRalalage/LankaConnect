@@ -146,6 +146,16 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         builder.Property(b => b.UpdatedAt)
             .IsRequired();
 
+        // Wave4.9.2.4 Phase 1.4 (2026-06-08): physical CreatedBy/UpdatedBy
+        // on business.businesses per Phase1_4_AddCreatedByUpdatedByToBusiness.
+        builder.Property(b => b.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(b => b.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Services Navigation
         builder.HasMany(b => b.Services)
             .WithOne(s => s.Business)

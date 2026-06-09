@@ -113,6 +113,10 @@ public sealed class IAuditableIgnoreCoverageTests
         // Wave4.9.2.3 Phase 1.3 (2026-06-08): badges.badges + badges.event_badges
         typeof(LankaConnect.Domain.Badges.Badge),
         typeof(LankaConnect.Domain.Events.Entities.EventBadge),
+        // Wave4.9.2.4 Phase 1.4 (2026-06-08): business.businesses + services + reviews
+        typeof(LankaConnect.Domain.Business.Business),
+        typeof(LankaConnect.Domain.Business.Service),
+        typeof(LankaConnect.Domain.Business.Review),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

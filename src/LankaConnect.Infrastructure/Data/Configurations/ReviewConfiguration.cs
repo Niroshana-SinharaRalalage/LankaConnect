@@ -78,6 +78,16 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 
         builder.Property(r => r.UpdatedAt);
 
+        // Wave4.9.2.4 Phase 1.4 (2026-06-08): physical CreatedBy/UpdatedBy
+        // on business.reviews per Phase1_4_AddCreatedByUpdatedByToBusiness.
+        builder.Property(r => r.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(r => r.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Configure relationship
         builder.HasOne(r => r.Business)
             .WithMany(b => b.Reviews)

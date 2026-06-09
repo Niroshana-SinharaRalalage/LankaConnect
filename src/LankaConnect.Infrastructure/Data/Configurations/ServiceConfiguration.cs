@@ -48,6 +48,16 @@ public class ServiceConfiguration : IEntityTypeConfiguration<Service>
         builder.Property(s => s.UpdatedAt)
             .IsRequired();
 
+        // Wave4.9.2.4 Phase 1.4 (2026-06-08): physical CreatedBy/UpdatedBy
+        // on business.services per Phase1_4_AddCreatedByUpdatedByToBusiness.
+        builder.Property(s => s.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(s => s.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Indexes
         builder.HasIndex(s => s.Name)
             .HasDatabaseName("IX_Service_Name");

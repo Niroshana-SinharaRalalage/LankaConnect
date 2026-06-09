@@ -79,6 +79,10 @@ public class NewsletterEmailHistoryConfiguration : IEntityTypeConfiguration<News
         builder.Property(e => e.UpdatedAt)
             .HasColumnName("updated_at");
 
+        // Wave4.9.2.8 Phase 1.8 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Foreign key relationship to Newsletter
         builder.HasOne(e => e.Newsletter)
             .WithMany()

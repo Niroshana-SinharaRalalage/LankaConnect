@@ -104,6 +104,10 @@ public class NewsletterConfiguration : IEntityTypeConfiguration<Newsletter>
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");
 
+        // Wave4.9.2.8 Phase 1.8 (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(n => n.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(n => n.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Concurrency token using PostgreSQL's built-in xmin system column
 #pragma warning disable CS0618 // UseXminAsConcurrencyToken is the correct PostgreSQL approach
         builder.UseXminAsConcurrencyToken();

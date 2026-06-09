@@ -73,6 +73,16 @@ public class ForumTopicConfiguration : IEntityTypeConfiguration<ForumTopic>
 
         builder.Property(t => t.UpdatedAt);
 
+        // Wave4.9.2.5 Phase 1.5 (2026-06-09): physical CreatedBy/UpdatedBy
+        // on community.topics per Phase1_5_AddCreatedByUpdatedByToCommunity.
+        builder.Property(t => t.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(t => t.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Configure relationships
         builder.HasMany(t => t.Replies)
             .WithOne()

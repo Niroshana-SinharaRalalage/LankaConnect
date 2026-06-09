@@ -48,6 +48,16 @@ public class ReplyConfiguration : IEntityTypeConfiguration<Reply>
 
         builder.Property(r => r.UpdatedAt);
 
+        // Wave4.9.2.5 Phase 1.5 (2026-06-09): physical CreatedBy/UpdatedBy
+        // on community.replies per Phase1_5_AddCreatedByUpdatedByToCommunity.
+        builder.Property(r => r.CreatedBy)
+            .HasColumnName("created_by")
+            .HasColumnType("text");
+
+        builder.Property(r => r.UpdatedBy)
+            .HasColumnName("updated_by")
+            .HasColumnType("text");
+
         // Configure self-referencing relationship for threaded replies
         builder.HasOne<Reply>()
             .WithMany()

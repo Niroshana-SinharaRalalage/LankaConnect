@@ -117,6 +117,9 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Domain.Business.Business),
         typeof(LankaConnect.Domain.Business.Service),
         typeof(LankaConnect.Domain.Business.Review),
+        // Wave4.9.2.5 Phase 1.5 (2026-06-09): community.topics + community.replies
+        typeof(LankaConnect.Domain.Community.ForumTopic),
+        typeof(LankaConnect.Domain.Community.Reply),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

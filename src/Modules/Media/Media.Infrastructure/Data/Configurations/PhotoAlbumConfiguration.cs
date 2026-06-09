@@ -62,6 +62,10 @@ public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 
+        // Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(a => a.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(a => a.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
+
         // Configure Photos collection
         builder.HasMany(a => a.Photos)
             .WithOne()
@@ -156,6 +160,10 @@ public class AlbumPhotoConfiguration : IEntityTypeConfiguration<AlbumPhoto>
         builder.Property(p => p.UpdatedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
+
+        // Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09): physical CreatedBy/UpdatedBy.
+        builder.Property(p => p.CreatedBy).HasColumnName("created_by").HasColumnType("text");
+        builder.Property(p => p.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
 
         // Composite indexes for common queries
         builder.HasIndex(p => new { p.AlbumId, p.Status });

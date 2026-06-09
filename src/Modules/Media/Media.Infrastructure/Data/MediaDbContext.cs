@@ -79,12 +79,11 @@ public sealed class MediaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new DeadLetterMessageConfiguration());
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
-        // 2026-06-08 hotfix (matches AppDbContext.IgnoreAuditByActorPropertiesUntilPhase1):
-        // Phase 1.9 of Wave 4.9 will add physical CreatedBy/UpdatedBy columns to the
-        // photo_albums + album_photos tables; until then, ignore the auto-mapped
-        // properties so SELECTs don't try to read non-existent columns.
-        modelBuilder.Entity<PhotoAlbum>().Ignore("CreatedBy").Ignore("UpdatedBy");
-        modelBuilder.Entity<AlbumPhoto>().Ignore("CreatedBy").Ignore("UpdatedBy");
+        // Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09): physical CreatedBy/UpdatedBy
+        // columns landed on events.photo_albums / album_photos via
+        // Phase1_10c_b_AddCreatedByUpdatedByToMediaTables migration. Per-entity
+        // configs now map both to snake_case columns; the prior Ignore() hotfix
+        // has been removed.
 
         base.OnModelCreating(modelBuilder);
     }

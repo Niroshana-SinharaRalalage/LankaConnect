@@ -167,6 +167,9 @@ public sealed class IAuditableIgnoreCoverageTests
         typeof(LankaConnect.Modules.Forms.Domain.Entities.FormQuestion),
         typeof(LankaConnect.Modules.Forms.Domain.Entities.FormResponse),
         typeof(LankaConnect.Modules.Forms.Domain.Entities.FormAnswer),
+        // Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09): Media via MediaDbContext (2 entities)
+        typeof(LankaConnect.Modules.Media.Domain.PhotoAlbum),
+        typeof(LankaConnect.Modules.Media.Domain.Entities.AlbumPhoto),
     };
 
     private static void AssertNoIAuditableLeak(IModel model, string propertyName, string contextName)

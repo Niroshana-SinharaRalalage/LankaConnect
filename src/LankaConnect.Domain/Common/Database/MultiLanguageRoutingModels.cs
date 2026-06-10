@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using LankaConnect.Domain.Communications.ValueObjects;
+using LankaConnect.Domain.Common.Enums;
 using LankaConnect.SharedKernel.Cultural;
 
 namespace LankaConnect.Domain.Common.Database.MultiLanguageRoutingModels;

@@ -10,7 +10,10 @@ public class PhotoAlbumConfiguration : IEntityTypeConfiguration<PhotoAlbum>
 {
     public void Configure(EntityTypeBuilder<PhotoAlbum> builder)
     {
-        builder.ToTable("photo_albums", "events");
+        // Wave 4.9.3 (2026-06-09): table moved events.photo_albums -> media.photo_albums
+        // via ALTER TABLE ... SET SCHEMA. The schema arg is now omitted so EF uses
+        // MediaDbContext.HasDefaultSchema("media").
+        builder.ToTable("photo_albums");
 
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id).ValueGeneratedNever();
@@ -82,7 +85,8 @@ public class AlbumPhotoConfiguration : IEntityTypeConfiguration<AlbumPhoto>
 {
     public void Configure(EntityTypeBuilder<AlbumPhoto> builder)
     {
-        builder.ToTable("album_photos", "events");
+        // Wave 4.9.3 (2026-06-09): table moved events.album_photos -> media.album_photos.
+        builder.ToTable("album_photos");
 
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedNever();

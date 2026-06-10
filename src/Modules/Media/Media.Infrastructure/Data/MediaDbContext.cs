@@ -9,38 +9,28 @@ namespace LankaConnect.Modules.Media.Infrastructure.Data;
 
 /// <summary>
 /// Module-owned <see cref="DbContext"/> for the Media bounded context.
-/// Maps the <c>events.photo_albums</c> + <c>events.album_photos</c> tables
-/// (physically owned by legacy AppDbContext migrations
-/// <c>20260307222001_AddPhotoAlbumTables</c> and
-/// <c>20260329224025_AddVideoSupportToAlbumPhotos</c>).
+/// Maps <c>media.photo_albums</c> + <c>media.album_photos</c> (renamed
+/// from the legacy <c>events.*</c> schema by Wave 4.9.3 architect ruling
+/// 2026-06-09 via <c>ALTER TABLE ... SET SCHEMA</c>).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>W4.2 cross-schema pattern</b> (architect ruling 2026-06-06): legacy tables
-/// remain on the <c>events</c> physical schema; <see cref="MediaDbContext"/>'s
-/// own operational tables (<c>media.outbox</c>, <c>media.outbox_dead_letter</c>,
-/// <c>media.idempotency_keys</c>, <c>media.__EFMigrationsHistory</c>) live in
-/// the <c>media</c> schema. Schema realignment to <c>media.photo_albums</c>
-/// is deferred to a coordinated Wave 4.9 schema-realignment pass after local
-/// Postgres is available for migration dry-run.
+/// Wave 4.9.3 (2026-06-09) closed the W4.2 cross-schema deferral: both legacy
+/// aggregate tables physically moved from <c>events</c> to <c>media</c>. The
+/// previous <c>LegacyTableSchema</c> constant + <c>ToTable(..., LegacyTableSchema)</c>
+/// overrides have been removed; PhotoAlbum / AlbumPhoto now live under the
+/// default schema (<c>media</c>, per <see cref="HasDefaultSchema"/>).
 /// </para>
 /// <para>
-/// Mirrors the W3.5 <see cref="LankaConnect.Modules.Notifications.Infrastructure.Data.NotificationsDbContext"/>
-/// baseline pattern — the <c>Baseline_Media</c> migration is empty
-/// (history-row-only) for the physical tables since they already exist.
+/// Operational tables (<c>media.outbox</c>, <c>media.outbox_dead_letter</c>,
+/// <c>media.idempotency_keys</c>, <c>media.__EFMigrationsHistory</c>) were
+/// already in the <c>media</c> schema since W4.2 baseline.
 /// </para>
 /// </remarks>
 public sealed class MediaDbContext : DbContext
 {
-    /// <summary>Postgres schema for module-owned operational tables.</summary>
+    /// <summary>Postgres schema for all Media-owned tables (post-Wave 4.9.3).</summary>
     public const string SchemaName = "media";
-
-    /// <summary>
-    /// Physical schema where the legacy PhotoAlbum/AlbumPhoto tables live.
-    /// Per W4.2 cross-schema pattern, these tables remain owned by the
-    /// <c>events</c> schema until Wave 4.9 schema realignment.
-    /// </summary>
-    public const string LegacyTableSchema = "events";
 
     public MediaDbContext(DbContextOptions<MediaDbContext> options)
         : base(options)
@@ -69,10 +59,10 @@ public sealed class MediaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new PhotoAlbumConfiguration());
         modelBuilder.ApplyConfiguration(new AlbumPhotoConfiguration());
 
-        // Cross-schema explicit overrides: legacy aggregate tables remain physically
-        // in the `events` schema (W4.2 architect ruling 2026-06-06).
-        modelBuilder.Entity<PhotoAlbum>().ToTable("photo_albums", LegacyTableSchema);
-        modelBuilder.Entity<AlbumPhoto>().ToTable("album_photos", LegacyTableSchema);
+        // Wave 4.9.3 (2026-06-09): legacy events.photo_albums / events.album_photos
+        // physically moved to the media schema. PhotoAlbum + AlbumPhoto now use
+        // the default schema (`media`) via HasDefaultSchema above; no override
+        // is needed.
 
         // Module-owned operational tables — `media.outbox`, etc.
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
@@ -80,10 +70,9 @@ public sealed class MediaDbContext : DbContext
         modelBuilder.ApplyConfiguration(new IdempotencyKeyConfiguration());
 
         // Wave4.9.2.10c.b Phase 1.10c.b (2026-06-09): physical CreatedBy/UpdatedBy
-        // columns landed on events.photo_albums / album_photos via
+        // columns landed on media.photo_albums / album_photos via
         // Phase1_10c_b_AddCreatedByUpdatedByToMediaTables migration. Per-entity
-        // configs now map both to snake_case columns; the prior Ignore() hotfix
-        // has been removed.
+        // configs map both to snake_case columns.
 
         base.OnModelCreating(modelBuilder);
     }

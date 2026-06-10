@@ -1,16 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using LankaConnect.Modules.Forms.Domain;
-using LankaConnect.Modules.Forms.Domain.Entities;
-using LankaConnect.Modules.Forms.Domain.Enums;
-using LankaConnect.Modules.Forms.Domain.DomainEvents;
-using LankaConnect.Modules.Forms.Domain.Repositories;
+// Wave 4.9.5 (2026-06-10): Modules.Forms.Domain.* + Modules.Media.Domain.* usings
+// removed -- those types are owned by Forms/MediaDbContext after the W4.3 + W4.2
+// extractions and the Wave 4.9.3/4.9.4 schema renames. AppDbContext does not
+// configure or reference them.
 using Microsoft.Extensions.Logging;
 using LankaConnect.Domain.Users;
 using LankaConnect.Domain.Events;
-using LankaConnect.Modules.Media.Domain;
-using LankaConnect.Modules.Media.Domain.Entities;
-using LankaConnect.Modules.Media.Domain.Enums;
-using LankaConnect.Modules.Media.Domain.DomainEvents;
 using LankaConnect.Domain.Events.Entities;
 using LankaConnect.Domain.Community;
 using LankaConnect.Domain.Business;

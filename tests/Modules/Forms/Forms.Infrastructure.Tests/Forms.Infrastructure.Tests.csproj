@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>LankaConnect.Modules.Forms.Infrastructure.Tests</RootNamespace>
+    <AssemblyName>LankaConnect.Modules.Forms.Infrastructure.Tests</AssemblyName>
+    <Description>Unit tests for the Forms module Infrastructure layer (schema assertions, EF mapping). Wave 4.9.4 (2026-06-10) backfill - the project was missing before.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Modules\Forms\Forms.Infrastructure\Forms.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

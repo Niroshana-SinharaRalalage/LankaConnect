@@ -287,6 +287,27 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.CreatedBy).HasColumnName("created_by").HasColumnType("text");
         builder.Property(e => e.UpdatedBy).HasColumnName("updated_by").HasColumnType("text");
 
+        // 2026-06-11 INCIDENT QUERY FILTER: Event ad8903c4-e98e-49dd-b44e-d89f916c49dc
+        // has corrupt JSONB data (one of its Registration owned-type ToJson columns
+        // has an embedded 0x00 byte at byte 149) that EF Core 8's
+        // IncludeJsonEntityReference pipeline can't decode. ONE bad row breaks
+        // EVERY LINQ query that touches it -- not just GetAllAsync (per-event
+        // fallback in hotfix-2 df0dc31b only covered that one method); dashboard's
+        // statusFilter / my-events / my-rsvps endpoints still 500 because they hit
+        // different EventRepository methods.
+        //
+        // This HasQueryFilter excludes the known corrupt row from EVERY LINQ
+        // query on Event -- a single defensive control point until the underlying
+        // SQL row is fixed offline. See memory [[corrupt-jsonb-event-2026-06-11]]
+        // for SQL probe + permanent fix. Once the row is fixed, REMOVE this
+        // filter (Postgres no longer has corrupt data; filter becomes dead code).
+        //
+        // Note: SearchAsync uses FromSqlRaw which BYPASSES this filter -- a
+        // matching `AND e.id <> 'ad8903c4-...'` clause is added directly in the
+        // SearchAsync method's WHERE clause builder. Keep in sync.
+        var corruptEventId = Guid.Parse("ad8903c4-e98e-49dd-b44e-d89f916c49dc");
+        builder.HasQueryFilter(e => e.Id != corruptEventId);
+
         // Configure relationships
         builder.HasMany(e => e.Registrations)
             .WithOne()

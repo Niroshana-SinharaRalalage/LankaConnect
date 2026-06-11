@@ -24,7 +24,33 @@ public class Form : LegacyBaseEntity
     /// <summary>
     /// FK to the Event this form belongs to. Not a navigation property.
     /// </summary>
+    /// <remarks>
+    /// Wave 5.2b (2026-06-11): co-exists with <see cref="OwnerEntityId"/> +
+    /// <see cref="OwnerEntityType"/> during the polymorphic-ownership transition.
+    /// EventId remains the persisted FK (column <c>event_id</c>); OwnerEntityId
+    /// mirrors EventId for Event-owned forms and is ignored by EF for this wave
+    /// (<see cref="FormConfiguration"/> applies <c>b.Ignore()</c>). Wave 5.2c
+    /// ships the EF migration that adds <c>owner_entity_id</c> +
+    /// <c>owner_entity_type</c> columns and backfills from EventId. Wave 5.2d
+    /// drops <c>event_id</c> and removes EventId entirely after a 48-hour soak.
+    /// </remarks>
     public Guid EventId { get; private set; }
+
+    /// <summary>
+    /// Polymorphic owner identifier. For Event-owned forms (the only owner kind
+    /// today), this equals <see cref="EventId"/>. Wave 5.2b (2026-06-11)
+    /// transitional shim — EF currently ignores this property; persistence lands
+    /// in Wave 5.2c.
+    /// </summary>
+    public Guid OwnerEntityId { get; private set; }
+
+    /// <summary>
+    /// Discriminator for which entity type owns this form. Defaults to
+    /// <see cref="FormOwnerEntityType.Event"/> for all existing rows.
+    /// Wave 5.2b (2026-06-11) transitional shim — EF currently ignores this
+    /// property; persistence lands in Wave 5.2c.
+    /// </summary>
+    public FormOwnerEntityType OwnerEntityType { get; private set; }
 
     public string Title { get; private set; } = string.Empty;
     public string? Description { get; private set; }
@@ -68,9 +94,12 @@ public class Form : LegacyBaseEntity
         bool allowMultipleResponses,
         DateTime? responseDeadline,
         int? maxResponses,
-        bool allowAttendeesToViewResponses)
+        bool allowAttendeesToViewResponses,
+        FormOwnerEntityType ownerEntityType)
     {
         EventId = eventId;
+        OwnerEntityId = eventId; // Wave 5.2b: mirrors EventId for Event-owned forms (only owner kind today).
+        OwnerEntityType = ownerEntityType;
         Title = title;
         Description = description;
         Status = FormStatus.Draft;
@@ -86,6 +115,8 @@ public class Form : LegacyBaseEntity
     /// Phase 6A.146: <paramref name="allowAttendeesToViewResponses"/> is appended at the
     /// END of the signature as an optional parameter so positional callers (including
     /// the integration test suite) continue compiling unchanged.
+    /// Wave 5.2b (2026-06-11): <paramref name="ownerEntityType"/> appended last with a
+    /// default of <see cref="FormOwnerEntityType.Event"/> — same backward-compat pattern.
     /// </summary>
     public static Result<Form> Create(
         Guid eventId,
@@ -94,7 +125,8 @@ public class Form : LegacyBaseEntity
         bool allowMultipleResponses = false,
         DateTime? responseDeadline = null,
         int? maxResponses = null,
-        bool allowAttendeesToViewResponses = false)
+        bool allowAttendeesToViewResponses = false,
+        FormOwnerEntityType ownerEntityType = FormOwnerEntityType.Event)
     {
         if (eventId == Guid.Empty)
             return Result<Form>.Failure("Event ID cannot be empty");
@@ -122,7 +154,7 @@ public class Form : LegacyBaseEntity
         if (responseDeadline.HasValue && responseDeadline.Value.Kind != DateTimeKind.Utc)
             responseDeadline = DateTime.SpecifyKind(responseDeadline.Value, DateTimeKind.Utc);
 
-        var form = new Form(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses, allowAttendeesToViewResponses);
+        var form = new Form(eventId, title, description, allowMultipleResponses, responseDeadline, maxResponses, allowAttendeesToViewResponses, ownerEntityType);
 
         form.RaiseDomainEvent(new FormCreatedEvent(eventId, form.Id, title, DateTime.UtcNow));
 

@@ -293,6 +293,24 @@ public class EventRepository : Repository<Event>, IEventRepository
 
                 return result;
             }
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                // 2026-06-11 HOTFIX: at least one event row has a corrupt JSONB
+                // column (Registration.attendee_info / attendees / contact / etc.
+                // owned-type ToJson columns) that EF Core 8's
+                // ShaperProcessingExpressionVisitor.IncludeJsonEntityReference
+                // pipeline can't decode. ONE bad row breaks the whole bulk query.
+                // Fallback: load events one ID at a time, skip broken ones,
+                // log offenders so an operator can find + fix the bad rows.
+                _repoLogger.LogWarning(jsonEx,
+                    "GetAllAsync bulk query hit JsonReaderException after {ElapsedMs}ms -- " +
+                    "falling back to per-event load. At least one event has a corrupt " +
+                    "JSONB column (likely Registration.attendee_info / attendees / contact). " +
+                    "Bad-event IDs will be logged separately as [BAD_EVENT_ROW_JSON].",
+                    stopwatch.ElapsedMilliseconds);
+
+                return await LoadEventsOneByOneSkippingBadRowsAsync(cancellationToken);
+            }
             catch (Exception ex)
             {
                 stopwatch.Stop();
@@ -306,6 +324,67 @@ public class EventRepository : Repository<Event>, IEventRepository
                 throw;
             }
         }
+    }
+
+    /// <summary>
+    /// 2026-06-11 HOTFIX fallback for <see cref="GetAllAsync"/>. Loads each event by
+    /// id one-at-a-time so a corrupt-JSONB row can be SKIPPED with a log breadcrumb
+    /// instead of 500ing the whole list endpoint. Slower than bulk -- pure recovery
+    /// path. Operator follow-up: identify the corrupt row(s) via the
+    /// [BAD_EVENT_ROW_JSON] log breadcrumb + run targeted UPDATE SQL.
+    /// </summary>
+    private async Task<IReadOnlyList<Event>> LoadEventsOneByOneSkippingBadRowsAsync(
+        CancellationToken cancellationToken)
+    {
+        var ids = await _dbSet
+            .AsNoTracking()
+            .Select(e => e.Id)
+            .ToListAsync(cancellationToken);
+
+        var loaded = new List<Event>(ids.Count);
+        var badIds = new List<Guid>();
+
+        foreach (var id in ids)
+        {
+            try
+            {
+                var ev = await _dbSet
+                    .AsNoTracking()
+                    .Include(e => e.Images)
+                    .Include(e => e.Registrations)
+                    .Include(e => e.TicketTiers)
+                    .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+
+                if (ev != null)
+                {
+                    loaded.Add(ev);
+                }
+            }
+            catch (System.Text.Json.JsonException jsonEx)
+            {
+                badIds.Add(id);
+                _repoLogger.LogError(jsonEx,
+                    "[BAD_EVENT_ROW_JSON] Event {EventId} skipped: corrupt JSONB column. " +
+                    "Run SQL probe: SELECT id, attendee_info, attendees, contact FROM " +
+                    "events.registrations WHERE event_id = '{EventId}' to locate the bad " +
+                    "Registration row.",
+                    id, id);
+            }
+            catch (Exception ex)
+            {
+                badIds.Add(id);
+                _repoLogger.LogError(ex,
+                    "[BAD_EVENT_ROW_OTHER] Event {EventId} skipped during recovery: {ErrorType} - {ErrorMessage}",
+                    id, ex.GetType().Name, ex.Message);
+            }
+        }
+
+        _repoLogger.LogInformation(
+            "GetAllAsync RECOVERED via per-event fallback: LoadedCount={LoadedCount}, " +
+            "SkippedCount={SkippedCount}, BadIds=[{BadIds}]",
+            loaded.Count, badIds.Count, string.Join(",", badIds));
+
+        return loaded;
     }
 
     public async Task<IReadOnlyList<Event>> GetByOrganizerAsync(Guid organizerId, CancellationToken cancellationToken = default)

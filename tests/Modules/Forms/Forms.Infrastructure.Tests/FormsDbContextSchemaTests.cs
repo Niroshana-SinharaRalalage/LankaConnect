@@ -60,6 +60,37 @@ public sealed class FormsDbContextSchemaTests
     }
 
     [Fact]
+    public void Form_Maps_OwnerEntityId_And_OwnerEntityType_Columns()
+    {
+        var model = BuildFormsDbContextModel();
+        var entityType = model.FindEntityType(typeof(Form));
+
+        entityType.Should().NotBeNull();
+
+        var ownerIdProp = entityType!.FindProperty("OwnerEntityId");
+        ownerIdProp.Should().NotBeNull(because: "Wave 5.2c removed b.Ignore() and mapped the property.");
+        ownerIdProp!.GetColumnName().Should().Be("owner_entity_id");
+        ownerIdProp!.IsNullable.Should().BeFalse();
+
+        var ownerTypeProp = entityType!.FindProperty("OwnerEntityType");
+        ownerTypeProp.Should().NotBeNull();
+        ownerTypeProp!.GetColumnName().Should().Be("owner_entity_type");
+        ownerTypeProp!.IsNullable.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Form_OwnerEntityType_Persists_As_String()
+    {
+        var model = BuildFormsDbContextModel();
+        var entityType = model.FindEntityType(typeof(Form));
+        var ownerTypeProp = entityType!.FindProperty("OwnerEntityType")!;
+
+        ownerTypeProp.GetProviderClrType().Should().Be(typeof(string),
+            because: "Wave 5.2c configures HasConversion<string>() so backfill SQL can use 'Event' literal + values survive enum reordering.");
+        ownerTypeProp.GetMaxLength().Should().Be(50);
+    }
+
+    [Fact]
     public void FormsDbContext_Has_No_Cross_Schema_Override()
     {
         var model = BuildFormsDbContextModel();

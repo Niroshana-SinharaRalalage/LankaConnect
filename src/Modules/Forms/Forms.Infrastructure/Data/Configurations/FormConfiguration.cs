@@ -20,14 +20,19 @@ public class FormConfiguration : IEntityTypeConfiguration<Form>
             .HasColumnName("event_id")
             .IsRequired();
 
-        // Wave 5.2b (2026-06-11): OwnerEntityId + OwnerEntityType are CLR-only
-        // transitional shims. Ignored by EF for this wave so the snapshot stays
-        // clean and Gate G1 (empty-migration probe after the rename) passes.
-        // Wave 5.2c removes these Ignore() calls, adds owner_entity_id +
-        // owner_entity_type columns, and backfills from event_id. Wave 5.2d
-        // drops event_id after staging soak.
-        builder.Ignore(f => f.OwnerEntityId);
-        builder.Ignore(f => f.OwnerEntityType);
+        // Wave 5.2c (2026-06-11): polymorphic owner discriminator persisted.
+        // Migration Wave5_2c_AddOwnerEntityToForms adds these columns, backfills
+        // from event_id ('Event' kind), and constrains NOT NULL. Wave 5.2d drops
+        // event_id + the EventId CLR shim after a >=48h staging soak.
+        builder.Property(f => f.OwnerEntityId)
+            .HasColumnName("owner_entity_id")
+            .IsRequired();
+
+        builder.Property(f => f.OwnerEntityType)
+            .HasColumnName("owner_entity_type")
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .IsRequired();
 
         builder.Property(f => f.Title)
             .HasColumnName("title")
